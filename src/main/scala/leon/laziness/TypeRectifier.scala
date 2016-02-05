@@ -137,7 +137,7 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
       }.toMap
       val instf = instantiateTypeParameters(tpMap) _
       val paramMap = fd.params.map {
-        case vd @ ValDef(id, _) =>
+        case vd @ ValDef(id) =>
           (id -> FreshIdentifier(id.name, instf(vd.getType)))
       }.toMap
       val ntparams = fd.tparams.map(tpd => tpMap(tpd.tp)).distinct.collect {

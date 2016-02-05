@@ -93,25 +93,39 @@ object UnitElimination extends TransformationPhase {
           }
         }
 
-      case LetDef(fd, b) =>
-        if(fd.returnType == UnitType) 
+      case LetDef(fds, b) =>
+        val nonUnits = fds.filter(fd => fd.returnType != UnitType)
+        if(nonUnits.isEmpty) {
           removeUnit(b)
-        else {
-          val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = fd.duplicate(params = fd.params.filterNot(vd => vd.getType == UnitType))
-            fun2FreshFun += (fd -> freshFunDef)
-            freshFunDef.fullBody = removeUnit(fd.fullBody)
-            val restRec = removeUnit(b)
-            fun2FreshFun -= fd
-            (freshFunDef, restRec)
-          } else {
-            fun2FreshFun += (fd -> fd)
-            fd.body = fd.body.map(b => removeUnit(b))
-            val restRec = removeUnit(b)
-            fun2FreshFun -= fd
-            (fd, restRec)
+        } else {
+          val fdtoFreshFd = for(fd <- nonUnits) yield {
+            val m = if(fd.params.exists(vd => vd.getType == UnitType)) {
+              val freshFunDef = fd.duplicate(params = fd.params.filterNot(vd => vd.getType == UnitType))
+              fd -> freshFunDef
+            } else {
+              fd -> fd
+            }
+            fun2FreshFun += m
+            m
           }
-          LetDef(newFd, rest)
+          for((fd, freshFunDef) <- fdtoFreshFd) {
+            if(fd.params.exists(vd => vd.getType == UnitType)) {
+              freshFunDef.fullBody = removeUnit(fd.fullBody)
+            } else {
+              fd.body = fd.body.map(b => removeUnit(b))
+            }
+          }
+          val rest = removeUnit(b)
+          val newFds = for((fd, freshFunDef) <- fdtoFreshFd) yield {
+            fun2FreshFun -= fd
+            if(fd.params.exists(vd => vd.getType == UnitType)) {
+              freshFunDef
+            } else {
+              fd
+            }
+          }
+          
+          LetDef(newFds, rest)
         }
 
       case ite@IfExpr(cond, tExpr, eExpr) =>

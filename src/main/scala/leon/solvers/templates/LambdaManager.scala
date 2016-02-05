@@ -12,9 +12,10 @@ import purescala.Types._
 
 import utils._
 import Instantiation._
+import Template._
 
-case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
-  override def toString = "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
+case class App[T](caller: T, tpe: FunctionType, args: Seq[Arg[T]]) {
+  override def toString = "(" + caller + " : " + tpe + ")" + args.map(_.encoded).mkString("(", ",", ")")
 }
 
 object LambdaTemplate {
@@ -72,6 +73,28 @@ object LambdaTemplate {
   }
 }
 
+trait KeyedTemplate[T, E <: Expr] {
+  val dependencies: Map[Identifier, T]
+  val structuralKey: E
+
+  lazy val key: (E, Seq[T]) = {
+    def rec(e: Expr): Seq[Identifier] = e match {
+      case Variable(id) =>
+        if (dependencies.isDefinedAt(id)) {
+          Seq(id)
+        } else {
+          Seq.empty
+        }
+
+      case Operator(es, _) => es.flatMap(rec)
+
+      case _ => Seq.empty
+    }
+
+    structuralKey -> rec(structuralKey).distinct.map(dependencies)
+  }
+}
+
 class LambdaTemplate[T] private (
   val ids: (Identifier, T),
   val encoder: TemplateEncoder[T],
@@ -87,34 +110,39 @@ class LambdaTemplate[T] private (
   val quantifications: Seq[QuantificationTemplate[T]],
   val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Seq[LambdaTemplate[T]],
-  private[templates] val dependencies: Map[Identifier, T],
-  private[templates] val structuralKey: Lambda,
-  stringRepr: () => String) extends Template[T] {
+  val dependencies: Map[Identifier, T],
+  val structuralKey: Lambda,
+  stringRepr: () => String) extends Template[T] with KeyedTemplate[T, Lambda] {
 
   val args = arguments.map(_._2)
   val tpe = ids._1.getType.asInstanceOf[FunctionType]
 
-  def substitute(substituter: T => T): LambdaTemplate[T] = {
+  def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): LambdaTemplate[T] = {
     val newStart = substituter(start)
     val newClauses = clauses.map(substituter)
     val newBlockers = blockers.map { case (b, fis) =>
       val bp = if (b == start) newStart else b
-      bp -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+      bp -> fis.map(fi => fi.copy(
+        args = fi.args.map(_.substitute(substituter, matcherSubst))
+      ))
     }
 
     val newApplications = applications.map { case (b, fas) =>
       val bp = if (b == start) newStart else b
-      bp -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
+      bp -> fas.map(fa => fa.copy(
+        caller = substituter(fa.caller),
+        args = fa.args.map(_.substitute(substituter, matcherSubst))
+      ))
     }
 
-    val newQuantifications = quantifications.map(_.substitute(substituter))
+    val newQuantifications = quantifications.map(_.substitute(substituter, matcherSubst))
 
     val newMatchers = matchers.map { case (b, ms) =>
       val bp = if (b == start) newStart else b
-      bp -> ms.map(_.substitute(substituter))
+      bp -> ms.map(_.substitute(substituter, matcherSubst))
     }
 
-    val newLambdas = lambdas.map(_.substitute(substituter))
+    val newLambdas = lambdas.map(_.substitute(substituter, matcherSubst))
 
     val newDependencies = dependencies.map(p => p._1 -> substituter(p._2))
 
@@ -139,45 +167,20 @@ class LambdaTemplate[T] private (
     )
   }
 
+  def withId(idT: T): LambdaTemplate[T] = {
+    val substituter = encoder.substitute(Map(ids._2 -> idT))
+    new LambdaTemplate[T](
+      ids._1 -> idT, encoder, manager, pathVar, arguments, condVars, exprVars, condTree,
+      clauses map substituter, // make sure the body-defining clause is inlined!
+      blockers, applications, quantifications, matchers, lambdas,
+      dependencies, structuralKey, stringRepr
+    )
+  }
+
   private lazy val str : String = stringRepr()
   override def toString : String = str
 
-  lazy val key: (Expr, Seq[T]) = {
-    def rec(e: Expr): Seq[Identifier] = e match {
-      case Variable(id) =>
-        if (dependencies.isDefinedAt(id)) {
-          Seq(id)
-        } else {
-          Seq.empty
-        }
-
-      case Operator(es, _) => es.flatMap(rec)
-
-      case _ => Seq.empty
-    }
-
-    structuralKey -> rec(structuralKey).distinct.map(dependencies)
-  }
-
-  override def equals(that: Any): Boolean = that match {
-    case t: LambdaTemplate[T] =>
-      val (lambda1, deps1) = key
-      val (lambda2, deps2) = t.key
-      (lambda1 == lambda2) && {
-        (deps1 zip deps2).forall { case (id1, id2) =>
-          (manager.byID.get(id1), manager.byID.get(id2)) match {
-            case (Some(t1), Some(t2)) => t1 == t2
-            case _ => id1 == id2
-          }
-        }
-      }
-
-    case _ => false
-  }
-
-  override def hashCode: Int = key.hashCode
-
-  override def instantiate(substMap: Map[T, T]): Instantiation[T] = {
+  override def instantiate(substMap: Map[T, Arg[T]]): Instantiation[T] = {
     super.instantiate(substMap) ++ manager.instantiateAxiom(this, substMap)
   }
 }
@@ -186,7 +189,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(enco
   private[templates] lazy val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
 
   protected[templates] val byID = new IncrementalMap[T, LambdaTemplate[T]]
-  protected val byType          = new IncrementalMap[FunctionType, Set[LambdaTemplate[T]]].withDefaultValue(Set.empty)
+  protected val byType          = new IncrementalMap[FunctionType, Map[(Expr, Seq[T]), LambdaTemplate[T]]].withDefaultValue(Map.empty)
   protected val applications    = new IncrementalMap[FunctionType, Set[(T, App[T])]].withDefaultValue(Set.empty)
   protected val freeLambdas     = new IncrementalMap[FunctionType, Set[T]].withDefaultValue(Set.empty)
 
@@ -203,27 +206,30 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(enco
     }
   }
 
-  def instantiateLambda(template: LambdaTemplate[T]): Instantiation[T] = {
-    val idT = template.ids._2
-    var clauses      : Clauses[T]     = equalityClauses(template)
-    var appBlockers  : AppBlockers[T] = Map.empty.withDefaultValue(Set.empty)
+  def instantiateLambda(template: LambdaTemplate[T]): (T, Instantiation[T]) = {
+    byType(template.tpe).get(template.key) match {
+      case Some(template) =>
+        (template.ids._2, Instantiation.empty)
 
-    // make sure the new lambda isn't equal to any free lambda var
-    clauses ++= freeLambdas(template.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(pIdT, idT)))
+      case None =>
+        val idT = encoder.encodeId(template.ids._1)
+        val newTemplate = template.withId(idT)
 
-    byID += idT -> template
+        var clauses      : Clauses[T]     = equalityClauses(newTemplate)
+        var appBlockers  : AppBlockers[T] = Map.empty.withDefaultValue(Set.empty)
 
-    if (byType(template.tpe)(template)) {
-      (clauses, Map.empty, Map.empty)
-    } else {
-      byType += template.tpe -> (byType(template.tpe) + template)
+        // make sure the new lambda isn't equal to any free lambda var
+        clauses ++= freeLambdas(newTemplate.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(idT, pIdT)))
 
-      for (blockedApp @ (_, App(caller, tpe, args)) <- applications(template.tpe)) {
-        val equals = encoder.mkEquals(idT, caller)
-        appBlockers += (blockedApp -> (appBlockers(blockedApp) + TemplateAppInfo(template, equals, args)))
-      }
+        byID += idT -> newTemplate
+        byType += newTemplate.tpe -> (byType(newTemplate.tpe) + (newTemplate.key -> newTemplate))
 
-      (clauses, Map.empty, appBlockers)
+        for (blockedApp @ (_, App(caller, tpe, args)) <- applications(newTemplate.tpe)) {
+          val equals = encoder.mkEquals(idT, caller)
+          appBlockers += (blockedApp -> (appBlockers(blockedApp) + TemplateAppInfo(newTemplate, equals, args)))
+        }
+
+        (idT, (clauses, Map.empty, appBlockers))
     }
   }
 
@@ -244,7 +250,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(enco
           // make sure that even if byType(tpe) is empty, app is recorded in blockers
           // so that UnrollingBank will generate the initial block!
           val init = instantiation withApps Map(key -> Set.empty)
-          val inst = byType(tpe).foldLeft(init) {
+          val inst = byType(tpe).values.foldLeft(init) {
             case (instantiation, template) =>
               val equals = encoder.mkEquals(template.ids._2, caller)
               instantiation withApp (key -> TemplateAppInfo(template, equals, args))
@@ -260,7 +266,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(enco
 
   private def equalityClauses(template: LambdaTemplate[T]): Seq[T] = {
     val (s1, deps1) = template.key
-    byType(template.tpe).map { that =>
+    byType(template.tpe).values.map { that =>
       val (s2, deps2) = that.key
       val equals = encoder.mkEquals(template.ids._2, that.ids._2)
       if (s1 == s2) {

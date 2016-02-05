@@ -37,8 +37,8 @@ import purescala.TypeOps._
  * (e) replace accesses to $.value with calls to dispatch with current state
  */
 class LazyClosureConverter(p: Program, ctx: LeonContext,
-    closureFactory: LazyClosureFactory,
-    funsManager : LazyFunctionsManager) {
+                           closureFactory: LazyClosureFactory,
+                           funsManager: LazyFunctionsManager) {
   val debug = false
   // flags
   //val removeRecursionViaEval = false
@@ -50,11 +50,24 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   val lazyTnames = closureFactory.lazyTypeNames
   val lazyops = closureFactory.lazyops
 
+  /**
+   * Note this method has side-effects
+   */
+  var idmap = Map[Identifier, Identifier]()
+  def makeIdOfType(oldId: Identifier, tpe: TypeTree): Identifier = {
+    if (oldId.getType != tpe) {
+      val freshid = FreshIdentifier(oldId.name, tpe, true)
+      idmap += (oldId -> freshid)
+      freshid
+    } else oldId
+  }
+
   val funMap = p.definedFunctions.collect {
     case fd if (fd.hasBody && !fd.isLibrary) =>
       // replace lazy types in parameters and return values
       val nparams = fd.params map { vd =>
-        ValDef(vd.id, Some(replaceLazyTypes(vd.getType))) // override type of identifier
+        val nparam = makeIdOfType(vd.id, replaceLazyTypes(vd.getType))
+        ValDef(nparam)
       }
       val nretType = replaceLazyTypes(fd.returnType)
       val stparams =
@@ -77,7 +90,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         // body of these functions are defined later
       } else {
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef),
-            nparams, nretType)
+          nparams, nretType)
       }
       // copy annotations
       fd.flags.foreach(nfd.addFlag(_))
@@ -94,13 +107,13 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   //TODO: Optimization: we can omit come functions whose translations will not be recursive.
   def takesStateButIndep(fd: FunDef) =
-  	funsNeedStates(fd) && funsManager.hasStateIndependentBehavior(fd)
+    funsNeedStates(fd) && funsManager.hasStateIndependentBehavior(fd)
 
   /**
    * A set of uninterpreted functions that are used
    * in specs to ensure that value part is independent of the state
    */
-  val uiFuncs : Map[FunDef, (FunDef, Option[FunDef])] = funMap.collect {
+  val uiFuncs: Map[FunDef, (FunDef, Option[FunDef])] = funMap.collect {
     case (k, v) if takesStateButIndep(k) =>
       val params = v.params.take(k.params.size) // ignore the state params
       val retType =
@@ -109,26 +122,26 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
           valtype
         } else v.returnType
       val tparams = (params.map(_.getType) :+ retType).flatMap(getTypeParameters(_)).distinct
-      val tparamsDef =  tparams.map(TypeParameterDef(_))
+      val tparamsDef = tparams.map(TypeParameterDef(_))
       val ufd = new FunDef(FreshIdentifier(v.id.name + "UI"), tparamsDef, params, retType)
 
       // we also need to create a function that assumes that the result equals
       // the uninterpreted function
       val valres = ValDef(FreshIdentifier("valres", retType))
       val pred = new FunDef(FreshIdentifier(v.id.name + "ValPred"), tparamsDef,
-          params :+ valres, BooleanType)
+        params :+ valres, BooleanType)
       val resid = FreshIdentifier("res", pred.returnType)
       pred.fullBody = Ensuring(
-          Equals(valres.id.toVariable,
-              FunctionInvocation(TypedFunDef(ufd, tparams), params.map(_.id.toVariable))), // res = funUI(..)
-              Lambda(Seq(ValDef(resid)), resid.toVariable)) // holds
+        Equals(valres.id.toVariable,
+          FunctionInvocation(TypedFunDef(ufd, tparams), params.map(_.id.toVariable))), // res = funUI(..)
+        Lambda(Seq(ValDef(resid)), resid.toVariable)) // holds
       pred.addFlag(Annotation("axiom", Seq())) // mark it as @library
       (k -> (ufd, Some(pred)))
 
     case (k, v) if lazyops(k) =>
       // here 'v' cannot for sure take state params, otherwise it must be state indep
-      if(funsNeedStates(k))
-        throw new IllegalStateException("Lazyop that has a state dependent behavior: "+k)
+      if (funsNeedStates(k))
+        throw new IllegalStateException("Lazyop that has a state dependent behavior: " + k)
       else {
         val tparams = (v.params.map(_.getType) :+ v.returnType).flatMap(getTypeParameters(_)).distinct
         val tparamsDef = tparams.map(TypeParameterDef(_))
@@ -299,7 +312,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   def mapExpr(expr: Expr)(implicit stTparams: Seq[TypeParameter]): (Option[Expr] => Expr, Boolean) = expr match {
 
-    case finv @ FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) // lazy construction ?
+    case finv @ FunctionInvocation(_, Seq(Lambda(_, FunctionInvocation(TypedFunDef(argfd, tparams), args)))) // lazy construction ?
     if isLazyInvocation(finv)(p) =>
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
         val adt = closureFactory.closureOfLazyOp(argfd)
@@ -331,7 +344,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       }, false)
       mapNAryOperator(args, op)
 
-    case finv @ FunctionInvocation(_, Seq(arg)) if isEagerInvocation(finv)(p) =>
+    case finv @ FunctionInvocation(_, Seq(Lambda(_, arg))) if isEagerInvocation(finv)(p) =>
       // here arg is guaranteed to be a variable
       ((st: Option[Expr]) => {
         val rootType = bestRealType(arg.getType)
@@ -387,16 +400,16 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       }, false)
 
     case finv @ FunctionInvocation(_, Seq(recvr, stArgs @ _*)) if isWithStateFun(finv)(p) =>
-      // recvr is a `WithStateCaseClass` and `stArgs` could be arbitrary expressions that return values of types of fileds of state
+      // recvr is a `WithStateCaseClass` and `stArgs` could be arbitrary expressions that return values of types of fields of state
       val numStates = closureFactory.state.fields.size
-      if(stArgs.size != numStates)
-        throw new IllegalStateException("The arguments to `withState` should equal the number of states: "+numStates)
+      if (stArgs.size != numStates)
+        throw new IllegalStateException("The arguments to `withState` should equal the number of states: " + numStates)
 
       val CaseClass(_, Seq(exprNeedingState)) = recvr
       val (nexprCons, exprReturnsState) = mapExpr(exprNeedingState)
       val nstConses = stArgs map mapExpr
-      if(nstConses.exists(_._2)) // any 'stArg' returning state
-        throw new IllegalStateException("One of the  arguments to `withState` returns a new state, which is not supported: "+finv)
+      if (nstConses.exists(_._2)) // any 'stArg' returning state
+        throw new IllegalStateException("One of the  arguments to `withState` returns a new state, which is not supported: " + finv)
       else {
         ((st: Option[Expr]) => {
           // create a new state using the nstConses
@@ -404,16 +417,6 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
           val tparams = nstSets.flatMap(nst => getTypeParameters(nst.getType)).distinct
           val nst = CaseClass(CaseClassType(closureFactory.state, tparams), nstSets)
           nexprCons(Some(nst))
-          /* // compute the baseType
-          stArg.getType match {
-            case SetType(lazyType) => // note that stArg would still have the set type
-              val baseType = unwrapLazyType(lazyType).get
-              val tname = typeNameWOParams(baseType)
-              val newStates = st + (tname -> nst)
-              nexpr(newStates)
-            case t =>
-              throw new IllegalStateException(s"$stArg should have a set type, current type: "+t)
-          }*/
         }, exprReturnsState)
       }
 
@@ -536,6 +539,13 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => CaseClass(ntype, nargs), false))
 
+    // need to reset field ids of case class select
+    case CaseClassSelector(cct, clExpr, fieldId) if fieldMap.contains(fieldId) =>
+      val ntype = replaceLazyTypes(cct).asInstanceOf[CaseClassType]
+      val nfield = fieldMap(fieldId)
+      mapNAryOperator(Seq(clExpr),
+        (nargs: Seq[Expr]) => ((st: Option[Expr]) => CaseClassSelector(ntype, nargs.head, nfield), false))
+
     case Operator(args, op) =>
       // here, 'op' itself does not create a new state
       mapNAryOperator(args,
@@ -577,115 +587,119 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     }
   }
 
-  def assignBodiesToFunctions = funMap foreach {
-    case (fd, nfd) =>
-      //println("Considering function: "+fd)
-      // Here, using name to identify 'state' parameters
-      val stateParam = nfd.params.collectFirst {
-        case vd if isStateParam(vd.id) =>
-          vd.id.toVariable
-      }
-      val stType = stateParam.map(_.getType.asInstanceOf[CaseClassType])
-      // Note: stTparams may be provided even if stParam is not required.
-      val stTparams = nfd.tparams.collect{
-        case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
-      }
-      val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
-      val nbody = nbodyFun(stateParam)
-      val bodyWithState =
-        if (!bodyUpdatesState && funsRetStates(fd))
-          Tuple(Seq(nbody, stateParam.get))
-        else
-          nbody
-      nfd.body = Some(simplifyLets(bodyWithState))
-      //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
-
-      // Important: specifications use lazy semantics but
-      // their state changes are ignored after their execution.
-      // This guarantees their observational purity/transparency
-      // collect class invariants that need to be added
-      if (fd.hasPrecondition) {
-        val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams)
-        nfd.precondition =
-          if (preUpdatesState)
-            Some(TupleSelect(npreFun(stateParam), 1)) // ignore state updated by pre
-          else Some(npreFun(stateParam))
-      }
-
-      // create a new result variable
-      val newres =
-        if (fd.hasPostcondition) {
-          val Lambda(Seq(ValDef(r, _)), _) = fd.postcondition.get
-          FreshIdentifier(r.name, bodyWithState.getType)
-        } else FreshIdentifier("r", nfd.returnType)
-
-      // create an output state map
-      val outState =
-        if (bodyUpdatesState || funsRetStates(fd)) {
-          Some(TupleSelect(newres.toVariable, 2))
-        } else
-          stateParam
-
-      // create a specification that relates input-output states
-      val stateRel =
-        if (funsRetStates(fd)) { // add specs on states
-          val instates = fieldsOfState(stateParam.get, stType.get)
-          val outstates = fieldsOfState(outState.get, stType.get)
-          val stateRel =
-            if(fd.annotations.contains("invstate")) Equals.apply _
-            else SubsetOf.apply _
-          Some(createAnd((instates zip outstates).map(p => stateRel(p._1, p._2))))
-        } else None
-      //println("stateRel: "+stateRel)
-
-      // create a predicate that ensures that the value part is independent of the state
-      val valRel =
-        if (takesStateButIndep(fd)) { // add specs on value
-          val uipred = uiFuncs(fd)._2.get
-          val args = nfd.params.take(fd.params.size).map(_.id.toVariable)
-          val retarg =
-            if(funsRetStates(fd))
-              TupleSelect(newres.toVariable, 1)
-              else newres.toVariable
-          Some(FunctionInvocation(TypedFunDef(uipred, nfd.tparams.map(_.tp)),
-              args :+ retarg))
-        } else None
-
-      val targetPost =
-        if (fd.hasPostcondition) {
-          val Lambda(Seq(ValDef(resid, _)), post) = fd.postcondition.get
-          // bind calls to instate and outstate calls to their respective values
-          val tpost = simplePostTransform {
-            case e if LazinessUtil.isInStateCall(e)(p) =>
-              val baseType = getTypeArguments(e.getType).head
-              val tname = typeNameWOParams(baseType)
-              closureFactory.selectFieldOfState(tname, stateParam.get, stType.get)
-
-            case e if LazinessUtil.isOutStateCall(e)(p) =>
-              val baseType = getTypeArguments(e.getType).head
-              val tname = typeNameWOParams(baseType)
-              closureFactory.selectFieldOfState(tname, outState.get, stType.get)
-
-            case e => e
-          }(post)
-          // thread state through postcondition
-          val (npostFun, postUpdatesState) = mapExpr(tpost)(stTparams)
-          val resval =
-            if (bodyUpdatesState || funsRetStates(fd))
-              TupleSelect(newres.toVariable, 1)
-            else newres.toVariable
-          val npostWithState = replace(Map(resid.toVariable -> resval), npostFun(outState))
-          val npost =
-            if (postUpdatesState) {
-              TupleSelect(npostWithState, 1) // ignore state updated by post
-            } else
-              npostWithState
-          Some(npost)
-        } else {
-          None
+  def assignBodiesToFunctions = {
+    val paramMap: Map[Expr, Expr] = idmap.map(e => (e._1.toVariable -> e._2.toVariable))
+    funMap foreach {
+      case (fd, nfd) =>
+        //println("Considering function: "+fd)
+        // Here, using name to identify 'state' parameters
+        val stateParam = nfd.params.collectFirst {
+          case vd if isStateParam(vd.id) =>
+            vd.id.toVariable
         }
-      nfd.postcondition = Some(Lambda(Seq(ValDef(newres)),
+        val stType = stateParam.map(_.getType.asInstanceOf[CaseClassType])
+        // Note: stTparams may be provided even if stParam is not required.
+        val stTparams = nfd.tparams.collect {
+          case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
+        }
+        val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
+        val nbody = nbodyFun(stateParam)
+        val bodyWithState =
+          if (!bodyUpdatesState && funsRetStates(fd))
+            Tuple(Seq(nbody, stateParam.get))
+          else
+            nbody
+        nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
+        //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
+
+        // Important: specifications use lazy semantics but
+        // their state changes are ignored after their execution.
+        // This guarantees their observational purity/transparency
+        // collect class invariants that need to be added
+        if (fd.hasPrecondition) {
+          val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams)
+          val npre = replace(paramMap, npreFun(stateParam))
+          nfd.precondition =
+            if (preUpdatesState)
+              Some(TupleSelect(npre, 1)) // ignore state updated by pre
+            else Some(npre)
+        }
+
+        // create a new result variable
+        val newres =
+          if (fd.hasPostcondition) {
+            val Lambda(Seq(ValDef(r)), _) = fd.postcondition.get
+            FreshIdentifier(r.name, bodyWithState.getType)
+          } else FreshIdentifier("r", nfd.returnType)
+
+        // create an output state map
+        val outState =
+          if (bodyUpdatesState || funsRetStates(fd)) {
+            Some(TupleSelect(newres.toVariable, 2))
+          } else
+            stateParam
+
+        // create a specification that relates input-output states
+        val stateRel =
+          if (funsRetStates(fd)) { // add specs on states
+            val instates = fieldsOfState(stateParam.get, stType.get)
+            val outstates = fieldsOfState(outState.get, stType.get)
+            val stateRel =
+              if (fd.annotations.contains("invstate")) Equals.apply _
+              else SubsetOf.apply _
+            Some(createAnd((instates zip outstates).map(p => stateRel(p._1, p._2))))
+          } else None
+        //println("stateRel: "+stateRel)
+
+        // create a predicate that ensures that the value part is independent of the state
+        val valRel =
+          if (takesStateButIndep(fd)) { // add specs on value
+            val uipred = uiFuncs(fd)._2.get
+            val args = nfd.params.take(fd.params.size).map(_.id.toVariable)
+            val retarg =
+              if (funsRetStates(fd))
+                TupleSelect(newres.toVariable, 1)
+              else newres.toVariable
+            Some(FunctionInvocation(TypedFunDef(uipred, nfd.tparams.map(_.tp)),
+              args :+ retarg))
+          } else None
+
+        val targetPost =
+          if (fd.hasPostcondition) {
+            val Lambda(Seq(ValDef(resid)), post) = fd.postcondition.get
+            val resval =
+              if (bodyUpdatesState || funsRetStates(fd))
+                TupleSelect(newres.toVariable, 1)
+              else newres.toVariable
+            // thread state through postcondition
+            val (npostFun, postUpdatesState) = mapExpr(post)(stTparams)
+            // bind calls to instate and outstate calls to their respective values
+            val tpost = simplePostTransform {
+              case e if LazinessUtil.isInStateCall(e)(p) =>
+                val baseType = getTypeArguments(e.getType).head
+                val tname = typeNameWOParams(baseType)
+                closureFactory.selectFieldOfState(tname, stateParam.get, stType.get)
+
+              case e if LazinessUtil.isOutStateCall(e)(p) =>
+                val baseType = getTypeArguments(e.getType).head
+                val tname = typeNameWOParams(baseType)
+                closureFactory.selectFieldOfState(tname, outState.get, stType.get)
+
+              case e => e
+            }(replace(paramMap ++ Map(resid.toVariable -> resval), npostFun(outState)))
+
+            val npost =
+              if (postUpdatesState) {
+                TupleSelect(tpost, 1) // ignore state updated by post
+              } else
+                tpost
+            Some(npost)
+          } else {
+            None
+          }
+        nfd.postcondition = Some(Lambda(Seq(ValDef(newres)),
           createAnd(stateRel.toList ++ valRel.toList ++ targetPost.toList)))
+    }
   }
 
   def assignContractsForEvals = evalFunctions.foreach {
@@ -702,7 +716,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val binder = FreshIdentifier("t", ctype)
         val pattern = InstanceOfPattern(Some(binder), ctype)
         // t.clres == res._1
-        val clause1 = if(!ismem) {
+        val clause1 = if (!ismem) {
           val clresField = cdef.fields.last
           Equals(TupleSelect(postres.toVariable, 1),
             CaseClassSelector(ctype, binder.toVariable, clresField.id))
@@ -731,10 +745,19 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   /**
    * Overrides the types of the lazy fields  in the case class definitions
+   * Note: here we reset CaseClass fields instead of having to duplicate the
+   * entire class hierarchy.
    */
+  var fieldMap = Map[Identifier, Identifier]()
+  def copyField(oldId: Identifier, tpe: TypeTree): Identifier = {
+    val freshid = FreshIdentifier(oldId.name, tpe)
+    fieldMap += (oldId -> freshid)
+    freshid
+  }
+
   def transformCaseClasses = p.definedClasses.foreach {
-    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj)
-      if !ccd.flags.contains(Annotation("library", Seq())) =>
+    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj) if !ccd.flags.contains(Annotation("library", Seq())) &&
+      ccd.fields.exists(vd => isLazyType(vd.getType)) =>
       val nfields = ccd.fields.map { fld =>
         unwrapLazyType(fld.getType) match {
           case None => fld
@@ -743,7 +766,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
             val typeArgs = getTypeArguments(btype)
             //println(s"AbsType: $clType type args: $typeArgs")
             val adtType = AbstractClassType(clType, typeArgs)
-            ValDef(fld.id, Some(adtType)) // overriding the field type
+            ValDef(copyField(fld.id, adtType))
         }
       }
       ccd.setFields(nfields)
@@ -771,8 +794,8 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
           case d => Seq(d)
         }),
       closureFactory.allClosuresAndParents ++ Seq(closureFactory.state) ++
-      closureCons.values ++ evalFunctions.values ++
-      computeFunctions.values ++ uiStateFuns.values ++
-      closureFactory.stateUpdateFuns.values, anchor)
+        closureCons.values ++ evalFunctions.values ++
+        computeFunctions.values ++ uiStateFuns.values ++
+        closureFactory.stateUpdateFuns.values, anchor)
   }
 }

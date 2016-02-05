@@ -27,7 +27,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   val reporter = ctx.reporter
 
   def extractFromFunDef(fd: FunDef, partition: Boolean): ExamplesBank = fd.postcondition match {
-    case Some(Lambda(Seq(ValDef(id, _)), post)) =>
+    case Some(Lambda(Seq(ValDef(id)), post)) =>
       // @mk FIXME: make this more general
       val tests = extractTestsOf(post)
 
@@ -171,48 +171,58 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
         // The input contains no free vars. Trivially return input-output pair
         Seq((pattExpr, doSubstitute(ieMap,cs.rhs)))
       } else {
-        // If the input contains free variables, it does not provide concrete examples. 
-        // We will instantiate them according to a simple grammar to get them.
-        val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
-        val values = enum.iterator(tupleTypeWrap(freeVars.map{ _.getType }))
-        val instantiations = values.map {
-          v => freeVars.zip(unwrapTuple(v, freeVars.size)).toMap
-        }
-        
-        def filterGuard(e: Expr, mapping: Map[Identifier, Expr]): Boolean = cs.optGuard match {
-          case Some(guard) => 
-            // in -> e should be enough. We shouldn't find any subexpressions of in.
-            evaluator.eval(replace(Map(in -> e), guard), mapping) match {
-              case EvaluationResults.Successful(BooleanLiteral(true)) => true
-              case _ => false
-            }
+        // Extract test cases such as    case x if x == s =>
+        ((pattExpr, ieMap, cs.optGuard) match {
+          case (Variable(id), Seq(), Some(Equals(Variable(id2), s))) if id == id2 =>
+            Some((Seq((s, doSubstitute(ieMap, cs.rhs)))))
+          case (Variable(id), Seq(), Some(Equals(s, Variable(id2)))) if id == id2 =>
+            Some((Seq((s, doSubstitute(ieMap, cs.rhs)))))
+          case (a, b, c) =>
+            None
+        }) getOrElse {
+          // If the input contains free variables, it does not provide concrete examples. 
+          // We will instantiate them according to a simple grammar to get them.
+          val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree, Expr]](ValueGrammar.getProductions)
+          val values = enum.iterator(tupleTypeWrap(freeVars.map { _.getType }))
+          val instantiations = values.map {
+            v => freeVars.zip(unwrapTuple(v, freeVars.size)).toMap
+          }
 
-          case None =>
-            true
-        }
+          def filterGuard(e: Expr, mapping: Map[Identifier, Expr]): Boolean = cs.optGuard match {
+            case Some(guard) =>
+              // in -> e should be enough. We shouldn't find any subexpressions of in.
+              evaluator.eval(replace(Map(in -> e), guard), mapping) match {
+                case EvaluationResults.Successful(BooleanLiteral(true)) => true
+                case _ => false
+              }
 
-        (for {
-          inst <- instantiations.toSeq
-          inR = replaceFromIDs(inst, pattExpr)
-          outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
-          if filterGuard(inR, inst)
-        } yield (inR,outR) ).take(examplesPerCase)
+            case None =>
+              true
+          }
+          
+          if(cs.optGuard == Some(BooleanLiteral(false))) {
+            Nil
+          } else (for {
+            inst <- instantiations.toSeq
+            inR = replaceFromIDs(inst, pattExpr)
+            outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
+            if filterGuard(inR, inst)
+          } yield (inR, outR)).take(examplesPerCase)
+        }
       }
     }
   }
 
-  /** 
-   * Check if two tests are compatible.
-   * Compatible should evaluate to the same value for the same identifier
-   */
+  /** Check if two tests are compatible.
+    * Compatible should evaluate to the same value for the same identifier
+    */
   private def isCompatible(m1: Map[Identifier, Expr], m2: Map[Identifier, Expr]) = {
     val ks = m1.keySet & m2.keySet
     ks.nonEmpty && ks.map(m1) == ks.map(m2)
   }
 
-  /** 
-   * Merge tests t1 and t2 if they are compatible. Return m1 if not.
-   */
+  /** Merge tests t1 and t2 if they are compatible. Return m1 if not.
+    */
   private def mergeTest(m1: Map[Identifier, Expr], m2: Map[Identifier, Expr]) = {
     if (!isCompatible(m1, m2)) {
       m1
@@ -221,12 +231,12 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
   }
 
-  /**
-   * we now need to consolidate different clusters of compatible tests together
-   * t1: a->1, c->3
-   * t2: a->1, b->4
-   *   => a->1, b->4, c->3
-   */
+  /** we now need to consolidate different clusters of compatible tests together
+    * t1: a->1, c->3
+    * t1: a->1, c->3
+    * t2: a->1, b->4
+    *   => a->1, b->4, c->3
+    */
   private def consolidateTests(ts: Set[Map[Identifier, Expr]]): Set[Map[Identifier, Expr]] = {
 
     var consolidated = Set[Map[Identifier, Expr]]()
@@ -240,19 +250,18 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     consolidated
   }
 
-  /**
-   * Extract ids in ins/outs args, and compute corresponding extractors for values map
-   *
-   * Examples:
-   * (a,b) =>
-   *     a -> _.1
-   *     b -> _.2
-   *
-   * Cons(a, Cons(b, c)) =>
-   *     a -> _.head
-   *     b -> _.tail.head
-   *     c -> _.tail.tail
-   */
+  /** Extract ids in ins/outs args, and compute corresponding extractors for values map
+    *
+    * Examples:
+    * (a,b) =>
+    *     a -> _.1
+    *     b -> _.2
+    *
+    * Cons(a, Cons(b, c)) =>
+    *     a -> _.head
+    *     b -> _.tail.head
+    *     c -> _.tail.tail
+    */
   private def extractIds(e: Expr): Seq[(Identifier, PartialFunction[Expr, Expr])] = e match {
     case Variable(id) =>
       List((id, { case e => e }))

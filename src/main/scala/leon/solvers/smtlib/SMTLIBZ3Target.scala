@@ -8,15 +8,15 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.Types._
-
+import purescala.Definitions._
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
+import leon.solvers.z3.Z3StringConversion
 
-trait SMTLIBZ3Target extends SMTLIBTarget {
-
+trait SMTLIBZ3Target extends SMTLIBTarget with Z3StringConversion[Term] {
   def targetName = "z3"
 
   def interpreterOps(ctx: LeonContext) = {
@@ -40,11 +40,11 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   override protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
-      tpe match {
+      convertType(tpe) match {
         case SetType(base) =>
           super.declareSort(BooleanType)
           declareSetSort(base)
-        case _ =>
+        case t =>
           super.declareSort(t)
       }
     }
@@ -69,9 +69,13 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
   }
 
-  override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
+  override protected def fromSMT(t: Term, expected_otpe: Option[TypeTree] = None)
                                 (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
-    (t, otpe) match {
+    val otpe = expected_otpe match {
+      case Some(StringType) => Some(listchar)
+      case _ => expected_otpe
+    }
+    val res = (t, otpe) match {
       case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
         val n = s.name.split("!").toList.last
         GenericValue(tp, n.toInt)
@@ -96,6 +100,16 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       case _ =>
         super.fromSMT(t, otpe)
     }
+    expected_otpe match {
+      case Some(StringType) =>
+        StringLiteral(convertToString(res)(program))
+      case _ => res
+    }
+  }
+  
+  def convertToTarget(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = toSMT(e)
+  def targetApplication(tfd: TypedFunDef, args: Seq[Term])(implicit bindings: Map[Identifier, Term]): Term = {
+    FunctionApplication(declareFunction(tfd), args)
   }
 
   override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
@@ -132,6 +146,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case SetIntersection(l, r) =>
       ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
 
+    case StringConverted(result) => result
     case _ =>
       super.toSMT(e)
   }

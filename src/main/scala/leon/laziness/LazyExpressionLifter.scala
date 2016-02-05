@@ -81,10 +81,11 @@ object LazyExpressionLifter {
     prog.modules.foreach { md =>
       def exprLifter(inmem: Boolean)(fl: Option[FreeVarListIterator])(expr: Expr) = expr match {
         // is this $(e) where e is not a funtion
-        case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) =>
+        case finv @ FunctionInvocation(lazytfd, Seq(callByNameArg)) if isLazyInvocation(finv)(prog) =>
+          val Lambda(Seq(), arg) = callByNameArg  // extract the call-by-name parameter
           arg match {
             case _: FunctionInvocation =>
-              finv // subexpressions have already been evaluated
+              finv
             case _ =>
               val freevars = variablesOf(arg).toList
               val tparams = freevars.map(_.getType).flatMap(getTypeParameters).distinct
@@ -114,14 +115,22 @@ object LazyExpressionLifter {
                 if (createUniqueIds)
                   fvVars :+ fl.get.nextExpr
                 else fvVars
-              FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams), params)))
+              FunctionInvocation(lazytfd, Seq(Lambda(Seq(),
+                  FunctionInvocation(TypedFunDef(argfun, tparams), params))))
           }
 
         // is the argument of eager invocation not a variable ?
-        case finv @ FunctionInvocation(TypedFunDef(fd, _), Seq(arg)) if isEagerInvocation(finv)(prog) && !arg.isInstanceOf[Variable] =>
-          val rootType = bestRealType(arg.getType)
-          val freshid = FreshIdentifier("t", rootType)
-          Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
+        case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn@Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
+          val rootType = bestRealType(tp)
+          val ntps = Seq(rootType)
+          arg match {
+            case _: Variable =>
+              FunctionInvocation(TypedFunDef(fd, ntps), cbn)
+            case _ =>
+              val freshid = FreshIdentifier("t", rootType)
+              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps),
+                  Seq(Lambda(Seq(), freshid.toVariable))))
+          }
 
         // is this an invocation of a memoized  function ?
         case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
@@ -129,7 +138,7 @@ object LazyExpressionLifter {
           val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
           val finv = FunctionInvocation(tfd, args)
           // enclose the call within the $ and force it
-          val susp = FunctionInvocation(TypedFunDef(lazyFun, Seq(tfd.returnType)), Seq(finv))
+          val susp = FunctionInvocation(TypedFunDef(lazyFun, Seq(tfd.returnType)), Seq(Lambda(Seq(), finv)))
           FunctionInvocation(TypedFunDef(valueFun, Seq(tfd.returnType)), Seq(susp))
 
         // every other function calls ?

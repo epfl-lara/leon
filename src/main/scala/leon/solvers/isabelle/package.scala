@@ -12,7 +12,6 @@ import leon.purescala.Expressions._
 import leon.verification.VC
 
 import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.api.ProverResult
 
 object `package` {
 

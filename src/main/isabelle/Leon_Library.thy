@@ -5,6 +5,8 @@ begin
 axiomatization
   error :: "nat \<Rightarrow> 'a"
 
+typedecl string
+
 declare [[code abort: error]]
 
 declare null_rec[simp]

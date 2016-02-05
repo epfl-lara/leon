@@ -8,6 +8,7 @@ import graph._
 import purescala.Expressions._
 import purescala.ExprOps._
 
+/** A named way of computing the cost of problem and solutions.*/
 abstract class CostModel(val name: String) {
   def solution(s: Solution): Cost
   def problem(p: Problem): Cost
@@ -20,6 +21,7 @@ abstract class CostModel(val name: String) {
   }
 }
 
+/** Represents a cost used when comparing synthesis solutions for example */
 case class Cost(minSize: Int) extends AnyVal with Ordered[Cost] {
   def compare(that: Cost): Int = {
     this.minSize-that.minSize
@@ -30,6 +32,7 @@ case class Cost(minSize: Int) extends AnyVal with Ordered[Cost] {
   }
 }
 
+/** Contains all and the default [CostModel] */
 object CostModels {
   def default: CostModel = WeightedBranchesCostModel
 
@@ -39,6 +42,7 @@ object CostModels {
   )
 }
 
+/** Wrapped cost model. Not used at this moment. */
 class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
 
   def solution(s: Solution): Cost = cm.solution(s)
@@ -50,6 +54,8 @@ class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
   def impossible = cm.impossible
 }
 
+/** Computes a cost corresponding of the size of the solution expression divided by 10.
+  * For problems, returns a cost of 1 */
 class SizeBasedCostModel(name: String) extends CostModel(name) {
   def solution(s: Solution) = {
     Cost(formulaSize(s.toExpr)/10)

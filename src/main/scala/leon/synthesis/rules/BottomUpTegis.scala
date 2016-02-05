@@ -8,15 +8,13 @@ import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
 import purescala.Constructors._
-import purescala.Quantification._
 import evaluators._
 import codegen.CodeGenParams
 
-import utils._
 import grammars._
 
-import bonsai._
 import bonsai.enumerators._
+import bonsai.{Generator => Gen}
 
 case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
@@ -26,7 +24,7 @@ case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getRootLabel(tpe: TypeTree): TypeTree = tpe
 }
 
-abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
   def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
 
   def getRootLabel(tpe: TypeTree): T
@@ -110,7 +108,7 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
           val targetType   = tupleTypeWrap(p.xs.map(_.getType))
           val wrappedTests = tests.map { case (is, os) => (is, tupleWrap(os))}
 
-          val enum = new BottomUpEnumerator[T, Expr, Expr](
+          val enum = new BottomUpEnumerator[T, Expr, Expr, Generator[T, Expr]](
             grammar.getProductions,
             wrappedTests,
             { (vecs, gen) =>

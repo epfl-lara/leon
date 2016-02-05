@@ -309,9 +309,11 @@ object ExprOps {
   def preTransformWithBinders(f: (Expr, Set[Identifier]) => Expr, initBinders: Set[Identifier] = Set())(e: Expr) = {
     import xlang.Expressions.LetVar
     def rec(binders: Set[Identifier], e: Expr): Expr = (f(e, binders) match {
-      case LetDef(fd, bd) =>
-        fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
-        LetDef(fd, rec(binders, bd))
+      case LetDef(fds, bd) =>
+        fds.foreach(fd => {
+          fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
+        })
+        LetDef(fds, rec(binders, bd))
       case Let(i, v, b) =>
         Let(i, rec(binders + i, v), rec(binders + i, b))
       case LetVar(i, v, b) =>
@@ -346,7 +348,7 @@ object ExprOps {
         e match {
           case Variable(i) => subvs + i
           case Old(i) => subvs + i
-          case LetDef(fd, _) => subvs -- fd.params.map(_.id)
+          case LetDef(fds, _) => subvs -- fds.flatMap(_.params.map(_.id))
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
@@ -377,8 +379,8 @@ object ExprOps {
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
     fold[Set[FunDef]]{
-      case (LetDef(fd,_), Seq(fromFd, fromBd)) => fromBd + fd
-      case (_, subs) => subs.flatten.toSet
+      case (LetDef(fds,_), fromFdsFromBd) => fromFdsFromBd.last ++ fds
+      case (_,             subs) => subs.flatten.toSet
     }(e)
   }
 
@@ -514,7 +516,7 @@ object ExprOps {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
         case Lambda(args, _) => args.map(_.id)
         case Forall(args, _) => args.map(_.id)
-        case LetDef(fd, _) => fd.paramIds
+        case LetDef(fds, _) => fds.flatMap(_.paramIds)
         case Let(i, _, _) => Seq(i)
         case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
         case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
@@ -540,8 +542,8 @@ object ExprOps {
     }
 
     val normalized = postMap {
-      case Lambda(args, body) => Some(Lambda(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
-      case Forall(args, body) => Some(Forall(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
+      case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
+      case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
       case Let(i, e, b)       => Some(Let(subst(i), e, b))
       case MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
         cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
@@ -792,7 +794,7 @@ object ExprOps {
         })
 
       case CaseClassPattern(_, cct, subps) =>
-        val subExprs = (subps zip cct.fields) map {
+        val subExprs = (subps zip cct.classDef.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(caseClassSelector(cct, in, f.id))
         }
 
@@ -869,8 +871,8 @@ object ExprOps {
           }
 
         case CaseClassPattern(ob, cct, subps) =>
-          assert(cct.fields.size == subps.size)
-          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          assert(cct.classDef.fields.size == subps.size)
+          val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
           and(IsInstanceOf(in, cct), together)
@@ -881,7 +883,7 @@ object ExprOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
 
-        case up@UnapplyPattern(ob, fd, subps) =>
+        case up @ UnapplyPattern(ob, fd, subps) =>
           def someCase(e: Expr) = {
             // In the case where unapply returns a Some, it is enough that the subpatterns match
             andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
@@ -905,7 +907,7 @@ object ExprOps {
     pattern match {
       case CaseClassPattern(b, cct, subps) =>
         assert(cct.fields.size == subps.size)
-        val pairs = cct.fields.map(_.id).toList zip subps.toList
+        val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
         val subMaps = pairs.map(p => mapForPattern(caseClassSelector(cct, asInstOf(in, cct), p._1), p._2))
         val together = subMaps.flatten.toMap
         bindIn(b, Some(cct)) ++ together
@@ -1101,6 +1103,7 @@ object ExprOps {
 
   /** Returns simplest value of a given type */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
+    case StringType                 => StringLiteral("")
     case Int32Type                  => IntLiteral(0)
     case RealType               	  => FractionalLiteral(0, 1)
     case IntegerType                => InfiniteIntegerLiteral(0)
@@ -1143,6 +1146,15 @@ object ExprOps {
       PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
+  }
+
+  /* Checks if a given expression is 'real' and does not contain generic
+   * values. */
+  def isRealExpr(v: Expr): Boolean = {
+    !exists {
+      case gv: GenericValue => true
+      case _ => false
+    }(v)
   }
 
   def valuesOf(tp: TypeTree): Stream[Expr] = {
@@ -1238,23 +1250,23 @@ object ExprOps {
 
     def pre(e : Expr) = e match {
 
-      case LetDef(fd, expr) if fd.hasPrecondition =>
-       val pre = fd.precondition.get
+      case LetDef(fds, expr) =>
+       for(fd <- fds if fd.hasPrecondition) {
+          val pre = fd.precondition.get
 
-        solver.solveVALID(pre) match {
-          case Some(true)  =>
-            fd.precondition = None
-
-          case Some(false) => solver.solveSAT(pre) match {
-            case (Some(false), _) =>
-              fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
-            case _ =>
+          solver.solveVALID(pre) match {
+            case Some(true)  =>
+              fd.precondition = None
+  
+            case Some(false) => solver.solveSAT(pre) match {
+              case (Some(false), _) =>
+                fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
+              case _ =>
+            }
+            case None =>
           }
-          case None =>
-        }
-
-        e
-
+       }
+       e
       case IfExpr(cond, thenn, elze) =>
         try {
           solver.solveVALID(cond) match {
@@ -1372,12 +1384,26 @@ object ExprOps {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
+  
+  /** Simple, local optimization on string */
+  def simplifyString(expr: Expr): Expr = {
+    def simplify0(expr: Expr): Expr = (expr match {
+      case StringConcat(StringLiteral(""), b) => b
+      case StringConcat(b, StringLiteral("")) => b
+      case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a + b)
+      case StringLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
+      case SubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case _ => expr
+    }).copiedFrom(expr)
+    simplify0(expr)
+    fixpoint(simplePostTransform(simplify0))(expr)
+  }
 
   /** Simple, local simplification on arithmetic
     *
     * You should not assume anything smarter than some constant folding and
-    * simple cancelation. To avoid infinite cycle we only apply simplification
-    * that reduce the size of the tree. The only guarentee from this function is
+    * simple cancellation. To avoid infinite cycle we only apply simplification
+    * that reduce the size of the tree. The only guarantee from this function is
     * to not augment the size of the expression and to be sound.
     */
   def simplifyArithmetic(expr: Expr): Expr = {
@@ -1465,11 +1491,11 @@ object ExprOps {
     }
   }
 
-  /** Checks whether a predicate is inductive on a certain identfier.
+  /** Checks whether a predicate is inductive on a certain identifier.
     *
     * isInductive(foo(a, b), a) where a: List will check whether
     *    foo(Nil, b) and
-    *    foo(Cons(h,t), b) => foo(t, b)
+    *    foo(t, b) => foo(Cons(h,t), b)
     */
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
@@ -1480,8 +1506,8 @@ object ExprOps {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = cct.fields.collect {
-            case vd if vd.getType == on.getType => vd.id
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+            case (vd, tpe) if tpe == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {
@@ -1615,9 +1641,15 @@ object ExprOps {
           isHomo(v1, v2) &&
           isHomo(e1, e2)(map + (id1 -> id2))
 
-        case (LetDef(fd1, e1), LetDef(fd2, e2)) =>
-          fdHomo(fd1, fd2) &&
-          isHomo(e1, e2)(map + (fd1.id -> fd2.id))
+        case (LetDef(fds1, e1), LetDef(fds2, e2)) =>
+          fds1.size == fds2.size &&
+          {
+            val zipped = fds1.zip(fds2)
+            zipped.forall( fds =>
+            fdHomo(fds._1, fds._2)
+            ) &&
+            isHomo(e1, e2)(map ++ zipped.map(fds => fds._1.id -> fds._2.id))
+          }
 
         case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
           cs1.size == cs2.size && isHomo(s1, s2) && casesMatch(cs1,cs2)
@@ -1759,6 +1791,10 @@ object ExprOps {
         case UnitType =>
           // Anything matches ()
           ps.nonEmpty
+        
+        case StringType =>
+          // Can't possibly pattern match against all Strings one by one
+          ps exists (_.isInstanceOf[WildcardPattern])
 
         case Int32Type =>
           // Can't possibly pattern match against all Ints one by one
@@ -1800,7 +1836,8 @@ object ExprOps {
     */
   def flattenFunctions(fdOuter: FunDef, ctx: LeonContext, p: Program): FunDef = {
     fdOuter.body match {
-      case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
+      case Some(LetDef(fdsInner, FunctionInvocation(tfdInner2, args))) if fdsInner.size == 1 && fdsInner.head == tfdInner2.fd =>
+        val fdInner = fdsInner.head
         val argsDef  = fdOuter.paramIds
         val argsCall = args.collect { case Variable(id) => id }
 
@@ -1913,8 +1950,8 @@ object ExprOps {
     * @see [[Expressions.Require]]
     */
   def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
-    case (Some(npost), Ensuring(b, post)) => Ensuring(b, npost)
-    case (Some(npost), b)                 => Ensuring(b, npost)
+    case (Some(npost), Ensuring(b, post)) => ensur(b, npost)
+    case (Some(npost), b)                 => ensur(b, npost)
     case (None, Ensuring(b, p))           => b
     case (None, b)                        => b
   }
@@ -1998,7 +2035,7 @@ object ExprOps {
     collect[(TypedFunDef, Seq[Expr])] {
       case InvocationExtractor(tfd, args) => Set(tfd -> args)
       case _ => Set.empty
-    } (expr)
+    }(expr)
 
   object ApplicationExtractor {
     private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
@@ -2006,7 +2043,7 @@ object ExprOps {
       case Application(caller: Application, args) => flatApplication(caller) match {
         case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
         case None => None
-      }
+  }
         case Application(caller, args) => Some((caller, args))
         case _ => None
     }
@@ -2087,12 +2124,12 @@ object ExprOps {
 
     import synthesis.Witnesses.Terminating
     val res1 = preMap({
-      case LetDef(fd, b) =>
-        val nfd = fd.duplicate()
+      case LetDef(lfds, b) =>
+        val nfds = lfds.map(fd => fd -> fd.duplicate())
 
-        fds += fd -> nfd
+        fds ++= nfds
 
-        Some(LetDef(nfd, b))
+        Some(LetDef(nfds.map(_._2), b))
 
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {
@@ -2114,7 +2151,7 @@ object ExprOps {
 
     // we now remove LetDefs
     val res2 = preMap({
-      case LetDef(fd, b) =>
+      case LetDef(fds, b) =>
         Some(b)
       case _ =>
         None
@@ -2154,7 +2191,7 @@ object ExprOps {
     * @param collectFIs Whether we also want to collect preconditions for function invocations
     * @return A sequence of pairs (expression, condition)
     */
-  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = true): Seq[(Expr, Expr)] = {
+  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = false): Seq[(Expr, Expr)] = {
     val conds = collectWithPC {
 
       case m @ MatchExpr(scrut, cases) =>
@@ -2166,11 +2203,11 @@ object ExprOps {
       case a @ Assert(cond, _, _) =>
         (a, cond)
 
-      case e @ Ensuring(body, post) =>
+      /*case e @ Ensuring(body, post) =>
         (e, application(post, Seq(body)))
 
       case r @ Require(pred, e) =>
-        (r, pred)
+        (r, pred)*/
 
       case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
         (fi, tfd.withParamSubst(args, tfd.precondition.get))
@@ -2189,6 +2226,17 @@ object ExprOps {
     )
   }
 
-
+  def tupleWrapArg(fun: Expr) = fun.getType match {
+    case FunctionType(args, res) if args.size > 1 =>
+      val newArgs = fun match {
+        case Lambda(args, _) => args map (_.id)
+        case _ => args map (arg => FreshIdentifier("x", arg.getType, alwaysShowUniqueID = true))
+      }
+      val res = FreshIdentifier("res", TupleType(args map (_.getType)), alwaysShowUniqueID = true)
+      val patt = TuplePattern(None, newArgs map (arg => WildcardPattern(Some(arg))))
+      Lambda(Seq(ValDef(res)), MatchExpr(res.toVariable, Seq(SimpleCase(patt, application(fun, newArgs map (_.toVariable))))))
+    case _ =>
+      fun
+  }
 
 }

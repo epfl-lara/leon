@@ -31,13 +31,16 @@ resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
+val libisabelleVersion = "0.2"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.7",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-  "info.hupel" %% "libisabelle" % "0.1.1",
-  "info.hupel" %% "libisabelle-setup" % "0.1.1",
-  "info.hupel" %% "pide-2015" % "0.1.1",
+  "info.hupel" %% "libisabelle" % libisabelleVersion,
+  "info.hupel" %% "libisabelle-setup" % libisabelleVersion,
+  "info.hupel" %% "pide-2015" % libisabelleVersion,
+  "org.slf4j" % "slf4j-nop" % "1.7.13",
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
@@ -91,7 +94,7 @@ sourceGenerators in Compile <+= Def.task {
   IO.write(build, s"""|package leon
                       |
                       |object Build {
-                      |  val baseDirectory = \"${baseDirectory.value.toString}\"
+                      |  val baseDirectory = \"\"\"${baseDirectory.value.toString}\"\"\"
                       |  val libFiles = List(
                       |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
                       |  )
@@ -138,17 +141,26 @@ parallelExecution in IsabelleTest := false
 
 fork in IsabelleTest := true
 
+// GenC Tests
+lazy val GenCTest = config("genc") extend(Test)
+
+testOptions in GenCTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.genc."))
+
+parallelExecution in GenCTest := false
+
+
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
-lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "0fec9f97f4220fa94b1f3f305f2e8b76a3cd1539")
-
+lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10eaaee4ea0ff6567f4f866922cb871bae2da0ac")
 lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "372bb14d0c84953acc17f9a7e1592087adb0a3e1")
 
 lazy val root = (project in file(".")).
-  configs(RegressionTest, IsabelleTest, IntegrTest).
+  configs(RegressionTest, IsabelleTest, GenCTest, IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IsabelleTest)(Defaults.testTasks ++ testSettings): _*).
+  settings(inConfig(GenCTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(Test)(Defaults.testTasks ++ testSettings): _*)
+

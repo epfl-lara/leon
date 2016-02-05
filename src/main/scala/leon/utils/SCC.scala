@@ -3,8 +3,11 @@
 package leon
 package utils
 
-/** This could be defined anywhere, it's just that the
-    termination checker is the only place where it is used. */
+/** Returns the list of strongly connected sets of vertices.
+  * A set is said strongly connected is from any vertex we can reach another vertex transitively.
+  *  
+  * This could be defined anywhere, it's just that the
+  * termination checker is the only place where it is used. */
 object SCC {
   def scc[T](graph : Map[T,Set[T]]) : List[Set[T]] = {
     // The first part is a shameless adaptation from Wikipedia

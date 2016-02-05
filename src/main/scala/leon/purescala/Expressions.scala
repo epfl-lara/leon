@@ -159,12 +159,13 @@ object Expressions {
     }
   }
 
-  /** $encodingof `def ... = ...; ...` (local function definition)
+  /** $encodingof multiple `def ... = ...; ...` (local function definition and possibly mutually recursive)
     *
-    * @param fd The function definition.
+    * @param fds The function definitions.
     * @param body The body of the expression after the function
     */
-  case class LetDef(fd: FunDef, body: Expr) extends Expr {
+  case class LetDef(fds: Seq[FunDef], body: Expr) extends Expr {
+    assert(fds.nonEmpty)
     val getType = body.getType
   }
 
@@ -331,7 +332,7 @@ object Expressions {
     // Hacky, but ok
     lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
     lazy val Seq(noneType, someType) = optionType.knownCCDescendants.sortBy(_.fields.size)
-    lazy val someValue = someType.fields.head
+    lazy val someValue = someType.classDef.fields.head
     // Pattern match unapply(scrut)
     // In case of None, return noneCase.
     // In case of Some(v), return someCase(v).
@@ -370,9 +371,9 @@ object Expressions {
     * [[cases]] should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
     *
-    * @param in
-    * @param out
-    * @param cases
+    * @param in The input expression
+    * @param out The output expression
+    * @param cases The cases to compare against
     */
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
@@ -419,6 +420,10 @@ object Expressions {
   case class UnitLiteral() extends Literal[Unit] {
     val getType = UnitType
     val value = ()
+  }
+  /** $encodingof a string literal */
+  case class StringLiteral(value: String) extends Literal[String] {
+    val getType = StringType
   }
 
 
@@ -547,7 +552,44 @@ object Expressions {
       else Untyped
     }
   }
-
+  
+  abstract class ConverterToString(fromType: TypeTree, toType: TypeTree) extends Expr {
+    def expr: Expr
+    val getType = if(expr.getType == fromType) toType else Untyped
+  }
+  
+  /* String Theory */
+  /** $encodingof `expr.toString` for Int32 to String */
+  case class Int32ToString(expr: Expr) extends ConverterToString(Int32Type, StringType)
+  /** $encodingof `expr.toString` for boolean to String */
+  case class BooleanToString(expr: Expr) extends ConverterToString(BooleanType, StringType)
+  /** $encodingof `expr.toString` for BigInt to String */
+  case class IntegerToString(expr: Expr) extends ConverterToString(IntegerType, StringType)
+  /** $encodingof `expr.toString` for char to String */
+  case class CharToString(expr: Expr) extends ConverterToString(CharType, StringType)
+  /** $encodingof `expr.toString` for real to String */
+  case class RealToString(expr: Expr) extends ConverterToString(RealType, StringType)
+  /** $encodingof `lhs + rhs` for strings */
+  case class StringConcat(lhs: Expr, rhs: Expr) extends Expr {
+     val getType = {
+      if (lhs.getType == StringType && rhs.getType == StringType) StringType
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.subString(start, end)` for strings */
+  case class SubString(expr: Expr, start: Expr, end: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType && (start == IntegerType || start == Int32Type) && (end == IntegerType || end == Int32Type)) StringType
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.length` for strings */
+  case class StringLength(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType) Int32Type
+      else Untyped
+    }
+  }
 
   /* Integer arithmetic */
 
@@ -685,11 +727,11 @@ object Expressions {
   case class BVShiftLeft(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
+  /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
   case class BVAShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
+  /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
   case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }

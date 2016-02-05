@@ -207,6 +207,8 @@ object Simplifier {
       case e => e
     }
   } ensuring {
-    res => eval(res) == eval(e)
+    res => eval(res) == eval(e) && ((e, res) passes {
+      case Plus(IntLiteral(BigInt(0)), IntLiteral(a)) => IntLiteral(a)
+    })
   }
 }

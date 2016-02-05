@@ -15,6 +15,8 @@ import _root_.smtlib.theories.Core.{Equals => _, _}
 
 class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) with SMTLIBZ3Target {
 
+  def getProgram: Program = program
+  
   // EK: We use get-model instead in order to extract models for arrays
   override def getModel: Model = {
 

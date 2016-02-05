@@ -25,6 +25,13 @@ case object ValueGrammar extends ExpressionGrammar[TypeTree] {
         terminal(InfiniteIntegerLiteral(1)),
         terminal(InfiniteIntegerLiteral(5))
       )
+    case StringType =>
+      List(
+        terminal(StringLiteral("")),
+        terminal(StringLiteral("a")),
+        terminal(StringLiteral("foo")),
+        terminal(StringLiteral("bar"))
+      )
 
     case tp: TypeParameter =>
       for (ind <- (1 to 3).toList) yield {

@@ -20,7 +20,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   type RC = CollectingRecContext
 
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
-
+  
   type FI = (FunDef, Seq[Expr])
   
   // This is a call graph to track dependencies of function invocations.

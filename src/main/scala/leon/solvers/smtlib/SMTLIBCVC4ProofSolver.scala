@@ -17,7 +17,7 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
     Seq(
       "-q",
       "--print-success",
-      "--lang", "smt",
+      "--lang", "smt2.5",
       "--quant-ind",
       "--rewrite-divk",
       "--conjecture-gen",

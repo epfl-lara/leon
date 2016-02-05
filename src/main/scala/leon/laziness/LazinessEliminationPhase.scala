@@ -51,7 +51,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
   val debugSolvers = false
-  val skipStateVerification = true
+  val skipStateVerification = false
   val skipResourceVerification = false
 
   val name = "Laziness Elimination Phase"
@@ -144,7 +144,7 @@ object LazinessEliminationPhase extends TransformationPhase {
         def failOnClosures(argMem: Boolean, e: Expr) = e match {
           case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
             finv match {
-              case FunctionInvocation(_, Seq(FunctionInvocation(callee, _))) if isMemoized(callee.fd) => argMem
+              case FunctionInvocation(_, Seq(Lambda(_, FunctionInvocation(callee, _)))) if isMemoized(callee.fd) => argMem
               case _ => !argMem
             }
           case _ => false
@@ -162,7 +162,7 @@ object LazinessEliminationPhase extends TransformationPhase {
             false
           } else {
             def nestedSusp(e: Expr) = e match {
-              case finv @ FunctionInvocation(_, Seq(call: FunctionInvocation)) if isLazyInvocation(finv)(p) && isLazyInvocation(call)(p) => true
+              case finv @ FunctionInvocation(_, Seq(Lambda(_, call: FunctionInvocation))) if isLazyInvocation(finv)(p) && isLazyInvocation(call)(p) => true
               case _ => false
             }
             val nestedCheckFailed = exists(nestedSusp)(fd.body.getOrElse(Util.tru))

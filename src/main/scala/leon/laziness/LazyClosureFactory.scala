@@ -39,7 +39,7 @@ class LazyClosureFactory(p: Program) {
   val lazyopsList = p.definedFunctions.flatMap {
     case fd if (fd.hasBody) =>
       filter(isLazyInvocation)(fd.body.get) map {
-        case FunctionInvocation(_, Seq(FunctionInvocation(tfd, _))) => tfd.fd
+        case FunctionInvocation(_, Seq(Lambda(_, FunctionInvocation(tfd, _)))) => tfd.fd
       }
     case _ => Seq()
   }.distinct
@@ -118,7 +118,7 @@ class LazyClosureFactory(p: Program) {
         }
         if (!ismem) {
           // create a case class to represent eager evaluation (when handling lazy ops)
-          val clresType = ops(0).returnType match {
+          val clresType = ops.head.returnType match {
             case NAryType(tparams, tcons) => tcons(absTParams)
           }
           val eagerid = FreshIdentifier("Eager" + TypeUtil.typeNameWOParams(clresType))
@@ -220,8 +220,8 @@ class LazyClosureFactory(p: Program) {
       }
       val nst = CaseClass(stType, nargs)
       updateFun.body = Some(nst)
-      // add inline annotation of optimization
-      updateFun.addFlag(IsInlined)
+      // Inlining this seems to slow down verification. Why!!
+      //updateFun.addFlag(IsInlined)
       (tn -> updateFun)
     }.toMap
 }

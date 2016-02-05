@@ -97,11 +97,11 @@ sealed abstract class List[T] {
     case Nil() => Nil[T]()
     case Cons(h, t) =>
       val r = t.replace(from, to)
-      //if (h == from) { FIXME
-      //  Cons(to, r)
-      //} else {
+      if (h != from) { // FIXME
+        Cons(to, r)
+      } else {
         Cons(h, r)
-      //}
+      }
   }} ensuring { res => 
     (((this.content -- Set(from)) ++ (if (this.content contains from) Set(to) else Set[T]())) == res.content) &&
     res.size == this.size

@@ -59,8 +59,8 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   private val farkasSolver = new FarkasLemmaSolver(ctx, program)
   private val startFromEarlierModel = true
   private val disableCegis = true
-  private val useIncrementalSolvingForVCs = false
-  private val useCVCToCheckVCs = true
+  private val useIncrementalSolvingForVCs = true
+  private val useCVCToCheckVCs = false
   private val usePortfolio = false // portfolio has a bug in incremental solving
 
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'

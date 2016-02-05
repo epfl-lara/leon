@@ -30,7 +30,7 @@ object EpsilonElimination extends UnitPhase[Program] {
           }.toMap ++ Seq((epsilonVar, Variable(resId)))
           val postcondition = replace(eMap, pred)
           newFunDef.postcondition = Some(Lambda(Seq(ValDef(resId)), postcondition))
-          LetDef(newFunDef, FunctionInvocation(newFunDef.typed, bSeq map Variable))
+          LetDef(Seq(newFunDef), FunctionInvocation(newFunDef.typed, bSeq map Variable))
 
         case (other, _) => other
       }, fd.paramIds.toSet)(fd.fullBody)

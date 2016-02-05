@@ -43,7 +43,7 @@ object TypeChecker {
           val (btype, nbody) = rec(body)
           (btype, Let(nid, nval, nbody))
 
-        case Ensuring(body, Lambda(Seq(resdef @ ValDef(resid, _)), postBody)) =>
+        case Ensuring(body, Lambda(Seq(resdef @ ValDef(resid)), postBody)) =>
           body match {
             case NoTree(tpe) =>
               val nres = makeIdOfType(resid, tpe)

@@ -17,12 +17,14 @@ package object annotation {
   class extern     extends StaticAnnotation
   @ignore
   class inline     extends StaticAnnotation
+  @ignore
+  class internal   extends StaticAnnotation
 
   // Orb annotations
   @ignore
   class monotonic  extends StaticAnnotation
   @ignore
-  class compose    extends StaticAnnotation
+  class compose    extends StaticAnnotation  
   @ignore
   class axiom 		extends StaticAnnotation
   @ignore

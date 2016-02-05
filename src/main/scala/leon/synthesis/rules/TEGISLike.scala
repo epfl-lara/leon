@@ -17,7 +17,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
 
 import bonsai.enumerators._
 
-abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
   case class TegisParams(
     grammar: ExpressionGrammar[T],
     rootLabel: TypeTree => T,
@@ -28,8 +28,6 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-
-    return Nil
 
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
@@ -73,7 +71,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
           val evalParams            = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
           val evaluator             = new DualEvaluator(sctx.context, sctx.program, evalParams)
 
-          val enum = new MemoizedEnumerator[T, Expr](grammar.getProductions)
+          val enum = new MemoizedEnumerator[T, Expr, Generator[T, Expr]](grammar.getProductions)
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
 

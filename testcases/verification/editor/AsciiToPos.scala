@@ -1,6 +1,5 @@
 import leon.lang._
 import leon.lang.synthesis._
-import leon.lang.string._
 import leon.collection._
 
 object Justify {
@@ -14,7 +13,7 @@ object Justify {
         Cons(wordAcc, tokenize0(t, ""))
       }
     } else {
-      tokenize0(t, String(List(h)) + wordAcc)
+      tokenize0(t, h + wordAcc)
     }
   }
 

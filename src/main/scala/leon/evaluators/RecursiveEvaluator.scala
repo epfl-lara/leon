@@ -14,8 +14,9 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
 import leon.solvers.{HenkinModel, Model, SolverFactory}
-
 import scala.collection.mutable.{Map => MutableMap}
+import leon.purescala.DefOps
+import org.apache.commons.lang3.StringEscapeUtils
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
@@ -28,7 +29,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
   protected var clpCache = Map[(Choose, Seq[Expr]), Expr]()
 
-  protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+  protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
         case Some(v) if v != expr =>
@@ -103,6 +104,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
       def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
       els.foldRight(nil)(mkCons)
+
+    case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
+       e(input) match {
+         case StringLiteral(s) => 
+           StringLiteral(StringEscapeUtils.escapeJava(s))
+         case _ => throw EvalError(typeErrorMsg(input, StringType))
+       }
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
@@ -231,6 +239,42 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case RealMinus(l,r) =>
       e(RealPlus(l, RealUMinus(r)))
+      
+    case StringConcat(l, r) =>
+      (e(l), e(r)) match {
+        case (StringLiteral(i1), StringLiteral(i2)) => StringLiteral(i1 + i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, StringType))
+      }
+    case StringLength(a) => e(a) match {
+      case StringLiteral(a) => InfiniteIntegerLiteral(a.length)
+      case res => throw EvalError(typeErrorMsg(res, IntegerType))
+    }
+    case SubString(a, start, end) => (e(a), e(start), e(end)) match {
+      case (StringLiteral(a), InfiniteIntegerLiteral(b), InfiniteIntegerLiteral(c))  =>
+        StringLiteral(a.substring(b.toInt, c.toInt))
+      case res => throw EvalError(typeErrorMsg(res._1, StringType))
+    }
+    case Int32ToString(a) => e(a) match {
+      case IntLiteral(i) => StringLiteral(i.toString)
+      case res =>  throw EvalError(typeErrorMsg(res, Int32Type))
+    }
+    case CharToString(a) => 
+      e(a) match {
+        case CharLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, CharType))
+      }
+    case IntegerToString(a) => e(a) match {
+        case InfiniteIntegerLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, IntegerType))
+      }
+    case BooleanToString(a) => e(a) match {
+        case BooleanLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, BooleanType))
+      }
+    case RealToString(a) => e(a) match {
+        case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, RealType))
+      }
 
     case BVPlus(l,r) =>
       (e(l), e(r)) match {
@@ -589,7 +633,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case MatchExpr(scrut, cases) =>
       val rscrut = e(scrut)
-
       cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
@@ -603,6 +646,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case other =>
       context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
+      println("RecursiveEvaluator error:" + other.asString)
       throw EvalError("Unhandled case in Evaluator : " + other.asString)
   }
 
@@ -685,7 +729,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     val henkinModel: HenkinModel = gctx.model match {
       case hm: HenkinModel => hm
       case _ => throw EvalError("Can't evaluate foralls without henkin model")
-    }
+}
 
     val TopLevelAnds(conjuncts) = body
     e(andJoin(conjuncts.flatMap { conj =>

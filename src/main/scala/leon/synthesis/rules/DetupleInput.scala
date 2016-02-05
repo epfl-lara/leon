@@ -30,20 +30,28 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
      * into a list of fresh typed identifiers, the tuple of these new identifiers,
      * and the mapping of those identifiers to their respective expressions.
      */
-    def decompose(id: Identifier): (List[Identifier], Expr, Map[Identifier, Expr]) = id.getType match {
+    def decompose(id: Identifier): (List[Identifier], Expr, Map[Identifier, Expr], Expr => Seq[Expr]) = id.getType match {
       case cct @ CaseClassType(ccd, _) if !ccd.isAbstract =>
         val newIds = cct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }
 
         val map = (ccd.fields zip newIds).map{ case (vd, nid) => nid -> caseClassSelector(cct, Variable(id), vd.id) }.toMap
 
-        (newIds.toList, CaseClass(cct, newIds.map(Variable)), map)
+        val tMap: (Expr => Seq[Expr]) = {
+          case CaseClass(ccd, fields) => fields
+        }
+
+        (newIds.toList, CaseClass(cct, newIds.map(Variable)), map, tMap)
 
       case TupleType(ts) =>
         val newIds = ts.zipWithIndex.map{ case (t, i) => FreshIdentifier(id.name+"_"+(i+1), t, true) }
 
         val map = newIds.zipWithIndex.map{ case (nid, i) => nid -> TupleSelect(Variable(id), i+1) }.toMap
 
-        (newIds.toList, tupleWrap(newIds.map(Variable)), map)
+        val tMap: (Expr => Seq[Expr]) = {
+          case Tuple(fields) => fields
+        }
+
+        (newIds.toList, tupleWrap(newIds.map(Variable)), map, tMap)
 
       case _ => sys.error("woot")
     }
@@ -55,9 +63,11 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
       var reverseMap = Map[Identifier, Expr]()
 
+      var ebMapInfo = Map[Identifier, Expr => Seq[Expr]]()
+
       val subAs = p.as.map { a =>
         if (isDecomposable(a)) {
-          val (newIds, expr, map) = decompose(a)
+          val (newIds, expr, map, tMap) = decompose(a)
 
           subProblem = subst(a -> expr, subProblem)
           subPc      = subst(a -> expr, subPc)
@@ -65,10 +75,23 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
           reverseMap ++= map
 
+          ebMapInfo += a -> tMap
+
           newIds
         } else {
           List(a)
         }
+      }
+
+      var eb = p.qeb.mapIns { info =>
+        List(info.flatMap { case (id, v) =>
+          ebMapInfo.get(id) match {
+            case Some(m) =>
+              m(v)
+            case None =>
+              List(v)
+          }
+        })
       }
 
       val newAs = subAs.flatten
@@ -101,7 +124,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         case other => other
       }
       
-      val sub = Problem(newAs, subWs, subPc, subProblem, p.xs)
+      val sub = Problem(newAs, subWs, subPc, subProblem, p.xs, eb)
 
       val s = {substAll(reverseMap, _:Expr)} andThen { simplePostTransform(recompose) }
      

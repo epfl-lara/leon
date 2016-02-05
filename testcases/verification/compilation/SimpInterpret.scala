@@ -1,5 +1,5 @@
 //import scala.collection.immutable.Set
-//import leon.annotation._
+import leon.annotation._
 import leon.lang._
 
 object Interpret {
@@ -61,6 +61,7 @@ object Interpret {
     !treeBad(If(Less(Const(0),Var()), Var(), Minus(Const(0),Var())))
   } holds
 
+  @ignore
   def main(args : Array[String]) {
     thereIsGoodTree()
   }

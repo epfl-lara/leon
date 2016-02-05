@@ -32,10 +32,10 @@ object InstrumentationPhase extends TransformationPhase {
 }
 
 class SerialInstrumenter(program: Program,
-    exprInstOpt : Option[(Map[FunDef, FunDef], SerialInstrumenter, FunDef) => ExprInstrumenter] = None) {
+                         exprInstOpt: Option[(Map[FunDef, FunDef], SerialInstrumenter, FunDef) => ExprInstrumenter] = None) {
   val debugInstrumentation = false
 
-  val exprInstFactory = exprInstOpt.getOrElse((x: Map[FunDef, FunDef], y : SerialInstrumenter, z: FunDef) => new ExprInstrumenter(x, y)(z))
+  val exprInstFactory = exprInstOpt.getOrElse((x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) => new ExprInstrumenter(x, y)(z))
   val instToInstrumenter: Map[Instrumentation, Instrumenter] =
     Map(Time -> new TimeInstrumenter(program, this),
       Depth -> new DepthInstrumenter(program, this),
@@ -121,7 +121,7 @@ class SerialInstrumenter(program: Program,
 
     def mapPost(pred: Expr, from: FunDef, to: FunDef) = {
       pred match {
-        case Lambda(Seq(ValDef(fromRes, _)), postCond) if (instFuncs.contains(from)) =>
+        case Lambda(Seq(ValDef(fromRes)), postCond) if (instFuncs.contains(from)) =>
           val toResId = FreshIdentifier(fromRes.name, to.returnType, true)
           val newpost = postMap((e: Expr) => e match {
             case Variable(`fromRes`) =>
@@ -251,7 +251,7 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
               val instexprs = instrumenters.map { m =>
                 val calleeInst =
                   if (serialInst.funcInsts(fd).contains(m.inst) &&
-                      fd.isUserFunction) {
+                    fd.isUserFunction) {
                     // ignoring fields here
                     List(serialInst.selectInst(fd)(resvar, m.inst))
                   } else List()
@@ -266,6 +266,7 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
               }
               Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
             }
+
           } else
             throw new UnsupportedOperationException("Lazy fields are not handled in instrumentation." +
               " Consider using the --lazy option and rewrite your program using lazy constructor `$`")
@@ -430,6 +431,7 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
     val instExprs = instrumenters map { m =>
       m.instrumentBody(newe,
         selectInst(bodyId.toVariable, m.inst))
+
     }
     Let(bodyId, transformed,
       Tuple(TupleSelect(bodyId.toVariable, 1) +: instExprs))

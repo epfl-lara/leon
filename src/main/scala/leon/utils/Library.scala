@@ -16,11 +16,13 @@ case class Library(pgm: Program) {
   lazy val Some   = lookup("leon.lang.Some").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val None   = lookup("leon.lang.None").collectFirst { case ccd : CaseClassDef => ccd }
 
-  lazy val String = lookup("leon.lang.string.String").collectFirst { case ccd : CaseClassDef => ccd }
+  lazy val StrOps = lookup("leon.lang.StrOps").collectFirst { case md: ModuleDef => md }
 
   lazy val Dummy  = lookup("leon.lang.Dummy").collectFirst { case ccd : CaseClassDef => ccd }
 
   lazy val setToList = lookup("leon.collection.setToList").collectFirst { case fd : FunDef => fd }
+  
+  lazy val escape = lookup("leon.lang.StrOps.escape").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)

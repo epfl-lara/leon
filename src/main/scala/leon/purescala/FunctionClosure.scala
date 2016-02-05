@@ -26,13 +26,13 @@ object FunctionClosure extends TransformationPhase {
   private def close(fd: FunDef): Seq[FunDef] = { 
 
     // Directly nested functions with their p.c.
-    val nestedWithPaths = {
+    val nestedWithPathsFull = {
       val funDefs = directlyNestedFunDefs(fd.fullBody)
       collectWithPC {
-        case LetDef(fd1, body) if funDefs(fd1) => fd1
+        case LetDef(fd1, body) => fd1.filter(funDefs)
       }(fd.fullBody)
-    }.toMap
-    
+    }
+    val nestedWithPaths = (for((fds, path) <- nestedWithPathsFull; fd <- fds) yield (fd, path)).toMap
     val nestedFuns = nestedWithPaths.keys.toSeq
 
     // Transitively called funcions from each function
@@ -62,7 +62,7 @@ object FunctionClosure extends TransformationPhase {
 
     // Remove LetDefs from fd
     fd.fullBody = preMap({
-      case LetDef(fd, bd) =>
+      case LetDef(fds, bd) =>
         Some(bd)
       case _ =>
         None
@@ -145,11 +145,11 @@ object FunctionClosure extends TransformationPhase {
     )
 
     newFd.fullBody = preMap {
-      case FunctionInvocation(tfd, args) if tfd.fd == inner =>
+      case fi@FunctionInvocation(tfd, args) if tfd.fd == inner =>
         Some(FunctionInvocation(
           newFd.typed(tfd.tps ++ tpFresh.map{ _.tp }),
           args ++ freshVals.drop(args.length).map(Variable)
-        ))
+        ).setPos(fi))
       case _ => None
     }(instBody)
 

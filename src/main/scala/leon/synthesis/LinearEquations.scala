@@ -12,8 +12,8 @@ import evaluators._
 import synthesis.Algebra._
 
 object LinearEquations {
-  //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
-  //return a mapping for each of the n variables in (pre, map, freshVars)
+  /** Eliminates one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
+    * @return a mapping for each of the n variables in (pre, map, freshVars) */
   def elimVariable(evaluator: Evaluator, as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
     require(normalizedEquation.size > 1)
     require(normalizedEquation.tail.forall{case InfiniteIntegerLiteral(i) if i != BigInt(0) => true case _ => false})
@@ -50,13 +50,13 @@ object LinearEquations {
 
   }
 
-  //compute a list of solution of the equation c1*x1 + ... + cn*xn where coef = [c1 ... cn]
-  //return the solution in the form of a list of n-1 vectors that form a basis for the set
-  //of solutions, that is res=(v1, ..., v{n-1}) and any solution x* to the original solution
-  //is a linear combination of the vi's
-  //Intuitively, we are building a "basis" for the "vector space" of solutions (although we are over
-  //integers, so it is not a vector space).
-  //we are returning a matrix where the columns are the vectors
+  /** Computes a list of solutions to the equation c1*x1 + ... + cn*xn where coef = [c1 ... cn]
+    * @return the solution in the form of a list of n-1 vectors that form a basis for the set
+    * of solutions, that is res=(v1, ..., v{n-1}) and any solution x* to the original solution
+    * is a linear combination of the vi's
+    * Intuitively, we are building a "basis" for the "vector space" of solutions (although we are over
+    * integers, so it is not a vector space).
+    * we are returning a matrix where the columns are the vectors */
   def linearSet(evaluator: Evaluator, as: Set[Identifier], coef: Array[BigInt]): Array[Array[BigInt]] = {
 
     val K = Array.ofDim[BigInt](coef.length, coef.length-1)
@@ -82,8 +82,9 @@ object LinearEquations {
     K
   }
 
-  //as are the parameters while xs are the variable for which we want to find one satisfiable assignment
-  //return (pre, sol) with pre a precondition under which sol is a solution mapping to the xs
+  /** @param as The parameters
+    * @param xs The variable for which we want to find one satisfiable assignment
+    * @return (pre, sol) with pre a precondition under which sol is a solution mapping to the xs */
   def particularSolution(as: Set[Identifier], xs: Set[Identifier], equation: Equals): (Expr, Map[Identifier, Expr]) = {
     val lhs = equation.lhs
     val rhs = equation.rhs
@@ -93,7 +94,7 @@ object LinearEquations {
     (pre, orderedXs.zip(sols).toMap)
   }
 
-  //return a particular solution to t + c1x + c2y = 0, with (pre, (x0, y0))
+  /** @return a particular solution to t + c1x + c2y = 0, with (pre, (x0, y0)) */
   def particularSolution(as: Set[Identifier], t: Expr, c1: Expr, c2: Expr): (Expr, (Expr, Expr)) = {
     val (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) = (c1, c2)
     val (v1, v2) = extendedEuclid(i1, i2)
@@ -109,7 +110,7 @@ object LinearEquations {
     )
   }
 
-  //the equation must at least contain the term t and one variable
+  /** the equation must at least contain the term t and one variable */
   def particularSolution(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr]) = {
     require(normalizedEquation.size >= 2)
     val t: Expr = normalizedEquation.head
