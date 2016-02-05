@@ -28,8 +28,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
   case class CegisParams(
     grammar: ExpressionGrammar[T],
     rootLabel: TypeTree => T,
-    maxUnfoldings: Int = 5,
-    optimizations: Boolean
+    optimizations: Boolean,
+    maxUnfoldings: Int = 5
   )
 
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
@@ -765,11 +765,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           }
         }
 
-        println("BASE EXAMPLES")
-        baseExampleInputs.foreach { in =>
-          println("  - "+in.asString)
-        }
-        println("BASE EXAMPLES END")
         /**
          * We generate tests for discarding potential programs
          */
@@ -844,10 +839,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                   sctx.reporter.debug("..."+wrongPrograms.size)
                 }
               }
-            }
-
-            allInputExamples().foreach { in =>
-              println("  - "+in.asString)
             }
 
             val nPassing = prunedPrograms.size
