@@ -76,10 +76,6 @@ object Expressions {
     val getType = tpe
   }
 
-  case class Old(id: Identifier) extends Expr with Terminal {
-    val getType = id.getType
-  }
-
   /** Precondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *require*
     *
     * @param pred The precondition formula inside ``require(...)``

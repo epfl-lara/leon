@@ -341,7 +341,7 @@ object ExprOps {
 
   /** Returns the set of free variables in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
-    import leon.xlang.Expressions.LetVar
+    import leon.xlang.Expressions._
     fold[Set[Identifier]] {
       case (e, subs) =>
         val subvs = subs.flatten.toSet
