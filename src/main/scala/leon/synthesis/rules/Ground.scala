@@ -19,8 +19,14 @@ case object Ground extends Rule("Ground") {
 
           val result = solver.solveSAT(p.phi) match {
             case (Some(true), model) =>
-              val sol = Solution(BooleanLiteral(true), Set(), tupleWrap(p.xs.map(valuateWithModel(model))))
-              RuleClosed(sol)
+              val solExpr = tupleWrap(p.xs.map(valuateWithModel(model)))
+
+              if (!isRealExpr(solExpr)) {
+                RuleFailed()
+              } else {
+                val sol = Solution(BooleanLiteral(true), Set(), solExpr)
+                RuleClosed(sol)
+              }
             case (Some(false), model) =>
               RuleClosed(Solution.UNSAT(p))
             case _ =>

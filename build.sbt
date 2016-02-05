@@ -141,6 +141,14 @@ parallelExecution in IsabelleTest := false
 
 fork in IsabelleTest := true
 
+// GenC Tests
+lazy val GenCTest = config("genc") extend(Test)
+
+testOptions in GenCTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.genc."))
+
+parallelExecution in GenCTest := false
+
+
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
@@ -148,9 +156,11 @@ lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10ea
 lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "372bb14d0c84953acc17f9a7e1592087adb0a3e1")
 
 lazy val root = (project in file(".")).
-  configs(RegressionTest, IsabelleTest, IntegrTest).
+  configs(RegressionTest, IsabelleTest, GenCTest, IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IsabelleTest)(Defaults.testTasks ++ testSettings): _*).
+  settings(inConfig(GenCTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(Test)(Defaults.testTasks ++ testSettings): _*)
+

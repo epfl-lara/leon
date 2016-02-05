@@ -81,7 +81,7 @@ trait VerificationSuite extends LeonRegressionSuite {
   private[verification] def forEachFileIn(cat: String)(block: Output => Unit) {
     val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
-    fs foreach { file => 
+    fs foreach { file =>
       assert(file.exists && file.isFile && file.canRead,
         s"Benchmark ${file.getName} is not a readable file")
     }

@@ -167,6 +167,11 @@ object TypeOps {
     }
   }
 
+  def isParametricType(tpe: TypeTree): Boolean = tpe match {
+    case (tp: TypeParameter) => true
+    case NAryType(tps, builder) => tps.exists(isParametricType)
+  }
+
   // Helpers for instantiateType
   private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
     case (tp: TypeParameter) => map.getOrElse(tp, tp)

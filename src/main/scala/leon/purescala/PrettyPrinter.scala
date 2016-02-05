@@ -11,6 +11,7 @@ import Extractors._
 import PrinterHelpers._
 import ExprOps.{isListLiteral, simplestValue}
 import Expressions._
+import Constructors._
 import Types._
 import org.apache.commons.lang3.StringEscapeUtils
 
@@ -92,7 +93,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case LetDef(a::q,body) =>
         p"""|$a
-            |${LetDef(q, body)}"""
+            |${letDef(q, body)}"""
       case LetDef(Nil,body) =>
         p"""$body"""
 
@@ -164,6 +165,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" } // Ugliness award! The first | is there to shield from stripMargin()
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
+      case BVNot(expr)          => p"~$expr"
       case UMinus(expr)         => p"-$expr"
       case BVUMinus(expr)       => p"-$expr"
       case RealUMinus(expr)     => p"-$expr"
@@ -358,8 +360,8 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Not(expr) => p"\u00AC$expr"
 
-      case vd @ ValDef(id, lzy) =>
-        p"$id :${if (lzy) "=> " else ""} ${vd.getType}"
+      case vd @ ValDef(id) =>
+        p"$id : ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
       case This(_)              => p"this"

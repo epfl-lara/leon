@@ -4,212 +4,228 @@ package leon
 package utils
 
 object Graphs {
-  abstract class VertexAbs extends Serializable {
-    val name: String
-
-    override def toString = name
+  trait EdgeLike[Node] {
+    def _1: Node
+    def _2: Node
   }
 
-  abstract class EdgeAbs[V <: VertexAbs] extends Serializable  {
-    val v1: V
-    val v2: V
+  case class SimpleEdge[Node](_1: Node, _2: Node) extends EdgeLike[Node]
+  case class LabeledEdge[Label, Node](_1: Node, l: Label, _2: Node) extends EdgeLike[Node]
 
-    override def toString = v1 + "->" + v2
-  }
-
-  case class SimpleEdge[V <: VertexAbs](v1: V, v2: V) extends EdgeAbs[V]
-
-  abstract class LabeledEdgeAbs[T, V <: VertexAbs] extends EdgeAbs[V] {
-    val label: T
-  }
-
-  case class SimpleLabeledEdge[T, V <: VertexAbs](v1: V, label: T, v2: V) extends LabeledEdgeAbs[T, V]
-
-  trait DirectedGraph[V <: VertexAbs, E <: EdgeAbs[V], G <: DirectedGraph[V,E,G]] extends Serializable {
-    type Vertex = V
-    type Edge   = E
-    type This   = G
-
+  trait DiGraphLike[Node, Edge <: EdgeLike[Node], G <: DiGraphLike[Node, Edge, G]] {
     // The vertices
-    def V: Set[Vertex]
+    def N: Set[Node]
     // The edges
     def E: Set[Edge]
+
     // Returns the set of incoming edges for a given vertex
-    def inEdges(v: Vertex)  = E.filter(_.v2 == v)
+    def inEdges(n: Node)  = E.filter(_._2 == n)
     // Returns the set of outgoing edges for a given vertex
-    def outEdges(v: Vertex) = E.filter(_.v1 == v)
+    def outEdges(n: Node)  = E.filter(_._1 == n)
 
     // Returns the set of edges between two vertices
-    def edgesBetween(from: Vertex, to: Vertex) = {
-      E.filter(e => e.v1 == from && e.v2 == to)
+    def edgesBetween(from: Node, to: Node) = {
+      E.filter(e => e._1 == from && e._2 == to)
     }
-
-    /**
-     * Basic Graph Operations:
-     */
 
     // Adds a new vertex
-    def + (v: Vertex): This
+    def + (n: Node): G
     // Adds new vertices
-    def ++ (vs: Traversable[Vertex]): This
+    def ++ (ns: Traversable[Node]): G
     // Adds a new edge
-    def + (e: Edge): This
+    def + (e: Edge): G
     // Removes a vertex from the graph
-    def - (from: Vertex): This
+    def - (from: Node): G
     // Removes a number of vertices from the graph
-    def -- (from: Traversable[Vertex]): This
+    def -- (from: Traversable[Node]): G
     // Removes an edge from the graph
-    def - (from: Edge): This
-
-    /**
-     * Advanced Graph Operations:
-     */
-
-    // Merges two graphs
-    def union(that: This): This
-    // Return the strongly connected components, sorted topologically
-    def stronglyConnectedComponents: Seq[Set[Vertex]]
-    // Topological sorting
-    def topSort: Option[Seq[Vertex]]
-    // All nodes leading to v
-    def transitivePredecessors(v: Vertex): Set[Vertex]
-    // All nodes reachable from v
-    def transitiveSuccessors(v: Vertex): Set[Vertex]
-    // Is v1 reachable from v2
-    def isReachable(v1: Vertex, v2: Vertex): Boolean
+    def - (from: Edge): G
   }
 
- case class DirectedGraphImp[Vertex <: VertexAbs, Edge <: EdgeAbs[Vertex]](
-    vertices: Set[Vertex],
-    edges: Set[Edge],
-    ins: Map[VertexAbs, Set[Edge]],
-    outs: Map[VertexAbs, Set[Edge]]
-  ) extends DirectedGraph[Vertex, Edge, DirectedGraphImp[Vertex, Edge]] {
+  case class DiGraph[Node, Edge <: EdgeLike[Node]](N: Set[Node] = Set[Node](), E: Set[Edge] = Set[Edge]()) extends DiGraphLike[Node, Edge, DiGraph[Node, Edge]] with DiGraphOps[Node, Edge, DiGraph[Node, Edge]]{
+    def +(n: Node) = copy(N=N+n)
+    def ++(ns: Traversable[Node]) = copy(N=N++ns)
+    def +(e: Edge) = (this+e._1+e._2).copy(E = E + e)
 
-    override def equals(o: Any): Boolean = o match {
-      case other: DirectedGraphImp[_, _] =>
-        this.vertices == other.vertices &&
-        this.edges    == other.edges &&
-        (this.ins.keySet ++ other.ins.keySet).forall  (k   => this.ins(k)  == other.ins(k)) &&
-        (this.outs.keySet ++ other.outs.keySet).forall(k => this.outs(k) == other.outs(k))
-
-      case _ => false
+    def -(n: Node) = copy(N = N-n, E = E.filterNot(e => e._1 == n || e._2 == n))
+    def --(ns: Traversable[Node]) = {
+      val toRemove = ns.toSet
+      copy(N = N--ns, E = E.filterNot(e => toRemove.contains(e._1) || toRemove.contains(e._2)))
     }
 
-    def this (vertices: Set[Vertex], edges: Set[Edge]) =
-      this(vertices,
-           edges,
-           edges.groupBy(_.v2: VertexAbs).withDefaultValue(Set()),
-           edges.groupBy(_.v1: VertexAbs).withDefaultValue(Set()))
+    def -(e: Edge) = copy(E = E-e)
+  }
 
-    def this() = this(Set(), Set())
 
-    val V = vertices
-    val E = edges
+  trait DiGraphOps[Node, Edge <: EdgeLike[Node], G <: DiGraphLike[Node, Edge, G]] {
+    this: G =>
 
-    def + (v: Vertex) = copy(
-      vertices = vertices+v
-    )
-
-    override def inEdges(v: Vertex)  = ins(v)
-    override def outEdges(v: Vertex) = outs(v)
-
-    def ++ (vs: Traversable[Vertex]) = copy(
-      vertices = vertices++vs
-    )
-
-    def -- (vs: Traversable[Vertex]) = copy(
-      vertices = vertices--vs,
-      edges    = edges -- vs.flatMap(outs) -- vs.flatMap(ins),
-      ins      = ((ins -- vs)  map { case (vm, edges) => vm -> (edges -- vs.flatMap(outs)) }).withDefaultValue(Set()) ,
-      outs     = ((outs -- vs) map { case (vm, edges) => vm -> (edges -- vs.flatMap(ins))  }).withDefaultValue(Set())
-    )
-
-    def + (e: Edge)   = copy(
-      vertices = vertices + e.v1 + e.v2,
-      edges    = edges + e,
-      ins      = ins + (e.v2 -> (ins(e.v2) + e)),
-      outs     = outs + (e.v1 -> (outs(e.v1) + e))
-    )
-
-    def - (v: Vertex) = copy(
-      vertices = vertices-v,
-      edges    = edges -- outs(v) -- ins(v),
-      ins      = ((ins - v)  map { case (vm, edges) => vm -> (edges -- outs(v)) }).withDefaultValue(Set()) ,
-      outs     = ((outs - v) map { case (vm, edges) => vm -> (edges -- ins(v))  }).withDefaultValue(Set())
-    )
-
-    def - (e: Edge)   = copy(
-      vertices = vertices,
-      edges    = edges-e,
-      ins      = ins + (e.v2 -> (ins(e.v2) - e)),
-      outs     = outs + (e.v1 -> (outs(e.v1) - e))
-    )
-
-    def union(that: This): This = copy(
-      vertices = this.V ++ that.V,
-      edges    = this.E ++ that.E,
-      ins      = ((this.ins.keySet  ++ that.ins.keySet) map { k => k -> (this.ins(k) ++ that.ins(k)) }).toMap.withDefaultValue(Set()),
-      outs     = ((this.outs.keySet ++ that.outs.keySet) map { k => k -> (this.outs(k) ++ that.outs(k)) }).toMap.withDefaultValue(Set())
-    )
-
-    def stronglyConnectedComponents: Seq[Set[Vertex]] = ???
-
-    def topSort = {
-      val sccs = stronglyConnectedComponents
-      if (sccs.forall(_.size == 1)) {
-        Some(sccs.flatten)
-      } else {
-        None
-      }
+    def sources: Set[Node] = {
+      N -- E.map(_._2)
     }
 
-    def transitivePredecessors(v: Vertex): Set[Vertex] = {
-      var seen = Set[Vertex]()
-      def rec(v: Vertex): Set[Vertex] = {
-        if (seen(v)) {
-          Set()
-        } else {
-          seen += v
-          val ins = inEdges(v).map(_.v1)
-          ins ++ ins.flatMap(rec)
-        }
-      }
-      rec(v)
+    def sinks: Set[Node] = {
+      N -- E.map(_._1)
     }
 
-    def transitiveSuccessors(v: Vertex): Set[Vertex] = {
-      var seen = Set[Vertex]()
-      def rec(v: Vertex): Set[Vertex] = {
-        if (seen(v)) {
-          Set()
-        } else {
-          seen += v
-          val outs = outEdges(v).map(_.v2)
-          outs ++ outs.flatMap(rec)
-        }
-      }
-      rec(v)
-    }
+    def stronglyConnectedComponents: DiGraph[Set[Node], SimpleEdge[Set[Node]]] = {
+      // Tarjan's algorithm
+      var index = 0
+      var stack = List[Node]()
 
-    def isReachable(v1: Vertex, v2: Vertex): Boolean = {
-      var seen = Set[Vertex]()
-      def rec(v: Vertex): Boolean = {
-        if (seen(v)) {
-          false
-        } else {
-          seen += v
-          val outs = outEdges(v).map(_.v2)
-          if (outs(v2)) {
-            true
-          } else {
-            outs.exists(rec)
+      var indexes  = Map[Node, Int]()
+      var lowlinks = Map[Node, Int]()
+      var onStack  = Set[Node]()
+
+      var nodesToScc = Map[Node, Set[Node]]()
+      var res = DiGraph[Set[Node], SimpleEdge[Set[Node]]]()
+
+      def strongConnect(n: Node): Unit = {
+        indexes  += n -> index
+        lowlinks += n -> index
+        index += 1
+
+        stack = n :: stack
+        onStack += n
+
+        for (m <- succ(n)) {
+          if (!(indexes contains m)) {
+            strongConnect(m)
+            lowlinks += n -> (lowlinks(n) min lowlinks(m))
+          } else if (onStack(m)) {
+            lowlinks += n -> (lowlinks(n) min indexes(m))
           }
         }
+
+        if (lowlinks(n) == indexes(n)) {
+          val i = stack.indexOf(n)+1
+          val ns = stack.take(i)
+          stack = stack.drop(i)
+          val scc = ns.toSet
+          onStack --= ns
+          nodesToScc ++= ns.map(n => n -> scc)
+          res += scc
+        }
       }
-      rec(v1)
+
+
+      for (n <- N if !(indexes contains n)) {
+        strongConnect(n)
+      }
+
+      for (e <- E) {
+        val s1 = nodesToScc(e._1)
+        val s2 = nodesToScc(e._2)
+        if (s1 != s2) {
+          res += SimpleEdge(s1, s2)
+        }
+      }
+
+      res
     }
 
-    override def toString = "DGraph[V: "+vertices+" | E:"+edges+"]"
+    def topSort: Seq[Node] = {
+      var res = List[Node]()
+
+      var temp = Set[Node]()
+      var perm = Set[Node]()
+
+      def visit(n: Node) {
+        if (temp(n)) {
+          throw new IllegalArgumentException("Graph is not a DAG")
+        } else if (!perm(n)) {
+          temp += n
+          for (n2 <- succ(n)) {
+            visit(n2)
+          }
+          perm += n
+          temp -= n
+          res ::= n
+        }
+      }
+
+      for (n <- N if !temp(n) && !perm(n)) {
+        visit(n)
+      }
+
+      res
+    }
+
+    def depthFirstSearch(from: Node)(f: Node => Unit): Unit = {
+      var visited = Set[Node]()
+
+      val stack = new collection.mutable.Stack[Node]()
+
+      stack.push(from)
+
+      while(stack.nonEmpty) {
+        val n = stack.pop
+        visited += n
+        f(n)
+        for (n2 <- succ(n) if !visited(n2)) {
+          stack.push(n2)
+        }
+      }
+    }
+
+    def fold[T](from: Node)(
+      follow: Node => Traversable[Node],
+      map: Node => T,
+      compose: List[T] => T): T = {
+
+      var visited = Set[Node]()
+
+      def visit(n: Node): T = {
+        visited += n
+
+        val toFollow = follow(n).filterNot(visited)
+        visited ++= toFollow
+
+        compose(map(n) :: toFollow.toList.map(visit))
+      }
+
+      compose(follow(from).toList.map(visit))
+    }
+
+    def succ(from: Node): Set[Node] = {
+      outEdges(from).map(_._2)
+    }
+
+    def pred(from: Node): Set[Node] = {
+      inEdges(from).map(_._1)
+    }
+
+    def transitiveSucc(from: Node): Set[Node] = {
+      fold[Set[Node]](from)(
+        succ,
+        Set(_),
+        _.toSet.flatten
+      )
+    }
+
+    def transitivePred(from: Node): Set[Node] = {
+      fold[Set[Node]](from)(
+        pred,
+        Set(_),
+        _.toSet.flatten
+      )
+    }
+
+    def breadthFirstSearch(from: Node)(f: Node => Unit): Unit = {
+      var visited = Set[Node]()
+
+      val queue = new collection.mutable.Queue[Node]()
+
+      queue += from
+
+      while(queue.nonEmpty) {
+        val n = queue.dequeue
+        visited += n
+        f(n)
+        for (n2 <- succ(n) if !visited(n2)) {
+          queue += n2
+        }
+      }
+    }
   }
 }

@@ -153,7 +153,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || s.fullName.toString.endsWith(".main")
+      (annotationsOf(s) contains "ignore")
     }
 
     private def isLibrary(u: CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
@@ -625,6 +625,8 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
+    private var isLazy = Set[LeonValDef]()
+
     private var defsToDefs = Map[Symbol, FunDef]()
 
     private def defineFunDef(sym: Symbol, within: Option[LeonClassDef] = None)(implicit dctx: DefContext): FunDef = {
@@ -638,7 +640,13 @@ trait CodeExtraction extends ASTExtractors {
         val tpe = if (sym.isByNameParam) FunctionType(Seq(), ptpe) else ptpe
         val newID = FreshIdentifier(sym.name.toString, tpe).setPos(sym.pos)
         owners += (newID -> None)
-        LeonValDef(newID, sym.isByNameParam).setPos(sym.pos)
+        val vd = LeonValDef(newID).setPos(sym.pos)
+
+        if (sym.isByNameParam) {
+          isLazy += vd
+        }
+
+        vd
       }
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
@@ -1534,7 +1542,7 @@ trait CodeExtraction extends ASTExtractors {
               val fd = getFunDef(sym, c.pos)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
+              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
 
               FunctionInvocation(fd.typed(newTps), argsByName)
 
@@ -1543,7 +1551,7 @@ trait CodeExtraction extends ASTExtractors {
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
+              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
 
               MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
 

@@ -41,6 +41,17 @@ object Constructors {
     */
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
+  /** $encodingof ``def foo(..) {} ...; e``.
+    * @see [[purescala.Expressions.LetDef]]
+    */
+  def letDef(defs: Seq[FunDef], e: Expr) = {
+    if (defs.isEmpty) {
+      e
+    } else {
+      LetDef(defs, e)
+    }
+  }
+
   /** $encodingof ``val id = e; bd``, and returns `bd` if the identifier is not bound in `bd`.
     * @see [[purescala.Expressions.Let]]
     */
@@ -323,9 +334,9 @@ object Constructors {
       var defs: Seq[(Identifier, Expr)] = Seq()
 
       val subst = formalArgs.zip(realArgs).map {
-        case (ValDef(from, _), to:Variable) =>
+        case (ValDef(from), to:Variable) =>
           from -> to
-        case (ValDef(from, _), e) =>
+        case (ValDef(from), e) =>
           val fresh = from.freshen
           defs :+= (fresh -> e)
           from -> Variable(fresh)

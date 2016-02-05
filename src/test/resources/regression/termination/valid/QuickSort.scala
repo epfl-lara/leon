@@ -1,5 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
+import leon.annotation._
 import leon.lang._
 
 object QuickSort {
@@ -29,7 +30,7 @@ object QuickSort {
     case Nil() => bList
     case _ => rev_append(reverse(aList),bList)
   }
-  
+
   def greater(n:Int,list:List) : List = list match {
     case Nil() => Nil()
     case Cons(x,xs) => if (n < x) Cons(x,greater(n,xs)) else greater(n,xs)
@@ -51,6 +52,7 @@ object QuickSort {
     case Cons(x,xs) => append(append(quickSort(smaller(x,xs)),Cons(x,equals(x,xs))),quickSort(greater(x,xs)))
   }) ensuring(res => contents(res) == contents(list)) // && is_sorted(res))
 
+  @ignore
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
 

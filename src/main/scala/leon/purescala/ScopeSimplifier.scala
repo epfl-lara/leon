@@ -50,10 +50,10 @@ class ScopeSimplifier extends Transformer {
       
       val fds_mapping = for((fd, newId) <- fds_newIds) yield {
         val localScopeToRegister = ListBuffer[(Identifier, Identifier)]() // We record the mapping of these variables only for the function.
-        val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
+        val newArgs = for(ValDef(id) <- fd.params) yield {
           val newArg = genId(id, newScope.register(localScopeToRegister))
           localScopeToRegister += (id -> newArg) // This renaming happens only inside the function.
-          ValDef(newArg, tpe)
+          ValDef(newArg)
         }
   
         val newFd = fd.duplicate(id = newId, params = newArgs)

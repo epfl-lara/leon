@@ -42,7 +42,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
 
   def constructVC(funDef: FunDef): (Expr, Expr) = {
     val body = funDef.body.get
-    val Lambda(Seq(ValDef(resid, _)), _) = funDef.postcondition.get
+    val Lambda(Seq(ValDef(resid)), _) = funDef.postcondition.get
     val resvar = resid.toVariable
 
     val simpBody = matchToIfThenElse(body)
