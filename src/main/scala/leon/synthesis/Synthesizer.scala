@@ -13,6 +13,7 @@ import leon.utils._
 import scala.concurrent.duration._
 
 import synthesis.graph._
+import synthesis.strategies._
 
 class Synthesizer(val context : LeonContext,
                   val program: Program,
@@ -28,11 +29,22 @@ class Synthesizer(val context : LeonContext,
   implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   def getSearch: Search = {
-    if (settings.manualSearch.isDefined) {
-      new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
+    val strat0 = new CostBasedStrategy(context, settings.costModel)
+
+    val strat1 = if (settings.manualSearch.isDefined) {
+      new ManualStrategy(context, settings.manualSearch, strat0)
     } else {
-      new SimpleSearch(context, ci, problem, settings.costModel, settings.searchBound)
+      strat0
     }
+
+    val strat2 = settings.searchBound match {
+      case Some(b) =>
+        BoundedStrategy(strat1, b)
+      case None =>
+        strat1
+    }
+
+    new Search(context, ci, problem, strat1)
   }
 
   private var lastTime: Long = 0
@@ -104,7 +116,7 @@ class Synthesizer(val context : LeonContext,
     }(DebugSectionReport)
 
     (s, if (result.isEmpty && allowPartial) {
-      List((new PartialSolution(s.g, true).getSolution, false)).toStream
+      List((new PartialSolution(s, true).getSolution, false)).toStream
     } else {
       result
     })
@@ -134,7 +146,7 @@ class Synthesizer(val context : LeonContext,
         reporter.warning("Solution was invalid:")
         reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
         reporter.warning(vcreport.summaryString)
-        (new PartialSolution(search.g, false).getSolution, false)
+        (new PartialSolution(search, false).getSolution, false)
       }
     } finally {
       solverf.shutdown()

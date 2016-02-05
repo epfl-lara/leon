@@ -9,6 +9,7 @@ import leon.synthesis.graph._
 import leon.synthesis.utils._
 import leon.utils.PreprocessingPhase
 
+/*
 class SynthesisSuite extends LeonRegressionSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
@@ -345,3 +346,4 @@ object ChurchNumerals {
       Close("CEGIS")
   }
 }
+*/

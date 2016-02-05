@@ -327,7 +327,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       private val (innerProgram, origFdMap) = {
 
         val outerSolution = {
-          new PartialSolution(hctx.search.g, true)
+          new PartialSolution(hctx.search, true)
             .solutionAround(hctx.currentNode)(FunctionInvocation(solFd.typed, p.as.map(_.toVariable)))
             .getOrElse(ctx.reporter.fatalError("Unable to get outer solution"))
         }

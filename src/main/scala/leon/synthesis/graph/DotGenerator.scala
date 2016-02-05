@@ -1,16 +1,17 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.synthesis.graph
+package leon.synthesis
+package graph
 
 import leon.utils.UniqueCounter
 
 import java.io.{File, FileWriter, BufferedWriter}
 
 class DotGenerator(search: Search) {
-
   implicit val ctx = search.ctx
 
   val g = search.g
+  val strat = search.strat
 
   private val idCounter = new UniqueCounter[Unit]
   idCounter.nextGlobal // Start with 1
@@ -35,7 +36,7 @@ class DotGenerator(search: Search) {
 
     // Print all nodes
     val edges = collectEdges(g.root)
-    val nodes = edges.flatMap(e => Set(e._1, e._2))
+    val nodes = edges.flatMap(e => Set(e._1, e._3))
 
     var nodesToNames = Map[Node, String]()
 
@@ -52,12 +53,12 @@ class DotGenerator(search: Search) {
       nodesToNames += n -> name
     }
 
-    for ((f,t) <- edges) {
+    for ((f,i,t) <- edges) {
       val label = f match {
         case ot: OrNode =>
           "or"
         case at: AndNode =>
-          ""
+          i.toString
       }
 
       val style = if (f.selected contains t) {
@@ -74,7 +75,7 @@ class DotGenerator(search: Search) {
     res.toString
   }
 
-  def limit(o: Any, length: Int = 40): String = {
+  def limit(o: Any, length: Int = 200): String = {
     val str = o.toString
     if (str.length > length) {
       str.substring(0, length-3)+"..."
@@ -107,13 +108,7 @@ class DotGenerator(search: Search) {
 
     res append " "+name+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"
     
-    //cost
-    n match {
-      case an: AndNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(n.cost.asString)+" ("+escapeHTML(g.cm.andNode(an, None).asString)+")</TD></TR>"
-      case on: OrNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(n.cost.asString)+"</TD></TR>"
-    }
+    res append "<TR><TD BORDER=\"0\">"+escapeHTML(strat.debugInfoFor(n))+"</TD></TR>"
 
     res append "<TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(limit(index + nodeDesc(n)))+"</TD></TR>"
 
@@ -125,9 +120,9 @@ class DotGenerator(search: Search) {
 
   }
 
-  private def collectEdges(from: Node): Set[(Node, Node)] = {
-    from.descendants.flatMap { d =>
-      Set(from -> d) ++ collectEdges(d)
+  private def collectEdges(from: Node): Set[(Node, Int, Node)] = {
+    from.descendants.zipWithIndex.flatMap { case (d, i) =>
+      Set((from, i, d)) ++ collectEdges(d)
     }.toSet
   }
 }
