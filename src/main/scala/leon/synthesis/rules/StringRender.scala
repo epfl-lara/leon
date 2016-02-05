@@ -344,7 +344,7 @@ case object StringRender extends Rule("StringRender") {
     val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
     val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
     val tparams = hctx.sctx.functionContext.tparams
-    val fd = new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_, false)).toList, StringType) // Empty function.
+    val fd = new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_)).toList, StringType) // Empty function.
     fd
   }
   

@@ -34,7 +34,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   def setEvaluationFailOnChoose(b: Boolean) = { evaluator.setEvaluationFailOnChoose(b); this }
 
   def extractFromFunDef(fd: FunDef, partition: Boolean): ExamplesBank = fd.postcondition match {
-    case Some(Lambda(Seq(ValDef(id, _)), post)) =>
+    case Some(Lambda(Seq(ValDef(id)), post)) =>
       // @mk FIXME: make this more general
       val tests = extractTestsOf(post)
 

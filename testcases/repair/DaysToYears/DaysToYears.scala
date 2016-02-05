@@ -1,10 +1,11 @@
+import leon.annotation._
 import leon.lang._
 
 object DaysToYears {
   val base : Int = 1980
-  
+
   def isLeapYear(y : Int): Boolean = y % 4 == 0
-  
+
   def daysToYears(days : Int): Int = {
     require(days > 0)
     daysToYears1(base, days)._1
@@ -17,16 +18,17 @@ object DaysToYears {
     else if (days > 365 && !isLeapYear(year))
       daysToYears1(year + 1, days - 365)
     else (year, days)
-  } ensuring { res => 
+  } ensuring { res =>
     res._2 <= 366 &&
-    res._2 >  0   && 
+    res._2 >  0   &&
     res._1 >= base &&
-    (((year,days), res) passes { 
+    (((year,days), res) passes {
       case (1980, 366 ) => (1980, 366)
       case (1980, 1000) => (1982, 269)
     })
-  } 
+  }
 
+  @ignore
   def main(args : Array[String]) = {
     println(daysToYears1(base, 10593 ))
     println(daysToYears1(base, 366 ))

@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.annotation._
 
 object MergeSort {
   sealed abstract class List
@@ -57,6 +58,7 @@ object MergeSort {
   }) ensuring(res => contents(res) == contents(list) && is_sorted(res))
 
 
+  @ignore
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
     println(ls)

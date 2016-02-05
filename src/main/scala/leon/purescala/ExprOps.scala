@@ -1148,6 +1148,15 @@ object ExprOps {
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
 
+  /* Checks if a given expression is 'real' and does not contain generic
+   * values. */
+  def isRealExpr(v: Expr): Boolean = {
+    !exists {
+      case gv: GenericValue => true
+      case _ => false
+    }(v)
+  }
+
   def valuesOf(tp: TypeTree): Stream[Expr] = {
     import utils.StreamUtils._
     tp match {
@@ -1688,7 +1697,7 @@ object ExprOps {
         case (Lambda(defs, body), Lambda(defs2, body2)) =>
           // We remove variables introduced by lambdas.
           (isHomo(body, body2) &&
-          (defs zip defs2).mergeall{ case (ValDef(a1, _), ValDef(a2, _)) => Option(Map(a1 -> a2)) }
+          (defs zip defs2).mergeall{ case (ValDef(a1), ValDef(a2)) => Option(Map(a1 -> a2)) }
           ) -- (defs.map(_.id))
           
         case (v1, v2) if isValue(v1) && isValue(v2) =>

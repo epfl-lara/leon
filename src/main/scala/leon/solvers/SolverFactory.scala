@@ -177,7 +177,7 @@ object SolverFactory {
   }
 
   lazy val hasZ3 = try {
-    Z3Interpreter.buildDefault.free()
+    new Z3Interpreter("z3", Array("-in", "-smt2"))
     true
   } catch {
     case e: java.io.IOException =>
@@ -185,7 +185,7 @@ object SolverFactory {
   }
 
   lazy val hasCVC4 = try {
-    CVC4Interpreter.buildDefault.free()
+    new CVC4Interpreter("cvc4", Array("-q", "--lang", "smt2.5"))
     true
   } catch {
     case e: java.io.IOException =>

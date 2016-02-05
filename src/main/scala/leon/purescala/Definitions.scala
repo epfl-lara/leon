@@ -45,7 +45,7 @@ object Definitions {
    *  The optional tpe, if present, overrides the type of the underlying Identifier id
    *  This is useful to instantiate argument types of polymorphic functions
    */
-  case class ValDef(id: Identifier, isLazy: Boolean = false) extends Definition with Typed {
+  case class ValDef(id: Identifier) extends Definition with Typed {
     self: Serializable =>
 
     val getType = id.getType
