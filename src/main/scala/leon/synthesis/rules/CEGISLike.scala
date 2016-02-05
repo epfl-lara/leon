@@ -450,7 +450,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             evaluator.eval(eq, p.as.zip(ins).toMap)
         }
         timers.testForProgram.stop()
-        val l = timers.testForProgram.last
 
         cTreeFd.fullBody = origImpl
 

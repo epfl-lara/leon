@@ -14,7 +14,7 @@ case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
       grammar = Grammars.typeDepthBound(Grammars.default(sctx, p), 2), // This limits type depth
       rootLabel = {(tpe: TypeTree) => tpe },
       optimizations = false,
-      maxUnfoldings = 7
+      maxUnfoldings = 5
     )
   }
 }
@@ -26,7 +26,7 @@ case object CEGIS2 extends CEGISLike[TaggedNonTerm[TypeTree]]("CEGIS2") {
       grammar = TaggedGrammar(base),
       rootLabel = TaggedNonTerm(_, Tags.Top, 0, None),
       optimizations = true,
-      maxUnfoldings = 7
+      maxUnfoldings = 5
     )
   }
 }
