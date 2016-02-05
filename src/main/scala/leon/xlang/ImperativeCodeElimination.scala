@@ -9,7 +9,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 import leon.purescala.ExprOps._
-import leon.purescala.TypeOps._
+import leon.purescala.TypeOps.leastUpperBound
 import leon.purescala.Types._
 import leon.xlang.Expressions._
 

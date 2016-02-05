@@ -91,7 +91,8 @@ object SolverFactory {
       SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
 
     case "smt-z3" =>
-      SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+      SolverFactory(() => new Z3StringCapableSolver(ctx, program, (program: Program) =>
+                              new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program))) with TimeoutSolver)
 
     case "smt-z3-q" =>
       SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)

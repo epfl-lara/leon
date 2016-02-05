@@ -9,7 +9,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
-import purescala.TypeOps._
+import purescala.TypeOps.bestRealType
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Quantification._

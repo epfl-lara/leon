@@ -50,7 +50,13 @@ trait Z3StringTypeConversion {
   
   def convertType(t: TypeTree): TypeTree = t match {
     case StringType => listchar
-    case _ => t
+    case NAryType(subtypes, builder) =>
+      builder(subtypes.map(convertType))
+  }
+  def convertTypeBack(expected_type: TypeTree)(t: TypeTree): TypeTree = (expected_type, t) match {
+    case (StringType, `listchar`) => StringType
+    case (NAryType(ex, builder), NAryType(cur, builder2)) =>
+      builder2(ex.zip(cur).map(ex_cur => convertTypeBack(ex_cur._1)(ex_cur._2)))
   }
   def convertToString(e: Expr)(implicit p: Program): String  = 
     stringBijection.cachedA(e) {
@@ -59,7 +65,7 @@ trait Z3StringTypeConversion {
         case CaseClass(_, Seq()) => ""
       }
     }
-  def convertFromString(v: String) =
+  def convertFromString(v: String): Expr =
     stringBijection.cachedB(v) {
       v.toList.foldRight(CaseClass(nilchar, Seq())){
         case (char, l) => CaseClass(conschar, Seq(CharLiteral(char), l))
@@ -68,11 +74,13 @@ trait Z3StringTypeConversion {
 }
 
 trait Z3StringConversion[TargetType] extends Z3StringTypeConversion {
+  /** Method which can use recursively StringConverted in its body in unapply positions */
   def convertToTarget(e: Expr)(implicit bindings: Map[Identifier, TargetType]): TargetType
+  /** How the application (or function invocation) of a given fundef is performed in the target type. */
   def targetApplication(fd: TypedFunDef, args: Seq[TargetType])(implicit bindings: Map[Identifier, TargetType]): TargetType
   
   object StringConverted {
-    def unapply(e: Expr)(implicit bindings: Map[Identifier, TargetType]): Option[TargetType] = e match {
+    def unapply(e: Expr)(implicit replacement: Map[Identifier, TargetType]): Option[TargetType] = e match {
       case StringLiteral(v)          =>
         // No string support for z3 at this moment.
         val stringEncoding = convertFromString(v)
@@ -91,4 +99,33 @@ trait Z3StringConversion[TargetType] extends Z3StringTypeConversion {
     
     def apply(t: TypeTree): TypeTree = convertType(t)
   }
+}
+
+trait Z3StringConversionReverse extends Z3StringConversion[Expr] {
+
+  object StringConversion {
+    def reverse(e: Expr): Expr = unapply(e).getOrElse(e)
+    def unapply(e: Expr): Option[Expr] = e match {
+      case CaseClass(`conschar`, Seq(CharLiteral(c), l))          =>
+        reverse(l) match {
+          case StringLiteral(s) => Some(StringLiteral(c + s))
+          case _ => None
+        }
+      case CaseClass(`nilchar`, Seq())          =>
+        Some(StringLiteral(""))
+      case FunctionInvocation(`list_size`, Seq(a)) =>
+        Some(StringLength(reverse(a)))
+      case FunctionInvocation(`list_++`, Seq(a, b))      =>
+        Some(StringConcat(reverse(a), reverse(b)))
+      case FunctionInvocation(`list_take`,
+            Seq(FunctionInvocation(`list_drop`, Seq(a, start)), length)) =>
+        val rstart = reverse(start)
+        Some(SubString(reverse(a), rstart, Plus(rstart, reverse(length))))
+      case purescala.Extractors.Operator(es, builder) =>
+        Some(builder(es.map(reverse _)))
+      case _ => None
+    }
+  }
+  
+
 }

@@ -275,6 +275,7 @@ object DefOps {
       None
   }
 
+  /** Returns the new program with a map from the old functions to the new functions */
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
                                  fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
 

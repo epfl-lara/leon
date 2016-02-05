@@ -7,12 +7,11 @@ import Expressions._
 import Common._
 import Types._
 import Constructors._
-import ExprOps._
-import Definitions.Program
+import Definitions.{Program, AbstractClassDef, CaseClassDef}
 
 object Extractors {
 
-  object Operator {
+  object Operator extends SubTreeOps.Extractor[Expr] {
     def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {
       /* Unary operators */
       case Not(t) =>
@@ -250,6 +249,8 @@ object Extractors {
         None
     }
   }
+  
+  // Extractors for types are available at Types.NAryType
 
   trait Extractable {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)]
@@ -367,7 +368,7 @@ object Extractors {
 
     def unapply(me : MatchExpr) : Option[(Pattern, Expr, Expr)] = {
       Option(me) collect {
-        case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, variablesOf(scrut)) =>
+        case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, ExprOps.variablesOf(scrut)) =>
           ( pattern, scrut, body )
       }
     }

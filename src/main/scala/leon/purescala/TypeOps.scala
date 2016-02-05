@@ -11,16 +11,16 @@ import Extractors._
 import Constructors._
 import ExprOps.preMap
 
-object TypeOps {
+object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree] {
   def typeDepth(t: TypeTree): Int = t match {
     case NAryType(tps, builder) => 1+ (0 +: (tps map typeDepth)).max
   }
 
-  def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
-    case tp: TypeParameter => Set(tp)
-    case _ =>
-      val NAryType(subs, _) = t
-      subs.flatMap(typeParamsOf).toSet
+  def typeParamsOf(t: TypeTree): Set[TypeParameter] = {
+    collect[TypeParameter]({
+      case tp: TypeParameter => Set(tp)
+      case _ => Set.empty
+    })(t)
   }
 
   def canBeSubtypeOf(
@@ -313,7 +313,7 @@ object TypeOps {
               val returnType = tpeSub(fd.returnType)
               val params = fd.params map (vd => vd.copy(id = freshId(vd.id, tpeSub(vd.getType))))
               val newFd = fd.duplicate(id, tparams, params, returnType)
-              val subCalls = preMap {
+              val subCalls = ExprOps.preMap {
                 case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>
                   Some(FunctionInvocation(newFd.typed(tfd.tps), args).copiedFrom(fi))
                 case _ => 

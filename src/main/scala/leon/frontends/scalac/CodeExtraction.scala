@@ -22,7 +22,7 @@ import Common._
 import Extractors._
 import Constructors._
 import ExprOps._
-import TypeOps._
+import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
 
