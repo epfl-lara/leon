@@ -7,7 +7,9 @@ import purescala.Expressions._
 
 import graph._
 
-class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
+class PartialSolution(search: Search, includeUntrusted: Boolean = false) {
+  val g = search.g
+  val strat = search.strat
 
   def includeSolution(s: Solution) = {
     includeUntrusted || s.isTrusted
@@ -66,11 +68,9 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
         }
 
         if (n.isExpanded) {
-          val descs = on.descendants.filterNot(_.isDeadEnd)
-          if (descs.isEmpty) {
-            completeProblem(on.p)
-          } else {
-            getSolutionFor(descs.minBy(_.cost))
+          strat.bestAlternative(on) match {
+            case None => completeProblem(on.p)
+            case Some(d) => getSolutionFor(d)
           }
         } else {
           completeProblem(on.p)

@@ -7,8 +7,8 @@ package graph
 import leon.utils.StreamUtils.cartesianProduct
 import leon.utils.DebugSectionSynthesis
 
-sealed class Graph(val cm: CostModel, problem: Problem) {
-  val root = new RootNode(cm, problem)
+sealed class Graph(problem: Problem) {
+  val root = new RootNode(problem)
 
   // Returns closed/total
   def getStats(from: Node = root): (Int, Int) = {
@@ -27,13 +27,14 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
   }
 }
 
-sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
+sealed abstract class Node(val parent: Option[Node]) {
 
   def asString(implicit ctx: LeonContext): String
 
   var descendants: List[Node] = Nil
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
+
   def expand(hctx: SearchContext)
 
   val p: Problem
@@ -45,12 +46,9 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
   var solutions: Option[Stream[Solution]] = None
   var selectedSolution = -1
 
-  // Costs
-  var cost: Cost = computeCost()
+  var isDeadEnd: Boolean = false
 
-  def isDeadEnd: Boolean = {
-    cm.isImpossible(cost)
-  }
+  def isOpen = !isDeadEnd && !isSolved
 
   // For non-terminals, selected children for solution
   var selected: List[Node] = Nil
@@ -63,38 +61,6 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
       composeSolutions(selected.map(n => n.generateSolutions()))
     }
   }
-
-  def computeCost(): Cost = solutions match {
-    case Some(sols) if sols.isEmpty =>
-      cm.impossible
-
-    case Some(sols) =>
-      if (sols.hasDefiniteSize) {
-        sols.map { sol => cm.solution(sol) } .min
-      } else {
-        cm.solution(sols.head)
-      }
-
-    case None =>
-      val costs = if (isExpanded) {
-        Some(descendants.map { _.cost })
-      } else {
-        None
-      }
-
-      this match {
-        case an: AndNode =>
-          cm.andNode(an, costs)
-
-        case on: OrNode =>
-          costs.map(_.min).getOrElse(cm.problem(on.p))
-      }
-  }
-
-  def updateCost(): Unit = {
-    cost = computeCost()
-    parent.foreach(_.updateCost())
-  }
 }
 
 /** Represents the conjunction of search nodes.
@@ -102,7 +68,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
   * @param parent Some node. None if it is the root node.
   * @param ri The rule instantiation that created this AndNode.
   **/
-class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) extends Node(cm, parent) {
+class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(parent) {
   val p = ri.problem
 
   override def asString(implicit ctx: LeonContext) = "\u2227 "+ri.asString
@@ -124,19 +90,17 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
         solutions = Some(sols)
         selectedSolution = 0
 
-        updateCost()
-
         isSolved = sols.nonEmpty
 
         if (sols.isEmpty) {
           info(prefix+"Failed")
+          isDeadEnd = true
         } else {
           val sol = sols.head
           info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol.asString+"...")
         }
 
         parent.foreach{ p =>
-          p.updateCost()
           if (isSolved) {
             p.onSolved(this)
           }
@@ -148,11 +112,13 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
           info(prefix+"     - "+p.asString)
         }
 
-        descendants = probs.map(p => new OrNode(cm, Some(this), p))
+        descendants = probs.map(p => new OrNode(Some(this), p))
+
+        if (descendants.isEmpty) {
+          isDeadEnd = true
+        }
 
         selected = descendants
-
-        updateCost()
     }
   }
 
@@ -177,7 +143,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 }
 
-class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
+class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
 
   override def asString(implicit ctx: LeonContext) = "\u2228 "+p.asString
 
@@ -203,6 +169,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
         return if (prio == RulePriorityNormalizing) results.take(1) else results
       }
     }
+
     Nil
   }
 
@@ -211,10 +178,8 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
 
     val ris = getInstantiations(hctx)
 
-    descendants = ris.map(ri => new AndNode(cm, Some(this), ri))
+    descendants = ris.map(ri => new AndNode(Some(this), ri))
     selected = List()
-
-    updateCost()
 
     isExpanded = true
   }
@@ -230,4 +195,4 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
   }
 }
 
-class RootNode(cm: CostModel, p: Problem) extends OrNode(cm, None, p)
+class RootNode(p: Problem) extends OrNode(None, p)
