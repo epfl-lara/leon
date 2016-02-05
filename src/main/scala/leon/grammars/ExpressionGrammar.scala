@@ -7,6 +7,7 @@ import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
 import transformers.Union
+import utils.Timer
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
@@ -15,6 +16,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
   * @tparam T The type of nonterminal symbols for this grammar
   */
 abstract class ExpressionGrammar[T <: Typed] {
+
   type Prod = ProductionRule[T, Expr]
 
   private[this] val cache = new MutableMap[T, Seq[Prod]]()

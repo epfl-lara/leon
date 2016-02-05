@@ -37,7 +37,6 @@ case class TaggedNonTerm[T <: Typed](underlying: T, tag: Tag, pos: Int, isConst:
   * 2) Does not generate
   *    - neutral and absorbing elements (incl. boolean equality)
   *    - nested negations
-  *    - trivial operations for symmetric arguments, e.g. a == a
   * 3) Excludes method calls on nullary case objects, e.g. Nil().size
   * 4) Enforces that no constant trees are generated (and recursively for each subtree)
   *

@@ -31,11 +31,11 @@ case class SizeBoundedGrammar[T <: Typed](g: ExpressionGrammar[T], optimizeCommu
     } else {
       g.getProductions(sl.underlying).filter(_.isNonTerminal).flatMap { gen =>
 
-        // Ad-hoc equality that does not take into account position of nonterminals.
+        // Ad-hoc equality that does not take into account position etc.of TaggedNonTerminal's
         // TODO: Ugly and hacky
-        def characteristic(t: T): AnyRef = t match {
-          case TaggedNonTerm(underlying, tag, _, isConst) =>
-            (underlying, tag, isConst)
+        def characteristic(t: T): Typed = t match {
+          case TaggedNonTerm(underlying, _, _, _) =>
+            underlying
           case other =>
             other
         }

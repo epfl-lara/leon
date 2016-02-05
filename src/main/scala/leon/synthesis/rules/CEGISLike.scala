@@ -15,7 +15,7 @@ import purescala.Constructors._
 import solvers._
 import grammars._
 import grammars.transformers._
-import leon.utils.SeqUtils
+import leon.utils._
 
 import evaluators._
 import datagen._
@@ -35,6 +35,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+
     val exSolverTo  = 2000L
     val cexSolverTo = 2000L
 
@@ -43,6 +44,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
     val sctx = hctx.sctx
     val ctx  = sctx.context
+
+    val timers = ctx.timers.synthesis.cegis
 
     // CEGIS Flags to activate or deactivate features
     val useOptTimeout    = sctx.settings.cegisUseOptTimeout.getOrElse(true)
@@ -143,6 +146,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
 
       def updateCTree(): Unit = {
+        ctx.timers.synthesis.cegis.updateCTree.start()
         def freshB() = {
           val id = FreshIdentifier("B", BooleanType, true)
           bs += id
@@ -191,6 +195,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         bsOrdered = bs.toSeq.sorted
 
         setCExpr(computeCExpr())
+        ctx.timers.synthesis.cegis.updateCTree.stop()
       }
 
       /**
@@ -412,43 +417,44 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       private val innerPhi = outerExprToInnerExpr(p.phi)
 
       private var programCTree: Program = _
-      private var tester: (Example, Set[Identifier]) => EvaluationResults.Result[Expr] = _
+
+      private var evaluator: DefaultEvaluator = _
 
       private def setCExpr(cTreeInfo: (Expr, Seq[FunDef])): Unit = {
         val (cTree, newFds) = cTreeInfo
 
         cTreeFd.body = Some(cTree)
         programCTree = addFunDefs(innerProgram, newFds, cTreeFd)
+        evaluator = new DefaultEvaluator(sctx.context, programCTree)
 
         //println("-- "*30)
         //println(programCTree.asString)
         //println(".. "*30)
-
-        //val evaluator = new DualEvaluator(sctx.context, programCTree, CodeGenParams.default)
-        val evaluator = new DefaultEvaluator(sctx.context, programCTree)
-
-        tester =
-          { (ex: Example, bValues: Set[Identifier]) =>
-            // TODO: Test output value as well
-            val envMap = bs.map(b => b -> BooleanLiteral(bValues(b))).toMap
-
-            ex match {
-              case InExample(ins) =>
-                val fi = FunctionInvocation(phiFd.typed, ins)
-                evaluator.eval(fi, envMap)
-
-              case InOutExample(ins, outs) =>
-                val fi = FunctionInvocation(cTreeFd.typed, ins)
-                val eq = equality(fi, tupleWrap(outs))
-                evaluator.eval(eq, envMap)
-            }
-          }
       }
-
 
       def testForProgram(bValues: Set[Identifier])(ex: Example): Boolean = {
 
-        tester(ex, bValues) match {
+        val origImpl = cTreeFd.fullBody
+        val outerSol = getExpr(bValues)
+        val innerSol = outerExprToInnerExpr(outerSol)
+        val cnstr = letTuple(p.xs, innerSol, innerPhi)
+        cTreeFd.fullBody = innerSol
+
+        timers.testForProgram.start()
+        val res = ex match {
+          case InExample(ins) =>
+            evaluator.eval(cnstr, p.as.zip(ins).toMap)
+
+          case InOutExample(ins, outs) =>
+            val eq = equality(innerSol, tupleWrap(outs))
+            evaluator.eval(eq, p.as.zip(ins).toMap)
+        }
+        timers.testForProgram.stop()
+        val l = timers.testForProgram.last
+
+        cTreeFd.fullBody = origImpl
+
+        res match {
           case EvaluationResults.Successful(res) =>
             res == BooleanLiteral(true)
 
@@ -469,6 +475,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             sctx.reporter.debug("Error testing CE: "+err)
             false
         }
+
       }
 
       // Returns the outer expression corresponding to a B-valuation
@@ -709,10 +716,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         val sctx = hctx.sctx
         implicit val ctx = sctx.context
 
-        import leon.utils.Timer
-        val timer = new Timer
-        timer.start
-
         val ndProgram = new NonDeterministicProgram(p)
         ndProgram.init()
 
@@ -804,6 +807,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             val nInitial = prunedPrograms.size
             sctx.reporter.debug("#Programs: "+nInitial)
+
             //sctx.reporter.ifDebug{ printer =>
             //  val limit = 100
 
@@ -820,6 +824,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             // We further filter the set of working programs to remove those that fail on known examples
             if (hasInputExamples) {
+              timers.filter.start()
               for (bs <- prunedPrograms if !interruptManager.isInterrupted) {
                 var valid = true
                 val examples = allInputExamples()
@@ -839,10 +844,12 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                   sctx.reporter.debug("..."+wrongPrograms.size)
                 }
               }
+              timers.filter.stop()
             }
 
             val nPassing = prunedPrograms.size
             val nTotal   = ndProgram.allProgramsCount()
+            //println(s"Iotal: $nTotal, passing: $nPassing")
 
             /*locally {
               val progs = ndProgram.allPrograms() map ndProgram.getExpr
@@ -912,6 +919,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             // CEGIS Loop at a given unfolding level
             while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted) {
+              timers.loop.start()
               ndProgram.solveForTentativeProgram() match {
                 case Some(Some(bs)) =>
                   // Should we validate this program with Z3?
@@ -973,6 +981,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                 case None =>
                   result = Some(RuleFailed())
               }
+              timers.loop.stop()
             }
 
             unfolding += 1
@@ -985,8 +994,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
             e.printStackTrace()
             RuleFailed()
-        } finally {
-          ctx.reporter.info(s"CEGIS ran for ${timer.stop} ms")
         }
       }
     })

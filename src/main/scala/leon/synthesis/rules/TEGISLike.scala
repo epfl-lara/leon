@@ -12,6 +12,7 @@ import datagen._
 import evaluators._
 import codegen.CodeGenParams
 import grammars._
+import leon.utils.GrowableIterable
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
