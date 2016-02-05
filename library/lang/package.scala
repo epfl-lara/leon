@@ -42,6 +42,9 @@ package object lang {
   }
 
   @ignore
+  def unimplemented[T]: T = sys.error("Unimplemented")
+
+  @ignore
   implicit def while2Invariant(u: Unit) = InvariantFunction
 
   @ignore
