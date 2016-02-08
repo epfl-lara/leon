@@ -135,7 +135,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   private val quantifications = new IncrementalSeq[MatcherQuantification]
   private val instCtx         = new InstantiationContext
 
-  private val ignoredMatchers = new ContextMap
+  private val ignoredMatchers = new IncrementalSeq[(Int, Set[T], Matcher[T])]
   private val ignoredSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Int, Set[T], Map[T,Arg[T]])]]
   private val handledSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Set[T], Map[T,Arg[T]])]]
 
@@ -148,10 +148,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       handledSubsts, known, lambdaAxioms, templates) ++ super.incrementals
 
   private var currentGen = 0
-  private def minGen = {
-    val gens = ignoredSubsts.toSeq.flatMap(_._2).map(_._1)
-    if (gens.isEmpty) currentGen else gens.min
-  }
 
   private sealed abstract class MatcherKey(val tpe: TypeTree)
   private case class CallerKey(caller: T, tt: TypeTree) extends MatcherKey(tt)
@@ -168,9 +164,11 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   private def correspond(qm: Matcher[T], m: Matcher[T]): Boolean =
     correspond(qm, m.caller, m.tpe)
 
-  @inline
-  private def correspond(qm: Matcher[T], caller: T, tpe: TypeTree): Boolean =
-    matcherKey(qm.caller, qm.tpe) == matcherKey(caller, tpe)
+  private def correspond(qm: Matcher[T], caller: T, tpe: TypeTree): Boolean = {
+    val qkey = matcherKey(qm.caller, qm.tpe)
+    val key = matcherKey(caller, tpe)
+    qkey == key || (qkey.tpe == key.tpe && (qkey.isInstanceOf[TypeKey] || key.isInstanceOf[TypeKey]))
+  }
 
   private val uniformQuantMap: MutableMap[TypeTree, Seq[T]] = MutableMap.empty
   private val uniformQuantSet: MutableSet[T]                = MutableSet.empty
@@ -299,16 +297,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     def instantiations: Map[MatcherKey, Matchers] =
       (funMap.toMap ++ tpeMap.map { case (tpe,ms) => TypeKey(tpe) -> ms }).mapValues(_.toMatchers)
-
-    def consume: Matchers = {
-      val matchers = funMap.iterator.flatMap(_._2.toMatchers).toSet ++ tpeMap.flatMap(_._2.toMatchers)
-      funMap.clear
-      tpeMap.clear
-      matchers
-    }
-
-    def isEmpty = funMap.isEmpty && tpeMap.isEmpty
-    def nonEmpty = !isEmpty
   }
 
   private class InstantiationContext private (
@@ -486,9 +474,10 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         Instantiation.empty[T]
       } else {
         handledSubsts(this) += enablers -> subst
+        val allEnablers = fixpoint((enablers: Set[T]) => enablers.flatMap(blockerParents))(enablers)
 
         var instantiation = Instantiation.empty[T]
-        val (enabler, optEnabler) = freshBlocker(enablers)
+        val (enabler, optEnabler) = freshBlocker(allEnablers)
         if (optEnabler.isDefined) {
           instantiation = instantiation withClause encoder.mkEquals(enabler, optEnabler.get)
         }
@@ -510,7 +499,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
           if (strict && (matchers(m) || transMatchers(m))) {
             instantiation ++= instCtx.instantiate(sb, sm)(quantifications.toSeq : _*)
           } else if (!matchers(m)) {
-            ignoredMatchers += sb -> sm
+            ignoredMatchers += ((currentGen + 3, sb, sm))
           }
         }
 
@@ -524,7 +513,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val nextGen = (if (matchers.forall { m =>
         val sm = m.substitute(substituter, msubst)
         instCtx(enablers -> sm)
-      }) currentGen + 3 else currentGen + 5)
+      }) currentGen + 3 else currentGen + 3)
 
       ignoredSubsts(this) += ((nextGen, enablers, subst))
     }
@@ -565,19 +554,26 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private lazy val blockerId = FreshIdentifier("blocker", BooleanType, true)
-  private lazy val blockerCache: MutableMap[T, T] = MutableMap.empty
+  private lazy val enablersToBlocker: MutableMap[Set[T], T] = MutableMap.empty
+  private lazy val blockerToEnablers: MutableMap[T, Set[T]] = MutableMap.empty
   private def freshBlocker(enablers: Set[T]): (T, Option[T]) = enablers.toSeq match {
     case Seq(b) if isBlocker(b) => (b, None)
     case _ =>
-      val enabler = encodeEnablers(enablers)
-      blockerCache.get(enabler) match {
+      val last = enablersToBlocker.get(enablers).orElse {
+        val initialEnablers = enablers.flatMap(blockerToEnablers.get).flatten
+        enablersToBlocker.get(initialEnablers)
+      }
+
+      last match {
         case Some(b) => (b, None)
         case None =>
           val nb = encoder.encodeId(blockerId)
-          blockerCache += enabler -> nb
+          enablersToBlocker += enablers -> nb
+          blockerToEnablers += nb -> enablers
           for (b <- enablers if isBlocker(b)) implies(b, nb)
           blocker(nb)
-          (nb, Some(enabler))
+
+          (nb, Some(encodeEnablers(enablers)))
       }
   }
 
@@ -818,17 +814,31 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   def hasIgnored: Boolean = ignoredSubsts.nonEmpty || ignoredMatchers.nonEmpty
 
-  def instantiateIgnored: Instantiation[T] = {
-    var instantiation = Instantiation.empty[T]
-    for ((b,m) <- ignoredMatchers.consume) {
-      instantiation ++= instantiateMatcher(b, m)
+  def instantiateIgnored(force: Boolean = false): Instantiation[T] = {
+    currentGen = if (!force) currentGen + 1 else {
+      val gens = ignoredSubsts.toSeq.flatMap(_._2).map(_._1) ++ ignoredMatchers.toSeq.map(_._1)
+      if (gens.isEmpty) currentGen else gens.min
     }
 
-    val min = minGen
-    val toRelease = quantifications.toList.flatMap { q =>
+    var instantiation = Instantiation.empty[T]
+
+    val matchersToRelease = ignoredMatchers.toList.flatMap { case e @ (gen, b, m) =>
+      if (gen == currentGen) {
+        ignoredMatchers -= e
+        Some(b -> m)
+      } else {
+        None
+      }
+    }
+
+    for ((bs,m) <- matchersToRelease) {
+      instCtx.instantiate(bs, m)(quantifications.toSeq : _*)
+    }
+
+    val substsToRelease = quantifications.toList.flatMap { q =>
       val qsubsts = ignoredSubsts(q)
       qsubsts.toList.flatMap { case e @ (gen, enablers, subst) =>
-        if (gen == min) {
+        if (gen == currentGen) {
           qsubsts -= e
           Some((q, enablers, subst))
         } else {
@@ -837,12 +847,10 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       }
     }
 
-    for ((q, enablers, subst) <- toRelease) {
+    for ((q, enablers, subst) <- substsToRelease) {
       instantiation ++= q.instantiateSubst(enablers, subst, strict = false)
     }
 
-    // Note that minGen changed after removing stuff from ignoredSubsts!
-    currentGen = minGen
     instantiation
   }
 
@@ -851,7 +859,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     //val keySets = scala.collection.mutable.Map.empty[MatcherKey, T]
     val keyClause = MutableMap.empty[MatcherKey, (Seq[T], T)]
 
-    for ((key, ctx) <- ignoredMatchers.instantiations) {
+    for ((_, bs, m) <- ignoredMatchers) {
+      val key = matcherKey(m.caller, m.tpe)
       val QTM(argTypes, _) = key.tpe
 
       val (values, clause) = keyClause.getOrElse(key, {
@@ -877,10 +886,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         res
       })
 
-      for ((b, m) <- ctx.toSeq) {
-        val substMap = (values zip m.args.map(_.encoded)).toMap
-        clauses += encoder.substitute(substMap)(encoder.mkImplies(b, clause))
-      }
+      val b = encodeEnablers(bs)
+      val substMap = (values zip m.args.map(_.encoded)).toMap
+      clauses += encoder.substitute(substMap)(encoder.mkImplies(b, clause))
     }
 
     for (q <- quantifications) {
@@ -894,11 +902,14 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val valuesP = values.map(v => v -> encoder.encodeId(v))
       val exprT = encoder.encodeExpr(elemsP.toMap ++ valuesP + guardP)(expr)
 
-      val disjunction = encoder.mkOr(handledSubsts(q).toSeq.map { case (enablers, subst) =>
-        val b = if (enablers.isEmpty) trueT else encoder.mkAnd(enablers.toSeq : _*)
-        val substMap = (elemsP.map(_._2) zip q.quantifiers.map(p => subst(p._2).encoded)).toMap + (guardP._2 -> b)
-        encoder.substitute(substMap)(exprT)
-      } : _*)
+      val disjunction = handledSubsts(q) match {
+        case set if set.isEmpty => encoder.encodeExpr(Map.empty)(BooleanLiteral(false))
+        case set => encoder.mkOr(set.toSeq.map { case (enablers, subst) =>
+          val b = if (enablers.isEmpty) trueT else encoder.mkAnd(enablers.toSeq : _*)
+          val substMap = (elemsP.map(_._2) zip q.quantifiers.map(p => subst(p._2).encoded)).toMap + (guardP._2 -> b)
+          encoder.substitute(substMap)(exprT)
+        } : _*)
+      }
 
       for ((_, enablers, subst) <- ignoredSubsts(q)) {
         val b = if (enablers.isEmpty) trueT else encoder.mkAnd(enablers.toSeq : _*)

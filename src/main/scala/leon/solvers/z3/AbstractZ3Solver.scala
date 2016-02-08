@@ -618,7 +618,7 @@ trait AbstractZ3Solver extends Solver {
 
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
-          if(argsSize == 0 && (variables containsB t)) {
+          if (argsSize == 0 && (variables containsB t)) {
             variables.toA(t)
           } else if(functions containsB decl) {
             val tfd = functions.toA(decl)

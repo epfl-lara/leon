@@ -1994,7 +1994,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           Let(i, e, apply(b, args))
         case LetTuple(is, es, b) =>
           letTuple(is, es, apply(b, args))
-        case l@Lambda(params, body) =>
+        case l @ Lambda(params, body) =>
           l.withParamSubst(args, body)
         case _ => Application(expr, args)
       }

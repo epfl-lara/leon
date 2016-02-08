@@ -128,7 +128,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
 
 
   override def eval(ex: Expr, model: solvers.Model) = {
-    monitor = unit.getMonitor(model, params.maxFunctionInvocations, false)
+    monitor = unit.getMonitor(model, params.maxFunctionInvocations)
     super.eval(ex, model)
   }
 

@@ -5,8 +5,8 @@ package leon.codegen.runtime;
 import java.util.HashMap;
 
 public final class FiniteLambda extends Lambda {
-  final HashMap<Tuple, Object> mapping = new HashMap<Tuple, Object>();
-  private final Object dflt;
+  public final HashMap<Tuple, Object> mapping = new HashMap<Tuple, Object>();
+  public final Object dflt;
 
   public FiniteLambda(Object dflt) {
     super();
@@ -41,10 +41,4 @@ public final class FiniteLambda extends Lambda {
   public int hashCode() {
     return 63 + 11 * mapping.hashCode() + (dflt == null ? 0 : dflt.hashCode());
   }
-
-  @Override
-  public void checkForall(boolean[] quantified) {}
-
-  @Override
-  public void checkAxiom() {}
 }

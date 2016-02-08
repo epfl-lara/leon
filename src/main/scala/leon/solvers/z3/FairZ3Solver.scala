@@ -100,7 +100,10 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     */
 
     def get(id: Identifier): Option[Expr] = variables.getB(id.toVariable).flatMap {
-      z3ID => eval(z3ID, id.getType)
+      z3ID => eval(z3ID, id.getType) match {
+        case Some(Variable(id)) => None
+        case e => e
+      }
     }
 
     def eval(elem: Z3AST, tpe: TypeTree): Option[Expr] = tpe match {
@@ -114,6 +117,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
         case Some(t) => softFromZ3Formula(model, t, other)
       }
     }
+
+    override def toString = model.toString
   }
 
   val printable = (z3: Z3AST) => new Printable {

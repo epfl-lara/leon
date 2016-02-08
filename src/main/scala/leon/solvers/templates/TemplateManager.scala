@@ -436,7 +436,8 @@ class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) e
 
   def blocker(b: T): Unit = condImplies += (b -> Set.empty)
   def isBlocker(b: T): Boolean = condImplies.isDefinedAt(b) || condImplied.isDefinedAt(b)
-  
+  def blockerParents(b: T): Set[T] = condImplied(b)
+
   def implies(b1: T, b2: T): Unit = implies(b1, Set(b2))
   def implies(b1: T, b2s: Set[T]): Unit = {
     val fb2s = b2s.filter(_ != b1)

@@ -190,7 +190,7 @@ trait AbstractUnrollingSolver[T]
     if (silenceErrors) reporter.debug(msg) else reporter.warning(msg)
 
   private def extractModel(wrapper: ModelWrapper): Model =
-    new Model(freeVars.toMap.map(p => p._1 -> wrapper.get(p._1).get))
+    new Model(freeVars.toMap.map(p => p._1 -> wrapper.get(p._1).getOrElse(simplestValue(p._1.getType))))
 
   private def validateModel(model: Model, assumptions: Seq[Expr], silenceErrors: Boolean): Boolean = {
     val expr = andJoin(assumptions ++ constraints)
@@ -234,7 +234,7 @@ trait AbstractUnrollingSolver[T]
     }
 
     val model = new Model(freeVars.toMap.map { case (id, _) =>
-      val value = wrapped.get(id).get
+      val value = wrapped.get(id).getOrElse(simplestValue(id.getType))
       id -> (funDomains.get(id) match {
         case Some(domain) =>
           val FiniteLambda(_, dflt, tpe) = value
@@ -281,7 +281,7 @@ trait AbstractUnrollingSolver[T]
     }
 
     new Model(freeVars.toMap.map { case (id, idT) =>
-      val value = wrapped.get(id).get
+      val value = wrapped.get(id).getOrElse(simplestValue(id.getType))
       id -> (id.getType match {
         case FunctionType(from, to) =>
           val params = from.map(tpe => FreshIdentifier("x", tpe, true))
@@ -481,32 +481,29 @@ trait AbstractUnrollingSolver[T]
       if (!foundDefinitiveAnswer && !interrupted) {
         reporter.debug("- We need to keep going")
 
-        if (quantify) {
-          // further quantifier instantiations are required!
-          val newClauses = unrollingBank.instantiateQuantifiers
-          reporter.debug(" - more instantiations")
+        reporter.debug(" - more instantiations")
+        val newClauses = unrollingBank.instantiateQuantifiers(force = quantify)
 
-          for (cls <- newClauses) {
-            solverAssert(cls)
-          }
-
-          reporter.debug(" - finished instantiating")
-        } else {
-          // unfolling `unfoldFactor` times
-          for (i <- 1 to unfoldFactor.toInt) {
-            val toRelease = unrollingBank.getBlockersToUnlock
-
-            reporter.debug(" - more unrollings")
-
-            val newClauses = unrollingBank.unrollBehind(toRelease)
-
-            for (ncl <- newClauses) {
-              solverAssert(ncl)
-            }
-          }
-
-          reporter.debug(" - finished unrolling")
+        for (cls <- newClauses) {
+          solverAssert(cls)
         }
+
+        reporter.debug(" - finished instantiating")
+
+        // unfolling `unfoldFactor` times
+        for (i <- 1 to unfoldFactor.toInt) {
+          val toRelease = unrollingBank.getBlockersToUnlock
+
+          reporter.debug(" - more unrollings")
+
+          val newClauses = unrollingBank.unrollBehind(toRelease)
+
+          for (ncl <- newClauses) {
+            solverAssert(ncl)
+          }
+        }
+
+        reporter.debug(" - finished unrolling")
       }
     }
 
@@ -579,6 +576,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
     val model = solver.getModel
     def get(id: Identifier): Option[Expr] = model.get(id)
     def eval(elem: Expr, tpe: TypeTree): Option[Expr] = evaluator.eval(elem, model).result
+    override def toString = model.toMap.mkString("\n")
   }
 
   override def dbg(msg: => Any) = underlying.dbg(msg)

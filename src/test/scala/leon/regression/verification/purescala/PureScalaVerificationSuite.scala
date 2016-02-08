@@ -19,8 +19,8 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
   val opts: List[List[String]] = {
     List(
       List("--feelinglucky"),
-      List("--codegen", "--evalground", "--feelinglucky"),
-      List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky")
+      List("--codegen", /*"--evalground",*/ "--feelinglucky"),
+      List("--solvers=fairz3,enum", "--codegen", /*"--evalground",*/ "--feelinglucky")
     ) ++ (
       if (isZ3Available) List(
         List("--solvers=smt-z3", "--feelinglucky")

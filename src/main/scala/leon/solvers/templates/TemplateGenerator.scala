@@ -32,6 +32,16 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
   private def emptyClauses: Clauses = (Map.empty, Map.empty, Map.empty, Map.empty, Seq.empty, Seq.empty)
 
+  private implicit class ClausesWrapper(clauses: Clauses) {
+    def ++(that: Clauses): Clauses = {
+      val (thisConds, thisExprs, thisTree, thisGuarded, thisLambdas, thisQuants) = clauses
+      val (thatConds, thatExprs, thatTree, thatGuarded, thatLambdas, thatQuants) = that
+
+      (thisConds ++ thatConds, thisExprs ++ thatExprs, thisTree merge thatTree,
+        thisGuarded merge thatGuarded, thisLambdas ++ thatLambdas, thisQuants ++ thatQuants)
+    }
+  }
+
   val manager = new QuantificationManager[T](encoder)
 
   def mkTemplate(body: Expr): FunctionTemplate[T] = {
@@ -54,7 +64,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     }
 
     // The precondition if it exists.
-    val prec : Option[Expr] = tfd.precondition.map(p => matchToIfThenElse(p))
+    val prec : Option[Expr] = tfd.precondition.map(p => simplifyHOFunctions(matchToIfThenElse(p)))
 
     val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
     val lambdaBody : Option[Expr] = newBody.map(b => simplifyHOFunctions(b))
@@ -63,20 +73,18 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val lambdaArguments: Seq[Identifier] = lambdaBody.map(lambdaArgs).toSeq.flatten
     val invocation : Expr = FunctionInvocation(tfd, funDefArgs.map(_.toVariable))
 
-    val invocationEqualsBody : Option[Expr] = lambdaBody match {
+    val invocationEqualsBody : Seq[Expr] = lambdaBody match {
       case Some(body) if isRealFunDef =>
-        val b : Expr = and(
-          liftedEquals(invocation, body, lambdaArguments),
-          Equals(invocation, body))
+        val bs = liftedEquals(invocation, body, lambdaArguments) :+ Equals(invocation, body)
 
-        Some(if(prec.isDefined) {
-          Implies(prec.get, b)
+        if(prec.isDefined) {
+          bs.map(Implies(prec.get, _))
         } else {
-          b
-        })
+          bs
+        }
 
       case _ =>
-        None
+        Seq.empty
     }
 
     val start : Identifier = FreshIdentifier("start", BooleanType, true)
@@ -88,7 +96,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val substMap : Map[Identifier, T] = arguments.toMap + pathVar
 
     val (bodyConds, bodyExprs, bodyTree, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
-      invocationEqualsBody.map(expr => mkClauses(start, expr, substMap)).getOrElse(emptyClauses)
+      invocationEqualsBody.foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(start, cls, substMap))
     } else {
       mkClauses(start, lambdaBody.get, substMap)
     }
@@ -96,7 +104,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     // Now the postcondition.
     val (condVars, exprVars, condTree, guardedExprs, lambdas, quantifications) = tfd.postcondition match {
       case Some(post) =>
-        val newPost : Expr = application(matchToIfThenElse(post), Seq(invocation))
+        val newPost : Expr = simplifyHOFunctions(application(matchToIfThenElse(post), Seq(invocation)))
 
         val postHolds : Expr =
           if(tfd.hasPrecondition) {
@@ -128,7 +136,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     case _ => Seq.empty
   }
 
-  private def liftedEquals(invocation: Expr, body: Expr, args: Seq[Identifier], inlineFirst: Boolean = false): Expr = {
+  private def liftedEquals(invocation: Expr, body: Expr, args: Seq[Identifier], inlineFirst: Boolean = false): Seq[Expr] = {
     def rec(i: Expr, b: Expr, args: Seq[Identifier], inline: Boolean): Seq[Expr] = i.getType match {
       case FunctionType(from, to) =>
         val (currArgs, nextArgs) = args.splitAt(from.size)
@@ -141,7 +149,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         Seq.empty
     }
 
-    andJoin(rec(invocation, body, args, inlineFirst))
+    rec(invocation, body, args, inlineFirst)
   }
 
   private def minimalFlattening(inits: Set[Identifier], conj: Expr): (Set[Identifier], Expr) = {
@@ -318,8 +326,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
               storeExpr(newExpr)
 
               def recAnd(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
-                case x :: Nil if !requireDecomposition(x) =>
-                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+                case x :: Nil =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), rec(pathVar, x)))
 
                 case x :: xs =>
                   val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
@@ -331,8 +339,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
                   recAnd(newBool, xs)
 
-                case Nil =>
-                  storeGuarded(pathVar, Variable(newExpr))
+                case Nil => scala.sys.error("Should never happen!")
               }
 
               recAnd(pathVar, seq)
@@ -348,8 +355,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
               storeExpr(newExpr)
 
               def recOr(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
-                case x :: Nil if !requireDecomposition(x) =>
-                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+                case x :: Nil =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), rec(pathVar, x)))
 
                 case x :: xs =>
                   val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
@@ -361,8 +368,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
                   recOr(newBool, xs)
 
-                case Nil =>
-                  storeGuarded(pathVar, Not(Variable(newExpr)))
+                case Nil => scala.sys.error("Should never happen!")
               }
 
               recOr(pathVar, seq)
@@ -423,11 +429,12 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val trArgs : Seq[T] = idArgs.map(id => substMap.getOrElse(id, encoder.encodeId(id)))
 
           val lid = FreshIdentifier("lambda", bestRealType(l.getType), true)
-          val clause = liftedEquals(Variable(lid), l, idArgs, inlineFirst = true)
+          val clauses = liftedEquals(Variable(lid), l, idArgs, inlineFirst = true)
 
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst: Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
-          val (lambdaConds, lambdaExprs, lambdaTree, lambdaGuarded, lambdaTemplates, lambdaQuants) = mkClauses(pathVar, clause, clauseSubst)
+          val (lambdaConds, lambdaExprs, lambdaTree, lambdaGuarded, lambdaTemplates, lambdaQuants) =
+            clauses.foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(pathVar, cls, clauseSubst))
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap

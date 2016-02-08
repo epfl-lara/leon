@@ -3,7 +3,7 @@
 package leon
 package evaluators
 
-import leon.purescala.Quantification._
+import purescala.Quantification._
 import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Expressions.Pattern
@@ -13,9 +13,10 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
-import leon.solvers.{HenkinModel, Model, SolverFactory}
+import purescala.DefOps
+import solvers.{HenkinModel, Model, SolverFactory}
 import scala.collection.mutable.{Map => MutableMap}
-import leon.purescala.DefOps
+import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
@@ -521,7 +522,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       frlCache.getOrElse((f, context), {
         val tStart = System.currentTimeMillis
 
-        val solverf = SolverFactory.getFromSettings(ctx, program)
+        val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(1.second)
         val solver  = solverf.getNewSolver()
 
         try {

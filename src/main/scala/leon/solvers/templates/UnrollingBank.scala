@@ -232,8 +232,8 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     }
   }
 
-  def instantiateQuantifiers: Seq[T] = {
-    val (newExprs, callBlocks, appBlocks) = manager.instantiateIgnored
+  def instantiateQuantifiers(force: Boolean = false): Seq[T] = {
+    val (newExprs, callBlocks, appBlocks) = manager.instantiateIgnored(force)
     val blockExprs = freshAppBlocks(appBlocks.keys)
     val gens = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1))
     val gen = if (gens.nonEmpty) gens.min else 0
@@ -246,7 +246,15 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       registerAppBlocker(nextGeneration(gen), newApp, newInfos)
     }
 
-    newExprs ++ blockExprs
+    val clauses = newExprs ++ blockExprs
+    if (clauses.nonEmpty) {
+      reporter.debug("Instantiating ignored quantifiers ("+clauses.size+")")
+      for (cl <- clauses) {
+        reporter.debug("  . "+cl)
+      }
+    }
+
+    clauses
   }
 
   def unrollBehind(ids: Seq[T]): Seq[T] = {

@@ -345,6 +345,7 @@ object Constructors {
       val (ids, bds) = defs.unzip
 
       letTuple(ids, tupleWrap(bds), replaceFromIDs(subst, body))
+
     case _ =>
       Application(fn, realArgs)
    }

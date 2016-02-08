@@ -13,7 +13,6 @@ import codegen.CodeGenParams
 
 import leon.codegen.runtime.LeonCodeGenRuntimeException
 import leon.codegen.runtime.LeonCodeGenEvaluationException
-import leon.codegen.runtime.LeonCodeGenQuantificationException
 
 class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
 
