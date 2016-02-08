@@ -22,13 +22,13 @@ abstract class ExpressionGrammar[T <: Typed] {
   private[this] val cache = new MutableMap[T, Seq[Prod]]()
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top) = {
-    ProductionRule[T, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag)
+  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
+    ProductionRule[T, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[T], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top): ProductionRule[T, Expr] = {
-    ProductionRule[T, Expr](subs, builder, tag)
+  def nonTerminal(subs: Seq[T], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int = 1): ProductionRule[T, Expr] = {
+    ProductionRule[T, Expr](subs, builder, tag, cost)
   }
 
   /** The list of production rules for this grammar for a given nonterminal.

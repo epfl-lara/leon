@@ -43,9 +43,9 @@ case class SizeBoundedGrammar[T <: Typed](g: ExpressionGrammar[T], optimizeCommu
         // Optimization: When we have a commutative operation and all the labels are the same,
         // we can skew the expression to always be right-heavy
         val sizes = if(optimizeCommut && Tags.isCommut(gen.tag) && gen.subTrees.map(characteristic).toSet.size == 1) {
-          sumToOrdered(sl.size-1, gen.arity)
+          sumToOrdered(sl.size-gen.cost, gen.arity)
         } else {
-          sumTo(sl.size-1, gen.arity)
+          sumTo(sl.size-gen.cost, gen.arity)
         }
 
         for (ss <- sizes) yield {
