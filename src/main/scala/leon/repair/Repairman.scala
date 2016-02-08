@@ -155,7 +155,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           }(DebugSectionReport)
 
           if (synth.settings.generateDerivationTrees) {
-            val dot = new DotGenerator(search.g)
+            val dot = new DotGenerator(search)
             dot.writeFile("derivation"+ dotGenIds.nextGlobal + ".dot")
           }
 

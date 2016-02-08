@@ -374,7 +374,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         solFd.fullBody = Ensuring(
           FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)),
-          Lambda(p.xs.map(ValDef(_)), p.phi)
+          Lambda(p.xs.map(ValDef), p.phi)
         )
 
 
@@ -798,8 +798,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         try {
           do {
-            var skipCESearch = false
-
             // Unfold formula
             ndProgram.unfold()
 
@@ -879,42 +877,46 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               }
             }
 
-            if (nPassing == 0 || interruptManager.isInterrupted) {
-              // No test passed, we can skip solver and unfold again, if possible
-              skipCESearch = true
-            } else {
-              var doFilter = true
-
+            // We can skip CE search if - we have excluded all programs or - we do so with validatePrograms
+            var skipCESearch = nPassing == 0 || interruptManager.isInterrupted || {
               // If the number of pruned programs is very small, or by far smaller than the number of total programs,
               // we hypothesize it will be easier to just validate them individually.
               // Otherwise, we validate a small number of programs just in case we are lucky FIXME is this last clause useful?
-              val programsToValidate = if (nTotal / nPassing > passingRatio || nPassing < 10) {
-                prunedPrograms
+              val (programsToValidate, otherPrograms) = if (nTotal / nPassing > passingRatio || nPassing < 10) {
+                (prunedPrograms, Nil)
               } else {
-                prunedPrograms.take(validateUpTo)
+                prunedPrograms.splitAt(validateUpTo)
               }
 
-              if (programsToValidate.nonEmpty) {
-                ndProgram.validatePrograms(programsToValidate) match {
-                  case Left(sols) if sols.nonEmpty =>
-                    doFilter = false
-                    result = Some(RuleClosed(sols))
-                  case Right(cexs) =>
-                    baseExampleInputs ++= cexs.map(InExample)
-
-                    if (nPassing <= validateUpTo) {
-                      // All programs failed verification, we filter everything out and unfold
-                      doFilter     = false
-                      skipCESearch = true
+              ndProgram.validatePrograms(programsToValidate) match {
+                case Left(sols) if sols.nonEmpty =>
+                  // Found solution! Exit CEGIS
+                  result = Some(RuleClosed(sols))
+                  true
+                case Right(cexs) =>
+                  // Found some counterexamples
+                  val newCexs = cexs.map(InExample)
+                  baseExampleInputs ++= newCexs
+                  // Retest whether the newly found C-E invalidates some programs
+                  for (p <- otherPrograms) {
+                    // Exclude any programs that fail the new cex's
+                    var valid = true
+                    newCexs.takeWhile(_ => valid).foreach { cex =>
+                      if (!ndProgram.testForProgram(p)(cex)) {
+                        ndProgram.excludeProgram(p, true)
+                        valid = false
+                      }
                     }
-                }
+                  }
+                  // If we excluded all programs, we can skip CE search
+                  programsToValidate.size >= nPassing
               }
+            }
 
-              if (doFilter) {
-                sctx.reporter.debug("Excluding "+wrongPrograms.size+" programs")
-                wrongPrograms.foreach {
-                  ndProgram.excludeProgram(_, true)
-                }
+            if (!skipCESearch) {
+              sctx.reporter.debug("Excluding "+wrongPrograms.size+" programs")
+              wrongPrograms.foreach {
+                ndProgram.excludeProgram(_, true)
               }
             }
 
@@ -923,57 +925,41 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               timers.loop.start()
               ndProgram.solveForTentativeProgram() match {
                 case Some(Some(bs)) =>
-                  // Should we validate this program with Z3?
-
-                  val validateWithZ3 = if (hasInputExamples) {
-
-                    if (allInputExamples().forall(ndProgram.testForProgram(bs))) {
-                      // All valid inputs also work with this, we need to
-                      // make sure by validating this candidate with z3
-                      true
-                    } else {
-                      // One valid input failed with this candidate, we can skip
+                  // No inputs to test or all valid inputs also work with this.
+                  // We need to make sure by validating this candidate with z3
+                  sctx.reporter.debug("Found tentative model, need to validate!")
+                  ndProgram.solveForCounterExample(bs) match {
+                    case Some(Some(inputsCE)) =>
+                      sctx.reporter.debug("Found counter-example:" + inputsCE)
+                      val ce = InExample(inputsCE)
+                      // Found counter example! Exclude this program
+                      baseExampleInputs += ce
                       ndProgram.excludeProgram(bs, false)
-                      false
-                    }
-                  } else {
-                    // No inputs or capability to test, we need to ask Z3
-                    true
-                  }
-                  sctx.reporter.debug("Found tentative model (Validate="+validateWithZ3+")!")
 
-                  if (validateWithZ3) {
-                    ndProgram.solveForCounterExample(bs) match {
-                      case Some(Some(inputsCE)) =>
-                        sctx.reporter.debug("Found counter-example:"+inputsCE)
-                        val ce = InExample(inputsCE)
-                        // Found counter example!
-                        baseExampleInputs += ce
+                      // Retest whether the newly found C-E invalidates some programs
+                      prunedPrograms.foreach { p =>
+                        if (!ndProgram.testForProgram(p)(ce)) ndProgram.excludeProgram(p, true)
+                      }
 
-                        // Retest whether the newly found C-E invalidates all programs
-                        if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(ce))) {
-                          skipCESearch = true
-                        } else {
-                          ndProgram.excludeProgram(bs, false)
-                        }
+                    case Some(None) =>
+                      // Found no counter example! Program is a valid solution
+                      val expr = ndProgram.getExpr(bs)
+                      result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
 
-                      case Some(None) =>
-                        // Found no counter example! Program is a valid solution
+                    case None =>
+                      // We are not sure
+                      sctx.reporter.debug("Unknown")
+                      if (useOptTimeout) {
+                        // Interpret timeout in CE search as "the candidate is valid"
+                        sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
                         val expr = ndProgram.getExpr(bs)
-                        result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
-
-                      case None =>
-                        // We are not sure
-                        sctx.reporter.debug("Unknown")
-                        if (useOptTimeout) {
-                          // Interpret timeout in CE search as "the candidate is valid"
-                          sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
-                          val expr = ndProgram.getExpr(bs)
-                          result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
-                        } else {
-                          result = Some(RuleFailed())
-                        }
-                    }
+                        result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
+                      } else {
+                        // Ok, we failed to validate, exclude this program
+                        ndProgram.excludeProgram(bs, false)
+                        // TODO: Make CEGIS fail early when it fails on 1 program?
+                        // result = Some(RuleFailed())
+                      }
                   }
 
                 case Some(None) =>

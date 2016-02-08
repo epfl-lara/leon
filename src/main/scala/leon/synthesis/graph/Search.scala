@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
-abstract class Search(ctx: LeonContext, ci: SourceInfo, p: Problem, costModel: CostModel) extends Interruptible {
+abstract class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, costModel: CostModel) extends Interruptible {
   val g = new Graph(costModel, p)
 
   def findNodeToExpandFrom(n: Node): Option[Node]

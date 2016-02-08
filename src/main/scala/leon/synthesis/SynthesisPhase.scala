@@ -82,7 +82,7 @@ object SynthesisPhase extends TransformationPhase {
 
         try {
           if (options.generateDerivationTrees) {
-            val dot = new DotGenerator(search.g)
+            val dot = new DotGenerator(search)
             dot.writeFile("derivation"+dotGenIds.nextGlobal+".dot")
           }
 
