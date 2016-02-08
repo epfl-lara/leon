@@ -35,9 +35,9 @@ run testcases/synthesis/etienne-thesis/UnaryNumerals/Distinct.scala
 run testcases/synthesis/etienne-thesis/UnaryNumerals/Mult.scala
 
 # BatchedQueue
-#run testcases/synthesis/etienne-thesis/BatchedQueue/Enqueue.scala
+run testcases/synthesis/etienne-thesis/BatchedQueue/Enqueue.scala
 run testcases/synthesis/etienne-thesis/BatchedQueue/Dequeue.scala
 
 # AddressBook
-#run testcases/synthesis/etienne-thesis/AddressBook/Make.scala
+run testcases/synthesis/etienne-thesis/AddressBook/Make.scala
 run testcases/synthesis/etienne-thesis/AddressBook/Merge.scala
