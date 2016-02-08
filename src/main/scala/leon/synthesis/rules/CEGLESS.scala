@@ -36,7 +36,7 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
       grammar = guidedGrammar,
       rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") },
       optimizations = false,
-      maxUnfoldings = (0 +: guides.map(depth(_) + 1)).max
+      maxSize = Some((0 +: guides.map(depth(_) + 1)).max)
     )
   }
 }

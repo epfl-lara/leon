@@ -38,7 +38,7 @@ object Rules {
 
   def all: List[Rule] = all(false)
   /** Returns the list of all available rules for synthesis */
-  def all(newCegis: Boolean): List[Rule] = List[Rule](
+  def all(naiveGrammar: Boolean): List[Rule] = List[Rule](
     StringRender,
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
@@ -56,7 +56,7 @@ object Rules {
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
-    if(newCegis) CEGIS2 else CEGIS,
+    if(naiveGrammar) NaiveCEGIS else CEGIS,
     //TEGIS,
     //BottomUpTEGIS,
     rules.Assert,

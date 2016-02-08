@@ -29,7 +29,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
     grammar: ExpressionGrammar[T],
     rootLabel: TypeTree => T,
     optimizations: Boolean,
-    maxUnfoldings: Int = 5
+    maxSize: Option[Int] = None
   )
 
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
@@ -48,8 +48,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
     val timers = ctx.timers.synthesis.cegis
 
     // CEGIS Flags to activate or deactivate features
-    val useOptTimeout    = sctx.settings.cegisUseOptTimeout.getOrElse(true)
-    val useVanuatoo      = sctx.settings.cegisUseVanuatoo.getOrElse(false)
+    val useOptTimeout    = sctx.settings.cegisUseOptTimeout
+    val useVanuatoo      = sctx.settings.cegisUseVanuatoo
 
     // Limits the number of programs CEGIS will specifically validate individually
     val validateUpTo     = 3
@@ -59,7 +59,12 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
     val params = getParams(sctx, p)
 
-    if (params.maxUnfoldings == 0) {
+    // If this CEGISLike forces a maxSize, take it, otherwise find it in the settings
+    val maxSize = params.maxSize.getOrElse(sctx.settings.cegisMaxSize)
+
+    ctx.reporter.debug(s"This is $name. Settings: optimizations = ${params.optimizations}, maxSize = $maxSize, vanuatoo=$useVanuatoo, optTimeout=$useOptTimeout")
+
+    if (maxSize == 0) {
       return Nil
     }
 
@@ -719,9 +724,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         ndProgram.init()
 
         var unfolding = 1
-        val maxUnfoldings = params.maxUnfoldings
-
-        sctx.reporter.debug(s"maxUnfoldings=$maxUnfoldings")
 
         var baseExampleInputs: ArrayBuffer[Example] = new ArrayBuffer[Example]()
 
@@ -984,7 +986,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             }
 
             unfolding += 1
-          } while(unfolding <= maxUnfoldings && result.isEmpty && !interruptManager.isInterrupted)
+          } while(unfolding <= maxSize && result.isEmpty && !interruptManager.isInterrupted)
 
           result.getOrElse(RuleFailed())
 

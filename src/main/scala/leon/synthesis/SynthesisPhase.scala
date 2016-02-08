@@ -19,12 +19,13 @@ object SynthesisPhase extends TransformationPhase {
   val optDerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
 
   // CEGIS options
-  val optCEGISOptTimeout = LeonFlagOptionDef( "cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true)
-  val optCEGISVanuatoo   = LeonFlagOptionDef( "cegis:vanuatoo",   "Generate inputs using new korat-style generator",       false)
-  val optNewCEGIS        = LeonFlagOptionDef( "cegis:new", "Use new CEGIS", false )
+  val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
+  val optCEGISVanuatoo     = LeonFlagOptionDef("cegis:vanuatoo",   "Generate inputs using new korat-style generator",        false)
+  val optCEGISNaiveGrammar = LeonFlagOptionDef("cegis:naive",      "Use the old naive grammar for CEGIS",                    false)
+  val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 5L, "N")
 
   override val definedOptions : Set[LeonOptionDef[Any]] =
-    Set(optNewCEGIS, optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo)
+    Set(optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize)
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)
@@ -52,11 +53,13 @@ object SynthesisPhase extends TransformationPhase {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(ctx.findOptionOrDefault(optNewCEGIS)) ++ (if(ms.isDefined) Seq(rules.AsChoose, rules.SygusCVC4) else Seq()),
+      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar)) ++
+        (if(ms.isDefined) Seq(rules.AsChoose, rules.SygusCVC4) else Seq()),
       manualSearch = ms,
       functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
-      cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
-      cegisUseVanuatoo = ctx.findOption(optCEGISVanuatoo)
+      cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),
+      cegisUseVanuatoo = ctx.findOptionOrDefault(optCEGISVanuatoo),
+      cegisMaxSize = ctx.findOptionOrDefault(optCEGISMaxSize).toInt
     )
   }
 

@@ -41,7 +41,7 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
 
-        val useVanuatoo = sctx.settings.cegisUseVanuatoo.getOrElse(false)
+        val useVanuatoo = sctx.settings.cegisUseVanuatoo
 
         val inputGenerator: Iterator[Seq[Expr]] = if (useVanuatoo) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)

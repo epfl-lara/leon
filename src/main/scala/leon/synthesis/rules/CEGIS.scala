@@ -8,25 +8,27 @@ import grammars._
 import grammars.transformers._
 import purescala.Types.TypeTree
 
-case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
+/** Basic implementation of CEGIS that uses a naive grammar */
+case object NaiveCEGIS extends CEGISLike[TypeTree]("Naive CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
       grammar = Grammars.typeDepthBound(Grammars.default(sctx, p), 2), // This limits type depth
       rootLabel = {(tpe: TypeTree) => tpe },
-      optimizations = false,
-      maxUnfoldings = 5
+      optimizations = false
     )
   }
 }
 
-case object CEGIS2 extends CEGISLike[TaggedNonTerm[TypeTree]]("CEGIS2") {
+/** More advanced implementation of CEGIS that uses a less permissive grammar
+  * and some optimizations
+  */
+case object CEGIS extends CEGISLike[TaggedNonTerm[TypeTree]]("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
-    val base = CEGIS.getParams(sctx,p).grammar
+    val base = NaiveCEGIS.getParams(sctx,p).grammar
     CegisParams(
       grammar = TaggedGrammar(base),
       rootLabel = TaggedNonTerm(_, Tags.Top, 0, None),
-      optimizations = true,
-      maxUnfoldings = 5
+      optimizations = true
     )
   }
 }

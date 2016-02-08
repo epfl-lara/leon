@@ -26,7 +26,6 @@ import synthesis.Witnesses._
 import synthesis.graph.{dotGenIds, DotGenerator}
 
 import rules._
-import grammars._
 
 class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   implicit val ctx = ctx0
