@@ -26,12 +26,15 @@ object AntiAliasingPhase extends TransformationPhase {
 
     val effects = effectsAnalysis(pgm)
 
+    //for each fun def, all the vars the the body captures. Only
+    //mutable types.
     val varsInScope: Map[FunDef, Set[Identifier]] = (for {
       fd <- fds
     } yield {
       val allFreeVars = fd.body.map(bd => variablesOf(bd)).getOrElse(Set())
       val freeVars = allFreeVars -- fd.params.map(_.id)
-      (fd, freeVars)
+      val mutableFreeVars = freeVars.filter(id => id.getType.isInstanceOf[ArrayType])
+      (fd, mutableFreeVars)
     }).toMap
 
     /*
