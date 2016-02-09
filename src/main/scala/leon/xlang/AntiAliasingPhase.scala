@@ -334,6 +334,7 @@ object AntiAliasingPhase extends TransformationPhase {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
+            case ArrayUpdated(_, _, _) => ()
             case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
           }
           (None, bindings + id)
@@ -342,6 +343,7 @@ object AntiAliasingPhase extends TransformationPhase {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
+            case ArrayUpdated(_, _, _) => ()
             case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
           }
           (None, bindings + id)

@@ -35,11 +35,7 @@ object AbsFun {
             isPositive(t, k))
     
     if(k < tab.length) {
-      val nt = if(tab(k) < 0) {
-        t.updated(k, -tab(k))
-      } else {
-        t.updated(k, tab(k))
-      }
+      val nt = t.updated(k, if(tab(k) < 0) -tab(k) else tab(k))
       while0(nt, k+1, tab)
     } else {
       (t, k)
@@ -54,11 +50,7 @@ object AbsFun {
   def property(t: Array[Int], k: Int): Boolean = {
     require(isPositive(t, k) && t.length >= 0 && k >= 0)
     if(k < t.length) {
-      val nt = if(t(k) < 0) {
-        t.updated(k, -t(k))
-      } else {
-        t.updated(k, t(k))
-      }
+      val nt = t.updated(k, if(t(k) < 0) -t(k) else t(k))
       isPositive(nt, k+1)
     } else true
   } holds

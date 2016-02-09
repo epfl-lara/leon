@@ -109,8 +109,8 @@ Keys.fork in run := true
 
 lazy val testSettings = Seq(
     //Keys.fork := true,
-    logBuffered := false,
-    parallelExecution := false
+    logBuffered := true,
+    parallelExecution := true
     //testForkedParallel := true,
     //javaOptions ++= Seq("-Xss64M", "-Xmx4G")
 )
