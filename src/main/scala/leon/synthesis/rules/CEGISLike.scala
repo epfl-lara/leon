@@ -102,11 +102,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
        *   b3 => c6 == H(c4, c5)
        *
        * c1 -> Seq(
-       *         (b1, F(c2, c3), Set(c2, c3))
-       *         (b2, G(c4, c5), Set(c4, c5))
+       *         (b1, F(_, _), Seq(c2, c3))
+       *         (b2, G(_, _), Seq(c4, c5))
        *       )
        * c6 -> Seq(
-       *         (b3, H(c7, c8), Set(c7, c8))
+       *         (b3, H(_, _), Seq(c7, c8))
        *       )
        */
       private var cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]] = Map()
@@ -198,6 +198,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         }
 
         bsOrdered = bs.toSeq.sorted
+        excludedPrograms = ArrayBuffer()
 
         setCExpr(computeCExpr())
         ctx.timers.synthesis.cegis.updateCTree.stop()
@@ -250,44 +251,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           SeqUtils.cartesianProduct(seqs).map(_.flatten.toSet)
         }
 
-        def redundant(e: Expr): Boolean = {
-          val (op1, op2) = e match {
-            case Minus(o1, o2) => (o1, o2)
-            case Modulo(o1, o2) => (o1, o2)
-            case Division(o1, o2) => (o1, o2)
-            case BVMinus(o1, o2) => (o1, o2)
-            case BVRemainder(o1, o2) => (o1, o2)
-            case BVDivision(o1, o2) => (o1, o2)
-
-            case And(Seq(Not(o1), Not(o2))) => (o1, o2)
-            case And(Seq(Not(o1), o2)) => (o1, o2)
-            case And(Seq(o1, Not(o2))) => (o1, o2)
-            case And(Seq(o1, o2)) => (o1, o2)
-
-            case Or(Seq(Not(o1), Not(o2))) => (o1, o2)
-            case Or(Seq(Not(o1), o2)) => (o1, o2)
-            case Or(Seq(o1, Not(o2))) => (o1, o2)
-            case Or(Seq(o1, o2)) => (o1, o2)
-
-            case SetUnion(o1, o2) => (o1, o2)
-            case SetIntersection(o1, o2) => (o1, o2)
-            case SetDifference(o1, o2) => (o1, o2)
-
-            case Equals(Not(o1), Not(o2)) => (o1, o2)
-            case Equals(Not(o1), o2) => (o1, o2)
-            case Equals(o1, Not(o2)) => (o1, o2)
-            case Equals(o1, o2) => (o1, o2)
-            case _ => return false
-          }
-
-          op1 == op2
-        }
-
-        allProgramsFor(Seq(rootC))/* filterNot { bs =>
-          val res = params.optimizations && exists(redundant)(getExpr(bs))
-          if (!res) excludeProgram(bs, false)
-          res
-        }*/
+        allProgramsFor(Seq(rootC))
       }
 
       private def debugCTree(cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]],
@@ -377,8 +341,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           Lambda(p.xs.map(ValDef), p.phi)
         )
 
-
-        phiFd.body   = Some(
+        phiFd.body = Some(
           letTuple(p.xs,
                    FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)),
                    p.phi)
@@ -565,6 +528,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       }
 
       var excludedPrograms = ArrayBuffer[Set[Identifier]]()
+
+      def allProgramsClosed = allProgramsCount() <= excludedPrograms.size
 
       // Explicitly remove program computed by bValues from the search space
       //
@@ -825,18 +790,12 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             if (hasInputExamples) {
               timers.filter.start()
               for (bs <- prunedPrograms if !interruptManager.isInterrupted) {
-                var valid = true
                 val examples = allInputExamples()
-                while(valid && examples.hasNext) {
-                  val e = examples.next()
-                  if (!ndProgram.testForProgram(bs)(e)) {
-                    failedTestsStats(e) += 1
-                    sctx.reporter.debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
-                    wrongPrograms += bs
-                    prunedPrograms -= bs
-
-                    valid = false
-                  }
+                examples.find(e => !ndProgram.testForProgram(bs)(e)).foreach { e =>
+                  failedTestsStats(e) += 1
+                  sctx.reporter.debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
+                  wrongPrograms += bs
+                  prunedPrograms -= bs
                 }
 
                 if (wrongPrograms.size+1 % 1000 == 0) {
@@ -849,14 +808,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             val nPassing = prunedPrograms.size
             val nTotal   = ndProgram.allProgramsCount()
             //println(s"Iotal: $nTotal, passing: $nPassing")
-
-            /*locally {
-              val progs = ndProgram.allPrograms() map ndProgram.getExpr
-              val ground = progs count isGround
-              println("Programs")
-              progs take 100 foreach println
-              println(s"$ground ground out of $nTotal")
-            }*/
 
             sctx.reporter.debug(s"#Programs passing tests: $nPassing out of $nTotal")
             sctx.reporter.ifDebug{ printer =>
@@ -898,14 +849,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                   val newCexs = cexs.map(InExample)
                   baseExampleInputs ++= newCexs
                   // Retest whether the newly found C-E invalidates some programs
-                  for (p <- otherPrograms) {
-                    // Exclude any programs that fail the new cex's
-                    var valid = true
-                    newCexs.takeWhile(_ => valid).foreach { cex =>
-                      if (!ndProgram.testForProgram(p)(cex)) {
-                        ndProgram.excludeProgram(p, true)
-                        valid = false
-                      }
+                  for (p <- otherPrograms if !interruptManager.isInterrupted) {
+                    // Exclude any programs that fail at least one new cex
+                    newCexs.find { cex => !ndProgram.testForProgram(p)(cex) }.foreach { cex =>
+                      failedTestsStats(cex) += 1
+                      ndProgram.excludeProgram(p, true)
                     }
                   }
                   // If we excluded all programs, we can skip CE search
@@ -921,7 +869,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             }
 
             // CEGIS Loop at a given unfolding level
-            while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted) {
+            while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted && !ndProgram.allProgramsClosed) {
               timers.loop.start()
               ndProgram.solveForTentativeProgram() match {
                 case Some(Some(bs)) =>
@@ -968,12 +916,14 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                 case None =>
                   result = Some(RuleFailed())
               }
+              
               timers.loop.stop()
             }
 
             unfolding += 1
           } while(unfolding <= maxSize && result.isEmpty && !interruptManager.isInterrupted)
 
+          if (interruptManager.isInterrupted) interruptManager.recoverInterrupt()
           result.getOrElse(RuleFailed())
 
         } catch {
