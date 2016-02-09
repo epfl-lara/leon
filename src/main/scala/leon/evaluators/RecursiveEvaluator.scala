@@ -29,7 +29,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
   lazy val scalaEv = new ScalacEvaluator(this, ctx, prog)
 
-  protected var clpCache = Map[(Choose, Seq[Expr]), Expr]()
+  protected val clpCache = MutableMap[(Choose, Seq[Expr]), Expr]()
   protected var frlCache = Map[(Forall, Seq[Expr]), Expr]()
 
   private var evaluationFailsOnChoose = false

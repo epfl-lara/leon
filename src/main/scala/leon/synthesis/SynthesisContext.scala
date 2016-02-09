@@ -4,7 +4,6 @@ package leon
 package synthesis
 
 import solvers._
-import solvers.combinators._
 import purescala.Definitions.{Program, FunDef}
 import evaluators._
 

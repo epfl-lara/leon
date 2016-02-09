@@ -55,12 +55,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
           eb = p.qeb.filterIns( (m: Map[Identifier, Expr]) => m(a1) != m(a2))
         )
 
-        val onSuccess: List[Solution] => Option[Solution] = {
-          case List(s1, s2) =>
-            Some(Solution(or(s1.pre, s2.pre), s1.defs ++ s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term), s1.isTrusted && s2.isTrusted))
-          case _ =>
-            None
-        }
+        val onSuccess = simpleCombine { case List(s1, s2) => IfExpr(Equals(Variable(a1), Variable(a2)), s1, s2) }
 
         Some(decomp(List(sub1, sub2), onSuccess, s"Eq. Split on '$a1' and '$a2'"))
       case _ =>

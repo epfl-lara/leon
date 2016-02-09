@@ -49,5 +49,18 @@ object AddressBookMake {
 
   def makeAddressBook[A](as: AddressList[A]): AddressBook[A] = {
     choose( (res: AddressBook[A]) => res.content == as.content && res.invariant )
+
+ /*   as match {
+      case Nil() => AddressBook[A](Nil[A](), Nil[A]())
+      case Cons(x, xs) =>
+        val AddressBook(b, p) = makeAddressBook(xs)
+        if(x.priv) AddressBook(b, Cons(x, p))
+        else AddressBook(Cons(x, b), p)
+    }
+
+  } ensuring { 
+    res => res.content == as.content && res.invariant */
   }
+
+
 }

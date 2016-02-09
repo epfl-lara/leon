@@ -114,7 +114,6 @@ case object ADTInduction extends Rule("ADT Induction") {
               val funPre = substAll(substMap, and(p.pc, orJoin(globalPre)))
               val funPost = substAll(substMap, p.phi)
               val idPost = FreshIdentifier("res", resType)
-              val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)
               newFun.postcondition = Some(Lambda(Seq(ValDef(idPost)), letTuple(p.xs.toSeq, Variable(idPost), funPost)))

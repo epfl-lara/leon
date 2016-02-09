@@ -25,7 +25,7 @@ case object CaseSplit extends Rule("Case-Split") {
         val pre = orJoin(sols.map(_.pre))
         val defs = sols.map(_.defs).reduceLeft(_ ++ _)
 
-        val (prefix, last) = (sols.dropRight(1), sols.last)
+        val (prefix, last) = (sols.init, sols.last)
 
         val term = prefix.foldRight(last.term) { (s, t) => IfExpr(s.pre, s.term, t) }
 
