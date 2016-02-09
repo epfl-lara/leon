@@ -432,7 +432,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
       for {
         (bs, qm @ Matcher(qcaller, _, qargs, _), m @ Matcher(caller, _, args, _)) <- mapping
-        _ = constraints ++= bs + encoder.mkEquals(qcaller, caller)
+        _ = constraints ++= bs
         (qarg, arg) <- (qargs zip args)
         _ = strictnessCnstr(qarg, arg)
       } qarg match {

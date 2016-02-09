@@ -15,6 +15,7 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.DefOps
 import solvers.{HenkinModel, Model, SolverFactory}
+import solvers.combinators.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
@@ -519,10 +520,17 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       val mapping = variablesOf(f).map(id => id -> rctx.mappings(id)).toMap
       val context = mapping.toSeq.sortBy(_._1.uniqueName).map(_._2)
+
       frlCache.getOrElse((f, context), {
         val tStart = System.currentTimeMillis
 
-        val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(1.second)
+        val newCtx = ctx.copy(options = ctx.options.map {
+          case LeonOption(optDef, value) if optDef == UnrollingProcedure.optFeelingLucky =>
+            LeonOption(optDef)(false)
+          case opt => opt
+        })
+
+        val solverf = SolverFactory.getFromSettings(newCtx, program).withTimeout(1.second)
         val solver  = solverf.getNewSolver()
 
         try {
