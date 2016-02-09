@@ -27,6 +27,13 @@ object AntiAliasingPhase extends TransformationPhase {
 
     val effects = effectsAnalysis(pgm)
 
+    val varsInScope: Map[FunDef, Set[Identifier]] = (for {
+      fd <- fds
+    } yield {
+      val allFreeVars = fd.body.map(bd => variablesOf(bd)).getOrElse(Set())
+      val freeVars = allFreeVars -- fd.params.map(_.id)
+      (fd, freeVars)
+    }).toMap
 
     /*
      * The first pass will introduce all new function definitions,
@@ -41,7 +48,7 @@ object AntiAliasingPhase extends TransformationPhase {
     for {
       fd <- fds
     } {
-      updateBody(fd, effects, updatedFunctions)(ctx)
+      updateBody(fd, effects, updatedFunctions, varsInScope)(ctx)
     }
 
     val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
@@ -85,7 +92,7 @@ object AntiAliasingPhase extends TransformationPhase {
     newFunDef
   }
 
-  private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef])
+  private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]])
                         (ctx: LeonContext): Unit = {
 
     val ownEffects = effects(fd)
@@ -98,7 +105,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
     if(aliasedParams.isEmpty) {
       val newBody = fd.body.map(body => {
-        makeSideEffectsExplicit(body, Seq(), effects, updatedFunDefs)(ctx)
+        makeSideEffectsExplicit(body, Seq(), effects, updatedFunDefs, varsInScope)(ctx)
       })
       newFunDef.body = newBody
       newFunDef.precondition = fd.precondition
@@ -110,7 +117,7 @@ object AntiAliasingPhase extends TransformationPhase {
       val newBody = fd.body.map(body => {
 
         val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body) 
-        val explicitBody = makeSideEffectsExplicit(freshBody, freshLocalVars, effects, updatedFunDefs)(ctx)
+        val explicitBody = makeSideEffectsExplicit(freshBody, freshLocalVars, effects, updatedFunDefs, varsInScope)(ctx)
 
         //WARNING: only works if side effects in Tuples are extracted from left to right,
         //         in the ImperativeTransformation phase.
@@ -145,7 +152,7 @@ object AntiAliasingPhase extends TransformationPhase {
   //We turn all local val of mutable objects into vars and explicit side effects
   //using assignments. We also make sure that no aliasing is being done.
   private def makeSideEffectsExplicit
-                (body: Expr, aliasedParams: Seq[Identifier], effects: Effects, updatedFunDefs: Map[FunDef, FunDef])
+                (body: Expr, aliasedParams: Seq[Identifier], effects: Effects, updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]])
                 (ctx: LeonContext): Expr = {
     preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
 
@@ -176,6 +183,14 @@ object AntiAliasingPhase extends TransformationPhase {
       }
 
       case fi@FunctionInvocation(fd, args) => {
+
+        val vis: Set[Identifier] = varsInScope.get(fd.fd).getOrElse(Set())
+        args.find({
+          case Variable(id) => vis.contains(id)
+          case _ => false
+        }).foreach(aliasedArg =>
+          ctx.reporter.fatalError(aliasedArg.getPos, "Illegal passing of aliased parameter: " + aliasedArg))
+
         updatedFunDefs.get(fd.fd) match {
           case None => (None, bindings)
           case Some(nfd) => {
