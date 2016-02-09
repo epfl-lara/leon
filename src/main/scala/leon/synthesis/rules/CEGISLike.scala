@@ -916,7 +916,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                 case None =>
                   result = Some(RuleFailed())
               }
-              
+
               timers.loop.stop()
             }
 
