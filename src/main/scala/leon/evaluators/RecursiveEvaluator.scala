@@ -567,8 +567,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
               ctx.reporter.debug("Verification took "+total+"ms")
               ctx.reporter.debug("Finished forall evaluation with: "+res)
 
-              println(fargs.map(_.id),replaceFromIDs(mapping, body))
-              println(res)
               frlCache += (f, context) -> res
               res
             case _ =>

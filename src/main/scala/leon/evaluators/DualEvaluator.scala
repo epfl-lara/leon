@@ -37,8 +37,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
 
     val (className, methodName, _) = unit.leonFunDefToJVMInfo(tfd.fd).get
 
-    val allArgs =
-      (if (params.requireMonitor) Seq(monitor) else Seq()) ++
+    val allArgs = Seq(monitor) ++
       (if (tfd.fd.tparams.nonEmpty) Seq(tfd.tps.map(unit.registerType(_)).toArray) else Seq()) ++
       args
 
