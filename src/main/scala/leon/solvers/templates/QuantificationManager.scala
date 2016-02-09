@@ -422,14 +422,19 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     private def extractSubst(mapping: Set[(Set[T], Matcher[T], Matcher[T])]): (Set[T], Map[T,Arg[T]], Boolean) = {
       var constraints: Set[T] = Set.empty
       var eqConstraints: Set[(T, T)] = Set.empty
-      var matcherEqs: List[(T, T)] = Nil
       var subst: Map[T, Arg[T]] = Map.empty
+
+      var matcherEqs: Set[(T, T)] = Set.empty
+      def strictnessCnstr(qarg: Arg[T], arg: Arg[T]): Unit = (qarg, arg) match {
+        case (Right(qam), Right(am)) => (qam.args zip am.args).foreach(p => strictnessCnstr(p._1, p._2))
+        case _ => matcherEqs += qarg.encoded -> arg.encoded
+      }
 
       for {
         (bs, qm @ Matcher(qcaller, _, qargs, _), m @ Matcher(caller, _, args, _)) <- mapping
-        _ = constraints ++= bs
-        _ = matcherEqs :+= qm.encoded -> m.encoded
+        _ = constraints ++= bs + encoder.mkEquals(qcaller, caller)
         (qarg, arg) <- (qargs zip args)
+        _ = strictnessCnstr(qarg, arg)
       } qarg match {
         case Left(quant) if subst.isDefinedAt(quant) =>
           eqConstraints += (quant -> arg.encoded)
@@ -438,7 +443,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         case Right(qam) =>
           val argVal = arg.encoded
           eqConstraints += (qam.encoded -> argVal)
-          matcherEqs :+= qam.encoded -> argVal
       }
 
       val substituter = encoder.substitute(subst.mapValues(_.encoded))

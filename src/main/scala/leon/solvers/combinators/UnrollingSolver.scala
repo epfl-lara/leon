@@ -263,6 +263,7 @@ trait AbstractUnrollingSolver[T]
 
   private def getTotalModel: Model = {
     val wrapped = solverGetModel
+    println(wrapped)
 
     val typeInsts = templateGenerator.manager.typeInstantiations
     val partialInsts = templateGenerator.manager.partialInstantiations
@@ -310,12 +311,17 @@ trait AbstractUnrollingSolver[T]
               if (mapping.isDefinedAt(conds)) mapping else mapping + (conds -> result)
             }
 
-          val rest :+ ((_, dflt)) = filteredConds.toSeq.sortBy(_._1.size)
-          val body = rest.foldLeft(dflt) { case (elze, (conds, res)) =>
-            if (conds.isEmpty) elze else IfExpr(andJoin(conds), res, elze)
-          }
+          if (filteredConds.isEmpty) {
+            // TODO: warning??
+            value
+          } else {
+            val rest :+ ((_, dflt)) = filteredConds.toSeq.sortBy(_._1.size)
+            val body = rest.foldLeft(dflt) { case (elze, (conds, res)) =>
+              if (conds.isEmpty) elze else IfExpr(andJoin(conds), res, elze)
+            }
 
-          Lambda(params.map(ValDef(_)), body)
+            Lambda(params.map(ValDef(_)), body)
+          }
 
         case _ => value
       })

@@ -219,7 +219,7 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
       id
     }
   }
-  
+
   def instantiateType(id: Identifier, tps: Map[TypeParameterDef, TypeTree]): Identifier = {
     freshId(id, typeParamSubst(tps map { case (tpd, tp) => tpd.tp -> tp })(id.getType))
   }

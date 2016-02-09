@@ -13,13 +13,11 @@ import codegen.runtime.{StdMonitor, Monitor}
 
 class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
   extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations)
-  with HasDefaultGlobalContext
-{
+  with HasDefaultGlobalContext {
 
   type RC = DualRecContext
   def initRC(mappings: Map[Identifier, Expr]): RC = DualRecContext(mappings)
   implicit val debugSection = utils.DebugSectionEvaluation
-
 
   val unit = new CompilationUnit(ctx, prog, params)
 
@@ -39,7 +37,10 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
 
     val (className, methodName, _) = unit.leonFunDefToJVMInfo(tfd.fd).get
 
-    val allArgs = if (params.requireMonitor) monitor +: args else args
+    val allArgs =
+      (if (params.requireMonitor) Seq(monitor) else Seq()) ++
+      (if (tfd.fd.tparams.nonEmpty) Seq(tfd.tps.map(unit.registerType(_)).toArray) else Seq()) ++
+      args
 
     ctx.reporter.debug(s"Calling $className.$methodName(${args.mkString(",")})")
 
@@ -125,7 +126,6 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
         e
     }
   }
-
 
   override def eval(ex: Expr, model: solvers.Model) = {
     monitor = unit.getMonitor(model, params.maxFunctionInvocations)
