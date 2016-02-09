@@ -19,7 +19,6 @@ object AntiAliasingPhase extends TransformationPhase {
   val description = "Make aliasing explicit"
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
-
     val fds = allFunDefs(pgm)
     fds.foreach(fd => checkAliasing(fd)(ctx))
 
