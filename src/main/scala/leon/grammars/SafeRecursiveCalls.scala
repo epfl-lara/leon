@@ -16,18 +16,17 @@ import synthesis.utils.Helpers._
   */
 case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Expr) extends ExpressionGrammar[TypeTree] {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
-    val calls = terminatingCalls(prog, t, ws, pc)
+    val calls = terminatingCalls(prog,ws, pc, Some(t), true)
 
-    calls.map {
-      case (fi, free) =>
+    calls.map { c => (c: @unchecked) match {
+      case (fi, Some(free)) =>
         val freeSeq = free.toSeq
 
         nonTerminal(
-          freeSeq.map(_.getType),
-          { sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi) },
+          freeSeq.map(_.getType), { sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi) },
           Tags.tagOf(fi.tfd.fd, isSafe = true),
           2
         )
-    }
+    }}
   }
 }

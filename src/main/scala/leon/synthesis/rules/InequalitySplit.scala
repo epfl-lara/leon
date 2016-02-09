@@ -10,8 +10,6 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Common._
 
-import scala.concurrent.duration._
-
 case object InequalitySplit extends Rule("Ineq. Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     // We approximate knowledge of equality based on facts found at the top-level
@@ -43,24 +41,17 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
     candidates.collect {
       case List(a1, a2) =>
-        val onSuccess: List[Solution] => Option[Solution] = {
+        val onSuccess = simpleCombine {
           case sols@List(sLT, sEQ, sGT) =>
-            val pre = orJoin(sols.map(_.pre))
-            val defs = sLT.defs ++ sEQ.defs ++ sGT.defs
-
-            val term = IfExpr(
+            IfExpr(
               LessThan(Variable(a1), Variable(a2)),
-              sLT.term,
+              sLT,
               IfExpr(
                 Equals(Variable(a1), Variable(a2)),
-                sEQ.term,
-                sGT.term
+                sEQ,
+                sGT
               )
             )
-
-            Some(Solution(pre, defs, term, sols.forall(_.isTrusted)))
-          case _ =>
-            None
         }
 
         val subTypes = List(p.outType, p.outType, p.outType)

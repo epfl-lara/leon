@@ -4,13 +4,10 @@ package leon
 package synthesis
 package rules
 
-import leon.utils._
-import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Common._
-import purescala.Types.CaseClassType
 
 case object IndependentSplit extends NormalizingRule("IndependentSplit") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -68,7 +65,7 @@ case object IndependentSplit extends NormalizingRule("IndependentSplit") {
             letTuple(xs, term, expr)
         }
 
-        Some(Solution(andJoin(sols.map(_.pre)), sols.map(_.defs).flatten.toSet, term, sols.forall(_.isTrusted)))
+        Some(Solution(andJoin(sols.map(_.pre)), sols.flatMap(_.defs).toSet, term, sols.forall(_.isTrusted)))
       }
 
 

@@ -7,7 +7,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.Constructors.and
+import purescala.Constructors._
 import rules._
 
 /** A Rule can be applied on a synthesis problem */
@@ -56,6 +56,7 @@ object Rules {
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
+    IntroduceRecCall,
     if(naiveGrammar) NaiveCEGIS else CEGIS,
     //TEGIS,
     //BottomUpTEGIS,
@@ -212,5 +213,21 @@ trait RuleDSL {
       Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
     case _ => None
 
+  }
+
+  /** Straightforward combination of solutions, where expression is reconstructed according to a combiner.
+    * If combiner fails, no solution will be returned.
+    *
+    * @param combiner The combiner of synthesized subterms which reconstructs the term of the solution from the subterms.
+    */
+  def simpleCombine(combiner: PartialFunction[List[Expr], Expr]): List[Solution] => Option[Solution] = { ls =>
+    combiner.lift(ls map (_.term)).map{ combined =>
+      Solution(
+        orJoin(ls map (_.pre)),
+        ls.flatMap (_.defs).toSet,
+        combined,
+        ls.forall(_.isTrusted)
+      )
+    }
   }
 }

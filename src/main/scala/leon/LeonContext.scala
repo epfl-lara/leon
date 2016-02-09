@@ -9,7 +9,7 @@ import java.io.File
 import scala.reflect.ClassTag
 
 /** Everything that is part of a compilation unit, except the actual program tree.
-  * Contexts are immutable, and so should all there fields (with the possible
+  * Contexts are immutable, and so should all their fields (with the possible
   * exception of the reporter).
   */
 case class LeonContext(
