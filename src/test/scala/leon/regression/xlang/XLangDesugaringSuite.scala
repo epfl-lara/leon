@@ -1,19 +1,18 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.regression.frontends
+package leon.regression.xlang
 
 import leon._
 import leon.test._
 import purescala.Definitions.Program
 import java.io.File
 
-class FrontEndsSuite extends LeonRegressionSuite {
+class XLangDesugaringSuite extends LeonRegressionSuite {
   // Hard-code output directory, for Eclipse purposes
 
-  val pipeFront = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase
+  val pipeline = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase(true)
 
-  def testFrontend(f: File, pipeBack: Pipeline[Program, Program], forError: Boolean) = {
-    val pipeline = pipeFront andThen pipeBack
+  def testFrontend(f: File, forError: Boolean) = {
     test ("Testing " + f.getName) {
       val ctx = createLeonContext()
       if (forError) {
@@ -35,14 +34,13 @@ class FrontEndsSuite extends LeonRegressionSuite {
     } 
   }
 
-  val pipeNormal = xlang.NoXLangFeaturesChecking andThen NoopPhase() // redundant NoopPhase to trigger throwing error between phases
-  val baseDir = "regression/frontends/"
+  val baseDir = "regression/xlang/"
 
   forEachFileIn(baseDir+"passing/") { f => 
-    testFrontend(f, pipeNormal, false)
+    testFrontend(f, false)
   }
-  forEachFileIn(baseDir+"error/simple/") { f =>
-    testFrontend(f, pipeNormal, true)
+  forEachFileIn(baseDir+"error/") { f =>
+    testFrontend(f, true)
   }
    
 }

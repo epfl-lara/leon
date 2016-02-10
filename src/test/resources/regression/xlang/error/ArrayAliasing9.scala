@@ -1,8 +1,9 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-object Array9 {
+object ArrayAliasing9 {
 
-  def foo(a: Array[Int]): Int = {
+  def foo(): Int = {
+    val a = Array.fill(5)(0)
     def rec(): Array[Int] = {
       a
     }

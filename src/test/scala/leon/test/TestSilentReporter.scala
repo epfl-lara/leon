@@ -13,3 +13,10 @@ class TestSilentReporter extends DefaultReporter(Set()) {
     case _ =>
   }
 }
+
+class TestErrorReporter extends DefaultReporter(Set()) {
+  override def emit(msg: Message): Unit = msg match { 
+    case Message(this.ERROR | this.FATAL, _, _) => super.emit(msg)
+    case _ =>
+  }
+}
