@@ -3,15 +3,12 @@ package leon
 package synthesis
 package disambiguation
 
-import leon.LeonContext
-import leon.purescala.Expressions._
 import purescala.Common.FreshIdentifier
 import purescala.Constructors.{ and, tupleWrap }
 import purescala.Definitions.{ FunDef, Program, ValDef }
 import purescala.ExprOps.expressionToPattern
-import purescala.Expressions.{ BooleanLiteral, Equals, Expr, Lambda, MatchCase, Passes, Variable, WildcardPattern }
 import purescala.Extractors.TopLevelAnds
-import leon.purescala.Expressions._
+import purescala.Expressions._
 
 /**
  * @author Mikael

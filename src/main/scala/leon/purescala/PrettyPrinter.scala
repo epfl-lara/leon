@@ -81,15 +81,12 @@ class PrettyPrinter(opts: PrinterOptions,
         }
         p"$name"
 
-      case Old(id) =>
-        p"old($id)"
-
       case Variable(id) =>
         p"$id"
 
       case Let(b,d,e) =>
-          p"""|val $b = $d
-              |$e"""
+        p"""|val $b = $d
+            |$e"""
 
       case LetDef(a::q,body) =>
         p"""|$a

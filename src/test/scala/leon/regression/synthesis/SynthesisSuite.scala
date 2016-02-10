@@ -251,6 +251,7 @@ object SortedList {
     case "insertSorted" =>
       Decomp("Assert isSorted(in1)", List(
         Decomp("ADT Split on 'in1'", List(
+          Close("CEGIS"),
           Decomp("Ineq. Split on 'head*' and 'v*'", List(
             Close("CEGIS"),
             Decomp("Equivalent Inputs *", List(
@@ -259,8 +260,7 @@ object SortedList {
               ))
             )),
             Close("CEGIS")
-          )),
-          Close("CEGIS")
+          ))
         ))
       ))
   }

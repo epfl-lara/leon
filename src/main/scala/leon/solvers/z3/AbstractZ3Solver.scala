@@ -526,7 +526,7 @@ trait AbstractZ3Solver extends Solver {
 
         rec(RawArrayValue(from, elems.map{
           case (k, v) => (k, CaseClass(library.someType(t), Seq(v)))
-        }.toMap, CaseClass(library.noneType(t), Seq())))
+        }, CaseClass(library.noneType(t), Seq())))
 
       case MapApply(m, k) =>
         val mt @ MapType(_, t) = normalizeType(m.getType)

@@ -76,10 +76,6 @@ object Expressions {
     val getType = tpe
   }
 
-  case class Old(id: Identifier) extends Expr with Terminal {
-    val getType = id.getType
-  }
-
   /** Precondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *require*
     *
     * @param pred The precondition formula inside ``require(...)``
@@ -165,7 +161,7 @@ object Expressions {
     * @param body The body of the expression after the function
     */
   case class LetDef(fds: Seq[FunDef], body: Expr) extends Expr {
-    assert(fds.nonEmpty)
+    require(fds.nonEmpty)
     val getType = body.getType
   }
 
@@ -594,7 +590,10 @@ object Expressions {
   /** $encodingof `lhs.subString(start, end)` for strings */
   case class SubString(expr: Expr, start: Expr, end: Expr) extends Expr {
     val getType = {
-      if (expr.getType == StringType && (start == IntegerType || start == Int32Type) && (end == IntegerType || end == Int32Type)) StringType
+      val ext = expr.getType
+      val st = start.getType
+      val et = end.getType
+      if (ext == StringType && (st == IntegerType || st == Int32Type) && (et == IntegerType || et == Int32Type)) StringType
       else Untyped
     }
   }
@@ -786,7 +785,7 @@ object Expressions {
     *
     * [[exprs]] should always contain at least 2 elements.
     * If you are not sure about this requirement, you should use
-    * [[purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
+    * [[leon.purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
     *
     * @param exprs The expressions in the tuple
     */
@@ -799,7 +798,7 @@ object Expressions {
     *
     * Index is 1-based, first element of tuple is 1.
     * If you are not sure that [[tuple]] is indeed of a TupleType,
-    * you should use [[purescala.Constructors$.tupleSelect(t:leon\.purescala\.Expressions\.Expr,index:Int,isTuple:Boolean):leon\.purescala\.Expressions\.Expr* purescala's constructor tupleSelect]]
+    * you should use [[leon.purescala.Constructors.tupleSelect(t:leon\.purescala\.Expressions\.Expr,index:Int,isTuple:Boolean):leon\.purescala\.Expressions\.Expr* purescala's constructor tupleSelect]]
     */
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
     require(index >= 1)

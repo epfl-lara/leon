@@ -13,7 +13,7 @@ import ExprOps.preMap
 
 object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree] {
   def typeDepth(t: TypeTree): Int = t match {
-    case NAryType(tps, builder) => 1+ (0 +: (tps map typeDepth)).max
+    case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
   }
 
   def typeParamsOf(t: TypeTree): Set[TypeParameter] = {
@@ -335,7 +335,7 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
             }
             val newBd = srec(subCalls(bd)).copiedFrom(bd)
 
-            LetDef(newFds, newBd).copiedFrom(l)
+            letDef(newFds, newBd).copiedFrom(l)
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>

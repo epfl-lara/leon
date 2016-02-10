@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=30 --synthesis $1"
+    cmd="./leon --debug=report --timeout=30 --synthesis --cegis:maxsize=5 $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
@@ -35,9 +35,9 @@ run testcases/synthesis/etienne-thesis/UnaryNumerals/Distinct.scala
 run testcases/synthesis/etienne-thesis/UnaryNumerals/Mult.scala
 
 # BatchedQueue
-#run testcases/synthesis/etienne-thesis/BatchedQueue/Enqueue.scala
+run testcases/synthesis/etienne-thesis/BatchedQueue/Enqueue.scala
 run testcases/synthesis/etienne-thesis/BatchedQueue/Dequeue.scala
 
 # AddressBook
-#run testcases/synthesis/etienne-thesis/AddressBook/Make.scala
+run testcases/synthesis/etienne-thesis/AddressBook/Make.scala
 run testcases/synthesis/etienne-thesis/AddressBook/Merge.scala

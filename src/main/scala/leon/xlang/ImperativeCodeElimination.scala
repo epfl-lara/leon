@@ -218,7 +218,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case LetDef(fds, b) =>
 
         if(fds.size > 1) {
-          //TODO: no support for true mutually recursion
+          //TODO: no support for true mutual recursion
           toFunction(LetDef(Seq(fds.head), LetDef(fds.tail, b)))
         } else {
 

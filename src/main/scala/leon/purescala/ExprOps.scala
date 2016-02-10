@@ -75,7 +75,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
   /** Returns the set of free variables in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
-    import leon.xlang.Expressions.LetVar
+    import leon.xlang.Expressions._
     fold[Set[Identifier]] {
       case (e, subs) =>
         val subvs = subs.flatten.toSet
@@ -176,7 +176,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
-        Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
+        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)))
 
       case _ => None
     }(expr)
@@ -331,7 +331,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
       case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
-        Some(replace(Map(Variable(i) -> t), b))
+        Some(replaceFromIDs(Map(i -> t), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
         val occurrences = count {
@@ -342,7 +342,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         if(occurrences == 0) {
           Some(b)
         } else if(occurrences == 1) {
-          Some(replace(Map(Variable(i) -> e), b))
+          Some(replaceFromIDs(Map(i -> e), b))
         } else {
           None
         }
@@ -353,7 +353,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
         val (remIds, remExprs) = (ids zip exprs).filter {
           case (id, value: Terminal) =>
-            newBody = replace(Map(Variable(id) -> value), newBody)
+            newBody = replaceFromIDs(Map(id -> value), newBody)
             //we replace, so we drop old
             false
           case (id, value) =>
@@ -1863,7 +1863,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
         fds ++= nfds
 
-        Some(LetDef(nfds.map(_._2), b))
+        Some(letDef(nfds.map(_._2), b))
 
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {
