@@ -369,28 +369,11 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
   }
 
   test("Lambda functions") { implicit fix =>
-    def checkLambda(e: Evaluator, in: Expr, out: PartialFunction[Expr, Boolean]) {
-      val res = eval(e, in).success
-      if (!out.isDefinedAt(res) || !out(res))
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${e.name}' produced invalid '$res'.")
-    }
-
-    val ONE = bi(1)
-    val TWO = bi(2)
-
     for(e <- allEvaluators) {
-      checkLambda(e, fcall("Lambda.foo1")(), {
-        case Lambda(Seq(vd), Variable(id)) if vd.id == id => true 
-      })
-      checkLambda(e, fcall("Lambda.foo2")(), {
-        case Lambda(Seq(vd), Plus(ONE, Variable(id))) if vd.id == id => true
-      })
-      checkLambda(e, fcall("Lambda.foo3")(), {
-        case Lambda(Seq(vx, vy), Plus(Plus(Variable(x), ONE), Plus(Variable(y), TWO))) if vx.id == x && vy.id == y => true 
-      })
-      checkLambda(e, fcall("Lambda.foo4")(TWO), {
-        case Lambda(Seq(vd), Plus(Variable(id), TWO)) if vd.id == id => true 
-      })
+      eval(e, Application(fcall("Lambda.foo1")(), Seq(bi(1))))        === bi(1)
+      eval(e, Application(fcall("Lambda.foo2")(), Seq(bi(1))))        === bi(2)
+      eval(e, Application(fcall("Lambda.foo3")(), Seq(bi(1), bi(2)))) === bi(6)
+      eval(e, Application(fcall("Lambda.foo4")(bi(2)), Seq(bi(1))))   === bi(3)
     }
   }
 
