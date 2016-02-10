@@ -22,13 +22,13 @@ class SolversSuite extends LeonTestSuiteWithProgram {
 
   val getFactories: Seq[(String, (LeonContext, Program) => Solver)] = {
     (if (SolverFactory.hasNativeZ3) Seq(
-      ("fairz3",   (ctx: LeonContext, pgm: Program) => new FairZ3Solver(ctx, pgm))
+      ("fairz3",   (ctx: LeonContext, pgm: Program) => new Z3StringFairZ3Solver(ctx, pgm))
     ) else Nil) ++
     (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
+      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBZ3Solver(ctx, pgm)))
     ) else Nil) ++
     (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
+      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBCVC4Solver(ctx, pgm)))
     ) else Nil)
   }
 

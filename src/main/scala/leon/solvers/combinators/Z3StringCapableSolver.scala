@@ -24,18 +24,16 @@ import leon.utils.Bijection
 import leon.solvers.z3.StringEcoSystem
 
 object Z3StringCapableSolver {
-  def convert(p: Program): ((Program, Map[FunDef, FunDef]), Z3StringConversion, Map[Identifier, Identifier]) = {
+  def convert(p: Program): ((Program, Map[FunDef, FunDef]), Z3StringConversion) = {
     val converter = new Z3StringConversion(p)
     import converter._
     import converter.Forward._
-    var globalIdMap = Map[Identifier, Identifier]()
     var globalFdMap = Map[FunDef, (Map[Identifier, Identifier], FunDef)]()
     val (new_program, fdMap) = DefOps.replaceFunDefs(converter.getProgram)((fd: FunDef) => {
       globalFdMap.get(fd).map(_._2).orElse(
           if( fd.body.map(exists(e => TypeOps.exists{ _== StringType }(e.getType))).getOrElse(false) ||
               fd.paramIds.exists(id => TypeOps.exists(_ == StringType)(id.getType))) {
             val idMap = fd.params.map(vd => vd.id -> convertId(vd.id)).toMap
-            globalIdMap ++= idMap
             val newFdId = convertId(fd.id)
             val newFd = fd.duplicate(newFdId,
                 fd.tparams,
@@ -51,15 +49,14 @@ object Z3StringCapableSolver {
       implicit val idVarMap = idMap.mapValues(id => Variable(id))
       newFd.fullBody = convertExpr(newFd.fullBody)
     }
-    ((new_program, fdMap), converter, globalIdMap)
+    ((new_program, fdMap), converter)
   }
 }
 
 abstract class Z3StringCapableSolver[+TUnderlying <: Solver](val context: LeonContext, val program: Program, val underlyingConstructor: Program => TUnderlying)
 extends Solver {
-  protected val ((new_program, mappings), converter, idMap) = Z3StringCapableSolver.convert(program)
+  protected val ((new_program, mappings), converter) = Z3StringCapableSolver.convert(program)
 
-  val idMapReverse = idMap.map(kv => kv._2 -> kv._1).toMap
   val underlying = underlyingConstructor(new_program)
   
   def getModel: leon.solvers.Model = underlying.getModel
@@ -69,10 +66,11 @@ extends Solver {
   def recoverInterrupt(): Unit = underlying.recoverInterrupt()
 
   // Members declared in leon.solvers.Solver
-  def assertCnstr(expression: leon.purescala.Expressions.Expr): Unit = {
+  def assertCnstr(expression: Expr): Unit = {
+    //println("Asserting " + expression)
     val expression2 = DefOps.replaceFunCalls(expression, mappings.withDefault { x => x }.apply _)
     import converter.Forward._
-    val newExpression = convertExpr(expression2)(idMap.mapValues(Variable))
+    val newExpression = convertExpr(expression2)(Map())
     underlying.assertCnstr(newExpression)
   }
   def getUnsatCore: Set[Expr] = {
@@ -84,6 +82,7 @@ extends Solver {
   def pop(): Unit = underlying.pop()
   def push(): Unit = underlying.push()
   def reset(): Unit = underlying.reset()
+  def name: String = underlying.name
 }
 
 import z3._
@@ -105,9 +104,9 @@ trait Z3StringQuantificationSolver[TUnderlying <: QuantificationSolver] extends 
     val model = underlying.getModel
     val ids = model.ids.toSeq
     val exprs = ids.map(model.apply)
-    val original_ids = ids.map(idMapReverse) // Should exist.
     import converter.Backward._
-    val original_exprs = exprs.zip(original_ids).map{ case (e, id) => convertExpr(e)(Map()) }
+    val original_ids = ids.map(convertId)
+    val original_exprs = exprs.map{ case e => convertExpr(e)(Map()) }
     
     val new_domain = new HenkinDomains(
         model.doms.lambdas.map(kv =>
@@ -124,14 +123,10 @@ trait Z3StringQuantificationSolver[TUnderlying <: QuantificationSolver] extends 
 
 class Z3StringFairZ3Solver(context: LeonContext, program: Program)
   extends Z3StringCapableSolver(context, program, (program: Program) => new z3.FairZ3Solver(context, program)) 
-  with Z3StringAbstractZ3Solver[FairZ3Solver]
-  with Z3ModelReconstruction
-  with FairZ3Component
   with Z3StringEvaluatingSolver[FairZ3Solver]
   with Z3StringQuantificationSolver[FairZ3Solver] {
      // Members declared in leon.solvers.z3.AbstractZ3Solver
     protected[leon] val z3cfg: _root_.z3.scala.Z3Config = underlying.z3cfg
-    override def reset() = super[Z3StringAbstractZ3Solver].reset()
     override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
       underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
     }
@@ -142,13 +137,11 @@ class Z3StringUnrollingSolver(context: LeonContext, program: Program, underlying
   with Z3StringNaiveAssumptionSolver[UnrollingSolver]
   with Z3StringEvaluatingSolver[UnrollingSolver]
   with Z3StringQuantificationSolver[UnrollingSolver] {
-    def name = underlying.name
     override def getUnsatCore = super[Z3StringNaiveAssumptionSolver].getUnsatCore
 }
 
 class Z3StringSMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
   extends Z3StringCapableSolver(context, program, (program: Program) => new smtlib.SMTLIBZ3QuantifiedSolver(context, program)) {
-     def name: String = underlying.name
      def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
       underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
     }

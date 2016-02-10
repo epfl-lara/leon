@@ -251,9 +251,11 @@ trait Z3StringConverters  { self: Z3StringConversion =>
       mappedVariables.getB(id) match {
         case Some(idB) => idB
         case None =>
-          val new_id = FreshIdentifier(id.name, convertType(id.getType))
-          mappedVariables += (id -> new_id)
-          new_id
+          if(isTypeToConvert(id.getType)) {
+            val new_id = FreshIdentifier(id.name, convertType(id.getType))
+            mappedVariables += (id -> new_id)
+            new_id
+          } else id
       }
     }
     def isTypeToConvert(tpe: TypeTree): Boolean = 
@@ -304,10 +306,12 @@ trait Z3StringConverters  { self: Z3StringConversion =>
       mappedVariables.getA(id) match {
         case Some(idA) => idA
         case None =>
-          val old_type = convertType(id.getType)
-          val old_id = FreshIdentifier(id.name, old_type)
-          mappedVariables += (old_id -> id)
-          old_id
+          if(isTypeToConvert(id.getType)) {
+            val old_type = convertType(id.getType)
+            val old_id = FreshIdentifier(id.name, old_type)
+            mappedVariables += (old_id -> id)
+            old_id
+          } else id
       }
     }
     def convertIdToMapping(id: Identifier): (Identifier, Variable) = {
