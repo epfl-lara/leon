@@ -145,7 +145,7 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetUnion(es(0), es(1)))
       case SetDifference(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetDifference(es(0), es(1)))
-      case mg@MapApply(t1, t2) =>
+      case mg @ MapApply(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapApply(es(0), es(1)))
       case MapUnion(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapUnion(es(0), es(1)))
@@ -165,9 +165,9 @@ object Extractors {
         Some(Seq(const, body), (es: Seq[Expr]) => Assert(es(0), oerr, es(1)))
 
       /* Other operators */
-      case fi@FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
-      case mi@MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
-      case fa@Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))
+      case fi @ FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
+      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
+      case fa @ Application(caller, args) => Some(caller +: args, as => Application(as.head, as.tail))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
@@ -197,7 +197,7 @@ object Extractors {
           val l = as.length
           nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
-      case na@NonemptyArray(elems, None) =>
+      case na @ NonemptyArray(elems, None) =>
         val ArrayType(tpe) = na.getType
         val (indexes, elsOrdered) = elems.toSeq.unzip
 

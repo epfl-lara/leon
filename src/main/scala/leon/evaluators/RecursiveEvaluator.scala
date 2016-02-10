@@ -501,13 +501,15 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       FiniteSet(els.map(e), base)
 
     case l @ Lambda(_, _) =>
-      val (nl, structSubst) = normalizeStructure(matchToIfThenElse(l))
-      val mapping = variablesOf(l).map(id => structSubst(id) -> e(Variable(id))).toMap
-      val newLambda = replaceFromIDs(mapping, nl).asInstanceOf[Lambda]
-      if (!gctx.lambdas.isDefinedAt(newLambda)) {
-        gctx.lambdas += (newLambda -> nl.asInstanceOf[Lambda])
+      val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
+      val newLambda = replaceFromIDs(mapping, l).asInstanceOf[Lambda]
+      val (normalized, _) = normalizeStructure(matchToIfThenElse(newLambda))
+      val nl = normalized.asInstanceOf[Lambda]
+      if (!gctx.lambdas.isDefinedAt(nl)) {
+        val (norm, _) = normalizeStructure(matchToIfThenElse(l))
+        gctx.lambdas += (nl -> norm.asInstanceOf[Lambda])
       }
-      newLambda
+      nl
 
     case FiniteLambda(mapping, dflt, tpe) =>
       FiniteLambda(mapping.map(p => p._1.map(e) -> e(p._2)), e(dflt), tpe)

@@ -23,6 +23,12 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
     })(t)
   }
 
+  def typeParamsOf(expr: Expr): Set[TypeParameter] = {
+    var tparams: Set[TypeParameter] = Set.empty
+    ExprOps.preTraversal(e => typeParamsOf(e.getType))(expr)
+    tparams
+  }
+
   def canBeSubtypeOf(
     tpe: TypeTree,
     freeParams: Seq[TypeParameter],

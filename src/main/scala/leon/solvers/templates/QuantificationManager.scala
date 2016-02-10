@@ -441,8 +441,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         case Left(quant) if quantified(quant) =>
           subst += quant -> arg
         case Right(qam) =>
-          val argVal = arg.encoded
-          eqConstraints += (qam.encoded -> argVal)
+          eqConstraints += (qam.encoded -> arg.encoded)
       }
 
       val substituter = encoder.substitute(subst.mapValues(_.encoded))
