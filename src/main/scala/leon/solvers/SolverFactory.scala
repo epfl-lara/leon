@@ -79,10 +79,12 @@ object SolverFactory {
 
   def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "fairz3" =>
-      SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
+      // Previously:      new FairZ3Solver(ctx, program) with TimeoutSolver
+      SolverFactory(() => new Z3StringFairZ3Solver(ctx, program) with TimeoutSolver)
 
     case "unrollz3" =>
-      SolverFactory(() => new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
+      // Previously:      new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver
+      SolverFactory(() => new Z3StringUnrollingSolver(ctx, program, (program: Program) => new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
 
     case "enum"   =>
       SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
@@ -91,11 +93,12 @@ object SolverFactory {
       SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
 
     case "smt-z3" =>
-      SolverFactory(() => new Z3StringCapableSolver(ctx, program, (program: Program) =>
-                              new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program))) with TimeoutSolver)
+      // Previously:      new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver
+      SolverFactory(() => new Z3StringUnrollingSolver(ctx, program, (program: Program) => new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
 
     case "smt-z3-q" =>
-      SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
+      // Previously:      new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver
+      SolverFactory(() => new Z3StringSMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
 
     case "smt-cvc4" =>
       SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
