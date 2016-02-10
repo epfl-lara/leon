@@ -6,7 +6,7 @@ import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-import leon.purescala.TypeOps._
+import leon.purescala.TypeOps.isSubtypeOf
 import leon.purescala.Definitions._
 import leon.purescala.ExprOps._
 
