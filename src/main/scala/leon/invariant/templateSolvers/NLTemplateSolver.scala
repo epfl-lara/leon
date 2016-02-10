@@ -42,7 +42,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
-  val trackUnpackedVCCTime = true
+  val trackUnpackedVCCTime = false
 
   //print flags
   val verbose = true
@@ -445,9 +445,9 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     //for debugging
     if (this.trackUnpackedVCCTime) {
-      val upVCinst = simplifyArithmetic(TemplateInstantiator.instantiate(ctrTracker.getVC(fd).unpackedExpr, tempVarMap))
+      val upVCinst = unFlatten(simplifyArithmetic(
+          TemplateInstantiator.instantiate(ctrTracker.getVC(fd).unpackedExpr, tempVarMap)))
       Stats.updateCounterStats(atomNum(upVCinst), "UP-VC-size", "disjuncts")
-
       t1 = System.currentTimeMillis()
       val (res2, _) = SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())).solveSAT(upVCinst)
       val unpackedTime = System.currentTimeMillis() - t1

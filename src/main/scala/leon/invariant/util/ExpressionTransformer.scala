@@ -471,7 +471,7 @@ object ExpressionTransformer {
    * This is used to produce a readable formula or more efficiently
    * solvable formulas.
    */
-  def unFlatten(ine: Expr): Expr = {
+  def unFlattenWithMap(ine: Expr): (Expr, Map[Identifier,Expr]) = {
     var idMap = Map[Identifier, Expr]()
     val newe = simplePostTransform {
       case e @ Equals(Variable(id), rhs @ _) if isTemp(id, flatContext) =>
@@ -483,8 +483,10 @@ object ExpressionTransformer {
       case e => e
     }(ine)
     val closure = (e: Expr) => replaceFromIDs(idMap, e)
-    fix(closure)(newe)
+    (fix(closure)(newe), idMap)
   }
+
+  def unFlatten(ine: Expr) = unFlattenWithMap(ine)._1
 
   /**
    * convert all integer constants to real constants

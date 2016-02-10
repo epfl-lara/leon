@@ -1,6 +1,7 @@
 package leon
 package invariant.templateSolvers
 
+import scala.collection.mutable.{Map => MutableMap}
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -13,6 +14,7 @@ import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.solvers.Model
 import PredicateUtil._
+import ExpressionTransformer._
 
 abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
   ctrTracker: ConstraintTracker) {
