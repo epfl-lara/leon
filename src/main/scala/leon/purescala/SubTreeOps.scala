@@ -235,7 +235,48 @@ trait SubTreeOps[SubTree <: Tree]  {
 
     rec(expr, init)
   }
+  
+  /** Pre-transformation of the tree, with a context value from "top-down".
+    *
+    * Takes a partial function of replacements.
+    * Substitutes '''before''' recursing down the trees. The function returns
+    * an option of the new value, as well as the new context to be used for
+    * the recursion in its children. The context is "lost" when going back up,
+    * so changes made by one node will not be see by its siblings.
+    */
+  def preMapWithContext[C](f: (SubTree, C) => (Option[SubTree], C), applyRec: Boolean = false)
+                          (e: SubTree, c: C): SubTree = {
 
+    def rec(expr: SubTree, context: C): SubTree = {
+
+      val (newV, newCtx) = {
+        if(applyRec) {
+          var ctx = context
+          val finalV = fixpoint{ e: SubTree => {
+            val res = f(e, ctx)
+            ctx = res._2
+            res._1.getOrElse(e)
+          }} (expr)
+          (finalV, ctx)
+        } else {
+          val res = f(expr, context)
+          (res._1.getOrElse(expr), res._2)
+        }
+      }
+
+      val Deconstructor(es, builder) = newV
+      val newEs = es.map(e => rec(e, newCtx))
+
+      if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
+        builder(newEs).copiedFrom(newV)
+      } else {
+        newV
+      }
+
+    }
+
+    rec(e, c)
+  }
 
   /*
    * =============

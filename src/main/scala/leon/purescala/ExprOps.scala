@@ -109,6 +109,13 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => Set()
     }(expr)
   }
+  
+  def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
+    collect[FunDef] {
+      case LetDef(fds, _) => fds.toSet
+      case _ => Set()
+    }(expr)
+  }
 
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {

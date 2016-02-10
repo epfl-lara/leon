@@ -67,7 +67,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
 
-        val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
+        val iteRType = leastUpperBound(tRes.getType, eRes.getType).getOrElse(Untyped)
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varsInScope).toSeq
         val resId = FreshIdentifier("res", iteRType)
