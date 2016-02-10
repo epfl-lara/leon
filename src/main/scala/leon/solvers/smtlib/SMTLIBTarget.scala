@@ -104,6 +104,7 @@ trait SMTLIBTarget extends Interruptible {
     interpreter.eval(cmd) match {
       case err @ ErrorResponse(msg) if !hasError && !interrupted && !rawOut =>
         reporter.warning(s"Unexpected error from $targetName solver: $msg")
+        //println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
         // Store that there was an error. Now all following check()
         // invocations will return None
         addError()
