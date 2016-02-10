@@ -18,11 +18,17 @@ import invariant.util._
 import leon.solvers.Model
 import Util._
 import PredicateUtil._
+import TVarFactory._
 
 /**
  * Data associated with a call
  */
 class CallData(val guard : Variable, val parents: List[FunDef])
+
+object Formula {
+  // a context for creating blockers
+  val blockContext = newContext
+}
 
 /**
  * Representation of an expression as a set of implications.
@@ -30,6 +36,8 @@ class CallData(val guard : Variable, val parents: List[FunDef])
  * TODO: optimize the representation so that we use fewer guards.
  */
 class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
+
+  import Formula._
 
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
@@ -90,7 +98,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
               case And(atms) => atms
               case _ => Seq(arg)
             }
-            val g = TVarFactory.createTemp("b", BooleanType).toVariable
+            val g = createTemp("b", BooleanType, blockContext).toVariable
             newDisjGuards :+= g
             //println("atoms: "+atoms)
             val ctrs = getCtrsFromExprs(g, atoms)
@@ -99,7 +107,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
           }
         }
         //create a temporary for Or
-        val gor = TVarFactory.createTemp("b", BooleanType).toVariable
+        val gor = createTemp("b", BooleanType, blockContext).toVariable
         val newor = createOr(newargs)
         conjuncts += (gor -> newor)
         gor
@@ -109,7 +117,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
           arg
         } else {
           //if the expression has template variables then we separate it using guards
-          val g = TVarFactory.createTemp("b", BooleanType).toVariable
+          val g = createTemp("b", BooleanType, blockContext).toVariable
           newDisjGuards :+= g
           val ctrs = getCtrsFromExprs(g, Seq(arg))
           disjuncts += (g -> ctrs)
@@ -133,7 +141,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
           case And(atms) => atms
           case _ => Seq(f1)
         }
-        val g = TVarFactory.createTemp("b", BooleanType).toVariable
+        val g = createTemp("b", BooleanType, blockContext).toVariable
         val ctrs = getCtrsFromExprs(g, atoms)
         newDisjGuards :+= g
         disjuncts += (g -> ctrs)

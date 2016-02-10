@@ -25,19 +25,19 @@ class AxiomFactory(ctx : InferenceContext) {
     (callee.isMonotonic || callee.isDistributive)
   }
 
-  def unaryAxiom(call: Call) : (Expr,Expr) = {
+  def unaryAxiom(call: Call): (Expr, Expr) = {
     val callee = call.fi.tfd.fd
     val tfd = call.fi.tfd
 
-    if(callee.isCommutative) {
+    if (callee.isCommutative) {
       //note: commutativity is defined only for binary operations
       val Seq(a1, a2) = call.fi.args
-      val newret = TVarFactory.createTemp("cm").toVariable
-      val newfi = FunctionInvocation(tfd,Seq(a2,a1))
-      val newcall = Call(newret,newfi)
+      val newret = TVarFactory.createTempDefault("cm").toVariable
+      val newfi = FunctionInvocation(tfd, Seq(a2, a1))
+      val newcall = Call(newret, newfi)
       (tru, And(newcall.toExpr, Equals(newret, call.retexpr)))
     } else
-      throw new IllegalStateException("Call does not have unary axiom: "+call)
+      throw new IllegalStateException("Call does not have unary axiom: " + call)
   }
 
   def binaryAxiom(call1: Call, call2: Call): Seq[(Expr,Expr)] = {
@@ -81,7 +81,7 @@ class AxiomFactory(ctx : InferenceContext) {
     val r1 = call1.retexpr
     val r2 = call2.retexpr
 
-    val dret2 = TVarFactory.createTemp("dt", IntegerType).toVariable
+    val dret2 = TVarFactory.createTempDefault("dt", IntegerType).toVariable
     val dcall2 = Call(dret2, FunctionInvocation(tfd,Seq(Plus(a1,a2),b2)))
     (LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
   }

@@ -12,6 +12,7 @@ import purescala.ScalaPrinter
 import leon.invariant.factories.TemplateIdFactory
 import PredicateUtil._
 import Util._
+import TVarFactory._
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -25,6 +26,15 @@ object ExpressionTransformer {
   val tru = BooleanLiteral(true)
   val fls = BooleanLiteral(false)
   val bone = BigInt(1)
+
+  // identifier for temporaries that are generated during flattening
+  val flatContext = newContext
+  // temporaries generated during conversion of field selects to ADT constructions
+  val fieldSelContext = newContext
+  // conversion of other language constructs
+  val langContext = newContext
+
+  def createFlatTemp(name: String, tpe: TypeTree = Untyped) = createTemp(name, tpe, flatContext)
 
   /**
    * This function conjoins the conjuncts created by 'transfomer' within the clauses containing Expr.
@@ -77,7 +87,7 @@ object ExpressionTransformer {
       e match {
         // Handle asserts here. Return flattened body as the result
         case as @ Assert(pred, _, body) => {
-          val freshvar = TVarFactory.createTemp("asrtres", e.getType).toVariable
+          val freshvar = createFlatTemp("asrtres", e.getType).toVariable
           val newexpr = Equals(freshvar, body)
           val resset = transform(newexpr, insideFunction)
           (freshvar, resset._2 + resset._1)
@@ -85,7 +95,7 @@ object ExpressionTransformer {
         //handles division by constant
         case Division(lhs, rhs @ InfiniteIntegerLiteral(v)) => {
           //this models floor and not integer division
-          val quo = TVarFactory.createTemp("q", IntegerType).toVariable
+          val quo = createTemp("q", IntegerType, langContext).toVariable
           var possibs = Seq[Expr]()
           for (i <- v - 1 to 0 by -1) {
             if (i == 0) possibs :+= Equals(lhs, Times(rhs, quo))
@@ -100,8 +110,8 @@ object ExpressionTransformer {
         //handles division by variables
         case Division(lhs, rhs) => {
           //this models floor and not integer division
-          val quo = TVarFactory.createTemp("q", IntegerType).toVariable
-          val rem = TVarFactory.createTemp("r", IntegerType).toVariable
+          val quo = createTemp("q", IntegerType, langContext).toVariable
+          val rem = createTemp("r", IntegerType, langContext).toVariable
           val mult = multop(quo, rhs)
           val divsem = Equals(lhs, Plus(mult, rem))
           //TODO: here, we have to use |rhs|
@@ -111,7 +121,7 @@ object ExpressionTransformer {
         }
         case err @ Error(_, msg) => {
           //replace this by a fresh variable of the error type
-          (TVarFactory.createTemp("err", err.getType).toVariable, Set[Expr]())
+          (createTemp("err", err.getType, langContext).toVariable, Set[Expr]())
         }
         case Equals(lhs, rhs) => {
           val (nexp1, ncjs1) = transform(lhs, true)
@@ -119,7 +129,7 @@ object ExpressionTransformer {
           (Equals(nexp1, nexp2), ncjs1 ++ ncjs2)
         }
         case IfExpr(cond, thn, elze) => {
-          val freshvar = TVarFactory.createTemp("ifres", e.getType).toVariable
+          val freshvar = createTemp("ifres", e.getType, langContext).toVariable
           val newexpr = Or(And(cond, Equals(freshvar, thn)), And(Not(cond), Equals(freshvar, elze)))
           val resset = transform(newexpr, insideFunction)
           (freshvar, resset._2 + resset._1)
@@ -150,7 +160,7 @@ object ExpressionTransformer {
               val (resvalue2, cjs) = resvalue match {
                 case t: Terminal => (t, Seq())
                 case _ => {
-                  val freshres = TVarFactory.createTemp("tres", resvalue.getType).toVariable
+                  val freshres = createTemp("tres", resvalue.getType, langContext).toVariable
                   (freshres, Seq(Equals(freshres, resvalue)))
                 }
               }
@@ -195,86 +205,69 @@ object ExpressionTransformer {
      */
     def flattenFunc(e: Expr, insideFunction: Boolean): (Expr, Set[Expr]) = {
       e match {
-        case fi @ FunctionInvocation(fd, args) => {
-          //now also flatten the args. The following is slightly tricky
+        case fi @ FunctionInvocation(fd, args) =>
           val (newargs, newConjuncts) = flattenArgs(args, true)
-          //create a new equality in UIFs
           val newfi = FunctionInvocation(fd, newargs)
-          //create a new variable to represent the function
-          val freshResVar = Variable(TVarFactory.createTemp("r", fi.getType))
+          val freshResVar = Variable(createFlatTemp("r", fi.getType))
           val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))
           res
-        }
-        case inst @ IsInstanceOf(e1, cd) => {
+
+        case inst @ IsInstanceOf(e1, cd) =>
           //replace e by a variable
           val (newargs, newcjs) = flattenArgs(Seq(e1), true)
           var newConjuncts = newcjs
-
           val freshArg = newargs(0)
           val newInst = IsInstanceOf(freshArg, cd)
-          val freshResVar = Variable(TVarFactory.createTemp("ci", inst.getType))
+          val freshResVar = Variable(createFlatTemp("ci", inst.getType))
           newConjuncts += Equals(freshResVar, newInst)
           (freshResVar, newConjuncts)
-        }
-        case cs @ CaseClassSelector(cd, e1, sel) => {
+
+        case cs @ CaseClassSelector(cd, e1, sel) =>
           val (newargs, newcjs) = flattenArgs(Seq(e1), true)
           var newConjuncts = newcjs
-
           val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
-          val freshResVar = Variable(TVarFactory.createTemp("cs", cs.getType))
+          val freshResVar = Variable(createFlatTemp("cs", cs.getType))
           newConjuncts += Equals(freshResVar, newCS)
-
           (freshResVar, newConjuncts)
-        }
-        case ts @ TupleSelect(e1, index) => {
+
+        case ts @ TupleSelect(e1, index) =>
           val (newargs, newcjs) = flattenArgs(Seq(e1), true)
           var newConjuncts = newcjs
-
           val freshArg = newargs(0)
           val newTS = TupleSelect(freshArg, index)
-          val freshResVar = Variable(TVarFactory.createTemp("ts", ts.getType))
+          val freshResVar = Variable(createFlatTemp("ts", ts.getType))
           newConjuncts += Equals(freshResVar, newTS)
-
           (freshResVar, newConjuncts)
-        }
-        case cc @ CaseClass(cd, args) => {
 
+        case cc @ CaseClass(cd, args) =>
           val (newargs, newcjs) = flattenArgs(args, true)
           var newConjuncts = newcjs
-
           val newCC = CaseClass(cd, newargs)
-          val freshResVar = Variable(TVarFactory.createTemp("cc", cc.getType))
+          val freshResVar = Variable(createFlatTemp("cc", cc.getType))
           newConjuncts += Equals(freshResVar, newCC)
-
           (freshResVar, newConjuncts)
-        }
+
         case tp @ Tuple(args) => {
           val (newargs, newcjs) = flattenArgs(args, true)
           var newConjuncts = newcjs
-
           val newTP = Tuple(newargs)
-          val freshResVar = Variable(TVarFactory.createTemp("tp", tp.getType))
-          // if(freshResVar.id.toString == "tp6"){
-          //   println("Creating temporary tp6 type: "+tp.getType+" expr: "+tp)
-          //   throw new IllegalStateException("")
-          // }
+          val freshResVar = Variable(createFlatTemp("tp", tp.getType))
           newConjuncts += Equals(freshResVar, newTP)
-
           (freshResVar, newConjuncts)
         }
         case SetUnion(_, _) | ElementOfSet(_, _) | SubsetOf(_, _) =>
           val Operator(args, op) = e
           val (Seq(a1, a2), newcjs) = flattenArgs(args, true)
           val newexpr = op(Seq(a1, a2))
-          val freshResVar = Variable(TVarFactory.createTemp("set", e.getType))
+          val freshResVar = Variable(createFlatTemp("set", e.getType))
           (freshResVar, newcjs + Equals(freshResVar, newexpr))
 
         case fs @ FiniteSet(es, typ) =>
           val args = es.toSeq
           val (nargs, newcjs) = flattenArgs(args, true)
           val newexpr = FiniteSet(nargs.toSet, typ)
-          val freshResVar = Variable(TVarFactory.createTemp("fset", fs.getType))
+          val freshResVar = Variable(createFlatTemp("fset", fs.getType))
           (freshResVar, newcjs + Equals(freshResVar, newexpr))
 
         case _ => conjoinWithinClause(e, flattenFunc, insideFunction)
@@ -286,25 +279,20 @@ object ExpressionTransformer {
       val newargs = args.map {
         case v: Variable => v
         case r: ResultVariable => r
-        case arg => {
+        case arg =>
           val (nexpr, ncjs) = flattenFunc(arg, insideFunction)
-
           newConjuncts ++= ncjs
-
           nexpr match {
             case v: Variable => v
             case r: ResultVariable => r
-            case _ => {
-              val freshArgVar = Variable(TVarFactory.createTemp("arg", arg.getType))
+            case _ =>
+              val freshArgVar = Variable(createFlatTemp("arg", arg.getType))
               newConjuncts += Equals(freshArgVar, nexpr)
               freshArgVar
-            }
           }
-        }
       }
       (newargs, newConjuncts)
     }
-
     val (nexp, ncjs) = flattenFunc(inExpr, false)
     if (ncjs.nonEmpty) {
       createAnd(nexp +: ncjs.toSeq)
@@ -339,10 +327,6 @@ object ExpressionTransformer {
    */
   def TransformNot(expr: Expr, retainNEQ: Boolean = false): Expr = { // retainIff : Boolean = false
     def nnf(inExpr: Expr): Expr = {
-//      if(inExpr.getType == Untyped){
-//        testHelp(inExpr)
-//        println(s"Warning: $inExpr is untyped")
-//      }
       if (inExpr.getType != BooleanType) inExpr
       else {
         inExpr match {
@@ -440,7 +424,7 @@ object ExpressionTransformer {
       if (fld.id == ccfld) r
       else {
         //create a dummy identifier there
-        TVarFactory.createDummy(fld.getType).toVariable
+        createTemp("fld", fld.getType, fieldSelContext).toVariable
       }
     })
     Equals(ccvar, CaseClass(cd, args))
@@ -458,7 +442,7 @@ object ExpressionTransformer {
       if (i == index) r
       else {
         //create a dummy identifier there (note that here we have to use i-1)
-        TVarFactory.createDummy(tupleType.bases(i - 1)).toVariable
+        createTemp("fld", tupleType.bases(i - 1), fieldSelContext).toVariable
       }
     })
     Equals(tpvar, Tuple(args))
@@ -483,24 +467,23 @@ object ExpressionTransformer {
   }
 
   /**
-   * This is the inverse operation of flattening, this is mostly
-   * used to produce a readable formula.
-   * Freevars is a set of identifiers that are program variables
-   * This assumes that temporary identifiers (which are not freevars) are not reused across clauses.
+   * This is the inverse operation of flattening.
+   * This is used to produce a readable formula or more efficiently
+   * solvable formulas.
    */
-  def unFlatten(ine: Expr, freevars: Set[Identifier]): Expr = {
-    var tempMap = Map[Expr, Expr]()
-    val newinst = simplePostTransform {
-      case e @ Equals(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
-        if (tempMap.contains(v)) e
+  def unFlatten(ine: Expr): Expr = {
+    var idMap = Map[Identifier, Expr]()
+    val newe = simplePostTransform {
+      case e @ Equals(Variable(id), rhs @ _) if isTemp(id, flatContext) =>
+        if (idMap.contains(id)) e
         else {
-          tempMap += (v -> rhs)
+          idMap += (id -> rhs)
           tru
         }
       case e => e
     }(ine)
-    val closure = (e: Expr) => replace(tempMap, e)
-    fix(closure)(newinst)
+    val closure = (e: Expr) => replaceFromIDs(idMap, e)
+    fix(closure)(newe)
   }
 
   /**
@@ -532,7 +515,6 @@ object ExpressionTransformer {
    * TODO: fix this
    */
   def isSubExpr(key: Expr, expr: Expr): Boolean = {
-
     var found = false
     simplePostTransform {
       case e if (e == key) =>
@@ -546,7 +528,6 @@ object ExpressionTransformer {
    * Some simplification rules (keep adding more and more rules)
    */
   def simplify(expr: Expr): Expr = {
-
     //Note: some simplification are already performed by the class constructors (see Tree.scala)
     simplePostTransform {
       case Equals(lhs, rhs) if (lhs == rhs) => tru
@@ -600,8 +581,6 @@ object ExpressionTransformer {
         else args.forall(arg => uniOP(arg, 2))
       }
       case t: Terminal => true
-      /*case u @ UnaryOperator(e1, op) => uniOP(e1, seen)
-      case b @ BinaryOperator(e1, e2, op) => uniOP(e1, seen) && uniOP(e2, seen)*/
       case n @ Operator(args, op) => args.forall(arg => uniOP(arg, seen))
     }
 

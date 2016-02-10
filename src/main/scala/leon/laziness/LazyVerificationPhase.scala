@@ -134,7 +134,7 @@ object LazyVerificationPhase {
     val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
     if (useOrb) {
       // create an inference context
-      val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds"))
+      val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds","--solvers=smt-cvc4"))
       val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
         inferOpts.options ++ checkCtx.options)
       val inferctx = new InferenceContext(p,  ctxForInf)

@@ -42,10 +42,10 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
-  val trackUnpackedVCCTime = false
+  val trackUnpackedVCCTime = true
 
   //print flags
-  val verbose = false
+  val verbose = true
   val printCounterExample = false
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false
@@ -60,7 +60,6 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   private val startFromEarlierModel = true
   private val disableCegis = true
   private val useIncrementalSolvingForVCs = true
-  private val useCVCToCheckVCs = false
   private val usePortfolio = false // portfolio has a bug in incremental solving
 
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
@@ -78,15 +77,14 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     ctrTracker.getVC(fd).splitParamPart
   }
 
-  def getSolver =
-    if(this.usePortfolio) {
-      new PortfolioSolver(leonctx, Seq(new SMTLIBCVC4Solver(leonctx, program),
-          new SMTLIBZ3Solver(leonctx, program))) with TimeoutSolver
-    }
-    else if (this.useCVCToCheckVCs)
-      new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
-    else
-      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+  val solverFactory =
+    if (this.usePortfolio) {
+      if (this.useIncrementalSolvingForVCs)
+        throw new IllegalArgumentException("Cannot perform incremental solving with portfolio solvers!")
+      SolverFactory(() => new PortfolioSolver(leonctx, Seq(new SMTLIBCVC4Solver(leonctx, program),
+        new SMTLIBZ3Solver(leonctx, program))) with TimeoutSolver)
+    } else
+      SolverFactory.uninterpreted(leonctx, program)
 
   def initVCSolvers = {
     funcVCs.keys.foreach { fd =>
@@ -100,7 +98,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         throw new IllegalStateException("Non-param Part has both integers and reals: " + rest)
 
       if (!ctx.abort) { // this is required to ensure that solvers are not created after interrupts
-        val vcSolver = getSolver
+        val vcSolver = solverFactory.getNewSolver()
         vcSolver.assertCnstr(rest)
 
         if (debugIncrementalVC) {
@@ -393,7 +391,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val solver =
       if (this.useIncrementalSolvingForVCs) vcSolvers(fd)
-      else getSolver
+      else solverFactory.getNewSolver()
     val instExpr = if (this.useIncrementalSolvingForVCs) {
       val instParamPart = instantiateTemplate(this.paramParts(fd), tempVarMap)
       And(instParamPart, disableCounterExs)
@@ -451,7 +449,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       Stats.updateCounterStats(atomNum(upVCinst), "UP-VC-size", "disjuncts")
 
       t1 = System.currentTimeMillis()
-      val (res2, _) = SimpleSolverAPI(SolverFactory(() => getSolver)).solveSAT(upVCinst)
+      val (res2, _) = SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())).solveSAT(upVCinst)
       val unpackedTime = System.currentTimeMillis() - t1
       if (res != res2) {
         throw new IllegalStateException("Unpacked VC produces different result: " + upVCinst)

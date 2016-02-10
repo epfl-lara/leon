@@ -20,18 +20,13 @@ object TemplateInstantiator {
   def getAllInvariants(model: Model, templates: Map[FunDef, Expr], prettyInv: Boolean = false): Map[FunDef, Expr] = {
     val invs = templates.map((pair) => {
       val (fd, t) = pair
-      //flatten the template
-      val freevars = variablesOf(t)
       val template = ExpressionTransformer.FlattenFunction(t)
-
       val tempvars = getTemplateVars(template)
       val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
         (v, model(v.id))
       }).toMap
-
       val instTemplate = instantiate(template, tempVarMap, prettyInv)
-      //now unflatten it
-      val comprTemp = ExpressionTransformer.unFlatten(instTemplate, freevars)
+      val comprTemp = ExpressionTransformer.unFlatten(instTemplate)
       (fd, comprTemp)
     })
     invs

@@ -3,26 +3,33 @@ package invariant.util
 
 import purescala.Common._
 import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet}
+import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap}
 
 object TVarFactory {
 
-  val temporaries = MutableSet[Identifier]()
-  //these are dummy identifiers used in 'CaseClassSelector' conversion
-  val dummyIds = MutableSet[Identifier]()
+  type Context = Int
+  val temporaries = MutableMap[Context, MutableSet[Identifier]]()
+  private var context: Context = 0
 
-  def createTemp(name: String, tpe: TypeTree = Untyped): Identifier = {
+  def newContext = {
+    context += 1
+    temporaries += (context -> MutableSet())
+    context
+  }
+  val defaultContext = newContext
+
+  def createTemp(name: String, tpe: TypeTree = Untyped, context: Context): Identifier = {
     val freshid = FreshIdentifier(name, tpe, true)
-    temporaries.add(freshid)
+    temporaries(context) += freshid
     freshid
   }
 
-  def createDummy(tpe: TypeTree): Identifier = {
-    val freshid = FreshIdentifier("dy", tpe, true)
-    dummyIds.add(freshid)
+  def createTempDefault(name: String, tpe: TypeTree = Untyped): Identifier = {
+    val freshid = FreshIdentifier(name, tpe, true)
+    temporaries(defaultContext) += freshid
     freshid
   }
 
-  def isTemporary(id: Identifier): Boolean = temporaries.contains(id)
-  def isDummy(id: Identifier): Boolean = dummyIds.contains(id)
+  def isTemp(id: Identifier, context: Context): Boolean =
+    temporaries.contains(context) && temporaries(context)(id)
 }

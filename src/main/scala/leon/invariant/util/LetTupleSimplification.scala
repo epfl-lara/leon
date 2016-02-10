@@ -12,10 +12,10 @@ import java.io._
 import purescala.ScalaPrinter
 import leon.utils._
 import PredicateUtil._
-
 import invariant.structure.Call
 import invariant.structure.FunctionUtils._
 import leon.transformations.InstUtil._
+import TVarFactory._
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -29,6 +29,8 @@ object LetTupleSimplification {
   val tru = BooleanLiteral(true)
   val fls = BooleanLiteral(false)
   val bone = BigInt(1)
+  // fresh ids created during simplification
+  val simpContext = newContext
 
   def letSanityChecks(ine: Expr) = {
     simplePostTransform(_ match {
@@ -62,7 +64,7 @@ object LetTupleSimplification {
             case TupleType(argTypes) =>
               var freshBinders = Set[Identifier]()
               def freshBinder(typ: TypeTree) = {
-                val freshid = TVarFactory.createTemp(binderId.name, typ)
+                val freshid = createTemp(binderId.name, typ, simpContext)
                 freshBinders += freshid
                 freshid.toVariable
               }
@@ -235,7 +237,7 @@ object LetTupleSimplification {
               //here we can use 'b' in 'body'
               Let(id, v, body(b))
             case _ =>
-              val mt = TVarFactory.createTemp("mt", value.getType)
+              val mt = createTemp("mt", value.getType, simpContext)
               Let(mt, value, body(mt.toVariable))
           }
         }

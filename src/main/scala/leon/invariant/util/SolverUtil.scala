@@ -70,7 +70,7 @@ object SolverUtil {
     val solver = new ExtendedUFSolver(ctx, prog)
     val newe = simplePostTransform {
       case e@(And(_) | Or(_)) => {
-        val v = TVarFactory.createTemp("a", BooleanType).toVariable
+        val v = TVarFactory.createTempDefault("a", BooleanType).toVariable
         newEqs += (v -> e)
         val newe = Equals(v, e)
 
@@ -106,8 +106,7 @@ object SolverUtil {
 
     solver.free
     //cores
-    ExpressionTransformer.unFlatten(cores,
-      variablesOf(ine).filterNot(TVarFactory.isTemporary _))
+    ExpressionTransformer.unFlatten(cores)
   }
 
   //tests if the solver uses nlsat
