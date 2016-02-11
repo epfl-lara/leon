@@ -14,7 +14,7 @@ case class DepthBoundedGrammar[L](g: ExpressionGrammar[NonTerminal[L]], bound: I
         Nil
       } else {
         List (
-          nonTerminal(gen.subTrees.map(sl => sl.copy(depth = l.depth.map(_+1).orElse(Some(1)))), gen.builder)
+          gen.copy(subTrees = gen.subTrees.map(sl => sl.copy(depth = l.depth.map(_+1).orElse(Some(1)))))
         )
       }
   }

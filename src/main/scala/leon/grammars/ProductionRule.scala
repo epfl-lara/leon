@@ -14,5 +14,5 @@ import bonsai.Generator
  *  @tparam T The type of nonterminal symbols of the grammar
  *  @tparam R The type of syntax trees of the grammar
  */
-case class ProductionRule[T, R](override val subTrees: Seq[T], override val builder: Seq[R] => R, tag: Tags.Tag, cost: Int = 1)
+case class ProductionRule[T, R](override val subTrees: Seq[T], override val builder: Seq[R] => R, tag: Tags.Tag, cost: Int)
   extends Generator[T,R](subTrees, builder)

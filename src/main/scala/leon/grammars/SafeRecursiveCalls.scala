@@ -23,9 +23,10 @@ case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Expr) extends Express
         val freeSeq = free.toSeq
 
         nonTerminal(
-          freeSeq.map(_.getType), { sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi) },
+          freeSeq.map(_.getType),
+          sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi),
           Tags.tagOf(fi.tfd.fd, isSafe = true),
-          2
+          formulaSize(fi) - freeSeq.size
         )
     }}
   }
