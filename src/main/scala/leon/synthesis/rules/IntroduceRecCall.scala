@@ -13,7 +13,7 @@ import purescala.Common._
 import Witnesses.Terminating
 import utils.Helpers.terminatingCalls
 
-case object IntroduceRecCall extends NormalizingRule("Introduce rec. calls") {
+case object IntroduceRecCall extends Rule("Introduce rec. calls") {
 
   private class NoChooseEvaluator(ctx: LeonContext, prog: Program) extends DefaultEvaluator(ctx, prog) {
     override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
@@ -34,11 +34,11 @@ case object IntroduceRecCall extends NormalizingRule("Introduce rec. calls") {
 
       val newWs = {
         val TopLevelAnds(ws) = p.ws
-        andJoin(ws filter {
+        andJoin(ws map {
           case Terminating(tfd, _) if tfd == newCall.tfd =>
-            false
-          case _ =>
-            true
+            Terminating(tfd, newCall.args)
+          case other =>
+            other
         })
       }
 

@@ -14,7 +14,7 @@ import leon.purescala.Types.Typed
 case class EmbeddedGrammar[Ti <: Typed, To <: Typed](innerGrammar: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
   def computeProductions(t: To)(implicit ctx: LeonContext): Seq[Prod] = {
     innerGrammar.computeProductions(oToi(t)).map { innerGen =>
-      nonTerminal(innerGen.subTrees.map(iToo), innerGen.builder, innerGen.tag)
+      innerGen.copy(subTrees = innerGen.subTrees.map(iToo))
     }
   }
 }

@@ -79,12 +79,10 @@ case class TaggedGrammar[T <: Typed](g: ExpressionGrammar[T]) extends Expression
       .filterNot { innerGen => exclude(t.tag, t.pos)(innerGen.tag) }
       .flatMap   { innerGen =>
 
-        def nt(isConst: Int => Option[Boolean]) = nonTerminal(
-          innerGen.subTrees.zipWithIndex.map {
+        def nt(isConst: Int => Option[Boolean]) = innerGen.copy(
+          subTrees = innerGen.subTrees.zipWithIndex.map {
             case (t, pos) => TaggedNonTerm(t, innerGen.tag, pos, isConst(pos))
-          },
-          innerGen.builder,
-          innerGen.tag
+          }
         )
 
         def powerSet[A](t: Set[A]): Set[Set[A]] = {

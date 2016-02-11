@@ -7,7 +7,6 @@ import Expressions._
 import Common._
 import Types._
 import Constructors._
-import Definitions.{Program, AbstractClassDef, CaseClassDef}
 
 object Extractors {
 

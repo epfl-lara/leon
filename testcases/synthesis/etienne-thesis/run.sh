@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=30 --synthesis --cegis:maxsize=5 $1"
+    cmd="./leon --debug=report --timeout=30 --synthesis --cegis:maxsize=7 $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;

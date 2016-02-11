@@ -2,11 +2,10 @@
 
 package leon
 package grammars
-package transformers
 
 import purescala.Expressions.Expr
+import purescala.TypeOps._
 import purescala.Types.TypeTree
-import purescala.TypeOps.isSubtypeOf
 
 /** Generates one production rule for each expression in a sequence that has compatible type */
 case class OneOf(inputs: Seq[Expr]) extends ExpressionGrammar[TypeTree] {

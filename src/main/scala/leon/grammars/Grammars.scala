@@ -7,7 +7,6 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.TypeOps._
-import transformers.OneOf
 
 import synthesis.{SynthesisContext, Problem}
 
