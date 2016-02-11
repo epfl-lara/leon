@@ -315,7 +315,7 @@ object DefOps {
       )
     })
     for(fd <- newP.definedFunctions) {
-      if(ExprOps.exists{ case FunctionInvocation(TypedFunDef(fd, targs), fargs) => fdMapCache(fd) != None case _ => false }(fd.fullBody)) {
+      if(ExprOps.exists{ case FunctionInvocation(TypedFunDef(fd, targs), fargs) => fdMapCache.getOrElse(fd, None) != None case _ => false }(fd.fullBody)) {
         fd.fullBody = replaceFunCalls(fd.fullBody, fdMap, fiMapF)
       }
     }

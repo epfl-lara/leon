@@ -11,6 +11,7 @@ import leon.utils.Bijection
 import leon.purescala.DefOps
 import leon.purescala.TypeOps
 import leon.purescala.Extractors.Operator
+import leon.evaluators.EvaluationResults
 
 object StringEcoSystem {
   private def withIdentifier[T](name: String, tpe: TypeTree = Untyped)(f: Identifier => T): T = {
@@ -236,6 +237,20 @@ trait Z3StringConverters  { self: Z3StringConversion =>
           }
         case e => e
       })
+    }
+    
+    def convertModel(model: Model): Model = {
+      new Model(model.ids.map{i =>
+        val id = convertId(i)
+        id -> convertExpr(model(i))(Map())
+      }.toMap)
+    }
+    
+    def convertResult(result: EvaluationResults.Result[Expr]) = {
+      result match {
+        case EvaluationResults.Successful(e) => EvaluationResults.Successful(convertExpr(e)(Map()))
+        case result => result
+      }
     }
   }
   
