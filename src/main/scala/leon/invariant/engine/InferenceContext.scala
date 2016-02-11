@@ -33,7 +33,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val withmult = leonContext.findOption(optWithMult).getOrElse(false)
   val usereals = leonContext.findOption(optUseReals).getOrElse(false)
   val useCegis: Boolean = leonContext.findOption(optCegis).getOrElse(false)
-  val dumpStats = false
+  val dumpStats = leonContext.findOption(optStats).getOrElse(false)
 
   // the following options have default values
   val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(30L) // in secs

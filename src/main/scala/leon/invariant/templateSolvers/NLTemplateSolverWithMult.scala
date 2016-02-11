@@ -25,16 +25,16 @@ class NLTemplateSolverWithMult(ctx: InferenceContext, program: Program, rootFun:
     nlvc
   }
 
-  override def splitVC(fd: FunDef): (Expr, Expr) = {
-    val (paramPart, rest) = ctrTracker.getVC(fd).splitParamPart
-    (multToTimes(paramPart), multToTimes(rest))
+  override def splitVC(fd: FunDef) = {
+    val (paramPart, rest, modCons) = super.splitVC(fd) 
+    (multToTimes(paramPart), multToTimes(rest), modCons)
   }
 
-  override def axiomsForTheory(formula: Formula, calls: Set[Call], model: Model): Seq[Constraint] = {
+  override def axiomsForTheory(formula: Formula, calls: Set[Call], model: LazyModel): Seq[Constraint] = {
 
     //in the sequel we instantiate axioms for multiplication
-    val inst1 = unaryMultAxioms(formula, calls, predEval(model))
-    val inst2 = binaryMultAxioms(formula, calls, predEval(model))
+    val inst1 = unaryMultAxioms(formula, calls, linearEval.predEval(model))
+    val inst2 = binaryMultAxioms(formula, calls, linearEval.predEval(model))
     val multCtrs = (inst1 ++ inst2).flatMap {
       case And(args) => args.map(ConstraintUtil.createConstriant _)
       case e         => Seq(ConstraintUtil.createConstriant(e))

@@ -22,11 +22,12 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   val optNLTimeout = LeonLongOptionDef("nlTimeout", "Timeout after T seconds when trying to solve nonlinear constraints", 20, "s")
   val optDisableInfer = LeonFlagOptionDef("disableInfer", "Disable automatic inference of auxiliary invariants", false)
   val optAssumePre = LeonFlagOptionDef("assumepreInf", "Assume preconditions of callees during unrolling", false)
+  val optStats = LeonFlagOptionDef("stats", "Tracks and prints detailed statistics", false)
 
   override val definedOptions: Set[LeonOptionDef[Any]] =
     Set(optFunctionUnroll, optWithMult, optUseReals,
         optMinBounds, optInferTemp, optCegis, optStatsSuffix, optVCTimeout,
-        optNLTimeout, optDisableInfer, optAssumePre)
+        optNLTimeout, optDisableInfer, optAssumePre, optStats)
 
   def apply(ctx: LeonContext, program: Program): InferenceReport = {
     val inferctx = new InferenceContext(program,  ctx)

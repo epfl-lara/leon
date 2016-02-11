@@ -1,0 +1,48 @@
+b376 == (!ci50 && ci50 == l1.isInstanceOf[Cons0]) && 
+b388 == (r219 - r220 <= BigInt(0) && r217 == (ts53, fld42) && r219 == size23(ts53) && r220 == size23(cs17)) && 
+b382 == (ci48 && ci48 == l1.isInstanceOf[Cons0] && ci49 && l1 == Cons0(fld38, cs14) && ci49 == cs14.isInstanceOf[Nil0] && ifres24 == tp8 && cc4 == Nil0() && arg846 + BigInt(-6) == BigInt(0) && tp8 == (cc4, arg846)) && 
+b387 == (cs17 == cc7 && cc7 == Nil0()) && 
+b385 == (-ts52 + BigInt(8) < BigInt(0)) && 
+b379 == (b389 && ci52 && ci52 == l1.isInstanceOf[Cons0] && ifres25 == tp9 && cc5 == Cons0(cs16, ts50) && arg847 == Cons0(cs16, fld34) && tp9 == (cc5, arg848) && e20 == (ts50, fld35) && e20 == (fld36, ts51) && (arg848 - ts51) + BigInt(-9) == BigInt(0) && arg847 == l1 && e20 == r217 && arg849 == l1 && arg849 == Cons0(fld37, cs17) && r217 == removeLast-time10(cs17)) && 
+b383 == (b378 && ifres24 == ifres25 && b381) && 
+b386 == (l1 != cc3 && cc3 == Nil0() && res117 == tp7 && bd1 == (ts48, fld39) && bd1 == (fld40, ts49) && tp7 == (ts48, ts49) && b384 && bd1 == ifres24 && b385 && res117 == (fld41, ts52) && r218 == size23(l1)) && 
+b377 == (!ci51 && l1 == Cons0(fld33, cs15) && ci51 == cs15.isInstanceOf[Nil0]) && 
+b380 == (!ci53 && ci53 == l1.isInstanceOf[Cons0] && ifres25 == tp10 && cc6 == Nil0() && arg850 + BigInt(-6) == BigInt(0) && tp10 == (cc6, arg850)) && 
+b378 == (b376 || b377) && 
+b381 == (b379 || b380) && 
+b384 == (b382 || b383) && 
+b389 == (b387 || b388) && 
+b386
+
+
+b376 == !l1.isInstanceOf[Cons0] && 
+b388 == (size23(ts53) - size23(Nil0()) <= BigInt(0)) &&
+b382 == (l1.isInstanceOf[Cons0] && cs14.isInstanceOf[Nil0] && l1 == Cons0(fld38, cs14) && ifres24 == (Nil0(), arg846) && arg846 + BigInt(-6) == BigInt(0)) && 
+b387 == (true && true) && 
+b385 == (-ts52 + BigInt(8) < BigInt(0)) && 
+b379 == (b389 && l1.isInstanceOf[Cons0] && ifres25 == (Cons0(cs16, ts50), arg848) && e20 == (ts50, fld35) && e20 == (fld36, ts51) && (arg848 - ts51) + BigInt(-9) == BigInt(0) && Cons0(cs16, fld34) == l1 && e20 == (ts53, fld42) && l1 == Cons0(fld37, Nil0()) && (ts53, fld42) == removeLast-time10(Nil0())) && 
+b383 == (b378 && ifres24 == ifres25 && b381) && 
+b386 == (l1 != Nil0() && res117 == (ts48, ts49) && bd1 == (ts48, fld39) && bd1 == (fld40, ts49) && b384 && bd1 == ifres24 && b385 && res117 == (fld41, ts52)) && 
+b377 == (!cs15.isInstanceOf[Nil0] && l1 == Cons0(fld33, cs15)) && 
+b380 == (!l1.isInstanceOf[Cons0] && ifres25 == (Nil0(), arg850) && arg850 + BigInt(-6) == BigInt(0)) && 
+b378 == (b376 || b377) && 
+b381 == (b379 || b380) && 
+b384 == (b382 || b383) && 
+b389 == (b387 || b388) && 
+b386
+
+
+b389 == ((cs17 == Nil0()) || (size23(ts53) - size23(cs17) <= BigInt(0) && r217 == (ts53, fld42))) && 
+
+b379 == (b389 && l1.isInstanceOf[Cons0] && ifres25 == (Cons0(cs16, ts50), arg848) && e20 == (ts50, fld35) && e20 == (fld36, ts51) && (arg848 - ts51) + BigInt(-9) == BigInt(0) && Cons0(cs16, fld34) == l1 && e20 == (ts53, fld42) && l1 == Cons0(fld37, Nil0()) && (ts53, fld42) == removeLast-time10(Nil0())) && 
+
+b380 == (!l1.isInstanceOf[Cons0] && ifres25 == (Nil0(), arg850) && arg850 + BigInt(-6) == BigInt(0)) && 
+
+(l1 != Nil0() && res117 == (ts48, ts49) && bd1 == (ts48, fld39) && bd1 == (fld40, ts49) && ((l1.isInstanceOf[Cons0] && cs14.isInstanceOf[Nil0] && l1 == Cons0(fld38, cs14) && ifres24 == (Nil0(), arg846) && arg846 + BigInt(-6) == BigInt(0)) || 
+((!l1.isInstanceOf[Cons0] || (!cs15.isInstanceOf[Nil0] && l1 == Cons0(fld33, cs15))) && ifres24 == ifres25 && 
+(b379 || b380))) 
+&& bd1 == ifres24 && 
+(-ts52 + BigInt(8) < BigInt(0)) && res117 == (fld41, ts52)) &&  
+
+What happenned to 
+???? r218 == size23(l1)) ???

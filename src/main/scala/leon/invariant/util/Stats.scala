@@ -82,6 +82,19 @@ object Stats {
       })
     })
   }
+
+  def time[T](code: => T)(cont: Long => Unit): T = {
+    var t1 = System.currentTimeMillis()
+    val r = code
+    cont((System.currentTimeMillis() - t1))
+    r
+  }
+
+  def getTime[T](code: => T): (T, Long) = {
+    var t1 = System.currentTimeMillis()
+    val r = code
+    (r, (System.currentTimeMillis() - t1))
+  }
 }
 
 /**

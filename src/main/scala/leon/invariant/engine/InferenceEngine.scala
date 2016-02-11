@@ -14,6 +14,7 @@ import transformations._
 import leon.utils._
 import Util._
 import ProgramUtil._
+import Stats._
 
 /**
  * @author ravi
@@ -50,46 +51,43 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     val reporter = ctx.reporter
     val program = ctx.inferProgram
     reporter.info("Running Inference Engine...")
-
-    //register a shutdownhook
-    if (ctx.dumpStats) {
+    if (ctx.dumpStats) { //register a shutdownhook
       sys.ShutdownHookThread({ dumpStats(ctx.statsSuffix) })
     }
-    val t1 = System.currentTimeMillis()
-    //compute functions to analyze by sorting based on topological order (this is an ascending topological order)
-    val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
-    val functionsToAnalyze = ctx.functionsToInfer match {
-      case Some(rootfuns) =>
-        val rootset = rootfuns.toSet
-        val rootfds = program.definedFunctions.filter(fd => rootset(InstUtil.userFunctionName(fd)))
-        val relfuns = rootfds.flatMap(callgraph.transitiveCallees _).toSet
-        callgraph.topologicalOrder.filter { fd => relfuns(fd) }
-      case _ =>
-        callgraph.topologicalOrder
-    }
-    //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
     var results: Map[FunDef, InferenceCondition] = null
-    if (!ctx.useCegis) {
-      results = analyseProgram(program, functionsToAnalyze, defaultVCSolver, progressCallback)
-      //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
-    } else {
-      var remFuncs = functionsToAnalyze
-      var b = 200
-      val maxCegisBound = 200
-      breakable {
-        while (b <= maxCegisBound) {
-          Stats.updateCumStats(1, "CegisBoundsTried")
-          val succeededFuncs = analyseProgram(program, remFuncs, defaultVCSolver, progressCallback)
-          remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
-          if (remFuncs.isEmpty) break
-          b += 5 //increase bounds in steps of 5
-        }
-        //println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
+    time {
+      //compute functions to analyze by sorting based on topological order (this is an ascending topological order)
+      val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
+      val functionsToAnalyze = ctx.functionsToInfer match {
+        case Some(rootfuns) =>
+          val rootset = rootfuns.toSet
+          val rootfds = program.definedFunctions.filter(fd => rootset(InstUtil.userFunctionName(fd)))
+          val relfuns = rootfds.flatMap(callgraph.transitiveCallees _).toSet
+          callgraph.topologicalOrder.filter { fd => relfuns(fd) }
+        case _ =>
+          callgraph.topologicalOrder
       }
-    }
-    val t2 = System.currentTimeMillis()
-    Stats.updateCumTime(t2 - t1, "TotalTime")
-    //dump stats
+      //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
+
+      if (!ctx.useCegis) {
+        results = analyseProgram(program, functionsToAnalyze, defaultVCSolver, progressCallback)
+        //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
+      } else {
+        var remFuncs = functionsToAnalyze
+        var b = 200
+        val maxCegisBound = 200
+        breakable {
+          while (b <= maxCegisBound) {
+            Stats.updateCumStats(1, "CegisBoundsTried")
+            val succeededFuncs = analyseProgram(program, remFuncs, defaultVCSolver, progressCallback)
+            remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
+            if (remFuncs.isEmpty) break
+            b += 5 //increase bounds in steps of 5
+          }
+          //println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
+        }
+      }
+    } { totTime => updateCumTime(totTime, "TotalTime") }
     if (ctx.dumpStats) {
       reporter.info("- Dumping statistics")
       dumpStats(ctx.statsSuffix)
@@ -102,13 +100,15 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
 
   def dumpStats(statsSuffix: String) = {
     //pick the module id.
-    val modid = ctx.inferProgram.modules.last.id
-    val pw = new PrintWriter(modid + statsSuffix + ".txt")
+    val modid = ctx.inferProgram.modules.find(_.definedFunctions.exists(!_.isLibrary)).get.id
+    val filename = modid + statsSuffix + ".txt"
+    val pw = new PrintWriter(filename)
     Stats.dumpStats(pw)
     SpecificStats.dumpOutputs(pw)
     if (ctx.tightBounds) {
       SpecificStats.dumpMinimizationStats(pw)
     }
+    ctx.reporter.info("Stats dumped to file: "+filename)
   }
 
   def defaultVCSolver =
@@ -169,9 +169,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
             // for stats
             Stats.updateCounter(1, "procs")
             val solver = vcSolver(funDef, prog)
-            val t1 = System.currentTimeMillis()
-            val infRes = solver()
-            val funcTime = (System.currentTimeMillis() - t1) / 1000.0
+            val (infRes, funcTime) = getTime { solver() }
             infRes match {
               case Some(InferResult(true, model, inferredFuns)) =>
                 val origFds = inferredFuns.map { fd =>
@@ -193,11 +191,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                   case fd if !invs.contains(fd) && fd.hasTemplate =>
                     fd -> fd.getTemplate
                 }.toMap
-                /*println("Inferred Funs: " + inferredFuns)
-                println("inv map: " + invs)
-                println("Templ map: " + funToTmpl)*/
                 val nextProg = assignTemplateAndCojoinPost(funToTmpl, prog, invs)
-
                 // create a inference condition for reporting
                 var first = true
                 inferredFuns.foreach { fd =>
@@ -221,7 +215,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                         ic
                       } else {
                         val ic = new InferenceCondition(Seq(inv), origFd)
-                        ic.time = if (first) Some(funcTime) else Some(0.0)
+                        ic.time = if (first) Some(funcTime / 1000.0) else Some(0.0)
                         // update analyzed set
                         analyzedSet += (origFd -> ic)
                         first = false
@@ -236,7 +230,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
               case _ =>
                 reporter.info("- Exhausted all templates, cannot infer invariants")
                 val ic = new InferenceCondition(Seq(), origFun)
-                ic.time = Some(funcTime)
+                ic.time = Some(funcTime / 1000.0)
                 analyzedSet += (origFun -> ic)
                 prog
             }

@@ -42,4 +42,11 @@ object TypeUtil {
         tcons(subtypes map instantiateTypeParameters(tpMap) _)
     }
   }
+  
+  def isNumericType(t: TypeTree) = t match {
+    case IntegerType | RealType => true
+    case Int32Type => 
+      throw new IllegalStateException("BitVector types not supported yet!")
+    case _                      => false
+  }
 }

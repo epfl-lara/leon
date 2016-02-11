@@ -19,6 +19,9 @@ import leon.solvers.Model
 import Util._
 import PredicateUtil._
 import TVarFactory._
+import ExpressionTransformer._
+import evaluators._
+import invariant.factories._
 
 /**
  * Data associated with a call
@@ -26,6 +29,7 @@ import TVarFactory._
 class CallData(val guard : Variable, val parents: List[FunDef])
 
 object Formula {
+  val debugUnflatten = false
   // a context for creating blockers
   val blockContext = newContext
 }
@@ -47,6 +51,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
   protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms
   private var callDataMap = Map[Call, CallData]() //a mapping from a 'call' to the 'guard' guarding the call plus the list of transitive callers of 'call'
+  private var paramBlockers = Set[Variable]()
 
   val firstRoot : Variable = addConstraints(initexpr, List(fd))._1
   protected var roots : Seq[Variable] = Seq(firstRoot) //a list of roots, the formula is a conjunction of formula of each root
@@ -88,6 +93,19 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
       })
     }
 
+    /**
+     * Creates disjunct of the form b == exprs and updates the necessary mutable states
+     */
+    def addToDisjunct(exprs: Seq[Expr], isTemplate: Boolean) = {
+      val g = createTemp("b", BooleanType, blockContext).toVariable
+      newDisjGuards :+= g
+      val ctrs = getCtrsFromExprs(g, exprs)
+      disjuncts += (g -> ctrs)
+      if(isTemplate)
+          paramBlockers += g
+      g
+    }
+
     val f1 = simplePostTransform {
       case e@Or(args) => {
         val newargs = args.map {
@@ -98,11 +116,8 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
               case And(atms) => atms
               case _ => Seq(arg)
             }
-            val g = createTemp("b", BooleanType, blockContext).toVariable
-            newDisjGuards :+= g
-            //println("atoms: "+atoms)
-            val ctrs = getCtrsFromExprs(g, atoms)
-            disjuncts += (g -> ctrs)
+            val g = addToDisjunct(atoms, !getTemplateIds(arg).isEmpty)
+            //println(s"creating a new OR blocker $g for "+atoms)
             g
           }
         }
@@ -113,16 +128,15 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
         gor
       }
       case e@And(args) => {
-        val newargs = args.map(arg => if (getTemplateVars(e).isEmpty) {
-          arg
-        } else {
-          //if the expression has template variables then we separate it using guards
-          val g = createTemp("b", BooleanType, blockContext).toVariable
-          newDisjGuards :+= g
-          val ctrs = getCtrsFromExprs(g, Seq(arg))
-          disjuncts += (g -> ctrs)
-          g
-        })
+        //if the expression has template variables then we separate it using guards
+        val (nonparams, params) = args.partition(getTemplateIds(_).isEmpty)
+        val newargs =
+          if (!params.isEmpty) {
+            val g = addToDisjunct(params, true)
+            //println(s"creating a new Temp blocker $g for "+arg)
+            paramBlockers += g
+            g +: nonparams
+          } else nonparams
         createAnd(newargs)
       }
       case e => e
@@ -141,10 +155,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
           case And(atms) => atms
           case _ => Seq(f1)
         }
-        val g = createTemp("b", BooleanType, blockContext).toVariable
-        val ctrs = getCtrsFromExprs(g, atoms)
-        newDisjGuards :+= g
-        disjuncts += (g -> ctrs)
+        val g = addToDisjunct(atoms, !getTemplateIds(f1).isEmpty)
         g
       }
     }
@@ -152,9 +163,9 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
   }
 
   //'satGuard' is required to a guard variable
-  def pickSatDisjunct(startGaurd : Variable, model: Model): Seq[Constraint] = {
+  def pickSatDisjunct(startGaurd : Variable, model: LazyModel): Seq[Constraint] = {
 
-    def traverseOrs(gd: Variable, model: Model): Seq[Variable] = {
+    def traverseOrs(gd: Variable, model: LazyModel): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
       val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
@@ -163,7 +174,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
       guard.get +: traverseAnds(guard.get, model)
     }
 
-    def traverseAnds(gd: Variable, model: Model): Seq[Variable] = {
+    def traverseAnds(gd: Variable, model: LazyModel): Seq[Variable] = {
       val ctrs = disjuncts(gd)
       val guards = ctrs.collect {
         case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v) || disjuncts.contains(v)) => v
@@ -209,24 +220,24 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
     (exprRoot, newGaurds)
   }
 
+  def templateIdsInFormula = paramBlockers.flatMap { g =>
+    getTemplateIds(createAnd(disjuncts(g).map(_.toExpr)))
+  }.toSet
+
   /**
    * The first return value is param part and the second one is the
    * non-parametric part
    */
   def splitParamPart : (Expr, Expr) = {
-    var paramPart = Seq[Expr]()
-    var rest = Seq[Expr]()
-    disjuncts.foreach(entry => {
-      val (g,ctrs) = entry
-      val ctrExpr = combiningOp(g,createAnd(ctrs.map(_.toExpr)))
-      if(getTemplateVars(ctrExpr).isEmpty)
-        rest :+= ctrExpr
-      else
-        paramPart :+= ctrExpr
-
-    })
+    val paramPart = paramBlockers.toSeq.map{ g =>
+      combiningOp(g,createAnd(disjuncts(g).map(_.toExpr)))
+    }
+    val rest = disjuncts.collect {
+      case (g, ctrs) if !paramBlockers(g) =>
+        combiningOp(g, createAnd(ctrs.map(_.toExpr)))
+    }.toSeq
     val conjs = conjuncts.map((entry) => combiningOp(entry._1, entry._2)).toSeq ++ roots
-    (createAnd(paramPart), createAnd(rest ++ conjs ++ roots))
+    (createAnd(paramPart), createAnd(rest ++ conjs))
   }
 
   def toExpr : Expr={
@@ -238,8 +249,52 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
     createAnd(disjs ++ conjs ++ roots)
   }
 
+  /**
+   * Creates an unflat expr of the non-param part,
+   * and returns a constructor for the flat model from unflat models
+   */
+  def toUnflatExpr = {
+    val paramPart = paramBlockers.toSeq.map{ g =>
+      combiningOp(g,createAnd(disjuncts(g).map(_.toExpr)))
+    }
+    // compute variables used in more than one disjunct
+    var uniqueVars = Set[Identifier]()
+    var sharedVars = Set[Identifier]()
+    var freevars = Set[Identifier]()
+    disjuncts.foreach{
+      case (g, ctrs) =>
+        val fvs = ctrs.flatMap(c => variablesOf(c.toExpr)).toSet
+        val candUniques = fvs -- sharedVars
+        val newShared = uniqueVars.intersect(candUniques)
+        freevars ++= fvs
+        sharedVars ++= newShared
+        uniqueVars = (uniqueVars ++ candUniques) -- newShared
+    }
+    // unflatten rest
+    var flatIdMap = Map[Identifier, Expr]()
+    val unflatRest = (disjuncts collect {
+      case (g, ctrs) if !paramBlockers(g) =>
+        val rhs = createAnd(ctrs.map(_.toExpr))
+        val (unflatRhs, idmap) = simpleUnflattenWithMap(rhs, sharedVars, includeFuns = false)
+        // sanity checks
+        if (debugUnflatten) {
+          val rhsvars = variablesOf(rhs)
+          if(!rhsvars.filter(TemplateIdFactory.IsTemplateIdentifier).isEmpty)
+            throw new IllegalStateException(s"Non-param part has template identifiers ${toString}")
+          val seenKeys = flatIdMap.keySet.intersect(rhsvars)
+          if (!seenKeys.isEmpty)
+            throw new IllegalStateException(s"flat ids used across clauses $seenKeys in ${toString}")
+        }
+        flatIdMap ++= idmap
+        combiningOp(g, unflatRhs)
+    }).toSeq
+    val modelCons = (m: Model, eval: DefaultEvaluator) => new FlatModel(freevars, flatIdMap, m, eval)
+    val conjs = conjuncts.map{ case(g,rhs) => combiningOp(g, rhs) }.toSeq ++ roots
+    (createAnd(paramPart), createAnd(unflatRest ++ conjs), modelCons)
+  }
+
   //unpack the disjunct and conjuncts by removing all guards
-  def unpackedExpr : Expr = {
+  def eliminateBlockers : Expr = {
     //replace all conjunct guards in disjuncts by their mapping
     val disjs : Map[Expr,Expr] = disjuncts.map((entry) => {
       val (g,ctrs) = entry
@@ -265,8 +320,6 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
         val guards = variablesOf(d).collect{ case id@_ if disjuncts.contains(id.toVariable) => id.toVariable }
         if (guards.isEmpty) entry
         else {
-          /*println("Disunct: "+d)
-          println("guard replaced: "+guards)*/
           replacedGuard = true
           //removeGuards ++= guards
           (g, replace(unpackedDisjs, d))
@@ -286,5 +339,63 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
     val conjStrs = conjuncts.map((entry) => combiningOp(entry._1, entry._2).toString).toSeq
     val rootStrs = roots.map(_.toString)
     (disjStrs ++ conjStrs ++ rootStrs).foldLeft("")((acc,str) => acc + "\n" + str)
+  }
+
+  /**
+   * Functions for stats
+   */
+  def atomsCount = disjuncts.map(_._2.size).sum + conjuncts.map(i => atomNum(i._2)).sum
+  def funsCount = disjuncts.map(_._2.filter(_.isInstanceOf[Call]).size).sum
+
+  /**
+   * Functions solely used for debugging
+   */
+  import solvers.SimpleSolverAPI
+  def checkUnflattening(tempMap: Map[Expr, Expr], sol: SimpleSolverAPI, eval: DefaultEvaluator) = {
+    // solve unflat formula
+    val (temp, rest, modelCons) = toUnflatExpr
+    val packedFor = TemplateInstantiator.instantiate(And(Seq(rest, temp)), tempMap)
+    val (unflatSat, unflatModel) = sol.solveSAT(packedFor)
+    // solve flat formula (using the same values for the uncompressed vars)
+    val flatVCInst = simplifyArithmetic(TemplateInstantiator.instantiate(toExpr, tempMap))
+    val modelExpr = SolverUtil.modelToExpr(unflatModel)
+    val (flatSat, flatModel) = sol.solveSAT(And(flatVCInst, modelExpr))
+    //println("Formula: "+unpackedFor)
+    //println("packed formula: "+packedFor)
+    val satdisj =
+      if (unflatSat == Some(true))
+        Some(pickSatDisjunct(firstRoot, new SimpleLazyModel(unflatModel)))
+      else None
+    if (unflatSat != flatSat) {
+      if (satdisj.isDefined) {
+        val preds = satdisj.get.filter { ctr =>
+          if (getTemplateIds(ctr.toExpr).isEmpty) {
+            val exp = And(Seq(ctr.toExpr, modelExpr))
+            sol.solveSAT(exp)._1 == Some(false)
+          } else false
+        }
+        println(s"Conflicting preds: ${preds.map(_.toExpr)}")
+      }
+      throw new IllegalStateException(s"VC produces different result with flattening: unflatSat: $unflatSat flatRes: $flatSat")
+    } else {
+      if (satdisj.isDefined) {
+        // print all differences between the models (only along the satisfiable path, values of other variables may not be computable)
+        val satExpr = createAnd(satdisj.get.map(_.toExpr))
+        val lazyModel = modelCons(unflatModel, eval)
+        val allvars = variablesOf(satExpr)
+        val elimIds = allvars -- variablesOf(packedFor)
+        val diffs = allvars.filterNot(TemplateIdFactory.IsTemplateIdentifier).flatMap {
+          case id if !flatModel.isDefinedAt(id) =>
+            println("Did not find a solver model for: " + id + " elimIds: " + elimIds(id))
+            Seq()
+          case id if lazyModel(id) != flatModel(id) =>
+            println(s"diff $id : flat: ${lazyModel(id)} solver: ${flatModel(id)}" + " elimIds: " + elimIds(id))
+            Seq(id)
+          case _ => Seq()
+        }
+        if (!diffs.isEmpty)
+          throw new IllegalStateException("Model do not agree on diffs: " + diffs)
+      }
+    }
   }
 }

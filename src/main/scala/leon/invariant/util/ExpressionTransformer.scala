@@ -27,10 +27,10 @@ object ExpressionTransformer {
   val fls = BooleanLiteral(false)
   val bone = BigInt(1)
 
-  // identifier for temporaries that are generated during flattening
+  // identifier for temporaries that are generated during flattening of terms other than functions
   val flatContext = newContext
-  // temporaries generated during conversion of field selects to ADT constructions
-  val fieldSelContext = newContext
+  // temporaries used in the function flattening
+  val funFlatContext = newContext
   // conversion of other language constructs
   val langContext = newContext
 
@@ -138,7 +138,6 @@ object ExpressionTransformer {
           //TODO: do we have to consider reuse of let variables ?
           val (resbody, bodycjs) = transform(body, true)
           val (resvalue, valuecjs) = transform(value, true)
-
           (resbody, (valuecjs + Equals(binder.toVariable, resvalue)) ++ bodycjs)
         }
         //the value is a tuple in the following case
@@ -146,7 +145,6 @@ object ExpressionTransformer {
           //TODO: do we have to consider reuse of let variables ?
           val (resbody, bodycjs) = transform(body, true)
           val (resvalue, valuecjs) = transform(value, true)
-
           //here we optimize the case where resvalue itself has tuples
           val newConjuncts = resvalue match {
             case Tuple(args) => {
@@ -172,7 +170,6 @@ object ExpressionTransformer {
               (cjs ++ cjs2)
             }
           }
-
           (resbody, (valuecjs ++ newConjuncts) ++ bodycjs)
         }
         case _ => {
@@ -208,7 +205,7 @@ object ExpressionTransformer {
         case fi @ FunctionInvocation(fd, args) =>
           val (newargs, newConjuncts) = flattenArgs(args, true)
           val newfi = FunctionInvocation(fd, newargs)
-          val freshResVar = Variable(createFlatTemp("r", fi.getType))
+          val freshResVar = Variable(createTemp("r", fi.getType, funFlatContext))
           val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))
           res
 
@@ -228,6 +225,7 @@ object ExpressionTransformer {
           val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
           val freshResVar = Variable(createFlatTemp("cs", cs.getType))
+          //val freshResVar = Variable(createTemp("cs", cs.getType, funFlatContext)) // we cannot flatten these as they will converted to cons
           newConjuncts += Equals(freshResVar, newCS)
           (freshResVar, newConjuncts)
 
@@ -237,6 +235,7 @@ object ExpressionTransformer {
           val freshArg = newargs(0)
           val newTS = TupleSelect(freshArg, index)
           val freshResVar = Variable(createFlatTemp("ts", ts.getType))
+          //val freshResVar = Variable(createTemp("ts", ts.getType, funFlatContext))
           newConjuncts += Equals(freshResVar, newTS)
           (freshResVar, newConjuncts)
 
@@ -414,40 +413,6 @@ object ExpressionTransformer {
     }(expr)
   }
 
-  def classSelToCons(e: Expr): Expr = {
-    val (r, cd, ccvar, ccfld) = e match {
-      case Equals(r0 @ Variable(_), CaseClassSelector(cd0, ccvar0, ccfld0)) => (r0, cd0, ccvar0, ccfld0)
-      case _ => throw new IllegalStateException("Not a case-class-selector call")
-    }
-    //convert this to a cons by creating dummy variables
-    val args = cd.fields.map((fld) => {
-      if (fld.id == ccfld) r
-      else {
-        //create a dummy identifier there
-        createTemp("fld", fld.getType, fieldSelContext).toVariable
-      }
-    })
-    Equals(ccvar, CaseClass(cd, args))
-  }
-
-  def tupleSelToCons(e: Expr): Expr = {
-    val (r, tpvar, index) = e match {
-      case Equals(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
-      // case Iff(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
-      case _ => throw new IllegalStateException("Not a tuple-selector call")
-    }
-    //convert this to a Tuple by creating dummy variables
-    val tupleType = tpvar.getType.asInstanceOf[TupleType]
-    val args = (1 until tupleType.dimension + 1).map((i) => {
-      if (i == index) r
-      else {
-        //create a dummy identifier there (note that here we have to use i-1)
-        createTemp("fld", tupleType.bases(i - 1), fieldSelContext).toVariable
-      }
-    })
-    Equals(tpvar, Tuple(args))
-  }
-
   /**
    * Normalizes the expressions
    */
@@ -470,23 +435,48 @@ object ExpressionTransformer {
    * This is the inverse operation of flattening.
    * This is used to produce a readable formula or more efficiently
    * solvable formulas.
+   * Note: this is a helper method that assumes that 'flatIds'
+   * are not shared across disjuncts.
+   * If this is not guaranteed to hold, use the 'unflatten' method
    */
-  def unFlattenWithMap(ine: Expr): (Expr, Map[Identifier,Expr]) = {
+  def simpleUnflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
+      includeFuns: Boolean): (Expr, Map[Identifier,Expr]) = {
+
+    def isFlatTemp(id: Identifier) =
+      isTemp(id, flatContext) || (includeFuns && isTemp(id, funFlatContext))
+
     var idMap = Map[Identifier, Expr]()
-    val newe = simplePostTransform {
-      case e @ Equals(Variable(id), rhs @ _) if isTemp(id, flatContext) =>
-        if (idMap.contains(id)) e
+    /**
+     * Here, relying on library transforms is dangerous as they
+     * can perform additional simplifications to the expression on-the-fly,
+     * which is not desirable here.
+     */
+    def rec(e: Expr): Expr = e match {
+      case e @ Equals(Variable(id), rhs @ _) if isFlatTemp(id) && !excludeIds(id) =>
+        val nrhs = rec(rhs)
+        if (idMap.contains(id)) Equals(Variable(id), nrhs)
         else {
-          idMap += (id -> rhs)
+          idMap += (id -> nrhs)
           tru
         }
-      case e => e
-    }(ine)
+      // specially handle boolean function to prevent unnecessary simplifications
+      case Or(args)           => Or(args map rec)
+      case And(args)          => And(args map rec)
+      case Not(arg)           => Not(rec(arg))
+      case Operator(args, op) => op(args map rec)
+    }
+    val newe = rec(ine)
     val closure = (e: Expr) => replaceFromIDs(idMap, e)
-    (fix(closure)(newe), idMap)
+    val rese = fix(closure)(newe)
+    (rese, idMap)
   }
 
-  def unFlatten(ine: Expr) = unFlattenWithMap(ine)._1
+  def unflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
+      includeFuns: Boolean = true): (Expr, Map[Identifier,Expr]) = {
+    simpleUnflattenWithMap(ine, sharedIds(ine) ++ excludeIds, includeFuns)
+  }
+
+  def unflatten(ine: Expr) = unflattenWithMap(ine)._1
 
   /**
    * convert all integer constants to real constants

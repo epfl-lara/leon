@@ -10,6 +10,7 @@ import solvers.SimpleSolverAPI
 import invariant.engine._
 import invariant.util._
 import Util._
+import Stats._
 import SolverUtil._
 import PredicateUtil._
 import invariant.structure._
@@ -276,14 +277,14 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
         new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), timeout * 1000))
     }
     if (verbose) reporter.info("solving...")
-    val t1 = System.currentTimeMillis()
     val (res, model) =
       if (ctx.abort) (None, Model.empty)
-      else solver.solveSAT(simpctrs)
-    val t2 = System.currentTimeMillis()
-    if (verbose) reporter.info((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
-    Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")
-
+      else {
+        val (r, solTime) = getTime { solver.solveSAT(simpctrs) }
+        if (verbose) reporter.info((if (r._1.isDefined) "solved" else "timed out") + "... in " + solTime / 1000.0 + "s")
+        Stats.updateCounterTime(solTime, "NL-solving-time", "disjuncts")
+        r
+      }
     res match {
       case Some(true) =>
         // construct assignments for the variables that were removed during nonlinearity reduction

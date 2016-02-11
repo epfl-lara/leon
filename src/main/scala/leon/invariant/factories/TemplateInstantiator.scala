@@ -26,7 +26,7 @@ object TemplateInstantiator {
         (v, model(v.id))
       }).toMap
       val instTemplate = instantiate(template, tempVarMap, prettyInv)
-      val comprTemp = ExpressionTransformer.unFlatten(instTemplate)
+      val comprTemp = ExpressionTransformer.unflatten(instTemplate)
       (fd, comprTemp)
     })
     invs

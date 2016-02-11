@@ -16,6 +16,7 @@ import FunctionUtils._
 import scala.annotation.tailrec
 import PredicateUtil._
 import ProgramUtil._
+import TypeUtil._
 import Util._
 import solvers._
 import purescala.DefOps._
@@ -34,7 +35,7 @@ object ProgramUtil {
   def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])): Program = {
     prog.copy(units = prog.units.collect {
       case unit if unit.defs.nonEmpty => unit.copy(defs = unit.defs.collect {
-        case module : ModuleDef  if module.defs.nonEmpty =>
+        case module: ModuleDef if module.defs.nonEmpty =>
           module.copy(defs = mapdefs(module.defs))
         case other => other
       })
@@ -77,7 +78,7 @@ object ProgramUtil {
     }
     res
   }
-  
+
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
     val tmpl = Lambda(getTemplateIds(plainTemp).toSeq.map(id => ValDef(id)), plainTemp)
     val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false), Seq(),
@@ -120,7 +121,7 @@ object ProgramUtil {
    * will be removed
    */
   def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
-      funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay : Boolean = true): Program = {
+                                  funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = true): Program = {
 
     val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) if fd.isTheoryOperation =>
@@ -185,7 +186,7 @@ object ProgramUtil {
   }
 
   def updatePost(funToPost: Map[FunDef, Lambda], prog: Program,
-      uniqueIdDisplay: Boolean = true, excludeLibrary: Boolean = true): Program = {
+                 uniqueIdDisplay: Boolean = true, excludeLibrary: Boolean = true): Program = {
 
     val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) if fd.isTheoryOperation || fd.isLibrary =>
@@ -291,12 +292,12 @@ object PredicateUtil {
   def isTemplateExpr(expr: Expr): Boolean = {
     var foundVar = false
     simplePostTransform {
-      case e@Variable(id) => {
+      case e @ Variable(id) => {
         if (!TemplateIdFactory.IsTemplateIdentifier(id))
           foundVar = true
         e
       }
-      case e@ResultVariable(_) => {
+      case e @ ResultVariable(_) => {
         foundVar = true
         e
       }
@@ -354,11 +355,11 @@ object PredicateUtil {
   def atomNum(e: Expr): Int = {
     var count: Int = 0
     simplePostTransform {
-      case e@And(args) => {
+      case e @ And(args) => {
         count += args.size
         e
       }
-      case e@Or(args) => {
+      case e @ Or(args) => {
         count += args.size
         e
       }
@@ -370,7 +371,7 @@ object PredicateUtil {
   def numUIFADT(e: Expr): Int = {
     var count: Int = 0
     simplePostTransform {
-      case e@(FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_)) => {
+      case e @ (FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_)) => {
         count += 1
         e
       }
@@ -401,8 +402,8 @@ object PredicateUtil {
 
   def isADTConstructor(e: Expr): Boolean = e match {
     case Equals(Variable(_), CaseClass(_, _)) => true
-    case Equals(Variable(_), Tuple(_)) => true
-    case _ => false
+    case Equals(Variable(_), Tuple(_))        => true
+    case _                                    => false
   }
 
   def isMultFunctions(fd: FunDef) = {
@@ -423,28 +424,43 @@ object PredicateUtil {
   def createAnd(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(conj => conj == tru)
     newExprs match {
-      case Seq() => tru
+      case Seq()  => tru
       case Seq(e) => e
-      case _ => And(newExprs)
+      case _      => And(newExprs)
     }
   }
 
   def createOr(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(disj => disj == fls)
     newExprs match {
-      case Seq() => fls
+      case Seq()  => fls
       case Seq(e) => e
-      case _ => Or(newExprs)
+      case _      => Or(newExprs)
     }
-  }
-
-  def isNumericType(t: TypeTree) = t match {
-    case IntegerType | RealType => true
-    case _ => false
   }
 
   def precOrTrue(fd: FunDef): Expr = fd.precondition match {
     case Some(pre) => pre
     case None      => BooleanLiteral(true)
+  }
+
+  /**
+   * Computes the set of variables that are shared across disjunctions.
+   * This may return bound variables as well
+   */
+  def sharedIds(e: Expr): Set[Identifier] = e match {
+    case Or(args) =>
+      var uniqueVars = Set[Identifier]()
+      var sharedVars = Set[Identifier]()
+      args.foreach { arg =>
+        val candUniques = variablesOf(arg) -- sharedVars
+        val newShared = uniqueVars.intersect(candUniques)
+        sharedVars ++= newShared
+        uniqueVars = (uniqueVars ++ candUniques) -- newShared
+      }
+      sharedVars ++ (args flatMap sharedIds)
+    case Variable(_) => Set()
+    case Operator(args, op) =>
+      (args flatMap sharedIds).toSet
   }
 }

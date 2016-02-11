@@ -6,8 +6,6 @@ import leon.annotation._
 import leon.instrumentation._
 import leon.collection._
 import leon.invariant._
-import scala.BigInt
-import scala.math.BigInt.int2bigInt
 
 object Concat {
   sealed abstract class LList[T] {

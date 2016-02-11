@@ -6,6 +6,7 @@ import invariant.util._
 import Util._
 import ProgramUtil._
 import PredicateUtil._
+import TypeUtil._
 import invariant.structure.FunctionUtils._
 
 import purescala.ScalaPrinter

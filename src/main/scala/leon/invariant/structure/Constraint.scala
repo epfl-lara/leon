@@ -6,6 +6,8 @@ import purescala.ExprOps._
 import purescala.Types._
 import invariant.util._
 import PredicateUtil._
+import TypeUtil._
+import purescala.Extractors._
 
 trait Constraint {
   def toExpr: Expr
@@ -164,7 +166,6 @@ class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: 
     //TODO: here we should try to simplify the constant expressions
     cMap
   }
-
   val const = constant.map((c) => {
     //check if constant does not have any variables
     assert(variablesOf(c).isEmpty)
@@ -183,64 +184,41 @@ case class BoolConstraint(e: Expr) extends Constraint {
     })
     e
   }
-
-  override def toString(): String = {
-    expr.toString
-  }
-
+  override def toString(): String = expr.toString
   def toExpr: Expr = expr
 }
 
 object ADTConstraint {
-
-  def apply(e: Expr): ADTConstraint = e match {
-
-    //is this a tuple or case class select ?
-    // case Equals(Variable(_), CaseClassSelector(_, _, _)) | Iff(Variable(_), CaseClassSelector(_, _, _)) => {
-    case Equals(Variable(_), CaseClassSelector(_, _, _)) => {
-      val ccExpr = ExpressionTransformer.classSelToCons(e)
-      new ADTConstraint(ccExpr, Some(ccExpr))
-    }
-    // case Equals(Variable(_),TupleSelect(_,_)) | Iff(Variable(_),TupleSelect(_,_)) => {
-    case Equals(Variable(_), TupleSelect(_, _)) => {
-      val tpExpr = ExpressionTransformer.tupleSelToCons(e)
-      new ADTConstraint(tpExpr, Some(tpExpr))
-    }
-    //is this a tuple or case class def ?
-    case Equals(Variable(_), CaseClass(_, _)) | Equals(Variable(_), Tuple(_)) => {
-      new ADTConstraint(e, Some(e))
-    }
-    //is this an instanceOf ?
-    case Equals(v @ Variable(_), ci @ IsInstanceOf(_, _)) => {
-      new ADTConstraint(e, None, Some(e))
-    }
-    // considering asInstanceOf as equalities
-    case Equals(lhs @ Variable(_), ci @ AsInstanceOf(rhs @ Variable(_), _)) => {
-      val eq = Equals(lhs, rhs)
-      new ADTConstraint(eq, None, None, Some(eq))
-    }
-    //equals and disequalities betweeen variables
-    case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType) => {
-      new ADTConstraint(e, None, None, Some(e))
-    }
-    case Not(Equals(lhs @ Variable(_), rhs @ Variable(_))) if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType) => {
-      new ADTConstraint(e, None, None, Some(e))
-    }
-    case _ => {
-      throw new IllegalStateException("Expression not an ADT constraint: " + e)
-    }
+  // note: we consider even type parameters as ADT type
+  def adtType(e: Expr) = {
+    val tpe = e.getType
+    tpe.isInstanceOf[ClassType] || tpe.isInstanceOf[TupleType] || tpe.isInstanceOf[TypeParameter]
+  }
+  def apply(e: Expr): ADTConstraint = e match {    
+    case Equals(_: Variable, _: CaseClassSelector | _: TupleSelect) => 
+      new ADTConstraint(e, sel = true)    
+    case Equals(_: Variable, _: CaseClass | _: Tuple) => 
+      new ADTConstraint(e, cons = true)        
+    case Equals(_: Variable, _: IsInstanceOf) => 
+      new ADTConstraint(e, inst = true) 
+    case Equals(lhs @ Variable(_), AsInstanceOf(rhs @ Variable(_), _)) =>       
+      new ADTConstraint(Equals(lhs, rhs), comp= true)    
+    case Equals(lhs: Variable, _: Variable) if adtType(lhs) =>
+      new ADTConstraint(e, comp = true)
+    case Not(Equals(lhs: Variable, _: Variable)) if adtType(lhs) => 
+      new ADTConstraint(e, comp = true)    
+    case _ =>      
+      throw new IllegalStateException(s"Expression not an ADT constraint: $e")    
   }
 }
 
 class ADTConstraint(val expr: Expr,
-  val cons: Option[Expr] = None,
-  val inst: Option[Expr] = None,
-  val comp: Option[Expr] = None) extends Constraint {
-
-  override def toString(): String = {
-    expr.toString
-  }
-
+  val cons: Boolean = false,
+  val inst: Boolean = false,
+  val comp: Boolean = false,
+  val sel: Boolean = false) extends Constraint { 
+  
+  override def toString(): String = expr.toString  
   override def toExpr = expr
 }
 
@@ -291,30 +269,24 @@ case class SetConstraint(expr: Expr) extends Constraint {
   override def toExpr = expr
 }
 
-object ConstraintUtil {
+object ConstraintUtil {  
 
   def createConstriant(ie: Expr): Constraint = {
     ie match {
-      case Variable(_) | Not(Variable(_)) | BooleanLiteral(_) | Not(BooleanLiteral(_)) => BoolConstraint(ie)
-      case Equals(v @ Variable(_), fi @ FunctionInvocation(_, _)) => Call(v, fi)
-      case Equals(Variable(_), CaseClassSelector(_, _, _))
-        | Equals(Variable(_), CaseClass(_, _))
-        | Equals(Variable(_), TupleSelect(_, _))
-        | Equals(Variable(_), Tuple(_))
-        | Equals(Variable(_), IsInstanceOf(_, _)) => {
-
-        ADTConstraint(ie)
-      }
+      case Variable(_) | Not(Variable(_)) | BooleanLiteral(_) | Not(BooleanLiteral(_)) => 
+        BoolConstraint(ie)
+      case Equals(v @ Variable(_), fi @ FunctionInvocation(_, _)) => 
+        Call(v, fi)
+      case Equals(_: Variable, _: CaseClassSelector | _: CaseClass | _: TupleSelect | _: Tuple |_: IsInstanceOf) => 
+        ADTConstraint(ie)              
       case _ if SetConstraint.isSetConstraint(ie) =>
         SetConstraint(ie)
-      // every other equality will be considered an ADT constraint (including TypeParameter equalities)
-      case Equals(lhs, rhs) if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType) => {
+      // every non-integer equality will be considered an ADT constraint (including TypeParameter equalities)
+      case Equals(lhs, rhs) if !isNumericType(lhs.getType) => 
         //println("ADT constraint: "+ie)
-        ADTConstraint(ie)
-      }
-      case Not(Equals(lhs, rhs)) if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType) => {
-        ADTConstraint(ie)
-      }
+        ADTConstraint(ie)      
+      case Not(Equals(lhs, rhs)) if !isNumericType(lhs.getType) => 
+        ADTConstraint(ie)      
       case _ => {
         val simpe = simplifyArithmetic(ie)
         simpe match {

@@ -10,6 +10,7 @@ import solvers.smtlib.SMTLIBZ3Solver
 import invariant.engine.InferenceContext
 import invariant.factories._
 import leon.invariant.util.RealValuedExprEvaluator._
+import Stats._
 
 class Minimizer(ctx: InferenceContext, program: Program) {
 
@@ -44,10 +45,13 @@ class Minimizer(ctx: InferenceContext, program: Program) {
     minimizeBounds(computeCompositionLevel(timeTemplate))(inputCtr, initModel)
   }
 
+  /**
+   * TODO: use incremental solving of z3 when it is  supported in nlsat
+   * Do a binary search sequentially on the tempvars ordered by the rate of growth of the term they
+   * are a coefficient for.
+   */
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-    //do a binary search sequentially on each of these tempvars
-    // note: use smtlib solvers so that they can be timedout
     lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
       new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.vcTimeout * 1000))
 
@@ -64,42 +68,36 @@ class Minimizer(ctx: InferenceContext, program: Program) {
         if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar))
           lowerBoundMap(tvar)
         else realzero
-      //a helper method
       def updateState(nmodel: Model) = {
         upperBound = nmodel(tvar.id).asInstanceOf[FractionalLiteral]
         currentModel = nmodel
-        if (this.debugMinimization) {
+        if (this.debugMinimization)
           reporter.info("Found new upper bound: " + upperBound)
-          //reporter.info("Model: "+currentModel)
-        }
       }
 
       if (this.debugMinimization)
         reporter.info(s"Minimizing variable: $tvar Initial Bounds: [$upperBound,$lowerBound]")
-      //TODO: use incremental solving of z3 when it is  supported in nlsat
       var continue = true
       var iter = 0
       do {
         iter += 1
         if (continue) {
-          //we make sure that curr val is an integer
-          val currval = floor(evaluate(Times(half, Plus(upperBound, lowerBound))))
-          //check if the lowerbound, if it exists, is < currval
-          if (evaluateRealPredicate(GreaterEquals(lowerBound, currval)))
+          val currval = floor(evaluate(Times(half, Plus(upperBound, lowerBound)))) //make sure that curr val is an integer
+          if (evaluateRealPredicate(GreaterEquals(lowerBound, currval))) //check if the lowerbound, if it exists, is < currval
             continue = false
           else {
             val boundCtr = And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound))
-            //val t1 = System.currentTimeMillis()
             val (res, newModel) =
               if (ctx.abort) (None, Model.empty)
-              else solver.solveSAT(And(acc, boundCtr))
-            //val t2 = System.currentTimeMillis()
-            //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+              else {
+                time { solver.solveSAT(And(acc, boundCtr)) }{minTime =>
+                  updateCumTime(minTime, "BinarySearchTime")
+                }
+              }
             res match {
               case Some(true) =>
                 updateState(newModel)
-              case _ =>
-                //here we have a new lower bound: currval
+              case _ => //here we have a new lower bound: currval
                 lowerBound = currval
                 if (this.debugMinimization)
                   reporter.info("Found new lower bound: " + currval)
@@ -107,14 +105,12 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           }
         }
       } while (!ctx.abort && continue && iter < MaxIter)
-      //this is the last ditch effort to make the upper bound constant smaller.
-      //check if the floor of the upper-bound is a solution
+      //A last ditch effort to make the upper bound an integer.
       val currval @ FractionalLiteral(n, d) =
-        if (currentModel.isDefinedAt(tvar.id)) {
+        if (currentModel.isDefinedAt(tvar.id))
           currentModel(tvar.id).asInstanceOf[FractionalLiteral]
-        } else {
+        else
           initModel(tvar.id).asInstanceOf[FractionalLiteral]
-        }
       if (d != 1 && !ctx.abort) {
         val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
         if (res == Some(true))

@@ -13,6 +13,7 @@ import invariant.structure._
 import FunctionUtils._
 import PredicateUtil._
 import ProgramUtil._
+import TypeUtil._
 
 object TemplateIdFactory {
   //a set of template ids

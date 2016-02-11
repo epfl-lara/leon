@@ -229,9 +229,6 @@ object LazyVerificationPhase {
       (matchToIfThenElse(ants), conseq)
     }
 
-    /**
-     * TODO: fix this!!
-     */
     override def verifyInvariant(newposts: Map[FunDef, Expr]) = (Some(false), Model.empty)
   }
 }

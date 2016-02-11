@@ -106,7 +106,7 @@ object SolverUtil {
 
     solver.free
     //cores
-    ExpressionTransformer.unFlatten(cores)
+    ExpressionTransformer.unflatten(cores)
   }
 
   //tests if the solver uses nlsat
