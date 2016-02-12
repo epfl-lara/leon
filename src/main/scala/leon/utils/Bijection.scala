@@ -11,8 +11,13 @@ class Bijection[A, B] {
     b2a += b -> a
   }
 
-  def +=(t: (A,B)): Unit = {
-    this += (t._1, t._2)
+  def +=(t: (A,B)): this.type = {
+    +=(t._1, t._2)
+    this
+  }
+  
+  def ++=(t: Iterable[(A,B)]) = {
+    (this /: t){ case (b, elem) => b += elem }
   }
 
   def clear(): Unit = {
@@ -22,6 +27,9 @@ class Bijection[A, B] {
 
   def getA(b: B) = b2a.get(b)
   def getB(a: A) = a2b.get(a)
+  
+  def getAorElse(b: B, orElse: =>A) = b2a.getOrElse(b, orElse)
+  def getBorElse(a: A, orElse: =>B) = a2b.getOrElse(a, orElse)
 
   def toA(b: B) = getA(b).get
   def toB(a: A) = getB(a).get

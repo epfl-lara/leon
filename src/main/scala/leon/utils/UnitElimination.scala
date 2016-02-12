@@ -125,7 +125,7 @@ object UnitElimination extends TransformationPhase {
             }
           }
           
-          LetDef(newFds, rest)
+          letDef(newFds, rest)
         }
 
       case ite@IfExpr(cond, tExpr, eExpr) =>

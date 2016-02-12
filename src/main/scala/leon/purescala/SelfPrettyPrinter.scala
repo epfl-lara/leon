@@ -98,7 +98,6 @@ class SelfPrettyPrinter {
     this.excluded = excluded
     val s = prettyPrintersForType(v.getType)   // TODO: Included the variable excluded if necessary.
     if(s.isEmpty) {
-      println("Could not find pretty printer for type " + v.getType)
       orElse
     } else {
       val l: Lambda = s.head

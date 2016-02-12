@@ -27,7 +27,9 @@ object Main {
       solvers.isabelle.AdaptationPhase,
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
-      invariant.engine.InferInvariantsPhase)
+      invariant.engine.InferInvariantsPhase,
+      genc.GenerateCPhase,
+      genc.CFileOutputPhase)
   }
 
   // Add whatever you need here.
@@ -53,9 +55,10 @@ object Main {
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
     val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
+    val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optGenc)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -113,8 +116,10 @@ object Main {
       }
       // Find respective LeonOptionDef, or report an unknown option
       val df = allOptions.find(_. name == name).getOrElse{
-        initReporter.error(s"Unknown option: $name")
-        displayHelp(initReporter, error = true)
+        initReporter.fatalError(
+          s"Unknown option: $name\n" +
+          "Try 'leon --help' for more information."
+        )
       }
       df.parse(value)(initReporter)
     }
@@ -151,6 +156,8 @@ object Main {
     import repair.RepairPhase
     import evaluators.EvaluationPhase
     import solvers.isabelle.IsabellePhase
+    import genc.GenerateCPhase
+    import genc.CFileOutputPhase
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
@@ -163,10 +170,16 @@ object Main {
     val isabelleF    = ctx.findOptionOrDefault(optIsabelle)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
+    val gencF        = ctx.findOptionOrDefault(optGenc)
     val evalF        = ctx.findOption(optEval).isDefined
     val inferInvF    = ctx.findOptionOrDefault(optInferInv)
     val instrumentF  = ctx.findOptionOrDefault(optInstrument)
     val analysisF    = verifyF && terminationF
+
+    // Check consistency in options
+    if (gencF && !xlangF) {
+      ctx.reporter.fatalError("Generating C code with --genc requires --xlang")
+    }
 
     if (helpF) {
       displayVersion(ctx.reporter)
@@ -175,7 +188,7 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         ClassgenPhase andThen
         ExtractionPhase andThen
-        new PreprocessingPhase(xlangF)
+        new PreprocessingPhase(xlangF, gencF)
 
       val verification = if (xlangF) VerificationPhase andThen FixReportLabels else VerificationPhase
 
@@ -189,6 +202,7 @@ object Main {
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
+        else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else verification
       }
 

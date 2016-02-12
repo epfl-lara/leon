@@ -275,6 +275,15 @@ object DefOps {
       None
   }
 
+  /** Clones the given program by replacing some functions by other functions.
+    * 
+    * @param p The original program
+    * @param fdMapF Given f, returns Some(g) if f should be replaced by g, and None if f should be kept.
+    *        May be called once each time a function appears (definition and invocation),
+    *        so make sure to output the same if the argument is the same.
+    * @param fiMapF Given a previous function invocation and its new function definition, returns the expression to use.
+    *               By default it is the function invocation using the new function definition.
+    * @return the new program with a map from the old functions to the new functions */
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
                                  fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
                                  : (Program, Map[FunDef, FunDef])= {
@@ -297,7 +306,6 @@ object DefOps {
               df match {
                 case f : FunDef =>
                   val newF = fdMap(f)
-                  newF.fullBody = replaceFunCalls(newF.fullBody, fdMap, fiMapF)
                   newF
                 case d =>
                   d
@@ -307,7 +315,11 @@ object DefOps {
         }
       )
     })
-
+    for(fd <- newP.definedFunctions) {
+      if(ExprOps.exists{ case FunctionInvocation(TypedFunDef(fd, targs), fargs) => fdMapCache.getOrElse(fd, None) != None case _ => false }(fd.fullBody)) {
+        fd.fullBody = replaceFunCalls(fd.fullBody, fdMap, fiMapF)
+      }
+    }
     (newP, fdMapCache.collect{ case (ofd, Some(nfd)) => ofd -> nfd })
   }
 
@@ -320,32 +332,38 @@ object DefOps {
     }(e)
   }
 
-  def addFunDefs(p: Program, fds: Traversable[FunDef], after: FunDef): Program = {
+  def addDefs(p: Program, cds: Traversable[Definition], after: Definition): Program = {
     var found = false
     val res = p.copy(units = for (u <- p.units) yield {
       u.copy(
-        defs = u.defs.map {
+        defs = u.defs.flatMap {
           case m: ModuleDef =>
             val newdefs = for (df <- m.defs) yield {
               df match {
                 case `after` =>
                   found = true
-                  after +: fds.toSeq
-                case d =>
-                  Seq(d)
+                  after +: cds.toSeq
+                case d => Seq(d)
               }
             }
 
-            m.copy(defs = newdefs.flatten)
-          case d => d
+            Seq(m.copy(defs = newdefs.flatten))
+          case `after` =>
+            found = true
+            after +: cds.toSeq
+          case d => Seq(d)
         }
       )
     })
     if (!found) {
-      println("addFunDefs could not find anchor function!")
+      println("addDefs could not find anchor definition!")
     }
     res
   }
+  
+  def addFunDefs(p: Program, fds: Traversable[FunDef], after: FunDef): Program = addDefs(p, fds, after)
+  
+  def addClassDefs(p: Program, fds: Traversable[ClassDef], after: ClassDef): Program = addDefs(p, fds, after)
 
   // @Note: This function does not filter functions in classdefs
   def filterFunDefs(p: Program, fdF: FunDef => Boolean): Program = {

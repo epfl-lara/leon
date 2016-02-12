@@ -182,7 +182,7 @@ object ProgramUtil {
     funDef.fullBody match {
       case Ensuring(_, post) => {
         post match {
-          case Lambda(Seq(ValDef(fromRes, _)), _) => Some(fromRes)
+          case Lambda(Seq(ValDef(fromRes)), _) => Some(fromRes)
         }
       }
       case _ => None

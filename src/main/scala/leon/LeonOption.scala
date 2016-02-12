@@ -25,8 +25,10 @@ abstract class LeonOptionDef[+A] {
     try { parser(s) }
     catch {
       case _ : IllegalArgumentException =>
-        reporter.error(s"Invalid option usage: $usageDesc")
-        Main.displayHelp(reporter, error = true)
+        reporter.fatalError(
+          s"Invalid option usage: --$name\n" +
+          "Try 'leon --help' for more information."
+        )
     }
   }
 

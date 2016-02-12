@@ -8,7 +8,7 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Expressions.Pattern
 import purescala.Extractors._
-import purescala.TypeOps._
+import purescala.TypeOps.isSubtypeOf
 import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._

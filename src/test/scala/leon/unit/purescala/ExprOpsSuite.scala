@@ -6,7 +6,7 @@ import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-import leon.purescala.TypeOps._
+import leon.purescala.TypeOps.isSubtypeOf
 import leon.purescala.Definitions._
 import leon.purescala.ExprOps._
 
@@ -279,4 +279,44 @@ class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     }
 
   }
+
+  test("preMapWithContext") { ctx =>
+    val expr = Plus(bi(1), Minus(bi(2), bi(3)))
+    def op(e : Expr, set: Set[Int]): (Option[Expr], Set[Int]) = e match {
+      case Minus(InfiniteIntegerLiteral(two), e2) if two == BigInt(2) => (Some(bi(2)), set)
+      case InfiniteIntegerLiteral(one) if one == BigInt(1) => (Some(bi(2)), set)
+      case InfiniteIntegerLiteral(two) if two == BigInt(2) => (Some(bi(42)), set)
+      case _ => (None, set)
+    }
+    
+    assert(preMapWithContext(op, false)(expr, Set()) === Plus(bi(2),  bi(2)))
+    assert(preMapWithContext(op, true)(expr, Set()) === Plus(bi(42),  bi(42)))
+
+    val expr2 = Let(x.id, bi(1), Let(y.id, bi(2), Plus(x, y)))
+    def op2(e: Expr, bindings: Map[Identifier, BigInt]): (Option[Expr], Map[Identifier, BigInt]) = e match {
+      case Let(id, InfiniteIntegerLiteral(v), body) => (None, bindings + (id -> v))
+      case Variable(id) => (bindings.get(id).map(v => InfiniteIntegerLiteral(v)), bindings)
+      case _ => (None, bindings)
+    }
+ 
+    assert(preMapWithContext(op2, false)(expr2, Map()) === Let(x.id, bi(1), Let(y.id, bi(2), Plus(bi(1), bi(2)))))
+
+    def op3(e: Expr, bindings: Map[Identifier, BigInt]): (Option[Expr], Map[Identifier, BigInt]) = e match {
+      case Let(id, InfiniteIntegerLiteral(v), body) => (Some(body), bindings + (id -> v))
+      case Variable(id) => (bindings.get(id).map(v => InfiniteIntegerLiteral(v)), bindings)
+      case _ => (None, bindings)
+    }
+    assert(preMapWithContext(op3, true)(expr2, Map()) === Plus(bi(1), bi(2)))
+
+
+    val expr4 = Plus(Let(y.id, bi(2), y),
+                     Let(y.id, bi(4), y))
+    def op4(e: Expr, bindings: Map[Identifier, BigInt]): (Option[Expr], Map[Identifier, BigInt]) = e match {
+      case Let(id, InfiniteIntegerLiteral(v), body) => (Some(body), if(bindings.contains(id)) bindings else (bindings + (id -> v)))
+      case Variable(id) => (bindings.get(id).map(v => InfiniteIntegerLiteral(v)), bindings)
+      case _ => (None, bindings)
+    }
+    assert(preMapWithContext(op4, true)(expr4, Map()) === Plus(bi(2), bi(4)))
+  }
+
 }

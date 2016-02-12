@@ -5,12 +5,11 @@ package leon
 import leon.utils.{DebugSections, DebugSection}
 import OptionParsers._
 
-/*
- * This object contains options that are shared among different modules of Leon.
- *
- * Options that determine the pipeline of Leon are not stored here,
- * but in MainComponent in Main.scala.
- */
+/** This object contains options that are shared among different modules of Leon.
+  *
+  * Options that determine the pipeline of Leon are not stored here,
+  * but in [[Main.MainComponent]] instead.
+  */
 object SharedOptions extends LeonComponent {
 
   val name = "sharedOptions"
@@ -45,7 +44,7 @@ object SharedOptions extends LeonComponent {
     val name = "debug"
     val description = {
       val sects = DebugSections.all.toSeq.map(_.name).sorted
-      val (first, second) = sects.splitAt(sects.length/2)
+      val (first, second) = sects.splitAt(sects.length/2 + 1)
       "Enable detailed messages per component.\nAvailable:\n" +
         "  " + first.mkString(", ") + ",\n" +
         "  " + second.mkString(", ")
@@ -61,8 +60,6 @@ object SharedOptions extends LeonComponent {
             Set(rs)
           case None =>
             throw new IllegalArgumentException
-          //initReporter.error("Section "+s+" not found, available: "+DebugSections.all.map(_.name).mkString(", "))
-          //Set()
         }
       }
     }

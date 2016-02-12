@@ -10,8 +10,14 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Expressions._
 
+/** Generates non-recursive function calls
+  *
+  * @param currentFunction The currend function for which no calls will be generated
+  * @param types The candidate real type parameters for [[currentFunction]]
+  * @param exclude An additional set of functions for which no calls will be generated
+  */
 case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends ExpressionGrammar[TypeTree] {
-   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = {
+  def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
        // Prevents recursive calls
@@ -73,7 +79,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
      val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
 
      funcs.map{ tfd =>
-       nonTerminal(tfd.params.map(_.getType), { sub => FunctionInvocation(tfd, sub) })
+       nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
      }
    }
   }

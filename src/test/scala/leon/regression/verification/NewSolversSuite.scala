@@ -5,6 +5,7 @@ package leon.regression.verification
 import _root_.smtlib.interpreters._
 import leon._
 import leon.verification.VerificationPhase
+import leon.solvers.SolverFactory
 
 /* @EK: Disabled for now as many tests fail 
 class NewSolversSuite extends VerificationSuite {
@@ -14,21 +15,9 @@ class NewSolversSuite extends VerificationSuite {
   val pipeBack = AnalysisPhase
   val optionVariants: List[List[String]] = {
 
-    val isCVC4Available = try {
-      CVC4Interpreter.buildDefault.free()
-      true
-    } catch {
-      case e: java.io.IOException =>
-        false
-    }
+    val isCVC4Available = SolverFactory.hasCVC4
 
-    val isZ3Available = try {
-      Z3Interpreter.buildDefault.free()
-      true
-    } catch {
-      case e: java.io.IOException =>
-        false
-    }
+    val isZ3Available = SolverFactory.hasZ3
 
     (
       if (isCVC4Available)

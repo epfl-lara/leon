@@ -15,16 +15,16 @@ object MSTMap {
   def mst(g : Graph) : Map[(Int,Int), Int] = {
     require(invariant(g) && isUndirected(g) && isConnected(g) &&
   g.nVertices <= 3)
-    
+
     var uf_map = Map.empty[Int, Int] //map to represent parent
     //relationship to model union find
 
     var spanningTree = Map.empty[(Int,Int), Int]
     var alreadyTested = Map.empty[(Int, Int), Int]
-    
+
     (while(!isConnected(spanningTree, g.nVertices)) {
       val next_edge = getSmallestEdge(g.nVertices, g.edges, alreadyTested)
-      
+
       val p1 = uFind(next_edge._1, uf_map)
       val p2 = uFind(next_edge._2, uf_map)
       if(p1  != p2) {
@@ -45,18 +45,18 @@ object MSTMap {
   // We only verify that the edge set returned corresponds to some
   // spanning tree, but not that it is of minimal weight.
 
-  
+
   // Here, we always take the smallest edge regardless whether it
   // creates a cycle or not,
   // Leon loops
   def mstBogus(g : Graph) : Map[(Int,Int), Int] = {
     require(invariant(g) && isUndirected(g) && isConnected(g) &&
   g.nVertices <= 4)
-    
+
     var edges = g.edges
     var spanningTree = Map.empty[(Int,Int), Int]
     var alreadyTested = Map.empty[(Int, Int), Int]
-    
+
     (while(!isConnected(spanningTree, g.nVertices)) {
       val next_edge = getSmallestEdge(g.nVertices, edges, alreadyTested)
 
@@ -73,13 +73,13 @@ object MSTMap {
     spanningTree
   } ensuring(x => isAcyclic(x, g.nVertices) && isConnected(x, g.nVertices))
 
-  
+
   /*
    -----------------------------------------------------------------------------
    GRAPH FUNCTIONS
    -----------------------------------------------------------------------------
    */
-  
+
 
   def invariant(g : Graph) = {
     def noSelfLoops(i : Int) : Boolean = {
@@ -89,10 +89,10 @@ object MSTMap {
       else
 	noSelfLoops(i+1)
     }
-    
+
     g.nVertices >= 0 && noSelfLoops(0)
   }
-  
+
   /**
    Tests, if g is undirected, that is if for every edge (i,j) there is
    also and edge (j,i)
@@ -108,11 +108,11 @@ object MSTMap {
       var j = 0
       while(j < g.nVertices && res) {
 	res = !edgeSet.isDefinedAt(i,j) || edgeSet.isDefinedAt(j,i)
-	
+
 	 //If weights should considered
 	 if(res && edgeSet.isDefinedAt(i,j))
 	   res = edgeSet(i,j) == edgeSet(j,i)
-	   
+
 	j += 1
       }
       i += 1
@@ -136,11 +136,11 @@ object MSTMap {
      it this function would always return a valid edge, however, this
      property is not easily expressible in Leon.
      */
-    
+
     var i = 0
     val big = 100000000
     var res = (-1,-1,big)
-      
+
       while(i < nVertices) {
 	var j = 0
 	while(j < nVertices) {
@@ -171,7 +171,7 @@ object MSTMap {
      require(g.nVertices >= 0 && isUndirected(g))
      isConnected(g.edges, g.nVertices)
    }
-  
+
   def isConnected(edges : Map[(Int,Int), Int], nVertices : Int) :  Boolean = {
     require(nVertices >= 0)
     val uf = calculateUF(edges, nVertices)._1
@@ -204,7 +204,7 @@ object MSTMap {
   def calculateUF(edgeSet : Map[(Int,Int), Int], nVertices : Int) :
   (Map[Int, Int], Boolean)= {
     require(nVertices >= 0)
-    
+
     var i = 0
     var uf = Map.empty[Int, Int]
     var cycle = false
@@ -223,7 +223,7 @@ object MSTMap {
 
 	    //"remove" twin edge
 	    edges = edges.updated((j,i), -1)
-	  }	   
+	  }
 	}
 	j += 1
       }
@@ -232,7 +232,7 @@ object MSTMap {
 
     (uf, cycle)
   }
-  
+
   /* *************************************
    Union find
    *************************************** */
@@ -246,7 +246,7 @@ object MSTMap {
     // naive union
     val p1 = uFind(e1,s)
     val p2 = uFind(e2, s)
-    
+
     if(p1 != p2)
       //naive union
       s.updated(p1, p2) //only union if theiy are really in different trees
@@ -257,7 +257,8 @@ object MSTMap {
 
   // fsc -d classes -classpath
   // ../../leon-2.0/target/scala-2.9.1-1/classes MST.scala
-  //   scala -classpath classes MST  
+  //   scala -classpath classes MST
+  @ignore
   def main(args: Array[String]) {
     val edges = Map((1,0) -> 10, (0,1) -> 10, (1,2) -> 12, (2,1) ->
   12, (0,2) -> 18, (2,0) -> 18, (3,1) -> 20, (1,3) -> 20)
@@ -267,5 +268,5 @@ object MSTMap {
     println(mst(g)); //works
     println(mstBogus(g)); // crashes because postcondition doensn't hold
   }
-  
+
 }

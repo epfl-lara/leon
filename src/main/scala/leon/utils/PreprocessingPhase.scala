@@ -9,7 +9,7 @@ import leon.solvers.isabelle.AdaptationPhase
 import leon.verification.InjectAsserts
 import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase}
 
-class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Program, Program] {
+class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) extends LeonPhase[Program, Program] {
 
   val name = "preprocessing"
   val description = "Various preprocessings on Leon programs"
@@ -39,19 +39,27 @@ class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Progra
       CheckADTFieldsTypes                    andThen
       InliningPhase
 
-    val pipeX = if(desugarXLang) {
+    val pipeX = if (!genc && desugarXLang) {
+      // Do not desugar when generating C code
       XLangDesugaringPhase andThen
       debugTrees("Program after xlang desugaring")
     } else {
       NoopPhase[Program]()
     }
 
+    def pipeEnd = if (genc) {
+      // No InjectAsserts, FunctionClosure and AdaptationPhase phases
+      NoopPhase[Program]()
+    } else {
+      InjectAsserts  andThen
+      FunctionClosure andThen
+      AdaptationPhase
+    }
+
     val phases =
       pipeBegin andThen
       pipeX andThen
-      InjectAsserts andThen
-      FunctionClosure andThen
-      AdaptationPhase andThen
+      pipeEnd andThen
       debugTrees("Program after pre-processing")
 
     phases.run(ctx, p)

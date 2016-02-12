@@ -8,6 +8,7 @@ import Common._
 import Definitions._
 import Expressions._
 import Extractors._
+import Constructors.letDef
 
 class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {
@@ -50,10 +51,10 @@ class ScopeSimplifier extends Transformer {
       
       val fds_mapping = for((fd, newId) <- fds_newIds) yield {
         val localScopeToRegister = ListBuffer[(Identifier, Identifier)]() // We record the mapping of these variables only for the function.
-        val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
+        val newArgs = for(ValDef(id) <- fd.params) yield {
           val newArg = genId(id, newScope.register(localScopeToRegister))
           localScopeToRegister += (id -> newArg) // This renaming happens only inside the function.
-          ValDef(newArg, tpe)
+          ValDef(newArg)
         }
   
         val newFd = fd.duplicate(id = newId, params = newArgs)
@@ -65,7 +66,7 @@ class ScopeSimplifier extends Transformer {
       for((newFd, localScopeToRegister, fd) <- fds_mapping) {
         newFd.fullBody = rec(fd.fullBody, newScope.register(localScopeToRegister))
       }
-      LetDef(fds_mapping.map(_._1), rec(body, newScope))
+      letDef(fds_mapping.map(_._1), rec(body, newScope))
    
     case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, scope)

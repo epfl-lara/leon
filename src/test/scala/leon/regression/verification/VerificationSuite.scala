@@ -41,7 +41,7 @@ trait VerificationSuite extends LeonRegressionSuite {
       VerificationPhase andThen
       (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
 
-    val ctx = createLeonContext(files:_*)
+    val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
 
     try {
       val (_, ast) = extraction.run(ctx, files)
@@ -81,7 +81,7 @@ trait VerificationSuite extends LeonRegressionSuite {
   private[verification] def forEachFileIn(cat: String)(block: Output => Unit) {
     val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
-    fs foreach { file => 
+    fs foreach { file =>
       assert(file.exists && file.isFile && file.canRead,
         s"Benchmark ${file.getName} is not a readable file")
     }

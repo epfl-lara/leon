@@ -7,10 +7,13 @@ package rules
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Constructors._
+import purescala.TypeOps._
 
 case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val unconstr = p.xs.toSet -- variablesOf(p.phi)
+    val unconstr = (p.xs.toSet -- variablesOf(p.phi)).filter { x =>
+      isRealExpr(simplestValue(x.getType))
+    }
 
     if (unconstr.nonEmpty) {
       val sub = p.copy(xs = p.xs.filterNot(unconstr), eb = p.qeb.removeOuts(unconstr))

@@ -22,6 +22,7 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
   /** Evaluates resuts which can be evaluated directly
     * For example, concatenation of two string literals */
   val underlying = new DefaultEvaluator(ctx, prog)
+  underlying.setEvaluationFailOnChoose(true)
   override type Value = (Expr, Expr)
 
   override val description: String = "Evaluates string programs but keeps the formula which generated the string"

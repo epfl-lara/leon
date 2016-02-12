@@ -25,7 +25,7 @@ class HenkinModelBuilder(domains: HenkinDomains)
   override def result = new HenkinModel(mapBuilder.result, domains)
 }
 
-trait QuantificationSolver {
+trait QuantificationSolver extends Solver {
   val program: Program
   def getModel: HenkinModel
 

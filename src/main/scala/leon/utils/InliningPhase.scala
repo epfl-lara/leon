@@ -5,7 +5,7 @@ package leon.utils
 import leon._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.TypeOps._
+import purescala.TypeOps.instantiateType
 import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Constructors.caseClassSelector

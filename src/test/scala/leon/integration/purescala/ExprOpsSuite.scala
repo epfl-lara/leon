@@ -128,6 +128,9 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
         FunctionInvocation(fdef.typed, Seq(Variable(d), l1, l2)),
         FunctionInvocation(fdef.typed, Seq(Variable(d), l1, l1))).nonEmpty)
     
+    assert(canBeHomomorphic(
+        StringLiteral("1"),
+        StringLiteral("2")).isEmpty)
   }
 
 }

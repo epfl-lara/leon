@@ -11,7 +11,7 @@ import purescala.Quantification._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
-import purescala.TypeOps._
+import purescala.TypeOps.bestRealType
 
 import utils._
 

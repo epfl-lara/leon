@@ -22,7 +22,7 @@ import Common._
 import Extractors._
 import Constructors._
 import ExprOps._
-import TypeOps._
+import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
 
@@ -137,10 +137,6 @@ trait CodeExtraction extends ASTExtractors {
 
     private var currentFunDef: FunDef = null
 
-    //This is a bit misleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
-    //that it can have any owner
-    private var owners: Map[Identifier, Option[FunDef]] = Map()
-
     // This one never fails, on error, it returns Untyped
     def leonType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = {
       try {
@@ -153,7 +149,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || s.fullName.toString.endsWith(".main")
+      (annotationsOf(s) contains "ignore")
     }
 
     private def isLibrary(u: CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
@@ -625,6 +621,8 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
+    private var isLazy = Set[LeonValDef]()
+
     private var defsToDefs = Map[Symbol, FunDef]()
 
     private def defineFunDef(sym: Symbol, within: Option[LeonClassDef] = None)(implicit dctx: DefContext): FunDef = {
@@ -637,8 +635,13 @@ trait CodeExtraction extends ASTExtractors {
         val ptpe = leonType(sym.tpe)(nctx, sym.pos)
         val tpe = if (sym.isByNameParam) FunctionType(Seq(), ptpe) else ptpe
         val newID = FreshIdentifier(sym.name.toString, tpe).setPos(sym.pos)
-        owners += (newID -> None)
-        LeonValDef(newID, sym.isByNameParam).setPos(sym.pos)
+        val vd = LeonValDef(newID).setPos(sym.pos)
+
+        if (sym.isByNameParam) {
+          isLazy += vd
+        }
+
+        vd
       }
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
@@ -790,21 +793,7 @@ trait CodeExtraction extends ASTExtractors {
         }} else body0
 
       val finalBody = try {
-        flattenBlocks(extractTreeOrNoTree(body)(fctx)) match {
-          case e if e.getType.isInstanceOf[ArrayType] =>
-            getOwner(e) match {
-              case Some(Some(fd)) if fd == funDef =>
-                e
-
-              case None =>
-                e
-
-              case _ =>
-                outOfSubsetError(body, "Function cannot return an array that is not locally defined")
-            }
-          case e =>
-            e
-        }
+        flattenBlocks(extractTreeOrNoTree(body)(fctx))
       } catch {
         case e: ImpureCodeEncounteredException =>
           e.emit()
@@ -1082,15 +1071,6 @@ trait CodeExtraction extends ASTExtractors {
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
           val valTree = extractTree(bdy)
 
-          if(valTree.getType.isInstanceOf[ArrayType]) {
-            getOwner(valTree) match {
-              case None =>
-                owners += (newID -> Some(currentFunDef))
-              case _ =>
-                outOfSubsetError(tr, "Cannot alias array")
-            }
-          }
-
           val restTree = rest match {
             case Some(rst) =>
               val nctx = dctx.withNewVar(vs -> (() => Variable(newID)))
@@ -1130,7 +1110,7 @@ trait CodeExtraction extends ASTExtractors {
             case _ =>
               (Nil, restTree)
           }
-          LetDef(funDefWithBody +: other_fds, block)
+          letDef(funDefWithBody +: other_fds, block)
 
         // FIXME case ExDefaultValueFunction
 
@@ -1142,15 +1122,6 @@ trait CodeExtraction extends ASTExtractors {
           val binderTpe = extractType(tpt)
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
           val valTree = extractTree(bdy)
-
-          if(valTree.getType.isInstanceOf[ArrayType]) {
-            getOwner(valTree) match {
-              case None =>
-                owners += (newID -> Some(currentFunDef))
-              case Some(_) =>
-                outOfSubsetError(tr, "Cannot alias array")
-            }
-          }
 
           val restTree = rest match {
             case Some(rst) => {
@@ -1170,9 +1141,6 @@ trait CodeExtraction extends ASTExtractors {
           case Some(fun) =>
             val Variable(id) = fun()
             val rhsTree = extractTree(rhs)
-            if(rhsTree.getType.isInstanceOf[ArrayType] && getOwner(rhsTree).isDefined) {
-              outOfSubsetError(tr, "Cannot alias array")
-            }
             Assignment(id, rhsTree)
 
           case None =>
@@ -1213,18 +1181,6 @@ trait CodeExtraction extends ASTExtractors {
             case Variable(_) =>
             case _ =>
               outOfSubsetError(tr, "Array update only works on variables")
-          }
-
-          getOwner(lhsRec) match {
-          //  case Some(Some(fd)) if fd != currentFunDef =>
-          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
-
-          //  case Some(None) =>
-          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
-
-            case Some(_) =>
-
-            case None => sys.error("This array: " + lhsRec + " should have had an owner")
           }
 
           val indexRec = extractTree(index)
@@ -1301,7 +1257,6 @@ trait CodeExtraction extends ASTExtractors {
             val aTpe  = extractType(tpt)
             val oTpe  = oracleType(ops.pos, aTpe)
             val newID = FreshIdentifier(sym.name.toString, oTpe)
-            owners += (newID -> None)
             newID
           }
 
@@ -1323,7 +1278,6 @@ trait CodeExtraction extends ASTExtractors {
           val vds = args map { vd =>
             val aTpe = extractType(vd.tpt)
             val newID = FreshIdentifier(vd.symbol.name.toString, aTpe)
-            owners += (newID -> None)
             LeonValDef(newID)
           }
 
@@ -1339,7 +1293,6 @@ trait CodeExtraction extends ASTExtractors {
           val vds = args map { case (tpt, sym) =>
             val aTpe = extractType(tpt)
             val newID = FreshIdentifier(sym.name.toString, aTpe)
-            owners += (newID -> None)
             LeonValDef(newID)
           }
 
@@ -1534,7 +1487,7 @@ trait CodeExtraction extends ASTExtractors {
               val fd = getFunDef(sym, c.pos)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
+              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
 
               FunctionInvocation(fd.typed(newTps), argsByName)
 
@@ -1543,7 +1496,7 @@ trait CodeExtraction extends ASTExtractors {
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
+              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
 
               MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
 
@@ -1900,34 +1853,6 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    private def getReturnedExpr(expr: LeonExpr): Seq[LeonExpr] = expr match {
-      case Let(_, _, rest) => getReturnedExpr(rest)
-      case LetVar(_, _, rest) => getReturnedExpr(rest)
-      case LeonBlock(_, rest) => getReturnedExpr(rest)
-      case IfExpr(_, thenn, elze) => getReturnedExpr(thenn) ++ getReturnedExpr(elze)
-      case MatchExpr(_, cses) => cses.flatMap{ cse => getReturnedExpr(cse.rhs) }
-      case _ => Seq(expr)
-    }
-
-    def getOwner(exprs: Seq[LeonExpr]): Option[Option[FunDef]] = {
-      val exprOwners: Seq[Option[Option[FunDef]]] = exprs.map {
-        case Variable(id) =>
-          owners.get(id)
-        case _ =>
-          None
-      }
-
-      if(exprOwners.contains(None))
-        None
-      else if(exprOwners.contains(Some(None)))
-        Some(None)
-      else if(exprOwners.exists(o1 => exprOwners.exists(o2 => o1 != o2)))
-        Some(None)
-      else
-        exprOwners.head
-    }
-
-    def getOwner(expr: LeonExpr): Option[Option[FunDef]] = getOwner(getReturnedExpr(expr))
   }
 
   def containsLetDef(expr: LeonExpr): Boolean = {

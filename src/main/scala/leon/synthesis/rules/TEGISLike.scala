@@ -12,6 +12,7 @@ import datagen._
 import evaluators._
 import codegen.CodeGenParams
 import leon.grammars._
+import leon.utils.GrowableIterable
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
@@ -40,7 +41,7 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
 
-        val useVanuatoo      = sctx.settings.cegisUseVanuatoo.getOrElse(false)
+        val useVanuatoo = sctx.settings.cegisUseVanuatoo
 
         val inputGenerator: Iterator[Seq[Expr]] = if (useVanuatoo) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)
@@ -53,8 +54,6 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         val failedTestsStats = new MutableMap[Seq[Expr], Int]().withDefaultValue(0)
 
-        def hasInputExamples = gi.nonEmpty
-
         var n = 1
         def allInputExamples() = {
           if (n == 10 || n == 50 || n % 500 == 0) {
@@ -64,14 +63,12 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
           gi.iterator
         }
 
-        var tests = p.eb.valids.map(_.ins).distinct
-
         if (gi.nonEmpty) {
 
-          val evalParams            = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
-          val evaluator             = new DualEvaluator(sctx.context, sctx.program, evalParams)
+          val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
+          val evaluator  = new DualEvaluator(sctx.context, sctx.program, evalParams)
 
-          val enum = new MemoizedEnumerator[T, Expr, Generator[T, Expr]](grammar.getProductions)
+          val enum = new MemoizedEnumerator[T, Expr, ProductionRule[T, Expr]](grammar.getProductions)
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
@@ -80,7 +77,6 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
           val allExprs = enum.iterator(params.rootLabel(targetType))
 
           var candidate: Option[Expr] = None
-          var n = 1
 
           def findNext(): Option[Expr] = {
             candidate = None
@@ -111,14 +107,9 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
             candidate
           }
 
-          def toStream: Stream[Solution] = {
-            findNext() match {
-              case Some(e) =>
-                Stream.cons(Solution(BooleanLiteral(true), Set(), e, isTrusted = false), toStream)
-              case None =>
-                Stream.empty
-            }
-          }
+          val toStream = Stream.continually(findNext()).takeWhile(_.nonEmpty).map( e =>
+            Solution(BooleanLiteral(true), Set(), e.get, isTrusted = false)
+          )
 
           RuleClosed(toStream)
         } else {
