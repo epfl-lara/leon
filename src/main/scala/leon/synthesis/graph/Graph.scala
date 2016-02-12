@@ -188,7 +188,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
 
     val rulesPrio = rules.groupBy(_.priority).toSeq.sortBy(_._1)
 
-    for ((_, rs) <- rulesPrio) {
+    for ((prio, rs) <- rulesPrio) {
       
       val results = rs.flatMap{ r =>
         hctx.context.reporter.ifDebug(printer => printer("Testing rule: " + r))
@@ -198,7 +198,9 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
       }.toList
 
       if (results.nonEmpty) {
-        return results
+        // We want to force all NormalizingRule's anyway, so no need to branch out.
+        // Just force the first one, and the rest may be applied afterwards.
+        return if (prio == RulePriorityNormalizing) results.take(1) else results
       }
     }
     Nil
