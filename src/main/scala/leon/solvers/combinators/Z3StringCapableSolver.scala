@@ -24,7 +24,7 @@ import leon.utils.Bijection
 import leon.solvers.z3.StringEcoSystem
 
 object Z3StringCapableSolver {
-  def convert(p: Program): (Program, Option[Z3StringConversion]) = {
+  def convert(p: Program, force: Boolean = false): (Program, Option[Z3StringConversion]) = {
     val converter = new Z3StringConversion(p)
     import converter.Forward._
     var globalFdMap = Map[FunDef, (Map[Identifier, Identifier], FunDef)]()
@@ -46,7 +46,7 @@ object Z3StringCapableSolver {
           } else None
       )
     })
-    if(!hasStrings) {
+    if(!hasStrings && !force) {
       (p, None)
     } else {
       converter.globalFdMap ++= globalFdMap.view.map(kv => (kv._1, kv._2._2))
@@ -58,11 +58,17 @@ object Z3StringCapableSolver {
     }
   }
 }
+trait ForcedProgramConversion { self: Z3StringCapableSolver[_] =>
+  override def convertProgram(p: Program): (Program, Option[Z3StringConversion]) = {
+    Z3StringCapableSolver.convert(p, true)
+  }
+}
 
 abstract class Z3StringCapableSolver[+TUnderlying <: Solver](val context: LeonContext, val program: Program,
     val underlyingConstructor: (Program, Option[Z3StringConversion]) => TUnderlying)
 extends Solver {
-  protected val (new_program, someConverter) = Z3StringCapableSolver.convert(program)
+  def convertProgram(p: Program): (Program, Option[Z3StringConversion]) = Z3StringCapableSolver.convert(p)
+  protected val (new_program, someConverter) = convertProgram(program)
 
   val underlying = underlyingConstructor(new_program, someConverter)
   
@@ -71,6 +77,7 @@ extends Solver {
     someConverter match {
       case None => model
       case Some(converter) =>
+        println("Conversion")
         val ids = model.ids.toSeq
         val exprs = ids.map(model.apply)
         import converter.Backward._
@@ -86,21 +93,17 @@ extends Solver {
 
   // Members declared in leon.solvers.Solver
   def assertCnstr(expression: Expr): Unit = {
-    someConverter match {
-      case None => underlying.assertCnstr(expression)
-      case Some(converter) =>
-        import converter.Forward._
-        val newExpression = convertExpr(expression)(Map())
-        underlying.assertCnstr(newExpression)
-    }
+    someConverter.map{converter => 
+      import converter.Forward._
+      val newExpression = convertExpr(expression)(Map())
+      underlying.assertCnstr(newExpression)
+    }.getOrElse(underlying.assertCnstr(expression))
   }
   def getUnsatCore: Set[Expr] = {
-    someConverter match {
-      case None => underlying.getUnsatCore
-      case Some(converter) =>
-        import converter.Backward._
-        underlying.getUnsatCore map (e => convertExpr(e)(Map()))
-    }
+    someConverter.map{converter => 
+      import converter.Backward._
+      underlying.getUnsatCore map (e => convertExpr(e)(Map()))
+    }.getOrElse(underlying.getUnsatCore)
   }
   def check: Option[Boolean] = underlying.check
   def free(): Unit = underlying.free()
@@ -127,26 +130,24 @@ trait Z3StringQuantificationSolver[TUnderlying <: QuantificationSolver] extends 
   // Members declared in leon.solvers.QuantificationSolver
   override def getModel: leon.solvers.HenkinModel = {
     val model = underlying.getModel
-    someConverter match {
-      case None => model
-      case Some(converter) =>
-        val ids = model.ids.toSeq
-        val exprs = ids.map(model.apply)
-        import converter.Backward._
-        val original_ids = ids.map(convertId)
-        val original_exprs = exprs.map{ case e => convertExpr(e)(Map()) }
-        
-        val new_domain = new HenkinDomains(
-            model.doms.lambdas.map(kv =>
-              (convertExpr(kv._1)(Map()).asInstanceOf[Lambda],
-               kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap,
-            model.doms.tpes.map(kv =>
-              (convertType(kv._1),
-               kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap
-            )
-        
-        new HenkinModel(original_ids.zip(original_exprs).toMap, new_domain)
-    }
+    someConverter map { converter =>
+      val ids = model.ids.toSeq
+      val exprs = ids.map(model.apply)
+      import converter.Backward._
+      val original_ids = ids.map(convertId)
+      val original_exprs = exprs.map{ case e => convertExpr(e)(Map()) }
+      
+      val new_domain = new HenkinDomains(
+          model.doms.lambdas.map(kv =>
+            (convertExpr(kv._1)(Map()).asInstanceOf[Lambda],
+             kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap,
+          model.doms.tpes.map(kv =>
+            (convertType(kv._1),
+             kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap
+          )
+      
+      new HenkinModel(original_ids.zip(original_exprs).toMap, new_domain)
+    } getOrElse model
   }
 }
 

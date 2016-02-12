@@ -191,16 +191,18 @@ trait Z3StringConverters  { self: Z3StringConversion =>
                   convertExpr(kv._2))),
                   default.map(d => convertExpr(d)), convertType(tpe).asInstanceOf[FunctionType])
         case Lambda(args, body) =>
+          println("Converting Lambda :" + e)
           val new_bindings = scala.collection.mutable.ListBuffer[(Identifier, Identifier)]()
-          for(arg <- args) {
+          val new_args = for(arg <- args) yield {
             val in = arg.getType
-            if(convertType(in) ne in) {
-              new_bindings += (arg.id -> convertId(arg.id))
-            }
+            val new_id = convertId(arg.id)
+            if(new_id ne arg.id) {
+              new_bindings += (arg.id -> new_id)
+              ValDef(new_id)
+            } else arg
           }
-          val new_args = new_bindings.map(x => ValDef(x._2))
-          Lambda(new_args,
-              convertExpr(body)(bindings ++ new_bindings.map(t => (t._1, Variable(t._2))))).copiedFrom(e)
+          val res = Lambda(new_args, convertExpr(body)(bindings ++ new_bindings.map(t => (t._1, Variable(t._2))))).copiedFrom(e)
+          res
         case Let(a, expr, body) if isTypeToConvert(a.getType) => 
           val new_a = convertId(a)
           val new_bindings = bindings + (a -> Variable(new_a))
