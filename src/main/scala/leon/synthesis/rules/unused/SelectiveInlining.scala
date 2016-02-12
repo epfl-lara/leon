@@ -2,11 +2,11 @@
 
 package leon
 package synthesis
-package rules
+package rules.unused
 
-import purescala.Expressions._
-import purescala.Extractors._
 import purescala.Constructors._
+import purescala.Expressions.{Equals, Expr, FunctionInvocation}
+import purescala.Extractors.TopLevelAnds
 
 case object SelectiveInlining extends Rule("Sel. Inlining") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

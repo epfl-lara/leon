@@ -160,38 +160,44 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
 
 object ExamplesBank {
   def empty = ExamplesBank(Nil, Nil)
+
 }
 
 /** Same as an ExamplesBank, but with identifiers corresponding to values. This
   * allows us to evaluate expressions. */
 case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SearchContext) {
 
-  def removeOuts(toRemove: Set[Identifier]) = {
+  def removeOuts(toRemove: Set[Identifier]): QualifiedExamplesBank = {
+    val nxs    = xs.filterNot(toRemove)
     val toKeep = xs.zipWithIndex.filterNot(x => toRemove(x._1)).map(_._2)
 
-    eb mapOuts { out => List(toKeep.map(out)) }
+    QualifiedExamplesBank(as, nxs, eb mapOuts { out => List(toKeep.map(out)) })
   }
 
   def removeIns(toRemove: Set[Identifier]) = {
+    val nas = as.filterNot(toRemove)
     val toKeep: List[Int] = as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
-    eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) }
+
+    QualifiedExamplesBank(nas, xs, eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
   }
 
   /** Filter inputs throught expr which is an expression evaluating to a boolean */
-  def filterIns(expr: Expr): ExamplesBank = {
+  def filterIns(expr: Expr): QualifiedExamplesBank = {
     filterIns(m => hctx.defaultEvaluator.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
-  def filterIns(pred: Map[Identifier, Expr] => Boolean): ExamplesBank = {
-    eb mapIns { in =>
-      val m = (as zip in).toMap
-      if(pred(m)) {
-        List(in)
-      } else {
-        Nil
+  def filterIns(pred: Map[Identifier, Expr] => Boolean): QualifiedExamplesBank = {
+    QualifiedExamplesBank(as, xs,
+      eb mapIns { in =>
+        val m = (as zip in).toMap
+        if(pred(m)) {
+          List(in)
+        } else {
+          Nil
+        }
       }
-    }
+    )
   }
 
   /** Maps inputs through the function f
@@ -205,4 +211,10 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
         f(as zip in).map(InOutExample(_, out))
     }
   }
+}
+
+import scala.language.implicitConversions
+
+object QualifiedExamplesBank {
+  implicit def qebToEb(qeb: QualifiedExamplesBank): ExamplesBank = qeb.eb
 }

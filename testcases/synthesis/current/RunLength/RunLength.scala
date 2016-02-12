@@ -5,7 +5,6 @@ import leon.collection._
 
 object RunLength {
 
-
   def decode[A](l: List[(BigInt, A)]): List[A] = {
     def fill[A](i: BigInt, a: A): List[A] = {
       if (i > 0) a :: fill(i - 1, a)
@@ -18,7 +17,6 @@ object RunLength {
     }
   }
 
-
   def legal[A](l: List[(BigInt, A)]): Boolean = l match {
     case Cons((i, x), tl) =>
       i > 0 && (tl match {
@@ -28,12 +26,6 @@ object RunLength {
     case _ => true
   }
 
-  /*def unique[A](l1: List[A], l2: List[A]) => {
-    require(encode(l1) == encode(l2))
-    l1 == l2
-  }.holds*/
-
-  // Solvable with --manual=2,0,0,1,0,0,3,0,1,1,0,0,1,0,0,0,1,1,1
   def encode[A](l: List[A]): List[(BigInt, A)] = {
     // Solution
     /*l match {

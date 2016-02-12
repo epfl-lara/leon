@@ -2,9 +2,9 @@
 
 package leon
 package synthesis
-package rules
+package rules.unused
 
-import solvers.sygus._
+import leon.solvers.sygus.CVC4SygusSolver
 
 case object SygusCVC4 extends Rule("SygusCVC4") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

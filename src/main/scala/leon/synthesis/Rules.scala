@@ -51,26 +51,15 @@ object Rules {
     UnusedInput,
     EquivalentInputs,
     UnconstrainedOutput,
+    if(naiveGrammar) NaiveCEGIS else CEGIS,
     OptimisticGround,
-    EqualitySplit,
+    GenericTypeEqualitySplit,
     InequalitySplit,
     IntroduceRecCalls,
-    if(naiveGrammar) NaiveCEGIS else CEGIS,
-    //TEGIS,
-    //BottomUpTEGIS,
     rules.Assert,
-    //DetupleOutput, // Subsumed by IndependentSplit
     DetupleInput,
     ADTSplit,
-    //IntegerEquation,
-    //IntegerInequalities,
-    IntInduction,
     InnerCaseSplit
-    //new OptimisticInjection(_),
-    //new SelectiveInlining(_),
-    //ADTLongInduction,
-    //ADTInduction
-    //AngelicHoles // @EK: Disabled now as it is explicit with withOracle { .. }
   )
 
 }
@@ -211,21 +200,5 @@ trait RuleDSL {
       Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
     case _ => None
 
-  }
-
-  /** Straightforward combination of solutions, where expression is reconstructed according to a combiner.
-    * If combiner fails, no solution will be returned.
-    *
-    * @param combiner The combiner of synthesized subterms which reconstructs the term of the solution from the subterms.
-    */
-  def simpleCombine(combiner: PartialFunction[List[Expr], Expr]): List[Solution] => Option[Solution] = { ls =>
-    combiner.lift(ls map (_.term)).map{ combined =>
-      Solution(
-        orJoin(ls map (_.pre)),
-        ls.flatMap (_.defs).toSet,
-        combined,
-        ls.forall(_.isTrusted)
-      )
-    }
   }
 }

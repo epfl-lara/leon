@@ -42,10 +42,8 @@ class StablePrintingSuite extends LeonRegressionSuite {
       OptimisticGround,
       InequalitySplit,
       rules.Assert,
-      DetupleOutput,
       DetupleInput,
       ADTSplit,
-      IntInduction,
       InnerCaseSplit
     )
 

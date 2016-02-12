@@ -2,11 +2,10 @@
 
 package leon
 package synthesis
-package rules
+package rules.unused
 
 import purescala.Types._
 import purescala.Extractors._
-import utils._
 import Witnesses._
 import grammars._
 
