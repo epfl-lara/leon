@@ -75,7 +75,7 @@ class Synthesizer(val context : LeonContext,
 
     val result = sols.map {
       case sol if sol.isTrusted =>
-        (sol, true)
+        (sol, Some(true))
       case sol =>
         validateSolution(s, sol, 5.seconds)
     }
@@ -99,9 +99,14 @@ class Synthesizer(val context : LeonContext,
       val (size, calls, proof) = result.headOption match {
         case Some((sol, trusted)) =>
           val expr = sol.toSimplifiedExpr(context, program)
-          (formulaSize(expr), functionCallsOf(expr).size, if (trusted) "$\\surd$" else "")
+          val pr = trusted match {
+            case Some(true) => "✓"
+            case Some(false) => "✗"
+            case None => "?"
+          }
+          (formulaSize(expr), functionCallsOf(expr).size, pr)
         case _ =>
-          (0, 0, "X")
+          (0, 0, "F")
       }
 
       val date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
@@ -109,20 +114,24 @@ class Synthesizer(val context : LeonContext,
       val fw = new java.io.FileWriter("synthesis-report.txt", true)
 
       try {
-        fw.write(f"$date:  $benchName%-50s & $psize%4d & $size%4d & $calls%4d & $proof%7s & $time%2.1f \\\\\n")
+        fw.write(f"$date:  $benchName%-50s | $psize%4d | $size%4d | $calls%4d | $proof%7s | $time%2.1f \n")
       } finally {
         fw.close
       }
     }(DebugSectionReport)
 
     (s, if (result.isEmpty && allowPartial) {
-      List((new PartialSolution(s, true).getSolution, false)).toStream
+      Stream((new PartialSolution(s, true).getSolution, false))
     } else {
-      result
+      // Discard invalid solutions
+      result collect {
+        case (sol, Some(true)) => (sol, true)
+        case (sol, None)       => (sol, false)
+      }
     })
   }
 
-  def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Boolean) = {
+  def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Option[Boolean]) = {
     import verification.VerificationPhase._
     import verification.VerificationContext
 
@@ -138,15 +147,15 @@ class Synthesizer(val context : LeonContext,
       val vcreport = checkVCs(vctx, vcs)
 
       if (vcreport.totalValid == vcreport.totalConditions) {
-        (sol, true)
+        (sol, Some(true))
       } else if (vcreport.totalValid + vcreport.totalUnknown == vcreport.totalConditions) {
         reporter.warning("Solution may be invalid:")
-        (sol, false)
+        (sol, None)
       } else {
-        reporter.warning("Solution was invalid:")
-        reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
-        reporter.warning(vcreport.summaryString)
-        (new PartialSolution(search, false).getSolution, false)
+        reporter.error("Solution was invalid:")
+        reporter.error(fds.map(ScalaPrinter(_)).mkString("\n\n"))
+        reporter.error(vcreport.summaryString)
+        (new PartialSolution(search, false).getSolution, Some(false))
       }
     } finally {
       solverf.shutdown()

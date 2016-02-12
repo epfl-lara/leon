@@ -86,11 +86,12 @@ object SynthesisPhase extends TransformationPhase {
             dot.writeFile("derivation"+dotGenIds.nextGlobal+".dot")
           }
 
-          val (sol, _) = solutions.head
+          solutions.headOption foreach { case (sol, _) =>
+            val expr = sol.toSimplifiedExpr(ctx, program)
+            fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
+            functions += fd
+          }
 
-          val expr = sol.toSimplifiedExpr(ctx, program)
-          fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
-          functions += fd
         } finally {
           synthesizer.shutdown()
         }
