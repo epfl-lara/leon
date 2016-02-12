@@ -61,7 +61,7 @@ object Rules {
     //TEGIS,
     //BottomUpTEGIS,
     rules.Assert,
-    DetupleOutput,
+    //DetupleOutput, // Subsumed by IndependentSplit
     DetupleInput,
     ADTSplit,
     //IntegerEquation,
