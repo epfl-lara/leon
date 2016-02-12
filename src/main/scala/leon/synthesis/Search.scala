@@ -90,7 +90,3 @@ class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, val strat: Strate
 
   ctx.interruptManager.registerForInterrupts(this)
 }
-
-/*
-
-*/
