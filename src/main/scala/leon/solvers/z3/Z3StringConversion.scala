@@ -112,28 +112,24 @@ object StringEcoSystem {
 }
 
 class Z3StringConversion(val p: Program) extends Z3StringConverters {
-  val stringBijection = new Bijection[String, Expr]()
- 
   import StringEcoSystem._
-    
-  lazy val listchar = StringList.typed
-  lazy val conschar = StringCons.typed
-  lazy val nilchar = StringNil.typed
-
-  lazy val list_size = StringSize.typed
-  lazy val list_++ = StringListConcat.typed
-  lazy val list_take = StringTake.typed
-  lazy val list_drop = StringDrop.typed
-  lazy val list_slice = StringSlice.typed
-  
   def getProgram = program_with_string_methods
   
   lazy val program_with_string_methods = {
     val p2 = DefOps.addClassDefs(p, StringEcoSystem.classDefs, p.library.Nil.get)
     DefOps.addFunDefs(p2, StringEcoSystem.funDefs, p2.library.escape.get)
   }
+}
 
-  def convertToString(e: Expr)(implicit p: Program): String  = 
+trait Z3StringConverters  {
+  import StringEcoSystem._
+  val mappedVariables = new Bijection[Identifier, Identifier]()
+    
+  val globalFdMap = new Bijection[FunDef, FunDef]()
+  
+  val stringBijection = new Bijection[String, Expr]()
+  
+  def convertToString(e: Expr): String  = 
     stringBijection.cachedA(e) {
       e match {
         case CaseClass(_, Seq(CharLiteral(c), l)) => c + convertToString(l)
@@ -142,17 +138,10 @@ class Z3StringConversion(val p: Program) extends Z3StringConverters {
     }
   def convertFromString(v: String): Expr =
     stringBijection.cachedB(v) {
-      v.toList.foldRight(CaseClass(nilchar, Seq())){
-        case (char, l) => CaseClass(conschar, Seq(CharLiteral(char), l))
+      v.toList.foldRight(CaseClass(StringNilTyped, Seq())){
+        case (char, l) => CaseClass(StringConsTyped, Seq(CharLiteral(char), l))
       }
     }
-}
-
-trait Z3StringConverters  { self: Z3StringConversion =>
-  import StringEcoSystem._
-  val mappedVariables = new Bijection[Identifier, Identifier]()
-    
-  val globalFdMap = new Bijection[FunDef, FunDef]()
   
   trait BidirectionalConverters {
     def convertFunDef(fd: FunDef): FunDef
@@ -291,18 +280,17 @@ trait Z3StringConverters  { self: Z3StringConversion =>
     def convertExpr(e: Expr)(implicit bindings: Map[Identifier, Expr]): Expr = e match {
       case Variable(id) if isTypeToConvert(id.getType) => Variable(convertId(id)).copiedFrom(e)
       case StringLiteral(v)          =>
-        // No string support for z3 at this moment.
         val stringEncoding = convertFromString(v)
         convertExpr(stringEncoding).copiedFrom(e)
       case StringLength(a)           =>
-        FunctionInvocation(list_size, Seq(convertExpr(a))).copiedFrom(e)
+        FunctionInvocation(StringSize.typed, Seq(convertExpr(a))).copiedFrom(e)
       case StringConcat(a, b)        =>
-        FunctionInvocation(list_++, Seq(convertExpr(a), convertExpr(b))).copiedFrom(e)
+        FunctionInvocation(StringListConcat.typed, Seq(convertExpr(a), convertExpr(b))).copiedFrom(e)
       case SubString(a, start, Plus(start2, length)) if start == start2  =>
-        FunctionInvocation(list_take,
-          Seq(FunctionInvocation(list_drop, Seq(convertExpr(a), convertExpr(start))), convertExpr(length))).copiedFrom(e)
+        FunctionInvocation(StringTake.typed,
+          Seq(FunctionInvocation(StringDrop.typed, Seq(convertExpr(a), convertExpr(start))), convertExpr(length))).copiedFrom(e)
       case SubString(a, start, end)  => 
-        FunctionInvocation(list_slice, Seq(convertExpr(a), convertExpr(start), convertExpr(end))).copiedFrom(e)
+        FunctionInvocation(StringSlice.typed, Seq(convertExpr(a), convertExpr(start), convertExpr(end))).copiedFrom(e)
       case MatchExpr(scrutinee, cases) =>
         MatchExpr(convertExpr(scrutinee), for(MatchCase(pattern, guard, rhs) <- cases) yield {
           MatchCase(convertPattern(pattern), guard.map(convertExpr), convertExpr(rhs))
@@ -351,13 +339,11 @@ trait Z3StringConverters  { self: Z3StringConversion =>
       }
     case PatternConverted(e) => e
   }
-    
-  
-  
+
   def convertExpr(e: Expr)(implicit bindings: Map[Identifier, Expr]): Expr = 
     e match {
       case cc@CaseClass(cct, args) if TypeOps.isSubtypeOf(cct, StringListTyped)=>
-        StringLiteral(convertToString(cc)(self.p))
+        StringLiteral(convertToString(cc))
       case FunctionInvocation(StringSize, Seq(a)) =>
         StringLength(convertExpr(a)).copiedFrom(e)
       case FunctionInvocation(StringListConcat, Seq(a, b))      =>

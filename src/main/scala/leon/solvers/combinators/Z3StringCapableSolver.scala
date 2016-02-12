@@ -23,7 +23,7 @@ import leon.utils.Bijection
 import leon.solvers.z3.StringEcoSystem
 
 object Z3StringCapableSolver {
-  def convert(p: Program, force: Boolean = false): (Program, Option[Z3StringConversion]) = {
+  def convert(p: Program): (Program, Option[Z3StringConversion]) = {
     val converter = new Z3StringConversion(p)
     import converter.Forward._
     var globalFdMap = Map[FunDef, (Map[Identifier, Identifier], FunDef)]()
@@ -45,7 +45,7 @@ object Z3StringCapableSolver {
           } else None
       )
     })
-    if(!hasStrings && !force) {
+    if(!hasStrings) {
       (p, None)
     } else {
       converter.globalFdMap ++= globalFdMap.view.map(kv => (kv._1, kv._2._2))
@@ -58,21 +58,16 @@ object Z3StringCapableSolver {
   }
 }
 
-trait ForcedProgramConversion { self: Z3StringCapableSolver[_] =>
-  override def convertProgram(p: Program): (Program, Option[Z3StringConversion]) = {
-    Z3StringCapableSolver.convert(p, true)
-  }
-}
-
 abstract class Z3StringCapableSolver[+TUnderlying <: Solver](
   val context: LeonContext,
   val program: Program,
   val underlyingConstructor: (Program, Option[Z3StringConversion]) => TUnderlying) extends Solver {
 
-  def convertProgram(p: Program): (Program, Option[Z3StringConversion]) = Z3StringCapableSolver.convert(p)
-  protected val (new_program, someConverter) = convertProgram(program)
+  protected val (new_program, optConverter) = Z3StringCapableSolver.convert(program)
+  var someConverter = optConverter
 
   val underlying = underlyingConstructor(new_program, someConverter)
+  var solverInvokedWithStrings = false
   
   def getModel: leon.solvers.Model = {
     val model = underlying.getModel
@@ -98,24 +93,40 @@ abstract class Z3StringCapableSolver[+TUnderlying <: Solver](
         
             new PartialModel(original_ids.zip(original_exprs).toMap, new_domain)
           case _ =>
-            new Model(original_ids.zip(original_exprs).toMap)
-        }
+        new Model(original_ids.zip(original_exprs).toMap)
     }
+  }
   }
 
   // Members declared in leon.utils.Interruptible
   def interrupt(): Unit = underlying.interrupt()
   def recoverInterrupt(): Unit = underlying.recoverInterrupt()
 
+  // Converts expression on the fly if needed, creating a string converter if needed.
+  def convertExprOnTheFly(expression: Expr, withConverter: Z3StringConversion => Expr): Expr = {
+    someConverter match {
+      case None =>
+        if(solverInvokedWithStrings || exists(e => TypeOps.exists(StringType == _)(e.getType))(expression)) { // On the fly conversion
+          solverInvokedWithStrings = true
+          val c = new Z3StringConversion(program)
+          someConverter = Some(c)
+          withConverter(c)
+        } else expression
+      case Some(converter) =>
+        withConverter(converter)
+    }
+  }
+  
   // Members declared in leon.solvers.Solver
   def assertCnstr(expression: Expr): Unit = {
     someConverter.map{converter => 
       import converter.Forward._
       val newExpression = convertExpr(expression)(Map())
       underlying.assertCnstr(newExpression)
-    }.getOrElse(underlying.assertCnstr(expression))
+    }.getOrElse{
+      underlying.assertCnstr(convertExprOnTheFly(expression, _.Forward.convertExpr(expression)(Map())))
+    }
   }
-
   def getUnsatCore: Set[Expr] = {
     someConverter.map{converter => 
       import converter.Backward._
@@ -150,7 +161,7 @@ class ConvertibleCodeGenEvaluator(context: LeonContext, originalProgram: Program
   override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
     import converter._ 
     super.compile(Backward.convertExpr(expression)(Map()), args.map(Backward.convertId))
-      .map(evaluator => (m: Model) => Forward.convertResult(evaluator(Backward.convertModel(m)))
+    .map(evaluator => (m: Model) => Forward.convertResult(evaluator(Backward.convertModel(m)))
     )
   }
 }
@@ -190,36 +201,36 @@ class Z3StringFairZ3Solver(context: LeonContext, program: Program)
         new FairZ3SolverWithBackwardEvaluator(context, prgm, program, someConverter)) 
      with Z3StringEvaluatingSolver[FairZ3Solver] {
 
-  // Members declared in leon.solvers.z3.AbstractZ3Solver
-  protected[leon] val z3cfg: _root_.z3.scala.Z3Config = underlying.z3cfg
-  override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-    someConverter match {
-      case None => underlying.checkAssumptions(assumptions)
-      case Some(converter) =>
-        underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
+     // Members declared in leon.solvers.z3.AbstractZ3Solver
+    protected[leon] val z3cfg: _root_.z3.scala.Z3Config = underlying.z3cfg
+    override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+      someConverter match {
+        case None => underlying.checkAssumptions(assumptions.map(e => this.convertExprOnTheFly(e, _.Forward.convertExpr(e)(Map()))))
+        case Some(converter) =>
+          underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
+      }
     }
-  }
 }
 
 class Z3StringUnrollingSolver(context: LeonContext, program: Program, underlyingSolverConstructor: Program => Solver)
   extends Z3StringCapableSolver(context, program, (program: Program, converter: Option[Z3StringConversion]) =>
     new UnrollingSolver(context, program, underlyingSolverConstructor(program)))
-     with Z3StringNaiveAssumptionSolver[UnrollingSolver]
+  with Z3StringNaiveAssumptionSolver[UnrollingSolver]
      with Z3StringEvaluatingSolver[UnrollingSolver] {
 
-  override def getUnsatCore = super[Z3StringNaiveAssumptionSolver].getUnsatCore
+    override def getUnsatCore = super[Z3StringNaiveAssumptionSolver].getUnsatCore
 }
 
 class Z3StringSMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
   extends Z3StringCapableSolver(context, program, (program: Program, converter: Option[Z3StringConversion]) =>
     new smtlib.SMTLIBZ3QuantifiedSolver(context, program)) {
 
-  override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-    someConverter match {
-      case None => underlying.checkAssumptions(assumptions)
-      case Some(converter) =>
-        underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
+     override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+      someConverter match {
+        case None => underlying.checkAssumptions(assumptions)
+        case Some(converter) =>
+          underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
+      }
     }
-  }
 }
 
