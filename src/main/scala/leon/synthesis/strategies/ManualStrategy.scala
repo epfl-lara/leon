@@ -4,6 +4,8 @@ package leon
 package synthesis
 package strategies
 
+import purescala.Common.FreshIdentifier
+
 import graph._
 
 class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy) extends Strategy {
@@ -17,6 +19,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   case object Quit extends Command
   case object Noop extends Command
   case object Best extends Command
+  case object Tree extends Command
 
   // Manual search state:
   var rootNode: Node    = _
@@ -156,6 +159,20 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
 
           manualGetNext()
 
+        case Tree =>
+          val hole = FreshIdentifier("\u001b[1;31m??? \u001b[0m", c.p.outType)
+          val ps = new PartialSolution(this, true)
+
+          ps.solutionAround(c)(hole.toVariable) match {
+            case Some(sol) =>
+              println("-"*120)
+              println(sol.toExpr.asString)
+            case None =>
+              error("woot!")
+          }
+          manualGetNext()
+
+
         case Best =>
           strat.bestNext(c) match {
             case Some(n) =>
@@ -227,6 +244,9 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
       } else {
         Cd(path.map(_.toInt)) :: parseCommands(ts.drop(path.size))
       }
+
+    case "t" :: ts =>
+      Tree :: parseCommands(ts)
 
     case "b" :: ts =>
       Best :: parseCommands(ts)

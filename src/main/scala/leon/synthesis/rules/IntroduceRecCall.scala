@@ -54,7 +54,7 @@ case object IntroduceRecCall extends Rule("Introduce rec. calls") {
 
         def apply(nohctx: SearchContext) = {
 
-          val psol = new PartialSolution(hctx.search, true)
+          val psol = new PartialSolution(hctx.search.strat, true)
             .solutionAround(hctx.currentNode)(Error(p.outType, "Encountered choose!"))
             .getOrElse(hctx.sctx.context.reporter.fatalError("Unable to get outer solution"))
             .term
