@@ -6,10 +6,9 @@ package synthesis
 import purescala.Expressions._
 
 import graph._
+import strategies._
 
-class PartialSolution(search: Search, includeUntrusted: Boolean = false) {
-  val g = search.g
-  val strat = search.strat
+class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false) {
 
   def includeSolution(s: Solution) = {
     includeUntrusted || s.isTrusted
@@ -48,11 +47,6 @@ class PartialSolution(search: Search, includeUntrusted: Boolean = false) {
 
     e : Expr => solveWith(Some(n), Solution(BooleanLiteral(true), Set(), e))
 
-  }
-
-
-  def getSolution: Solution = {
-    getSolutionFor(g.root)
   }
 
   def getSolutionFor(n: Node): Solution = {
