@@ -14,7 +14,6 @@ import codegen.CodeGenParams
 import grammars._
 
 import bonsai.enumerators._
-import bonsai.{Generator => Gen}
 
 case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
@@ -51,13 +50,13 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
 
           val nTests = tests.size
 
-          var compiled = Map[Generator[T, Expr], Vector[Vector[Expr]] => Option[Vector[Expr]]]()
+          var compiled = Map[ProductionRule[T, Expr], Vector[Vector[Expr]] => Option[Vector[Expr]]]()
 
           /**
            * Compile Generators to functions from Expr to Expr. The compiled
            * generators will be passed to the enumerator
            */
-          def compile(gen: Generator[T, Expr]): Vector[Vector[Expr]] => Option[Vector[Expr]] = {
+          def compile(gen: ProductionRule[T, Expr]): Vector[Vector[Expr]] => Option[Vector[Expr]] = {
             compiled.getOrElse(gen, {
               val executor = if (gen.subTrees.isEmpty) {
 
@@ -108,7 +107,7 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
           val targetType   = tupleTypeWrap(p.xs.map(_.getType))
           val wrappedTests = tests.map { case (is, os) => (is, tupleWrap(os))}
 
-          val enum = new BottomUpEnumerator[T, Expr, Expr, Generator[T, Expr]](
+          val enum = new BottomUpEnumerator[T, Expr, Expr, ProductionRule[T, Expr]](
             grammar.getProductions,
             wrappedTests,
             { (vecs, gen) =>

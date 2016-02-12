@@ -4,16 +4,31 @@ package leon
 package synthesis
 package rules
 
-import purescala.Types._
-
 import grammars._
-import utils._
+import grammars.transformers._
+import purescala.Types.TypeTree
 
-case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
+/** Basic implementation of CEGIS that uses a naive grammar */
+case object NaiveCEGIS extends CEGISLike[TypeTree]("Naive CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
       grammar = Grammars.typeDepthBound(Grammars.default(sctx, p), 2), // This limits type depth
-      rootLabel = {(tpe: TypeTree) => tpe }
+      rootLabel = {(tpe: TypeTree) => tpe },
+      optimizations = false
+    )
+  }
+}
+
+/** More advanced implementation of CEGIS that uses a less permissive grammar
+  * and some optimizations
+  */
+case object CEGIS extends CEGISLike[TaggedNonTerm[TypeTree]]("CEGIS") {
+  def getParams(sctx: SynthesisContext, p: Problem) = {
+    val base = NaiveCEGIS.getParams(sctx,p).grammar
+    CegisParams(
+      grammar = TaggedGrammar(base),
+      rootLabel = TaggedNonTerm(_, Tags.Top, 0, None),
+      optimizations = true
     )
   }
 }

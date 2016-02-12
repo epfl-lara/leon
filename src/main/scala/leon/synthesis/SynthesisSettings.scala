@@ -16,7 +16,8 @@ case class SynthesisSettings(
   functionsToIgnore: Set[FunDef]      = Set(),
   
   // Cegis related options
-  cegisUseOptTimeout: Option[Boolean] = None,
-  cegisUseVanuatoo: Option[Boolean]   = None
+  cegisUseOptTimeout: Boolean = true,
+  cegisUseVanuatoo  : Boolean = false,
+  cegisMaxSize: Int           = 5
 
 )

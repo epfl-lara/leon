@@ -116,8 +116,10 @@ object Main {
       }
       // Find respective LeonOptionDef, or report an unknown option
       val df = allOptions.find(_. name == name).getOrElse{
-        initReporter.error(s"Unknown option: $name")
-        displayHelp(initReporter, error = true)
+        initReporter.fatalError(
+          s"Unknown option: $name\n" +
+          "Try 'leon --help' for more information."
+        )
       }
       df.parse(value)(initReporter)
     }

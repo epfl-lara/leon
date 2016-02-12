@@ -4,10 +4,10 @@ package leon
 package synthesis
 package rules
 
+import leon.grammars.transformers.Union
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
-import utils._
 import grammars._
 import Witnesses._
 
@@ -24,7 +24,7 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
     val inputs = p.as.map(_.toVariable)
 
     sctx.reporter.ifDebug { printer =>
-    printer("Guides available:")
+      printer("Guides available:")
       for (g <- guides) {
         printer(" - "+g.asString(ctx))
       }
@@ -35,7 +35,8 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
     CegisParams(
       grammar = guidedGrammar,
       rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") },
-      maxUnfoldings = (0 +: guides.map(depth(_) + 1)).max
+      optimizations = false,
+      maxSize = Some((0 +: guides.map(depth(_) + 1)).max)
     )
   }
 }

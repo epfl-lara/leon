@@ -68,6 +68,7 @@ class Model(protected val mapping: Map[Identifier, Expr])
   def isDefinedAt(id: Identifier): Boolean = mapping.isDefinedAt(id)
   def get(id: Identifier): Option[Expr] = mapping.get(id)
   def getOrElse[E >: Expr](id: Identifier, e: E): E = get(id).getOrElse(e)
+  def ids = mapping.keys
   def apply(id: Identifier): Expr = get(id).getOrElse { throw new IllegalArgumentException }
 }
 

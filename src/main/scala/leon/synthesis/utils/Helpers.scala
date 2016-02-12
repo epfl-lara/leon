@@ -34,7 +34,18 @@ object Helpers {
     }
   }
 
-  def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(Expr, Set[Identifier])] = {
+  /** Given an initial set of function calls provided by a list of [[Terminating]],
+   *  returns function calls that will hopefully be safe to call recursively from within this initial function calls.
+   *
+   *  For each returned call, one argument is substituted by a "smaller" one, while the rest are left as holes.
+   *
+   *  @param prog The current program
+   *  @param tpe The expected type for the returned function calls
+   *  @param ws Helper predicates that contain [[Terminating]]s with the initial calls
+   *  @param pc The path condition
+   *  @return A list of pairs of (safe function call, holes), where holes stand for the rest of the arguments of the function.
+   */
+  def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(FunctionInvocation, Set[Identifier])] = {
 
     val TopLevelAnds(wss) = ws
     val TopLevelAnds(clauses) = pc

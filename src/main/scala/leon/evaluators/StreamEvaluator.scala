@@ -6,7 +6,7 @@ package evaluators
 import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.TypeOps._
+import purescala.TypeOps.{leastUpperBound, isSubtypeOf}
 import purescala.Types._
 import purescala.Common.Identifier
 import purescala.Definitions.{TypedFunDef, Program}

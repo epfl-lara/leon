@@ -6,13 +6,10 @@ package synthesis
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.ExprOps._
-import purescala.Types.TypeTree
 import purescala.Common._
 import purescala.Constructors._
-import purescala.Extractors._
 import evaluators._
 import grammars._
-import bonsai.enumerators._
 import codegen._
 import datagen._
 import solvers._
@@ -123,9 +120,9 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
     val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory(() => new FairZ3Solver(ctx, pgm)))
 
-    val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample(_))
+    val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 
-    val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample(_))
+    val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 
     ExamplesBank(generatedExamples.toSeq ++ solverExamples.toList, Nil)
   }
@@ -196,6 +193,9 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           case (a, b, c) =>
             None
         }) getOrElse {
+
+          // If the input contains free variables, it does not provide concrete examples. 
+          // We will instantiate them according to a simple grammar to get them.
           if(this.keepAbstractExamples) {
             cs.optGuard match {
               case Some(BooleanLiteral(false)) =>
@@ -206,34 +206,16 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
                 Seq((Require(pred, pattExpr), cs.rhs))
             }
           } else {
-            // If the input contains free variables, it does not provide concrete examples. 
-            // We will instantiate them according to a simple grammar to get them.
-            val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree, Expr]](ValueGrammar.getProductions)
-            val values = enum.iterator(tupleTypeWrap(freeVars.map { _.getType }))
-            val instantiations = values.map {
-              v => freeVars.zip(unwrapTuple(v, freeVars.size)).toMap
+            val dataGen = new GrammarDataGen(evaluator)
+
+            val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
+
+            dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000).toSeq map { vals =>
+              val inst = freeVars.zip(vals).toMap
+              val inR = replaceFromIDs(inst, pattExpr)
+              val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
+              (inR, outR)
             }
-  
-            def filterGuard(e: Expr, mapping: Map[Identifier, Expr]): Boolean = cs.optGuard match {
-              case Some(guard) =>
-                // in -> e should be enough. We shouldn't find any subexpressions of in.
-                evaluator.eval(replace(Map(in -> e), guard), mapping) match {
-                  case EvaluationResults.Successful(BooleanLiteral(true)) => true
-                  case _ => false
-                }
-  
-              case None =>
-                true
-            }
-            
-            if(cs.optGuard == Some(BooleanLiteral(false))) {
-              Nil
-            } else (for {
-              inst <- instantiations.toSeq
-              inR = replaceFromIDs(inst, pattExpr)
-              outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
-              if filterGuard(inR, inst)
-            } yield (inR, outR)).take(examplesPerCase)
           }
         }
       }

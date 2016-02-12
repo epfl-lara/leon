@@ -5,6 +5,7 @@ package grammars
 
 import purescala.Types.Typed
 
+/** The empty expression grammar */
 case class Empty[T <: Typed]() extends ExpressionGrammar[T] {
-  def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] = Nil
+  def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Prod] = Nil
 }
