@@ -360,6 +360,22 @@ object Expressions {
       someValue.id
     )
   }
+  
+  object PatternExtractor extends SubTreeOps.Extractor[Pattern] {
+    def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
+      case (_: InstanceOfPattern) | (_: WildcardPattern) | (_: LiteralPattern[_]) =>
+        Some(Seq(), es => e)
+      case CaseClassPattern(binder, ct, subpatterns) =>
+        Some(subpatterns, es => CaseClassPattern(binder, ct, es))
+      case TuplePattern(binder, subpatterns) =>
+        Some(subpatterns, es => TuplePattern(binder, es))
+      case UnapplyPattern(binder, unapplyFun, subpatterns) =>
+        Some(subpatterns, es => UnapplyPattern(binder, unapplyFun, es))
+      case _ => None
+    }
+  }
+  
+  object PatternOps extends { val Deconstructor = PatternExtractor } with SubTreeOps[Pattern]
 
   /** Symbolic I/O examples as a match/case.
     * $encodingof `out == (in match { cases; case _ => out })`

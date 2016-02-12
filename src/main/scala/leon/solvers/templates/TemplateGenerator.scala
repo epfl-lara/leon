@@ -9,7 +9,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
-import purescala.TypeOps._
+import purescala.TypeOps.bestRealType
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Quantification._
@@ -207,7 +207,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
     def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
-      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean")
+      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean." + (
+        purescala.ExprOps.fold[String]{ (e, se) => 
+          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
+        }(expr)
+      ))
 
       val prev = guardedExprs.getOrElse(guardVar, Nil)
 

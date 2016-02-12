@@ -133,7 +133,7 @@ object Types {
   case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType
   case class CaseClassType(classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
 
-  object NAryType {
+  object NAryType extends SubTreeOps.Extractor[TypeTree] {
     def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {
       case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
       case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
@@ -142,6 +142,7 @@ object Types {
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
       case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))
       case FunctionType(fts, tt) => Some((tt +: fts, ts => FunctionType(ts.tail.toList, ts.head)))
+      /* n-ary operators */
       case t => Some(Nil, _ => t)
     }
   }

@@ -19,328 +19,19 @@ import solvers._
   *
   * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  *   - [[ExprOps.fold foldRight]]
-  *   - [[ExprOps.preTraversal preTraversal]]
-  *   - [[ExprOps.postTraversal postTraversal]]
-  *   - [[ExprOps.preMap preMap]]
-  *   - [[ExprOps.postMap postMap]]
-  *   - [[ExprOps.genericTransform genericTransform]]
+  *   - [[SubTreeOps.fold foldRight]]
+  *   - [[SubTreeOps.preTraversal preTraversal]]
+  *   - [[SubTreeOps.postTraversal postTraversal]]
+  *   - [[SubTreeOps.preMap preMap]]
+  *   - [[SubTreeOps.postMap postMap]]
+  *   - [[SubTreeOps.genericTransform genericTransform]]
   *
   * These operations usually take a higher order function that gets applied to the
   * expression tree in some strategy. They provide an expressive way to build complex
   * operations on Leon expressions.
   *
   */
-object ExprOps {
-
-  /* ========
-   * Core API
-   * ========
-   *
-   * All these functions should be stable, tested, and used everywhere. Modify
-   * with care.
-   */
-
-
-  /** Does a right tree fold
-    *
-    * A right tree fold applies the input function to the subnodes first (from left
-    * to right), and combine the results along with the current node value.
-    *
-    * @param f a function that takes the current node and the seq
-    *        of results form the subtrees.
-    * @param e The Expr on which to apply the fold.
-    * @return The expression after applying `f` on all subtrees.
-    * @note the computation is lazy, hence you should not rely on side-effects of `f`
-    */
-  def fold[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
-    val rec = fold(f) _
-    val Operator(es, _) = e
-
-    //Usages of views makes the computation lazy. (which is useful for
-    //contains-like operations)
-    f(e, es.view.map(rec))
-  }
-
-  /** Pre-traversal of the tree.
-    *
-    * Invokes the input function on every node '''before''' visiting
-    * children. Traverse children from left to right subtrees.
-    *
-    * e.g.
-    * {{{
-    *   Add(a, Minus(b, c))
-    * }}}
-    * will yield, in order:
-    * {{{
-    *   f(Add(a, Minus(b, c))); f(a); f(Minus(b, c)); f(b); f(c)
-    * }}}
-    *
-    * @param f a function to apply on each node of the expression
-    * @param e the expression to traverse
-    */
-  def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
-    val rec = preTraversal(f) _
-    val Operator(es, _) = e
-    f(e)
-    es.foreach(rec)
-  }
-
-  /** Post-traversal of the tree.
-    *
-    * Invokes the input function on every node '''after''' visiting
-    * children.
-    *
-    * e.g.
-    * {{{
-    *   Add(a, Minus(b, c))
-    * }}}
-    * will yield, in order:
-    * {{{
-    *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
-    * }}}
-    *
-    * @param f a function to apply on each node of the expression
-    * @param e the expression to traverse
-    */
-  def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
-    val rec = postTraversal(f) _
-    val Operator(es, _) = e
-    es.foreach(rec)
-    f(e)
-  }
-
-  /** Pre-transformation of the tree.
-    *
-    * Takes a partial function of replacements and substitute
-    * '''before''' recursing down the trees.
-    *
-    * Supports two modes :
-    *
-    *   - If applyRec is false (default), will only substitute once on each level.
-    *
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
-    *   }}}
-    *
-    *   - If applyRec is true, it will substitute multiple times on each level:
-    *
-    *   e.g.
-    *   {{{
-    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *   Add(a, f)
-    *   }}}
-    *
-    * @note The mode with applyRec true can diverge if f is not well formed
-    */
-  def preMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
-    val rec = preMap(f, applyRec) _
-
-    val newV = if (applyRec) {
-      // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (e)
-    } else {
-      f(e) getOrElse e
-    }
-
-    val Operator(es, builder) = newV
-    val newEs = es.map(rec)
-
-    if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-      builder(newEs).copiedFrom(newV)
-    } else {
-      newV
-    }
-  }
-
-  /** Post-transformation of the tree.
-    *
-    * Takes a partial function of replacements.
-    * Substitutes '''after''' recursing down the trees.
-    *
-    * Supports two modes :
-    *
-    *   - If applyRec is false (default), will only substitute once on each level.
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> z, Minus(e,c) -> d, b -> e
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, Minus(e, c))
-    *   }}}
-    *
-    *   - If applyRec is true, it will substitute multiple times on each level:
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, f)
-    *   }}}
-    *
-    * @note The mode with applyRec true can diverge if f is not well formed (i.e. not convergent)
-    */
-  def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
-    val rec = postMap(f, applyRec) _
-
-    val Operator(es, builder) = e
-    val newEs = es.map(rec)
-    val newV = {
-      if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-        builder(newEs).copiedFrom(e)
-      } else {
-        e
-      }
-    }
-
-    if (applyRec) {
-      // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (newV)
-    } else {
-      f(newV) getOrElse newV
-    }
-
-  }
-
-
-  /** Pre-transformation of the tree, with a context value from "top-down".
-    *
-    * Takes a partial function of replacements.
-    * Substitutes '''before''' recursing down the trees. The function returns
-    * an option of the new value, as well as the new context to be used for
-    * the recursion in its children. The context is "lost" when going back up,
-    * so changes made by one node will not be see by its siblings.
-    */
-  def preMapWithContext[C](f: (Expr, C) => (Option[Expr], C), applyRec: Boolean = false)
-                          (e: Expr, c: C): Expr = {
-
-    def rec(expr: Expr, context: C): Expr = {
-
-      val (newV, newCtx) = {
-        if(applyRec) {
-          var ctx = context
-          val finalV = fixpoint{ e: Expr => {
-            val res = f(e, ctx)
-            ctx = res._2
-            res._1.getOrElse(e)
-          }} (expr)
-          (finalV, ctx)
-        } else {
-          val res = f(expr, context)
-          (res._1.getOrElse(expr), res._2)
-        }
-      }
-
-      val Operator(es, builder) = newV
-      val newEs = es.map(e => rec(e, newCtx))
-
-      if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-        builder(newEs).copiedFrom(newV)
-      } else {
-        newV
-      }
-
-    }
-
-    rec(e, c)
-  }
-
-
-  /** Applies functions and combines results in a generic way
-    *
-    * Start with an initial value, and apply functions to nodes before
-    * and after the recursion in the children. Combine the results of
-    * all children and apply a final function on the resulting node.
-    *
-    * @param pre a function applied on a node before doing a recursion in the children
-    * @param post a function applied to the node built from the recursive application to
-                  all children
-    * @param combiner a function to combine the resulting values from all children with
-                      the current node
-    * @param init the initial value
-    * @param expr the expression on which to apply the transform
-    *
-    * @see [[simpleTransform]]
-    * @see [[simplePreTransform]]
-    * @see [[simplePostTransform]]
-    */
-  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
-                          post: (Expr, C) => (Expr, C),
-                          combiner: (Expr, Seq[C]) => C)(init: C)(expr: Expr) = {
-
-    def rec(eIn: Expr, cIn: C): (Expr, C) = {
-
-      val (expr, ctx) = pre(eIn, cIn)
-      val Operator(es, builder) = expr
-      val (newExpr, newC) = {
-        val (nes, cs) = es.map{ rec(_, ctx)}.unzip
-        val newE = builder(nes).copiedFrom(expr)
-
-        (newE, combiner(newE, cs))
-      }
-
-      post(newExpr, newC)
-    }
-
-    rec(expr, init)
-  }
-
-  /*
-   * =============
-   * Auxiliary API
-   * =============
-   *
-   * Convenient methods using the Core API.
-   */
-
-  /** Checks if the predicate holds in some sub-expression */
-  def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
-    fold[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
-  }
-
-  /** Collects a set of objects from all sub-expressions */
-  def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
-    fold[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
-  }
-
-  def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
-    fold[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
-  }
-
-  /** Returns a set of all sub-expressions matching the predicate */
-  def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
-    collect[Expr] { e => Set(e) filter matcher }(e)
-  }
-
-  /** Counts how many times the predicate holds in sub-expressions */
-  def count(matcher: Expr => Int)(e: Expr): Int = {
-    fold[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
-  }
-
-  /** Replaces bottom-up sub-expressions by looking up for them in a map */
-  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    postMap(substs.lift)(expr)
-  }
-
-  /** Replaces bottom-up sub-expressions by looking up for them in the provided order */
-  def replaceSeq(substs: Seq[(Expr, Expr)], expr: Expr): Expr = {
-    var res = expr
-    for (s <- substs) {
-      res = replace(Map(s), res)
-    }
-    res
-  }
-
+object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
   /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
@@ -375,7 +66,7 @@ object ExprOps {
         Lambda(args, rec(binders ++ args.map(_.id), bd))
       case Forall(args, bd) =>
         Forall(args, rec(binders ++ args.map(_.id), bd))
-      case Operator(subs, builder) =>
+      case Deconstructor(subs, builder) =>
         builder(subs map (rec(binders, _)))
     }).copiedFrom(e)
 
@@ -418,8 +109,7 @@ object ExprOps {
       case _ => Set()
     }(expr)
   }
-
-  /** Returns all Function calls found in the expression */
+  
   def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
     collect[FunDef] {
       case LetDef(fds, _) => fds.toSet
@@ -746,7 +436,7 @@ object ExprOps {
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
-      case n @ Operator(args, recons) => {
+      case n @ Deconstructor(args, recons) => {
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a, s)
@@ -1255,7 +945,7 @@ object ExprOps {
     def transform(expr: Expr): Option[Expr] = expr match {
       case IfExpr(c, t, e) => None
 
-      case nop@Operator(ts, op) => {
+      case nop@Deconstructor(ts, op) => {
         val iteIndex = ts.indexWhere{ case IfExpr(_, _, _) => true case _ => false }
         if(iteIndex == -1) None else {
           val (beforeIte, startIte) = ts.splitAt(iteIndex)
@@ -1406,7 +1096,7 @@ object ExprOps {
           formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
       }.sum
 
-    case Operator(es, _) =>
+    case Deconstructor(es, _) =>
       es.map(formulaSize).sum+1
   }
 
@@ -1720,7 +1410,7 @@ object ExprOps {
 
         // TODO: Seems a lot is missing, like Literals
 
-        case Same(Operator(es1, _), Operator(es2, _)) =>
+        case Same(Deconstructor(es1, _), Deconstructor(es2, _)) =>
           (es1.size == es2.size) &&
           (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
 
@@ -2059,7 +1749,7 @@ object ExprOps {
 
     f(e, initParent)
 
-    val Operator(es, _) = e
+    val Deconstructor(es, _) = e
     es foreach rec
   }
 
@@ -2152,7 +1842,7 @@ object ExprOps {
         case l @ Lambda(args, body) =>
           val newBody = rec(body, true)
           extract(Lambda(args, newBody), build)
-        case Operator(es, recons) => recons(es.map(rec(_, build)))
+        case Deconstructor(es, recons) => recons(es.map(rec(_, build)))
       }
 
       rec(lift(expr), true)
