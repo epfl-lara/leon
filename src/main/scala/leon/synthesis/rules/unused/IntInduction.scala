@@ -2,14 +2,14 @@
 
 package leon
 package synthesis
-package rules
+package rules.unused
 
-import purescala.Common._
-import purescala.Expressions._
-import purescala.Extractors._
+import purescala.Common.FreshIdentifier
 import purescala.Constructors._
-import purescala.Types._
-import purescala.Definitions._
+import purescala.Definitions.{FunDef, ValDef}
+import purescala.Expressions._
+import purescala.Extractors.IsTyped
+import purescala.Types.IntegerType
 
 case object IntInduction extends Rule("Int Induction") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

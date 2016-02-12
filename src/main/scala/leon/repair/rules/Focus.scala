@@ -164,7 +164,7 @@ case object Focus extends PreprocessingRule("Focus") {
             val eb3 = if (vars.nonEmpty) {
               eb2.mapIns(ebF)
             } else {
-              eb2
+              eb2.eb
             }
 
             val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })

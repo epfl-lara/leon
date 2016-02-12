@@ -61,9 +61,19 @@ object Helpers {
       case _ => None
     }
     
+    val z   = InfiniteIntegerLiteral(0)
+    val one = InfiniteIntegerLiteral(1)
     val knownSmallers = clauses.collect {
       case Equals(v: Variable, s@CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
       case Equals(s@CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
+      case GreaterThan(v: Variable, `z`) =>
+        Some(v -> Minus(v, one))
+      case LessThan(`z`, v: Variable) =>
+        Some(v -> Minus(v, one))
+      case LessThan(v: Variable, `z`) =>
+        Some(v -> Plus(v, one))
+      case GreaterThan(`z`, v: Variable) =>
+        Some(v -> Plus(v, one))
     }.flatten.groupBy(_._1).mapValues(v => v.map(_._2))
 
     def argsSmaller(e: Expr, tpe: TypeTree): Seq[Expr] = e match {
@@ -74,7 +84,6 @@ object Helpers {
         }.flatten
       case v: Variable =>
         knownSmallers.getOrElse(v, Seq())
-
       case _ => Nil
     }
 

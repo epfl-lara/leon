@@ -2,7 +2,7 @@
 
 package leon
 package synthesis
-package rules
+package rules.unused
 
 import purescala.Expressions._
 import purescala.Common._
