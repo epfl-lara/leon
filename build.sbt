@@ -56,6 +56,20 @@ clean := {
   }
 }
 
+lazy val nParallel = {
+  val p = System.getProperty("parallel")
+  if (p ne null) {
+    try {
+      p.toInt
+    } catch {
+      case nfe: NumberFormatException =>
+        1
+    }
+  } else {
+    1
+  }
+}
+
 lazy val script = taskKey[Unit]("Generate the leon Bash script")
 
 script := {
@@ -107,13 +121,16 @@ sourcesInBase in Compile := false
 
 Keys.fork in run := true
 
+
 lazy val testSettings = Seq(
     //Keys.fork := true,
-    logBuffered := true,
-    parallelExecution := true
+    logBuffered := (nParallel > 1),
+    parallelExecution := (nParallel > 1)
     //testForkedParallel := true,
     //javaOptions ++= Seq("-Xss64M", "-Xmx4G")
 )
+
+concurrentRestrictions in Global += Tags.limit(Tags.Test, nParallel)
 
 // Unit Tests
 testOptions in Test := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.unit."))
@@ -138,7 +155,6 @@ lazy val IsabelleTest = config("isabelle") extend(Test)
 testOptions in IsabelleTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.isabelle."))
 
 parallelExecution in IsabelleTest := false
-
 fork in IsabelleTest := true
 
 // GenC Tests
