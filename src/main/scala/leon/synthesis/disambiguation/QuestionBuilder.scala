@@ -13,6 +13,8 @@ import purescala.DefOps
 import grammars._
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
+import evaluators.AbstractEvaluator
+import scala.annotation.tailrec
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -124,11 +126,48 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-    val e = new DefaultEvaluator(c, newProgram)
+    val e = new AbstractEvaluator(c, newProgram)
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    e.eval(s.term, modelResult).result
+    for{x <- e.eval(s.term, modelResult).result
+        res = x._1
+        simp = ExprOps.simplifyArithmetic(res)}
+      yield simp
+  }
+  
+  /** Make all generic values unique.
+    * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
+  def makeGenericValuesUnique(a: Expr): Expr = {
+    var genVals = Set[Expr with Terminal]()
+    def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
+      case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
+      case StringLiteral(s) =>
+        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val prefix = s.take(i+1)
+        val suffix = s.drop(i+1)
+        Some(StringLiteral(prefix + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+      case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
+      case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
+      case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
+      case otherLiteral => None
+    }
+    @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
+          if(genVals contains g)
+            freshenValue(g) match {
+              case None => g
+              case Some(v) => freshValue(v)
+            }
+          else {
+            genVals += g
+            g
+          }
+    }
+    ExprOps.postMap{ e => e match {
+      case g:Expr with Terminal =>
+        Some(freshValue(g))
+      case _ => None
+    }}(a)
   }
   
   /** Returns a list of input/output questions to ask to the user. */
@@ -136,7 +175,10 @@ class QuestionBuilder[T <: Expr](
     if(solutions.isEmpty) return Nil
 
     val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
-    val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake).toList
+    val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake)
+    .map(inputs =>
+      inputs.map(id_expr =>
+        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toList
 
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList

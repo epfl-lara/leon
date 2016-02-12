@@ -285,7 +285,8 @@ object DefOps {
     *               By default it is the function invocation using the new function definition.
     * @return the new program with a map from the old functions to the new functions */
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
+                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
+                                 : (Program, Map[FunDef, FunDef])= {
 
     var fdMapCache = Map[FunDef, Option[FunDef]]()
     def fdMap(fd: FunDef): FunDef = {

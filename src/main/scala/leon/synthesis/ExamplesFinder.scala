@@ -22,6 +22,13 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   implicit val ctx = ctx0
 
   val reporter = ctx.reporter
+  
+  private var keepAbstractExamples = false
+  /** If true, will not evaluate examples to check them. */
+  def setKeepAbstractExamples(b: Boolean) = { this.keepAbstractExamples = b; this}
+  /** Sets if evalution of the result of tests should stop on choose statements.
+    * Useful for programming by Example */
+  def setEvaluationFailOnChoose(b: Boolean) = { evaluator.setEvaluationFailOnChoose(b); this }
 
   def extractFromFunDef(fd: FunDef, partition: Boolean): ExamplesBank = fd.postcondition match {
     case Some(Lambda(Seq(ValDef(id)), post)) =>
@@ -38,6 +45,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           Some(InOutExample(fd.params.map(p => t(p.id)), Seq(t(id))))
         } else if ((ids & insIds) == insIds) {
           Some(InExample(fd.params.map(p => t(p.id))))
+        } else if((ids & outsIds) == outsIds) { // Examples provided on a part of the inputs.
+          Some(InOutExample(fd.params.map(p => t.getOrElse(p.id, Variable(p.id))), Seq(t(id))))
         } else {
           None
         }
@@ -64,27 +73,31 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     case None =>
       ExamplesBank(Nil, Nil)
   }
-
-  // Extract examples from the passes found in expression
+  
+  /** Extract examples from the passes found in expression */
   def extractFromProblem(p: Problem): ExamplesBank = {
     val testClusters = extractTestsOf(and(p.pc, p.phi))
 
     // Finally, we keep complete tests covering all as++xs
     val allIds  = (p.as ++ p.xs).toSet
     val insIds  = p.as.toSet
-
+    val outsIds = p.xs.toSet
+    
     val examples = testClusters.toSeq.flatMap { t =>
       val ids = t.keySet
       if ((ids & allIds) == allIds) {
         Some(InOutExample(p.as.map(t), p.xs.map(t)))
       } else if ((ids & insIds) == insIds) {
         Some(InExample(p.as.map(t)))
+      } else if((ids & outsIds) == outsIds) { // Examples provided on a part of the inputs.
+        Some(InOutExample(p.as.map(p => t.getOrElse(p, Variable(p))), p.xs.map(t)))
       } else {
         None
       }
     }
 
     def isValidExample(ex: Example): Boolean = {
+      if(this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
       val (mapping, cond) = ex match {
         case io: InOutExample =>
           (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), And(p.pc, p.phi))
@@ -114,6 +127,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     ExamplesBank(generatedExamples.toSeq ++ solverExamples.toList, Nil)
   }
 
+  /** Extracts all passes constructs from the given postcondition, merges them if needed */
   private def extractTestsOf(e: Expr): Set[Map[Identifier, Expr]] = {
     val allTests = collect[Map[Identifier, Expr]] {
       case Passes(ins, outs, cases) =>
@@ -130,14 +144,15 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
             case _                                 => test
           }
         }
-
-        // Check whether we can extract all ids from example
-        val results = exs.collect { case e if infos.forall(_._2.isDefinedAt(e)) =>
-          infos.map{ case (id, f) => id -> f(e) }.toMap
+        try {
+          // Check whether we can extract all ids from example
+          val results = exs.collect { case e if this.keepAbstractExamples || infos.forall(_._2.isDefinedAt(e)) =>
+            infos.map{ case (id, f) => id -> f(e) }.toMap
+          }
+          results.toSet
+        } catch {
+          case e: IDExtractionException => Set()
         }
-
-        results.toSet
-
       case _ =>
         Set()
     }(e)
@@ -146,7 +161,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     consolidateTests(allTests)
   }
 
-
+  /** Processes ((in, out) passes {
+    * cs[=>Case pattExpr if guard => outR]*/
   private def caseToExamples(in: Expr, out: Expr, cs: MatchCase, examplesPerCase: Int = 5): Seq[(Expr,Expr)] = {
 
     def doSubstitute(subs : Seq[(Identifier, Expr)], e : Expr) = 
@@ -180,16 +196,26 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
           // If the input contains free variables, it does not provide concrete examples. 
           // We will instantiate them according to a simple grammar to get them.
+          if(this.keepAbstractExamples) {
+            cs.optGuard match {
+              case Some(BooleanLiteral(false)) =>
+                Seq()
+              case None =>
+                Seq((pattExpr, cs.rhs))
+              case Some(pred) =>
+                Seq((Require(pred, pattExpr), cs.rhs))
+            }
+          } else {
+            val dataGen = new GrammarDataGen(evaluator)
 
-          val dataGen = new GrammarDataGen(evaluator)
+            val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
 
-          val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
-
-          dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000).toSeq map { vals =>
-            val inst = freeVars.zip(vals).toMap
-            val inR = replaceFromIDs(inst, pattExpr)
-            val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
-            (inR, outR)
+            dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000).toSeq map { vals =>
+              val inst = freeVars.zip(vals).toMap
+              val inR = replaceFromIDs(inst, pattExpr)
+              val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
+              (inR, outR)
+            }
           }
         }
       }
@@ -232,6 +258,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
     consolidated
   }
+  
+  case class IDExtractionException(msg: String) extends Exception(msg)
 
   /** Extract ids in ins/outs args, and compute corresponding extractors for values map
     *
@@ -251,13 +279,13 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     case Tuple(vs) =>
       vs.map(extractIds).zipWithIndex.flatMap{ case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case Tuple(vs) => vs(i) }, e))
+          (id, andThen({ case Tuple(vs) => vs(i) case e => throw new IDExtractionException("Expected Tuple, got " + e) }, e))
         }
       }
     case CaseClass(cct, args) =>
       args.map(extractIds).zipWithIndex.flatMap { case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) } ,e))
+          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) case e => throw new IDExtractionException("Expected Case class of type " + cct + ", got " + e) } ,e))
         }
       }
 

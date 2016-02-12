@@ -7,6 +7,7 @@ import leon.test._
 import leon.purescala.Constructors._
 import leon.purescala.Expressions._
 import leon.purescala.ExprOps._
+import leon.purescala.Definitions._
 import leon.purescala.Common._
 
 class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL {
@@ -100,6 +101,36 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
 
     assert(isSubtypeOf(simplestValue(act).getType, act))
     assert(simplestValue(cct).getType == cct)
+  }
+  
+  test("canBeHomomorphic") { implicit fix =>
+    import leon.purescala.ExprOps.canBeHomomorphic
+    import leon.purescala.Types._
+    import leon.purescala.Definitions._
+    val d = FreshIdentifier("d", IntegerType)
+    val x = FreshIdentifier("x", IntegerType)
+    val y = FreshIdentifier("y", IntegerType)
+    assert(canBeHomomorphic(Variable(d), Variable(x)).isEmpty)
+    val l1 = Lambda(Seq(ValDef(x)), Variable(x))
+    val l2 = Lambda(Seq(ValDef(y)), Variable(y))
+    assert(canBeHomomorphic(l1, l2).nonEmpty)
+    val fType = FunctionType(Seq(IntegerType), IntegerType)
+    val f = FreshIdentifier("f",
+        FunctionType(Seq(IntegerType, fType, fType), IntegerType))
+    val farg1 = FreshIdentifier("arg1", IntegerType)
+    val farg2 = FreshIdentifier("arg2", fType)
+    val farg3 = FreshIdentifier("arg3", fType)
+    
+    val fdef = new FunDef(f, Seq(), Seq(ValDef(farg1), ValDef(farg2), ValDef(farg3)), IntegerType)
+    
+    // Captured variables should be silent, even if they share the same identifier in two places of the code.
+    assert(canBeHomomorphic(
+        FunctionInvocation(fdef.typed, Seq(Variable(d), l1, l2)),
+        FunctionInvocation(fdef.typed, Seq(Variable(d), l1, l1))).nonEmpty)
+    
+    assert(canBeHomomorphic(
+        StringLiteral("1"),
+        StringLiteral("2")).isEmpty)
   }
 
 }

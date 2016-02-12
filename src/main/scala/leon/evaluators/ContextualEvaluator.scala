@@ -20,7 +20,9 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC(model: solvers.Model, check: Boolean): GC
 
-  case class EvalError(msg : String) extends Exception
+  case class EvalError(msg : String) extends Exception {
+    override def getMessage = msg + Option(super.getMessage).map("\n" + _).getOrElse("")
+  }
   case class RuntimeError(msg : String) extends Exception
   case class QuantificationError(msg: String) extends Exception
 
@@ -72,7 +74,7 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
 
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Value
 
-  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString}."
+  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString} of type ${tree.getType}."
 
 }
 

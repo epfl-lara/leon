@@ -28,6 +28,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   lazy val scalaEv = new ScalacEvaluator(this, ctx, prog)
 
   protected var clpCache = Map[(Choose, Seq[Expr]), Expr]()
+  
+  private var evaluationFailsOnChoose = false
+  /** Sets the flag if when encountering a Choose, it should fail instead of solving it. */
+  def setEvaluationFailOnChoose(b: Boolean) = { this.evaluationFailsOnChoose = b; this }
 
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
@@ -37,7 +41,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(v) =>
           v
         case None =>
-          throw EvalError("No value for identifier " + id.asString + " in mapping.")
+          throw EvalError("No value for identifier " + id.asString + " in mapping " + rctx.mappings)
       }
 
     case Application(caller, args) =>
@@ -577,6 +581,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       e(p.asConstraint)
 
     case choose: Choose =>
+      if(evaluationFailsOnChoose) {
+        throw EvalError("Evaluator set to not solve choose constructs")
+      }
 
       implicit val debugSection = utils.DebugSectionSynthesis
 
@@ -637,7 +644,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
         case _ =>
-          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases")
+          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
       }
 
     case gl: GenericValue => gl
@@ -645,9 +652,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case l : Literal[_] => l
 
     case other =>
-      context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
-      println("RecursiveEvaluator error:" + other.asString)
-      throw EvalError("Unhandled case in Evaluator : " + other.asString)
+      throw EvalError("Unhandled case in Evaluator : [" + other.getClass + "] " + other.asString)
   }
 
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {

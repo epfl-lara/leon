@@ -317,6 +317,13 @@ object Constructors {
   }
 
   /** $encodingof simplified `fn(realArgs)` (function application).
+    * Transforms
+    * {{{ ((x: A, y: B) => g(x, y))(c, d) }}}
+    * into
+    * {{{val x0 = c
+    * val y0 = d
+    * g(x0, y0)}}}
+    * and further simplifies it.
     * @see [[purescala.Expressions.Lambda Lambda]]
     * @see [[purescala.Expressions.Application Application]]
     */
