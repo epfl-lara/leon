@@ -23,6 +23,22 @@ import leon.utils.Bijection
 import leon.solvers.z3.StringEcoSystem
 
 object Z3StringCapableSolver {
+  def thatShouldBeConverted(t: TypeTree): Boolean = TypeOps.exists{ _== StringType }(t)
+  def thatShouldBeConverted(e: Expr): Boolean = exists(e => thatShouldBeConverted(e.getType))(e)
+  def thatShouldBeConverted(id: Identifier): Boolean = thatShouldBeConverted(id.getType)
+  def thatShouldBeConverted(vd: ValDef): Boolean = thatShouldBeConverted(vd.id)
+  def thatShouldBeConverted(fd: FunDef): Boolean = {
+    (fd.body exists thatShouldBeConverted)|| (fd.paramIds exists thatShouldBeConverted)
+  }
+  def thatShouldBeConverted(cd: ClassDef): Boolean = cd match {
+    case ccd:CaseClassDef =>  ccd.fields.exists(thatShouldBeConverted)
+    case _ => false
+  }
+  def thatShouldBeConverted(p: Program): Boolean = {
+    (p.definedFunctions exists thatShouldBeConverted) ||
+    (p.definedClasses exists thatShouldBeConverted)
+  }
+  
   def convert(p: Program): (Program, Option[Z3StringConversion]) = {
     val converter = new Z3StringConversion(p)
     import converter.Forward._
@@ -31,8 +47,7 @@ object Z3StringCapableSolver {
     val program_with_strings = converter.getProgram
     val (new_program, fdMap) = DefOps.replaceFunDefs(program_with_strings)((fd: FunDef) => {
       globalFdMap.get(fd).map(_._2).orElse(
-          if( fd.body.map(exists(e => TypeOps.exists{ _== StringType }(e.getType))).getOrElse(false) ||
-              fd.paramIds.exists(id => TypeOps.exists(_ == StringType)(id.getType))) {
+          if(thatShouldBeConverted(fd)) {
             val idMap = fd.params.map(vd => vd.id -> convertId(vd.id)).toMap
             val newFdId = convertId(fd.id)
             val newFd = fd.duplicate(newFdId,
@@ -205,7 +220,7 @@ class Z3StringFairZ3Solver(context: LeonContext, program: Program)
     protected[leon] val z3cfg: _root_.z3.scala.Z3Config = underlying.z3cfg
     override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
       someConverter match {
-        case None => underlying.checkAssumptions(assumptions.map(e => this.convertExprOnTheFly(e, _.Forward.convertExpr(e)(Map()))))
+        case None => underlying.checkAssumptions(assumptions.map(e => convertExprOnTheFly(e, _.Forward.convertExpr(e)(Map()))))
         case Some(converter) =>
           underlying.checkAssumptions(assumptions map (e => converter.Forward.convertExpr(e)(Map())))
       }
