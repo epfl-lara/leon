@@ -8,9 +8,9 @@ import synthesis.rules._
 import repair.rules._
 
 case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("+cm.name+")") {
-  import graph._
 
-  override def andNode(an: AndNode, subs: Option[Seq[Cost]]) = {
+  // FIXME: Implement this in repair strategy
+  /*override def andNode(an: AndNode, subs: Option[Seq[Cost]]) = {
     val h = cm.andNode(an, subs).minSize
 
     Cost(an.ri.rule match {
@@ -19,5 +19,5 @@ case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("
       case TEGLESS      => 1
       case _            => h+1
     })
-  }
+  }*/
 }

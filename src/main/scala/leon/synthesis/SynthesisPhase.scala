@@ -53,8 +53,7 @@ object SynthesisPhase extends TransformationPhase {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar)) ++
-        (if(ms.isDefined) Seq(rules.AsChoose, rules.SygusCVC4) else Seq()),
+      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar)),
       manualSearch = ms,
       functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),
