@@ -3,16 +3,12 @@
 package leon
 package synthesis
 
-import graph._
-
 import purescala.Expressions._
 import purescala.ExprOps._
 
 /** A named way of computing the cost of problem and solutions.*/
 abstract class CostModel(val name: String) {
   def solution(s: Solution): Cost
-  def problem(p: Problem): Cost
-  def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost
 
   def impossible: Cost
 
@@ -34,7 +30,7 @@ case class Cost(minSize: Int) extends AnyVal with Ordered[Cost] {
 
 /** Contains all and the default [CostModel] */
 object CostModels {
-  def default: CostModel = WeightedBranchesCostModel
+  def default: CostModel = NaiveCostModel
 
   def all: Set[CostModel] = Set(
     NaiveCostModel,
@@ -47,10 +43,6 @@ class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
 
   def solution(s: Solution): Cost = cm.solution(s)
 
-  def problem(p: Problem): Cost = cm.problem(p)
-
-  def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost = cm.andNode(an, subs)
-
   def impossible = cm.impossible
 }
 
@@ -58,34 +50,10 @@ class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
   * For problems, returns a cost of 1 */
 class SizeBasedCostModel(name: String) extends CostModel(name) {
   def solution(s: Solution) = {
-    Cost(formulaSize(s.toExpr)/10)
+    Cost(formulaSize(s.term))
   }
 
-  def problem(p: Problem) = {
-    Cost(1)
-  }
-
-  def andNode(an: AndNode, subs: Option[Seq[Cost]]) = {
-
-    subs match {
-      case Some(subs) if subs.isEmpty =>
-        impossible
-
-      case osubs =>
-        val app = an.ri
-
-        val subSols = app.onSuccess.types.map {t => Solution.simplest(t) }.toList
-        val selfCost = app.onSuccess(subSols) match {
-          case Some(sol) =>
-            solution(sol).minSize - subSols.size
-          case None =>
-            1
-        }
-        Cost(osubs.toList.flatten.foldLeft(selfCost)(_ + _.minSize))
-    }   
-  }
-
-  def impossible = Cost(200)
+  def impossible = Cost(1000)
 }
 
 case object NaiveCostModel extends SizeBasedCostModel("Naive")
