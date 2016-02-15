@@ -10,7 +10,7 @@ import purescala.ExprOps._
 import purescala.Constructors._
 import scala.concurrent.duration._
 
-case object Ground extends Rule("Ground") {
+case object Ground extends NormalizingRule("Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
       List(new RuleInstantiation(this.name) {
