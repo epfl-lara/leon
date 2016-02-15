@@ -8,7 +8,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Types._
-import solvers.{HenkinModel, Model}
+import solvers.{PartialModel, Model}
 
 abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps: Int) extends Evaluator(ctx, prog) with CEvalHelpers {
 
@@ -60,8 +60,8 @@ private[evaluators] trait CEvalHelpers {
   /* This is an effort to generalize forall to non-det. solvers
     def forallInstantiations(gctx:GC, fargs: Seq[ValDef], conj: Expr) = {
 
-      val henkinModel: HenkinModel = gctx.model match {
-        case hm: HenkinModel => hm
+      val henkinModel: PartialModel = gctx.model match {
+        case hm: PartialModel => hm
         case _ => throw EvalError("Can't evaluate foralls without henkin model")
       }
 

@@ -14,7 +14,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.DefOps
-import solvers.{HenkinModel, Model, SolverFactory}
+import solvers.{PartialModel, Model, SolverFactory}
 import solvers.combinators.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
@@ -540,7 +540,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           solver.assertCnstr(cnstr)
 
           gctx.model match {
-            case pm: HenkinModel =>
+            case pm: PartialModel =>
               val quantifiers = fargs.map(_.id).toSet
               val quorums = extractQuorums(body, quantifiers)
 
@@ -551,7 +551,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
                     case ev => ev
                   }
 
-                  val domain = pm.domain(matcher)
+                  val domain = pm.domains.get(matcher)
                   args.zipWithIndex.flatMap {
                     case (Variable(id),idx) if quantifiers(id) =>
                       Some(id -> domain.map(cargs => path -> cargs(idx)))

@@ -70,11 +70,11 @@ object Quantification {
       (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
   }
 
-  object HenkinDomains {
-    def empty = new HenkinDomains(Map.empty, Map.empty)
+  object Domains {
+    def empty = new Domains(Map.empty, Map.empty)
   }
 
-  class HenkinDomains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+  class Domains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
     def get(e: Expr): Set[Seq[Expr]] = {
       val specialized: Set[Seq[Expr]] = e match {
         case FiniteLambda(mapping, _, _) => mapping.map(_._1).toSet

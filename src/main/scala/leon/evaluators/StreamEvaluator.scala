@@ -13,7 +13,7 @@ import purescala.Definitions.{TypedFunDef, Program}
 import purescala.Expressions._
 import purescala.Quantification._
 
-import leon.solvers.{SolverFactory, HenkinModel}
+import leon.solvers.{SolverFactory, PartialModel}
 import leon.solvers.combinators.UnrollingProcedure
 import leon.utils.StreamUtils._
 
@@ -160,7 +160,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
         solver.assertCnstr(cnstr)
 
         gctx.model match {
-          case pm: HenkinModel =>
+          case pm: PartialModel =>
             val quantifiers = fargs.map(_.id).toSet
             val quorums = extractQuorums(body, quantifiers)
 
@@ -173,7 +173,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
                 }
 
                 optMatcher.toSeq.flatMap { matcher =>
-                  val domain = pm.domain(matcher)
+                  val domain = pm.domains.get(matcher)
                   args.zipWithIndex.flatMap {
                     case (Variable(id),idx) if quantifiers(id) =>
                       Some(id -> domain.map(cargs => path -> cargs(idx)))

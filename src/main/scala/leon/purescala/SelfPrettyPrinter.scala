@@ -1,7 +1,7 @@
 package leon.purescala
 
 import leon.purescala
-import leon.solvers.{ HenkinModel, Model, SolverFactory }
+import leon.solvers.{ Model, SolverFactory }
 import leon.LeonContext
 import leon.evaluators
 import leon.utils.StreamUtils

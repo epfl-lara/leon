@@ -5,6 +5,7 @@ package solvers
 
 import purescala.Expressions._
 import purescala.Common.Identifier
+import purescala.Quantification.Domains
 import purescala.ExprOps._
 
 trait AbstractModel[+This <: Model with AbstractModel[This]]
@@ -79,4 +80,22 @@ object Model {
 
 class ModelBuilder extends AbstractModelBuilder[Model] {
   def result = new Model(mapBuilder.result)
+}
+
+class PartialModel(mapping: Map[Identifier, Expr], val domains: Domains)
+  extends Model(mapping)
+     with AbstractModel[PartialModel] {
+
+  override def newBuilder = new PartialModelBuilder(domains)
+}
+
+object PartialModel {
+  def empty = new PartialModel(Map.empty, Domains.empty)
+}
+
+class PartialModelBuilder(domains: Domains)
+  extends ModelBuilder
+     with AbstractModelBuilder[PartialModel] {
+
+  override def result = new PartialModel(mapBuilder.result, domains)
 }

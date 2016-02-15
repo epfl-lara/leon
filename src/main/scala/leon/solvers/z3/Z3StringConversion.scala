@@ -191,7 +191,6 @@ trait Z3StringConverters  { self: Z3StringConversion =>
                   convertExpr(kv._2))),
                   convertExpr(default), convertType(tpe).asInstanceOf[FunctionType])
         case Lambda(args, body) =>
-          println("Converting Lambda :" + e)
           val new_bindings = scala.collection.mutable.ListBuffer[(Identifier, Identifier)]()
           val new_args = for(arg <- args) yield {
             val in = arg.getType

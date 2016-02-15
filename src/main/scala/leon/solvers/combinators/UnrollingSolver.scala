@@ -40,8 +40,7 @@ object UnrollingProcedure extends UnrollingProcedure
 trait AbstractUnrollingSolver[T]
   extends UnrollingProcedure
      with Solver
-     with EvaluatingSolver
-     with QuantificationSolver {
+     with EvaluatingSolver {
 
   val unfoldFactor     = context.findOptionOrDefault(optUnrollFactor)
   val feelingLucky     = context.findOptionOrDefault(optFeelingLucky)
@@ -214,7 +213,7 @@ trait AbstractUnrollingSolver[T]
     }
   }
 
-  private def getPartialModel: HenkinModel = {
+  private def getPartialModel: PartialModel = {
     val wrapped = solverGetModel
 
     val typeInsts = templateGenerator.manager.typeInstantiations
@@ -262,8 +261,8 @@ trait AbstractUnrollingSolver[T]
       })
     })
 
-    val domains = new HenkinDomains(lambdaDomains, typeDomains)
-    new HenkinModel(model.toMap, domains)
+    val domains = new Domains(lambdaDomains, typeDomains)
+    new PartialModel(model.toMap, domains)
   }
 
   private def getTotalModel: Model = {
