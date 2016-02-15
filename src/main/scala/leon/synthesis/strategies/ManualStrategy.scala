@@ -20,6 +20,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   case object Noop extends Command
   case object Best extends Command
   case object Tree extends Command
+  case object Help extends Command
 
   // Manual search state:
   var rootNode: Node    = _
@@ -90,19 +91,19 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
     def solved(str: String)   = "\u001b[32m" + str + "\u001b[0m"
     def expanded(str: String) = "\u001b[33m" + str + "\u001b[0m"
 
-    def displayNode(n: Node): String = {
+    def displayNode(n: Node, inTitle: Boolean = false): String = {
       n match {
         case an: AndNode =>
           val app = an.ri.asString(ctx)
-          s"(${debugInfoFor(n)}) ${indent(app)}"
+          s"(${debugInfoFor(n)}) ${indent(app, inTitle)}"
         case on: OrNode =>
           val p = on.p.asString(ctx)
-          s"(${debugInfoFor(n)}) ${indent(p)}"
+          s"(${debugInfoFor(n)}) ${indent(p, inTitle)}"
       }
     }
 
-    def indent(a: String): String = {
-      a.replaceAll("\n", "\n"+(" "*12))
+    def indent(a: String, inTitle: Boolean): String = {
+      a.replaceAll("\n", "\n"+(" "*(if(inTitle) 11 else 13)))
     }
 
     def pathToString(cd: List[Int]): String = {
@@ -112,9 +113,9 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
     val c = currentNode(path)
 
     println("-"*120)
-    val at = path.lastOption.map(p => pathToString(List(p))).getOrElse("R")
+    val at = path.lastOption.map(p => pathToString(List(p))).getOrElse(" R")
 
-    println(title(at+" \u2510 "+displayNode(c)))
+    println(title(at+" \u2510 "+displayNode(c, true)))
 
     for ((sn, i) <- c.descendants.zipWithIndex) {
       val sp = List(i)
@@ -150,6 +151,19 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
         case Quit =>
           None
 
+        case Help =>
+          val tOpen  = "\u001b[1m"
+          val tClose = "\u001b[0m"
+          println(s"""|
+                      |${tOpen}Available commands: $tClose
+                      |$tOpen  (cd) N  $tClose  Expand descendant N
+                      |$tOpen  cd ..   $tClose  Go one level up
+                      |$tOpen  b       $tClose  Expand best descendant
+                      |$tOpen  t       $tClose  Display the partial solution around the current node
+                      |$tOpen  q       $tClose  Quit the search
+                      |$tOpen  h       $tClose  Display this message
+                      |""".stripMargin)
+          manualGetNext()
         case Parent =>
           if (path.nonEmpty) {
             path = path.dropRight(1)
@@ -195,7 +209,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
             case Some(_) =>
               path = path :+ next
             case None =>
-              warning("Unknown descendent: "+next)
+              warning("Unknown descendant: "+next)
           }
 
           if (rest.nonEmpty) {
@@ -215,7 +229,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   var cmdQueue = initCmd.map( str => parseCommands(parseString(str))).getOrElse(Nil)
 
   private def parseString(s: String): List[String] = {
-    s.trim.split("\\s+|,").toList
+    Option(s).map(_.trim.split("\\s+|,").toList).getOrElse(fatalError("End of stream"))
   }
 
   private def nextCommand(): Command = cmdQueue match {
@@ -224,7 +238,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
       c
 
     case Nil =>
-      print("Next action? (q to quit) "+path.mkString(" ")+" $ ")
+      print("Next action? (h for help) "+path.mkString(" ")+" $ ")
       val line = scala.io.StdIn.readLine()
       val parts = parseString(line)
 
@@ -250,6 +264,9 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
 
     case "b" :: ts =>
       Best :: parseCommands(ts)
+
+    case "h" :: ts =>
+      Help :: parseCommands(ts)
 
     case "q" :: ts =>
       Quit :: Nil

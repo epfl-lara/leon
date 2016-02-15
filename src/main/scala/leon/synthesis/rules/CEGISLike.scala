@@ -718,7 +718,9 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                 return RuleFailed()
 
               case None =>
-                sctx.reporter.warning("Solver could not solve path-condition")
+                if (!interruptManager.isInterrupted) {
+                  sctx.reporter.warning("Solver could not solve path-condition")
+                }
                 return RuleFailed() // This is not necessary though, but probably wanted
             }
           } finally {

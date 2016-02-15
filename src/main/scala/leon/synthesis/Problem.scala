@@ -30,7 +30,11 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
 
     val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
 
-    "⟦ "+as.map(_.asString).mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws.asString+" ≺ " else "")+" ⟨ "+phi.asString+" ⟩ "+xs.map(_.asString).mkString(";")+" ⟧  "+ebInfo
+    s"""|⟦  ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "<No input variables>"}
+        |   ${pcws.asString} ≺
+        |   ⟨ ${phi.asString} ⟩ 
+        |   ${xs.map(_.asString).mkString(";")} 
+        |⟧  """.stripMargin + ebInfo
   }
 
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
