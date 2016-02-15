@@ -3,7 +3,10 @@ package leon.utils
 import scala.collection.mutable.ArrayBuffer
 
 class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T] {
-  var buffer = new ArrayBuffer[T]() ++ init
+  private val buffer = new ArrayBuffer[T]() ++ init
+
+  def +=(more: T) = buffer += more
+  def ++=(more: Seq[T]) = buffer ++= more
 
   val cachingIterator = new Iterator[T] {
     def hasNext = growth.hasNext
@@ -20,6 +23,6 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T]
   }
 
   def sortBufferBy[B](f: T => B)(implicit ord: math.Ordering[B]) = {
-    buffer = buffer.sortBy(f)
+    buffer.sortBy(f)
   }
 }
