@@ -77,13 +77,19 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
     require(!isExpanded)
     isExpanded = true
 
+    def pad(prefix: String, message: String): String = {
+      val lines = message.split("\\n").toList
+      val padding = " " * prefix.size
+      prefix + lines.head + "\n" + lines.tail.map(padding + _).mkString("\n")
+    }
+
     implicit val ctx = hctx.sctx.context
 
     import hctx.sctx.reporter.info
 
     val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
 
-    info(prefix+ri.problem.asString)
+    info(pad(prefix, ri.problem.asString))
 
     ri.apply(hctx) match {
       case RuleClosed(sols) =>
@@ -97,7 +103,8 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
           isDeadEnd = true
         } else {
           val sol = sols.head
-          info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol.asString+"...")
+          val morePrefix = s"$prefix Solved ${(if(sol.isTrusted) "" else " (untrusted)")} with: "
+          info(pad(morePrefix, sol.asString))
         }
 
         parent.foreach{ p =>
@@ -108,8 +115,9 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
 
       case RuleExpanded(probs) =>
         info(prefix+"Decomposed into:")
-        for(p <- probs) {
-          info(prefix+"     - "+p.asString)
+        val morePrefix = prefix + " - "
+        for(p <- probs) { 
+          info(pad(morePrefix, p.asString))
         }
 
         descendants = probs.map(p => new OrNode(Some(this), p))
