@@ -12,6 +12,9 @@ import leon.invariant.templateSolvers.ExtendedUFSolver
 import java.io._
 import Util._
 import PredicateUtil._
+import evaluators._
+import EvaluationResults._
+import purescala.Extractors._
 
 object SolverUtil {
 
@@ -22,6 +25,15 @@ object SolverUtil {
       if (acc == tru) eq
       else And(acc, eq)
     })
+  }
+
+  def completeWithRefModel(currModel: Model, refModel: Model) = {
+    new Model(refModel.toMap.map {
+      case (id, _) if currModel.isDefinedAt(id) =>
+        (id -> currModel(id))
+      case (id, v) =>
+        (id -> v)
+    }.toMap)
   }
 
   def toZ3SMTLIB(expr: Expr, filename: String,
@@ -36,6 +48,14 @@ object SolverUtil {
     printSol.free()
     writer.flush()
     writer.close()
+  }
+
+  def verifyModel(e: Expr, model: Model, solver: SimpleSolverAPI) = {
+    solver.solveSAT(And(e, modelToExpr(model))) match {
+      case (Some(false), _) =>
+        throw new IllegalStateException("Model doesn't staisfy formula!")
+      case _ =>
+    }
   }
 
   /**

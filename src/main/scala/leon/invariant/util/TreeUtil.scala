@@ -121,7 +121,7 @@ object ProgramUtil {
    * will be removed
    */
   def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
-                                  funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = true): Program = {
+                                  funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = false): Program = {
 
     val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) if fd.isTheoryOperation =>
@@ -236,13 +236,23 @@ object ProgramUtil {
   }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
+    var funCache = Map[String, Option[FunDef]]()
+    def funInNewprog(fn: String) =
+      funCache.get(fn) match {
+        case None =>
+          val fd = functionByFullName(fn, newProg)
+          funCache += (fn -> fd)
+          fd
+        case Some(fd) => fd
+      }
     simplePostTransform {
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        functionByName(fullName(fd)(currProg), newProg) match {
+        val fname = fullName(fd)(currProg)
+        funInNewprog(fname) match {
           case Some(nfd) =>
             FunctionInvocation(TypedFunDef(nfd, tps), args)
           case _ =>
-            throw new IllegalStateException(s"Cannot find translation for ${fd.id.name}")
+            throw new IllegalStateException(s"Cannot find translation for ${fname}")
         }
       case e => e
     }(ine)
@@ -286,25 +296,35 @@ object PredicateUtil {
       (e => e, base)
   }
 
+  def letStarUnapplyWithSimplify(e: Expr): (Expr => Expr, Expr) = {
+    val (letCons, letBody) = letStarUnapply(e)
+    (letCons andThen simplifyLets, letBody)
+  }
+
   /**
    * Checks if the input expression has only template variables as free variables
    */
   def isTemplateExpr(expr: Expr): Boolean = {
     var foundVar = false
-    simplePostTransform {
-      case e @ Variable(id) => {
+    postTraversal {
+      case e @ Variable(id) => 
         if (!TemplateIdFactory.IsTemplateIdentifier(id))
-          foundVar = true
-        e
-      }
-      case e @ ResultVariable(_) => {
-        foundVar = true
-        e
-      }
-      case e => e
+          foundVar = true              
+      case e @ ResultVariable(_) => 
+        foundVar = true              
+      case e => 
     }(expr)
-
     !foundVar
+  }
+
+  def isArithmeticRelation(e: Expr) = {
+    e match {
+      case Equals(l, r) =>
+        if (l.getType == Untyped) None
+        else Some(TypeUtil.isNumericType(l.getType))
+      case _: LessThan | _: LessEquals | _: GreaterThan | _: GreaterEquals => Some(true)
+      case _ => Some(false)
+    }
   }
 
   def getTemplateIds(expr: Expr) = {
@@ -352,20 +372,15 @@ object PredicateUtil {
     hasInts(expr) && hasReals(expr)
   }
 
-  def atomNum(e: Expr): Int = {
-    var count: Int = 0
-    simplePostTransform {
-      case e @ And(args) => {
-        count += args.size
-        e
-      }
-      case e @ Or(args) => {
-        count += args.size
-        e
-      }
-      case e => e
-    }(e)
-    count
+  /**
+   * Assuming a flattenned formula
+   */
+  def atomNum(e: Expr): Int = e match {
+    case And(args)         => (args map atomNum).sum
+    case Or(args)          => (args map atomNum).sum
+    case IfExpr(c, th, el) => atomNum(c) + atomNum(th) + atomNum(el)
+    case Not(arg)          => atomNum(arg)
+    case e                 => 1
   }
 
   def numUIFADT(e: Expr): Int = {
@@ -448,8 +463,9 @@ object PredicateUtil {
    * Computes the set of variables that are shared across disjunctions.
    * This may return bound variables as well
    */
-  def sharedIds(e: Expr): Set[Identifier] = e match {
-    case Or(args) =>
+  def sharedIds(ine: Expr): Set[Identifier] = {
+
+    def sharedOfDisjointExprs(args: Seq[Expr]) = {
       var uniqueVars = Set[Identifier]()
       var sharedVars = Set[Identifier]()
       args.foreach { arg =>
@@ -458,9 +474,17 @@ object PredicateUtil {
         sharedVars ++= newShared
         uniqueVars = (uniqueVars ++ candUniques) -- newShared
       }
-      sharedVars ++ (args flatMap sharedIds)
-    case Variable(_) => Set()
-    case Operator(args, op) =>
-      (args flatMap sharedIds).toSet
+      sharedVars ++ (args flatMap rec)
+    }
+    def rec(e: Expr): Set[Identifier] =
+      e match {
+        case Or(args) => sharedOfDisjointExprs(args)
+        case IfExpr(c, th, el) =>
+          rec(c) ++ sharedOfDisjointExprs(Seq(th, el))
+        case Variable(_) => Set()
+        case Operator(args, op) =>
+          (args flatMap rec).toSet
+      }
+    rec(ine)
   }
 }

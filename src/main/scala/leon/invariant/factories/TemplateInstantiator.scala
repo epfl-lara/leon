@@ -7,29 +7,34 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import invariant.util._
 import invariant.structure._
+import invariant.engine.InferenceContext
 import leon.solvers.Model
 import leon.invariant.util.RealValuedExprEvaluator
 import PredicateUtil._
+import FunctionUtils._
+import ExpressionTransformer._
 
 object TemplateInstantiator {
+
   /**
-   * Computes the invariant for all the procedures given a mapping for the
-   * template variables.
+   * Computes the invariant for all the procedures given a model for the template variables.
    * (Undone) If the mapping does not have a value for an id, then the id is bound to the simplest value
    */
-  def getAllInvariants(model: Model, templates: Map[FunDef, Expr], prettyInv: Boolean = false): Map[FunDef, Expr] = {
-    val invs = templates.map((pair) => {
-      val (fd, t) = pair
-      val template = ExpressionTransformer.FlattenFunction(t)
-      val tempvars = getTemplateVars(template)
-      val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
-        (v, model(v.id))
-      }).toMap
-      val instTemplate = instantiate(template, tempVarMap, prettyInv)
-      val comprTemp = ExpressionTransformer.unflatten(instTemplate)
-      (fd, comprTemp)
-    })
+  def getAllInvariants(model: Model, funs: Seq[FunDef], prettyInv: Boolean = false): Map[FunDef, Expr] = {
+    val invs = funs.collect {
+      case fd if fd.hasTemplate =>
+        (fd, instantiateNormTemplates(model, fd.normalizedTemplate.get, prettyInv))
+    }.toMap
     invs
+  }
+
+  /**
+   * This function expects a template in a normalized form.
+   */
+  def instantiateNormTemplates(model: Model, template: Expr, prettyInv: Boolean = false): Expr = {
+    val tempvars = getTemplateVars(template)
+    val instTemplate = instantiate(template, tempvars.map { v => (v, model(v.id)) }.toMap, prettyInv)
+    unflatten(instTemplate)
   }
 
   /**

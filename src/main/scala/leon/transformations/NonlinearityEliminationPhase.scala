@@ -173,15 +173,17 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
       } else None
 
       fd.flags.foreach(newfd.addFlag(_))
-    })
-
-    val newprog = copyProgram(program, (defs: Seq[Definition]) => {
+    })       
+    val transProg = copyProgram(program, (defs: Seq[Definition]) => {
       defs.map {
         case fd: FunDef => newFundefs(fd)
         case d => d
-      } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
+      }
     })
-
+    val newprog =
+      if (addMult)
+        addDefs(transProg, Seq(multFun, pivMultFun), transProg.units.find(_.isMainUnit).get.definedFunctions.last)
+      else transProg
     if (debugNLElim)
       println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
 

@@ -76,5 +76,4 @@ trait ExpressionsDSL {
     val tfd = funDef(name).typed(Seq())
     FunctionInvocation(tfd, args.toSeq)
   }
-
 }

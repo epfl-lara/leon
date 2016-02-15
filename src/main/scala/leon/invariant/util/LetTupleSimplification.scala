@@ -335,8 +335,7 @@ object LetTupleSimplification {
       }
       // println(s"E : $e After Pulling lets to top : \n $transe")
       transe
-    }
-    //val res = pullLetToTop(matchToIfThenElse(ine))
+    }   
     val res = pullLetToTop(ine)
     /*if(debug)
       println(s"InE : $ine After Pulling lets to top : \n ${ScalaPrinter.apply(res)}")*/

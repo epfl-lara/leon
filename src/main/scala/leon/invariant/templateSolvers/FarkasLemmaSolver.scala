@@ -249,7 +249,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     if (this.debugNLCtrs && hasInts(simpctrs)) {
       throw new IllegalStateException("Nonlinear constraints have integers: " + simpctrs)
     }
-    if (verbose && LinearConstraintUtil.isLinear(simpctrs)) {
+    if (verbose && LinearConstraintUtil.isLinearFormula(simpctrs)) {
       reporter.info("Constraints reduced to linear !")
     }
     if (this.dumpNLCtrs) {

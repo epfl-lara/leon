@@ -49,4 +49,10 @@ object TypeUtil {
       throw new IllegalStateException("BitVector types not supported yet!")
     case _                      => false
   }
+
+  def rootType(t: TypeTree): Option[AbstractClassType] = t match {
+    case absT: AbstractClassType => Some(absT)
+    case ct: CaseClassType       => ct.parent
+    case _                       => None
+  }
 }

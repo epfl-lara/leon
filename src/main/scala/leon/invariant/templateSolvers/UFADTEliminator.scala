@@ -5,10 +5,12 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors._
 import purescala.Types._
-import invariant.datastructure.UndirectedGraph
+import invariant.datastructure._
 import invariant.util._
 import leon.purescala.TypeOps
 import PredicateUtil._
+import Stats._
+import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap, MutableList }
 
 class UFADTEliminator(ctx: LeonContext, program: Program) {
 
@@ -17,65 +19,108 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
   val reporter = ctx.reporter
   val verbose = false
 
-  def collectCompatibleCalls(calls: Set[Expr]) = {
-    //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
-    val vec = calls.toArray
-    val size = calls.size
-    var j = 0
-    //for stats
-    var tuples = 0
-    var functions = 0
-    var adts = 0
-    val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
+  //  def collectCompatibleCalls(calls: Set[Expr]) = {
+  //    //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
+  //    val vec = calls.toArray
+  //    val size = calls.size
+  //    var j = 0
+  //    //for stats
+  //    var tuples = 0
+  //    var functions = 0
+  //    var adts = 0
+  //    val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
+  //      //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
+  //      /*val shouldConsider = if(InvariantisCallExpr(call)) {
+  //        val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
+  //        if(calledFun == DepthInstPhase.maxFun) false
+  //        else true
+  //      } else true*/
+  //      var pairs = Set[(Expr, Expr)]()
+  //      for (i <- j + 1 until size) {
+  //        val call2 = vec(i)
+  //        if (mayAlias(call, call2)) {
+  //          call match {
+  //            case Equals(_, fin: FunctionInvocation) => functions += 1
+  //            case Equals(_, tup: Tuple)              => tuples += 1
+  //            case _                                  => adts += 1
+  //          }
+  //          if (debugAliases)
+  //            println("Aliases: " + call + "," + call2)
+  //          pairs ++= Set((call, call2))
+  //        } else {
+  //          if (debugAliases) {
+  //            (call, call2) match {
+  //              case (Equals(_, t1 @ Tuple(_)), Equals(_, t2 @ Tuple(_))) =>
+  //                println("No Aliases: " + t1.getType + "," + t2.getType)
+  //              case _ => println("No Aliases: " + call + "," + call2)
+  //            }
+  //          }
+  //        }
+  //      }
+  //      j += 1
+  //      acc ++ pairs
+  //    })
+  //    if (verbose) reporter.info("Number of compatible calls: " + product.size)
+  //    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
+  //    Stats.updateCumStats(functions, "Compatible-functioncalls")
+  //    Stats.updateCumStats(adts, "Compatible-adtcalls")
+  //    Stats.updateCumStats(tuples, "Compatible-tuples")
+  //    product
+  //  }
 
+  def collectCompatibleTerms(terms: Set[Expr]) = {
+    class Comp(val key: Either[TypedFunDef, TypeTree]) {
+      override def equals(other: Any) = other match {
+        case otherComp: Comp => mayAlias(key, otherComp.key)
+        case _               => false
+      }
+      // an weaker property whose equality is necessary for mayAlias
+      val hashcode =
+        key match {
+          case Left(TypedFunDef(fd, _))   => fd.id.hashCode()
+          case Right(ct: CaseClassType)   => ct.classDef.id.hashCode()
+          case Right(tp @ TupleType(tps)) => (tps.hashCode() << 3) ^ tp.dimension
+        }
+      override def hashCode = hashcode
+    }
+    val compTerms = MutableMap[Comp, MutableList[Expr]]()
+    terms.foreach { term =>
       //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
       /*val shouldConsider = if(InvariantisCallExpr(call)) {
         val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
         if(calledFun == DepthInstPhase.maxFun) false
         else true
       } else true*/
-      var pairs = Set[(Expr, Expr)]()
-      for (i <- j + 1 until size) {
-        val call2 = vec(i)
-        if (mayAlias(call, call2)) {
-
-          call match {
-            case Equals(_, fin: FunctionInvocation) => functions += 1
-            case Equals(_, tup: Tuple)              => tuples += 1
-            case _                                  => adts += 1
-          }
-          if (debugAliases)
-            println("Aliases: " + call + "," + call2)
-
-          pairs ++= Set((call, call2))
-
-        } else {
-          if (debugAliases) {
-            (call, call2) match {
-              case (Equals(_, t1 @ Tuple(_)), Equals(_, t2 @ Tuple(_))) =>
-                println("No Aliases: " + t1.getType + "," + t2.getType)
-              case _ => println("No Aliases: " + call + "," + call2)
-            }
-          }
+      val compKey: Either[TypedFunDef, TypeTree] = term match {
+        case Equals(_, rhs) => rhs match { // tuple types require special handling before they are used as keys
+          case tp: Tuple =>
+            val TupleType(tps) = tp.getType
+            Right(TupleType(tps.map { TypeOps.bestRealType }))
+          case FunctionInvocation(tfd, _) => Left(tfd)
+          case CaseClass(ct, _)           => Right(ct)
         }
       }
-      j += 1
-      acc ++ pairs
-    })
-    if (verbose) reporter.info("Number of compatible calls: " + product.size)
-    /*reporter.info("Compatible Tuples: "+tuples)
-    reporter.info("Compatible Functions+ADTs: "+(functions+adts))*/
-    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
-    Stats.updateCumStats(functions, "Compatible-functioncalls")
-    Stats.updateCumStats(adts, "Compatible-adtcalls")
-    Stats.updateCumStats(tuples, "Compatible-tuples")
-    product
+      val comp = new Comp(compKey)
+      val compList = compTerms.getOrElse(comp, {
+        val newl = new MutableList[Expr]()
+        compTerms += (comp -> newl)
+        newl
+      })
+      compList += term
+    }
+    if (debugAliases) {
+      compTerms.foreach {
+        case (_, v) => println("Aliases: " + v.mkString("{", ",", "}"))
+      }
+    }
+    compTerms
   }
 
   /**
    * Convert the theory formula into linear arithmetic formula.
    * The calls could be functions calls or ADT constructor calls.
    * 'predEval' is an evaluator that evaluates a predicate to a boolean value
+   * TODO: is type parameter inheritance handled correctly ?
    */
   def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Option[Boolean])): Seq[Expr] = {
 
@@ -99,7 +144,6 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     }
 
     def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
-
       val eqs = if (isCallExpr(call1)) {
         val (_, rhs) = axiomatizeCalls(call1, call2)
         Seq(rhs)
@@ -122,13 +166,11 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     }
 
     def predForDisequality(call1: Expr, call2: Expr): Seq[Expr] = {
-
       val (ants, _) = if (isCallExpr(call1)) {
         axiomatizeCalls(call1, call2)
       } else {
         axiomatizeADTCons(call1, call2)
       }
-
       if (makeEfficient && ants.exists {
         case Equals(l, r) if (l.getType != RealType && l.getType != BooleanType && l.getType != IntegerType) => true
         case _ => false
@@ -163,57 +205,79 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       }
     }
 
-    var eqGraph = new UndirectedGraph[Expr]() //an equality graph
-    var neqSet = Set[(Expr, Expr)]()
-    val product = collectCompatibleCalls(calls)
-    val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
-      val (call1, call2) = (pair._1, pair._2)
-      //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
-      //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
-      if (!eqGraph.BFSReach(call1, call2) && !neqSet.contains((call1, call2)) && !neqSet.contains((call2, call1))) {
-        doesAlias(call1, call2) match {
-          case Some(true) =>
-            eqGraph.addEdge(call1, call2)
-            acc ++ predForEquality(call1, call2)
-          case Some(false) =>
-            neqSet ++= Set((call1, call2))
-            acc ++ predForDisequality(call1, call2)
-          case _ =>
-            // in this case, we construct a weaker disjunct by dropping this predicate
-            acc
+    var equivClasses = new DisjointSets[Expr]()
+    var neqSet = MutableSet[(Expr, Expr)]()
+    val termClasses = collectCompatibleTerms(calls)
+    val preds = MutableList[Expr]()
+    termClasses.foreach {
+      case (_, compTerms) =>
+        val vec = compTerms.toArray
+        val size = vec.size
+        vec.zipWithIndex.foreach {
+          case (t1, j) =>
+            (j + 1 until size).foreach { i =>
+              val t2 = vec(i)
+              if (compatibleTArgs(termTArgs(t1), termTArgs(t2))) {
+                //note: here we omit constraints that encode transitive equality facts
+                val class1 = equivClasses.findOrCreate(t1)
+                val class2 = equivClasses.findOrCreate(t2)
+                if (class1 != class2 && !neqSet.contains((t1, t2)) && !neqSet.contains((t2, t1))) {
+                  doesAlias(t1, t2) match {
+                    case Some(true) =>
+                      equivClasses.union(class1, class2)
+                      preds ++= predForEquality(t1, t2)
+                    case Some(false) =>
+                      neqSet ++= Set((t1, t2))
+                      preds ++= predForDisequality(t1, t2)
+                    case _ =>
+                    // in this case, we construct a weaker disjunct by dropping this predicate                      
+                  }
+                }
+              }
+            }
         }
-      } else acc
-    })
-    //reporter.info("Number of equal calls: " + eqGraph.getEdgeCount)
-    newctrs
+    }   
+    Stats.updateCounterStats(preds.size, "CallADT-Constraints", "disjuncts")
+    preds.toSeq
+  }
+
+  def termTArgs(t: Expr) = {
+    t match {
+      case Equals(_, e) =>
+        e match {
+          case FunctionInvocation(TypedFunDef(_, tps), _) => tps
+          case CaseClass(ct, _)                           => ct.tps
+          case tp: Tuple =>
+            val TupleType(tps) = tp.getType
+            tps
+        }
+    }
   }
 
   /**
    * This function actually checks if two non-primitive expressions could have the same value
    * (when some constraints on their arguments hold).
    * Remark: notice  that when the expressions have ADT types, then this is basically a form of may-alias check.
-   * TODO: handling generic can become very trickier here.
+   * TODO: handling type parameters can become very trickier here.
+   * For now ignoring type parameters of functions and classes. (This is complete, but may be less efficient)
    */
-  def mayAlias(e1: Expr, e2: Expr): Boolean = {
-    (e1, e2) match {
-      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) => {
-        (fd1.id == fd2.id && fd1.fd.tparams == fd2.fd.tparams)
-      }
-      case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) => {
-        // if (cd1.id == cd2.id && cd1.tps != cd2.tps) println("Invalidated the classes " + e1 + " " + e2)
-        (cd1.id == cd2.id && cd1.tps == cd2.tps)
-      }
-      case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) => {
-        //get the types and check if the types are compatible
-        val TupleType(tps1) = tp1.getType
-        val TupleType(tps2) = tp2.getType
-        (tps1 zip tps2).forall(pair => {
-          val (t1, t2) = pair
-          val lub = TypeOps.leastUpperBound(t1, t2)
-          (lub == Some(t1) || lub == Some(t2))
-        })
-      }
+  def mayAlias(term1: Either[TypedFunDef, TypeTree], term2: Either[TypedFunDef, TypeTree]): Boolean = {
+    (term1, term2) match {
+      case (Left(TypedFunDef(fd1, _)), Left(TypedFunDef(fd2, _))) =>
+        fd1.id == fd2.id
+      case (Right(ct1: CaseClassType), Right(ct2: CaseClassType)) =>
+        ct1.classDef.id == ct2.classDef.id
+      case (Right(tp1 @ TupleType(tps1)), Right(tp2 @ TupleType(tps2))) if tp1.dimension == tp2.dimension =>
+        compatibleTArgs(tps1, tps2) //get the types and check if the types are compatible
       case _ => false
+    }
+  }
+
+  def compatibleTArgs(tps1: Seq[TypeTree], tps2: Seq[TypeTree]): Boolean = {
+    (tps1 zip tps2).forall {
+      case (t1, t2) =>
+        val lub = TypeOps.leastUpperBound(t1, t2)
+        (lub == Some(t1) || lub == Some(t2)) // is t1 a super type of t2
     }
   }
 
@@ -239,7 +303,6 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
    * The returned pairs should be interpreted as a bidirectional implication
    */
   def axiomatizeADTCons(sel1: Expr, sel2: Expr): (Seq[Expr], Expr) = {
-
     val (v1, args1, v2, args2) = sel1 match {
       case Equals(r1 @ Variable(_), CaseClass(_, a1)) => {
         val Equals(r2 @ Variable(_), CaseClass(_, a2)) = sel2
@@ -250,7 +313,6 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         (r1, a1, r2, a2)
       }
     }
-
     val ants = (args1.zip(args2)).foldLeft(Seq[Expr]())((acc, pair) => {
       val (arg1, arg2) = pair
       acc :+ Equals(arg1, arg2)

@@ -171,13 +171,7 @@ object LazinessUtil {
     case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
       Some(innerType)
     case _ => None
-  }
-
-  def rootType(t: TypeTree): Option[AbstractClassType] = t match {
-    case absT: AbstractClassType => Some(absT)
-    case ct: ClassType           => ct.parent
-    case _                       => None
-  }
+  }  
 
   def opNameToCCName(name: String) = {
     name.capitalize + "@"

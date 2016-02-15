@@ -45,6 +45,7 @@ object BottomUpMergeSort {
   }
   case class SCons(x: BigInt, tail: $[IStream]) extends IStream
   case class SNil() extends IStream
+  @inline
   def ssize(l: $[IStream]): BigInt = (l*).size
 
   /**
@@ -81,6 +82,7 @@ object BottomUpMergeSort {
    * on each pair.
    * Takes time linear in the size of the input list
    */
+  @invisibleBody
   def pairs(l: LList): LList = {
     require(l.valid)
     l match {
@@ -98,6 +100,7 @@ object BottomUpMergeSort {
    * Create a linearized tree of merges e.g. merge(merge(2, 1), merge(17, 19)).
    * Takes time linear in the size of the input list.
    */
+  @invisibleBody
   def constructMergeTree(l: LList): LList = {
     require(l.valid)
     l match {
@@ -120,6 +123,8 @@ object BottomUpMergeSort {
    *  Note: the sorted stream of integers may by recursively constructed using merge.
    *  Takes time linear in the size of the streams (non-trivial to prove due to cascading of lazy calls)
    */
+  @invisibleBody
+  @usePost
   def merge(a: $[IStream], b: $[IStream]): IStream = {
     require(((a*) != SNil() || b.isEvaluated) && // if one of the arguments is Nil then the other is evaluated
         ((b*) != SNil() || a.isEvaluated) &&
@@ -142,6 +147,7 @@ object BottomUpMergeSort {
   /**
    * Converts a list of integers to a list of streams of integers
    */
+  @invisibleBody
   def IListToLList(l: IList): LList = {
     l match {
       case INil() => LNil()

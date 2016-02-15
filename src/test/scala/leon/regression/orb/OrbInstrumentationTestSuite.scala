@@ -37,7 +37,7 @@ class OrbInstrumentationTestSuite extends LeonRegressionSuite {
     // check properties.
     val (ctx3, instProg) = processPipe.run(ctx2, program)
     val sizeFun = instProg.definedFunctions.find(_.id.name.startsWith("size"))
-    if(!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
+    if (!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
       fail("Error in instrumentation")
   }
 

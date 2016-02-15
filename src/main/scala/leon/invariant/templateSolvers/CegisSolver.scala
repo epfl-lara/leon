@@ -15,6 +15,7 @@ import leon.invariant.util.RealValuedExprEvaluator._
 import PredicateUtil._
 import SolverUtil._
 import Stats._
+import Util._
 
 class CegisSolver(ctx: InferenceContext, program: Program,
   rootFun: FunDef, ctrTracker: ConstraintTracker,
@@ -109,7 +110,7 @@ class CegisCore(ctx: InferenceContext,
 
         if (dumpCandidateInvs) {
           reporter.info("Candidate invariants")
-          val candInvs = cegisSolver.getAllInvariants(model)
+          val candInvs = TemplateInstantiator.getAllInvariants(model, cegisSolver.ctrTracker.getFuncs)
           candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
         }
         val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap

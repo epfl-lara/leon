@@ -38,6 +38,8 @@ import PredicateUtil._
 import leon.invariant.engine._
 import LazyVerificationPhase._
 import utils._
+import java.io.
+_
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  */
@@ -119,9 +121,18 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
-      checkInstrumentationSpecs(instProg, checkCtx)
+      checkInstrumentationSpecs(instProg, checkCtx,
+          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false))
     // dump stats
-    dumpStats()
+    if (ctx.findOption(SharedOptions.optBenchmark).getOrElse(false)) {
+      val modid = prog.units.find(_.isMainUnit).get.id
+      val filename = modid + "-stats.txt"
+      val pw = new PrintWriter(filename)
+      Stats.dumpStats(pw)
+      SpecificStats.dumpOutputs(pw)
+      ctx.reporter.info("Stats dumped to file: " + filename)
+      pw.close()
+    }
     instProg
   }
 

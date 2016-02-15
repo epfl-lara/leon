@@ -47,10 +47,10 @@ class CallGraph {
   }
 
   /**
-   * Checks if the src transitively calls the procedure proc
+   * Checks if the src transitively calls the procedure proc.
+   * Note: We cannot say that src calls itself even though source is reachable from itself in the callgraph
    */
   def transitivelyCalls(src: FunDef, proc: FunDef): Boolean = {
-    //important: We cannot say that src calls it self even though source is reachable from itself in the callgraph
     graph.BFSReach(src, proc, excludeSrc = true)
   }
 
@@ -59,38 +59,13 @@ class CallGraph {
   }
 
   /**
-   * sorting functions in ascending topological order
+   * Sorting functions in reverse topological order.
+   * For functions within an SCC, we preserve the initial order 
+   * given as input
    */
-  def topologicalOrder: Seq[FunDef] = {
-
-    def insert(index: Int, l: Seq[FunDef], fd: FunDef): Seq[FunDef] = {
-      var i = 0
-      var head = Seq[FunDef]()
-      l.foreach((elem) => {
-        if (i == index)
-          head :+= fd
-        head :+= elem
-        i += 1
-      })
-      head
-    }
-
-    var funcList = Seq[FunDef]()
-    graph.getNodes.toList.foreach((f) => {
-      var inserted = false
-      var index = 0
-      for (i <- funcList.indices) {
-        if (!inserted && this.transitivelyCalls(funcList(i), f)) {
-          index = i
-          inserted = true
-        }
-      }
-      if (!inserted)
-        funcList :+= f
-      else funcList = insert(index, funcList, f)
-    })
-
-    funcList
+  def reverseTopologicalOrder(initOrder: Seq[FunDef]): Seq[FunDef] = {  
+    val orderMap = initOrder.zipWithIndex.toMap
+    graph.sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }    
   }
 
   override def toString: String = {
@@ -108,9 +83,8 @@ object CallGraphUtil {
       onlyBody: Boolean = false,
       withTemplates: Boolean = false,
       calleesFun: Expr => Set[FunDef] = getCallees): CallGraph = {
-
     val cg = new CallGraph()
-    functionsWOFields(prog.definedFunctions).foreach((fd) => {
+    functionsWOFields(prog.definedFunctions).foreach{fd =>
       cg.addFunction(fd)
       if (fd.hasBody) {
         var funExpr = fd.body.get
@@ -126,7 +100,7 @@ object CallGraphUtil {
         //introduce a new edge for every callee
         calleesFun(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))
       }
-    })
+    }
     cg
   }
 

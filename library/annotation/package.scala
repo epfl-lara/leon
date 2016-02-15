@@ -24,7 +24,7 @@ package object annotation {
   @ignore
   class monotonic  extends StaticAnnotation
   @ignore
-  class compose    extends StaticAnnotation  
+  class compose    extends StaticAnnotation
   @ignore
   class axiom 		extends StaticAnnotation
   @ignore
@@ -33,6 +33,8 @@ package object annotation {
   class memoize extends StaticAnnotation
   @ignore
   class invisibleBody extends StaticAnnotation // do not unfold the body of the function
+  @ignore
+  class usePost extends StaticAnnotation // assume the post-condition while proving time bounds
   @ignore
   class unfoldFactor(f: Int=0) extends StaticAnnotation // 0 implies no bound on unfolding
 }

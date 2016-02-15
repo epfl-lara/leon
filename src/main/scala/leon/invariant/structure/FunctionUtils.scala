@@ -11,6 +11,7 @@ import invariant.util._
 import Util._
 import PredicateUtil._
 import scala.language.implicitConversions
+import ExpressionTransformer._
 
 /**
  * Some utiliy methods for functions.
@@ -31,6 +32,7 @@ object FunctionUtils {
     lazy val hasFieldFlag = fd.flags.contains(IsField(false))
     lazy val hasLazyFieldFlag = fd.flags.contains(IsField(true))
     lazy val isUserFunction = !hasFieldFlag && !hasLazyFieldFlag
+    lazy val usePost = fd.annotations.contains("usePost")
 
     //the template function
     lazy val tmplFunctionName = "tmpl"
@@ -108,14 +110,23 @@ object FunctionUtils {
         // collect all terms with question marks and convert them to a template
         val postWoQmarks = postBody match {
           case And(args) if args.exists(exists(isQMark)) =>
-            val (tempExprs, otherPreds) = args.partition {
-              case a if exists(isQMark)(a) => true
-              case _ => false
-            }
+            val (tempExprs, otherPreds) = args.partition(exists(isQMark))
             //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(createAnd(tempExprs))}")
             createAnd(otherPreds :+ qmarksToTmplFunction(createAnd(tempExprs)))
           case pb if exists(isQMark)(pb) =>
-            qmarksToTmplFunction(pb)
+            pb match {
+              case l: Let =>
+                val (letsCons, letsBody) = letStarUnapplyWithSimplify(l) // we try to see if the post is let* .. in e_1 ^ e_2 ^ ...
+                letsBody match {
+                  case And(args) =>
+                    val (tempExprs, rest) = args.partition(exists(isQMark))
+                    val toTmplFun = qmarksToTmplFunction(letsCons(createAnd(tempExprs)))
+                    createAnd(Seq(letsCons(createAnd(rest)), toTmplFun))
+                  case _ =>
+                    qmarksToTmplFunction(pb)
+                }
+              case _ => qmarksToTmplFunction(pb)
+            }
           case other => other
         }
         //the 'body' could be a template or 'And(pred, template)'
@@ -123,10 +134,7 @@ object FunctionUtils {
           case finv @ FunctionInvocation(_, args) if isTemplateInvocation(finv) =>
             (None, Some(finv))
           case And(args) if args.exists(isTemplateInvocation) =>
-            val (tempFuns, otherPreds) = args.partition {
-              case a if isTemplateInvocation(a) => true
-              case _ => false
-            }
+            val (tempFuns, otherPreds) = args.partition(isTemplateInvocation)
             if (tempFuns.size > 1) {
               throw new IllegalStateException("Multiple template functions used in the postcondition: " + postBody)
             } else {
@@ -142,6 +150,8 @@ object FunctionUtils {
     }
 
     lazy val template = templateExpr map (finv => extractTemplateFromLambda(finv.args(0).asInstanceOf[Lambda]))
+    lazy val normalizedTemplate = template.map(normalizeExpr(_, (e1: Expr, e2: Expr) =>
+      throw new IllegalStateException("Not implemented yet!")))
 
     def hasTemplate: Boolean = templateExpr.isDefined
     def getPostWoTemplate = postWoTemplate match {

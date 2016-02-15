@@ -191,6 +191,7 @@ object RealTimeDeque {
    * A function that takes streams where the size of front and rear streams violate
    * the balance invariant, and restores the balance.
    */
+  @invisibleBody
   def createQueue[T](f: $[Stream[T]], lenf: BigInt, sf: $[Stream[T]],
       r: $[Stream[T]], lenr: BigInt, sr: $[Stream[T]]): Queue[T] = {
     require(firstUneval(f) == firstUneval(sf) &&
@@ -219,12 +220,16 @@ object RealTimeDeque {
   } ensuring(res => res.valid &&
       time <= ?)
 
+  
+  @invisibleBody
+  def funeEqual[T](s1: $[Stream[T]], s2: $[Stream[T]]) = firstUneval(s1) == firstUneval(s2)
+  
   /**
    * Forces the schedules, and ensures that `firstUneval` equality is preserved
    */
+  @invisibleBody
   def force[T](tar: $[Stream[T]], htar: $[Stream[T]], other: $[Stream[T]], hother: $[Stream[T]]): $[Stream[T]] = {
-    require(firstUneval(tar) == firstUneval(htar) &&
-      firstUneval(other) == firstUneval(hother))
+    require(funeEqual(tar, htar) && funeEqual(other, hother))
     tar.value match {
       case SCons(_, tail) => tail
       case _              => tar
@@ -246,12 +251,13 @@ object RealTimeDeque {
   /**
    * Forces the schedules in the queue twice and ensures the `firstUneval` property.
    */
+  @invisibleBody
   def forceTwice[T](q: Queue[T]): ($[Stream[T]], $[Stream[T]]) = {
     require(q.valid)
     val nsf = force(force(q.sf, q.f, q.r, q.sr), q.f, q.r, q.sr) // forces q.sf twice
     val nsr = force(force(q.sr, q.r, q.f, nsf), q.r, q.f, nsf) // forces q.sr twice
     (nsf, nsr)
-  }
+  } ensuring(time <= ?)
   // the following properties are ensured, but need not be stated
   /*ensuring (res => {
     val nsf = res._1

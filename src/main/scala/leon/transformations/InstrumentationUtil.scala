@@ -124,4 +124,18 @@ object InstUtil {
     val newres = FreshIdentifier(resvar.id.name, resvar.getType).toVariable
     replace(getInstVariableMap(fd) + (TupleSelect(resvar, 1) -> newres), e)
   }
+
+  /**
+   * Checks if the given expression is a resource bound of the given function.
+   */
+  def isResourceBoundOf(fd: FunDef)(e: Expr) = {
+    val instExprs = InstTypes.map(getInstExpr(fd, _)).collect {
+      case Some(inste) => inste
+    }.toSet
+    !instExprs.isEmpty && isArithmeticRelation(e).get &&
+      exists {
+        case sub: TupleSelect => instExprs(sub)
+        case _                => false
+      }(e)
+  }
 }

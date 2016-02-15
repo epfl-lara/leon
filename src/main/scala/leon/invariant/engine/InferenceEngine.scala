@@ -24,8 +24,10 @@ import Stats._
 class InferenceEngine(ctx: InferenceContext) extends Interruptible {
 
   val debugBottomupIterations = false
+  val debugAnalysisOrder = false
 
   val ti = new TimeoutFor(this)
+  val reporter = ctx.reporter
 
   def interrupt() = {
     ctx.abort = true
@@ -48,39 +50,27 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
   }
 
   private def run(progressCallback: Option[InferenceCondition => Unit] = None): InferenceReport = {
-    val reporter = ctx.reporter
     val program = ctx.inferProgram
     reporter.info("Running Inference Engine...")
     if (ctx.dumpStats) { //register a shutdownhook
       sys.ShutdownHookThread({ dumpStats(ctx.statsSuffix) })
     }
+    val relfuns = ctx.functionsToInfer.getOrElse(program.definedFunctions.map(InstUtil.userFunctionName))
     var results: Map[FunDef, InferenceCondition] = null
     time {
-      //compute functions to analyze by sorting based on topological order (this is an ascending topological order)
-      val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
-      val functionsToAnalyze = ctx.functionsToInfer match {
-        case Some(rootfuns) =>
-          val rootset = rootfuns.toSet
-          val rootfds = program.definedFunctions.filter(fd => rootset(InstUtil.userFunctionName(fd)))
-          val relfuns = rootfds.flatMap(callgraph.transitiveCallees _).toSet
-          callgraph.topologicalOrder.filter { fd => relfuns(fd) }
-        case _ =>
-          callgraph.topologicalOrder
-      }
-      //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
-
       if (!ctx.useCegis) {
-        results = analyseProgram(program, functionsToAnalyze, defaultVCSolver, progressCallback)
+        results = analyseProgram(program, relfuns, defaultVCSolver, progressCallback)
         //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
       } else {
-        var remFuncs = functionsToAnalyze
+        var remFuncs = relfuns
         var b = 200
         val maxCegisBound = 200
         breakable {
           while (b <= maxCegisBound) {
             Stats.updateCumStats(1, "CegisBoundsTried")
             val succeededFuncs = analyseProgram(program, remFuncs, defaultVCSolver, progressCallback)
-            remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
+            val successes = succeededFuncs.keySet.map(InstUtil.userFunctionName)
+            remFuncs = remFuncs.filterNot(successes.contains _)
             if (remFuncs.isEmpty) break
             b += 5 //increase bounds in steps of 5
           }
@@ -92,15 +82,12 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
       reporter.info("- Dumping statistics")
       dumpStats(ctx.statsSuffix)
     }
-    new InferenceReport(results.map(pair => {
-      val (fd, ic) = pair
-      (fd -> List[VC](ic))
-    }), program)(ctx)
+    new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, program)(ctx)
   }
 
   def dumpStats(statsSuffix: String) = {
     //pick the module id.
-    val modid = ctx.inferProgram.modules.find(_.definedFunctions.exists(!_.isLibrary)).get.id
+    val modid = ctx.inferProgram.units.find(_.isMainUnit).get.id
     val filename = modid + statsSuffix + ".txt"
     val pw = new PrintWriter(filename)
     Stats.dumpStats(pw)
@@ -108,7 +95,8 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     if (ctx.tightBounds) {
       SpecificStats.dumpMinimizationStats(pw)
     }
-    ctx.reporter.info("Stats dumped to file: "+filename)
+    pw.close()
+    ctx.reporter.info("Stats dumped to file: " + filename)
   }
 
   def defaultVCSolver =
@@ -120,14 +108,32 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     }
 
   /**
+   * sort the given functions based on ascending topological order of the callgraph.
+   * For SCCs, preserve the order in which the functions are called in the program
+   */
+  def sortByTopologicalOrder(program: Program, relfuns: Seq[String]) = {
+    val callgraph = CallGraphUtil.constructCallGraph(program, onlyBody = true)
+    val relset = relfuns.toSet
+    val relfds = program.definedFunctions.filter(fd => relset(InstUtil.userFunctionName(fd)))
+    val funsToAnalyze = relfds.flatMap(callgraph.transitiveCallees _).toSet
+    // note: the order preserves the order in which functions appear in the program within an SCC
+    val funsInOrder = callgraph.reverseTopologicalOrder(program.definedFunctions).filter(funsToAnalyze)
+    if (debugAnalysisOrder)
+      reporter.info("Analysis Order: " + funsInOrder.map(_.id.uniqueName))
+    funsInOrder
+  }
+
+  /**
    * Returns map from analyzed functions to their inference conditions.
+   * @param - a list of user-level function names that need to analyzed. The names should not
+   * include the instrumentation suffixes
    * TODO: use function names in inference conditions, so that
    * we an get rid of dependence on origFd in many places.
    */
-  def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef],
+  def analyseProgram(startProg: Program, relfuns: Seq[String],
                      vcSolver: (FunDef, Program) => FunctionTemplateSolver,
                      progressCallback: Option[InferenceCondition => Unit]): Map[FunDef, InferenceCondition] = {
-    val reporter = ctx.reporter
+    val functionsToAnalyze = sortByTopologicalOrder(startProg, relfuns)
     val funToTmpl =
       if (ctx.autoInference) {
         //A template generator that generates templates for the functions (here we are generating templates by enumeration)
@@ -140,10 +146,11 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     val progWithTemplates = assignTemplateAndCojoinPost(funToTmpl, startProg)
     var analyzedSet = Map[FunDef, InferenceCondition]()
 
-    functionsToAnalyze.filterNot((fd) => {
+    functionsToAnalyze.filterNot(fd => {
       (fd.annotations contains "verified") ||
         (fd.annotations contains "library") ||
-        (fd.annotations contains "theoryop")
+        (fd.annotations contains "theoryop") ||
+        (fd.annotations contains "extern")
     }).foldLeft(progWithTemplates) { (prog, origFun) =>
 
       if (debugBottomupIterations) {
@@ -182,10 +189,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                   !analyzedSet.contains(origFd) && origFd.hasTemplate
                 }
                 // now the templates of these functions will be replaced by inferred invariants
-                val invs = TemplateInstantiator.getAllInvariants(model.get,
-                  funsWithTemplates.collect {
-                    case fd if fd.hasTemplate => fd -> fd.getTemplate
-                  }.toMap)
+                val invs = TemplateInstantiator.getAllInvariants(model.get, funsWithTemplates)
                 // collect templates of remaining functions
                 val funToTmpl = prog.definedFunctions.collect {
                   case fd if !invs.contains(fd) && fd.hasTemplate =>
@@ -197,11 +201,9 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                 inferredFuns.foreach { fd =>
                   val origFd = origFds(fd)
                   val invOpt = if (funsWithTemplates.contains(fd)) {
-                    Some(TemplateInstantiator.getAllInvariants(model.get,
-                      Map(origFd -> origFd.getTemplate), prettyInv = true)(origFd))
+                    Some(TemplateInstantiator.getAllInvariants(model.get, Seq(origFd), prettyInv = true)(origFd))
                   } else if (fd.hasTemplate) {
-                    val currentInv = TemplateInstantiator.getAllInvariants(model.get,
-                      Map(fd -> fd.getTemplate), prettyInv = true)(fd)
+                    val currentInv = TemplateInstantiator.getAllInvariants(model.get, Seq(fd), prettyInv = true)(fd)
                     // map result variable  in currentInv
                     val repInv = replace(Map(getResId(fd).get.toVariable -> getResId(origFd).get.toVariable), currentInv)
                     Some(translateExprToProgram(repInv, prog, startProg))

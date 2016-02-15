@@ -17,16 +17,9 @@ import PredicateUtil._
 import ExpressionTransformer._
 
 abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
-  ctrTracker: ConstraintTracker) {
+  val ctrTracker: ConstraintTracker) {
 
   protected val reporter = ctx.reporter
-  //protected val cg = CallGraphUtil.constructCallGraph(program)
-
-  //some constants
-  protected val fls = BooleanLiteral(false)
-  protected val tru = BooleanLiteral(true)
-  //protected val zero = IntLiteral(0)
-
   private val dumpVCtoConsole = false
   private val dumpVCasText = false
 
@@ -34,24 +27,12 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
    * Completes a model by adding mapping to new template variables
    */
   def completeModel(model: Model, ids: Set[Identifier]) = {
-    val idmap = ids.map((id) => {
+    val idmap = ids.map { id =>
       if (!model.isDefinedAt(id)) {
         (id, simplestValue(id.getType))
       } else (id, model(id))
-    }).toMap
+    }.toMap
     new Model(idmap)
-  }
-
-  /**
-   * Computes the invariant for all the procedures given a mapping for the
-   * template variables.
-   */
-  def getAllInvariants(model: Model): Map[FunDef, Expr] = {
-    val templates = ctrTracker.getFuncs.collect {
-      case fd if fd.hasTemplate =>
-        fd -> fd.getTemplate
-    }
-    TemplateInstantiator.getAllInvariants(model, templates.toMap)
   }
 
   var vcCache = Map[FunDef, Expr]()

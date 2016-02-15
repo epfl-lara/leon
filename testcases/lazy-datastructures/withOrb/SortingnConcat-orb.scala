@@ -71,8 +71,8 @@ object SortingnConcat {
     }
   } ensuring (_ => time <= ? * ssize(l) + ?)
 
-  /* Orb can prove this
-   * def kthMin(l: $[LList], k: BigInt): BigInt = {
+  // Orb can prove this
+  def kthMin(l: $[LList], k: BigInt): BigInt = {
     require(k >= 1)
     l.value match {
       case SCons(x, xs) =>
@@ -81,5 +81,5 @@ object SortingnConcat {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0) // None[BigInt]
     }
-  } ensuring (_ => time <= 15 * k * ssize(l) + 20 * k + 20)*/
+  } ensuring (_ => time <= ? * k * ssize(l) + ? * k + ?)
 }
