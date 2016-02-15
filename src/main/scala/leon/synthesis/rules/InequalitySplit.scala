@@ -17,22 +17,18 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
     // don't want to split on two variables for which only one split
     // alternative is viable. This should be much less expensive than making
     //  calls to a solver for each pair.
-    var facts = Set[Set[Identifier]]()
-
-    def addFacts(e: Expr): Unit = e match {
-      case Not(e) => addFacts(e)
-      case LessThan(Variable(a), Variable(b))      => facts += Set(a,b)
-      case LessEquals(Variable(a), Variable(b))    => facts += Set(a,b)
-      case GreaterThan(Variable(a), Variable(b))   => facts += Set(a,b)
-      case GreaterEquals(Variable(a), Variable(b)) => facts += Set(a,b)
-      case Equals(Variable(a), Variable(b))        => facts += Set(a,b)
-      case _ =>
-    }
 
     val TopLevelAnds(as) = and(p.pc, p.phi)
-    for (e <- as) {
-      addFacts(e)
+    def addFacts(e: Expr): Set[Identifier] = e match {
+      case Not(e) => addFacts(e)
+      case LessThan(Variable(a), Variable(b))      => Set(a,b)
+      case LessEquals(Variable(a), Variable(b))    => Set(a,b)
+      case GreaterThan(Variable(a), Variable(b))   => Set(a,b)
+      case GreaterEquals(Variable(a), Variable(b)) => Set(a,b)
+      case Equals(Variable(a), Variable(b))        => Set(a,b)
+      case _ => Set()
     }
+    val facts = as map addFacts
 
     val argsPairs = p.as.filter(_.getType == IntegerType).combinations(2) ++
                     p.as.filter(_.getType == Int32Type).combinations(2)
