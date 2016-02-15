@@ -247,23 +247,20 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     } else {
       (augmentedProg, newFundefs(rootFd))
     }
-    //println("New Root: "+newroot)
-    import leon.solvers.smtlib.SMTLIBZ3Solver
-    import leon.solvers.combinators.UnrollingSolver
-    val dummySolFactory = new leon.solvers.SolverFactory[SMTLIBZ3Solver] {
-      def getNewSolver() = new SMTLIBZ3Solver(ctx.leonContext, program)
-    }
-    val vericontext = VerificationContext(ctx.leonContext, newprog, dummySolFactory, reporter)
+    // TODO: note here we must reuse the created vc, instead of creating default VC
+    val solFactory = SolverFactory.uninterpreted(ctx.leonContext, newprog)
+    val vericontext = VerificationContext(ctx.leonContext, newprog, solFactory, reporter)
     val defaultTactic = new DefaultTactic(vericontext)
-    val vc = defaultTactic.generatePostconditions(newroot)(0)
+    val vc = defaultTactic.generatePostconditions(newroot).head
+    solveUsingLeon(ctx.leonContext, newprog, vc)
+  }
 
+  import leon.solvers._
+  import leon.solvers.combinators.UnrollingSolver
+  def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC) = {
+    val solFactory = SolverFactory.uninterpreted(leonctx, program)
     val verifyTimeout = 5
-    //    val fairZ3 = new SimpleSolverAPI(
-    //      new TimeoutSolverFactory(SolverFactory(() =>
-    //        new FairZ3Solver(ctx.leonContext, newprog) with TimeoutSolver),
-    //        verifyTimeout * 1000))
-    val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext, program,
-      new SMTLIBZ3Solver(ctx.leonContext, program)) with TimeoutSolver
+    val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext, program, solFactory.getNewSolver()) with TimeoutSolver
     smtUnrollZ3.setTimeout(verifyTimeout * 1000)
     smtUnrollZ3.assertVC(vc)
     smtUnrollZ3.check match {

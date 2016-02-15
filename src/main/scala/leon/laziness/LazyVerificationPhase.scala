@@ -190,8 +190,7 @@ object LazyVerificationPhase {
         letsBody match {
           case And(args) =>
             val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
-            (letsCons(createAnd(instSpecs)),
-              letsCons(createAnd(rest)))
+            (letsCons(createAnd(instSpecs)), letsCons(createAnd(rest)))
           case _ =>
             (l, Util.tru)
         }
@@ -223,12 +222,11 @@ object LazyVerificationPhase {
 
   class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends
   	UnfoldingTemplateSolver(ctx, p, rootFd) {
+
     override def constructVC(fd: FunDef): (Expr, Expr) = {
-      val (ants, post, tmpl) = createVC(fd)
+      val (ants, post, tmpl) = createVC(rootFd)
       val conseq = matchToIfThenElse(createAnd(Seq(post, tmpl.getOrElse(Util.tru))))
       (matchToIfThenElse(ants), conseq)
     }
-
-    override def verifyInvariant(newposts: Map[FunDef, Expr]) = (Some(false), Model.empty)
   }
 }
