@@ -26,8 +26,7 @@ import termination._
 
 class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
-     with AbstractUnrollingSolver[Z3AST]
-     with Z3ModelReconstruction {
+     with AbstractUnrollingSolver[Z3AST] {
 
   enclosing =>
 

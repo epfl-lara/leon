@@ -225,7 +225,7 @@ trait AbstractUnrollingSolver[T]
       case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
     }
 
-    val funDomains: Map[Identifier, Set[Seq[Expr]]] = freeVars.map { case (id, idT) =>
+    val funDomains: Map[Identifier, Set[Seq[Expr]]] = freeVars.toMap.map { case (id, idT) =>
       id -> partialInsts.get(idT).toSeq.flatten.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
     }
 
@@ -237,11 +237,16 @@ trait AbstractUnrollingSolver[T]
       val value = wrapped.get(id).getOrElse(simplestValue(id.getType))
       id -> (funDomains.get(id) match {
         case Some(domain) =>
-          val FiniteLambda(_, dflt, tpe) = value
+          val dflt = value match {
+            case FiniteLambda(_, dflt, _) => dflt
+            case Lambda(_, IfExpr(_, _, dflt)) => dflt
+            case _ => scala.sys.error("Can't extract default from " + value)
+          }
+
           FiniteLambda(domain.toSeq.map { es =>
             val optEv = evaluator.eval(application(value, es)).result
             es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(value, es)))
-          }, dflt, tpe)
+          }, dflt, id.getType.asInstanceOf[FunctionType])
 
         case None => postMap {
           case p @ FiniteLambda(mapping, dflt, tpe) =>
@@ -287,21 +292,18 @@ trait AbstractUnrollingSolver[T]
           val params = from.map(tpe => FreshIdentifier("x", tpe, true))
           val domain = partialInsts.get(idT).orElse(typeInsts.get(bestRealType(id.getType))).toSeq.flatten
           val conditionals = domain.flatMap { case (b, m) =>
-            wrapped.extract(b, m) match {
-              case Some(args) =>
-                val result = evaluator.eval(application(value, args)).result.getOrElse {
-                  scala.sys.error("Unexpectedly failed to evaluate " + application(value, args))
-                }
+            wrapped.extract(b, m).map { args =>
+              val result = evaluator.eval(application(value, args)).result.getOrElse {
+                scala.sys.error("Unexpectedly failed to evaluate " + application(value, args))
+              }
 
-                val c1 = (params zip args).map(p => Equals(Variable(p._1), p._2))
-                if (m.args.exists(arg => templateGenerator.manager.isQuantifier(arg.encoded))) {
-                  val c2 = extractCond(params, m.args.map(_.encoded) zip args, Map.empty)
-                  Seq(c1 -> result, c2 -> result)
-                } else {
-                  Seq(c1 -> result)
-                }
+              val cond = if (m.args.exists(arg => templateGenerator.manager.isQuantifier(arg.encoded))) {
+                extractCond(params, m.args.map(_.encoded) zip args, Map.empty)
+              } else {
+                (params zip args).map(p => Equals(Variable(p._1), p._2))
+              }
 
-              case None => Seq.empty
+              cond -> result
             }
           }
 

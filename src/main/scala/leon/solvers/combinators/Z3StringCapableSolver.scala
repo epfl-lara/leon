@@ -15,7 +15,6 @@ import purescala.DefOps
 import purescala.TypeOps
 import purescala.Extractors._
 import utils._
-import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre, optNoChecks, optUnfoldFactor}
 import templates._
 import evaluators._
 import Template._

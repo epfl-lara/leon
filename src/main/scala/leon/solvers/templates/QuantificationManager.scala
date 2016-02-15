@@ -632,6 +632,69 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       (m: Matcher[T]) => m.args.collect { case Left(a) if quantified(a) => a }.toSet)
   }
 
+  private def instantiateConstants(quantifiers: Seq[(Identifier, T)], matchers: Set[Matcher[T]]): Instantiation[T] = {
+    val quantifierSubst = uniformSubst(quantifiers)
+    val substituter = encoder.substitute(quantifierSubst)
+    var instantiation: Instantiation[T] = Instantiation.empty
+
+    for {
+      m <- matchers
+      sm = m.substitute(substituter, Map.empty)
+      if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
+    } {
+      instantiation ++= instCtx.instantiate(Set.empty, m)(quantifications.toSeq : _*)
+      instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
+    }
+
+    def unifyMatchers(matchers: Seq[Matcher[T]]): Unit = matchers match {
+      case sm +: others =>
+        for (pm <- others if correspond(pm, sm)) {
+          val encodedArgs = (sm.args zip pm.args).map(p => p._1.encoded -> p._2.encoded)
+          val mismatches = encodedArgs.zipWithIndex.collect {
+            case ((sa, pa), idx) if isQuantifier(sa) && isQuantifier(pa) && sa != pa => (idx, (pa, sa))
+          }.toMap
+
+          def extractChains(indexes: Seq[Int], partials: Seq[Seq[Int]]): Seq[Seq[Int]] = indexes match {
+            case idx +: xs =>
+              val (p1, p2) = mismatches(idx)
+              val newPartials = Seq(idx) +: partials.map { seq =>
+                if (mismatches(seq.head)._1 == p2) idx +: seq
+                else if (mismatches(seq.last)._2 == p1) seq :+ idx
+                else seq
+              }
+
+              val (closed, remaining) = newPartials.partition { seq =>
+                mismatches(seq.head)._1 == mismatches(seq.last)._2
+              }
+              closed ++ extractChains(xs, partials ++ remaining)
+
+            case _ => Seq.empty
+          }
+
+          val chains = extractChains(mismatches.keys.toSeq, Seq.empty)
+          val positions = chains.foldLeft(Map.empty[Int, Int]) { (mapping, seq) =>
+            val res = seq.min
+            mapping ++ seq.map(i => i -> res)
+          }
+
+          def extractArgs(args: Seq[Arg[T]]): Seq[Arg[T]] =
+            (0 until args.size).map(i => args(positions.getOrElse(i, i)))
+
+          instantiation ++= instCtx.instantiate(Set.empty, sm.copy(args = extractArgs(sm.args)))(quantifications.toSeq : _*)
+          instantiation ++= instCtx.instantiate(Set.empty, pm.copy(args = extractArgs(pm.args)))(quantifications.toSeq : _*)
+        }
+
+        unifyMatchers(others)
+
+      case _ => 
+    }
+
+    val substMatchers = matchers.map(_.substitute(substituter, Map.empty))
+    unifyMatchers(substMatchers.toSeq)
+
+    instantiation
+  }
+
   def instantiateAxiom(template: LambdaTemplate[T], substMap: Map[T, Arg[T]]): Instantiation[T] = {
     def quantifiedMatcher(m: Matcher[T]): Boolean = m.args.exists(a => a match {
       case Left(v) => isQuantifier(v)
@@ -738,14 +801,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       instCtx.merge(newCtx)
     }
 
-    val quantifierSubst = uniformSubst(quantifiers)
-    val substituter = encoder.substitute(quantifierSubst)
-
-    for {
-      m <- matchers
-      sm = m.substitute(substituter, Map.empty)
-      if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
-    } instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
+    instantiation ++= instantiateConstants(quantifiers, matchers)
 
     instantiation
   }
@@ -797,14 +853,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
           encoder.mkImplies(template.start, encoder.mkEquals(qT, newQs))
         }
 
-        val quantifierSubst = uniformSubst(template.quantifiers)
-        val substituter = encoder.substitute(quantifierSubst)
-
-        for {
-          (_, ms) <- template.matchers; m <- ms
-          sm = m.substitute(substituter, Map.empty)
-          if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
-        } instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
+        instantiation ++= instantiateConstants(template.quantifiers, template.matchers.flatMap(_._2).toSet)
 
         templates += template.key -> qT
         (qT, instantiation)
@@ -930,6 +979,10 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         (b, m) <- ctx
         arg = m.args(idx).encoded if !isQuantifier(arg)
       } clauses += encoder.mkAnd(quants.map(q => encoder.mkNot(encoder.mkEquals(q, arg))) : _*)
+    }
+
+    for ((tpe, base +: rest) <- uniformQuantMap; q <- rest) {
+      clauses += encoder.mkEquals(base, q)
     }
 
     clauses.toSeq
