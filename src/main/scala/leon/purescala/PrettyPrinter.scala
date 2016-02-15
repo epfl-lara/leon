@@ -658,8 +658,8 @@ class PrettyPrinter(opts: PrinterOptions,
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
     case (_, Some(
-      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr |
-      _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose
+      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr | _: MatchCase |
+      _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose | _ : Tuple
     )) => false
     case (ex: StringConcat, Some(_: StringConcat)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
