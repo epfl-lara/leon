@@ -16,7 +16,7 @@ object Definitions {
     
     val id: Identifier
 
-    def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
+    def subDefinitions: Seq[Definition] // The enclosed scopes/definitions by this definition
   
     def containsDef(df: Definition): Boolean = {
       subDefinitions.exists { sd =>
@@ -113,14 +113,21 @@ object Definitions {
       }
     }
   }
-  
-  /** Object definition */
+
+  /** Definition of a compilation unit, corresponding to a source file
+    *
+    * @param id The name of the file this [[UnitDef]] was compiled from
+    * @param pack The package of this [[UnitDef]]
+    * @param imports The imports of this [[UnitDef]]
+    * @param defs The [[Definition]]s (classes and objects) in this [[UnitDef]]
+    * @param isMainUnit Whether this is a user-provided file or a library file
+    */
   case class UnitDef(
     id: Identifier,
-    pack : PackageRef,
-    imports : Seq[Import],
-    defs : Seq[Definition],
-    isMainUnit : Boolean // false for libraries/imports
+    pack: PackageRef,
+    imports: Seq[Import],
+    defs: Seq[Definition],
+    isMainUnit: Boolean
   ) extends Definition {
      
     def subDefinitions = defs
@@ -161,8 +168,7 @@ object Definitions {
       UnitDef(id, Nil, Nil, modules, true)
   }
   
-  /** Objects work as containers for class definitions, functions (def's) and
-   * val's. */
+  /** Corresponds to an '''object''' in scala. Contains [[FunDef]]s, [[ClassDef]]s and [[ValDef]]s. */
   case class ModuleDef(id: Identifier, defs: Seq[Definition], isPackageObject: Boolean) extends Definition {
     
     def subDefinitions = defs
@@ -184,7 +190,7 @@ object Definitions {
     }
   }
 
-  // A class that represents flags that annotate a FunDef with different attributes
+  /** A trait that represents flags that annotate a FunDef with different attributes */
   sealed trait FunctionFlag
 
   object FunctionFlag {
@@ -194,7 +200,7 @@ object Definitions {
     }
   }
 
-  // A class that represents flags that annotate a ClassDef with different attributes
+  /** A trait that represents flags that annotate a ClassDef with different attributes */
   sealed trait ClassFlag
 
   object ClassFlag {
@@ -219,8 +225,7 @@ object Definitions {
   // Is an ADT invariant method
   case object IsADTInvariant extends FunctionFlag with ClassFlag
 
-  /** Useful because case classes and classes are somewhat unified in some
-   * patterns (of pattern-matching, that is) */
+  /** Represents a class definition (either an abstract- or a case-class) */
   sealed trait ClassDef extends Definition {
     self =>
 
@@ -357,7 +362,7 @@ object Definitions {
     }
   }
 
-  /** Case classes/objects. */
+  /** Case classes/ case objects. */
   case class CaseClassDef(id: Identifier,
                           tparams: Seq[TypeParameterDef],
                           parent: Option[AbstractClassType],
@@ -602,6 +607,8 @@ object Definitions {
         res
       })
     }
+
+    // Methods that extract expressions from the underlying FunDef, using a cache
 
     def fullBody      = cached(fd.fullBody)
     def body          = fd.body map cached
