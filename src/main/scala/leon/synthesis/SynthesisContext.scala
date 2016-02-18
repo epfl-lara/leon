@@ -10,28 +10,32 @@ import evaluators._
 /**
  * This is global information per entire search, contains necessary information
  */
-case class SynthesisContext(
+class SynthesisContext(
   context: LeonContext,
-  settings: SynthesisSettings,
-  functionContext: FunDef,
-  program: Program
+  val settings: SynthesisSettings,
+  val functionContext: FunDef,
+  val program: Program
+) extends LeonContext(
+    context.reporter,
+    context.interruptManager,
+    context.options,
+    context.files,
+    context.classDir,
+    context.timers
 ) {
-
-  val reporter = context.reporter
-
-  val rules = settings.rules
 
   val solverFactory = SolverFactory.getFromSettings(context, program)
 
   lazy val defaultEvaluator = {
     new DefaultEvaluator(context, program)
   }
+
 }
 
 object SynthesisContext {
 
   def fromSynthesizer(synth: Synthesizer) = {
-    SynthesisContext(
+    new SynthesisContext(
       synth.context,
       synth.settings,
       synth.ci.fd,

@@ -104,9 +104,9 @@ class StablePrintingSuite extends LeonRegressionSuite {
             val sctx = synthesizer.sctx
             try {
               val search = synthesizer.getSearch
-              val hctx = SearchContext(sctx, ci, search.g.root, search)
+              val hctx = new SearchContext(sctx, ci, search.g.root, search)
               val problem = ci.problem
-              info(j.info("synthesis "+problem.asString(sctx.context)))
+              info(j.info("synthesis "+problem.asString(sctx)))
               val apps = decompRules flatMap { _.instantiateOn(hctx, problem)}
 
               for (a <- apps) {

@@ -35,7 +35,7 @@ sealed abstract class Node(val parent: Option[Node]) {
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
 
-  def expand(hctx: SearchContext)
+  def expand(implicit hctx: SearchContext)
 
   val p: Problem
 
@@ -64,7 +64,6 @@ sealed abstract class Node(val parent: Option[Node]) {
 }
 
 /** Represents the conjunction of search nodes.
-  * @param cm The cost model used when prioritizing, evaluating and expanding
   * @param parent Some node. None if it is the root node.
   * @param ri The rule instantiation that created this AndNode.
   **/
@@ -73,7 +72,7 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
 
   override def asString(implicit ctx: LeonContext) = "\u2227 "+ri.asString
 
-  def expand(hctx: SearchContext): Unit = {
+  def expand(implicit hctx: SearchContext): Unit = {
     require(!isExpanded)
     isExpanded = true
 
@@ -83,9 +82,7 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
       prefix + lines.head + "\n" + lines.tail.map(padding + _).mkString("\n")
     }
 
-    implicit val ctx = hctx.sctx.context
-
-    import hctx.sctx.reporter.info
+    import hctx.reporter.info
 
     val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
 
@@ -158,15 +155,15 @@ class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
   implicit val debugSection = DebugSectionSynthesis
   
   def getInstantiations(hctx: SearchContext): List[RuleInstantiation] = {
-    val rules = hctx.sctx.rules
+    val rules = hctx.settings.rules
 
     val rulesPrio = rules.groupBy(_.priority).toSeq.sortBy(_._1)
 
     for ((prio, rs) <- rulesPrio) {
       
       val results = rs.flatMap{ r =>
-        hctx.context.reporter.ifDebug(printer => printer("Testing rule: " + r))
-        hctx.context.timers.synthesis.instantiations.get(r.asString(hctx.sctx.context)).timed {
+        hctx.reporter.ifDebug(printer => printer("Testing rule: " + r))
+        hctx.timers.synthesis.instantiations.get(r.asString(hctx)).timed {
           r.instantiateOn(hctx, p)
         }
       }.toList
@@ -181,7 +178,7 @@ class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
     Nil
   }
 
-  def expand(hctx: SearchContext): Unit = {
+  def expand(implicit hctx: SearchContext): Unit = {
     require(!isExpanded)
 
     val ris = getInstantiations(hctx)

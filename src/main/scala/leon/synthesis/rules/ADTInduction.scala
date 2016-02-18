@@ -17,7 +17,7 @@ case object ADTInduction extends Rule("ADT Induction") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     /* All input variables which are inductive in the post condition, along with their abstract data type. */
     val candidates = p.as.collect {
-        case IsTyped(origId, act: AbstractClassType) if isInductiveOn(hctx.sctx.solverFactory)(p.pc, origId) => (origId, act)
+        case IsTyped(origId, act: AbstractClassType) if isInductiveOn(hctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {

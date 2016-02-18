@@ -34,7 +34,7 @@ class RepairSuite extends LeonRegressionSuite {
     val reporter = new TestSilentReporter
     //val reporter = new DefaultReporter(Set(utils.DebugSectionRepair))
 
-    val ctx = LeonContext(
+    val ctx = new LeonContext(
       reporter = reporter,
       interruptManager = new InterruptManager(reporter),
       options = Seq(

@@ -1,46 +1,26 @@
-package leon.integration.solvers
+package leon
+package integration
+package solvers
 
+import leon.test.LeonTestSuiteWithProgram
 
-import org.scalatest.FunSuite
-import org.scalatest.Matchers
-import leon.test.helpers.ExpressionsDSL
-import leon.solvers.string.StringSolver
 import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Common.Identifier
 import leon.purescala.Expressions._
 import leon.purescala.Definitions._
 import leon.purescala.DefOps
 import leon.purescala.ExprOps
 import leon.purescala.Types._
-import leon.purescala.TypeOps
 import leon.purescala.Constructors._
+
+import leon.synthesis._
 import leon.synthesis.rules.{StringRender, TypedTemplateGenerator}
-import scala.collection.mutable.{HashMap => MMap}
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import org.scalatest.concurrent.Timeouts
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.SpanSugar._
-import org.scalatest.FunSuite
-import org.scalatest.concurrent.Timeouts
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.SpanSugar._
-import leon.purescala.Types.Int32Type
-import leon.test.LeonTestSuiteWithProgram
-import leon.synthesis.SourceInfo
-import leon.synthesis.CostModels
-import leon.synthesis.graph.SimpleSearch
+import leon.synthesis.strategies.CostBasedStrategy
 import leon.synthesis.graph.AndNode
-import leon.synthesis.SearchContext
-import leon.synthesis.Synthesizer
-import leon.synthesis.SynthesisSettings
-import leon.synthesis.RuleApplication
-import leon.synthesis.RuleClosed
+
 import leon.evaluators._
-import leon.LeonContext
-import leon.synthesis.rules.DetupleInput
-import leon.synthesis.Rules
-import leon.solvers.ModelBuilder
+
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.Matchers
 import scala.language.implicitConversions
 
 class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures {
@@ -102,11 +82,11 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
 
   def applyStringRenderOn(functionName: String): (FunDef, Program) = {
     val ci = synthesisInfos(functionName)
-    val search = new SimpleSearch(ctx, ci, ci.problem, CostModels.default, Some(200))
+    val search = new Search(ctx, ci, ci.problem, new CostBasedStrategy(ctx, CostModels.default))
     val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
     val orNode = search.g.root
     if (!orNode.isExpanded) {
-      val hctx = SearchContext(synth.sctx, synth.ci, orNode, search)
+      val hctx = new SearchContext(synth.sctx, synth.ci, orNode, search)
       orNode.expand(hctx)
     }
     val andNodes = orNode.descendants.collect {
@@ -115,11 +95,6 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     }
 
     val rulesApps = (for ((t, i) <- andNodes.zipWithIndex) yield {
-      val status = if (t.isDeadEnd) {
-        "closed"
-      } else {
-        "open"
-      }
       t.ri.asString -> i
     }).toMap
     rulesApps should contain key "String conversion"
@@ -129,7 +104,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     
     val solutions = (search.traversePath(path) match {
       case Some(an: AndNode) =>
-        val hctx = SearchContext(synth.sctx, synth.ci, an, search)
+        val hctx = new SearchContext(synth.sctx, synth.ci, an, search)
         an.ri.apply(hctx)
       case _ => throw new Exception("Was not an and node")
     }) match {
@@ -241,7 +216,6 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
   def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
     val (fd, program) = applyStringRenderOn(functionName)
     val when = new DefaultEvaluator(ctx, program)
-    val args = getFunctionArguments(functionName)
     for((in, out) <- tests) {
       val expr = functionInvocation(fd, in)
       when.eval(expr) match {
@@ -254,7 +228,6 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
   def synthesizeAndAbstractTest(functionName: String)(tests: (FunDef, Program) => Seq[(Seq[Expr], Expr)]) {
     val (fd, program) = applyStringRenderOn(functionName)
     val when_abstract = new AbstractEvaluator(ctx, program)
-    val args = getFunctionArguments(functionName)
     for((in, out) <- tests(fd, program)) {
       val expr = functionInvocation(fd, in)
       when_abstract.eval(expr) match {

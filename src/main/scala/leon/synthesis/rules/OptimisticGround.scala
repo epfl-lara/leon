@@ -18,7 +18,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
       val res = new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext) = {
 
-          val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(50.millis))
+          val solver = SimpleSolverAPI(hctx.solverFactory.withTimeout(50.millis))
 
           val xss = p.xs.toSet
           val ass = p.as.toSet

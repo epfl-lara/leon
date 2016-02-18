@@ -156,7 +156,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     val extraParams = funCtx.toParams
     val params      = extraParams ++ stdParams
 
-    // Function Context:
+    // Function LeonContext:
     // 1) Save the variables of the current context for later function invocation
     // 2) Lift & augment funCtx with the current function's arguments
     // 3) Propagate it to the current function's body

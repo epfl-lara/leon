@@ -34,8 +34,7 @@ object SelfPrettyPrinter {
 
 /** This pretty-printer uses functions defined in Leon itself.
   * If not pretty printing function is defined, return the default value instead
-  * @param The list of functions which should be excluded from pretty-printing (to avoid rendering counter-examples of toString methods using the method itself)
-  * @return a user defined string for the given typed expression. */
+  */
 class SelfPrettyPrinter {
   implicit val section = leon.utils.DebugSectionEvaluation
   private var allowedFunctions = Set[FunDef]()
@@ -49,16 +48,18 @@ class SelfPrettyPrinter {
   /** Returns a list of possible lambdas that can transform the input type to a String.
     * At this point, it does not consider yet the inputType. Only [[prettyPrinterFromCandidate]] will consider it. */
   def prettyPrintersForType(inputType: TypeTree/*, existingPp: Map[TypeTree, List[Lambda]] = Map()*/)(implicit ctx: LeonContext, program: Program): Stream[Lambda] = {
-    program.definedFunctions.toStream flatMap {
-      fd =>
-        val isCandidate = fd.returnType == StringType &&
-        fd.params.length >= 1 &&
+    program.definedFunctions.toStream flatMap { fd =>
+      val isCandidate =
+        fd.returnType == StringType &&
+        fd.params.nonEmpty &&
         !excluded(fd) &&
-        (allowedFunctions(fd) || (
-        fd.id.name.toLowerCase().endsWith("tostring")))
-        if(isCandidate) {
-          prettyPrinterFromCandidate(fd, inputType)
-        } else Stream.Empty
+        (allowedFunctions(fd) || fd.id.name.toLowerCase().endsWith("tostring"))
+
+      if(isCandidate) {
+        prettyPrinterFromCandidate(fd, inputType)
+      } else {
+        Stream.Empty
+      }
     }
   }
   
@@ -88,19 +89,24 @@ class SelfPrettyPrinter {
       case None => Stream.empty
     }
   }
-  
-  
-  /** Actually prints the expression with as alternative the given orElse */
+
+
+  /** Actually prints the expression with as alternative the given orElse
+    * @param excluded The list of functions which should be excluded from pretty-printing
+    *                 (to avoid rendering counter-examples of toString methods using the method itself)
+    * @return a user defined string for the given typed expression.
+    **/
   def print(v: Expr, orElse: =>String, excluded: Set[FunDef] = Set())(implicit ctx: LeonContext, program: Program): String = {
     this.excluded = excluded
     val s = prettyPrintersForType(v.getType)   // TODO: Included the variable excluded if necessary.
-    s.take(100).find(l => l match { // Limit the number of pretty-printers.
+    s.take(100).find {
+      // Limit the number of pretty-printers.
       case Lambda(_, FunctionInvocation(TypedFunDef(fd, _), _)) =>
-        (program.callGraph.transitiveCallees(fd) + fd).forall { fde => 
-        !ExprOps.exists( _.isInstanceOf[Choose])(fde.fullBody)
-      }
+        (program.callGraph.transitiveCallees(fd) + fd).forall { fde =>
+          !ExprOps.exists(_.isInstanceOf[Choose])(fde.fullBody)
+        }
       case _ => false
-    }) match {
+    } match {
       case None => orElse
       case Some(l) =>
         ctx.reporter.debug("Executing pretty printer for type " + v.getType + " : " + l + " on " + v)
