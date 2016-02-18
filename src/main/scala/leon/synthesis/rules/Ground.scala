@@ -15,7 +15,7 @@ case object Ground extends NormalizingRule("Ground") {
     if (p.as.isEmpty) {
       List(new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext): RuleApplication = {
-          val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(10.seconds))
+          val solver = SimpleSolverAPI(hctx.solverFactory.withTimeout(10.seconds))
 
           val result = solver.solveSAT(p.phi) match {
             case (Some(true), model) =>

@@ -11,9 +11,7 @@ case object SygusCVC4 extends Rule("SygusCVC4") {
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
 
-        val sctx = hctx.sctx
-
-        val s = new CVC4SygusSolver(sctx.context, sctx.program, p)
+        val s = new CVC4SygusSolver(hctx, hctx.program, p)
 
         s.checkSynth() match {
           case Some(expr) =>

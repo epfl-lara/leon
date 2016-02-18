@@ -25,7 +25,7 @@ case object IntroduceRecCall extends Rule("Introduce rec. calls") {
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val evaluator = new NoChooseEvaluator(hctxToCtx, hctx.program)
+    val evaluator = new NoChooseEvaluator(hctx, hctx.program)
 
     val calls = terminatingCalls(hctx.program, p.ws, p.pc, None, false)
 
@@ -56,11 +56,11 @@ case object IntroduceRecCall extends Rule("Introduce rec. calls") {
 
           val psol = new PartialSolution(hctx.search.strat, true)
             .solutionAround(hctx.currentNode)(Error(p.outType, "Encountered choose!"))
-            .getOrElse(hctx.sctx.context.reporter.fatalError("Unable to get outer solution"))
+            .getOrElse(hctx.reporter.fatalError("Unable to get outer solution"))
             .term
 
-          val origImpl = hctx.sctx.functionContext.fullBody
-          hctx.sctx.functionContext.fullBody = psol
+          val origImpl = hctx.functionContext.fullBody
+          hctx.functionContext.fullBody = psol
 
           def mapExample(e: Example): List[Example] = {
             val res = evaluator.eval(newCall, p.as.zip(e.ins).toMap)
@@ -79,7 +79,7 @@ case object IntroduceRecCall extends Rule("Introduce rec. calls") {
             eb = p.eb.map(mapExample)
           )
 
-          hctx.sctx.functionContext.fullBody = origImpl
+          hctx.functionContext.fullBody = origImpl
 
           RuleExpanded(List(newProblem))
         }

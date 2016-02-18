@@ -9,7 +9,7 @@ import java.io.File
 import scala.reflect.ClassTag
 
 /** Everything that is part of a compilation unit, except the actual program tree.
-  * Contexts are immutable, and so should all their fields (with the possible
+  * LeonContexts are immutable, and so should all their fields (with the possible
   * exception of the reporter).
   */
 case class LeonContext(
@@ -36,8 +36,11 @@ object LeonContext {
   }
 
   def printNames = {
-    empty.copy(options =
-      Seq(LeonOption[Set[DebugSection]](SharedOptions.optDebug)(Set(DebugSectionTrees)))
+    val reporter = new DefaultReporter(Set())
+    LeonContext(
+      reporter,
+      new InterruptManager(reporter),
+      options = Seq(LeonOption[Set[DebugSection]](SharedOptions.optDebug)(Set(DebugSectionTrees)))
     )
   }
 }

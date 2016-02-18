@@ -32,21 +32,18 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
 
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
-        val sctx = hctx.sctx
-
-        implicit val ctx = sctx.context
-
-        val params = getParams(sctx, p)
+        implicit val ci = hctx
+        val params = getParams(hctx, p)
         val grammar = params.grammar
 
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
 
-        val useVanuatoo = sctx.settings.cegisUseVanuatoo
+        val useVanuatoo = hctx.settings.cegisUseVanuatoo
 
         val inputGenerator: Iterator[Seq[Expr]] = if (useVanuatoo) {
-          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)
+          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc, nTests, 3000)
         } else {
-          val evaluator = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
+          val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
           new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
         }
 
@@ -66,13 +63,13 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
         if (gi.nonEmpty) {
 
           val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
-          val evaluator  = new DualEvaluator(sctx.context, sctx.program, evalParams)
+          val evaluator  = new DualEvaluator(hctx, hctx.program, evalParams)
 
           val enum = new MemoizedEnumerator[T, Expr, ProductionRule[T, Expr]](grammar.getProductions)
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
-          val timers = sctx.context.timers.synthesis.rules.tegis
+          val timers = hctx.timers.synthesis.rules.tegis
 
           val allExprs = enum.iterator(params.rootLabel(targetType))
 
@@ -113,7 +110,7 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
 
           RuleClosed(toStream)
         } else {
-          sctx.reporter.debug("No test available")
+          hctx.reporter.debug("No test available")
           RuleFailed()
         }
       }

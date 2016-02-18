@@ -23,12 +23,12 @@ class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, val strat: Strate
     ctx.timers.synthesis.step.timed {
       n match {
         case an: AndNode =>
-          ctx.timers.synthesis.applications.get(an.ri.asString(sctx.context)).timed {
-            an.expand(SearchContext(sctx, ci, an, this))
+          ctx.timers.synthesis.applications.get(an.ri.asString(sctx)).timed {
+            an.expand(new SearchContext(sctx, ci, an, this))
           }
 
         case on: OrNode =>
-          on.expand(SearchContext(sctx, ci, on, this))
+          on.expand(new SearchContext(sctx, ci, on, this))
       }
     }
   }

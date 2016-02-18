@@ -23,7 +23,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
     var candidates: Seq[Expr] = eqs
     var allOthers: Seq[Expr] = others
 
-    val evaluator = new DefaultEvaluator(hctx.context, hctx.program)
+    val evaluator = new DefaultEvaluator(hctx, hctx.program)
 
     var vars: Set[Identifier] = Set()
     var eqxs: List[Identifier] = List()

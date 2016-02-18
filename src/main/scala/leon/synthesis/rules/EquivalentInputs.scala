@@ -73,7 +73,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
     }
 
     if (substs.nonEmpty) {
-      val simplifier = Simplifiers.bestEffort(hctx.context, hctx.program) _
+      val simplifier = Simplifiers.bestEffort(hctx, hctx.program) _
 
       val sub = p.copy(ws = replaceSeq(substs, p.ws), 
                        pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),

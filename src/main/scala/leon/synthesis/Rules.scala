@@ -20,8 +20,6 @@ abstract class Rule(val name: String) extends RuleDSL {
 
   implicit val thisRule = this
 
-  implicit def hctxToCtx(implicit hctx: SearchContext): LeonContext = hctx.sctx.context
-
   def asString(implicit ctx: LeonContext) = name
 }
 

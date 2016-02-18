@@ -37,16 +37,13 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
     if (tests.nonEmpty) {
       List(new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext): RuleApplication = {
-          val sctx = hctx.sctx
-
-          implicit val ctx = sctx.context
 
           val evalParams            = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
           //val evaluator             = new DefaultEvaluator(sctx.context, sctx.program)
-          val evaluator             = new DualEvaluator(sctx.context, sctx.program, evalParams)
+          val evaluator             = new DualEvaluator(hctx, hctx.program, evalParams)
 
-          val grammar               = getGrammar(sctx, p)
+          val grammar               = getGrammar(hctx, p)
 
           val nTests = tests.size
 
@@ -108,16 +105,13 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
           val wrappedTests = tests.map { case (is, os) => (is, tupleWrap(os))}
 
           val enum = new BottomUpEnumerator[T, Expr, Expr, ProductionRule[T, Expr]](
-            grammar.getProductions,
+            grammar.getProductions(_)(hctx),
             wrappedTests,
             { (vecs, gen) =>
               compile(gen)(vecs)
             },
             3
           )
-
-
-          val timers = sctx.context.timers.synthesis.rules.tegis
 
           val matches = enum.iterator(getRootLabel(targetType))
 

@@ -32,10 +32,9 @@ case object Focus extends PreprocessingRule("Focus") {
     }
 
     val fd      = hctx.ci.fd
-    val ctx     = hctx.sctx.context
-    val program = hctx.sctx.program
+    val program = hctx.program
 
-    val evaluator = new DefaultEvaluator(ctx, program)
+    val evaluator = new DefaultEvaluator(hctx, program)
 
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
@@ -97,7 +96,7 @@ case object Focus extends PreprocessingRule("Focus") {
         case c if c eq cond => Some(not(cond))
         case _ => None
       }(fdSpec)
-      forAllTests(ndSpec, Map(), new AngelicEvaluator(new RepairNDEvaluator(ctx, program, cond)))
+      forAllTests(ndSpec, Map(), new AngelicEvaluator(new RepairNDEvaluator(hctx, program, cond)))
     }
 
     guides.flatMap {

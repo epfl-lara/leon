@@ -15,7 +15,7 @@ import purescala.Definitions._
 case object ADTLongInduction extends Rule("ADT Long Induction") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
-        case IsTyped(origId, act @ AbstractClassType(cd, tpe)) if isInductiveOn(hctx.sctx.solverFactory)(p.pc, origId) => (origId, act)
+        case IsTyped(origId, act @ AbstractClassType(cd, tpe)) if isInductiveOn(hctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {

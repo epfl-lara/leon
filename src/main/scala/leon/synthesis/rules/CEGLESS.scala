@@ -15,8 +15,6 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     val TopLevelAnds(clauses) = p.ws
 
-    val ctx = sctx.context
-
     val guides = clauses.collect {
       case Guide(e) => e
     }
@@ -26,7 +24,7 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
     sctx.reporter.ifDebug { printer =>
       printer("Guides available:")
       for (g <- guides) {
-        printer(" - "+g.asString(ctx))
+        printer(" - "+g.asString(sctx))
       }
     }
 
