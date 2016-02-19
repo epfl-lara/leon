@@ -4,7 +4,6 @@ package leon
 package repair
 package rules
 
-import sun.nio.cs.StreamEncoder
 import synthesis._
 import leon.evaluators._
 

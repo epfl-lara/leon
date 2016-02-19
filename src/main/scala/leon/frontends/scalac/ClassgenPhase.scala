@@ -3,7 +3,6 @@
 package leon
 package frontends.scalac
 
-import purescala.Definitions.Program
 import utils._
 
 import scala.tools.nsc.{Settings,CompilerCommand}
