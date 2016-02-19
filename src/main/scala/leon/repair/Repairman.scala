@@ -4,15 +4,12 @@ package leon
 package repair
 
 import leon.datagen.GrammarDataGen
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
-import purescala.Types._
 import purescala.DefOps._
 import purescala.Constructors._
-import purescala.Extractors.unwrapTuple
 
 import evaluators._
 import solvers._
@@ -101,7 +98,6 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           }
 
           reporter.ifDebug { printer =>
-            import java.io.FileWriter
             import java.text.SimpleDateFormat
             import java.util.Date
 
@@ -112,15 +108,15 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
               case fd: FunDef => 1 + fd.params.size + formulaSize(fd.fullBody)
             }
 
-            val pSize = defs.sum;
+            val pSize = defs.sum
             val fSize = formulaSize(fd.body.get)
 
             def localizedExprs(n: graph.Node): List[Expr] = {
               n match {
                 case on: graph.OrNode =>
-                  on.selected.map(localizedExprs).flatten
+                  on.selected.flatMap(localizedExprs)
                 case an: graph.AndNode if an.ri.rule == Focus =>
-                  an.selected.map(localizedExprs).flatten
+                  an.selected.flatMap(localizedExprs)
                 case an: graph.AndNode =>
                   val TopLevelAnds(clauses) = an.p.ws
 
@@ -132,7 +128,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
               }
             }
 
-            val locSize = localizedExprs(search.g.root).map(formulaSize).sum;
+            val locSize = localizedExprs(search.g.root).map(formulaSize).sum
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
@@ -187,13 +183,9 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val ci = SourceInfo(
-      fd = fd,
-      pc = andJoin(Seq(pre, guide, term)),
-      source = origBody,
-      spec = fd.postOrTrue,
-      eb = eb
-    )
+    val prob = Problem.fromSpec(fd.postOrTrue, andJoin(Seq(pre, guide, term)), eb, Some(fd))
+
+    val ci = SourceInfo(fd, origBody, prob)
 
     // Return synthesizer for this choose
     val so0 = SynthesisPhase.processOptions(ctx)
