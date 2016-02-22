@@ -192,12 +192,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val soptions = so0.copy(
       functionsToIgnore = so0.functionsToIgnore + fd,
-      costModel = RepairCostModel(so0.costModel),
-      rules = (so0.rules ++ Seq(
-        Focus,
-        CEGLESS
-        //TEGLESS
-      )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
+      rules = Seq(Focus, CEGLESS) ++ so0.rules
     )
 
     new Synthesizer(ctx, program, ci, soptions)
