@@ -17,7 +17,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
     def discoverEquivalences(allClauses: Seq[Expr]): Seq[(Expr, Expr)] = {
       val instanceOfs = allClauses.collect {
-        case ccio @ IsInstanceOf(cct, s) => ccio
+        case ccio: IsInstanceOf => ccio
       }
 
       val clauses = allClauses.filterNot(instanceOfs.toSet)
@@ -27,15 +27,9 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         val fieldsVals = (for (f <- cct.classDef.fields) yield {
           val id = f.id
 
-          clauses.find {
-            case Equals(e, CaseClassSelector(`cct`, `s`, `id`)) => true
-            case Equals(e, CaseClassSelector(`cct`, AsInstanceOf(`s`, `cct`), `id`)) => true
-            case _ => false
-          } match {
-            case Some(Equals(e, _)) =>
-              Some(e)
-            case _ =>
-              None
+          clauses.collectFirst {
+            case Equals(e, CaseClassSelector(`cct`, `s`, `id`)) => e
+            case Equals(e, CaseClassSelector(`cct`, AsInstanceOf(`s`, `cct`), `id`)) => e
           }
 
         }).flatten
@@ -75,12 +69,18 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
     if (substs.nonEmpty) {
       val simplifier = Simplifiers.bestEffort(hctx, hctx.program) _
 
-      val sub = p.copy(ws = replaceSeq(substs, p.ws), 
-                       pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
-                       phi = simplifier(replaceSeq(substs, p.phi)))
+      val removedAs = substs.collect { case (Variable(from), _) => from }.toSet
+
+      val sub = p.copy(
+        as = p.as filterNot removedAs,
+        ws = replaceSeq(substs, p.ws),
+        pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
+        phi = simplifier(replaceSeq(substs, p.phi)),
+        eb = p.qeb.removeIns(removedAs)
+      )
 
       val subst = replace(
-        substs.map{_.swap}.filter{ case (x,y) => formulaSize(x) > formulaSize(y) }.toMap, 
+        substs.map{_.swap}.filter{ case (x,y) => formulaSize(x) > formulaSize(y) }.toMap,
         _:Expr
       )
       
