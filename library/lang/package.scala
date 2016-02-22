@@ -8,6 +8,7 @@ import scala.language.implicitConversions
 package object lang {
 
   implicit class BooleanDecorations(val underlying: Boolean) {
+
     @inline
     def holds : Boolean = {
       underlying
