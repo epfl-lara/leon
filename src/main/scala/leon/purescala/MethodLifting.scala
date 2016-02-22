@@ -251,6 +251,10 @@ object MethodLifting extends TransformationPhase {
           )
         }
 
+        if (cd.methods.exists(md => md.id == fd.id && md.isInvariant)) {
+          cd.setInvariant(nfd)
+        }
+
         mdToFds += fd -> nfd
         fdsOf += cd.id.name -> (fdsOf.getOrElse(cd.id.name, Set()) + nfd)
       }

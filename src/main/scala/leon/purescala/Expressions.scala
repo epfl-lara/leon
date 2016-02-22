@@ -271,7 +271,7 @@ object Expressions {
     * @param rhs The expression to the right of `=>`
     * @see [[Expressions.MatchExpr]]
     */
-  case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
+  case class MatchCase(pattern: Pattern, optGuard: Option[Expr], rhs: Expr) extends Tree {
     def expressions: Seq[Expr] = optGuard.toList :+ rhs
   }
 

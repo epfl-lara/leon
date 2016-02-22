@@ -142,7 +142,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   }
 
   private def freshAppBlocks(apps: Traversable[(T, App[T])]) : Seq[T] = {
-    apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map { case app @ (blocker, App(caller, tpe, _)) =>
+    apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map { case app @ (blocker, App(caller, tpe, _, _)) =>
 
       val firstB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
       val freeEq = functionVars.getOrElse(tpe, Set()).toSeq.map(t => encoder.mkEquals(t, caller))
@@ -328,6 +328,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       // We connect it to the defBlocker:   blocker => defBlocker
       if (defBlocker != id) {
         newCls :+= encoder.mkImplies(id, defBlocker)
+        manager.implies(id, defBlocker)
       }
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
@@ -367,6 +368,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
       val enabler = if (equals == manager.trueT) b else encoder.mkAnd(equals, b)
       newCls :+= encoder.mkImplies(enabler, lambdaBlocker)
+      manager.implies(b, lambdaBlocker)
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
       for (cl <- newCls) {

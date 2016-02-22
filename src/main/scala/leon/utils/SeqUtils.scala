@@ -8,7 +8,6 @@ import scala.collection.mutable.ArrayBuffer
 object SeqUtils {
   type Tuple[T] = Seq[T]
 
-
   def cartesianProduct[T](seqs: Tuple[Seq[T]]): Seq[Tuple[T]] = {
     val sizes = seqs.map(_.size)
     val max = sizes.product
@@ -58,6 +57,25 @@ object SeqUtils {
     }
 
     rec(sum, arity) filterNot (_.head == 0)
+  }
+
+  def groupWhile[T](es: Seq[T])(p: T => Boolean): Seq[Seq[T]] = {
+    var res: Seq[Seq[T]] = Nil
+
+    var c = es
+    while (!c.isEmpty) {
+      val (span, rest) = c.span(p)
+
+      if (span.isEmpty) {
+        res :+= Seq(rest.head)
+        c = rest.tail
+      } else {
+        res :+= span
+        c = rest
+      }
+    }
+
+    res
   }
 }
 

@@ -117,8 +117,8 @@ object QuantificationTemplate {
     val insts: (Identifier, T) = inst -> encoder.encodeId(inst)
     val guards: (Identifier, T) = guard -> encoder.encodeId(guard)
 
-    val (clauses, blockers, applications, matchers, _) =
-      Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas,
+    val (clauses, blockers, applications, functions, matchers, _) =
+      Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas, Seq.empty,
         substMap = baseSubstMap + q2s + insts + guards + qs)
 
     val (structuralQuant, structSubst) = normalizeStructure(proposition)
@@ -139,13 +139,12 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   private val ignoredSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Int, Set[T], Map[T,Arg[T]])]]
   private val handledSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Set[T], Map[T,Arg[T]])]]
 
-  private val known           = new IncrementalSet[T]
   private val lambdaAxioms    = new IncrementalSet[((Expr, Seq[T]), Seq[(Identifier, T)])]
   private val templates       = new IncrementalMap[(Expr, Seq[T]), T]
 
   override protected def incrementals: List[IncrementalState] =
     List(quantifications, instCtx, ignoredMatchers, ignoredSubsts,
-      handledSubsts, known, lambdaAxioms, templates) ++ super.incrementals
+      handledSubsts, lambdaAxioms, templates) ++ super.incrementals
 
   private var currentGen = 0
 
@@ -155,7 +154,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   private case class TypeKey(tt: TypeTree) extends MatcherKey(tt)
 
   private def matcherKey(caller: T, tpe: TypeTree): MatcherKey = tpe match {
-    case _: FunctionType if known(caller) => CallerKey(caller, tpe)
+    case ft: FunctionType if knownFree(ft)(caller) => CallerKey(caller, tpe)
     case _: FunctionType if byID.isDefinedAt(caller) => LambdaKey(byID(caller).structuralKey, tpe)
     case _ => TypeKey(tpe)
   }
@@ -201,7 +200,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     (qs.map(_._2) zip uniformQuants(qs.map(_._1))).toMap
   }
 
-  def assumptions: Seq[T] = quantifications.collect { case q: Quantification => q.currentQ2Var }.toSeq
+  override def assumptions: Seq[T] = super.assumptions ++
+    quantifications.collect { case q: Quantification => q.currentQ2Var }.toSeq
 
   def typeInstantiations: Map[TypeTree, Matchers] = instCtx.map.instantiations.collect {
     case (TypeKey(tpe), matchers) => tpe -> matchers
@@ -213,11 +213,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   def partialInstantiations: Map[T, Matchers] = instCtx.map.instantiations.collect {
     case (CallerKey(caller, tpe), matchers) => caller -> (matchers ++ instCtx.map.get(TypeKey(tpe)).toMatchers)
-  }
-
-  override def registerFree(ids: Seq[(Identifier, T)]): Unit = {
-    super.registerFree(ids)
-    known ++= ids.map(_._2)
   }
 
   private def matcherDepth(m: Matcher[T]): Int = 1 + (0 +: m.args.map {
@@ -292,7 +287,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     def get(key: MatcherKey): Context = key match {
       case TypeKey(tpe) => tpeMap.getOrElse(tpe, new Context)
-      case key => funMap.getOrElse(key, new Context)
+      case key => funMap.getOrElse(key, new Context) ++ tpeMap.getOrElse(key.tpe, new Context)
     }
 
     def instantiations: Map[MatcherKey, Matchers] =
@@ -486,14 +481,14 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         }
 
         val baseSubst = subst ++ instanceSubst(enabler).mapValues(Left(_))
-        val (substMap, inst) = Template.substitution(encoder, QuantificationManager.this,
-          condVars, exprVars, condTree, Seq.empty, lambdas, baseSubst, pathVar._1, enabler)
+        val (substMap, inst) = Template.substitution[T](encoder, QuantificationManager.this,
+          condVars, exprVars, condTree, Seq.empty, lambdas, Set.empty, baseSubst, pathVar._1, enabler)
         instantiation ++= inst
 
         val msubst = substMap.collect { case (c, Right(m)) => c -> m }
         val substituter = encoder.substitute(substMap.mapValues(_.encoded))
         instantiation ++= Template.instantiate(encoder, QuantificationManager.this,
-          clauses, blockers, applications, Seq.empty, Map.empty, lambdas, substMap)
+          clauses, blockers, applications, Map.empty, substMap)
 
         for ((b,ms) <- allMatchers; m <- ms) {
           val sb = enablers ++ (if (b == start) Set.empty else Set(substituter(b)))
@@ -928,8 +923,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         val valuesP = values.map(v => v -> encoder.encodeId(v))
         val exprT = encoder.encodeExpr(elemsP.toMap ++ valuesP + guardP)(expr)
 
-        val disjuncts = insts.toSeq.map { case (b, m) =>
-          val subst = (elemsP.map(_._2) zip m.args.map(_.encoded)).toMap + (guardP._2 -> b)
+        val disjuncts = insts.toSeq.map { case (b, im) =>
+          val bp = if (m.caller != im.caller) encoder.mkAnd(encoder.mkEquals(m.caller, im.caller), b) else b
+          val subst = (elemsP.map(_._2) zip im.args.map(_.encoded)).toMap + (guardP._2 -> bp)
           encoder.substitute(subst)(exprT)
         }
 

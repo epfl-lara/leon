@@ -14,6 +14,7 @@ import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Quantification._
 
+import utils.SeqUtils._
 import Instantiation._
 
 class TemplateGenerator[T](val encoder: TemplateEncoder[T],
@@ -49,8 +50,10 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       return cacheExpr(body)
     }
 
-    val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true), Nil, variablesOf(body).toSeq.map(ValDef(_)), body.getType)
+    val arguments = variablesOf(body).toSeq.map(ValDef(_))
+    val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true), Nil, arguments, body.getType)
 
+    fakeFunDef.precondition = Some(andJoin(arguments.map(vd => manager.typeUnroller(vd.toVariable))))
     fakeFunDef.body = Some(body)
 
     val res = mkTemplate(fakeFunDef.typed, false)
@@ -98,7 +101,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val (bodyConds, bodyExprs, bodyTree, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
       invocationEqualsBody.foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(start, cls, substMap))
     } else {
-      mkClauses(start, lambdaBody.get, substMap)
+      (prec.toSeq :+ lambdaBody.get).foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(start, cls, substMap))
     }
 
     // Now the postcondition.
@@ -214,7 +217,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     // Represents clauses of the form:
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
-    def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
+    def storeGuarded(guardVar: Identifier, expr: Expr) : Unit = {
       assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean." + (
         purescala.ExprOps.fold[String]{ (e, se) => 
           s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
@@ -222,7 +225,6 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       ))
 
       val prev = guardedExprs.getOrElse(guardVar, Nil)
-
       guardedExprs += guardVar -> (expr +: prev)
     }
 
@@ -247,25 +249,6 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         case (_: FunctionInvocation) | (_: Application) => true
         case _ => false
       }(e)
-    }
-
-    def groupWhile[T](es: Seq[T])(p: T => Boolean): Seq[Seq[T]] = {
-      var res: Seq[Seq[T]] = Nil
-
-      var c = es
-      while (!c.isEmpty) {
-        val (span, rest) = c.span(p)
-
-        if (span.isEmpty) {
-          res :+= Seq(rest.head)
-          c = rest.tail
-        } else {
-          res :+= span
-          c = rest
-        }
-      }
-
-      res
     }
 
     def rec(pathVar: Identifier, expr: Expr): Expr = {

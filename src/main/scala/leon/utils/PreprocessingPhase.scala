@@ -36,7 +36,6 @@ class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) e
       MethodLifting                          andThen
       TypingPhase                            andThen
       synthesis.ConversionPhase              andThen
-      CheckADTFieldsTypes                    andThen
       InliningPhase
 
     val pipeX = if (!genc && desugarXLang) {

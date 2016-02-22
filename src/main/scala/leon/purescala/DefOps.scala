@@ -325,7 +325,7 @@ object DefOps {
           fdMapCache(fd).getOrElse(fd)
       }
     }
-    
+
     val newP = p.copy(units = for (u <- p.units) yield {
       u.copy(
         defs = u.defs.map {
@@ -636,6 +636,7 @@ object DefOps {
         }
       )
     })
+
     if (!found) {
       println(s"addDefs could not find anchor definition! Not found: $after")
       p.definedFunctions.filter(f => f.id.name == after.id.name).map(fd => fd.id.name + " : " + fd) match {
@@ -644,9 +645,10 @@ object DefOps {
       }
       println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
     }
+
     res
   }
-  
+
   def addFunDefs(p: Program, fds: Traversable[FunDef], after: FunDef): Program = addDefs(p, fds, after)
   
   def addClassDefs(p: Program, fds: Traversable[ClassDef], after: ClassDef): Program = addDefs(p, fds, after)
