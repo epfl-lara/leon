@@ -20,6 +20,11 @@ import Template._
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
+case class FreshFunction(expr: Expr) extends Expr with Extractable {
+  val getType = BooleanType
+  val extract = Some(Seq(expr), (exprs: Seq[Expr]) => FreshFunction(exprs.head))
+}
+
 object DatatypeTemplate {
 
   def apply[T](

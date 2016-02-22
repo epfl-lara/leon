@@ -159,18 +159,19 @@ object Template {
       var clauses: Seq[T] = Seq.empty
 
       val cleanGuarded = guardedExprs.map { case (b, es) => b -> es.map { e =>
+        def clean(expr: Expr): Expr = postMap {
+          case FreshFunction(f) => Some(BooleanLiteral(true))
+          case _ => None
+        } (expr)
+
         val withPaths = CollectorWithPaths { case FreshFunction(f) => f }.traverse(e)
         functions ++= withPaths.map { case (f, TopLevelAnds(paths)) =>
           val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
-          val path = andJoin(paths.filterNot(_.isInstanceOf[FreshFunction]))
+          val path = andJoin(paths.map(clean))
           (encodeExpr(and(Variable(b), path)), tpe, encodeExpr(f))
         }
 
-        val cleanExpr = postMap {
-          case FreshFunction(f) => Some(BooleanLiteral(true))
-          case _ => None
-        } (e)
-
+        val cleanExpr = clean(e)
         clauses :+= encodeExpr(Implies(Variable(b), cleanExpr))
         cleanExpr
       }}

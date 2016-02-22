@@ -257,7 +257,7 @@ trait AbstractZ3Solver extends Solver {
       }
 
     case other =>
-      throw SolverUnsupportedError(other, this)
+      unsupported(other)
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {

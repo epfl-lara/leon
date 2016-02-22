@@ -24,11 +24,6 @@ case class App[T](caller: T, tpe: FunctionType, args: Seq[Arg[T]], encoded: T) {
   override def toString = "(" + caller + " : " + tpe + ")" + args.map(_.encoded).mkString("(", ",", ")")
 }
 
-case class FreshFunction(expr: Expr) extends Expr with Extractable {
-  val getType = BooleanType
-  val extract = Some(Seq(expr), (exprs: Seq[Expr]) => FreshFunction(exprs.head))
-}
-
 object LambdaTemplate {
 
   def apply[T](
@@ -238,7 +233,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
     neqClauses ++ extClauses
   }
 
-  def assumptions: Seq[T] = freeBlockers.flatMap(_._2.map(p => encoder.mkNot(p._2))).toSeq
+  def assumptions: Seq[T] = freeBlockers.toSeq.flatMap(_._2.map(p => encoder.mkNot(p._1)))
 
   private val typeBlockers = new IncrementalMap[T, T]()
   private val typeEnablers: MutableSet[T] = MutableSet.empty
