@@ -11,6 +11,7 @@ import ExprOps._
 import Types._
 import Constructors._
 import TypeOps.instantiateType
+import xlang.Expressions._
 
 object MethodLifting extends TransformationPhase {
 
@@ -162,6 +163,8 @@ object MethodLifting extends TransformationPhase {
           def thisToReceiver(e: Expr): Option[Expr] = e match {
             case th@This(ct) =>
               Some(asInstOf(receiver.toVariable, ct).setPos(th))
+            case a@Assignment(v, lhs) if cd.asInstanceOf[CaseClassDef].varFields.exists(vd => vd.id == v) =>
+              Some(FieldAssignment(receiver.toVariable, v, lhs).setPos(a))
             case _ =>
               None
           }

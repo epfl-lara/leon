@@ -12,6 +12,7 @@ import Definitions.{
   ClassDef    => LeonClassDef,
   ModuleDef   => LeonModuleDef,
   ValDef      => LeonValDef,
+  VarDef      => LeonVarDef,
   Import      => LeonImport,
   _
 }
@@ -133,6 +134,10 @@ trait CodeExtraction extends ASTExtractors {
       def withNewMutableVar(nvar: (Symbol, () => LeonExpr)) = {
         copy(mutableVars = mutableVars + nvar)
       }
+
+      def withNewMutableVars(nvars: Traversable[(Symbol, () => LeonExpr)]) = {
+        copy(mutableVars = mutableVars ++ nvars)
+      }
     }
 
     private var currentFunDef: FunDef = null
@@ -211,10 +216,10 @@ trait CodeExtraction extends ASTExtractors {
           // ignore
 
         case ExAbstractClass(o2, sym, tmpl) =>
-          seenClasses += sym -> ((Nil, tmpl))
+          seenClasses += sym -> ((Nil, Nil, tmpl))
 
-        case ExCaseClass(o2, sym, args, tmpl) =>
-          seenClasses += sym -> ((args, tmpl))
+        case ExCaseClass(o2, sym, args, vars, tmpl) =>
+          seenClasses += sym -> ((args, vars, tmpl))
 
         case ExObjectDef(n, templ) =>
           for (t <- templ.body if !t.isEmpty) t match {
@@ -222,10 +227,10 @@ trait CodeExtraction extends ASTExtractors {
               // ignore
 
             case ExAbstractClass(_, sym, tmpl) =>
-              seenClasses += sym -> ((Nil, tmpl))
+              seenClasses += sym -> ((Nil, Nil, tmpl))
 
-            case ExCaseClass(_, sym, args, tmpl) =>
-              seenClasses += sym -> ((args, tmpl))
+            case ExCaseClass(_, sym, args, vars, tmpl) =>
+              seenClasses += sym -> ((args, vars, tmpl))
 
             case _ =>
           }
@@ -245,7 +250,7 @@ trait CodeExtraction extends ASTExtractors {
         case t @ ExAbstractClass(o2, sym, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case t @ ExCaseClass(o2, sym, args, _) =>
+        case t @ ExCaseClass(o2, sym, args, vars, _) =>
           Some(getClassDef(sym, t.pos))
 
         case t @ ExObjectDef(n, templ) =>
@@ -259,7 +264,7 @@ trait CodeExtraction extends ASTExtractors {
             case ExAbstractClass(_, sym, _) =>
               Some(getClassDef(sym, t.pos))
 
-            case ExCaseClass(_, sym, _, _) =>
+            case ExCaseClass(_, sym, _, _, _) =>
               Some(getClassDef(sym, t.pos))
 
             // Functions
@@ -281,6 +286,10 @@ trait CodeExtraction extends ASTExtractors {
             case ExFieldDef(sym, _, _) =>
               Some(defineFieldFunDef(sym, false)(DefContext()))
 
+            // var
+            case ExMutableFieldDef(sym, _, _) =>
+              Some(defineFieldFunDef(sym, false)(DefContext()))
+
             // All these are expected, but useless
             case ExCaseClassSyntheticJunk()
                | ExConstructorDef()
@@ -289,6 +298,12 @@ trait CodeExtraction extends ASTExtractors {
               None
             case d if (d.symbol.isImplicit && d.symbol.isSynthetic) =>
               None
+
+            //vars are never accessed directly so we extract accessors and mutators and
+            //ignore bare variables
+            case d if d.symbol.isVar =>
+              None
+
 
             // Everything else is unexpected
             case tree =>
@@ -350,7 +365,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExAbstractClass(_, sym, tpl) =>
           extractClassMembers(sym, tpl)
 
-        case ExCaseClass(_, sym, _, tpl) =>
+        case ExCaseClass(_, sym, _, _, tpl) =>
           extractClassMembers(sym, tpl)
 
         case ExObjectDef(n, templ) =>
@@ -362,7 +377,7 @@ trait CodeExtraction extends ASTExtractors {
             case ExAbstractClass(_, sym, tpl) =>
               extractClassMembers(sym, tpl)
 
-            case ExCaseClass(_, sym, _, tpl) =>
+            case ExCaseClass(_, sym, _, _, tpl) =>
               extractClassMembers(sym, tpl)
 
             case t =>
@@ -408,7 +423,7 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    private var seenClasses = Map[Symbol, (Seq[(Symbol, ValDef)], Template)]()
+    private var seenClasses = Map[Symbol, (Seq[(Symbol, ValDef)], Seq[(Symbol, ValDef)], Template)]()
     private var classesToClasses  = Map[Symbol, LeonClassDef]()
 
     def oracleType(pos: Position, tpe: LeonType) = {
@@ -445,9 +460,9 @@ trait CodeExtraction extends ASTExtractors {
         case Some(cd) => cd
         case None =>
           if (seenClasses contains sym) {
-            val (args, tmpl) = seenClasses(sym)
+            val (args, vars, tmpl) = seenClasses(sym)
 
-            extractClassDef(sym, args, tmpl)
+            extractClassDef(sym, args, vars, tmpl)
           } else {
             outOfSubsetError(pos, "Class "+sym.fullName+" not defined?")
           }
@@ -463,6 +478,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private var isMethod = Set[Symbol]()
+    private var isMutator = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
     private var classToInvariants = Map[Symbol, Set[Tree]]()
 
@@ -487,7 +503,7 @@ trait CodeExtraction extends ASTExtractors {
       paramsToDefaultValues += (theParam -> fd)
     }
 
-    def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
+    def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], vars: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
 
       //println(s"Extracting $sym")
 
@@ -613,6 +629,17 @@ trait CodeExtraction extends ASTExtractors {
 
           for (tp <- ccd.tparams) check(tp, Set.empty)
 
+          val varFields = vars.map(t => {
+            val sym = t._1
+            val vd = t._2
+            val tpe = leonType(vd.tpt.tpe)(defCtx, sym.pos)
+            val id = cachedWithOverrides(sym, Some(ccd), tpe)
+            val value = extractTree(vd.children(1))(DefContext())
+            if (tpe != id.getType) println(tpe, id.getType)
+            LeonVarDef(id.setPos(vd.pos), value).setPos(vd.pos)
+          })
+          ccd.setVarFields(varFields)
+
         case _ =>
       }
 
@@ -662,13 +689,32 @@ trait CodeExtraction extends ASTExtractors {
 
         // normal fields
         case t @ ExFieldDef(fsym, _, _) =>
-          //println(fsym + "matched as ExFieldDef")
+          println(fsym + "matched as ExFieldDef")
           // we will be using the accessor method of this field everywhere
           isMethod += fsym
           val fd = defineFieldFunDef(fsym, false, Some(cd))(defCtx)
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
+
+        case t @ ExMutableFieldDef(fsym, _, _) =>
+          println(fsym + "matched as ExMutableFieldDef")
+          // we will be using the accessor method of this field everywhere
+          //isMethod += fsym
+          //val fd = defineFieldFunDef(fsym, false, Some(cd))(defCtx)
+          //methodToClass += fd -> cd
+
+          //cd.registerMethod(fd)
+
+        case t@ ExMutatorAccessorFunction(fsym, _, _, _, _) =>
+          println("FOUND mutator: " + t)
+          println("accessed: " + fsym.accessed)
+          isMutator += fsym
+          //val fd = defineFunDef(fsym, Some(cd))(defCtx)
+
+          //methodToClass += fd -> cd
+
+          //cd.registerMethod(fd)
 
         case other =>
 
@@ -688,7 +734,7 @@ trait CodeExtraction extends ASTExtractors {
       val topOfHierarchy = sym.overrideChain.last
 
       funOrFieldSymsToIds.cachedB(topOfHierarchy){
-        FreshIdentifier(sym.name.toString, tpe)
+        FreshIdentifier(sym.name.toString.trim, tpe) //trim because sometimes Scala names end with a trailing space, looks nicer without the space
       }
     }
 
@@ -826,6 +872,31 @@ trait CodeExtraction extends ASTExtractors {
           if(body != EmptyTree) {
             extractFunBody(fd, Seq(), body)(DefContext(tparamsMap.toMap))
           }
+
+        case t @ ExMutableFieldDef(sym, _, body) => // if !sym.isSynthetic && !sym.isAccessor =>
+          //val fd = defsToDefs(sym)
+          //val tparamsMap = ctparamsMap
+
+          //if(body != EmptyTree) {
+          //  extractFunBody(fd, Seq(), body)(DefContext(tparamsMap.toMap))
+          //}
+
+        case ExMutatorAccessorFunction(sym, tparams, params, _, body) =>
+          //val fd = defsToDefs(sym)
+
+          //val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap ++ ctparamsMap
+
+          //val classSym = ocsym.get
+          //val cd = classesToClasses(classSym).asInstanceOf[CaseClassDef]
+          //val classVarDefs = seenClasses(classSym)._2
+          //val mutableFields = classVarDefs.zip(cd.varFields).map(p => (p._1._1, () => p._2.toVariable))
+
+          //val dctx = DefContext(tparamsMap)
+          //val pctx = dctx.withNewMutableVars(mutableFields)
+
+          //if(body != EmptyTree) {
+          //  extractFunBody(fd, params, body)(pctx)
+          //}
 
         case _ =>
       }
@@ -1234,15 +1305,17 @@ trait CodeExtraction extends ASTExtractors {
           LetVar(newID, valTree, restTree)
         }
 
-        case ExAssign(sym, rhs) => dctx.mutableVars.get(sym) match {
+        case a@ExAssign(sym, rhs) => {
+          println("extracted assign: " + sym + " = " + rhs)
+          dctx.mutableVars.get(sym) match {
           case Some(fun) =>
             val Variable(id) = fun()
             val rhsTree = extractTree(rhs)
             Assignment(id, rhsTree)
 
           case None =>
-            outOfSubsetError(tr, "Undeclared variable.")
-        }
+            outOfSubsetError(a, "Undeclared variable.")
+        }}
 
         case wh @ ExWhile(cond, body) =>
           val condTree = extractTree(cond)
@@ -1568,7 +1641,7 @@ trait CodeExtraction extends ASTExtractors {
         case c @ ExCall(rec, sym, tps, args) =>
           // The object on which it is called is null if the symbol sym is a valid function in the scope and not a method.
           val rrec = rec match {
-            case t if (defsToDefs contains sym) && !isMethod(sym) =>
+            case t if (defsToDefs contains sym) && !isMethod(sym) && !isMutator(sym) =>
               null
             case _ =>
               extractTree(rec)
@@ -1604,6 +1677,18 @@ trait CodeExtraction extends ASTExtractors {
               val fieldID = cct.classDef.fields.find(_.id.name == name).get.id
 
               caseClassSelector(cct, rec, fieldID)
+
+            //mutable variables
+            case (IsTyped(rec, cct: CaseClassType), name, List(e1)) if isMutator(sym) =>
+              println("Searching for mutator: " + name)
+              println(cct.classDef.varFields)
+              val id = cct.classDef.varFields.find(_.id.name == name.dropRight(2)).get.id
+              FieldAssignment(rec, id, e1)
+
+            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.classDef.varFields.exists(_.id.name == name) =>
+              val id = cct.classDef.varFields.find(_.id.name == name).get.id
+              MutableFieldAccess(cct, rec, id)
+
 
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>
@@ -1797,6 +1882,7 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, CharType), "<=", List(IsTyped(a2, CharType))) =>
               LessEquals(a1, a2)
+
 
             case (a1, name, a2) =>
               val typea1 = a1.getType

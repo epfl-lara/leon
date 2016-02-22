@@ -19,12 +19,17 @@ object AntiAliasingPhase extends TransformationPhase {
   val description = "Make aliasing explicit"
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
+
+    updateCaseClassesWithVarFields(pgm)
+    println(pgm)
+
     val fds = allFunDefs(pgm)
     fds.foreach(fd => checkAliasing(fd)(ctx))
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
     val effects = effectsAnalysis(pgm)
+    println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
 
     //for each fun def, all the vars the the body captures. Only
     //mutable types.
@@ -33,7 +38,7 @@ object AntiAliasingPhase extends TransformationPhase {
     } yield {
       val allFreeVars = fd.body.map(bd => variablesOf(bd)).getOrElse(Set())
       val freeVars = allFreeVars -- fd.params.map(_.id)
-      val mutableFreeVars = freeVars.filter(id => id.getType.isInstanceOf[ArrayType])
+      val mutableFreeVars = freeVars.filter(id => isMutableType(id.getType))
       (fd, mutableFreeVars)
     }).toMap
 
@@ -54,7 +59,7 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
-    //println(res._1)
+    println(res._1)
     res._1
   }
 
@@ -166,12 +171,20 @@ object AntiAliasingPhase extends TransformationPhase {
           (None, bindings)
       }
 
-      case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
+      case as@FieldAssignment(o, id, v) => {
+        val ro@Variable(oid) = o
+        if(bindings.contains(oid))
+          (Some(Assignment(oid, copy(o, id, v))), bindings)
+        else
+          (None, bindings)
+      }
+
+      case l@Let(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
         val varDecl = LetVar(id, v, b).setPos(l)
         (Some(varDecl), bindings + id)
       }
 
-      case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
+      case l@LetVar(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
         (None, bindings + id)
       }
 
@@ -253,12 +266,10 @@ object AntiAliasingPhase extends TransformationPhase {
         case None =>
           effects += (fd -> Set())
         case Some(body) => {
-          val mutableParams = fd.params.filter(vd => vd.getType match {
-            case ArrayType(_) => true
-            case _ => false
-          })
+          val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
           val mutatedParams = mutableParams.filter(vd => exists {
             case ArrayUpdate(Variable(a), _, _) => a == vd.id
+            case FieldAssignment(Variable(a), _, _) => a == vd.id
             case _ => false
           }(body))
           val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
@@ -380,4 +391,61 @@ object AntiAliasingPhase extends TransformationPhase {
       pgm.definedFunctions.flatMap(fd => 
         fd.body.toSet.flatMap((bd: Expr) =>
           nestedFunDefsOf(bd)) + fd)
+
+
+  private def isMutableType(tpe: TypeTree): Boolean =
+    tpe.isInstanceOf[ArrayType] || tpe.isInstanceOf[ClassType]
+
+
+  private def copy(expr: Expr, id: Identifier, nv: Expr) = {
+    val ct@CaseClassType(ccd, _) = expr.getType
+    val newFields = ccd.fields.map(vd =>
+      if(vd.id == id)
+        nv
+      else
+        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), expr, vd.id)
+    )
+
+    CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(expr.getPos)
+  }
+
+  private def updateCaseClassesWithVarFields(program: Program) = {
+    val extras = (for {
+      ccd <- program.definedClasses.collect{ case (c: CaseClassDef) => c }
+    } yield {
+      (ccd, ccd.varFields.map(vd => (ValDef(vd.id), vd.value)))
+    })
+    updateCaseClassFields(extras)(program)
+  }
+
+  private def updateCaseClassFields(extras: Seq[(CaseClassDef, Seq[(ValDef, Expr)])])(program: Program) = {
+
+    def updateBody(body: Expr): Expr = {
+      preMap({
+        case CaseClass(ct, args) => extras.find(p => p._1 == ct.classDef).map{
+          case (ccd, extraFields) =>
+            CaseClass(CaseClassType(ccd, ct.tps), args ++ extraFields.map{ case (_, v) => v })
+        }
+        case fa@MutableFieldAccess(cct, rec, id) => 
+          Some(CaseClassSelector(CaseClassType(cct.classDef, cct.tps), rec, id))
+          //extras.find(p => p._1 == cct.classDef).map{
+          //  case (ccd, extraFields) => caseClassSelector(cct, rec, id)
+          //}
+        case _ => None
+      })(body)
+    }
+
+    extras.foreach{ case (ccd, extraFields) => ccd.setFields(ccd.fields ++ extraFields.map(_._1)) }
+    for {
+      fd <- program.definedFunctions
+    } {
+      fd.body = fd.body.map(body => updateBody(body))
+      fd.precondition = fd.precondition.map(pre => updateBody(pre))
+      fd.postcondition = fd.postcondition.map(post => updateBody(post))
+    }
+    extras.foreach{ case (ccd, _) => ccd.setVarFields(Nil) }
+
+  }
+
+
 }
