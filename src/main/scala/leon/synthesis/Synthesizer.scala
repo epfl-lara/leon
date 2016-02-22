@@ -12,7 +12,6 @@ import leon.utils._
 
 import scala.concurrent.duration._
 
-import synthesis.graph._
 import synthesis.strategies._
 
 class Synthesizer(val context : LeonContext,
@@ -44,7 +43,7 @@ class Synthesizer(val context : LeonContext,
         strat1
     }
 
-    new Search(context, ci, problem, strat1)
+    new Search(context, ci, problem, strat2)
   }
 
   private var lastTime: Long = 0
