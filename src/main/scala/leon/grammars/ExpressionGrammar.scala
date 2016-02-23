@@ -61,18 +61,19 @@ abstract class ExpressionGrammar[T <: Typed] {
 
 
   final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
-    for ((t, gs) <- cache) {
-      val lhs = f"${Console.BOLD}${t.asString}%50s${Console.RESET} ::="
+    for ((t, gs) <- cache.toSeq.sortBy(_._1.asString)) {
+      val lhs = f"${Console.BOLD}${t.asString}%50s${Console.RESET} ::= "
       if (gs.isEmpty) {
-        printer(s"$lhs ε")
-      } else for (g <- gs) {
-        val subs = g.subTrees.map { t =>
-          FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+        printer(s"${lhs}ε")
+      } else {
+        val rhs = for (g <- gs) yield {
+          val subs = g.subTrees.map { t =>
+            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+          }
+
+          g.builder(subs).asString
         }
-
-        val gen = g.builder(subs).asString
-
-        printer(s"$lhs $gen")
+        printer(lhs + rhs.mkString("\n" + " " * 55))
       }
     }
   }
