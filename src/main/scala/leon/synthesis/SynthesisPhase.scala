@@ -24,8 +24,11 @@ object SynthesisPhase extends TransformationPhase {
   val optCEGISNaiveGrammar = LeonFlagOptionDef("cegis:naive",      "Use the old naive grammar for CEGIS",                    false)
   val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 5L, "N")
 
+  // Other rule options
+  val optSpecifyRecCalls = LeonFlagOptionDef("reccalls", "Use full value as spec for introduced recursive calls", true)
+
   override val definedOptions : Set[LeonOptionDef[Any]] =
-    Set(optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize)
+    Set(optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize, optSpecifyRecCalls)
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)

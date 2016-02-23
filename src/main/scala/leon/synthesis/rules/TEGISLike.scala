@@ -47,7 +47,7 @@ abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
           new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
         }
 
-        val gi = new GrowableIterable[Seq[Expr]](p.eb.examples.map(_.ins).distinct, inputGenerator)
+        val gi = new GrowableIterable[Seq[Expr]](p.eb.examples.map(_.ins).distinct, inputGenerator, () => true)
 
         val failedTestsStats = new MutableMap[Seq[Expr], Int]().withDefaultValue(0)
 

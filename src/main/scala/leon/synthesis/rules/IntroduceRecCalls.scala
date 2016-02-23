@@ -30,14 +30,20 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
 
     if (calls.isEmpty) return Nil
 
+    val specifyCalls = hctx.findOptionOrDefault(SynthesisPhase.optSpecifyRecCalls)
+
     val (recs, posts) = calls.map { newCall =>
       val rec = FreshIdentifier("rec", newCall.getType, alwaysShowUniqueID = true)
 
       // Assume the postcondition of recursive call
-      val post = application(
-        newCall.tfd.withParamSubst(newCall.args, newCall.tfd.postOrTrue),
-        Seq(rec.toVariable)
-      )
+      val post = if (specifyCalls) {
+        Equals(rec.toVariable, newCall)
+      } else {
+        application(
+          newCall.tfd.withParamSubst(newCall.args, newCall.tfd.postOrTrue),
+          Seq(rec.toVariable)
+        )
+      }
       (rec, post)
     }.unzip
 

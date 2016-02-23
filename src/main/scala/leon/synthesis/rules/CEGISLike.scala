@@ -197,7 +197,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
       // Returns a count of all possible programs
       val allProgramsCount: () => Int = {
-
         var nAltsCache = Map[SizedNonTerm[T], Int]()
 
         def countAlternatives(l: SizedNonTerm[T]): Int = {
@@ -218,35 +217,33 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
        */
       def allPrograms(): Traversable[Set[Identifier]] = {
 
-        val allCount = allProgramsCount()
-        if (allCount > nProgramsLimit) {
-          hctx.reporter.debug(s"Exceeded program limit: $allCount > $nProgramsLimit")
+        var cache = Map[Identifier, Seq[Set[Identifier]]]()
+
+        val c = allProgramsCount()
+
+        if (c > nProgramsLimit) {
+          hctx.reporter.debug(s"Exceeded program limit: $c > $nProgramsLimit")
           return Seq()
         }
 
-        var cache = Map[Identifier, Seq[Set[Identifier]]]()
-
-        def allProgramsFor(cs: Seq[Identifier]): Seq[Set[Identifier]] = {
-          val seqs = for (c <- cs) yield {
-            if (!(cache contains c)) {
-              val subs = for ((b, _, subcs) <- cTree(c)) yield {
-                if (subcs.isEmpty) {
-                  Seq(Set(b))
-                } else {
-                  for (p <- allProgramsFor(subcs)) yield {
-                    p + b
-                  }
-                }
+        def allProgramsFor(c: Identifier): Seq[Set[Identifier]] = {
+          if (!(cache contains c)) {
+            val subs = for ((b, _, subcs) <- cTree(c)) yield {
+              if (subcs.isEmpty) {
+                Seq(Set(b))
+              } else {
+                val subPs = subcs map (s => allProgramsFor(s))
+                val combos = SeqUtils.cartesianProduct(subPs).map(_.flatten.toSet)
+                combos map (_ + b)
               }
-              cache += c -> subs.flatten
             }
-            cache(c)
+            cache += c -> subs.flatten
           }
-
-          SeqUtils.cartesianProduct(seqs).map(_.flatten.toSet)
+          cache(c)
         }
 
-        allProgramsFor(Seq(rootC))
+        allProgramsFor(rootC)
+
       }
 
       private def debugCTree(cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]],
@@ -269,9 +266,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       // The function which calls the synthesized expression within programCTree
       private val cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
 
-      // Same as cTreeFd, but ensuring the spec of the problem
-      private val solFd = new FunDef(FreshIdentifier("solFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
-
       // The spec of the problem
       private val phiFd = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
 
@@ -280,18 +274,13 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         val outerSolution = {
           new PartialSolution(hctx.search.strat, true)
-            .solutionAround(hctx.currentNode)(FunctionInvocation(solFd.typed, p.as.map(_.toVariable)))
+            .solutionAround(hctx.currentNode)(FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)))
             .getOrElse(hctx.reporter.fatalError("Unable to get outer solution"))
         }
 
-        val program0 = addFunDefs(hctx.program, Seq(cTreeFd, solFd, phiFd) ++ outerSolution.defs, hctx.ci.fd)
+        val program0 = addFunDefs(hctx.program, Seq(cTreeFd, phiFd) ++ outerSolution.defs, hctx.ci.fd)
 
         cTreeFd.body = None
-
-        solFd.fullBody = Ensuring(
-          FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)),
-          Lambda(p.xs.map(ValDef), p.phi)
-        )
 
         phiFd.body = Some(
           letTuple(p.xs,
@@ -314,7 +303,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
           // We freshen/duplicate every functions, except these two as they are
           // fresh anyway and we refer to them directly.
-          case `cTreeFd` | `phiFd` | `solFd` =>
+          case `cTreeFd` | `phiFd` =>
             None
 
           case fd =>
@@ -517,7 +506,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           // We compute the corresponding expr and replace it in place of the C-tree
           val outerSol = getExpr(bs)
           val innerSol = outerExprToInnerExpr(outerSol)
-          //println(s"Testing $outerSol")
+          //println(s"Testing $innerSol")
+          //println(innerProgram)
           cTreeFd.fullBody = innerSol
 
           val cnstr = and(innerPc, letTuple(p.xs, innerSol, Not(innerPhi)))
@@ -580,10 +570,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       // are minimal we make sure we exclude only Bs that are used.
       def excludeProgram(bs: Set[Identifier], isMinimal: Boolean): Unit = {
 
+
+
         def filterBTree(c: Identifier): Set[Identifier] = {
-          (for ((b, _, subcs) <- cTree(c) if bs(b)) yield {
-           Set(b) ++ subcs.flatMap(filterBTree)
-          }).toSet.flatten
+          val (b, _, subcs) = cTree(c).find(sub => bs(sub._1)).get
+          subcs.flatMap(filterBTree).toSet + b
         }
 
         val bvs = if (isMinimal) {
@@ -684,7 +675,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
-
         try {
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
           solver.assertCnstr(innerPc)
@@ -731,7 +721,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
         // To the list of known examples, we add an additional one produced by the solver
         val solverExample = if (p.pc == BooleanLiteral(true)) {
-          InExample(p.as.map(a => simplestValue(a.getType)))
+          List(InExample(p.as.map(a => simplestValue(a.getType))))
         } else {
           val solverf = hctx.solverFactory
           val solver  = solverf.getNewSolver().setTimeout(exSolverTo)
@@ -742,7 +732,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             solver.check match {
               case Some(true) =>
                 val model = solver.getModel
-                InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
+                List(InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))))
 
               case Some(false) =>
                 hctx.reporter.debug("Path-condition seems UNSAT")
@@ -752,14 +742,15 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                 if (!interruptManager.isInterrupted) {
                   hctx.reporter.warning("Solver could not solve path-condition")
                 }
-                return RuleFailed() // This is not necessary though, but probably wanted
+                Nil
+                //return RuleFailed() // This is not necessary though, but probably wanted
             }
           } finally {
             solverf.reclaim(solver)
           }
         }
 
-        val baseExampleInputs = p.eb.examples :+ solverExample
+        val baseExampleInputs = p.eb.examples ++ solverExample
 
         hctx.reporter.ifDebug { debug =>
           baseExampleInputs.foreach { in =>
@@ -772,29 +763,28 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
          */
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
 
-        val inputGenerator: Iterator[Example] = if (useVanuatoo) {
-          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc, nTests, 3000).map(InExample)
-        } else {
-          val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000).map(InExample)
+        val inputGenerator: Iterator[Example] = {
+          val complicated = exists{
+            case FunctionInvocation(tfd, _) if tfd.fd == hctx.functionContext => true
+            case Choose(_) => true
+            case _ => false
+          }(p.pc)
+          if (complicated) {
+            Iterator()
+          } else {
+            if (useVanuatoo) {
+              new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc, nTests, 3000).map(InExample)
+            } else {
+              val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
+              new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000).map(InExample)
+            }
+          }
         }
-
-        // This is the starting test-base
-        val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
 
         // We keep number of failures per test to pull the better ones to the front
         val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
-        def hasInputExamples = gi.nonEmpty
-
         var n = 1
-        def allInputExamples() = {
-          if (n == 10 || n == 50 || n % 500 == 0) {
-            gi.sortBufferBy(e => -failedTestsStats(e))
-          }
-          n += 1
-          gi.iterator
-        }
 
         try {
           do {
@@ -805,6 +795,22 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             val nInitial = ndProgram.prunedPrograms.size
             hctx.reporter.debug("#Programs: "+nInitial)
+
+            def nPassing = ndProgram.prunedPrograms.size
+
+            def programsReduced() = nInitial / nPassing > testReductionRatio || nPassing <= 10
+            // This is the starting test-base
+            val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator, programsReduced)
+
+            def hasInputExamples = gi.nonEmpty
+
+            def allInputExamples() = {
+              if (n == 10 || n == 50 || n % 500 == 0) {
+                gi.sortBufferBy(e => -failedTestsStats(e))
+              }
+              n += 1
+              gi.iterator
+            }
 
             //sctx.reporter.ifDebug{ printer =>
             //  val limit = 100
@@ -836,8 +842,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               timers.filter.stop()
             }
 
-            def nPassing = ndProgram.prunedPrograms.size
-
             hctx.reporter.debug(s"#Programs passing tests: $nPassing out of $nInitial")
             hctx.reporter.ifDebug{ printer =>
               for (p <- ndProgram.prunedPrograms.take(100)) {
@@ -863,7 +867,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               hctx.reporter.debug("Programs left: " + ndProgram.prunedPrograms.size)
 
               // Phase 0: If the number of remaining programs is small, validate them individually
-              if (nInitial / nPassing > testReductionRatio || nPassing <= 10) {
+              if (programsReduced()) {
                 val programsToValidate = ndProgram.prunedPrograms
                 hctx.reporter.debug(s"Will send ${programsToValidate.size} program(s) to validate individually")
                 ndProgram.validatePrograms(programsToValidate) match {
@@ -871,9 +875,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                     // Found solution! Exit CEGIS
                     result = Some(RuleClosed(sol))
                   case Left(cexs) =>
+                    hctx.reporter.debug(s"Found cexs! $cexs")
                     // Found some counterexamples
-                    // (bear in mind that these will in fact exclude programs within validatePrograms()
+                    // (bear in mind that these will in fact exclude programs within validatePrograms())
                     val newCexs = cexs.map(InExample)
+                    newCexs foreach (failedTestsStats(_) += 1)
                     gi ++= newCexs
                 }
                 hctx.reporter.debug(s"#Programs after validating individually: ${ndProgram.prunedPrograms.size}")

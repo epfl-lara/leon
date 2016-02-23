@@ -7,7 +7,6 @@ import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
 import transformers.Union
-import utils.Timer
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
