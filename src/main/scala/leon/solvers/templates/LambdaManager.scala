@@ -75,7 +75,7 @@ object LambdaTemplate {
       matchers,
       quantifications,
       keyDeps,
-      key,
+      key -> structSubst,
       lambdaString
     )
   }
@@ -83,7 +83,7 @@ object LambdaTemplate {
 
 trait KeyedTemplate[T, E <: Expr] {
   val dependencies: Map[Identifier, T]
-  val structuralKey: E
+  val structure: E
 
   lazy val key: (E, Seq[T]) = {
     def rec(e: Expr): Seq[Identifier] = e match {
@@ -99,7 +99,7 @@ trait KeyedTemplate[T, E <: Expr] {
       case _ => Seq.empty
     }
 
-    structuralKey -> rec(structuralKey).distinct.map(dependencies)
+    structure -> rec(structure).distinct.map(dependencies)
   }
 }
 
@@ -119,12 +119,13 @@ class LambdaTemplate[T] private (
   val matchers: Map[T, Set[Matcher[T]]],
   val quantifications: Seq[QuantificationTemplate[T]],
   val dependencies: Map[Identifier, T],
-  val structuralKey: Lambda,
+  val struct: (Lambda, Map[Identifier, Identifier]),
   stringRepr: () => String) extends Template[T] with KeyedTemplate[T, Lambda] {
 
   val args = arguments.map(_._2)
   val tpe = bestRealType(ids._1.getType).asInstanceOf[FunctionType]
   val functions: Set[(T, FunctionType, T)] = Set.empty
+  val (structure, structSubst) = struct
 
   def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): LambdaTemplate[T] = {
     val newStart = substituter(start)
@@ -171,7 +172,7 @@ class LambdaTemplate[T] private (
       newMatchers,
       newQuantifications,
       newDependencies,
-      structuralKey,
+      struct,
       stringRepr
     )
   }
@@ -182,7 +183,7 @@ class LambdaTemplate[T] private (
       ids._1 -> idT, encoder, manager, pathVar, arguments, condVars, exprVars, condTree,
       clauses map substituter, // make sure the body-defining clause is inlined!
       blockers, applications, lambdas, matchers, quantifications,
-      dependencies, structuralKey, stringRepr
+      dependencies, struct, stringRepr
     )
   }
 

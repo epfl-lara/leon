@@ -108,6 +108,8 @@ class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
     try {
       solver.assertCnstr(expr)
       solver.check match {
+        case Some(true) if sat && fix._1.reporter.warningCount > 0 =>
+          fail(s"Solver $solver - Constraint ${expr.asString} doesn't guarantee model validity!?")
         case Some(true) if sat => // checkmodels ensures validity
         case Some(false) if !sat => // we were looking for unsat
         case res => fail(s"Solver $solver - Constraint ${expr.asString} has result $res!?")
