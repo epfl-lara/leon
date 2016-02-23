@@ -294,7 +294,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           // we need to define this defBlocker and link it to definition
           val defBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           defBlockers += info -> defBlocker
-          manager.implies(id, defBlocker)
 
           val template = templateGenerator.mkTemplate(tfd)
           //reporter.debug(template)
@@ -348,7 +347,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
         case None =>
           val lambdaBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           lambdaBlockers += info -> lambdaBlocker
-          manager.implies(b, lambdaBlocker)
 
           val (newExprs, callBlocks, appBlocks) = template.instantiate(lambdaBlocker, args)
           val blockExprs = freshAppBlocks(appBlocks.keys)

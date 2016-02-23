@@ -211,7 +211,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
 
   def registerFunction(b: T, tpe: FunctionType, f: T): Seq[T] = {
     val ft = bestRealType(tpe).asInstanceOf[FunctionType]
-    val bs = fixpoint((bs: Set[T]) => bs.flatMap(blockerParents))(Set(b))
+    val bs = fixpoint((bs: Set[T]) => bs ++ bs.flatMap(blockerParents))(Set(b))
 
     val (known, neqClauses) = if ((bs intersect typeEnablers).nonEmpty) {
       maybeFree += ft -> (maybeFree(ft) + (b -> f))
@@ -262,10 +262,10 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
         val nextB  = encoder.encodeId(FreshIdentifier("b_or", BooleanType, true))
         freeBlockers += tpe -> (freeBlockers(tpe) + (nextB -> caller))
 
-        val clause = encoder.mkEquals(firstB, encoder.mkOr(
+        val clause = encoder.mkEquals(firstB, encoder.mkAnd(blocker, encoder.mkOr(
           knownFree(tpe).map(idT => encoder.mkEquals(caller, idT)).toSeq ++
           maybeFree(tpe).map { case (b, idT) => encoder.mkAnd(b, encoder.mkEquals(caller, idT)) } :+
-          nextB : _*))
+          nextB : _*)))
         (firstB, Seq(clause))
       }
 

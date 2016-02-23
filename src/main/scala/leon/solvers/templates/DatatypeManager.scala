@@ -200,7 +200,7 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
       andJoin(inv ++ subtype :+ induct)
 
     case TupleType(tpes) =>
-      andJoin(tpes.zipWithIndex.map(p => typeUnroller(TupleSelect(expr, p._2))))
+      andJoin(tpes.zipWithIndex.map(p => typeUnroller(TupleSelect(expr, p._2 + 1))))
 
     case FunctionType(_, _) =>
       FreshFunction(expr)

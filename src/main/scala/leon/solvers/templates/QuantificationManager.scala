@@ -132,7 +132,8 @@ object QuantificationTemplate {
 }
 
 class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManager[T](encoder) {
-  private val quantifications = new IncrementalSeq[MatcherQuantification]
+  private[solvers] val quantifications = new IncrementalSeq[MatcherQuantification]
+
   private val instCtx         = new InstantiationContext
 
   private val ignoredMatchers = new IncrementalSeq[(Int, Set[T], Matcher[T])]
@@ -344,7 +345,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
   }
 
-  private trait MatcherQuantification {
+  private[solvers] trait MatcherQuantification {
+    val holds: T
     val pathVar: (Identifier, T)
     val quantifiers: Seq[(Identifier, T)]
     val matchers: Set[Matcher[T]]
@@ -472,10 +474,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         Instantiation.empty[T]
       } else {
         handledSubsts(this) += enablers -> subst
-        val allEnablers = fixpoint((enablers: Set[T]) => enablers.flatMap(blockerParents))(enablers)
 
         var instantiation = Instantiation.empty[T]
-        val (enabler, optEnabler) = freshBlocker(allEnablers)
+        val (enabler, optEnabler) = freshBlocker(enablers)
         if (optEnabler.isDefined) {
           instantiation = instantiation withClause encoder.mkEquals(enabler, optEnabler.get)
         }
@@ -539,6 +540,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     val lambdas: Seq[LambdaTemplate[T]]) extends MatcherQuantification {
 
     var currentQ2Var: T = qs._2
+    val holds = qs._2
 
     protected def instanceSubst(enabler: T): Map[T, T] = {
       val nextQ2Var = encoder.encodeId(q2s._1)
@@ -589,6 +591,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     val blockers: Map[T, Set[TemplateCallInfo[T]]],
     val applications: Map[T, Set[App[T]]],
     val lambdas: Seq[LambdaTemplate[T]]) extends MatcherQuantification {
+
+    val holds = start
 
     protected def instanceSubst(enabler: T): Map[T, T] = {
       Map(guardVar -> start, blocker -> enabler)

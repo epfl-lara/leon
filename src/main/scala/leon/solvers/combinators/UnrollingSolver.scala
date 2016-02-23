@@ -268,6 +268,10 @@ trait AbstractUnrollingSolver[T]
   private def getTotalModel: Model = {
     val wrapped = solverGetModel
 
+    templateGenerator.manager.quantifications.map { q =>
+      q.holds
+    }
+
     val typeInsts = templateGenerator.manager.typeInstantiations
     val partialInsts = templateGenerator.manager.partialInstantiations
 
