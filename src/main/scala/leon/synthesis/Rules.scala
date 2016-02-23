@@ -54,7 +54,7 @@ object Rules {
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
-    IntroduceRecCall,
+    IntroduceRecCalls,
     if(naiveGrammar) NaiveCEGIS else CEGIS,
     //TEGIS,
     //BottomUpTEGIS,
