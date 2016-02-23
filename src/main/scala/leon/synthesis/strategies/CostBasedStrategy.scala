@@ -6,8 +6,6 @@ package strategies
 
 import synthesis.graph._
 
-import purescala.Expressions._
-
 class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
   var bestSols = Map[Node, Option[Solution]]()
   var bestCosts = Map[Node, Cost]()
