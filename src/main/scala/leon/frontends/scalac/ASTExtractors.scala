@@ -453,11 +453,7 @@ trait ASTExtractors {
           } else if (!dd.symbol.isSynthetic) {
             Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
           } else {
-            if(name.toString == "copy" || name.toString.startsWith("copy$default$")) {
-              Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
-            } else {
-              None
-            }
+            None
           }
         case _ => None
       }

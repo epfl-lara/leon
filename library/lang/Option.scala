@@ -78,9 +78,7 @@ sealed abstract class Option[T] {
 }
 
 @isabelle.constructor(name = "Option.option.Some")
-@library
 case class Some[T](v: T) extends Option[T]
 
 @isabelle.constructor(name = "Option.option.None")
-@library
 case class None[T]() extends Option[T]

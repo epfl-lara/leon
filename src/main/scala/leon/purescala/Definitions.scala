@@ -351,21 +351,6 @@ object Definitions {
       CaseClassType(this, tps)
     }
     def typed: CaseClassType = typed(tparams.map(_.tp))
-
-    //TODO: the function works via a horrible hack, as it is not very clear where the
-    //      companion object will end up being defined.
-    //      This also return an Option as Leon compiles some non-case class (so without
-    //      copy) towards an internal case class.
-    //FIXME: it does not properly handle copy methods coming from multiple children
-    //       that got lifted to a single root class.
-    def copyDef(implicit pgm: Program): Option[FunDef] = {
-      val tryName1 = DefOps.fullName(this.root) + ".copy"
-      val tryName2 = this.root.id.name + ".copy" //generated companion object of case classes defined inside objects are currently lifted at the top level.
-      pgm.lookup(tryName1).collectFirst { case (fd: FunDef) => fd }.orElse(
-        pgm.lookup(tryName2).collectFirst { case (fd: FunDef) => fd }
-      )
-    }
-
   }
 
   /** Function/method definition.
