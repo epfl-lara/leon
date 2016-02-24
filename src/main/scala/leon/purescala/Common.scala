@@ -70,6 +70,10 @@ object Common {
     def toVariable: Variable = Variable(this)
 
     def freshen: Identifier = FreshIdentifier(name, tpe, alwaysShowUniqueID).copiedFrom(this)
+    
+    def duplicate(name: String = name, tpe: TypeTree = tpe, alwaysShowUniqueID: Boolean = alwaysShowUniqueID) = {
+      FreshIdentifier(name, tpe, alwaysShowUniqueID)
+    }
 
     override def compare(that: Identifier): Int = {
       val ord = implicitly[Ordering[(String, Int, Int)]]

@@ -124,7 +124,9 @@ class Z3StringConversion(val p: Program) extends Z3StringConverters {
 trait Z3StringConverters  {
   import StringEcoSystem._
   val mappedVariables = new Bijection[Identifier, Identifier]()
-    
+  
+  val globalClassMap = new Bijection[ClassDef, ClassDef]() // To be added manually
+  
   val globalFdMap = new Bijection[FunDef, FunDef]()
   
   val stringBijection = new Bijection[String, Expr]()
@@ -147,11 +149,19 @@ trait Z3StringConverters  {
     def convertFunDef(fd: FunDef): FunDef
     def hasIdConversion(id: Identifier): Boolean
     def convertId(id: Identifier): Identifier
+    def convertClassDef(d: ClassDef): ClassDef
     def isTypeToConvert(tpe: TypeTree): Boolean
     def convertType(tpe: TypeTree): TypeTree
     def convertPattern(pattern: Pattern): Pattern
     def convertExpr(expr: Expr)(implicit bindings: Map[Identifier, Expr]): Expr
-    
+    object TypeConverted {
+      def unapply(t: TypeTree): Option[TypeTree] = Some(t match {
+        case cct@CaseClassType(ccd, args) => CaseClassType(convertClassDef(ccd).asInstanceOf[CaseClassDef], args)
+        case act@AbstractClassType(acd, args) => AbstractClassType(convertClassDef(acd).asInstanceOf[AbstractClassDef], args)
+        case NAryType(es, builder) => 
+          builder(es map convertType)
+      })
+    }
     object PatternConverted {
       def unapply(e: Pattern): Option[Pattern] = Some(e match {
         case InstanceOfPattern(binder, ct) =>
@@ -249,6 +259,10 @@ trait Z3StringConverters  {
     def convertFunDef(fd: FunDef): FunDef = {
       globalFdMap.getBorElse(fd, fd)
     }
+    /* The conversion between classdefs should already have taken place */
+    def convertClassDef(cd: ClassDef): ClassDef = {
+      globalClassMap.getBorElse(cd, cd)
+    }
     def hasIdConversion(id: Identifier): Boolean = {
       mappedVariables.containsA(id)
     }
@@ -265,8 +279,10 @@ trait Z3StringConverters  {
     }
     def isTypeToConvert(tpe: TypeTree): Boolean = 
       TypeOps.exists(StringType == _)(tpe)
-    def convertType(tpe: TypeTree): TypeTree =
-      TypeOps.preMap{ case StringType => Some(StringList.typed) case e => None}(tpe)
+    def convertType(tpe: TypeTree): TypeTree = tpe match {
+      case StringType => StringList.typed
+      case TypeConverted(t) => t
+    }
     def convertPattern(e: Pattern): Pattern = e match {
       case LiteralPattern(binder, StringLiteral(s)) =>
         s.foldRight(CaseClassPattern(None, StringNilTyped, Seq())) {
@@ -303,6 +319,10 @@ trait Z3StringConverters  {
     def convertFunDef(fd: FunDef): FunDef = {
       globalFdMap.getAorElse(fd, fd)
     }
+    /* The conversion between classdefs should already have taken place */
+    def convertClassDef(cd: ClassDef): ClassDef = {
+      globalClassMap.getAorElse(cd, cd)
+    }
     def hasIdConversion(id: Identifier): Boolean = {
       mappedVariables.containsB(id)
     }
@@ -323,36 +343,35 @@ trait Z3StringConverters  {
     }
     def isTypeToConvert(tpe: TypeTree): Boolean = 
       TypeOps.exists(t => TypeOps.isSubtypeOf(t, StringListTyped))(tpe)
-    def convertType(tpe: TypeTree): TypeTree = {
-      TypeOps.preMap{
-        case StringList | StringCons | StringNil => Some(StringType)
-        case e => None}(tpe)
+    def convertType(tpe: TypeTree): TypeTree = tpe match {
+      case StringList | StringCons | StringNil => StringType
+      case TypeConverted(t) => t
     }
     def convertPattern(e: Pattern): Pattern = e match {
-    case CaseClassPattern(b, StringNilTyped, Seq()) =>
-      LiteralPattern(b.map(convertId), StringLiteral(""))
-    case CaseClassPattern(b, StringConsTyped, Seq(LiteralPattern(_, CharLiteral(elem)), subpattern)) =>
-      convertPattern(subpattern) match {
-        case LiteralPattern(_, StringLiteral(s))
-         => LiteralPattern(b.map(convertId), StringLiteral(elem + s))
-        case e => LiteralPattern(None, StringLiteral("Failed to parse pattern back as string:" + e))
-      }
-    case PatternConverted(e) => e
-  }
-
-  def convertExpr(e: Expr)(implicit bindings: Map[Identifier, Expr]): Expr = 
-    e match {
-      case cc@CaseClass(cct, args) if TypeOps.isSubtypeOf(cct, StringListTyped)=>
-        StringLiteral(convertToString(cc))
-      case FunctionInvocation(StringSize, Seq(a)) =>
-        StringLength(convertExpr(a)).copiedFrom(e)
-      case FunctionInvocation(StringListConcat, Seq(a, b))      =>
-        StringConcat(convertExpr(a), convertExpr(b)).copiedFrom(e)
-      case FunctionInvocation(StringTake,
-            Seq(FunctionInvocation(StringDrop, Seq(a, start)), length)) =>
-        val rstart = convertExpr(start)
-        SubString(convertExpr(a), rstart, plus(rstart, convertExpr(length))).copiedFrom(e)
-      case ExprConverted(e) => e
+      case CaseClassPattern(b, StringNilTyped, Seq()) =>
+        LiteralPattern(b.map(convertId), StringLiteral(""))
+      case CaseClassPattern(b, StringConsTyped, Seq(LiteralPattern(_, CharLiteral(elem)), subpattern)) =>
+        convertPattern(subpattern) match {
+          case LiteralPattern(_, StringLiteral(s))
+           => LiteralPattern(b.map(convertId), StringLiteral(elem + s))
+          case e => LiteralPattern(None, StringLiteral("Failed to parse pattern back as string:" + e))
+        }
+      case PatternConverted(e) => e
     }
-  }
+  
+    def convertExpr(e: Expr)(implicit bindings: Map[Identifier, Expr]): Expr = 
+      e match {
+        case cc@CaseClass(cct, args) if TypeOps.isSubtypeOf(cct, StringListTyped)=>
+          StringLiteral(convertToString(cc))
+        case FunctionInvocation(StringSize, Seq(a)) =>
+          StringLength(convertExpr(a)).copiedFrom(e)
+        case FunctionInvocation(StringListConcat, Seq(a, b))      =>
+          StringConcat(convertExpr(a), convertExpr(b)).copiedFrom(e)
+        case FunctionInvocation(StringTake,
+              Seq(FunctionInvocation(StringDrop, Seq(a, start)), length)) =>
+          val rstart = convertExpr(start)
+          SubString(convertExpr(a), rstart, plus(rstart, convertExpr(length))).copiedFrom(e)
+        case ExprConverted(e) => e
+      }
+    }
 }

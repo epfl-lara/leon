@@ -4,6 +4,7 @@ package leon.purescala
 
 import Definitions._
 import Expressions._
+import Common.Identifier
 import ExprOps.{preMap, functionCallsOf}
 import leon.purescala.Types.AbstractClassType
 import leon.purescala.Types._
@@ -331,9 +332,9 @@ object DefOps {
   }
   
 
-  private def defaultCdMap(cc: CaseClass, ccd: CaseClassDef): Option[Expr] = (cc, ccd) match {
+  private def defaultCdMap(cc: CaseClass, ccd: CaseClassType): Option[Expr] = (cc, ccd) match {
     case (CaseClass(old, args), newCcd) if old.classDef != newCcd =>
-      Some(CaseClass(newCcd.typed(old.tps), args))
+      Some(CaseClass(newCcd, args))
     case _ =>
       None
   }
@@ -347,25 +348,47 @@ object DefOps {
     *               By default it is the case class construction using the new case class definition.
     * @return the new program with a map from the old case classes to the new case classes */
   def replaceClassDefs(p: Program)(cdMapF: (ClassDef, Option[AbstractClassType]) => Option[ClassDef],
-                                   ciMapF: (CaseClass, CaseClassDef) => Option[Expr] = defaultCdMap): (Program, Map[ClassDef, ClassDef]) = {
+                                   ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap)
+                                   : (Program, Map[ClassDef, ClassDef], Map[Identifier, Identifier], Map[FunDef, FunDef]) = {
     var cdMapCache = Map[ClassDef, ClassDef]()
-    def tpMap(tt: TypeTree): TypeTree = tt match {
-      case AbstractClassType(asd, targs) => AbstractClassType(cdMap(asd).asInstanceOf[AbstractClassDef], targs map tpMap)
-      case CaseClassType(ccd, targs) => CaseClassType(cdMap(ccd).asInstanceOf[CaseClassDef], targs map tpMap)
-      case e => e
-    }
+    var idMapCache = Map[Identifier, Identifier]()
+    var fdMapCache = Map[FunDef, FunDef]()
+    def tpMap(tt: TypeTree): TypeTree = TypeOps.postMap{
+      case AbstractClassType(asd, targs) => Some(AbstractClassType(cdMap(asd).asInstanceOf[AbstractClassDef], targs))
+      case CaseClassType(ccd, targs) => Some(CaseClassType(cdMap(ccd).asInstanceOf[CaseClassDef], targs))
+      case e => None
+    }(tt)
     
     def cdMap(cd: ClassDef): ClassDef = {
       if (!(cdMapCache contains cd)) {
         lazy val parent = cd.parent.map( tpMap(_).asInstanceOf[AbstractClassType] )
-        cdMapCache += cd -> cdMapF(cd, parent).getOrElse{
-          cd match {
-            case acd:AbstractClassDef => acd.duplicate(parent = parent)
-            case ccd:CaseClassDef => ccd.duplicate(parent = parent)
-          }
+        val ncd = cdMapF(cd, parent) match {
+          case Some(new_ccd) =>
+            for((old_id, new_id) <- cd.fieldsIds.zip(new_ccd.fieldsIds)) {
+              idMapCache += old_id -> new_id
+            }
+            new_ccd
+          case None =>
+            cd match {
+              case acd:AbstractClassDef => acd.duplicate(parent = parent)
+              case ccd:CaseClassDef => ccd.duplicate(parent = parent, fields = ccd.fieldsIds.map(id => ValDef(idMap(id)))) // Should not cycle since fields have to be abstract.
+            }
         }
+        cdMapCache += cd -> ncd
       }
       cdMapCache(cd)
+    }
+    def idMap(id: Identifier): Identifier = {
+      if (!(idMapCache contains id)) {
+        idMapCache += id -> id.duplicate(tpe = tpMap(id.getType))
+      }
+      idMapCache(id)
+    }
+    def fdMap(fd: FunDef): FunDef = {
+      if (!(fdMapCache contains fd)) {
+        fdMapCache += fd -> fd.duplicate(params = fd.params.map(vd => ValDef(idMap(vd.id))), returnType = tpMap(fd.returnType))
+      }
+      fdMapCache(fd)
     }
     
     val newP = p.copy(units = for (u <- p.units) yield {
@@ -374,7 +397,8 @@ object DefOps {
           case m : ModuleDef =>
             m.copy(defs = for (df <- m.defs) yield {
               df match {
-                case f : ClassDef => cdMap(f)
+                case cd : ClassDef => cdMap(cd)
+                case fd : FunDef => fdMap(fd)
                 case d => d
               }
           })
@@ -382,25 +406,63 @@ object DefOps {
         }
       )
     })
-    for(fd <- newP.definedFunctions) {
-      // TODO: Check for patterns
-      // TODO: Check for isInstanceOf
-      // TODO: Check for asInstanceOf
-      if(ExprOps.exists{ case CaseClass(CaseClassType(ccd, targs), fargs) => cdMapCache.getOrElse(ccd, None) != None case _ => false }(fd.fullBody)) {
-        fd.fullBody = replaceClassDefsUse(fd.fullBody, cdMap, ciMapF)
-      }
+    object ToTransform {
+      def unapply(c: ClassType): Option[ClassDef] = Some(cdMap(c.classDef))
     }
-    (newP, cdMapCache)
+    trait Transformed[T <: TypeTree] {
+      def unapply(c: T): Option[T] = Some(TypeOps.postMap({
+        case c: ClassType =>
+          val newClassDef = cdMap(c.classDef)
+          Some((c match {
+            case CaseClassType(ccd, tps) =>
+              CaseClassType(newClassDef.asInstanceOf[CaseClassDef], tps.map(e => TypeOps.postMap{ case TypeTransformed(ct) => Some(ct) case _ => None }(e)))
+            case AbstractClassType(acd, tps) =>
+              AbstractClassType(newClassDef.asInstanceOf[AbstractClassDef], tps.map(e => TypeOps.postMap{ case TypeTransformed(ct) => Some(ct) case _ => None }(e)))
+          }).asInstanceOf[T])
+        case _ => None
+      })(c).asInstanceOf[T])
+    }
+    object CaseClassTransformed extends Transformed[CaseClassType]
+    object ClassTransformed extends Transformed[ClassType]
+    object TypeTransformed extends Transformed[TypeTree]
+    def replaceClassDefUse(e: Pattern): Pattern = PatternOps.postMap{
+      case CaseClassPattern(optId, CaseClassTransformed(ct), sub) => Some(CaseClassPattern(optId.map(idMap), ct, sub))
+      case InstanceOfPattern(optId, ClassTransformed(ct)) => Some(InstanceOfPattern(optId.map(idMap), ct))
+      case UnapplyPattern(optId, TypedFunDef(fd, tps), subp) => Some(UnapplyPattern(optId.map(idMap), TypedFunDef(fdMap(fd), tps.map(tpMap)), subp))
+      case Extractors.Pattern(Some(id), subp, builder) => Some(builder(Some(idMap(id)), subp))
+      case e => None
+    }(e)
+    
+    def replaceClassDefsUse(e: Expr): Expr = {
+      ExprOps.postMap {
+        case Let(id, expr, body) => Some(Let(idMap(id), expr, body))
+        case Variable(id) => Some(Variable(idMap(id)))
+        case ci @ CaseClass(CaseClassTransformed(ct), args) =>
+          ciMapF(ci, ct).map(_.setPos(ci))
+        //case IsInstanceOf(e, ToTransform()) =>
+        case CaseClassSelector(CaseClassTransformed(cct), expr, identifier) =>
+          Some(CaseClassSelector(cct, expr, idMap(identifier)))
+        case IsInstanceOf(e, ClassTransformed(ct)) => Some(IsInstanceOf(e, ct))
+        case AsInstanceOf(e, ClassTransformed(ct)) => Some(AsInstanceOf(e, ct))
+        case MatchExpr(scrut, cases) => 
+          Some(MatchExpr(scrut, cases.map{ 
+              case MatchCase(pattern, optGuard, rhs) =>
+                MatchCase(replaceClassDefUse(pattern), optGuard, rhs)
+            }))
+        case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
+          defaultFiMap(fi, fdMap(fd)).map(_.setPos(fi))
+        case _ =>
+          None
+      }(e)
+    }
+    
+    for(fd <- newP.definedFunctions) {
+      fd.fullBody = replaceClassDefsUse(fd.fullBody)
+    }
+    (newP, cdMapCache, idMapCache, fdMapCache)
   }
   
-  def replaceClassDefsUse(e: Expr, fdMapF: ClassDef => ClassDef, fiMapF: (CaseClass, CaseClassDef) => Option[Expr] = defaultCdMap) = {
-    preMap {
-      case fi @ CaseClass(CaseClassType(cd, tps), args) =>
-        fiMapF(fi, fdMapF(cd).asInstanceOf[CaseClassDef]).map(_.setPos(fi))
-      case _ =>
-        None
-    }(e)
-  }
+  
 
   def addDefs(p: Program, cds: Traversable[Definition], after: Definition): Program = {
     var found = false

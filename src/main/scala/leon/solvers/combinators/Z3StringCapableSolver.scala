@@ -42,13 +42,30 @@ object Z3StringCapableSolver {
   def convert(p: Program): (Program, Option[Z3StringConversion]) = {
     val converter = new Z3StringConversion(p)
     import converter.Forward._
-    var globalFdMap = Map[FunDef, (Map[Identifier, Identifier], FunDef)]()
     var hasStrings = false
     val program_with_strings = converter.getProgram
-    val (new_program, fdMap) = DefOps.replaceFunDefs(program_with_strings)((fd: FunDef) => {
+    val (program_with_correct_classes, cdMap, idMap, fdMap) = if(program_with_strings.definedClasses.exists{ case c: CaseClassDef => c.fieldsIds.exists(id => TypeOps.exists{ _ == StringType}(id.getType)) case _ => false}) {
+      val res:(Program, Map[ClassDef, ClassDef], Map[Identifier, Identifier], Map[FunDef, FunDef]) = DefOps.replaceClassDefs(program_with_strings)((cd: ClassDef, parent: Option[AbstractClassType]) => {
+        cd match {
+          case acd:AbstractClassDef => None
+          case ccd:CaseClassDef =>
+            if(ccd.fieldsIds.exists(id => TypeOps.exists(StringType == _)(id.getType))) {
+              Some(ccd.duplicate(convertId(ccd.id), ccd.tparams, ccd.fieldsIds.map(id => ValDef(convertId(id))), parent, ccd.isCaseObject))
+            } else None
+        }
+      })
+      converter.mappedVariables.clear() // We will compose them later, they have been stored in idMap
+      res
+    } else {
+      (program_with_strings, Map[ClassDef, ClassDef](), Map[Identifier, Identifier](), Map[FunDef, FunDef]())
+    }
+    val fdMapInverse = fdMap.map(kv => kv._2 -> kv._1).toMap
+    val idMapInverse = idMap.map(kv => kv._2 -> kv._1).toMap
+    var globalFdMap = Map[FunDef, (Map[Identifier, Identifier], FunDef)]()
+    val (new_program, _) = DefOps.replaceFunDefs(program_with_correct_classes)((fd: FunDef) => {
       globalFdMap.get(fd).map(_._2).orElse(
           if(thatShouldBeConverted(fd)) {
-            val idMap = fd.params.map(vd => vd.id -> convertId(vd.id)).toMap
+            val idMap = fd.params.zip(fd.params).map(origvd_vd => origvd_vd._1.id -> convertId(origvd_vd._2.id)).toMap
             val newFdId = convertId(fd.id)
             val newFd = fd.duplicate(newFdId,
                 fd.tparams,
@@ -68,6 +85,9 @@ object Z3StringCapableSolver {
         implicit val idVarMap = idMap.mapValues(id => Variable(id))
         newFd.fullBody = convertExpr(newFd.fullBody)
       }
+      converter.mappedVariables.composeA(id => idMapInverse.getOrElse(id, id))
+      converter.globalFdMap.composeA(fd => fdMapInverse.getOrElse(fd, fd))
+      converter.globalClassMap ++= cdMap
       (new_program, Some(converter))
     }
   }
