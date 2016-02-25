@@ -47,7 +47,7 @@ object SourceInfo {
 
   def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[SourceInfo] = {
 
-    val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
+    val term = Terminating(fd.applied)
 
     val eFinder = new ExamplesFinder(ctx, prog)
 

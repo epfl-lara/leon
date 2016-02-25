@@ -79,7 +79,7 @@ object Helpers {
     }
 
     val res = gs.flatMap {
-      case term@Terminating(tfd, args) if tpe forall (isSubtypeOf(tfd.returnType, _)) =>
+      case term@Terminating(FunctionInvocation(tfd, args)) if tpe forall (isSubtypeOf(tfd.returnType, _)) =>
         val ids = tfd.params.map(vd => FreshIdentifier("<hole>", vd.getType, true)).toList
 
         for (((a, i), tpe) <- args.zipWithIndex zip tfd.params.map(_.getType);

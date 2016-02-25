@@ -4,7 +4,6 @@ package leon.synthesis
 
 import leon.purescala._
 import Types._
-import Definitions.TypedFunDef
 import Extractors._
 import Expressions.Expr
 import PrinterHelpers._
@@ -23,12 +22,12 @@ object Witnesses {
       p"⊙{$e}"
     }
   }
-  
-  case class Terminating(tfd: TypedFunDef, args: Seq[Expr]) extends Witness {
-    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((args, Terminating(tfd, _)))
+
+  case class Terminating(fi: Expr) extends Witness {
+    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some(( Seq(fi), { case Seq(fi) => Terminating(fi) }))
 
     override def printWith(implicit pctx: PrinterContext): Unit = {
-      p"↓${tfd.id}($args)"
+      p"↓$fi"
     }
   }
   
