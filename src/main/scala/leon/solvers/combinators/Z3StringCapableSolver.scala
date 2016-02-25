@@ -45,12 +45,12 @@ object Z3StringCapableSolver {
     var hasStrings = false
     val program_with_strings = converter.getProgram
     val (program_with_correct_classes, cdMap, idMap, fdMap) = if(program_with_strings.definedClasses.exists{ case c: CaseClassDef => c.fieldsIds.exists(id => TypeOps.exists{ _ == StringType}(id.getType)) case _ => false}) {
-      val res:(Program, Map[ClassDef, ClassDef], Map[Identifier, Identifier], Map[FunDef, FunDef]) = DefOps.replaceClassDefs(program_with_strings)((cd: ClassDef, parent: Option[AbstractClassType]) => {
+      val res:(Program, Map[ClassDef, ClassDef], Map[Identifier, Identifier], Map[FunDef, FunDef]) = DefOps.replaceCaseClassDefs(program_with_strings)((cd: ClassDef) => {
         cd match {
           case acd:AbstractClassDef => None
           case ccd:CaseClassDef =>
             if(ccd.fieldsIds.exists(id => TypeOps.exists(StringType == _)(id.getType))) {
-              Some(ccd.duplicate(convertId(ccd.id), ccd.tparams, ccd.fieldsIds.map(id => ValDef(convertId(id))), parent, ccd.isCaseObject))
+              Some((parent: Option[AbstractClassType]) => ccd.duplicate(convertId(ccd.id), ccd.tparams, ccd.fieldsIds.map(id => ValDef(convertId(id))), parent, ccd.isCaseObject))
             } else None
         }
       })
