@@ -13,7 +13,6 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.TypeOps._
-import xlang.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 
@@ -271,7 +270,7 @@ trait AbstractZ3Solver extends Solver {
     def rec(ex: Expr): Z3AST = ex match {
 
       // TODO: Leave that as a specialization?
-      case LetTuple(ids, e, b) => {
+      case LetTuple(ids, e, b) =>
         z3Vars = z3Vars ++ ids.zipWithIndex.map { case (id, ix) =>
           val entry = id -> rec(tupleSelect(e, ix + 1, ids.size))
           entry
@@ -279,7 +278,6 @@ trait AbstractZ3Solver extends Solver {
         val rb = rec(b)
         z3Vars = z3Vars -- ids
         rb
-      }
 
       case p @ Passes(_, _, _) =>
         rec(p.asConstraint)
@@ -287,40 +285,30 @@ trait AbstractZ3Solver extends Solver {
       case me @ MatchExpr(s, cs) =>
         rec(matchToIfThenElse(me))
 
-      case Let(i, e, b) => {
+      case Let(i, e, b) =>
         val re = rec(e)
         z3Vars = z3Vars + (i -> re)
         val rb = rec(b)
         z3Vars = z3Vars - i
         rb
-      }
 
-      case Waypoint(_, e, _) => rec(e)
       case a @ Assert(cond, err, body) =>
         rec(IfExpr(cond, body, Error(a.getType, err.getOrElse("Assertion failed")).setPos(a.getPos)).setPos(a.getPos))
 
-      case e @ Error(tpe, _) => {
+      case e @ Error(tpe, _) =>
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
         // Might introduce dupplicates (e), but no worries here
         variables += (e -> newAST)
         newAST
-      }
-      case v @ Variable(id) => z3Vars.get(id) match {
-        case Some(ast) => 
-          ast
-        case None => {
-          variables.getB(v) match {
-            case Some(ast) =>
-              ast
 
-            case None =>
+      case v @ Variable(id) => z3Vars.getOrElse(id,
+        variables.getB(v).getOrElse {
           val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
           z3Vars = z3Vars + (id -> newAST)
           variables += (v -> newAST)
           newAST
         }
-      }
-      }
+      )
 
       case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
       case And(exs) => z3.mkAnd(exs.map(rec): _*)
@@ -337,7 +325,7 @@ trait AbstractZ3Solver extends Solver {
       case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
       case Minus(l, r) => z3.mkSub(rec(l), rec(r))
       case Times(l, r) => z3.mkMul(rec(l), rec(r))
-      case Division(l, r) => {
+      case Division(l, r) =>
         val rl = rec(l)
         val rr = rec(r)
         z3.mkITE(
@@ -345,14 +333,11 @@ trait AbstractZ3Solver extends Solver {
           z3.mkDiv(rl, rr),
           z3.mkUnaryMinus(z3.mkDiv(z3.mkUnaryMinus(rl), rr))
         )
-      }
-      case Remainder(l, r) => {
+      case Remainder(l, r) =>
         val q = rec(Division(l, r))
         z3.mkSub(rec(l), z3.mkMul(rec(r), q))
-      }
-      case Modulo(l, r) => {
+      case Modulo(l, r) =>
         z3.mkMod(rec(l), rec(r))
-      }
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
 
       case RealPlus(l, r) => z3.mkAdd(rec(l), rec(r))

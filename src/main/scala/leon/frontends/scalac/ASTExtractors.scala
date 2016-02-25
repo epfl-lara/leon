@@ -602,16 +602,6 @@ trait ASTExtractors {
       }
     }
 
-    object ExWaypointExpression {
-      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
-        case Apply(
-              TypeApply(ExSymbol("leon", "lang", "xlang", "waypoint"), typeTree :: Nil),
-              List(i, expr)) =>
-            Some((typeTree, i, expr))
-        case _ => None
-      }
-    }
-
     object ExErrorExpression {
       def unapply(tree: Apply) : Option[(String, Tree)] = tree match {
         case a @ Apply(TypeApply(ExSymbol("leon", "lang", "error"), List(tpe)), List(lit : Literal)) =>

@@ -1267,11 +1267,6 @@ trait CodeExtraction extends ASTExtractors {
           }
           Epsilon(c1, pstpe)
 
-        case ExWaypointExpression(tpt, i, tree) =>
-          val pstpe = extractType(tpt)
-          val IntLiteral(ri) = extractTree(i)
-          Waypoint(ri, extractTree(tree), pstpe)
-
         case update @ ExUpdate(lhs, index, newValue) =>
           val lhsRec = extractTree(lhs)
           lhsRec match {

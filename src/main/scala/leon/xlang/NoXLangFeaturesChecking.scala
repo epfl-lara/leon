@@ -29,8 +29,6 @@ object NoXLangFeaturesChecking extends UnitPhase[Program] {
         Set((e.getPos, "Usage of epsilons requires xlang desugaring"))
       case (e: LetVar) =>
         Set((e.getPos, "Mutable variables (e.g. 'var x' instead of 'val x') require xlang desugaring"))
-      case (e: Waypoint) =>
-        Set((e.getPos, "Usage of waypoints requires xlang desugaring"))
       case (e: ArrayUpdate) =>
         Set((e.getPos, "In-place updates of arrays require xlang desugaring"))
       case _ =>

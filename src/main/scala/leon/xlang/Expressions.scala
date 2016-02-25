@@ -119,18 +119,6 @@ object Expressions {
     override def isSimpleExpr = false
   }
 
-  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with Extractable with PrettyPrintable{
-    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
-      Some((Seq(expr), (es: Seq[Expr]) => Waypoint(i, es.head, tpe)))
-    }
-
-    def printWith(implicit pctx: PrinterContext) {
-      p"waypoint_$i($expr)"
-    }
-
-    val getType = tpe
-  }
-
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
 
