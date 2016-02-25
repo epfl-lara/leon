@@ -570,8 +570,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       // are minimal we make sure we exclude only Bs that are used.
       def excludeProgram(bs: Set[Identifier], isMinimal: Boolean): Unit = {
 
-
-
         def filterBTree(c: Identifier): Set[Identifier] = {
           val (b, _, subcs) = cTree(c).find(sub => bs(sub._1)).get
           subcs.flatMap(filterBTree).toSet + b

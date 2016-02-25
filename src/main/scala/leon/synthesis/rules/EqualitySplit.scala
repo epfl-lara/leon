@@ -4,14 +4,10 @@ package leon
 package synthesis
 package rules
 
-import leon.purescala.Common.Identifier
+import purescala.Common.Identifier
 import purescala.Expressions._
 import purescala.Extractors._
 import purescala.Constructors._
-
-import solvers._
-
-import scala.concurrent.duration._
 
 /** For every pair of input variables of the same type,
   * checks equality and output an If-Then-Else statement with the two new branches. */
