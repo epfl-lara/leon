@@ -524,6 +524,9 @@ object Definitions {
     def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
 
     def paramIds = params map { _.id }
+
+    def applied(args: Seq[Expr]): FunctionInvocation = Constructors.functionInvocation(this, args)
+    def applied = FunctionInvocation(this.typed, this.paramIds map Variable)
   }
 
 

@@ -179,7 +179,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val origBody = fd.body.get
 
-    val term  = Terminating(fd.typed, fd.params.map(_.id.toVariable))
+    val term  = Terminating(fd.applied)
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 

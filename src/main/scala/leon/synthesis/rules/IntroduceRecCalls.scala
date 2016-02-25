@@ -75,9 +75,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
           }) else Nil
         }
 
-        val newWs = calls map {
-          case FunctionInvocation(tfd, args) => Terminating(tfd, args)
-        }
+        val newWs = calls map Terminating
 
         val TopLevelAnds(ws) = p.ws
 

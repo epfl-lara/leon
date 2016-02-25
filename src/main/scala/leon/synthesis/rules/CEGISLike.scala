@@ -343,7 +343,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             val e = builder(cs.map { c =>
               val fd = cToFd(c)
-              FunctionInvocation(fd.typed, fd.params.map(_.toVariable))
+              fd.applied
             })
 
             outerExprToInnerExpr(e)
@@ -371,7 +371,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           // Top-level expression for rootC
           val expr = {
             val fd = cToFd(rootC)
-            FunctionInvocation(fd.typed, fd.params.map(_.toVariable))
+            fd.applied
           }
 
           (expr, cToFd.values.toSeq)
