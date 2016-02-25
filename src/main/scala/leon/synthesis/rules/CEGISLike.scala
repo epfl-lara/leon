@@ -596,7 +596,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
-        val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
+        val cnstr = phiFd.applied
 
         //println("Program: ")
         //println("-"*80)
