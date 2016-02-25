@@ -57,7 +57,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       def isValidTest(e: Example): Boolean = {
         e match {
           case InOutExample(ins, outs) =>
-            evaluator.eval(Equals(outs.head, FunctionInvocation(fd.typed(fd.tparams.map(_.tp)), ins))) match {
+            evaluator.eval(Equals(outs.head, FunctionInvocation(fd.typed, ins))) match {
               case EvaluationResults.Successful(BooleanLiteral(true)) => true
               case _                                                  => false
             }
