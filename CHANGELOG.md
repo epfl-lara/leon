@@ -15,6 +15,9 @@ Among the changes are (see the commits for details):
 * Many additions to Leon's library, including the state monad
 * Numerous refactorings and bug fixes thanks to relentless work of Manos
 * Add --watch option to automatically re-run Leon after file modifications, thanks to Etienne
+* Somewhat extended source language that allows for deep type hierarchies (Manos)
+* Synthesis improvements: nore specific grammar for CEGIS and various optimizations, new synthesis rules 
+  and new design of the exploration strategy (Etienne and Manos)
 
 #### v3.0
 *Released 17.02.2015*
