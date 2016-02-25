@@ -7,8 +7,8 @@ package strategies
 import synthesis.graph._
 
 class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
-  var bestSols = Map[Node, Option[Solution]]()
-  var bestCosts = Map[Node, Cost]()
+  private var bestSols = Map[Node, Option[Solution]]()
+  private var bestCosts = Map[Node, Cost]()
 
   override def init(root: RootNode): Unit = {
     super.init(root)

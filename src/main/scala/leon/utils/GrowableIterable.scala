@@ -5,10 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 class GrowableIterable[T](init: Seq[T], growth: Iterator[T], canGrow: () => Boolean) extends Iterable[T] {
   private val buffer = new ArrayBuffer[T]() ++ init
 
-  def +=(more: T) = buffer += more
-  def ++=(more: Seq[T]) = buffer ++= more
-
-  val cachingIterator = new Iterator[T] {
+  private val cachingIterator = new Iterator[T] {
     def hasNext = canGrow() && growth.hasNext
 
     def next() = {
@@ -17,6 +14,9 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T], canGrow: () => Bool
       res
     }
   }
+
+  def +=(more: T) = buffer += more
+  def ++=(more: Seq[T]) = buffer ++= more
 
   def iterator: Iterator[T] = {
     buffer.iterator ++ cachingIterator
