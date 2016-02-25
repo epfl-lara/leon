@@ -17,8 +17,6 @@ import xlang.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 
-import scala.collection.mutable.{Map => MutableMap}
-
 case class UnsoundExtractionException(ast: Z3AST, msg: String)
   extends Exception("Can't extract " + ast + " : " + msg)
 
@@ -705,7 +703,7 @@ trait AbstractZ3Solver extends Solver {
                     val elems = r.elems.flatMap {
                       case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
                       case (k, _) => None
-                    }.toMap
+                    }
 
                     FiniteMap(elems, from, to)
                 }
