@@ -315,6 +315,20 @@ object Definitions {
       AbstractClassType(this, tps)
     }
     def typed: AbstractClassType = typed(tparams.map(_.tp))
+    
+    /** Duplication of this [[CaseClassDef]].
+      * @note This will not add known case class children
+      */
+    def duplicate(
+      id: Identifier                    = this.id.freshen,
+      tparams: Seq[TypeParameterDef]    = this.tparams,
+      parent: Option[AbstractClassType] = this.parent
+    ): AbstractClassDef = {
+      val acd = new AbstractClassDef(id, tparams, parent)
+      acd.addFlags(this.flags)
+      parent.map(_.classDef.ancestors.map(_.registerChild(acd)))
+      acd.copiedFrom(this)
+    }
   }
 
   /** Case classes/objects. */
@@ -351,6 +365,24 @@ object Definitions {
       CaseClassType(this, tps)
     }
     def typed: CaseClassType = typed(tparams.map(_.tp))
+    
+    /** Duplication of this [[CaseClassDef]].
+      * @note This will not replace recursive case class def calls in [[arguments]] nor the parent abstract class types
+      */
+    def duplicate(
+      id: Identifier                    = this.id.freshen,
+      tparams: Seq[TypeParameterDef]    = this.tparams,
+      fields: Seq[ValDef]               = this.fields,
+      parent: Option[AbstractClassType] = this.parent,
+      isCaseObject: Boolean             = this.isCaseObject
+    ): CaseClassDef = {
+      val cd = new CaseClassDef(id, tparams, parent, isCaseObject)
+      cd.setFields(fields)
+      cd.addFlags(this.flags)
+      cd.copiedFrom(this)
+      parent.map(_.classDef.ancestors.map(_.registerChild(cd)))
+      cd
+    }
   }
 
   /** Function/method definition.

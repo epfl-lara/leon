@@ -2,9 +2,16 @@
 
 package leon.utils
 
-class Bijection[A, B] {
+object Bijection {
+  def apply[A, B](a: Iterable[(A, B)]): Bijection[A, B] = new Bijection[A, B] ++= a
+  def apply[A, B](a: (A, B)*): Bijection[A, B] = apply(a.toSeq)
+}
+
+class Bijection[A, B] extends Iterable[(A, B)] {
   protected var a2b = Map[A, B]()
   protected var b2a = Map[B, A]()
+  
+  def iterator = a2b.iterator
 
   def +=(a: A, b: B): Unit = {
     a2b += a -> b
@@ -16,7 +23,7 @@ class Bijection[A, B] {
     this
   }
   
-  def ++=(t: Iterable[(A,B)]) = {
+  def ++=(t: Iterable[(A, B)]) = {
     (this /: t){ case (b, elem) => b += elem }
   }
 
@@ -58,4 +65,11 @@ class Bijection[A, B] {
 
   def aSet = a2b.keySet
   def bSet = b2a.keySet
+  
+  def composeA[C](c: A => C): Bijection[C, B] = {
+    new Bijection[C, B] ++= this.a2b.map(kv => c(kv._1) -> kv._2)
+  }
+  def composeB[C](c: B => C): Bijection[A, C] = {
+    new Bijection[A, C] ++= this.a2b.map(kv => kv._1 -> c(kv._2))
+  }
 }

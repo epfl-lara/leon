@@ -361,6 +361,7 @@ object Expressions {
     )
   }
   
+  // Extracts without taking care of the binder. (contrary to Extractos.Pattern)
   object PatternExtractor extends SubTreeOps.Extractor[Pattern] {
     def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
       case (_: InstanceOfPattern) | (_: WildcardPattern) | (_: LiteralPattern[_]) =>
