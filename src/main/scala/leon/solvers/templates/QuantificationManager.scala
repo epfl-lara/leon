@@ -236,7 +236,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
 
     def +(p: (Set[T], Matcher[T])): Context = if (apply(p)) this else {
-      val prev = ctx.getOrElse(p._2, Seq.empty)
+      val prev = ctx.getOrElse(p._2, Set.empty)
       val newSet = prev.filterNot(set => p._1.subsetOf(set)).toSet + p._1
       new Context(ctx + (p._2 -> newSet))
     }
@@ -569,7 +569,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     case Seq(b) if isBlocker(b) => (b, None)
     case _ =>
       val last = enablersToBlocker.get(enablers).orElse {
-        val initialEnablers = enablers.flatMap(blockerToEnablers.get).flatten
+        val initialEnablers = enablers.flatMap(e => blockerToEnablers.getOrElse(e, Set(e)))
         enablersToBlocker.get(initialEnablers)
       }
 

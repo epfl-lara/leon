@@ -98,6 +98,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     val substMap : Map[Identifier, T] = arguments.toMap + pathVar
 
+
     val (bodyConds, bodyExprs, bodyTree, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
       invocationEqualsBody.foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(start, cls, substMap))
     } else {

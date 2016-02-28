@@ -34,7 +34,7 @@ object Instantiation {
 
   implicit class MapSeqWrapper[A,B](map: Map[A,Seq[B]]) {
     def merge(that: Map[A,Seq[B]]): Map[A,Seq[B]] = (map.keys ++ that.keys).map { k =>
-      k -> (map.getOrElse(k, Seq.empty) ++ that.getOrElse(k, Seq.empty))
+      k -> (map.getOrElse(k, Seq.empty) ++ that.getOrElse(k, Seq.empty)).distinct
     }.toMap
   }
 
@@ -158,23 +158,25 @@ object Template {
       var functions: Set[(T, FunctionType, T)] = Set.empty
       var clauses: Seq[T] = Seq.empty
 
-      val cleanGuarded = guardedExprs.map { case (b, es) => b -> es.map { e =>
-        def clean(expr: Expr): Expr = postMap {
-          case FreshFunction(f) => Some(BooleanLiteral(true))
-          case _ => None
-        } (expr)
+      val cleanGuarded = guardedExprs.map {
+        case (b, es) => b -> es.map { e =>
+          def clean(expr: Expr): Expr = postMap {
+            case FreshFunction(f) => Some(BooleanLiteral(true))
+            case _ => None
+          } (expr)
 
-        val withPaths = CollectorWithPaths { case FreshFunction(f) => f }.traverse(e)
-        functions ++= withPaths.map { case (f, TopLevelAnds(paths)) =>
-          val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
-          val path = andJoin(paths.map(clean))
-          (encodeExpr(and(Variable(b), path)), tpe, encodeExpr(f))
+          val withPaths = CollectorWithPaths { case FreshFunction(f) => f }.traverse(e)
+          functions ++= withPaths.map { case (f, TopLevelAnds(paths)) =>
+            val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
+            val path = andJoin(paths.map(clean))
+            (encodeExpr(and(Variable(b), path)), tpe, encodeExpr(f))
+          }
+
+          val cleanExpr = clean(e)
+          clauses :+= encodeExpr(Implies(Variable(b), cleanExpr))
+          cleanExpr
         }
-
-        val cleanExpr = clean(e)
-        clauses :+= encodeExpr(Implies(Variable(b), cleanExpr))
-        cleanExpr
-      }}
+      }
 
       (clauses, cleanGuarded, functions)
     }
@@ -190,9 +192,9 @@ object Template {
       .map(tfd => invocationMatcher(encodeExpr)(tfd, arguments.map(_._1.toVariable)))
 
     val (blockers, applications, matchers) = {
-      var blockers : Map[Identifier, Set[TemplateCallInfo[T]]] = Map.empty
-      var applications : Map[Identifier, Set[App[T]]] = Map.empty
-      var matchers : Map[Identifier, Set[Matcher[T]]] = Map.empty
+      var blockers     : Map[Identifier, Set[TemplateCallInfo[T]]] = Map.empty
+      var applications : Map[Identifier, Set[App[T]]]              = Map.empty
+      var matchers     : Map[Identifier, Set[Matcher[T]]]          = Map.empty
 
       for ((b,es) <- cleanGuarded) {
         var funInfos   : Set[TemplateCallInfo[T]] = Set.empty
@@ -231,15 +233,15 @@ object Template {
           matchInfos ++= exprToMatcher.values
         }
 
-        val calls = funInfos -- optIdCall
+        val calls = funInfos.filter(i => Some(i) != optIdCall)
         if (calls.nonEmpty) blockers += b -> calls
 
-        val apps = appInfos -- optIdApp
+        val apps = appInfos.filter(i => Some(i) != optIdApp)
         if (apps.nonEmpty) applications += b -> apps
 
-        val matchs = matchInfos.filter { case m @ Matcher(_, _, _, menc) =>
+        val matchs = (matchInfos.filter { case m @ Matcher(_, _, _, menc) =>
           !optIdApp.exists { case App(_, _, _, aenc) => menc == aenc }
-        } ++ (if (funInfos.exists(info => Some(info) == optIdCall)) invocMatcher else None)
+        } ++ (if (funInfos.exists(info => Some(info) == optIdCall)) invocMatcher else None))
 
         if (matchs.nonEmpty) matchers += b -> matchs
       }
@@ -298,8 +300,8 @@ object Template {
     manager match {
       case lmanager: LambdaManager[T] =>
         val funSubstituter = encoder.substitute(subst.mapValues(_.encoded))
-        for ((b,tpe,f) <- functions) instantiation = instantiation withClauses {
-          lmanager.registerFunction(funSubstituter(b), tpe, funSubstituter(f))
+        for ((b,tpe,f) <- functions) {
+          instantiation ++= lmanager.registerFunction(funSubstituter(b), tpe, funSubstituter(f))
         }
 
         // /!\ CAREFUL /!\

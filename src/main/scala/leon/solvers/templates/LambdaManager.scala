@@ -99,7 +99,7 @@ trait KeyedTemplate[T, E <: Expr] {
       case _ => Seq.empty
     }
 
-    structure -> rec(structure).distinct.map(dependencies)
+    structure -> rec(structure).map(dependencies)
   }
 }
 
@@ -210,7 +210,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
   override protected def incrementals: List[IncrementalState] =
     super.incrementals ++ List(byID, byType, applications, knownFree, maybeFree, freeBlockers, instantiated)
 
-  def registerFunction(b: T, tpe: FunctionType, f: T): Seq[T] = {
+  def registerFunction(b: T, tpe: FunctionType, f: T): Instantiation[T] = {
     val ft = bestRealType(tpe).asInstanceOf[FunctionType]
     val bs = fixpoint((bs: Set[T]) => bs ++ bs.flatMap(blockerParents))(Set(b))
 
@@ -231,7 +231,13 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
       encoder.mkEquals(oldB, extension)
     }
 
-    neqClauses ++ extClauses
+    val instantiation = Instantiation.empty[T] withClauses (neqClauses ++ extClauses)
+
+    applications(tpe).foldLeft(instantiation) {
+      case (instantiation, (app @ (_, App(caller, _, args, _)))) =>
+        val equals = encoder.mkAnd(b, encoder.mkEquals(f, caller))
+        instantiation withApp (app -> TemplateAppInfo(f, equals, args))
+    }
   }
 
   def assumptions: Seq[T] = freeBlockers.toSeq.flatMap(_._2.map(p => encoder.mkNot(p._1)))
@@ -282,24 +288,24 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
         val idT = encoder.encodeId(template.ids._1)
         val newTemplate = template.withId(idT)
 
-        var clauses      : Clauses[T]     = equalityClauses(newTemplate)
-        var appBlockers  : AppBlockers[T] = Map.empty.withDefaultValue(Set.empty)
-
         // make sure the new lambda isn't equal to any free lambda var
-        clauses ++= knownFree(newTemplate.tpe).map(f => encoder.mkNot(encoder.mkEquals(idT, f)))
-        clauses ++= maybeFree(newTemplate.tpe).map { p =>
-          encoder.mkImplies(p._1, encoder.mkNot(encoder.mkEquals(idT, p._2)))
-        }
+        val instantiation = Instantiation.empty[T] withClauses (
+          equalityClauses(newTemplate) ++
+          knownFree(newTemplate.tpe).map(f => encoder.mkNot(encoder.mkEquals(idT, f))).toSeq ++
+          maybeFree(newTemplate.tpe).map { p =>
+            encoder.mkImplies(p._1, encoder.mkNot(encoder.mkEquals(idT, p._2)))
+          })
 
         byID += idT -> newTemplate
         byType += newTemplate.tpe -> (byType(newTemplate.tpe) + (newTemplate.key -> newTemplate))
 
-        for (blockedApp @ (_, App(caller, tpe, args, _)) <- applications(newTemplate.tpe)) {
-          val equals = encoder.mkEquals(idT, caller)
-          appBlockers += (blockedApp -> (appBlockers(blockedApp) + TemplateAppInfo(newTemplate, equals, args)))
+        val inst = applications(newTemplate.tpe).foldLeft(instantiation) {
+          case (instantiation, app @ (_, App(caller, _, args, _))) =>
+            val equals = encoder.mkEquals(idT, caller)
+            instantiation withApp (app -> TemplateAppInfo(newTemplate, equals, args))
         }
 
-        (idT, (clauses, Map.empty, appBlockers))
+        (idT, inst)
     }
   }
 
@@ -312,29 +318,30 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
       typeUnroller(blocker, app)
     }
 
-    if (knownFree(tpe) contains caller) instantiation else {
-      val key = blocker -> app
+    val key = blocker -> app
+    if (instantiated(key)) {
+      instantiation
+    } else {
+      instantiated += key
 
-      if (instantiated(key)) instantiation else {
-        instantiated += key
+      if (knownFree(tpe) contains caller) {
+        instantiation withApp (key -> TemplateAppInfo(caller, trueT, args))
+      } else if (byID contains caller) {
+        instantiation withApp (key -> TemplateAppInfo(byID(caller), trueT, args))
+      } else {
 
-        if (byID contains caller) {
-          empty withApp (key -> TemplateAppInfo(byID(caller), trueT, args))
-        } else {
-
-          // make sure that even if byType(tpe) is empty, app is recorded in blockers
-          // so that UnrollingBank will generate the initial block!
-          val init = instantiation withApps Map(key -> Set.empty)
-          val inst = byType(tpe).values.foldLeft(init) {
-            case (instantiation, template) =>
-              val equals = encoder.mkEquals(template.ids._2, caller)
-              instantiation withApp (key -> TemplateAppInfo(template, equals, args))
-          }
-
-          applications += tpe -> (applications(tpe) + key)
-
-          inst
+        // make sure that even if byType(tpe) is empty, app is recorded in blockers
+        // so that UnrollingBank will generate the initial block!
+        val init = instantiation withApps Map(key -> Set.empty)
+        val inst = byType(tpe).values.foldLeft(init) {
+          case (instantiation, template) =>
+            val equals = encoder.mkEquals(template.ids._2, caller)
+            instantiation withApp (key -> TemplateAppInfo(template, equals, args))
         }
+
+        applications += tpe -> (applications(tpe) + key)
+
+        inst
       }
     }
   }
