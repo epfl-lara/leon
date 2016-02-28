@@ -9,6 +9,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Quantification._
 import purescala.Constructors._
+import purescala.Extractors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
@@ -267,6 +268,69 @@ trait AbstractUnrollingSolver[T]
 
   private def getTotalModel: Model = {
     val wrapped = solverGetModel
+
+    def checkForalls(quantified: Set[Identifier], body: Expr): Option[String] = {
+      val matchers = collect[(Expr, Seq[Expr])] {
+        case QuantificationMatcher(e, args) => Set(e -> args)
+        case _ => Set.empty
+      } (body)
+
+      if (matchers.isEmpty)
+        return Some("No matchers found.")
+
+      val matcherToQuants = matchers.foldLeft(Map.empty[Expr, Set[Identifier]]) {
+        case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
+          case Variable(id) if quantified(id) => Set(id)
+          case _ => Set.empty[Identifier]
+        }))
+      }
+
+      val bijectiveMappings = matcherToQuants.filter(_._2.nonEmpty).groupBy(_._2)
+      if (bijectiveMappings.size > 1)
+        return Some("Non-bijective mapping for symbol " + bijectiveMappings.head._2.head._1.asString)
+
+      def quantifiedArg(e: Expr): Boolean = e match {
+        case Variable(id) => quantified(id)
+        case QuantificationMatcher(_, args) => args.forall(quantifiedArg)
+        case _ => false
+      }
+
+      postTraversal(m => m match {
+        case QuantificationMatcher(_, args) =>
+          val qArgs = args.filter(quantifiedArg)
+
+          if (qArgs.nonEmpty && qArgs.size < args.size)
+            return Some("Mixed ground and quantified arguments in " + m.asString)
+
+        case Operator(es, _) if es.collect { case Variable(id) if quantified(id) => id }.nonEmpty =>
+          return Some("Invalid operation on quantifiers " + m.asString)
+
+        case (_: Equals) | (_: And) | (_: Or) | (_: Implies) => // OK
+
+        case Operator(es, _) if (es.flatMap(variablesOf).toSet & quantified).nonEmpty =>
+          return Some("Unandled implications from operation " + m.asString)
+
+        case _ =>
+      }) (body)
+
+      body match {
+        case Variable(id) if quantified(id) =>
+          Some("Unexpected free quantifier " + id.asString)
+        case _ => None
+      }
+    }
+
+    val issues: Iterable[(Seq[Identifier], Expr, String)] = for {
+      q <- templateGenerator.manager.quantifications.view
+      if wrapped.eval(q.holds, BooleanType) == Some(BooleanLiteral(true))
+      msg <- checkForalls(q.quantifiers.map(_._1).toSet, q.body)
+    } yield (q.quantifiers.map(_._1), q.body, msg)
+
+    if (issues.nonEmpty) {
+      val (quantifiers, body, msg) = issues.head
+      reporter.warning("Model soundness not guaranteed for \u2200" +
+        quantifiers.map(_.asString).mkString(",") + ". " + body.asString+" :\n => " + msg)
+    }
 
     val typeInsts = templateGenerator.manager.typeInstantiations
     val partialInsts = templateGenerator.manager.partialInstantiations

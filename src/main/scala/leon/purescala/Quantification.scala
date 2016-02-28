@@ -87,7 +87,7 @@ object Quantification {
 
   object QuantificationMatcher {
     private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
-      case Application(fi: FunctionInvocation, args) => Some((fi, args))
+      case Application(fi: FunctionInvocation, args) => None
       case Application(caller: Application, args) => flatApplication(caller) match {
         case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
         case None => None

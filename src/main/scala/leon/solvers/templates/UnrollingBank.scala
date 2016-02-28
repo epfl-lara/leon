@@ -28,7 +28,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   private val appInfos      = new IncrementalMap[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]()
   private val appBlockers   = new IncrementalMap[(T, App[T]), T]()
   private val blockerToApps = new IncrementalMap[T, (T, App[T])]()
-  private val functionVars  = new IncrementalMap[TypeTree, Set[T]]()
 
   def push() {
     callInfos.push()
@@ -37,7 +36,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     appInfos.push()
     appBlockers.push()
     blockerToApps.push()
-    functionVars.push()
   }
 
   def pop() {
@@ -47,7 +45,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     appInfos.pop()
     appBlockers.pop()
     blockerToApps.pop()
-    functionVars.pop()
   }
 
   def clear() {
@@ -57,7 +54,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     appInfos.clear()
     appBlockers.clear()
     blockerToApps.clear()
-    functionVars.clear()
   }
 
   def reset() {
@@ -67,7 +63,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     appInfos.reset()
     appBlockers.reset()
     blockerToApps.clear()
-    functionVars.reset()
   }
 
   def dumpBlockers() = {
@@ -142,14 +137,13 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   }
 
   private def freshAppBlocks(apps: Traversable[(T, App[T])]) : Seq[T] = {
-    apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map { case app @ (blocker, App(caller, tpe, _)) =>
+    apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map {
+      case app @ (blocker, App(caller, tpe, _, _)) =>
+        val firstB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
+        val clause = encoder.mkImplies(encoder.mkNot(firstB), encoder.mkNot(blocker))
 
-      val firstB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
-      val freeEq = functionVars.getOrElse(tpe, Set()).toSeq.map(t => encoder.mkEquals(t, caller))
-      val clause = encoder.mkImplies(encoder.mkNot(encoder.mkOr((freeEq :+ firstB) : _*)), encoder.mkNot(blocker))
-
-      appBlockers += app -> firstB
-      clause
+        appBlockers += app -> firstB
+        clause
     }
   }
 
@@ -173,10 +167,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     val template = templateGenerator.mkTemplate(expr)
 
     val trArgs = template.tfd.params.map(vd => Left(bindings(Variable(vd.id))))
-
-    for (vd <- template.tfd.params if vd.getType.isInstanceOf[FunctionType]) {
-      functionVars += vd.getType -> (functionVars.getOrElse(vd.getType, Set()) + bindings(vd.toVariable))
-    }
 
     // ...now this template defines clauses that are all guarded
     // by that activating boolean. If that activating boolean is 
@@ -280,7 +270,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       newClauses :+= extension
     }
 
-    var fastAppInfos : Map[(T, App[T]), (Int, Set[TemplateAppInfo[T]])] = Map.empty
+    var fastAppInfos : Seq[((T, App[T]), (Int, Set[TemplateAppInfo[T]]))] = Seq.empty
 
     for ((id, (gen, _, _, infos)) <- newCallInfos; info @ TemplateCallInfo(tfd, args) <- infos) {
       var newCls = Seq[T]()
@@ -294,7 +284,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           // we need to define this defBlocker and link it to definition
           val defBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           defBlockers += info -> defBlocker
-          manager.implies(id, defBlocker)
 
           val template = templateGenerator.mkTemplate(tfd)
           //reporter.debug(template)
@@ -328,6 +317,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       // We connect it to the defBlocker:   blocker => defBlocker
       if (defBlocker != id) {
         newCls :+= encoder.mkImplies(id, defBlocker)
+        manager.implies(id, defBlocker)
       }
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
@@ -338,7 +328,9 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       newClauses ++= newCls
     }
 
-    for ((app @ (b, _), (gen, infos)) <- thisAppInfos ++ fastAppInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
+    for ((app @ (b, _), (gen, infos)) <- thisAppInfos ++ fastAppInfos;
+         info @ TemplateAppInfo(tmpl, equals, args) <- infos;
+         template <- tmpl.left) {
       var newCls = Seq.empty[T]
 
       val lambdaBlocker = lambdaBlockers.get(info) match {
@@ -347,7 +339,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
         case None =>
           val lambdaBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           lambdaBlockers += info -> lambdaBlocker
-          manager.implies(b, lambdaBlocker)
 
           val (newExprs, callBlocks, appBlocks) = template.instantiate(lambdaBlocker, args)
           val blockExprs = freshAppBlocks(appBlocks.keys)
@@ -367,6 +358,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
       val enabler = if (equals == manager.trueT) b else encoder.mkAnd(equals, b)
       newCls :+= encoder.mkImplies(enabler, lambdaBlocker)
+      manager.implies(b, lambdaBlocker)
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
       for (cl <- newCls) {

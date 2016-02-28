@@ -114,6 +114,8 @@ object Types {
       }
     }
 
+    def invariant = classDef.invariant.map(_.typed(tps))
+
     def knownDescendants = classDef.knownDescendants.map( _.typed(tps) )
 
     def knownCCDescendants: Seq[CaseClassType] = classDef.knownCCDescendants.map( _.typed(tps) )
@@ -128,8 +130,8 @@ object Types {
         case t => throw LeonFatalError("Unexpected translated parent type: "+t)
       }
     }
-
   }
+
   case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType
   case class CaseClassType(classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
 
