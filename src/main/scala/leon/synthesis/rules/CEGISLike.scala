@@ -11,6 +11,7 @@ import purescala.Types._
 import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Constructors._
+import purescala.TypeOps.typeDepth
 
 import solvers._
 import grammars._
@@ -70,9 +71,14 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
       def unfolding = termSize
 
-      val grammar = SizeBoundedGrammar(params.grammar, params.optimizations)
+      private val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
-      def rootLabel = SizedNonTerm(params.rootLabel(tupleTypeWrap(p.xs.map(_.getType))), termSize)
+      val grammar = SizeBoundedGrammar(
+        Grammars.typeDepthBound(params.grammar, typeDepth(targetType)),
+        params.optimizations
+      )
+
+      def rootLabel = SizedNonTerm(params.rootLabel(targetType), termSize)
 
       def init(): Unit = {
         updateCTree()
