@@ -35,7 +35,8 @@ import leon.utils.DebugSectionSynthesis
   */
 abstract class TypedTemplateGenerator(t: TypeTree) {
   import StringRender.WithIds
-  /** Provides a hole which can be */
+  /** Provides a hole which can be used multiple times in the expression.
+    * When calling .instantiateWithVars on the results, replaces each hole by a unique constant.*/
   def apply(f: Expr => Expr): TemplateGenerator = {
     val id = FreshIdentifier("ConstToInstantiate", t, true)
     new TemplateGenerator(f(Variable(id)), id, t)
@@ -66,6 +67,7 @@ abstract class TypedTemplateGenerator(t: TypeTree) {
  * @author Mikael
  */
 case object StringRender extends Rule("StringRender") {
+  // A type T augmented with a list of identifiers, for examples the free variables inside T
   type WithIds[T] = (T, List[Identifier])
   
   var EDIT_ME = "_edit_me_"
@@ -365,21 +367,30 @@ case object StringRender extends Rule("StringRender") {
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.map(_._2).flatten.toList)
   
-  class FunDefTemplateGenerator(inputs: Seq[Identifier], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext, program: Program) { fdTemplateGenerator =>
+  class FunDefTemplateGenerator(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) { fdTemplateGenerator =>
+    implicit val program: Program = hctx.program
     implicit val ctx = hctx.context
-    val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
+    protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
     import gcontext._
     
-    val int32Symbol   = NonTerminal(Int32Type)
-    val integerSymbol = NonTerminal(IntegerType)
-    val booleanSymbol = NonTerminal(BooleanType)
-    val stringSymbol  = NonTerminal(StringType)
+    protected val int32Symbol   = NonTerminal(Int32Type)
+    protected val integerSymbol = NonTerminal(IntegerType)
+    protected val booleanSymbol = NonTerminal(BooleanType)
+    protected val stringSymbol  = NonTerminal(StringType)
     
-    val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
+    protected val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
+    
+    case class GrammarUnroller(grammar: Grammar) {
+      def markovize_vertical(): GrammarUnroller = GrammarUnroller(grammar.markovize_vertical())
+      def markovize_horizontal(): GrammarUnroller = GrammarUnroller(grammar.markovize_horizontal())
+      def markovize_abstract_vertical(): GrammarUnroller = GrammarUnroller(grammar.markovize_abstract_vertical())
+      def buildFunDefTemplate() = FunDefTemplateGenerator.this.buildFunDefTemplate(grammar)
+    }
+    def init(): GrammarUnroller = GrammarUnroller(exhaustive(startGrammar(inputs)))
     
     //TODO: Out of order ?
-    def startGrammar = Grammar(
-        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType, Nil, lb) }),
+    def startGrammar(inputs: Seq[Expr]) = Grammar(
+        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType, Nil, Nil) }),
         Map(int32Symbol -> TerminalRHS(Terminal(Int32Type, Stream(expr => (Int32ToString(expr), Nil)))),
             integerSymbol -> TerminalRHS(Terminal(IntegerType, Stream((expr => (IntegerToString(expr), Nil))))),
             booleanSymbol -> TerminalRHS(Terminal(BooleanType, Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
@@ -387,22 +398,24 @@ case object StringRender extends Rule("StringRender") {
         )))
 
     /** Used to produce rules such as Cons => Elem List without context*/
-    def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
+    protected def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
       case NonTerminal(cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2), vc, hc) => 
         val typeMap = tparams.zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
-        Some(HorizontalRHS(fields.map(id => NonTerminal(id.getType))))
+        Some(HorizontalRHS(Terminal(cct, Stream.empty), fields.map(id => NonTerminal(id.getType))))
+      case NonTerminal(cct@TupleType(fields), vc, hc) => 
+        Some(HorizontalRHS(Terminal(cct, Stream.empty), fields.map(tpe => NonTerminal(tpe))))
       case _ => None
     }
     /** Used to produce rules such as List => Cons | Nil without context */
-    def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
+    protected def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
       case NonTerminal(act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps), vc, hc) => 
         Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag))))
       case _ => None
     }
     
     /** Find all dependencies and merge them into one grammar */
-    def extendGrammar(grammar: Grammar): Grammar = {
+    protected def extendGrammar(grammar: Grammar): Grammar = {
       val nts = grammar.nonTerminals
       (grammar /: nts) {
         case (grammar, n) =>
@@ -419,13 +432,16 @@ case object StringRender extends Rule("StringRender") {
     }
     
     /** Applies the transformation extendGrammar until the grammar reaches its fix point. */
-    def exhaustive(grammar: Grammar): Grammar = {
+    protected def exhaustive(grammar: Grammar): Grammar = {
       leon.utils.fixpoint(extendGrammar _)(grammar)
     }
     
     /** Builds a set of fun defs out of the grammar */
-    def buildFunDefTemplate(grammar: Grammar): (WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
+    // TODO: The set of fundefs might even be a stream.
+    protected def buildFunDefTemplate(grammar: Grammar): (Stream[WithIds[Expr]], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
+      // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
       val nts = grammar.nonTerminals
+      // Fresh function name generator.
       val ctx = new FreshFunNameGenerator with PrettyPrinterProvider {
         var funNames: Set[String] = Set()
         override def freshFunName(s: String): String = {
@@ -435,34 +451,79 @@ case object StringRender extends Rule("StringRender") {
         }
         def provided_functions = FunDefTemplateGenerator.this.prettyPrinters
       }
-      object TypedNonTerminal { // case-class non-terminal such as Cons or Nil
-        def unapply(nt: NonTerminal) = if(grammar.rules contains nt) {
-          Some((nt.tag, nt.vcontext.map(_.tag), nt.hcontext.map(_.tag)))
-        } else None
+       // Matches a case class and returns its context type.
+      object TypedNonTerminal {
+        def unapply(nt: NonTerminal) = Some((nt.tag, nt.vcontext.map(_.tag), nt.hcontext.map(_.tag)))
       }
-      /* We create FunDef for vertical and horizontal non-terminals */
-      val funDefs = ((Map[NonTerminal, FunDef](), ctx) /: nts) {
-        case (mgen@(m, gen), nt@TypedNonTerminal(tp, vct, hct)) =>
-          (m + (nt -> createEmptyFunDef(gen, vct, hct, tp)), gen)
-        case (mgen, _) => mgen
+      /* We create FunDef for all on-terminals */
+      val (funDefs, ctx2) = ((Map[NonTerminal, FunDef](), ctx) /: nts) {
+        case (mgen@(m, genctx), nt@TypedNonTerminal(tp, vct, hct)) =>
+          (m + ((nt: NonTerminal) -> createEmptyFunDef(genctx, vct, hct, tp)), genctx)
       }
       
-      /* Interleaves terminals on each horizontal rule */
-      def buildExprForHorizontalExpr(nt: NonTerminal, input: List[Identifier]): Option[WithIds[Expr]] = {
-        grammar.rules(nt) match {
-          case HorizontalRHS(symbols) => 
-            //interleaveIdentifiers(symbols.map(x => (x, Nil))) //TODO add the context
-            None
-          case _ => None
+      def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
+        val inputs = fd.params.map(_.id)
+        e match {
+          case TerminalRHS(Terminal(typeTree, exprStream)) if exprStream.nonEmpty => //Render this as a simple expression.
+            exprStream.map(f => f(Variable(inputs.head)))
+          case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs), _), nts) => // The subsequent calls of this function to sub-functions.
+            val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
+              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(
+                  CaseClassSelector(cct, Variable(inputs.head), ccd.fields(childIndex).id
+                  )))
+            }
+            Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
+          case HorizontalRHS(terminal@Terminal(cct@TupleType(targs), _), nts) => // The subsequent calls of this function to sub-functions.
+            val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
+              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(
+                  TupleSelect(Variable(inputs.head), childIndex + 1)
+                  ))
+            }
+            Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
+          case VerticalRHS(children) => // Match statement.
+            assert(inputs.length == 1 + prettyPrinters.length)
+            val idInput = inputs.head
+            val scrut = Variable(idInput)
+            val matchCases = nt.tag match {
+              case AbstractClassType(acd, typeArgs) =>
+                acd.knownCCDescendants map { ccd => 
+                  children.find(childNt => childNt.tag match {
+                    case CaseClassType(ccd, `typeArgs`) => true
+                    case _ => false
+                  }) match {
+                    case Some(nt) =>
+                      val matchInput = idInput.duplicate(tpe = nt.tag)
+                      MatchCase(InstanceOfPattern(Some(matchInput), nt.tag.asInstanceOf[ClassType]), None,
+                          FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), Seq(Variable(matchInput))))
+                    case None => throw new Exception(s"Could not find $ccd in the children non-terminals $children")
+                  }
+                }
+              case t =>
+                throw new Exception(s"Should have been Vertical RHS, got $t. Rule:\n$nt -> $e\nFunDef:\n$fd")
+            }
+            
+            Stream(interleaveIdentifiers(Seq((MatchExpr(scrut, matchCases), Nil))))
         }
       }
       
-      //g.rules(startSymbol)
-      ???
+      // We create the bodies of these functions  
+      val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
+        val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
+        (fd, bodies)
+      }
       
-      // The expr is given thanks to the first formula with the start symbol.
+      val startExpr = interleaveIdentifiers(grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
+              (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex))), Nil)
+      })
+      (Stream(startExpr), possible_functions)
+      //g.rules(startSymbol)
+      //???
+      
+      // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
       // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.
     }
+    
+    
   }
   
   /** Returns a (possibly recursive) template which can render the inputs in their order.
@@ -643,12 +704,16 @@ case object StringRender extends Rule("StringRender") {
   /** Transforms a sequence of identifiers into a single expression
     * with new string constant identifiers interleaved between, before and after them. */
   def interleaveIdentifiers(exprs: Seq[WithIds[Expr]]): WithIds[Expr] = {
-    StringTemplateGenerator.nested(Hole => {
-      val res = ((StringConcat(Hole, exprs.head._1), exprs.head._2) /: exprs.tail) {
-        case ((finalExpr, finalIds), (expr, ids)) => (StringConcat(StringConcat(finalExpr, Hole), expr), finalIds ++ ids)
-      }
-      (StringConcat(res._1, Hole), res._2)
-    }).instantiateWithVars
+    if(exprs.isEmpty) {
+      StringTemplateGenerator(Hole => Hole).instantiateWithVars
+    } else {
+      StringTemplateGenerator.nested(Hole => {
+        val res = ((StringConcat(Hole, exprs.head._1), exprs.head._2) /: exprs.tail) {
+          case ((finalExpr, finalIds), (expr, ids)) => (StringConcat(StringConcat(finalExpr, Hole), expr), finalIds ++ ids)
+        }
+        (StringConcat(res._1, Hole), res._2)
+      }).instantiateWithVars
+    }
   }
   
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -676,20 +741,23 @@ case object StringRender extends Rule("StringRender") {
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         val originalInputs = inputVariables.map(Variable)
         ruleInstantiations += RuleInstantiation("String conversion") {
-          val (expr, synthesisResult) = createFunDefsTemplates(
+          val (expr, synthesisResult) = new FunDefTemplateGenerator(originalInputs, functionVariables)
+            .init().buildFunDefTemplate()
+          /*val (expr, synthesisResult) = createFunDefsTemplates(
               StringSynthesisContext.empty(
                   abstractStringConverters,
                   originalInputs.toSet,
                   functionVariables
-                  ), originalInputs)
-          val funDefs = synthesisResult.adtToString
+                  ), originalInputs)*/
+          //val funDefs = synthesisResult.adtToString
           
           /*val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
                 t + "\n" + s._2._1.toString
               ))*/
           //hctx.reporter.debug("Inferred expression:\n" + expr + toDebug)
           
-          findSolutions(examples, expr, funDefs.values.toSeq)
+          //findSolutions(examples, expr, funDefs.values.toSeq)
+          findSolutions(examples, expr, synthesisResult)
         }
         
         ruleInstantiations.toList

@@ -11,7 +11,7 @@ import leon.collection._
 import leon.collection.ListOps._
 import leon.lang.synthesis._
 
-object GrammarRender {
+object SymbolGrammarRender {
   /** A tagged symbol */
   abstract class Symbol
   /** A tagged non-terminal, used for markovization */
@@ -24,7 +24,7 @@ object GrammarRender {
   /** A grammar here has a start sequence instead of a start symbol */
   case class Grammar(start: List[Symbol], rules: List[(Symbol, Expansion)])
 
-  def symbol_markov(s: Grammar): String = {
+  def symbol_markov(s: Symbol): String = {
     ???[String]
   } ensuring {
     (res : String) => (s, res) passes {

@@ -13,7 +13,7 @@ class ContextGrammar[SymbolTag, TerminalTag] {
   case class Terminal(tag: SymbolTag, terminalTag: TerminalTag) extends Symbol
   
   /** All possible right-hand-side of rules */
-  case class Expansion(ls: Seq[Seq[Symbol]]) {
+  case class Expansion(ls: List[List[Symbol]]) {
     def symbols = ls.flatten
     def ++(other: Expansion): Expansion = Expansion((ls ++ other.ls).distinct)
     def ++(other: Option[Expansion]): Expansion = other match {case Some(e) => this ++ e case None => this }
@@ -34,27 +34,29 @@ class ContextGrammar[SymbolTag, TerminalTag] {
   
   // Shortcuts and helpers.
   
-  /** An expansion which has only 1 symbol for each right-hand sie */
+  /** An expansion which has only 1 non-terminal for each right-hand side */
   object VerticalRHS{
-    def apply(symbols: Seq[NonTerminal]) = Expansion(symbols.map(symbol => Seq(symbol)))
-    def unapply(e: Expansion): Option[Seq[NonTerminal]] =
-      if(e.ls.forall(rhs => rhs.length == 1 && rhs.head.isInstanceOf[NonTerminal]))
+    def apply(symbols: Seq[NonTerminal]) = Expansion(symbols.map(symbol => List(symbol)).toList)
+    def unapply(e: Expansion): Option[List[NonTerminal]] =
+      if(e.ls.size >= 1 && e.ls.forall(rhs => rhs.length == 1 && rhs.head.isInstanceOf[NonTerminal]))
         Some(e.ls.map(rhs => rhs.head.asInstanceOf[NonTerminal]))
       else None
   }
-  /** An expansion which has only 1 right-hand-side with as many symbols as possible */
+  /** An expansion which has only 1 right-hand-side with one terminal and non-terminals */
   object HorizontalRHS {
-    def apply(symbols: Seq[NonTerminal]) = Expansion(Seq(symbols))
-    def unapply(e: Expansion): Option[Seq[NonTerminal]] = e.ls match {
-      case Seq(symbols) if symbols.forall { x => x.isInstanceOf[NonTerminal] } => Some(symbols.map(_.asInstanceOf[NonTerminal]))
+    def apply(tag: Terminal, symbols: Seq[NonTerminal]) = Expansion(List(tag :: symbols.toList))
+    def unapply(e: Expansion): Option[(Terminal, List[NonTerminal])] = e.ls match {
+      case List((t: Terminal)::(nts : List[_])) 
+        if nts.forall(_.isInstanceOf[NonTerminal]) =>
+        Some((t, nts.map(_.asInstanceOf[NonTerminal])))
       case _ => None
     }
   }
   /** An expansion which has only 1 terminal and only 1 right-hand-side */
   object TerminalRHS {
-    def apply(t: Terminal) = Expansion(Seq(Seq(t)))
+    def apply(t: Terminal) = HorizontalRHS(t, Nil)
     def unapply(e: Expansion): Option[Terminal] = e.ls match {
-      case Seq(Seq(t: Terminal)) => Some(t)
+      case List(List(t: Terminal)) => Some(t)
       case _ => None
     }
   }
