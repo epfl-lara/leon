@@ -9,24 +9,20 @@ import Common._
 import Expressions._
 import Extractors._
 import Constructors._
-import ExprOps.preMap
 
 object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree] {
   def typeDepth(t: TypeTree): Int = t match {
     case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
   }
 
-  def typeParamsOf(t: TypeTree): Set[TypeParameter] = {
-    collect[TypeParameter]({
-      case tp: TypeParameter => Set(tp)
-      case _ => Set.empty
-    })(t)
+  def typeParamsOf(expr: Expr): Set[TypeParameter] = {
+    ExprOps.collect(e => typeParamsOf(e.getType))(expr)
   }
 
-  def typeParamsOf(expr: Expr): Set[TypeParameter] = {
-    var tparams: Set[TypeParameter] = Set.empty
-    ExprOps.preTraversal(e => typeParamsOf(e.getType))(expr)
-    tparams
+  def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
+    case tp: TypeParameter => Set(tp)
+    case NAryType(subs, _) =>
+      subs.flatMap(typeParamsOf).toSet
   }
 
   def canBeSubtypeOf(
@@ -345,7 +341,7 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
           case l @ LetDef(fds, bd) =>
-            val fds_mapping = for(fd <- fds) yield {
+            val fdsMapping = for(fd <- fds) yield {
               val id = fd.id.freshen
               val tparams = fd.tparams map { p => 
                 TypeParameterDef(tpeSub(p.tp).asInstanceOf[TypeParameter])
@@ -362,13 +358,10 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
               (fd, newFd, subCalls)
             }
             // We group the subcalls functions all in once
-            val subCalls = (((None:Option[Expr => Expr]) /: fds_mapping) {
-              case (None, (_, _, subCalls)) => Some(subCalls)
-              case (Some(fn), (_, _, subCalls)) => Some(fn andThen subCalls)
-            }).get
+            val subCalls = fdsMapping.map(_._3).reduceLeft { _ andThen _ }
             
             // We apply all the functions mappings at once
-            val newFds = for((fd, newFd, _) <- fds_mapping) yield {
+            val newFds = for((fd, newFd, _) <- fdsMapping) yield {
               val fullBody = rec(idsMap ++ fd.paramIds.zip(newFd.paramIds))(subCalls(fd.fullBody))
               newFd.fullBody = fullBody
               newFd
@@ -436,16 +429,7 @@ object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree
         }
       }
 
-      //println("\\\\"*80)
-      //println(tps)
-      //println(ids.map{ case (k,v) => k.uniqueName+" -> "+v.uniqueName })
-      //println("\\\\"*80)
-      //println(e)
-      val res = rec(ids)(e)
-      //println(".."*80)
-      //println(res)
-      //println("//"*80)
-      res
+      rec(ids)(e)
     }
   }
 }
