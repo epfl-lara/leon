@@ -413,9 +413,9 @@ object DefOps {
       case e => None
     }(tt).asInstanceOf[T]
     
-    def duplicateClassDef(cd: ClassDef): Unit = {
+    def duplicateClassDef(cd: ClassDef): ClassDef = {
       cdMapCache.get(cd) match {
-        case Some(new_cd) => 
+        case Some(new_cd) => new_cd.get // None would have meant that this class would never be duplicated, which is not possible.
         case None =>
           val parent = cd.parent.map(duplicateAbstractClassType)
           val new_cd = cdMapF(cd).map(f => f(parent)).getOrElse{
@@ -425,6 +425,7 @@ object DefOps {
             }
           }
           cdMapCache += cd -> Some(new_cd)
+          new_cd
       }
     }
     
