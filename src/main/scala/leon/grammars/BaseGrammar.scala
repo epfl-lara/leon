@@ -42,9 +42,9 @@ case object BaseGrammar extends ExpressionGrammar[TypeTree] {
         terminal(InfiniteIntegerLiteral(1), Tags.One ),
         nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
         nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times)//,
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
       )
 
     case TupleType(stps) =>
