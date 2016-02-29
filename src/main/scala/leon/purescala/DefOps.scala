@@ -400,7 +400,7 @@ object DefOps {
       cd match {
         case ccd: CaseClassDef =>
           cdMapFCache.getOrElse(ccd, {
-            val new_cd_potential = cdMapF(ccd)
+            val new_cd_potential = _cdMapF(ccd)
             cdMapFCache += ccd -> new_cd_potential
             new_cd_potential
           })
