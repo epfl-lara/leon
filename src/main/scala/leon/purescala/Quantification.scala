@@ -49,7 +49,7 @@ object Quantification {
     res.filter(ms => ms.forall(m => reverseMap(m) subsetOf ms))
   }
 
-  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[(Set[(Expr, Expr, Seq[Expr])], Set[(Expr, Expr, Seq[Expr])])] = {
+  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Expr, Expr, Seq[Expr])]] = {
     object QMatcher {
       def unapply(e: Expr): Option[(Expr, Seq[Expr])] = e match {
         case QuantificationMatcher(expr, args) =>
@@ -65,49 +65,19 @@ object Quantification {
     val allMatchers = CollectorWithPaths { case QMatcher(expr, args) => expr -> args }.traverse(expr)
     val matchers = allMatchers.map { case ((caller, args), path) => (path, caller, args) }.toSet
 
-    val quorums = extractQuorums(matchers, quantified,
+    extractQuorums(matchers, quantified,
       (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
       (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
-
-    quorums.map(quorum => quorum -> matchers.filter(m => !quorum(m)))
   }
 
-  def extractModel(
-    asMap: Map[Identifier, Expr],
-    funDomains: Map[Identifier, Set[Seq[Expr]]],
-    typeDomains: Map[TypeTree, Set[Seq[Expr]]],
-    evaluator: DeterministicEvaluator
-  ): Map[Identifier, Expr] = asMap.map { case (id, expr) =>
-    id -> (funDomains.get(id) match {
-      case Some(domain) =>
-        PartialLambda(domain.toSeq.map { es =>
-          val optEv = evaluator.eval(Application(expr, es)).result
-          es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + Application(expr, es)))
-        }, None, id.getType.asInstanceOf[FunctionType])
-
-      case None => postMap {
-        case p @ PartialLambda(mapping, dflt, tpe) =>
-          Some(PartialLambda(typeDomains.get(tpe) match {
-            case Some(domain) => domain.toSeq.map { es =>
-              val optEv = evaluator.eval(Application(p, es)).result
-              es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + Application(p, es)))
-            }
-            case _ => Seq.empty
-          }, None, tpe))
-        case _ => None
-      } (expr)
-    })
+  object Domains {
+    def empty = new Domains(Map.empty, Map.empty)
   }
 
-  object HenkinDomains {
-    def empty = new HenkinDomains(Map.empty, Map.empty)
-  }
-
-  class HenkinDomains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+  class Domains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
     def get(e: Expr): Set[Seq[Expr]] = {
       val specialized: Set[Seq[Expr]] = e match {
-        case PartialLambda(_, Some(dflt), _) => scala.sys.error("No domain for non-partial lambdas")
-        case PartialLambda(mapping, _, _) => mapping.map(_._1).toSet
+        case FiniteLambda(mapping, _, _) => mapping.map(_._1).toSet
         case l: Lambda => lambdas.getOrElse(l, Set.empty)
         case _ => Set.empty
       }
@@ -117,7 +87,7 @@ object Quantification {
 
   object QuantificationMatcher {
     private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
-      case Application(fi: FunctionInvocation, args) => Some((fi, args))
+      case Application(fi: FunctionInvocation, args) => None
       case Application(caller: Application, args) => flatApplication(caller) match {
         case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
         case None => None

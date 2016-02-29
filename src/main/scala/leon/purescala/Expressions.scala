@@ -227,7 +227,7 @@ object Expressions {
     }
   }
 
-  case class PartialLambda(mapping: Seq[(Seq[Expr], Expr)], default: Option[Expr], tpe: FunctionType) extends Expr {
+  case class FiniteLambda(mapping: Seq[(Seq[Expr], Expr)], default: Expr, tpe: FunctionType) extends Expr {
     val getType = tpe
   }
 
@@ -271,7 +271,7 @@ object Expressions {
     * @param rhs The expression to the right of `=>`
     * @see [[Expressions.MatchExpr]]
     */
-  case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
+  case class MatchCase(pattern: Pattern, optGuard: Option[Expr], rhs: Expr) extends Tree {
     def expressions: Seq[Expr] = optGuard.toList :+ rhs
   }
 
@@ -361,6 +361,7 @@ object Expressions {
     )
   }
   
+  // Extracts without taking care of the binder. (contrary to Extractos.Pattern)
   object PatternExtractor extends SubTreeOps.Extractor[Pattern] {
     def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
       case (_: InstanceOfPattern) | (_: WildcardPattern) | (_: LiteralPattern[_]) =>

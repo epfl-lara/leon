@@ -313,19 +313,45 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def fillLeonUnit(u: ScalaUnit): Unit = {
+      def extractClassMembers(sym: Symbol, tpl: Template): Unit = {
+        for (t <- tpl.body if !t.isEmpty) {
+          extractFunOrMethodBody(Some(sym), t)
+        }
+
+        classToInvariants.get(sym).foreach { bodies =>
+          val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
+          fd.addFlag(IsADTInvariant)
+
+          val cd = classesToClasses(sym)
+          cd.registerMethod(fd)
+          cd.addFlag(IsADTInvariant)
+          val ctparams = sym.tpe match {
+            case TypeRef(_, _, tps) =>
+              extractTypeParams(tps).map(_._1)
+            case _ =>
+              Nil
+          }
+
+          val tparamsMap = (ctparams zip cd.tparams.map(_.tp)).toMap
+          val dctx = DefContext(tparamsMap)
+
+          val body = andJoin(bodies.toSeq.filter(_ != EmptyTree).map {
+            body => flattenBlocks(extractTreeOrNoTree(body)(dctx))
+          })
+
+          fd.fullBody = body
+        }
+      }
+
       for (t <- u.defs) t match {
         case t if isIgnored(t.symbol) =>
           // ignore
 
         case ExAbstractClass(_, sym, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExCaseClass(_, sym, _, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExObjectDef(n, templ) =>
           for (t <- templ.body if !t.isEmpty) t match {
@@ -334,14 +360,10 @@ trait CodeExtraction extends ASTExtractors {
               None
 
             case ExAbstractClass(_, sym, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case ExCaseClass(_, sym, _, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case t =>
               extractFunOrMethodBody(None, t)
@@ -442,6 +464,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private var isMethod = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
+    private var classToInvariants = Map[Symbol, Set[Tree]]()
 
     /**
      * For the function in $defs with name $owner, find its parameter with index $index,
@@ -543,8 +566,53 @@ trait CodeExtraction extends ASTExtractors {
             if (tpe != id.getType) println(tpe, id.getType)
             LeonValDef(id.setPos(t.pos)).setPos(t.pos)
           }
+
           //println(s"Fields of $sym")
           ccd.setFields(fields)
+
+          // checks whether this type definition could lead to an infinite type
+          def computeChains(tpe: LeonType): Map[TypeParameterDef, Set[LeonClassDef]] = {
+            var seen: Set[LeonClassDef] = Set.empty
+            var chains: Map[TypeParameterDef, Set[LeonClassDef]] = Map.empty
+            
+            def rec(tpe: LeonType): Set[LeonClassDef] = tpe match {
+              case ct: ClassType =>
+                val root = ct.classDef.root
+                if (!seen(ct.classDef.root)) {
+                  seen += ct.classDef.root
+                  for (cct <- ct.root.knownCCDescendants;
+                       (tp, tpe) <- cct.classDef.tparams zip cct.tps) {
+                    val relevant = rec(tpe)
+                    chains += tp -> (chains.getOrElse(tp, Set.empty) ++ relevant)
+                    for (cd <- relevant; vd <- cd.fields) {
+                      rec(vd.getType)
+                    }
+                  }
+                }
+                Set(root)
+
+              case Types.NAryType(tpes, _) =>
+                tpes.flatMap(rec).toSet
+            }
+
+            rec(tpe)
+            chains
+          }
+
+          val chains = computeChains(ccd.typed)
+
+          def check(tp: TypeParameterDef, seen: Set[LeonClassDef]): Unit = chains.get(tp) match {
+            case Some(classDefs) =>
+              if ((seen intersect classDefs).nonEmpty) {
+                outOfSubsetError(sym.pos, "Infinite types are not allowed")
+              } else {
+                for (cd <- classDefs; tp <- cd.tparams) check(tp, seen + cd)
+              }
+            case None =>
+          }
+
+          for (tp <- ccd.tparams) check(tp, Set.empty)
+
         case _ =>
       }
 
@@ -567,6 +635,9 @@ trait CodeExtraction extends ASTExtractors {
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
+
+        case ExRequiredExpression(body) =>
+          classToInvariants += sym -> (classToInvariants.getOrElse(sym, Set.empty) + body)
 
         // Default values for parameters
         case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>
@@ -620,6 +691,8 @@ trait CodeExtraction extends ASTExtractors {
         FreshIdentifier(sym.name.toString, tpe)
       }
     }
+
+    private val invId = FreshIdentifier("inv", BooleanType)
 
     private var isLazy = Set[LeonValDef]()
 
@@ -808,6 +881,10 @@ trait CodeExtraction extends ASTExtractors {
           NoTree(funDef.returnType)
       }
 
+      if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
+        reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
+      }
+
       funDef.fullBody = finalBody
 
       // Post-extraction sanity checks
@@ -936,11 +1013,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       try {
-        val res = extractTree(tr)
-        if (dctx.isExtern) {
-          reporter.warning(res.getPos, "External function could be extracted as Leon tree")
-        }
-        res
+        extractTree(tr)
       } catch {
         case e: ImpureCodeEncounteredException =>
           if (dctx.isExtern) {

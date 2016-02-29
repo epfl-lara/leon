@@ -4,8 +4,8 @@ package leon
 package synthesis
 package rules
 
-import grammars._
-import grammars.transformers._
+import leon.grammars._
+import leon.grammars.transformers._
 import purescala.Types.TypeTree
 
 /** Basic implementation of CEGIS that uses a naive grammar */

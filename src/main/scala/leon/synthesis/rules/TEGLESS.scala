@@ -8,7 +8,7 @@ import purescala.Types._
 import purescala.Extractors._
 import utils._
 import Witnesses._
-import grammars._
+import leon.grammars._
 
 case object TEGLESS extends TEGISLike[NonTerminal[String]]("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {

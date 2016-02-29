@@ -20,7 +20,7 @@ import _root_.smtlib.printer.{ RecursivePrinter => SMTPrinter }
 import _root_.smtlib.parser.Commands.{
   Constructor => SMTConstructor,
   FunDef => SMTFunDef,
-  Assert => _,
+  Assert => SMTAssert,
   _
 }
 import _root_.smtlib.parser.Terms.{
@@ -206,7 +206,7 @@ trait SMTLIBTarget extends Interruptible {
 
     case ft @ FunctionType(from, to) =>
       val elems = r.elems.toSeq.map { case (k, v) => unwrapTuple(k, from.size) -> v }
-      PartialLambda(elems, Some(r.default), ft)
+      FiniteLambda(elems, r.default, ft)
 
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
@@ -533,7 +533,11 @@ trait SMTLIBTarget extends Interruptible {
 
       case gv @ GenericValue(tpe, n) =>
         genericValues.cachedB(gv) {
-          declareVariable(FreshIdentifier("gv" + n, tpe))
+          val v = declareVariable(FreshIdentifier("gv" + n, tpe))
+          for ((ogv, ov) <- genericValues.aToB if ogv.getType == tpe) {
+            emit(SMTAssert(Core.Not(Core.Equals(v, ov))))
+          }
+          v
         }
 
       /**

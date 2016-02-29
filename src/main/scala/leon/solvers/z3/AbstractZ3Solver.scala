@@ -30,7 +30,7 @@ trait AbstractZ3Solver extends Solver {
 
   val library = program.library
 
-  protected[z3] val reporter : Reporter = context.reporter
+  protected val reporter : Reporter = context.reporter
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -51,7 +51,7 @@ trait AbstractZ3Solver extends Solver {
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
 
-  override def free() {
+  override def free(): Unit = {
     freed = true
     if (z3 ne null) {
       z3.delete()
@@ -59,18 +59,13 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  protected[z3] var interrupted = false
-
-  override def interrupt() {
-    interrupted = true
+  override def interrupt(): Unit = {
     if(z3 ne null) {
       z3.interrupt()
     }
   }
 
-  override def recoverInterrupt() {
-    interrupted = false
-  }
+  override def recoverInterrupt(): Unit = ()
 
   def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
     functions.cachedB(tfd) {
@@ -262,7 +257,7 @@ trait AbstractZ3Solver extends Solver {
       }
 
     case other =>
-      throw SolverUnsupportedError(other, this)
+      unsupported(other)
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {
@@ -623,7 +618,7 @@ trait AbstractZ3Solver extends Solver {
 
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
-          if(argsSize == 0 && (variables containsB t)) {
+          if (argsSize == 0 && (variables containsB t)) {
             variables.toA(t)
           } else if(functions containsB decl) {
             val tfd = functions.toA(decl)
@@ -683,13 +678,13 @@ trait AbstractZ3Solver extends Solver {
                   case None => simplestValue(ft)
                   case Some((_, mapping, elseValue)) =>
                     val leonElseValue = rec(elseValue, tt)
-                    PartialLambda(mapping.flatMap { case (z3Args, z3Result) =>
+                    FiniteLambda(mapping.flatMap { case (z3Args, z3Result) =>
                       if (t == z3Args.head) {
                         List((z3Args.tail zip fts).map(p => rec(p._1, p._2)) -> rec(z3Result, tt))
                       } else {
                         Nil
                       }
-                    }, Some(leonElseValue), ft)
+                    }, leonElseValue, ft)
                 }
               }
 
@@ -777,7 +772,7 @@ trait AbstractZ3Solver extends Solver {
     z3.mkFreshConst(id.uniqueName, typeToSort(id.getType))
   }
 
-  def reset() = {
+  def reset(): Unit = {
     throw new CantResetException(this)
   }
 

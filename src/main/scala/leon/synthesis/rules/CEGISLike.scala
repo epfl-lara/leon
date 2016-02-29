@@ -13,8 +13,8 @@ import purescala.DefOps._
 import purescala.Constructors._
 
 import solvers._
-import grammars._
-import grammars.transformers._
+import leon.grammars._
+import leon.grammars.transformers._
 import leon.utils._
 
 import evaluators._

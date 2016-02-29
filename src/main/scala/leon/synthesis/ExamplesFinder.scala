@@ -25,7 +25,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   
   private var keepAbstractExamples = false
   /** If true, will not evaluate examples to check them. */
-  def setKeepAbstractExamples(b: Boolean) = { this.keepAbstractExamples = b; this}
+  def setKeepAbstractExamples(b: Boolean) = { this.keepAbstractExamples = b; this }
   /** Sets if evalution of the result of tests should stop on choose statements.
     * Useful for programming by Example */
   def setEvaluationFailOnChoose(b: Boolean) = { evaluator.setEvaluationFailOnChoose(b); this }

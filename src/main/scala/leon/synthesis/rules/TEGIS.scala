@@ -5,7 +5,7 @@ package synthesis
 package rules
 
 import purescala.Types._
-import grammars._
+import leon.grammars._
 
 case object TEGIS extends TEGISLike[TypeTree]("TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {

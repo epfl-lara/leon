@@ -182,7 +182,6 @@ object Definitions {
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
       case c @ CaseClassDef(_, _, None, _) => c
     }
-
   }
 
   // A class that represents flags that annotate a FunDef with different attributes
@@ -217,7 +216,8 @@ object Definitions {
   case object IsSynthetic extends FunctionFlag
   // Is inlined
   case object IsInlined extends FunctionFlag
-
+  // Is an ADT invariant method
+  case object IsADTInvariant extends FunctionFlag with ClassFlag
 
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
@@ -268,6 +268,15 @@ object Definitions {
 
     def flags = _flags
 
+    private var _invariant: Option[FunDef] = None
+
+    def invariant = _invariant
+    def hasInvariant = flags contains IsADTInvariant
+    def setInvariant(fd: FunDef): Unit = {
+      addFlag(IsADTInvariant)
+      _invariant = Some(fd)
+    }
+
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
 
@@ -287,6 +296,23 @@ object Definitions {
     def knownCCDescendants: Seq[CaseClassDef] = knownDescendants.collect {
       case ccd: CaseClassDef =>
         ccd
+    }
+
+    def isInductive: Boolean = {
+      def induct(tpe: TypeTree, seen: Set[ClassDef]): Boolean = tpe match {
+        case ct: ClassType =>
+          val root = ct.classDef.root
+          seen(root) || ct.fields.forall(vd => induct(vd.getType, seen + root))
+        case TupleType(tpes) =>
+          tpes.forall(tpe => induct(tpe, seen))
+        case _ => true
+      }
+
+      if (this == root && !this.isAbstract) false
+      else if (this != root) root.isInductive
+      else knownCCDescendants.forall { ccd =>
+        ccd.fields.forall(vd => induct(vd.getType, Set(root)))
+      }
     }
 
     val isAbstract: Boolean
@@ -315,6 +341,20 @@ object Definitions {
       AbstractClassType(this, tps)
     }
     def typed: AbstractClassType = typed(tparams.map(_.tp))
+    
+    /** Duplication of this [[CaseClassDef]].
+      * @note This will not add known case class children
+      */
+    def duplicate(
+      id: Identifier                    = this.id.freshen,
+      tparams: Seq[TypeParameterDef]    = this.tparams,
+      parent: Option[AbstractClassType] = this.parent
+    ): AbstractClassDef = {
+      val acd = new AbstractClassDef(id, tparams, parent)
+      acd.addFlags(this.flags)
+      parent.map(_.classDef.ancestors.map(_.registerChild(acd)))
+      acd.copiedFrom(this)
+    }
   }
 
   /** Case classes/objects. */
@@ -351,6 +391,24 @@ object Definitions {
       CaseClassType(this, tps)
     }
     def typed: CaseClassType = typed(tparams.map(_.tp))
+    
+    /** Duplication of this [[CaseClassDef]].
+      * @note This will not replace recursive case class def calls in [[arguments]] nor the parent abstract class types
+      */
+    def duplicate(
+      id: Identifier                    = this.id.freshen,
+      tparams: Seq[TypeParameterDef]    = this.tparams,
+      fields: Seq[ValDef]               = this.fields,
+      parent: Option[AbstractClassType] = this.parent,
+      isCaseObject: Boolean             = this.isCaseObject
+    ): CaseClassDef = {
+      val cd = new CaseClassDef(id, tparams, parent, isCaseObject)
+      cd.setFields(fields)
+      cd.addFlags(this.flags)
+      cd.copiedFrom(this)
+      parent.map(_.classDef.ancestors.map(_.registerChild(cd)))
+      cd
+    }
   }
 
   /** Function/method definition.
@@ -442,6 +500,7 @@ object Definitions {
     def canBeField        = canBeLazyField || canBeStrictField
     def isRealFunction    = !canBeField
     def isSynthetic       = flags contains IsSynthetic
+    def isInvariant       = flags contains IsADTInvariant
     def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
     /* Wrapping in TypedFunDef */

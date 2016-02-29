@@ -22,9 +22,6 @@ class AngelicEvaluator(underlying: NDEvaluator)
     case other@(RuntimeError(_) | EvaluatorError(_)) =>
       other.asInstanceOf[Result[Nothing]]
   }
-
-  /** Checks that `model |= expr` and that quantifications are all valid */
-  def check(expr: Expr, model: Model): CheckResult = underlying.check(expr, model)
 }
 
 class DemonicEvaluator(underlying: NDEvaluator)
@@ -42,7 +39,4 @@ class DemonicEvaluator(underlying: NDEvaluator)
     case other@(RuntimeError(_) | EvaluatorError(_)) =>
       other.asInstanceOf[Result[Nothing]]
   }
-
-  /** Checks that `model |= expr` and that quantifications are all valid */
-  def check(expr: Expr, model: Model): CheckResult = underlying.check(expr, model)
 }

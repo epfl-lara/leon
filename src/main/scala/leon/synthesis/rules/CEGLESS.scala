@@ -8,7 +8,7 @@ import leon.grammars.transformers.Union
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
-import grammars._
+import leon.grammars._
 import Witnesses._
 
 case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {

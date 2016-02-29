@@ -6,7 +6,7 @@ package rules
 
 import solvers.sygus._
 
-import grammars._
+import leon.grammars._
 
 case object SygusCVC4 extends Rule("SygusCVC4") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

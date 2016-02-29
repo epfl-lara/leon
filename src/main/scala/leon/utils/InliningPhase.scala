@@ -3,12 +3,13 @@
 package leon.utils
 
 import leon._
+import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.TypeOps.instantiateType
 import purescala.ExprOps._
 import purescala.DefOps._
-import purescala.Constructors.caseClassSelector
+import purescala.Constructors.{caseClassSelector, application}
 
 object InliningPhase extends TransformationPhase {
 
@@ -25,26 +26,20 @@ object InliningPhase extends TransformationPhase {
 
     def doInline(fd: FunDef) = fd.flags(IsInlined) && !doNotInline(fd)
 
-    def simplifyImplicitClass(e: Expr) = e match {
-      case CaseClassSelector(cct, cc: CaseClass, id) =>
-        Some(caseClassSelector(cct, cc, id))
-
-      case _ =>
-        None
-    }
-
-    def simplify(e: Expr) = {
-      fixpoint(postMap(simplifyImplicitClass))(e)
-    }
-
     for (fd <- p.definedFunctions) {
-      fd.fullBody = simplify(preMap ({
-        case FunctionInvocation(TypedFunDef(fd, tps), args) if doInline(fd) =>
-          val newBody = instantiateType(fd.fullBody, (fd.tparams zip tps).toMap, Map())
-          Some(replaceFromIDs(fd.params.map(_.id).zip(args).toMap, newBody))
+      fd.fullBody = preMap ({
+        case FunctionInvocation(tfd, args) if doInline(tfd.fd) =>
+          Some(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, tfd.fullBody))
+
+        case CaseClassSelector(cct, cc: CaseClass, id) =>
+          Some(caseClassSelector(cct, cc, id))
+
+        case Application(caller: Lambda, args) =>
+          Some(application(caller, args))
+
         case _ =>
           None
-      }, applyRec = true)(fd.fullBody))
+      }, applyRec = true)(fd.fullBody)
     }
 
     filterFunDefs(p, fd => !doInline(fd))

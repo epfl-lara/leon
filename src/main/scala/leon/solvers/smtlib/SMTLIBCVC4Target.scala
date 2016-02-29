@@ -63,7 +63,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
           case ft @ FunctionType(from, to) =>
-            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
+            FiniteLambda(Seq.empty, fromSMT(elem, to), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
@@ -75,7 +75,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
           case ft @ FunctionType(from, to) =>
-            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
+            FiniteLambda(Seq.empty, fromSMT(elem, to), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
@@ -88,9 +88,9 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
 
           case FunctionType(from, v) =>
-            val PartialLambda(mapping, dflt, ft) = fromSMT(arr, otpe)
+            val FiniteLambda(mapping, dflt, ft) = fromSMT(arr, otpe)
             val args = unwrapTuple(fromSMT(key, tupleTypeWrap(from)), from.size)
-            PartialLambda(mapping :+ (args -> fromSMT(elem, v)), dflt, ft)
+            FiniteLambda(mapping :+ (args -> fromSMT(elem, v)), dflt, ft)
 
           case MapType(k, v) =>
             val FiniteMap(elems, k, v) = fromSMT(arr, otpe)

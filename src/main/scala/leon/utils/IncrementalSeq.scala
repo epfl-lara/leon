@@ -13,6 +13,7 @@ class IncrementalSeq[A] extends IncrementalState
                         with Builder[A, IncrementalSeq[A]] {
 
   private[this] val stack = new Stack[ArrayBuffer[A]]()
+  stack.push(new ArrayBuffer())
 
   def clear() : Unit = {
     stack.clear()
@@ -20,11 +21,11 @@ class IncrementalSeq[A] extends IncrementalState
 
   def reset(): Unit = {
     clear()
-    push()
+    stack.push(new ArrayBuffer())
   }
 
   def push(): Unit = {
-    stack.push(new ArrayBuffer())
+    stack.push(stack.head.clone)
   }
 
   def pop(): Unit = {
@@ -33,9 +34,8 @@ class IncrementalSeq[A] extends IncrementalState
 
   def iterator = stack.flatten.iterator
   def +=(e: A) = { stack.head += e; this }
+  def -=(e: A) = { stack.head -= e; this }
 
   override def newBuilder = new scala.collection.mutable.ArrayBuffer()
   def result = this
-
-  push()
 }

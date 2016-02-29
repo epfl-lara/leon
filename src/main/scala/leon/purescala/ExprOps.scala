@@ -884,7 +884,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       GenericValue(tp, 0)
 
     case ft @ FunctionType(from, to) =>
-      PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
+      FiniteLambda(Seq.empty, simplestValue(to), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
@@ -1994,8 +1994,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           Let(i, e, apply(b, args))
         case LetTuple(is, es, b) =>
           letTuple(is, es, apply(b, args))
-        case l@Lambda(params, body) =>
-          l.withParamSubst(args, body)
+        //case l @ Lambda(params, body) =>
+        //  l.withParamSubst(args, body)
         case _ => Application(expr, args)
       }
 
@@ -2017,7 +2017,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         case Application(caller, args) =>
           val newArgs = args.map(rec(_, true))
           val newCaller = rec(caller, false)
-          extract(application(newCaller, newArgs), build)
+          extract(Application(newCaller, newArgs), build)
         case FunctionInvocation(fd, args) =>
           val newArgs = args.map(rec(_, true))
           extract(FunctionInvocation(fd, newArgs), build)

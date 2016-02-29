@@ -11,9 +11,13 @@ import purescala.Types._
 import purescala.Common.Identifier
 import purescala.Definitions.{TypedFunDef, Program}
 import purescala.Expressions._
+import purescala.Quantification._
 
-import leon.solvers.SolverFactory
+import leon.solvers.{SolverFactory, PartialModel}
+import leon.solvers.combinators.UnrollingProcedure
 import leon.utils.StreamUtils._
+
+import scala.concurrent.duration._
 
 class StreamEvaluator(ctx: LeonContext, prog: Program)
   extends ContextualEvaluator(ctx, prog, 50000)
@@ -37,12 +41,12 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           case l @ Lambda(params, body) =>
             val mapping = l.paramSubst(newArgs)
             e(body)(rctx.withNewVars(mapping), gctx).distinct
-          case PartialLambda(mapping, _, _) =>
+          case FiniteLambda(mapping, dflt, _) =>
             // FIXME
-            mapping.collectFirst {
+            Stream(mapping.collectFirst {
               case (pargs, res) if (newArgs zip pargs).forall { case (f, r) => f == r } =>
                 res
-            }.toStream
+            }.getOrElse(dflt))
           case _ =>
             Stream()
         }
@@ -58,16 +62,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       e(IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
 
     case en@Ensuring(body, post) =>
-      if ( exists{
-        case Hole(_,_) => true
-        case WithOracle(_,_) => true
-        case _ => false
-      }(en)) {
-        import synthesis.ConversionPhase.convert
-        e(convert(en, ctx))
-      } else {
-        e(en.toAssert)
-      }
+      e(en.toAssert)
 
     case Error(tpe, desc) =>
       Stream()
@@ -115,6 +110,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
     case Or(args) if args.isEmpty =>
       Stream(BooleanLiteral(false))
+
     case Or(args) =>
       e(args.head).distinct.flatMap {
         case BooleanLiteral(true) => Stream(BooleanLiteral(true))
@@ -126,42 +122,93 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       e(Or(Not(lhs), rhs))
 
     case l @ Lambda(_, _) =>
-      val (nl, structSubst) = normalizeStructure(l)
       val mapping = variablesOf(l).map(id =>
-        structSubst(id) -> (e(Variable(id)) match {
+        id -> (e(Variable(id)) match {
           case Stream(v) => v
           case _ => return Stream()
         })
       ).toMap
-      Stream(replaceFromIDs(mapping, nl))
+      Stream(replaceFromIDs(mapping, l))
 
-    // FIXME
-    case PartialLambda(mapping, tpe, df) =>
-      def solveOne(pair: (Seq[Expr], Expr)) = {
-        val (args, res) = pair
-        for {
-          as <- cartesianProduct(args map e)
-          r  <- e(res)
-        } yield as -> r
+    case fl @ FiniteLambda(mapping, dflt, tpe) =>
+      // finite lambda should always be ground!
+      Stream(fl)
+
+    case f @ Forall(fargs, body) =>
+
+      // TODO add memoization
+      implicit val debugSection = utils.DebugSectionVerification
+
+      ctx.reporter.debug("Executing forall!")
+
+      val mapping = variablesOf(f).map(id => id -> rctx.mappings(id)).toMap
+      val context = mapping.toSeq.sortBy(_._1.uniqueName).map(_._2)
+
+      val tStart = System.currentTimeMillis
+
+      val newCtx = ctx.copy(options = ctx.options.map {
+        case LeonOption(optDef, value) if optDef == UnrollingProcedure.optFeelingLucky =>
+          LeonOption(optDef)(false)
+        case opt => opt
+      })
+
+      val solverf = SolverFactory.getFromSettings(newCtx, program).withTimeout(1.second)
+      val solver  = solverf.getNewSolver()
+
+      try {
+        val cnstr = Not(replaceFromIDs(mapping, body))
+        solver.assertCnstr(cnstr)
+
+        gctx.model match {
+          case pm: PartialModel =>
+            val quantifiers = fargs.map(_.id).toSet
+            val quorums = extractQuorums(body, quantifiers)
+
+            val domainCnstr = orJoin(quorums.map { quorum =>
+              val quantifierDomains = quorum.flatMap { case (path, caller, args) =>
+                val optMatcher = e(expr) match {
+                  case Stream(l: Lambda) => Some(gctx.lambdas.getOrElse(l, l))
+                  case Stream(ev) => Some(ev)
+                  case _ => None
+                }
+
+                optMatcher.toSeq.flatMap { matcher =>
+                  val domain = pm.domains.get(matcher)
+                  args.zipWithIndex.flatMap {
+                    case (Variable(id),idx) if quantifiers(id) =>
+                      Some(id -> domain.map(cargs => path -> cargs(idx)))
+                    case _ => None
+                  }
+                }
+              }
+
+              val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
+              andJoin(domainMap.toSeq.map { case (id, dom) =>
+                orJoin(dom.toSeq.map { case (path, value) => and(path, Equals(Variable(id), value)) })
+              })
+            })
+
+            solver.assertCnstr(domainCnstr)
+
+          case _ =>
+        }
+
+        solver.check match {
+          case Some(negRes) =>
+            val total = System.currentTimeMillis-tStart
+            val res = BooleanLiteral(!negRes)
+            ctx.reporter.debug("Verification took "+total+"ms")
+            ctx.reporter.debug("Finished forall evaluation with: "+res)
+            Stream(res)
+          case _ =>
+            Stream()
+        }
+      } catch {
+        case e: Throwable => Stream()
+      } finally {
+        solverf.reclaim(solver)
+        solverf.shutdown()
       }
-      cartesianProduct(mapping map solveOne) map (PartialLambda(_, tpe, df)) // FIXME!!!
-
-    case f @ Forall(fargs, TopLevelAnds(conjuncts)) =>
-      Stream() // FIXME
-      /*def solveOne(conj: Expr) = {
-        val instantiations = forallInstantiations(gctx, fargs, conj)
-        for {
-          es <- cartesianProduct(instantiations.map { case (enabler, mapping) =>
-            e(Implies(enabler, conj))(rctx.withNewVars(mapping), gctx)
-          })
-          res <- e(andJoin(es))
-        } yield res
-      }
-
-      for {
-        conj <- cartesianProduct(conjuncts map solveOne)
-        res <- e(andJoin(conj))
-      } yield res*/
 
     case p : Passes =>
       e(p.asConstraint)
@@ -177,13 +224,18 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
       val tStart = System.currentTimeMillis
 
-      val solverf = SolverFactory.getFromSettings(ctx, program)
+      val newCtx = ctx.copy(options = ctx.options.map {
+        case LeonOption(optDef, value) if optDef == UnrollingProcedure.optFeelingLucky =>
+          LeonOption(optDef)(false)
+        case opt => opt
+      })
+
+      val solverf = SolverFactory.getFromSettings(newCtx, program)
       val solver  = solverf.getNewSolver()
 
       try {
         val eqs = p.as.map {
-          case id =>
-            Equals(Variable(id), rctx.mappings(id))
+          case id => Equals(Variable(id), rctx.mappings(id))
         }
 
         val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
@@ -346,7 +398,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       (lv, rv) match {
         case (FiniteSet(el1, _), FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _), FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-        case (PartialLambda(m1, _, d1), PartialLambda(m2, _, d2)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
+        case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
       }
 

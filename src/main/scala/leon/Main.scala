@@ -34,7 +34,7 @@ object Main {
 
   // Add whatever you need here.
   lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
-    solvers.z3.FairZ3Component, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
+    solvers.combinators.UnrollingProcedure, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
   )
 
   /*

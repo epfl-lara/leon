@@ -8,7 +8,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Types._
-import solvers.{HenkinModel, Model}
+import solvers.{PartialModel, Model}
 
 abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps: Int) extends Evaluator(ctx, prog) with CEvalHelpers {
 
@@ -48,30 +48,6 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
     }
   }
 
-  def check(ex: Expr, model: Model): CheckResult = {
-    assert(ex.getType == BooleanType, "Can't check non-boolean expression " + ex.asString)
-    try {
-      lastGC = Some(initGC(model, check = true))
-      ctx.timers.evaluators.recursive.runtime.start()
-      val res = e(ex)(initRC(model.toMap), lastGC.get)
-      if (res == BooleanLiteral(true)) EvaluationResults.CheckSuccess
-      else EvaluationResults.CheckValidityFailure
-    } catch {
-      case so: StackOverflowError =>
-        EvaluationResults.CheckRuntimeFailure("Stack overflow")
-      case e @ EvalError(msg) =>
-        EvaluationResults.CheckRuntimeFailure(msg)
-      case e @ RuntimeError(msg) =>
-        EvaluationResults.CheckRuntimeFailure(msg)
-      case jre: java.lang.RuntimeException =>
-        EvaluationResults.CheckRuntimeFailure(jre.getMessage)
-      case qe @ QuantificationError(msg) =>
-        EvaluationResults.CheckQuantificationFailure(msg)
-    } finally {
-      ctx.timers.evaluators.recursive.runtime.stop()
-    }
-  }
-
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Value
 
   def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString} of type ${tree.getType}."
@@ -84,8 +60,8 @@ private[evaluators] trait CEvalHelpers {
   /* This is an effort to generalize forall to non-det. solvers
     def forallInstantiations(gctx:GC, fargs: Seq[ValDef], conj: Expr) = {
 
-      val henkinModel: HenkinModel = gctx.model match {
-        case hm: HenkinModel => hm
+      val henkinModel: PartialModel = gctx.model match {
+        case hm: PartialModel => hm
         case _ => throw EvalError("Can't evaluate foralls without henkin model")
       }
 
