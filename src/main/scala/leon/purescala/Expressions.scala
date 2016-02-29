@@ -787,7 +787,7 @@ object Expressions {
     *
     * [[exprs]] should always contain at least 2 elements.
     * If you are not sure about this requirement, you should use
-    * [[leon.purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
+    * [[leon.purescala.Constructors.tupleWrap purescala's constructor tupleWrap]]
     *
     * @param exprs The expressions in the tuple
     */
