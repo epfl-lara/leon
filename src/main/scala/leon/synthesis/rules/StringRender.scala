@@ -350,7 +350,7 @@ case object StringRender extends Rule("StringRender") {
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
     val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
-    val argId= FreshIdentifier(typeToConvert.asString(hctx.context).toLowerCase()(0).toString, typeToConvert)
+    val argId= FreshIdentifier(typeToConvert.asString(hctx.context).toLowerCase().dropWhile(c => (c < 'a' || c > 'z') && (c < 'A' || c > 'Z')).headOption.getOrElse("x").toString, typeToConvert)
     val tparams = hctx.sctx.functionContext.tparams
     val fd = new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_)).toList, StringType) // Empty function.
     fd
@@ -437,7 +437,7 @@ case object StringRender extends Rule("StringRender") {
     }
     
     /** Builds a set of fun defs out of the grammar */
-    // TODO: The set of fundefs might even be a stream.
+    // TODO: The set of fundefs might even be a stream (e.g. with markovization...?)
     protected def buildFunDefTemplate(grammar: Grammar): (Stream[WithIds[Expr]], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
       // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
       val nts = grammar.nonTerminals
@@ -468,16 +468,16 @@ case object StringRender extends Rule("StringRender") {
             exprStream.map(f => f(Variable(inputs.head)))
           case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs), _), nts) => // The subsequent calls of this function to sub-functions.
             val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
-              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(
+              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
                   CaseClassSelector(cct, Variable(inputs.head), ccd.fields(childIndex).id
-                  )))
+                  )) ++ prettyPrinters.map(Variable))
             }
             Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
           case HorizontalRHS(terminal@Terminal(cct@TupleType(targs), _), nts) => // The subsequent calls of this function to sub-functions.
             val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
-              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(
+              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
                   TupleSelect(Variable(inputs.head), childIndex + 1)
-                  ))
+                  ) ++ prettyPrinters.map(Variable))
             }
             Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
           case VerticalRHS(children) => // Match statement.
@@ -488,13 +488,13 @@ case object StringRender extends Rule("StringRender") {
               case AbstractClassType(acd, typeArgs) =>
                 acd.knownCCDescendants map { ccd => 
                   children.find(childNt => childNt.tag match {
-                    case CaseClassType(ccd, `typeArgs`) => true
+                    case CaseClassType(`ccd`, `typeArgs`) => true
                     case _ => false
                   }) match {
                     case Some(nt) =>
                       val matchInput = idInput.duplicate(tpe = nt.tag)
                       MatchCase(InstanceOfPattern(Some(matchInput), nt.tag.asInstanceOf[ClassType]), None,
-                          FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), Seq(Variable(matchInput))))
+                          FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), List(Variable(matchInput)) ++ prettyPrinters.map(Variable)))
                     case None => throw new Exception(s"Could not find $ccd in the children non-terminals $children")
                   }
                 }
@@ -742,7 +742,7 @@ case object StringRender extends Rule("StringRender") {
         val originalInputs = inputVariables.map(Variable)
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, synthesisResult) = new FunDefTemplateGenerator(originalInputs, functionVariables)
-            .init().buildFunDefTemplate()
+            .init().markovize_horizontal().markovize_vertical().markovize_abstract_vertical().buildFunDefTemplate()
           /*val (expr, synthesisResult) = createFunDefsTemplates(
               StringSynthesisContext.empty(
                   abstractStringConverters,
