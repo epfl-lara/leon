@@ -22,7 +22,7 @@ object SynthesisPhase extends TransformationPhase {
   val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
   val optCEGISVanuatoo     = LeonFlagOptionDef("cegis:vanuatoo",   "Generate inputs using new korat-style generator",        false)
   val optCEGISNaiveGrammar = LeonFlagOptionDef("cegis:naive",      "Use the old naive grammar for CEGIS",                    false)
-  val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 5L, "N")
+  val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 7L, "N")
 
   // Other rule options
   val optSpecifyRecCalls = LeonFlagOptionDef("reccalls", "Use full value as spec for introduced recursive calls", true)
