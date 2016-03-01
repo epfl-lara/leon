@@ -3,7 +3,6 @@
 package leon
 package solvers
 
-import purescala.Common._
 import purescala.Expressions._
 
 class SimpleSolverAPI(sf: SolverFactory[Solver]) {
@@ -34,17 +33,17 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
     }
   }
 
-  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Model, Set[Expr]) = {
+  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): Option[Either[Set[Expr], Model]] = {
     val s = sf.getNewSolver()
     try {
       s.assertCnstr(expression)
       s.checkAssumptions(assumptions) match {
-        case Some(true) =>
-          (Some(true), s.getModel, Set())
         case Some(false) =>
-          (Some(false), Model.empty, s.getUnsatCore)
+          Some(Left(s.getUnsatCore))
+        case Some(true) =>
+          Some(Right(s.getModel))
         case None =>
-          (None, Model.empty, Set())
+          None
       }
     } finally {
       sf.reclaim(s)
