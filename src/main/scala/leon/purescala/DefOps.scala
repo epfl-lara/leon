@@ -556,7 +556,7 @@ object DefOps {
         case None =>
           if(fdMapFCached(fd).isDefined || p.callGraph.transitiveCallees(fd).exists(fd => fdMapFCached(fd).isDefined))  {
             duplicateParents(fd)
-          } else { // Verify that for all 
+          } else {
             fdMapCache += fd -> None
           }
           fdMapCache(fd).getOrElse(fd)
@@ -612,7 +612,9 @@ object DefOps {
     }
     
     for(fd <- newP.definedFunctions) {
-      fd.fullBody = replaceClassDefsUse(fd.fullBody)
+      if(fdMapCache.getOrElse(fd, None).isDefined) {
+        fd.fullBody = replaceClassDefsUse(fd.fullBody)
+      }
     }
     (newP,
         cdMapCache.collect{case (cd, Some(new_cd)) => cd -> new_cd},
