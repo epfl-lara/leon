@@ -589,12 +589,14 @@ object DefOps {
     def replaceClassDefsUse(e: Expr): Expr = {
       ExprOps.postMap {
         case Let(id, expr, body) => Some(Let(idMap(id), expr, body))
+        case Lambda(vd, body) => Some(Lambda(vd.map(vd => ValDef(idMap(vd.id))), body))
         case Variable(id) => Some(Variable(idMap(id)))
         case ci @ CaseClass(ct, args) =>
           ciMapF(ci, tpMap(ct)).map(_.setPos(ci))
         case CaseClassSelector(cct, expr, identifier) =>
           val new_cct = tpMap(cct)
-          Some(CaseClassSelector(new_cct, expr, (if(new_cct != cct) idMap(identifier) else identifier)))
+          val selection = (if(new_cct != cct || new_cct.classDef.fieldsIds != cct.classDef.fieldsIds) idMap(identifier) else identifier)
+          Some(CaseClassSelector(new_cct, expr, selection))
         case IsInstanceOf(e, ct) => Some(IsInstanceOf(e, tpMap(ct)))
         case AsInstanceOf(e, ct) => Some(AsInstanceOf(e, tpMap(ct)))
         case MatchExpr(scrut, cases) => 
