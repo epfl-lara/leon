@@ -63,8 +63,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
                  }
                }
              } else {
-               /* All type parameters that used to be free are assigned
-                */
+               // All type parameters that used to be free are assigned
                List(tfd)
              }
            case None =>
@@ -75,7 +74,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
        }
      }
 
-     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || (exclude contains tfd.fd)
+     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || tfd.fd.isInner || (exclude contains tfd.fd)
      val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
 
      funcs.map{ tfd =>
