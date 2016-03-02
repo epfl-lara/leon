@@ -1426,13 +1426,11 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           (cs1.size == cs2.size && casesMatch(cs1,cs2)) && isHomo(in1,in2) && isHomo(out1,out2)
 
         case (FunctionInvocation(tfd1, args1), FunctionInvocation(tfd2, args2)) =>
-          // TODO: Check type params
-          fdHomo(tfd1.fd, tfd2.fd) &&
+          idHomo(tfd1.fd.id, tfd2.fd.id) && tfd1.tps.zip(tfd2.tps).mergeall{ case (t1, t2) => if(t1 == t2) Option(Map()) else None} &&
           (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
 
         case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
-          // TODO: Check type params
-          fdHomo(tfd1.fd, tfd2.fd) &&
+          idHomo(tfd1.fd.id, tfd2.fd.id) && tfd1.tps.zip(tfd2.tps).mergeall{ case (t1, t2) => if(t1 == t2) Option(Map()) else None} &&
           (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
 
         case (Lambda(defs, body), Lambda(defs2, body2)) =>
