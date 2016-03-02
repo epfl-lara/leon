@@ -37,6 +37,7 @@ object SelfPrettyPrinter {
   * @param The list of functions which should be excluded from pretty-printing (to avoid rendering counter-examples of toString methods using the method itself)
   * @return a user defined string for the given typed expression. */
 class SelfPrettyPrinter {
+  implicit val section = leon.utils.DebugSectionEvaluation
   private var allowedFunctions = Set[FunDef]()
   private var excluded = Set[FunDef]()
   /** Functions whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
@@ -45,20 +46,16 @@ class SelfPrettyPrinter {
   def excludeFunctions(fds: Set[FunDef]) = { excluded ++= fds; this }
   def excludeFunction(fd: FunDef) = { excluded += fd; this }
 
-  /** Returns a list of possible lambdas that can transform the input type to a String*/
+  /** Returns a list of possible lambdas that can transform the input type to a String.
+    * At this point, it does not consider yet the inputType. Only [[prettyPrinterFromCandidate]] will consider it. */
   def prettyPrintersForType(inputType: TypeTree/*, existingPp: Map[TypeTree, List[Lambda]] = Map()*/)(implicit ctx: LeonContext, program: Program): Stream[Lambda] = {
-    // Use the other argument if you need recursive typing (?)
     program.definedFunctions.toStream flatMap {
       fd =>
         val isCandidate = fd.returnType == StringType &&
         fd.params.length >= 1 &&
         !excluded(fd) &&
         (allowedFunctions(fd) || (
-        //TypeOps.isSubtypeOf(v.getType, fd.params.head.getType) &&
-        fd.id.name.toLowerCase().endsWith("tostring") &&
-        program.callGraph.transitiveCallees(fd).forall { fde => 
-          !purescala.ExprOps.exists( _.isInstanceOf[Choose])(fde.fullBody)
-        }))
+        fd.id.name.toLowerCase().endsWith("tostring")))
         if(isCandidate) {
           prettyPrinterFromCandidate(fd, inputType)
         } else Stream.Empty
@@ -97,28 +94,33 @@ class SelfPrettyPrinter {
   def print(v: Expr, orElse: =>String, excluded: Set[FunDef] = Set())(implicit ctx: LeonContext, program: Program): String = {
     this.excluded = excluded
     val s = prettyPrintersForType(v.getType)   // TODO: Included the variable excluded if necessary.
-    if(s.isEmpty) {
-      orElse
-    } else {
-      val l: Lambda = s.head
-      println("Executing pretty printer for type " + v.getType + " : " + l + " on " + v)
-      val ste = new DefaultEvaluator(ctx, program)
-      try {
-        val toEvaluate = application(l, Seq(v))
-        val result = ste.eval(toEvaluate)
-        
-        result.result match {
-          case Some(StringLiteral(res)) if res != "" =>
-            res
-          case res =>
-            println("not a string literal "  + res)
+    s.take(100).find(l => l match { // Limit the number of pretty-printers.
+      case Lambda(_, FunctionInvocation(TypedFunDef(fd, _), _)) =>
+        (program.callGraph.transitiveCallees(fd) + fd).forall { fde => 
+        !ExprOps.exists( _.isInstanceOf[Choose])(fde.fullBody)
+      }
+      case _ => false
+    }) match {
+      case None => orElse
+      case Some(l) =>
+        ctx.reporter.debug("Executing pretty printer for type " + v.getType + " : " + l + " on " + v)
+        val ste = new DefaultEvaluator(ctx, program)
+        try {
+          val toEvaluate = application(l, Seq(v))
+          val result = ste.eval(toEvaluate)
+          
+          result.result match {
+            case Some(StringLiteral(res)) if res != "" =>
+              res
+            case res =>
+              ctx.reporter.debug("not a string literal "  + res)
+              orElse
+          }
+        } catch {
+          case e: evaluators.ContextualEvaluator#EvalError =>
+            ctx.reporter.debug("Error "  + e.msg)
             orElse
         }
-      } catch {
-        case e: evaluators.ContextualEvaluator#EvalError =>
-          println("Error "  + e.msg)
-          orElse
-      }
     }
   }
 }
