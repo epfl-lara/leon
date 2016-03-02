@@ -4,6 +4,7 @@ package leon
 package evaluators
 
 import purescala.Extractors.Operator
+import purescala.Constructors._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Definitions.{TypedFunDef, Program}
@@ -73,10 +74,10 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       val frame = rctx.withNewVars(tfd.paramSubst(evArgsValues))
   
       val callResult = if ((evArgsValues forall ExprOps.isValue) && tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-        (scalaEv.call(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+        (scalaEv.call(tfd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
       } else {
         if((!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) || tfd.body.exists(b => ExprOps.exists(e => e.isInstanceOf[Choose])(b))) {
-          (FunctionInvocation(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+          (functionInvocation(tfd.fd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
         } else {
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
           e(body)(frame, gctx)

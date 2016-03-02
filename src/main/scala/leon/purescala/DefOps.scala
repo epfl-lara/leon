@@ -413,18 +413,21 @@ object DefOps {
       case e => None
     }(tt).asInstanceOf[T]
     
-    def duplicateClassDef(cd: ClassDef): Unit = {
+    def duplicateClassDef(cd: ClassDef): ClassDef = {
       cdMapCache.get(cd) match {
         case Some(new_cd) => 
+          new_cd.get // None would have meant that this class would never be duplicated, which is not possible.
         case None =>
           val parent = cd.parent.map(duplicateAbstractClassType)
           val new_cd = cdMapF(cd).map(f => f(parent)).getOrElse{
             cd match {
               case acd:AbstractClassDef => acd.duplicate(parent = parent)
-              case ccd:CaseClassDef => ccd.duplicate(parent = parent, fields = ccd.fieldsIds.map(id => ValDef(idMap(id)))) // Should not cycle since fields have to be abstract.
+              case ccd:CaseClassDef => 
+                ccd.duplicate(parent = parent, fields = ccd.fieldsIds.map(id => ValDef(idMap(id)))) // Should not cycle since fields have to be abstract.
             }
           }
           cdMapCache += cd -> Some(new_cd)
+          new_cd
       }
     }
     
@@ -439,10 +442,11 @@ object DefOps {
     // If at least one descendants or known case class needs conversion, then all the hierarchy will be converted.
     // If something extends List[A] and A is modified, then the first something should be modified.
     def dependencies(s: ClassDef): Set[ClassDef] = {
-      Set(s) ++ s.parent.toList.flatMap(p => TypeOps.collect[ClassDef]{
-        case AbstractClassType(acd, _) => Set(acd:ClassDef) ++ acd.knownCCDescendants
+      leon.utils.fixpoint((s: Set[ClassDef]) => s ++ s.flatMap(_.knownDescendants) ++ s.flatMap(_.parent.toList.flatMap(p => TypeOps.collect[ClassDef]{
+        case AbstractClassType(acd, _) => Set(acd:ClassDef) ++ acd.knownDescendants
         case CaseClassType(ccd, _) => Set(ccd:ClassDef)
-      }(p))
+        case _ => Set()
+      }(p))))(Set(s))
     }
     
     def cdMap(cd: ClassDef): ClassDef = {
@@ -460,7 +464,8 @@ object DefOps {
     }
     def idMap(id: Identifier): Identifier = {
       if (!(idMapCache contains id)) {
-        idMapCache += id -> id.duplicate(tpe = tpMap(id.getType))
+        val new_id = id.duplicate(tpe = tpMap(id.getType))
+        idMapCache += id -> new_id
       }
       idMapCache(id)
     }
@@ -473,6 +478,7 @@ object DefOps {
       TypeOps.exists{
         case AbstractClassType(acd, _) => cdMap(acd) != acd
         case CaseClassType(ccd, _) => cdMap(ccd) != ccd
+        case _ => false
       }(tp)
     }
     
@@ -550,7 +556,7 @@ object DefOps {
         case None =>
           if(fdMapFCached(fd).isDefined || p.callGraph.transitiveCallees(fd).exists(fd => fdMapFCached(fd).isDefined))  {
             duplicateParents(fd)
-          } else { // Verify that for all 
+          } else {
             fdMapCache += fd -> None
           }
           fdMapCache(fd).getOrElse(fd)
@@ -583,11 +589,14 @@ object DefOps {
     def replaceClassDefsUse(e: Expr): Expr = {
       ExprOps.postMap {
         case Let(id, expr, body) => Some(Let(idMap(id), expr, body))
+        case Lambda(vd, body) => Some(Lambda(vd.map(vd => ValDef(idMap(vd.id))), body))
         case Variable(id) => Some(Variable(idMap(id)))
         case ci @ CaseClass(ct, args) =>
           ciMapF(ci, tpMap(ct)).map(_.setPos(ci))
         case CaseClassSelector(cct, expr, identifier) =>
-          Some(CaseClassSelector(tpMap(cct), expr, idMap(identifier)))
+          val new_cct = tpMap(cct)
+          val selection = (if(new_cct != cct || new_cct.classDef.fieldsIds != cct.classDef.fieldsIds) idMap(identifier) else identifier)
+          Some(CaseClassSelector(new_cct, expr, selection))
         case IsInstanceOf(e, ct) => Some(IsInstanceOf(e, tpMap(ct)))
         case AsInstanceOf(e, ct) => Some(AsInstanceOf(e, tpMap(ct)))
         case MatchExpr(scrut, cases) => 
@@ -603,7 +612,9 @@ object DefOps {
     }
     
     for(fd <- newP.definedFunctions) {
-      fd.fullBody = replaceClassDefsUse(fd.fullBody)
+      if(fdMapCache.getOrElse(fd, None).isDefined) {
+        fd.fullBody = replaceClassDefsUse(fd.fullBody)
+      }
     }
     (newP,
         cdMapCache.collect{case (cd, Some(new_cd)) => cd -> new_cd},

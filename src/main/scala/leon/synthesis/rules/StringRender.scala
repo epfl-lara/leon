@@ -246,7 +246,7 @@ case object StringRender extends Rule("StringRender") {
     var transformMap = Map[FunDef, FunDef]()
     def mapExpr(body: Expr): Expr = {
       ExprOps.preMap((e: Expr) => e match {
-        case FunctionInvocation(TypedFunDef(fd, _), args) if fds(fd) => Some(FunctionInvocation(getMapping(fd).typed, args))
+        case FunctionInvocation(TypedFunDef(fd, _), args) if fds(fd) => Some(functionInvocation(getMapping(fd), args))
         case e => None
       })(body)
     }
