@@ -71,19 +71,19 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     val pathToModule = path.takeWhile{!_.isInstanceOf[ModuleDef]}
     val rest = path.drop(pathToModule.size)
 
-    val upToModule = pathToNames(pathToModule, false).map(encodeName).mkString(".")
+    val upToModule = pathToNames(pathToModule, false).map(encodeName)
 
-    if(rest.isEmpty) {
+    (if(rest.isEmpty) {
       upToModule
     } else {
       d match {
         case md: ModuleDef =>
-          upToModule+"."+encodeName(md.id.name)+"$"
+          upToModule :+ encodeName(md.id.name)+"$"
         case _ =>
           val afterModule = pathToNames(rest, false).map(encodeName).mkString("$")
-          upToModule+"."+afterModule
+          upToModule :+ afterModule
       }
-    }
+    }).mkString(".")
   }
 
   def call(tfd: TypedFunDef, args: Seq[Expr]): Expr = {
