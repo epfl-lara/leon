@@ -3,16 +3,19 @@
 package leon
 package grammars
 
+import synthesis.Witnesses.Hint
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.TypeOps._
+import purescala.Extractors.TopLevelAnds
+import purescala.ExprOps.formulaSize
 
 import synthesis.{SynthesisContext, Problem}
 
 object Grammars {
 
-  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, exclude: Set[FunDef], ws: Expr, pc: Expr): ExpressionGrammar[TypeTree] = {
+  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, exclude: Set[FunDef]): ExpressionGrammar[TypeTree] = {
     BaseGrammar ||
     EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }) ||
     OneOf(inputs) ||
@@ -22,7 +25,9 @@ object Grammars {
   }
 
   def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
-    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.settings.functionsToIgnore,  p.ws, p.pc)
+    val TopLevelAnds(ws) = p.ws
+    val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
+    default(sctx.program, p.as.map(_.toVariable) ++ hints, sctx.functionContext, sctx.settings.functionsToIgnore)
   }
 
   def typeDepthBound[T <: Typed](g: ExpressionGrammar[T], b: Int) = {

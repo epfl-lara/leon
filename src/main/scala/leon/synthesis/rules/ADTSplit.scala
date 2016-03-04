@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import Witnesses.Hint
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
@@ -66,27 +67,29 @@ case object ADTSplit extends Rule("ADT Split.") {
         val oas = p.as.filter(_ != id)
 
         val subInfo0 = for(ccd <- cases) yield {
-           val cct    = CaseClassType(ccd, act.tps)
+          val cct    = CaseClassType(ccd, act.tps)
 
-           val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
+          val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
 
-           val subPhi = subst(id -> CaseClass(cct, args.map(Variable)), p.phi)
-           val subPC  = subst(id -> CaseClass(cct, args.map(Variable)), p.pc)
-           val subWS  = subst(id -> CaseClass(cct, args.map(Variable)), p.ws)
+          val whole =  CaseClass(cct, args.map(Variable))
 
-           val eb2 = p.qeb.mapIns { inInfo =>
-              inInfo.toMap.apply(id) match {
-                case CaseClass(`cct`, vs) =>
-                  List(vs ++ inInfo.filter(_._1 != id).map(_._2))
-                case _ =>
-                  Nil
-              }
-           }
+          val subPhi = subst(id -> whole, p.phi)
+          val subPC  = subst(id -> whole, p.pc)
+          val subWS  = subst(id -> whole, p.ws)
 
-           val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs, eb2)
-           val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
+          val eb2 = p.qeb.mapIns { inInfo =>
+             inInfo.toMap.apply(id) match {
+               case CaseClass(`cct`, vs) =>
+                 List(vs ++ inInfo.filter(_._1 != id).map(_._2))
+               case _ =>
+                 Nil
+             }
+          }
 
-           (cct, subProblem, subPattern)
+          val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs, eb2).withWs(Seq(Hint(whole)))
+          val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
+
+          (cct, subProblem, subPattern)
         }
 
         val subInfo = subInfo0.sortBy{ case (cct, _, _) =>
