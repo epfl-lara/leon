@@ -8,10 +8,10 @@ import purescala.TypeOps._
 import purescala.Types.TypeTree
 
 /** Generates one production rule for each expression in a sequence that has compatible type */
-case class OneOf(inputs: Seq[Expr]) extends ExpressionGrammar[TypeTree] {
-  def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
+case class OneOf(inputs: Seq[Expr]) extends SimpleExpressionGrammar {
+  def computeProductions(lab: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
     inputs.collect {
-      case i if isSubtypeOf(i.getType, t) =>
+      case i if isSubtypeOf(i.getType, lab.getType) =>
         terminal(i)
     }
   }

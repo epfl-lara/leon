@@ -69,7 +69,7 @@ object QuestionBuilder {
   }
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
-  object SpecialStringValueGrammar extends ExpressionGrammar[TypeTree] {
+  object SpecialStringValueGrammar extends SimpleExpressionGrammar {
     def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
       case StringType =>
         List(
@@ -109,7 +109,7 @@ class QuestionBuilder[T <: Expr](
   private var solutionsToTake = 30
   private var expressionsToTake = 30
   private var keepEmptyAlternativeQuestions: T => Boolean = Set()
-  private var value_enumerator: ExpressionGrammar[TypeTree] = ValueGrammar
+  private var value_enumerator: ExpressionGrammar = ValueGrammar
 
   /** Sets the way to sort questions. See [[QuestionSortingType]] */
   def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
@@ -124,7 +124,7 @@ class QuestionBuilder[T <: Expr](
   /** Sets if when there is no alternative, the question should be kept. */
   def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
   /** Sets the way to enumerate expressions */
-  def setValueEnumerator(v: ExpressionGrammar[TypeTree]) = value_enumerator = v
+  def setValueEnumerator(v: ExpressionGrammar) = value_enumerator = v
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)

@@ -15,18 +15,18 @@ import grammars._
 
 import bonsai.enumerators._
 
-case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
+case object BottomUpTEGIS extends BottomUpTEGISLike("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
     Grammars.default(sctx, p)
   }
 
-  def getRootLabel(tpe: TypeTree): TypeTree = tpe
+  def getRootLabel(tpe: TypeTree): Label = Label(tpe)
 }
 
-abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
-  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
+abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
+  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar
 
-  def getRootLabel(tpe: TypeTree): T
+  def getRootLabel(tpe: TypeTree): Label
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -47,13 +47,13 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
 
           val nTests = tests.size
 
-          var compiled = Map[ProductionRule[T, Expr], Vector[Vector[Expr]] => Option[Vector[Expr]]]()
+          var compiled = Map[ProductionRule[Label, Expr], Vector[Vector[Expr]] => Option[Vector[Expr]]]()
 
           /**
            * Compile Generators to functions from Expr to Expr. The compiled
            * generators will be passed to the enumerator
            */
-          def compile(gen: ProductionRule[T, Expr]): Vector[Vector[Expr]] => Option[Vector[Expr]] = {
+          def compile(gen: ProductionRule[Label, Expr]): Vector[Vector[Expr]] => Option[Vector[Expr]] = {
             compiled.getOrElse(gen, {
               val executor = if (gen.subTrees.isEmpty) {
 
@@ -104,7 +104,7 @@ abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
           val targetType   = tupleTypeWrap(p.xs.map(_.getType))
           val wrappedTests = tests.map { case (is, os) => (is, tupleWrap(os))}
 
-          val enum = new BottomUpEnumerator[T, Expr, Expr, ProductionRule[T, Expr]](
+          val enum = new BottomUpEnumerator[Label, Expr, Expr, ProductionRule[Label, Expr]](
             grammar.getProductions(_)(hctx),
             wrappedTests,
             { (vecs, gen) =>
