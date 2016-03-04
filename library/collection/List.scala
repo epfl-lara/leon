@@ -553,6 +553,17 @@ sealed abstract class List[T] {
     case (current, next) => current ++ Set(next)
   }
 
+  /** Transforms a list to a string using prefix, middle and suffix markers. */
+  def makeToString(prefix: String, middle: String, suffix: String, f: T => String): String = {
+  def rec(list: List[T], f: T => String): String = list match {
+    case Cons(a, b) => middle + f(a) + rec(b, f)
+    case Nil => suffix
+  }
+  prefix + (this match {
+    case Cons(a, b) => f(a) + rec(b, f)
+    case Nil => suffix
+  })
+}
 }
 
 @isabelle.constructor(name = "List.list.Cons")
