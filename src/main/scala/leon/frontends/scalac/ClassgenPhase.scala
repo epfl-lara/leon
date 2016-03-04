@@ -31,7 +31,7 @@ object ClassgenPhase extends LeonPhase[List[String], List[String]] {
         _.getLocation.getPath
       }.orElse( for {
         // We are in Eclipse. Look in Eclipse plugins to find scala lib
-        eclipseHome <- Option(System.getenv("ECLIPSE_HOME")) 
+        eclipseHome <- Option(System.getenv("ECLIPSE_HOME"))
         pluginsHome = eclipseHome + "/plugins"
         plugins <- scala.util.Try(new File(pluginsHome).listFiles().map{ _.getAbsolutePath }).toOption
         path <- plugins.find{ _ contains "scala-library"}
@@ -40,7 +40,7 @@ object ClassgenPhase extends LeonPhase[List[String], List[String]] {
         "make sure to set the ECLIPSE_HOME environment variable to your Eclipse installation home directory"
       ))
 
-      val tempOut = Files.createTempDirectory(new File("tmp/").toPath, "classes").toFile
+      val tempOut = Files.createTempDirectory("classes").toFile
 
       settings.classpath.value   = scalaLib
       settings.usejavacp.value   = false
