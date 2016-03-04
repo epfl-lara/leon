@@ -12,7 +12,7 @@ import purescala.Constructors._
   * without regard of context (variables in scope, current function etc.)
   * Also does some trivial simplifications.
   */
-case object BaseGrammar extends ExpressionGrammar[TypeTree] {
+case object BaseGrammar extends SimpleExpressionGrammar {
 
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
     case BooleanType =>

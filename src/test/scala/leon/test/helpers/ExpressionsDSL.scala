@@ -36,6 +36,13 @@ trait ExpressionsDSL {
   val q = FreshIdentifier("q", BooleanType).toVariable
   val r = FreshIdentifier("r", BooleanType).toVariable
 
+  def id(name: String, tpe: TypeTree)(implicit pgm: Program): Identifier = {
+    FreshIdentifier(name, tpe)
+  }
+
+  def id(name: String, tpeName: String, tps: Seq[TypeTree] = Nil)(implicit pgm: Program): Identifier = {
+    id(name, classType(tpeName, tps))
+  }
 
   def funDef(name: String)(implicit pgm: Program): FunDef = {
     pgm.lookupAll(name).collect {
@@ -50,6 +57,13 @@ trait ExpressionsDSL {
       case cd: ClassDef => cd
     }.headOption.getOrElse {
       fail(s"Failed to lookup class '$name' in program")
+    }
+  }
+
+  def classType(name: String, tps: Seq[TypeTree] = Nil)(implicit pgm: Program): ClassType = {
+    classDef(name) match {
+      case acd: AbstractClassDef => AbstractClassType(acd, tps)
+      case ccd: CaseClassDef => CaseClassType(ccd, tps)
     }
   }
 

@@ -15,8 +15,9 @@ import synthesis.{SynthesisContext, Problem}
 
 object Grammars {
 
-  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, exclude: Set[FunDef]): ExpressionGrammar[TypeTree] = {
+  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, exclude: Set[FunDef]): ExpressionGrammar = {
     BaseGrammar ||
+    Closures ||
     EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }) ||
     OneOf(inputs) ||
     Constants(currentFunction.fullBody) ||
@@ -24,14 +25,10 @@ object Grammars {
     FunctionCalls(prog, currentFunction, inputs.map(_.getType), exclude)
   }
 
-  def default(sctx: SynthesisContext, p: Problem, extraHints: Seq[Expr] = Seq()): ExpressionGrammar[TypeTree] = {
+  def default(sctx: SynthesisContext, p: Problem, extraHints: Seq[Expr] = Seq()): ExpressionGrammar = {
     val TopLevelAnds(ws) = p.ws
     val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
     default(sctx.program, p.as.map(_.toVariable) ++ hints ++ extraHints, sctx.functionContext, sctx.settings.functionsToIgnore)
-  }
-
-  def typeDepthBound[T <: Typed](g: ExpressionGrammar[T], b: Int) = {
-    g.filter(g => g.subTrees.forall(t => typeDepth(t.getType) <= b))
   }
 }
 

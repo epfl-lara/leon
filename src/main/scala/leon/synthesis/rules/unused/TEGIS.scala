@@ -7,11 +7,11 @@ package rules.unused
 import purescala.Types._
 import grammars._
 
-case object TEGIS extends TEGISLike[TypeTree]("TEGIS") {
+case object TEGIS extends TEGISLike("TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     TegisParams(
       grammar = Grammars.default(sctx, p),
-      rootLabel = {(tpe: TypeTree) => tpe }
+      rootLabel = Label(_)
     )
   }
 }

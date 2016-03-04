@@ -6,63 +6,70 @@ package grammars
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
-import transformers.Union
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
 /** Represents a context-free grammar of expressions
-  *
-  * @tparam T The type of nonterminal symbols for this grammar
   */
-abstract class ExpressionGrammar[T <: Typed] {
+abstract class ExpressionGrammar {
 
-  type Prod = ProductionRule[T, Expr]
-
-  private[this] val cache = new MutableMap[T, Seq[Prod]]()
-
-  /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[T, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost)
-  }
-
-  /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[T], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int = 1): ProductionRule[T, Expr] = {
-    ProductionRule[T, Expr](subs, builder, tag, cost)
-  }
+  private[this] val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
 
   /** The list of production rules for this grammar for a given nonterminal.
     * This is the cached version of [[getProductions]] which clients should use.
     *
-    * @param t The nonterminal for which production rules will be generated
+    * @param lab The nonterminal for which production rules will be generated
     */
-  def getProductions(t: T)(implicit ctx: LeonContext): Seq[Prod] = {
-    cache.getOrElse(t, {
-      val res = computeProductions(t)
-      cache += t -> res
+  def getProductions(lab: Label)(implicit ctx: LeonContext) = {
+    cache.getOrElse(lab, {
+      val res = applyAspects(lab, computeProductions(lab))
+      cache += lab -> res
       res
     })
   }
 
   /** The list of production rules for this grammar for a given nonterminal
     *
-    * @param t The nonterminal for which production rules will be generated
+    * @param lab The nonterminal for which production rules will be generated
     */
-  def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Prod]
+  def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
 
-  def filter(f: Prod => Boolean) = {
-    new ExpressionGrammar[T] {
-      def computeProductions(t: T)(implicit ctx: LeonContext) = ExpressionGrammar.this.computeProductions(t).filter(f)
+
+  def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+    lab.aspects.foldLeft(ps) {
+      case (ps, a) => a.applyTo(lab, ps)
     }
   }
 
-  final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
+  final def ||(that: ExpressionGrammar): ExpressionGrammar = {
     Union(Seq(this, that))
   }
 
-
   final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
-    for ((t, gs) <- cache.toSeq.sortBy(_._1.asString)) {
-      val lhs = f"${Console.BOLD}${t.asString}%50s${Console.RESET} ::= "
+    def sorter(lp1: (Label, Seq[ProductionRule[Label, Expr]]), lp2: (Label, Seq[ProductionRule[Label, Expr]])): Boolean = {
+      val l1 = lp1._1
+      val l2 = lp2._1
+
+      val os1 = l1.aspects.collectFirst { case aspects.Sized(size) => size }
+      val os2 = l2.aspects.collectFirst { case aspects.Sized(size) => size }
+
+      (os1, os2) match {
+        case (Some(s1), Some(s2)) =>
+          if (s1 > s2) {
+            true
+          } else if (s1 == s2) {
+            l1.asString < l2.asString
+          } else {
+            false
+          }
+        case _ => l1.asString < l2.asString
+      }
+    }
+
+
+    for ((lab, gs) <- cache.toSeq.sortWith(sorter)) {
+      val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
+
       if (gs.isEmpty) {
         printer(s"${lhs}ε")
       } else {

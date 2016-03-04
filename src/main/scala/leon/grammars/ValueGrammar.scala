@@ -7,7 +7,7 @@ import purescala.Types._
 import purescala.Expressions._
 
 /** A grammar of values (ground terms) */
-case object ValueGrammar extends ExpressionGrammar[TypeTree] {
+case object ValueGrammar extends SimpleExpressionGrammar {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
     case BooleanType =>
       List(

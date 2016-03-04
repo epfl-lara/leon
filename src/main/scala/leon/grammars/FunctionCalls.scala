@@ -16,7 +16,7 @@ import purescala.Expressions._
   * @param types The candidate real type parameters for [[currentFunction]]
   * @param exclude An additional set of functions for which no calls will be generated
   */
-case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends ExpressionGrammar[TypeTree] {
+case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends SimpleExpressionGrammar {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
