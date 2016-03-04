@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import Witnesses.Hint
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
@@ -60,6 +61,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       var subProblem = p.phi
       var subPc      = p.pc
       var subWs      = p.ws
+      var hints: Seq[Expr] = Nil
 
       var reverseMap = Map[Identifier, Expr]()
 
@@ -72,6 +74,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
           subProblem = subst(a -> expr, subProblem)
           subPc      = subst(a -> expr, subPc)
           subWs      = subst(a -> expr, subWs)
+          hints      +:= Hint(expr)
 
           reverseMap ++= map
 
@@ -125,7 +128,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         case other => other
       }
       
-      val sub = Problem(newAs, subWs, subPc, subProblem, p.xs, eb)
+      val sub = Problem(newAs, subWs, subPc, subProblem, p.xs, eb).withWs(hints)
 
       val s = (substAll(reverseMap, _:Expr)) andThen simplePostTransform(recompose)
      

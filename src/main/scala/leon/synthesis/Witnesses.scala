@@ -30,5 +30,13 @@ object Witnesses {
       p"↓$fi"
     }
   }
+
+  case class Hint(e: Expr) extends Witness {
+    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some(( Seq(e), { case Seq(e) => Hint(e) }))
+
+    override def printWith(implicit pctx: PrinterContext): Unit = {
+      p"谶$e"
+    }
+  }
   
 }

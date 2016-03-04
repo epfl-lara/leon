@@ -38,6 +38,11 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
         |⟧  """.stripMargin + ebInfo
   }
 
+  def withWs(es: Seq[Expr]) = {
+    val TopLevelAnds(prev) = ws
+    copy(ws = andJoin(prev ++ es))
+  }
+
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
   def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)
 
