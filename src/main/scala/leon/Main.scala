@@ -45,7 +45,7 @@ object Main {
     val name = "main"
     val description = "Selection of Leon functionality. Default: verify"
 
-    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[code|default]")
+    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[codegen|default]")
     val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",     false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                 false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                  false)
