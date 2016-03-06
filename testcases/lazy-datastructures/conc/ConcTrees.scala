@@ -14,6 +14,7 @@ object ConcTrees {
 
   @inline
   def max(x: BigInt, y: BigInt): BigInt = if (x >= y) x else y
+  //@inline
   def abs(x: BigInt): BigInt = if (x < 0) -x else x
 
   sealed abstract class Conc[T] {
@@ -30,6 +31,7 @@ object ConcTrees {
       }
     }
 
+    @inline
     def valid: Boolean = {
       concInv && balanced
     }
@@ -72,6 +74,7 @@ object ConcTrees {
       }): BigInt
     } ensuring (_ >= 0)
 
+    @invisibleBody
     def toList: List[T] = {
       this match {
         case Empty()   => Nil[T]()
@@ -124,13 +127,13 @@ object ConcTrees {
         }
     }
   } ensuring (res =>
-    appendAssocInst(xs, ys) && // instantiation of an axiom
       res.level <= max(xs.level, ys.level) + 1 && // height invariants
       res.level >= max(xs.level, ys.level) &&
-      res.balanced && res.concInv && //this is should not be needed. But, seems necessary for leon
-      res.valid && // tree invariant is preserved
+      //res.balanced && res.concInv && // tree invariant is preserved
+      res.valid &&       
+      appendAssocInst(xs, ys) && // instantiation of an axiom
       res.toList == xs.toList ++ ys.toList && // correctness
-      time <= 39 * abs(xs.level - ys.level) + 9) // time bounds
+      time <= ? * abs(xs.level - ys.level) + ?) // time bounds  
 
   @invisibleBody
   def lookup[T](xs: Conc[T], i: BigInt): T = {
@@ -233,26 +236,26 @@ object ConcTrees {
     res.level <= max(xs.level, ys.level) + 1 && // height invariants
     res.level >= max(xs.level, ys.level) &&
     (res.toList == xs.toList ++ ys.toList) && // correctness
-    time <= ? * abs(xs.level - ys.level) + ?)
+    time <= ? * abs(xs.level - ys.level) + ?)  
 
   @invisibleBody
-  def insert[T](xs: Conc[T], i: BigInt, y: T): Conc[T] = {
-    //xs.valid &&
-    require(xs.concInv && xs.balanced && i >= 0 && i <= xs.size) //note the precondition
+  def insert[T](xs: Conc[T], i: BigInt, y: T): Conc[T] = {    
+    require(xs.valid && i >= 0 && i <= xs.size) //note the precondition
     xs match {
       case Empty() => Single(y)
       case Single(x) =>
         if (i == 0) CC(Single(y), xs)
         else CC(xs, Single(y))
-      case CC(l, r) if i < l.size =>
+      case CC(l, r) if i < l.size => 
         concatNonEmpty(insert(l, i, y), r)
-      case CC(l, r) =>
+      case CC(l, r) => 
         concatNonEmpty(l, insert(r, i - l.size, y))
     }
-  } ensuring (res =>
-    insertAppendAxiomInst(xs, i, y) && // instantiation of an axiom
+  } ensuring (res =>      
       res.valid && // tree invariants
-      res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree    
+      res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree
+      !res.isEmpty &&
+      insertAppendAxiomInst(xs, i, y) && // instantiation of an axiom
       res.toList == insertAtIndex(xs.toList, i, y) && // correctness    
       time <= ? * xs.level + ? // time is linear in the height of the tree
       )
@@ -299,44 +302,38 @@ object ConcTrees {
   }.holds
 
   //TODO: why with instrumentation we are not able prove the running time here ? (performance bug ?)
-  /*@library
-  def split[T](xs: Conc[T], n: BigInt): (Conc[T], Conc[T], BigInt) = {
+  @invisibleBody
+  def split[T](xs: Conc[T], n: BigInt): (Conc[T], Conc[T]) = {
     require(xs.valid)
     xs match {
-      case Empty() =>
-        (Empty(), Empty(), BigInt(0))
+      case Empty() => (Empty[T](), Empty[T]())
       case s @ Single(x) =>
-        if (n <= 0) { //a minor fix
-          (Empty(), s, BigInt(0))
-        } else {
-          (s, Empty(), BigInt(0))
-        }
+        if (n <= 0) (Empty[T](), s) //a minor fix 
+        else (s, Empty[T]())        
       case CC(l, r) =>
         if (n < l.size) {
-          val (ll, lr, t) = split(l, n)
-          val (nr, t2) = concatNormalized(lr, r)
-          (ll, nr, t + t2 + BigInt(1))
+          val (ll, lr) = split(l, n)          
+          (ll, concatNormalized(lr, r))
         } else if (n > l.size) {
-          val (rl, rr, t) = split(r, n - l.size)
-          val (nl, t2) = concatNormalized(l, rl)
-          (nl, rr, t + t2 + BigInt(1))
+          val (rl, rr) = split(r, n - l.size)          
+          (concatNormalized(l, rl), rr)
         } else {
-          (l, r, BigInt(0))
+          (l, r)
         }
-    }
+    }    
   } ensuring (res => res._1.valid && res._2.valid && // tree invariants are preserved
     xs.level >= res._1.level && xs.level >= res._2.level && // height bounds of the resulting tree
-    res._3 <= xs.level + res._1.level + res._2.level && // time is linear in height
-    res._1.toList == xs.toList.take(n) && res._2.toList == xs.toList.drop(n) && // correctness
-    instSplitAxiom(xs, n) // instantiation of an axiom
+    instSplitAxiom(xs, n) && // instantiation of an axiom
+    res._1.toList == xs.toList.take(n) && res._2.toList == xs.toList.drop(n) && // correctness    
+    time <= ? * xs.level + ? * res._1.level + ? * res._2.level + ? // time is linear in height
     )
 
-  @library
+  @invisibleBody
   def instSplitAxiom[T](xs: Conc[T], n: BigInt): Boolean = {
     xs match {
       case CC(l, r) =>
         appendTakeDrop(l.toList, r.toList, n)
       case _ => true
     }
-  }.holds*/
+  }.holds
 }
