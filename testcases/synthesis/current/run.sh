@@ -41,3 +41,6 @@ run testcases/synthesis/current/BatchedQueue/Dequeue.scala
 # AddressBook
 run testcases/synthesis/current/AddressBook/Make.scala
 run testcases/synthesis/current/AddressBook/Merge.scala
+
+# RunLength
+run testcases/synthesis/current/RunLength/RunLength.scala
