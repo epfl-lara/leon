@@ -19,8 +19,6 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
       case Guide(e) => e
     }
 
-    val inputs = p.as.map(_.toVariable)
-
     sctx.reporter.ifDebug { printer =>
       printer("Guides available:")
       for (g <- guides) {
@@ -28,7 +26,7 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
       }
     }
 
-    val guidedGrammar = Union(guides.map(SimilarTo(_, inputs.toSet, sctx, p)))
+    val guidedGrammar = Union(guides.map(SimilarTo(_, sctx, p)))
 
     CegisParams(
       grammar = guidedGrammar,
