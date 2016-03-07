@@ -1066,6 +1066,30 @@ trait CodeExtraction extends ASTExtractors {
 
           Ensuring(b, post)
 
+        case t @ ExComputesExpression(body, expected) =>
+          val b = extractTreeOrNoTree(body).setPos(body.pos)
+          val expected_expr = extractTreeOrNoTree(expected).setPos(expected.pos)
+          
+          val resId = FreshIdentifier("res", b.getType).setPos(current.pos)
+          val post = Lambda(Seq(LeonValDef(resId)), Equals(Variable(resId), expected_expr)).setPos(current.pos)
+
+          Ensuring(b, post)
+          
+        case t @ ExByExampleExpression(input, output) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val output_expr  =  extractTreeOrNoTree(output).setPos(output.pos)
+          Passes(input_expr, output_expr, MatchCase(WildcardPattern(None), Some(BooleanLiteral(false)), NoTree(output_expr.getType))::Nil)
+          
+        case t @ ExAskExpression(input, output) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val output_expr = extractTreeOrNoTree(output).setPos(output.pos)
+          
+          val resId = FreshIdentifier("res", output_expr.getType).setPos(current.pos)
+          val post = Lambda(Seq(LeonValDef(resId)),
+              Passes(input_expr, Variable(resId), MatchCase(WildcardPattern(None), Some(BooleanLiteral(false)), NoTree(output_expr.getType))::Nil)).setPos(current.pos)
+
+          Ensuring(output_expr, post)
+          
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
           val b     = rest.map(extractTreeOrNoTree).getOrElse(UnitLiteral())

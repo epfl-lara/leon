@@ -51,8 +51,10 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
     addToFunDef(fd, Seq((newIn, newOut)))
   }
   
+  private def filterCases(cases: Seq[MatchCase]) = cases.filter(c => c.optGuard != Some(BooleanLiteral(false)))
+  
   /** Adds the given input/output examples to the function definitions */
-  def addToFunDef(fd: FunDef, examples: Seq[(Expr, Expr)]) = {
+  def addToFunDef(fd: FunDef, examples: Seq[(Expr, Expr)]): Unit = {
     val params = if(_removeFunctionParameters) fd.params.filter(x => !x.getType.isInstanceOf[FunctionType]) else fd.params
     val inputVariables = tupleWrap(params.map(p => Variable(p.id): Expr))
     val newCases = examples.map{ case (in, out) => exampleToCase(in, out) }
@@ -71,7 +73,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
               } else {
                 val newPasses = exprs(i) match {
                   case Passes(in, out, cases) =>
-                    Passes(in, out, (cases ++ newCases).distinct )
+                    Passes(in, out, (filterCases(cases) ++ newCases).distinct )
                   case _ => ???
                 }
                 val newPost = and(exprs.updated(i, newPasses) : _*)
