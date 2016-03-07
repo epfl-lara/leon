@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.integration.solvers
 
 import org.scalatest.FunSuite

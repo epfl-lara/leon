@@ -1,7 +1,8 @@
-/* Copyright 2009-2015 EPFL, Lausanne
- * Author: Ravi
+/* Copyright 2009-2016 EPFL, Lausanne */
+
+/* Author: Ravi
  * Date: 20.11.2013
- **/
+ */
 
 import leon._
 import leon.lang._

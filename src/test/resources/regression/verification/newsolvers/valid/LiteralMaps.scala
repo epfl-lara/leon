@@ -1,5 +1,5 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
-import leon.lang._
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 
 object LiteralMaps {
   def test(): Map[Int, Int] = {

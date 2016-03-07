@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.test.helpers
 
 import org.scalatest.Assertions

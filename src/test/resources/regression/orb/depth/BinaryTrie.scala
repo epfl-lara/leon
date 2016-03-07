@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 import leon.instrumentation._
 import leon.invariant._
 

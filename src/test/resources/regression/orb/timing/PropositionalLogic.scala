@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 import scala.collection.immutable.Set
 import leon.invariant._
 import leon.instrumentation._

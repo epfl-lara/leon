@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 object Sequencing6 {
 
   def f(x1: Int, x2: Int, x3: Int): Int = {

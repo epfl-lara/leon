@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 object FunInvocEvaluationOrder2 {
 
   def leftToRight(n: BigInt): BigInt = {
