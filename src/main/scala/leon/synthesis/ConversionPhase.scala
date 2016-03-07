@@ -99,7 +99,7 @@ object ConversionPhase extends UnitPhase[Program] {
     (pre ++ post).foreach {
       preTraversal{
         case h : Hole =>
-          ctx.reporter.error(s"Holes are not supported in pre- or postconditions. @ ${h.getPos}")
+          ctx.reporter.error(s"Holes like $h are not supported in pre- or postconditions. @ ${h.getPos}")
         case wo: WithOracle =>
           ctx.reporter.error(s"WithOracle expressions are not supported in pre- or postconditions: ${wo.asString(ctx)} @ ${wo.getPos}")
         case _ =>

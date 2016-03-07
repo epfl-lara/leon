@@ -114,11 +114,17 @@ class PrettyPrinter(opts: PrinterOptions,
             |}"""
 
       case p@Passes(in, out, tests) =>
-        optP {
-          p"""|($in, $out) passes {
-              |  ${nary(tests, "\n")}
-              |}"""
+        tests match {
+          case Seq(MatchCase(_, Some(BooleanLiteral(false)), NoTree(_))) =>
+            p"""|byExample($in, $out)"""
+          case _ =>
+            optP {
+              p"""|($in, $out) passes {
+                  |  ${nary(tests, "\n")}
+                  |}"""
+            }
         }
+        
 
       case c @ WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>

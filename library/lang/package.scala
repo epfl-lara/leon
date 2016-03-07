@@ -20,16 +20,7 @@ package object lang {
       if (underlying) that else true
     }
   }
-
-  implicit class SpecsDecorations[A](val underlying: A) {
-    @inline
-    def computes(target: A) = {
-      underlying
-    } ensuring {
-      res => res == target
-    }
-  }
-
+  
   @ignore def forall[A](p: A => Boolean): Boolean = sys.error("Can't execute quantified proposition")
   @ignore def forall[A,B](p: (A,B) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
   @ignore def forall[A,B,C](p: (A,B,C) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
@@ -55,6 +46,27 @@ package object lang {
     val (in, out) = io
     def passes(tests : A => B ) : Boolean =
       try { tests(in) == out } catch { case _ : MatchError => true }
+  }
+  
+  @ignore
+  def byExample[A, B](in: A, out: B): Boolean = {
+    sys.error("Can't execute by example proposition")
+  }
+  
+  implicit class SpecsDecorations[A](val underlying: A) {
+    @ignore
+    def computes(target: A) = {
+      underlying
+    } ensuring {
+      res => res == target
+    }
+    
+    @ignore // Programming by example: ???[String] ask input
+    def ask[I](input : I) = {
+      underlying
+    } ensuring {
+      (res: A) => byExample(input, res)
+    }
   }
 
   @ignore

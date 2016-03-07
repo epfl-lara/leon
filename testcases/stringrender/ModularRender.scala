@@ -31,12 +31,6 @@ object ModularRender {
   case class Configuration(flags: List[Boolean])
 
   // We want to write Config:[Up,Down,Up....]
-  def ConfigToString(config : Configuration): String =  {
-    ???
-  } ensuring {
-    (res : String) => (config, res) passes {
-      case _ if false =>
-        ""
-    }
-  }
+  def ConfigToString(config : Configuration): String = 
+    ???[String] ask config
 }

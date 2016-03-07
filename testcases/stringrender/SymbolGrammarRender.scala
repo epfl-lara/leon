@@ -49,12 +49,6 @@ object GrammarRender {
     }
   }
   
-  def grammarToString(p : Grammar): String =  {
-    ???[String]
-  } ensuring {
-    (res : String) => (p, res) passes {
-      case _ if false =>
-        ""
-    }
-  }
+  def grammarToString(p : Grammar): String = 
+    ???[String] ask p
 }
