@@ -27,7 +27,7 @@ sealed class Graph(problem: Problem) {
   }
 }
 
-sealed abstract class Node(val parent: Option[Node]) {
+sealed abstract class Node(val parent: Option[Node]) extends Printable {
 
   def asString(implicit ctx: LeonContext): String
 

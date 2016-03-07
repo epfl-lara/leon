@@ -23,7 +23,7 @@ case class Cost(minSize: Int) extends AnyVal with Ordered[Cost] {
     this.minSize-that.minSize
   }
 
-  def asString: String = {
+  override def toString: String = {
     f"$minSize%3d"
   }
 }

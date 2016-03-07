@@ -7,7 +7,6 @@ package z3
 import utils._
 import _root_.z3.scala._
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._

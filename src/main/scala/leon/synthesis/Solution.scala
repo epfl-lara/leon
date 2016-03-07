@@ -14,7 +14,7 @@ import leon.utils.Simplifiers
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) {
+class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) extends Printable {
 
   def asString(implicit ctx: LeonContext) = {
     "⟨ "+pre.asString+" | "+defs.map(_.asString).mkString(" ")+" "+term.asString+" ⟩" 

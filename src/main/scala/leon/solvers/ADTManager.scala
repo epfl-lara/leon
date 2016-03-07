@@ -6,12 +6,12 @@ package solvers
 import purescala.Types._
 import purescala.Common._
 
-case class DataType(sym: Identifier, cases: Seq[Constructor]) {
+case class DataType(sym: Identifier, cases: Seq[Constructor]) extends Printable {
   def asString(implicit ctx: LeonContext) = {
     "Datatype: "+sym.asString+"\n"+cases.map(c => " - "+c.asString(ctx)).mkString("\n")
   }
 }
-case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) {
+case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) extends Printable {
   def asString(implicit ctx: LeonContext) = {
     sym.asString(ctx)+" ["+tpe.asString(ctx)+"] "+fields.map(f => f._1.asString(ctx)+": "+f._2.asString(ctx)).mkString("(", ", ", ")")
   }

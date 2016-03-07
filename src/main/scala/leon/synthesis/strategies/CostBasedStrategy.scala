@@ -90,5 +90,5 @@ class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
     recomputeCost(n)
   }
 
-  def debugInfoFor(n: Node) = bestCosts.get(n).map(_.asString).getOrElse("?")
+  def debugInfoFor(n: Node) = bestCosts.get(n).map(_.toString).getOrElse("?")
 }
