@@ -93,6 +93,29 @@ object DefOps {
     }
   }
 
+  private def stripPrefix(off: List[String], from: List[String]): List[String] = {
+    val commonPrefix = (off zip from).takeWhile(p => p._1 == p._2)
+
+    val res = off.drop(commonPrefix.size)
+
+    if (res.isEmpty) {
+      if (off.isEmpty) List()
+      else List(off.last)
+    } else {
+      res
+    }
+  }
+  
+  def simplifyPath(namesOf: List[String], from: Definition, useUniqueIds: Boolean)(implicit pgm: Program) = {
+    val pathFrom = pathFromRoot(from).dropWhile(_.isInstanceOf[Program])
+    
+    val namesFrom = pathToNames(pathFrom, useUniqueIds)
+    
+    val names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesFrom)) ++
+      getNameUnderImports(pathFrom, namesOf)
+    
+    names.toSeq.minBy(_.size).mkString(".")
+  }
 
   def fullNameFrom(of: Definition, from: Definition, useUniqueIds: Boolean)(implicit pgm: Program): String = {
     val pathFrom = pathFromRoot(from).dropWhile(_.isInstanceOf[Program])
@@ -100,30 +123,22 @@ object DefOps {
     val namesFrom = pathToNames(pathFrom, useUniqueIds)
     val namesOf   = pathToNames(pathFromRoot(of), useUniqueIds)
 
-    def stripPrefix(off: List[String], from: List[String]) = {
-      val commonPrefix = (off zip from).takeWhile(p => p._1 == p._2)
-
-      val res = off.drop(commonPrefix.size)
-
-      if (res.isEmpty) {
-        if (off.isEmpty) List()
-        else List(off.last)
-      } else {
-        res
-      }
-    }
-
     val sp = stripPrefix(namesOf, namesFrom)
     if (sp.isEmpty) return "**** " + of.id.uniqueName
-    var names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesFrom))
+    val names: Set[List[String]] =
+      Set(namesOf, stripPrefix(namesOf, namesFrom)) ++ getNameUnderImports(pathFrom, namesOf)
 
-    pathFrom match {
+    names.toSeq.minBy(_.size).mkString(".")
+  }
+  
+  private def getNameUnderImports(pathFrom: List[Definition], namesOf: List[String]): Seq[List[String]] = {
+    (pathFrom match {
       case (u: UnitDef) :: _ =>
         val imports = u.imports.map {
           case Import(path, true) => path
           case Import(path, false) => path.init
         }.toList
-
+  
         def stripImport(of: List[String], imp: List[String]): Option[List[String]] = {
           if (of.startsWith(imp)) {
             Some(stripPrefix(of, imp))
@@ -131,15 +146,13 @@ object DefOps {
             None
           }
         }
-
-        for (imp <- imports) {
-          names ++= stripImport(namesOf, imp)
-        }
-
+  
+        for {imp <- imports
+             strippedImport <- stripImport(namesOf, imp)    
+        } yield strippedImport
       case _ =>
-    }
-
-    names.toSeq.minBy(_.size).mkString(".")
+        Nil
+    })
   }
 
   def pathToNames(path: List[Definition], useUniqueIds: Boolean): List[String] = {
