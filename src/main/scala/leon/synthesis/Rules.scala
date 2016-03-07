@@ -11,7 +11,7 @@ import purescala.Constructors._
 import rules._
 
 /** A Rule can be applied on a synthesis problem */
-abstract class Rule(val name: String) extends RuleDSL {
+abstract class Rule(val name: String) extends RuleDSL with Printable {
   def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation]
 
   val priority: RulePriority = RulePriorityDefault
@@ -78,7 +78,7 @@ object Rules {
 /** When applying this to a [SearchContext] it returns a wrapped stream of solutions or a new list of problems. */
 abstract class RuleInstantiation(val description: String,
                                  val onSuccess: SolutionBuilder = SolutionBuilderCloser())
-                                (implicit val problem: Problem, val rule: Rule) {
+                                (implicit val problem: Problem, val rule: Rule) extends Printable {
 
   def apply(hctx: SearchContext): RuleApplication
 

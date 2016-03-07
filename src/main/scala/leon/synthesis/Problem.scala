@@ -21,7 +21,7 @@ import Witnesses._
   * @param phi The formula on `as` and `xs` to satisfy
   * @param xs The list of output identifiers for which we want to compute a function
   */
-case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) {
+case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
 
   def inType  = tupleTypeWrap(as.map(_.getType))
   def outType = tupleTypeWrap(xs.map(_.getType))
@@ -35,7 +35,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
         |   ${pcws.asString} ≺
         |   ⟨ ${phi.asString} ⟩ 
         |   ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
-        |⟧  """.stripMargin + ebInfo
+        |⟧  $ebInfo""".stripMargin
   }
 
   def withWs(es: Seq[Expr]) = {

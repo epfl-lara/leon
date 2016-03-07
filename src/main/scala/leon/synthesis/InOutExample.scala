@@ -4,9 +4,8 @@ package leon
 package synthesis
 
 import purescala.Expressions._
-import leon.utils.ASCIIHelpers._
 
-sealed abstract class Example {
+sealed abstract class Example extends Printable {
   def ins: Seq[Expr]
 
   def asString(implicit ctx: LeonContext) = {

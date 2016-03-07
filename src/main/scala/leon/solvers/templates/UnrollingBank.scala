@@ -4,7 +4,6 @@ package leon
 package solvers
 package templates
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
