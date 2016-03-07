@@ -29,7 +29,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
   val reporter = ctx.reporter
 
-  val doBenchmark = ctx.findOptionOrDefault(SharedOptions.optBenchmark)
+  val doBenchmark = ctx.findOptionOrDefault(GlobalOptions.optBenchmark)
 
   var program = initProgram
 

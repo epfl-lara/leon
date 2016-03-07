@@ -49,7 +49,7 @@ object SolverFactory {
     }.mkString("")
 
   def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    val names = ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers)
+    val names = ctx.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
 
     if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
       if (hasZ3) {
@@ -138,7 +138,7 @@ object SolverFactory {
 
   // Fast solver used by simplifications, to discharge simple tautologies
   def uninterpreted(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    val names = ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers)
+    val names = ctx.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
     
     if ((names contains "fairz3") && !hasNativeZ3) {
       if (hasZ3) {

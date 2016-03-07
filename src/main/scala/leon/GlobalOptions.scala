@@ -10,7 +10,7 @@ import OptionParsers._
   * Options that determine the pipeline of Leon are not stored here,
   * but in [[Main.MainComponent]] instead.
   */
-object SharedOptions extends LeonComponent {
+object GlobalOptions extends LeonComponent {
 
   val name = "sharedOptions"
   val description = "Options shared by multiple components of Leon"
@@ -66,7 +66,12 @@ object SharedOptions extends LeonComponent {
     val parser: String => Set[DebugSection] = setParser[Set[DebugSection]](debugParser)(_).flatten
   }
 
-  val optTimeout = LeonLongOptionDef("timeout", "Set a timeout for attempting to prove a verification condition/ repair a function (in sec.)", 0L, "t")
+  val optTimeout = LeonLongOptionDef(
+    "timeout",
+    "Set a timeout for attempting to prove a verification condition/ repair a function (in sec.)",
+    0L,
+    "t"
+  )
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optStrictPhases,
