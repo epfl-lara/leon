@@ -42,9 +42,12 @@ class PrettyPrinter(opts: PrinterOptions,
       body
     }
   }
+  
+  protected def getScope(implicit ctx: PrinterContext) = 
+    ctx.parents.collectFirst { case (d: Definition) if !d.isInstanceOf[ValDef] => d }
 
   protected def printNameWithPath(df: Definition)(implicit ctx: PrinterContext) {
-    (opgm, ctx.parents.collectFirst { case (d: Definition) if !d.isInstanceOf[ValDef] => d }) match {
+    (opgm, getScope) match {
       case (Some(pgm), Some(scope)) =>
         sb.append(fullNameFrom(df, scope, opts.printUniqueIds)(pgm))
 
@@ -133,7 +136,11 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case h @ Hole(tpe, es) =>
         if (es.isEmpty) {
-          p"???[$tpe]"
+          val hole = (for{scope   <- getScope
+                          program <- opgm }
+              yield simplifyPath("leon" :: "lang" :: "synthesis" :: "???" :: Nil, scope, false)(program))
+              .getOrElse("leon.lang.synthesis.???")
+          p"$hole[$tpe]"
         } else {
           p"?($es)"
         }
