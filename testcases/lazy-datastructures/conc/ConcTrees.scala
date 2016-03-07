@@ -14,7 +14,6 @@ object ConcTrees {
 
   @inline
   def max(x: BigInt, y: BigInt): BigInt = if (x >= y) x else y
-  //@inline
   def abs(x: BigInt): BigInt = if (x < 0) -x else x
 
   sealed abstract class Conc[T] {
@@ -95,47 +94,6 @@ object ConcTrees {
   }*/
 
   @invisibleBody
-  def concatNonEmpty[T](xs: Conc[T], ys: Conc[T]): Conc[T] = {
-    require(xs.valid && ys.valid && !xs.isEmpty && !ys.isEmpty)
-    val diff = ys.level - xs.level
-    if (diff >= -1 && diff <= 1) CC(xs, ys)
-    else if (diff < -1) { // ys is smaller than xs
-      xs match {
-        case CC(l, r) if (l.level >= r.level) =>
-          CC(l, concatNonEmpty(r, ys))
-        case CC(l, r) =>
-          r match {
-            case CC(rl, rr) =>
-              val nrr = concatNonEmpty(rr, ys)
-              if (nrr.level == xs.level - 3)
-                CC(l, CC(rl, nrr))
-              else
-                CC(CC(l, rl), nrr)
-          }
-      }
-    } else ys match {
-      case CC(l, r) if (r.level >= l.level) =>
-        CC(concatNonEmpty(xs, l), r)
-      case CC(l, r) =>
-        l match {
-          case CC(ll, lr) =>
-            val nll = concatNonEmpty(xs, ll)
-            if (nll.level == ys.level - 3)
-              CC(CC(nll, lr), r)
-            else
-              CC(nll, CC(lr, r))
-        }
-    }
-  } ensuring (res =>
-      res.level <= max(xs.level, ys.level) + 1 && // height invariants
-      res.level >= max(xs.level, ys.level) &&
-      //res.balanced && res.concInv && // tree invariant is preserved
-      res.valid &&       
-      appendAssocInst(xs, ys) && // instantiation of an axiom
-      res.toList == xs.toList ++ ys.toList && // correctness
-      time <= ? * abs(xs.level - ys.level) + ?) // time bounds  
-
-  @invisibleBody
   def lookup[T](xs: Conc[T], i: BigInt): T = {
     require(xs.valid && !xs.isEmpty && i >= 0 && i < xs.size)
     xs match {
@@ -185,6 +143,55 @@ object ConcTrees {
     }
   }.holds
 
+  /**
+   * A generic concat that applies to general concTrees
+   */
+  //  @invisibleBody
+  //  def concat[T](xs: Conc[T], ys: Conc[T]): Conc[T] = {
+  //    require(xs.valid && ys.valid)
+  //    concatNormalized(normalize(xs), normalize(ys))
+  //  }
+
+  @invisibleBody
+  def concatNonEmpty[T](xs: Conc[T], ys: Conc[T]): Conc[T] = {
+    require(xs.valid && ys.valid && !xs.isEmpty && !ys.isEmpty)
+    val diff = ys.level - xs.level
+    if (diff >= -1 && diff <= 1) CC(xs, ys)
+    else if (diff < -1) { // ys is smaller than xs
+      xs match {
+        case CC(l, r) if (l.level >= r.level) =>
+          CC(l, concatNonEmpty(r, ys))
+        case CC(l, r) =>
+          r match {
+            case CC(rl, rr) =>
+              val nrr = concatNonEmpty(rr, ys)
+              if (nrr.level == xs.level - 3)
+                CC(l, CC(rl, nrr))
+              else
+                CC(CC(l, rl), nrr)
+          }
+      }
+    } else ys match {
+      case CC(l, r) if (r.level >= l.level) =>
+        CC(concatNonEmpty(xs, l), r)
+      case CC(l, r) =>
+        l match {
+          case CC(ll, lr) =>
+            val nll = concatNonEmpty(xs, ll)
+            if (nll.level == ys.level - 3)
+              CC(CC(nll, lr), r)
+            else
+              CC(nll, CC(lr, r))
+        }
+    }
+  } ensuring (res =>
+      res.level <= max(xs.level, ys.level) + 1 && // height invariants
+      res.level >= max(xs.level, ys.level) &&
+      res.valid &&
+      appendAssocInst(xs, ys) && // instantiation of an axiom
+      concatCorrectness(res, xs, ys) && // correctness
+      time <= ? * abs(xs.level - ys.level) + ?) // time bounds
+
   @invisibleBody
   def appendAssocInst[T](xs: Conc[T], ys: Conc[T]): Boolean = {
     (xs match {
@@ -212,15 +219,6 @@ object ConcTrees {
   }.holds
 
   /**
-   * A generic concat that applies to general concTrees
-   */
-  //  @invisibleBody
-  //  def concat[T](xs: Conc[T], ys: Conc[T]): Conc[T] = {
-  //    require(xs.valid && ys.valid)
-  //    concatNormalized(normalize(xs), normalize(ys))    
-  //  }  
-
-  /**
    * This concat applies only to normalized trees.
    * This prevents concat from being recursive
    */
@@ -235,28 +233,32 @@ object ConcTrees {
   } ensuring (res => res.valid && // tree invariants
     res.level <= max(xs.level, ys.level) + 1 && // height invariants
     res.level >= max(xs.level, ys.level) &&
-    (res.toList == xs.toList ++ ys.toList) && // correctness
-    time <= ? * abs(xs.level - ys.level) + ?)  
+    concatCorrectness(res, xs, ys) && // correctness
+    time <= ? * abs(xs.level - ys.level) + ?)
+
+ @invisibleBody
+ def concatCorrectness[T](res: Conc[T], xs: Conc[T], ys: Conc[T]): Boolean =
+    (res.toList == xs.toList ++ ys.toList)
 
   @invisibleBody
-  def insert[T](xs: Conc[T], i: BigInt, y: T): Conc[T] = {    
+  def insert[T](xs: Conc[T], i: BigInt, y: T): Conc[T] = {
     require(xs.valid && i >= 0 && i <= xs.size) //note the precondition
     xs match {
       case Empty() => Single(y)
       case Single(x) =>
         if (i == 0) CC(Single(y), xs)
         else CC(xs, Single(y))
-      case CC(l, r) if i < l.size => 
+      case CC(l, r) if i < l.size =>
         concatNonEmpty(insert(l, i, y), r)
-      case CC(l, r) => 
+      case CC(l, r) =>
         concatNonEmpty(l, insert(r, i - l.size, y))
     }
-  } ensuring (res =>      
+  } ensuring (res =>
       res.valid && // tree invariants
       res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree
       !res.isEmpty &&
       insertAppendAxiomInst(xs, i, y) && // instantiation of an axiom
-      res.toList == insertAtIndex(xs.toList, i, y) && // correctness    
+      res.toList == insertAtIndex(xs.toList, i, y) && // correctness
       time <= ? * xs.level + ? // time is linear in the height of the tree
       )
 
@@ -301,32 +303,36 @@ object ConcTrees {
     }
   }.holds
 
-  //TODO: why with instrumentation we are not able prove the running time here ? (performance bug ?)
   @invisibleBody
   def split[T](xs: Conc[T], n: BigInt): (Conc[T], Conc[T]) = {
     require(xs.valid)
     xs match {
       case Empty() => (Empty[T](), Empty[T]())
       case s @ Single(x) =>
-        if (n <= 0) (Empty[T](), s) //a minor fix 
-        else (s, Empty[T]())        
+        if (n <= 0) (Empty[T](), s) //a minor fix
+        else (s, Empty[T]())
       case CC(l, r) =>
         if (n < l.size) {
-          val (ll, lr) = split(l, n)          
+          val (ll, lr) = split(l, n)
           (ll, concatNormalized(lr, r))
         } else if (n > l.size) {
-          val (rl, rr) = split(r, n - l.size)          
+          val (rl, rr) = split(r, n - l.size)
           (concatNormalized(l, rl), rr)
         } else {
           (l, r)
         }
-    }    
+    }
   } ensuring (res => res._1.valid && res._2.valid && // tree invariants are preserved
     xs.level >= res._1.level && xs.level >= res._2.level && // height bounds of the resulting tree
     instSplitAxiom(xs, n) && // instantiation of an axiom
-    res._1.toList == xs.toList.take(n) && res._2.toList == xs.toList.drop(n) && // correctness    
+    splitCorrectness(res, xs, n) &&
     time <= ? * xs.level + ? * res._1.level + ? * res._2.level + ? // time is linear in height
     )
+
+  @invisibleBody
+  def splitCorrectness[T](r: (Conc[T], Conc[T]), xs: Conc[T], n: BigInt): Boolean = {
+    r._1.toList == xs.toList.take(n) && r._2.toList == xs.toList.drop(n)
+  }
 
   @invisibleBody
   def instSplitAxiom[T](xs: Conc[T], n: BigInt): Boolean = {

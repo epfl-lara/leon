@@ -13,7 +13,6 @@ import BigInt._
 import PredicateUtil._
 import Stats._
 
-
 class NotImplementedException(message: String) extends RuntimeException(message)
 
 //a collections of utility methods that manipulate the templates
@@ -93,21 +92,21 @@ object LinearConstraintUtil {
     //the top most operator should be a relation
     val Operator(Seq(lhs, InfiniteIntegerLiteral(x)), op) = makeLinear(expr)
     /*if (lhs.isInstanceOf[InfiniteIntegerLiteral])
-      throw new IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)*/    
+      throw new IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)*/
     //handle each minterm
     getMinTerms(lhs).foreach(minterm => minterm match {
-      case _ if (isTemplateExpr(minterm)) => addConstant(minterm)      
-      case Times(e1, e2) => 
+      case _ if (isTemplateExpr(minterm)) => addConstant(minterm)
+      case Times(e1, e2) =>
         e2 match {
-          case Variable(_) | ResultVariable(_) | FunctionInvocation(_, _) => 
+          case Variable(_) | ResultVariable(_) | FunctionInvocation(_, _) =>
           case _                        => throw new IllegalStateException("Multiplicand not a constraint variable: " + e2)
         }
-        e1 match {         
-          case _ if (isTemplateExpr(e1)) => addCoefficient(e2, e1)          
+        e1 match {
+          case _ if (isTemplateExpr(e1)) => addCoefficient(e2, e1)
           case _ => throw new IllegalStateException("Coefficient not a constant or template expression: " + e1)
-        }     
-      case Variable(_) => addCoefficient(minterm, one) //here the coefficient is 1              
-      case ResultVariable(_) => addCoefficient(minterm, one)      
+        }
+      case Variable(_) => addCoefficient(minterm, one) //here the coefficient is 1
+      case ResultVariable(_) => addCoefficient(minterm, one)
       case _ => throw new IllegalStateException("Unhandled min term: " + minterm)
     })
 
@@ -142,14 +141,14 @@ object LinearConstraintUtil {
         case RealMinus(e1, e2)                   => Plus(pushMinus(e1), e2)
         case Plus(e1, e2)                        => Plus(pushMinus(e1), pushMinus(e2))
         case RealPlus(e1, e2)                    => Plus(pushMinus(e1), pushMinus(e2))
-        case Times(e1, e2) => 
+        case Times(e1, e2) =>
           //here push the minus in to the coefficient which is the first argument
-          Times(pushMinus(e1), e2)        
+          Times(pushMinus(e1), e2)
         case RealTimes(e1, e2) => Times(pushMinus(e1), e2)
         case _                 => throw new NotImplementedException("pushMinus -- Operators not yet handled: " + inExpr)
       }
     }
-    
+
     //we assume that ine is in linear form
     def pushTimes(mul: Expr, ine: Expr): Expr = {
       val isReal = ine.getType == RealType && mul.getType == RealType
@@ -165,9 +164,9 @@ object LinearConstraintUtil {
           val r2 = pushTimes(mul, e2)
           if (isReal) RealPlus(r1, r2)
           else Plus(r1, r2)
-        case Times(e1, e2) => 
+        case Times(e1, e2) =>
           //here push the times into the coefficient which should be the first expression
-          Times(pushTimes(mul, e1), e2)        
+          Times(pushTimes(mul, e1), e2)
         case RealTimes(e1, e2) =>
           val r = pushTimes(mul, e1)
           if (isReal) RealTimes(r, e2)
@@ -205,21 +204,21 @@ object LinearConstraintUtil {
           || e.isInstanceOf[GreaterEquals])) => {
 
           //check if the expression has real valued sub-expressions
-          val isReal = hasReals(e1) || hasReals(e2)        
+          val isReal = hasReals(e1) || hasReals(e2)
           val (newe, newop) = e match {
             case t: Equals        => (Minus(e1, e2), Equals)
             case t: LessEquals    => (Minus(e1, e2), LessEquals)
             case t: GreaterEquals => (Minus(e2, e1), LessEquals)
-            case t: LessThan => 
+            case t: LessThan =>
               if (isReal)
                 (Minus(e1, e2), LessThan)
               else
-                (Plus(Minus(e1, e2), one), LessEquals)            
-            case t: GreaterThan => 
+                (Plus(Minus(e1, e2), one), LessEquals)
+            case t: GreaterThan =>
               if (isReal)
                 (Minus(e2, e1), LessThan)
               else
-                (Plus(Minus(e2, e1), one), LessEquals)            
+                (Plus(Minus(e2, e1), one), LessEquals)
           }
           val r = mkLinearRecur(newe)
           //simplify the resulting constants
@@ -227,7 +226,7 @@ object LinearConstraintUtil {
           val finale = if (r2.isDefined) {
             if (const != 0) Plus(r2.get, InfiniteIntegerLiteral(const))
             else r2.get
-          } else InfiniteIntegerLiteral(const)          
+          } else InfiniteIntegerLiteral(const)
           newop(finale, zero)
         }
         case Minus(e1, e2)     => Plus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
@@ -237,15 +236,15 @@ object LinearConstraintUtil {
         case Times(_, _) | RealTimes(_, _) => {
           val Operator(Seq(e1, e2), op) = inExpr
           val (r1, r2) = (mkLinearRecur(e1), mkLinearRecur(e2))
-          if (isTemplateExpr(r1)) 
+          if (isTemplateExpr(r1))
             pushTimes(r1, r2)
-          else if (isTemplateExpr(r2)) 
+          else if (isTemplateExpr(r2))
             pushTimes(r2, r1)
           else
             throw new IllegalStateException("Expression not linear: " + Times(r1, r2))
         }
         case Plus(e1, e2) => Plus(mkLinearRecur(e1), mkLinearRecur(e2))
-        case rp @ RealPlus(e1, e2) =>          
+        case rp @ RealPlus(e1, e2) =>
           RealPlus(mkLinearRecur(e1), mkLinearRecur(e2))
         case t: Terminal            => t
         case fi: FunctionInvocation => fi
@@ -316,7 +315,7 @@ object LinearConstraintUtil {
             restctrs += lc
           case _ => throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.toExpr)
         }
-    }   
+    }
     // sort 'eqctrs' by the size of the constraints so that we use smaller expressions in 'subst' map.
     var currEqs = eqctrs.sortBy(eqc => eqc.coeffMap.keySet.size + (if (eqc.const.isDefined) 1 else 0))
     // compute the subst map recursively
