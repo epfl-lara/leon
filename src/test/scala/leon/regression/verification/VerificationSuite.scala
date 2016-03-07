@@ -41,7 +41,7 @@ trait VerificationSuite extends LeonRegressionSuite {
       VerificationPhase andThen
       (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
 
-    val ctx = createLeonContext(files:_*)
+    val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
 
     try {
       val (_, ast) = extraction.run(ctx, files)

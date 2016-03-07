@@ -12,7 +12,8 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
 
   override def run(ctx: LeonContext, pgm: Program): (LeonContext, Program) = {
     val phases =
-      ArrayTransformation andThen
+      //ArrayTransformation andThen
+      AntiAliasingPhase andThen
       EpsilonElimination andThen
       ImperativeCodeElimination
 

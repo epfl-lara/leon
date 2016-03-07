@@ -9,7 +9,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 import leon.purescala.ExprOps._
-import leon.purescala.TypeOps._
+import leon.purescala.TypeOps.leastUpperBound
 import leon.purescala.Types._
 import leon.xlang.Expressions._
 
@@ -67,7 +67,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
 
-        val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
+        val iteRType = leastUpperBound(tRes.getType, eRes.getType).getOrElse(Untyped)
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varsInScope).toSeq
         val resId = FreshIdentifier("res", iteRType)
@@ -218,7 +218,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case LetDef(fds, b) =>
 
         if(fds.size > 1) {
-          //TODO: no support for true mutually recursion
+          //TODO: no support for true mutual recursion
           toFunction(LetDef(Seq(fds.head), LetDef(fds.tail, b)))
         } else {
 

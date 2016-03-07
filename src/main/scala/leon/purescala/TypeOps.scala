@@ -11,16 +11,22 @@ import Extractors._
 import Constructors._
 import ExprOps.preMap
 
-object TypeOps {
+object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree] {
   def typeDepth(t: TypeTree): Int = t match {
-    case NAryType(tps, builder) => 1+ (0 +: (tps map typeDepth)).max
+    case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
   }
 
-  def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
-    case tp: TypeParameter => Set(tp)
-    case _ =>
-      val NAryType(subs, _) = t
-      subs.flatMap(typeParamsOf).toSet
+  def typeParamsOf(t: TypeTree): Set[TypeParameter] = {
+    collect[TypeParameter]({
+      case tp: TypeParameter => Set(tp)
+      case _ => Set.empty
+    })(t)
+  }
+
+  def typeParamsOf(expr: Expr): Set[TypeParameter] = {
+    var tparams: Set[TypeParameter] = Set.empty
+    ExprOps.preTraversal(e => typeParamsOf(e.getType))(expr)
+    tparams
   }
 
   def canBeSubtypeOf(
@@ -127,9 +133,43 @@ object TypeOps {
       if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
 
     case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
-      // TODO: make functions contravariant to arg. types
-      if (from1 == from2) {
-        leastUpperBound(to1, to2) map { FunctionType(from1, _) }
+      val args = (from1 zip from2).map(p => greatestLowerBound(p._1, p._2))
+      if (args.forall(_.isDefined)) {
+        leastUpperBound(to1, to2) map { FunctionType(args.map(_.get), _) }
+      } else {
+        None
+      }
+
+    case (o1, o2) if o1 == o2 => Some(o1)
+    case _ => None
+  }
+
+  def greatestLowerBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
+    case (c1: ClassType, c2: ClassType) =>
+
+      def computeChains(ct: ClassType): Set[ClassType] = ct.parent match {
+        case Some(pct) =>
+          computeChains(pct) + ct
+        case None =>
+          Set(ct)
+      }
+
+      if (computeChains(c1)(c2)) {
+        Some(c2)
+      } else if (computeChains(c2)(c1)) {
+        Some(c1)
+      } else {
+        None
+      }
+
+    case (TupleType(args1), TupleType(args2)) =>
+      val args = (args1 zip args2).map(p => greatestLowerBound(p._1, p._2))
+      if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
+
+    case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
+      val args = (from1 zip from2).map(p => leastUpperBound(p._1, p._2))
+      if (args.forall(_.isDefined)) {
+        greatestLowerBound(to1, to2).map { FunctionType(args.map(_.get), _) }
       } else {
         None
       }
@@ -185,7 +225,7 @@ object TypeOps {
       id
     }
   }
-  
+
   def instantiateType(id: Identifier, tps: Map[TypeParameterDef, TypeTree]): Identifier = {
     freshId(id, typeParamSubst(tps map { case (tpd, tp) => tpd.tp -> tp })(id.getType))
   }
@@ -313,7 +353,7 @@ object TypeOps {
               val returnType = tpeSub(fd.returnType)
               val params = fd.params map (vd => vd.copy(id = freshId(vd.id, tpeSub(vd.getType))))
               val newFd = fd.duplicate(id, tparams, params, returnType)
-              val subCalls = preMap {
+              val subCalls = ExprOps.preMap {
                 case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>
                   Some(FunctionInvocation(newFd.typed(tfd.tps), args).copiedFrom(fi))
                 case _ => 
@@ -335,7 +375,7 @@ object TypeOps {
             }
             val newBd = srec(subCalls(bd)).copiedFrom(bd)
 
-            LetDef(newFds, newBd).copiedFrom(l)
+            letDef(newFds, newBd).copiedFrom(l)
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
@@ -380,6 +420,10 @@ object TypeOps {
 
           case m @ FiniteMap(elems, from, to) =>
             FiniteMap(elems.map{ case (k, v) => (srec(k), srec(v)) }, tpeSub(from), tpeSub(to)).copiedFrom(m)
+
+          case f @ FiniteLambda(mapping, dflt, FunctionType(from, to)) =>
+            FiniteLambda(mapping.map { case (ks, v) => ks.map(srec) -> srec(v) }, srec(dflt),
+              FunctionType(from.map(tpeSub), tpeSub(to))).copiedFrom(f)
 
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)

@@ -13,7 +13,6 @@ import codegen.CodeGenParams
 
 import leon.codegen.runtime.LeonCodeGenRuntimeException
 import leon.codegen.runtime.LeonCodeGenEvaluationException
-import leon.codegen.runtime.LeonCodeGenQuantificationException
 
 class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
 
@@ -36,40 +35,6 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
     } finally {
       ctx.timers.evaluators.codegen.compilation.stop()
     }
-  }
-
-  def check(expression: Expr, model: solvers.Model) : CheckResult = {
-    compileExpr(expression, model.toSeq.map(_._1)).map { ce =>
-      ctx.timers.evaluators.codegen.runtime.start()
-      try {
-        val res = ce.eval(model, check = true)
-        if (res == BooleanLiteral(true)) EvaluationResults.CheckSuccess
-        else EvaluationResults.CheckValidityFailure
-      } catch {
-        case e : ArithmeticException =>
-          EvaluationResults.CheckRuntimeFailure(e.getMessage)
-
-        case e : ArrayIndexOutOfBoundsException =>
-          EvaluationResults.CheckRuntimeFailure(e.getMessage)
-
-        case e : LeonCodeGenRuntimeException =>
-          EvaluationResults.CheckRuntimeFailure(e.getMessage)
-
-        case e : LeonCodeGenEvaluationException =>
-          EvaluationResults.CheckRuntimeFailure(e.getMessage)
-
-        case e : java.lang.ExceptionInInitializerError =>
-          EvaluationResults.CheckRuntimeFailure(e.getException.getMessage) 
-
-        case so : java.lang.StackOverflowError =>
-          EvaluationResults.CheckRuntimeFailure("Stack overflow")
-
-        case e : LeonCodeGenQuantificationException =>
-          EvaluationResults.CheckQuantificationFailure(e.getMessage)
-      } finally {
-        ctx.timers.evaluators.codegen.runtime.stop()
-      }
-    }.getOrElse(EvaluationResults.CheckRuntimeFailure("Couldn't compile expression."))
   }
 
   def eval(expression: Expr, model: solvers.Model) : EvaluationResult = {

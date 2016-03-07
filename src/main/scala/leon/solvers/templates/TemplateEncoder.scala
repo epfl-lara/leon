@@ -18,4 +18,6 @@ trait TemplateEncoder[T] {
   def mkAnd(ts: T*): T
   def mkEquals(l: T, r: T): T
   def mkImplies(l: T, r: T): T
+
+  def extractNot(v: T): Option[T]
 }

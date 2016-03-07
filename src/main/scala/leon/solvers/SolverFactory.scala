@@ -31,13 +31,13 @@ object SolverFactory {
   }
 
   val definedSolvers = Map(
-    "fairz3"         -> "Native Z3 with z3-templates for unfolding (default)",
+    "fairz3"         -> "Native Z3 with z3-templates for unrolling (default)",
     "smt-cvc4"       -> "CVC4 through SMT-LIB",
     "smt-z3"         -> "Z3 through SMT-LIB",
     "smt-z3-q"       -> "Z3 through SMT-LIB, with quantified encoding",
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
-    "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
+    "unrollz3"       -> "Native Z3 with leon-templates for unrolling",
     "ground"         -> "Only solves ground verification conditions by evaluating them",
     "enum"           -> "Enumeration-based counter-example-finder",
     "isabelle"       -> "Isabelle2015 through libisabelle with various automated tactics"
@@ -79,10 +79,12 @@ object SolverFactory {
 
   def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "fairz3" =>
-      SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
+      // Previously:      new FairZ3Solver(ctx, program) with TimeoutSolver
+      SolverFactory(() => new Z3StringFairZ3Solver(ctx, program) with TimeoutSolver)
 
     case "unrollz3" =>
-      SolverFactory(() => new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
+      // Previously:      new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver
+      SolverFactory(() => new Z3StringUnrollingSolver(ctx, program, (program: Program) => new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
 
     case "enum"   =>
       SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
@@ -91,10 +93,12 @@ object SolverFactory {
       SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
 
     case "smt-z3" =>
-      SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+      // Previously:      new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver
+      SolverFactory(() => new Z3StringUnrollingSolver(ctx, program, (program: Program) => new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
 
     case "smt-z3-q" =>
-      SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
+      // Previously:      new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver
+      SolverFactory(() => new Z3StringSMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
 
     case "smt-cvc4" =>
       SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)

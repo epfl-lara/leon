@@ -19,285 +19,19 @@ import solvers._
   *
   * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  *   - [[ExprOps.fold foldRight]]
-  *   - [[ExprOps.preTraversal preTraversal]]
-  *   - [[ExprOps.postTraversal postTraversal]]
-  *   - [[ExprOps.preMap preMap]]
-  *   - [[ExprOps.postMap postMap]]
-  *   - [[ExprOps.genericTransform genericTransform]]
+  *   - [[SubTreeOps.fold foldRight]]
+  *   - [[SubTreeOps.preTraversal preTraversal]]
+  *   - [[SubTreeOps.postTraversal postTraversal]]
+  *   - [[SubTreeOps.preMap preMap]]
+  *   - [[SubTreeOps.postMap postMap]]
+  *   - [[SubTreeOps.genericTransform genericTransform]]
   *
   * These operations usually take a higher order function that gets applied to the
   * expression tree in some strategy. They provide an expressive way to build complex
   * operations on Leon expressions.
   *
   */
-object ExprOps {
-
-  /* ========
-   * Core API
-   * ========
-   *
-   * All these functions should be stable, tested, and used everywhere. Modify
-   * with care.
-   */
-
-
-  /** Does a right tree fold
-    *
-    * A right tree fold applies the input function to the subnodes first (from left
-    * to right), and combine the results along with the current node value.
-    *
-    * @param f a function that takes the current node and the seq
-    *        of results form the subtrees.
-    * @param e The Expr on which to apply the fold.
-    * @return The expression after applying `f` on all subtrees.
-    * @note the computation is lazy, hence you should not rely on side-effects of `f`
-    */
-  def fold[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
-    val rec = fold(f) _
-    val Operator(es, _) = e
-
-    //Usages of views makes the computation lazy. (which is useful for
-    //contains-like operations)
-    f(e, es.view.map(rec))
-  }
-
-  /** Pre-traversal of the tree.
-    *
-    * Invokes the input function on every node '''before''' visiting
-    * children. Traverse children from left to right subtrees.
-    *
-    * e.g.
-    * {{{
-    *   Add(a, Minus(b, c))
-    * }}}
-    * will yield, in order:
-    * {{{
-    *   f(Add(a, Minus(b, c))); f(a); f(Minus(b, c)); f(b); f(c)
-    * }}}
-    *
-    * @param f a function to apply on each node of the expression
-    * @param e the expression to traverse
-    */
-  def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
-    val rec = preTraversal(f) _
-    val Operator(es, _) = e
-    f(e)
-    es.foreach(rec)
-  }
-
-  /** Post-traversal of the tree.
-    *
-    * Invokes the input function on every node '''after''' visiting
-    * children.
-    *
-    * e.g.
-    * {{{
-    *   Add(a, Minus(b, c))
-    * }}}
-    * will yield, in order:
-    * {{{
-    *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
-    * }}}
-    *
-    * @param f a function to apply on each node of the expression
-    * @param e the expression to traverse
-    */
-  def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
-    val rec = postTraversal(f) _
-    val Operator(es, _) = e
-    es.foreach(rec)
-    f(e)
-  }
-
-  /** Pre-transformation of the tree.
-    *
-    * Takes a partial function of replacements and substitute
-    * '''before''' recursing down the trees.
-    *
-    * Supports two modes :
-    *
-    *   - If applyRec is false (default), will only substitute once on each level.
-    *
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
-    *   }}}
-    *
-    *   - If applyRec is true, it will substitute multiple times on each level:
-    *
-    *   e.g.
-    *   {{{
-    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *   Add(a, f)
-    *   }}}
-    *
-    * @note The mode with applyRec true can diverge if f is not well formed
-    */
-  def preMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
-    val rec = preMap(f, applyRec) _
-
-    val newV = if (applyRec) {
-      // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (e)
-    } else {
-      f(e) getOrElse e
-    }
-
-    val Operator(es, builder) = newV
-    val newEs = es.map(rec)
-
-    if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-      builder(newEs).copiedFrom(newV)
-    } else {
-      newV
-    }
-  }
-
-  /** Post-transformation of the tree.
-    *
-    * Takes a partial function of replacements.
-    * Substitutes '''after''' recursing down the trees.
-    *
-    * Supports two modes :
-    *
-    *   - If applyRec is false (default), will only substitute once on each level.
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> z, Minus(e,c) -> d, b -> e
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, Minus(e, c))
-    *   }}}
-    *
-    *   - If applyRec is true, it will substitute multiple times on each level:
-    *   e.g.
-    *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
-    *   }}}
-    *   will yield:
-    *   {{{
-    *     Add(a, f)
-    *   }}}
-    *
-    * @note The mode with applyRec true can diverge if f is not well formed (i.e. not convergent)
-    */
-  def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
-    val rec = postMap(f, applyRec) _
-
-    val Operator(es, builder) = e
-    val newEs = es.map(rec)
-    val newV = {
-      if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-        builder(newEs).copiedFrom(e)
-      } else {
-        e
-      }
-    }
-
-    if (applyRec) {
-      // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (newV)
-    } else {
-      f(newV) getOrElse newV
-    }
-
-  }
-
-
-  /** Applies functions and combines results in a generic way
-    *
-    * Start with an initial value, and apply functions to nodes before
-    * and after the recursion in the children. Combine the results of
-    * all children and apply a final function on the resulting node.
-    *
-    * @param pre a function applied on a node before doing a recursion in the children
-    * @param post a function applied to the node built from the recursive application to
-                  all children
-    * @param combiner a function to combine the resulting values from all children with
-                      the current node
-    * @param init the initial value
-    * @param expr the expression on which to apply the transform
-    *
-    * @see [[simpleTransform]]
-    * @see [[simplePreTransform]]
-    * @see [[simplePostTransform]]
-    */
-  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
-                          post: (Expr, C) => (Expr, C),
-                          combiner: (Expr, Seq[C]) => C)(init: C)(expr: Expr) = {
-
-    def rec(eIn: Expr, cIn: C): (Expr, C) = {
-
-      val (expr, ctx) = pre(eIn, cIn)
-      val Operator(es, builder) = expr
-      val (newExpr, newC) = {
-        val (nes, cs) = es.map{ rec(_, ctx)}.unzip
-        val newE = builder(nes).copiedFrom(expr)
-
-        (newE, combiner(newE, cs))
-      }
-
-      post(newExpr, newC)
-    }
-
-    rec(expr, init)
-  }
-
-  /*
-   * =============
-   * Auxiliary API
-   * =============
-   *
-   * Convenient methods using the Core API.
-   */
-
-  /** Checks if the predicate holds in some sub-expression */
-  def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
-    fold[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
-  }
-
-  /** Collects a set of objects from all sub-expressions */
-  def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
-    fold[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
-  }
-
-  def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
-    fold[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
-  }
-
-  /** Returns a set of all sub-expressions matching the predicate */
-  def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
-    collect[Expr] { e => Set(e) filter matcher }(e)
-  }
-
-  /** Counts how many times the predicate holds in sub-expressions */
-  def count(matcher: Expr => Int)(e: Expr): Int = {
-    fold[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
-  }
-
-  /** Replaces bottom-up sub-expressions by looking up for them in a map */
-  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    postMap(substs.lift)(expr)
-  }
-
-  /** Replaces bottom-up sub-expressions by looking up for them in the provided order */
-  def replaceSeq(substs: Seq[(Expr, Expr)], expr: Expr): Expr = {
-    var res = expr
-    for (s <- substs) {
-      res = replace(Map(s), res)
-    }
-    res
-  }
-
+object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
   /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
@@ -332,7 +66,7 @@ object ExprOps {
         Lambda(args, rec(binders ++ args.map(_.id), bd))
       case Forall(args, bd) =>
         Forall(args, rec(binders ++ args.map(_.id), bd))
-      case Operator(subs, builder) =>
+      case Deconstructor(subs, builder) =>
         builder(subs map (rec(binders, _)))
     }).copiedFrom(e)
 
@@ -341,7 +75,7 @@ object ExprOps {
 
   /** Returns the set of free variables in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
-    import leon.xlang.Expressions.LetVar
+    import leon.xlang.Expressions._
     fold[Set[Identifier]] {
       case (e, subs) =>
         val subvs = subs.flatten.toSet
@@ -372,6 +106,13 @@ object ExprOps {
   def functionCallsOf(expr: Expr): Set[FunctionInvocation] = {
     collect[FunctionInvocation] {
       case f: FunctionInvocation => Set(f)
+      case _ => Set()
+    }(expr)
+  }
+  
+  def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
+    collect[FunDef] {
+      case LetDef(fds, _) => fds.toSet
       case _ => Set()
     }(expr)
   }
@@ -442,7 +183,7 @@ object ExprOps {
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
-        Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
+        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)))
 
       case _ => None
     }(expr)
@@ -597,7 +338,7 @@ object ExprOps {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
       case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
-        Some(replace(Map(Variable(i) -> t), b))
+        Some(replaceFromIDs(Map(i -> t), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
         val occurrences = count {
@@ -608,7 +349,7 @@ object ExprOps {
         if(occurrences == 0) {
           Some(b)
         } else if(occurrences == 1) {
-          Some(replace(Map(Variable(i) -> e), b))
+          Some(replaceFromIDs(Map(i -> e), b))
         } else {
           None
         }
@@ -619,7 +360,7 @@ object ExprOps {
 
         val (remIds, remExprs) = (ids zip exprs).filter {
           case (id, value: Terminal) =>
-            newBody = replace(Map(Variable(id) -> value), newBody)
+            newBody = replaceFromIDs(Map(id -> value), newBody)
             //we replace, so we drop old
             false
           case (id, value) =>
@@ -695,7 +436,7 @@ object ExprOps {
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
-      case n @ Operator(args, recons) => {
+      case n @ Deconstructor(args, recons) => {
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a, s)
@@ -1143,7 +884,7 @@ object ExprOps {
       GenericValue(tp, 0)
 
     case ft @ FunctionType(from, to) =>
-      PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
+      FiniteLambda(Seq.empty, simplestValue(to), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
@@ -1204,7 +945,7 @@ object ExprOps {
     def transform(expr: Expr): Option[Expr] = expr match {
       case IfExpr(c, t, e) => None
 
-      case nop@Operator(ts, op) => {
+      case nop@Deconstructor(ts, op) => {
         val iteIndex = ts.indexWhere{ case IfExpr(_, _, _) => true case _ => false }
         if(iteIndex == -1) None else {
           val (beforeIte, startIte) = ts.splitAt(iteIndex)
@@ -1355,7 +1096,7 @@ object ExprOps {
           formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
       }.sum
 
-    case Operator(es, _) =>
+    case Deconstructor(es, _) =>
       es.map(formulaSize).sum+1
   }
 
@@ -1449,6 +1190,12 @@ object ExprOps {
       case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => InfiniteIntegerLiteral(0)
       case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
 
+      case StringConcat(StringLiteral(""), a) => a
+      case StringConcat(a, StringLiteral("")) => a
+      case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a+b)
+      case StringConcat(StringLiteral(a), StringConcat(StringLiteral(b), c)) => StringConcat(StringLiteral(a+b), c)
+      case StringConcat(StringConcat(c, StringLiteral(a)), StringLiteral(b)) => StringConcat(c, StringLiteral(a+b))
+      case StringConcat(a, StringConcat(b, c)) => StringConcat(StringConcat(a, b), c)
       //default
       case e => e
     }).copiedFrom(expr)
@@ -1537,6 +1284,179 @@ object ExprOps {
     case _ =>
       false
   }
+  
+  /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
+  def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
+    val freeT1Variables = ExprOps.variablesOf(t1)
+    val freeT2Variables = ExprOps.variablesOf(t2)
+    
+    def mergeContexts(a: Option[Map[Identifier, Identifier]], b: =>Option[Map[Identifier, Identifier]]) = a match {
+      case Some(m) =>
+        b match {
+          case Some(n) if (m.keySet & n.keySet) forall (key => m(key) == n(key)) =>
+            Some(m ++ n)        
+          case _ =>None
+        }
+      case _ => None
+    }
+    object Same {
+      def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
+        if (tt._1.getClass == tt._2.getClass) {
+          Some(tt)
+        } else {
+          None
+        }
+      }
+    }
+    implicit class AugmentedContext(c: Option[Map[Identifier, Identifier]]) {
+      def &&(other: => Option[Map[Identifier, Identifier]]) = mergeContexts(c, other)
+      def --(other: Seq[Identifier]) =
+        c.map(_ -- other)
+    }
+    implicit class AugmentedBooleant(c: Boolean) {
+      def &&(other: => Option[Map[Identifier, Identifier]]) = if(c) other else None
+    }
+    implicit class AugmentedSeq[T](c: Seq[T]) {
+      def mergeall(p: T => Option[Map[Identifier, Identifier]]) =
+        (Option(Map[Identifier, Identifier]()) /: c) {
+          case (s, c) => s && p(c)
+        }
+    }
+
+
+    def idHomo(i1: Identifier, i2: Identifier): Option[Map[Identifier, Identifier]] = {
+      if(!(freeT1Variables(i1) || freeT2Variables(i2)) || i1 == i2) Some(Map(i1 -> i2)) else None
+    }
+
+    def fdHomo(fd1: FunDef, fd2: FunDef): Option[Map[Identifier, Identifier]] = {
+      if(fd1.params.size == fd2.params.size) {
+         val newMap = Map((
+           (fd1.id -> fd2.id) +:
+           (fd1.paramIds zip fd2.paramIds)): _*)
+         Option(newMap) && isHomo(fd1.fullBody, fd2.fullBody)
+      } else None
+    }
+
+    def isHomo(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
+      def casesMatch(cs1 : Seq[MatchCase], cs2 : Seq[MatchCase]) : Option[Map[Identifier, Identifier]] = {
+        def patternHomo(p1: Pattern, p2: Pattern): (Boolean, Map[Identifier, Identifier]) = (p1, p2) match {
+          case (InstanceOfPattern(ob1, cd1), InstanceOfPattern(ob2, cd2)) =>
+            (ob1.size == ob2.size && cd1 == cd2, Map((ob1 zip ob2).toSeq : _*))
+
+          case (WildcardPattern(ob1), WildcardPattern(ob2)) =>
+            (ob1.size == ob2.size, Map((ob1 zip ob2).toSeq : _*))
+
+          case (CaseClassPattern(ob1, ccd1, subs1), CaseClassPattern(ob2, ccd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && ccd1 == ccd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (UnapplyPattern(ob1, fd1, subs1), UnapplyPattern(ob2, fd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && fd1 == fd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (LiteralPattern(ob1, lit1), LiteralPattern(ob2,lit2)) =>
+            (ob1.size == ob2.size && lit1 == lit2, (ob1 zip ob2).toMap)
+
+          case _ =>
+            (false, Map())
+        }
+
+        (cs1 zip cs2).mergeall {
+          case (MatchCase(p1, g1, e1), MatchCase(p2, g2, e2)) =>
+            val (h, nm) = patternHomo(p1, p2)
+            val g: Option[Map[Identifier, Identifier]] = (g1, g2) match {
+              case (Some(g1), Some(g2)) => Some(nm) && isHomo(g1,g2)
+              case (None, None) => Some(Map())
+              case _ => None
+            }
+            val e = Some(nm) && isHomo(e1, e2)
+
+            h && g && e
+        }
+
+      }
+
+      import synthesis.Witnesses.Terminating
+
+      val res: Option[Map[Identifier, Identifier]] = (t1, t2) match {
+        case (Variable(i1), Variable(i2)) =>
+          idHomo(i1, i2)
+
+        case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
+          isHomo(v1, v2) &&
+          isHomo(e1, e2) && Some(Map(id1 -> id2))
+
+        case (LetDef(fds1, e1), LetDef(fds2, e2)) =>
+          fds1.size == fds2.size &&
+          {
+            val zipped = fds1.zip(fds2)
+            (zipped mergeall (fds => fdHomo(fds._1, fds._2))) && Some(zipped.map(fds => fds._1.id -> fds._2.id).toMap) &&
+            isHomo(e1, e2)
+          }
+
+        case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
+          cs1.size == cs2.size && casesMatch(cs1,cs2) && isHomo(s1, s2)
+
+        case (Passes(in1, out1, cs1), Passes(in2, out2, cs2)) =>
+          (cs1.size == cs2.size && casesMatch(cs1,cs2)) && isHomo(in1,in2) && isHomo(out1,out2)
+
+        case (FunctionInvocation(tfd1, args1), FunctionInvocation(tfd2, args2)) =>
+          idHomo(tfd1.fd.id, tfd2.fd.id) && tfd1.tps.zip(tfd2.tps).mergeall{ case (t1, t2) => if(t1 == t2) Option(Map()) else None} &&
+          (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
+
+        case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
+          idHomo(tfd1.fd.id, tfd2.fd.id) && tfd1.tps.zip(tfd2.tps).mergeall{ case (t1, t2) => if(t1 == t2) Option(Map()) else None} &&
+          (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
+
+        case (Lambda(defs, body), Lambda(defs2, body2)) =>
+          // We remove variables introduced by lambdas.
+          (isHomo(body, body2) &&
+          (defs zip defs2).mergeall{ case (ValDef(a1), ValDef(a2)) => Option(Map(a1 -> a2)) }
+          ) -- (defs.map(_.id))
+          
+        case (v1, v2) if isValue(v1) && isValue(v2) =>
+          v1 == v2 && Some(Map[Identifier, Identifier]())
+
+        case Same(Operator(es1, _), Operator(es2, _)) =>
+          (es1.size == es2.size) &&
+          (es1 zip es2).mergeall{ case (e1, e2) => isHomo(e1, e2) }
+
+        case _ =>
+          None
+      }
+
+      res
+    }
+
+    isHomo(t1,t2)
+    
+    
+  } // ensuring (res => res.isEmpty || isHomomorphic(t1, t2)(res.get))
 
   /** Checks whether two trees are homomoprhic modulo an identifier map.
     *
@@ -1667,9 +1587,10 @@ object ExprOps {
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
 
-        // TODO: Seems a lot is missing, like Literals
+        case (v1, v2) if isValue(v1) && isValue(v2) =>
+          v1 == v2
 
-        case Same(Operator(es1, _), Operator(es2, _)) =>
+        case Same(Deconstructor(es1, _), Deconstructor(es2, _)) =>
           (es1.size == es2.size) &&
           (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
 
@@ -2008,7 +1929,7 @@ object ExprOps {
 
     f(e, initParent)
 
-    val Operator(es, _) = e
+    val Deconstructor(es, _) = e
     es foreach rec
   }
 
@@ -2071,8 +1992,8 @@ object ExprOps {
           Let(i, e, apply(b, args))
         case LetTuple(is, es, b) =>
           letTuple(is, es, apply(b, args))
-        case l@Lambda(params, body) =>
-          l.withParamSubst(args, body)
+        //case l @ Lambda(params, body) =>
+        //  l.withParamSubst(args, body)
         case _ => Application(expr, args)
       }
 
@@ -2094,14 +2015,14 @@ object ExprOps {
         case Application(caller, args) =>
           val newArgs = args.map(rec(_, true))
           val newCaller = rec(caller, false)
-          extract(application(newCaller, newArgs), build)
+          extract(Application(newCaller, newArgs), build)
         case FunctionInvocation(fd, args) =>
           val newArgs = args.map(rec(_, true))
           extract(FunctionInvocation(fd, newArgs), build)
         case l @ Lambda(args, body) =>
           val newBody = rec(body, true)
           extract(Lambda(args, newBody), build)
-        case Operator(es, recons) => recons(es.map(rec(_, build)))
+        case Deconstructor(es, recons) => recons(es.map(rec(_, build)))
       }
 
       rec(lift(expr), true)
@@ -2129,7 +2050,7 @@ object ExprOps {
 
         fds ++= nfds
 
-        Some(LetDef(nfds.map(_._2), b))
+        Some(letDef(nfds.map(_._2), b))
 
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {
@@ -2239,4 +2160,42 @@ object ExprOps {
       fun
   }
 
+  /** Returns true if expr is a value of type t */
+  def isValueOfType(e: Expr, t: TypeTree): Boolean = {
+    (e, t) match {
+      case (StringLiteral(_), StringType) => true
+      case (IntLiteral(_), Int32Type) => true
+      case (InfiniteIntegerLiteral(_), IntegerType) => true
+      case (CharLiteral(_), CharType) => true
+      case (FractionalLiteral(_, _), RealType) => true
+      case (BooleanLiteral(_), BooleanType) => true
+      case (UnitLiteral(), UnitType) => true
+      case (GenericValue(t, _), tp) => t == tp
+      case (Tuple(elems), TupleType(bases)) =>
+        elems zip bases forall (eb => isValueOfType(eb._1, eb._2))
+      case (FiniteSet(elems, tbase), SetType(base)) =>
+        tbase == base &&
+        (elems forall isValue)
+      case (FiniteMap(elems, tk, tv), MapType(from, to)) =>
+        tk == from && tv == to &&
+        (elems forall (kv => isValueOfType(kv._1, from) && isValueOfType(kv._2, to) ))
+      case (NonemptyArray(elems, defaultValues), ArrayType(base)) =>
+        elems.values forall (x => isValueOfType(x, base))
+      case (EmptyArray(tpe), ArrayType(base)) =>
+        tpe == base
+      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
+        TypeOps.isSubtypeOf(ct, ct2) &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
+        ct == ct2 &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (Lambda(valdefs, body), FunctionType(ins, out)) =>
+        (valdefs zip ins forall (vdin => vdin._1.getType == vdin._2)) &&
+        body.getType == out
+      case _ => false
+    }
+  }
+  
+  /** Returns true if expr is a value. Stronger than isGround */
+  val isValue = (e: Expr) => isValueOfType(e, e.getType)
 }

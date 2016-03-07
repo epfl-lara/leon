@@ -15,6 +15,14 @@ object Expressions {
 
   trait XLangExpr extends Expr
 
+  case class Old(id: Identifier) extends XLangExpr with Terminal with PrettyPrintable {
+    val getType = id.getType
+
+    def printWith(implicit pctx: PrinterContext): Unit = {
+      p"old($id)"
+    }
+  }
+
   case class Block(exprs: Seq[Expr], last: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))

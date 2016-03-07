@@ -5,7 +5,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.TypeOps._
+import purescala.TypeOps.instantiateType
 import purescala.Extractors._
 import purescala.Types._
 import java.io._

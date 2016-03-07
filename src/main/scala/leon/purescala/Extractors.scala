@@ -7,12 +7,11 @@ import Expressions._
 import Common._
 import Types._
 import Constructors._
-import ExprOps._
-import Definitions.Program
+import Definitions.{Program, AbstractClassDef, CaseClassDef}
 
 object Extractors {
 
-  object Operator {
+  object Operator extends SubTreeOps.Extractor[Expr] {
     def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {
       /* Unary operators */
       case Not(t) =>
@@ -53,7 +52,7 @@ object Extractors {
         Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
       case Lambda(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
-      case PartialLambda(mapping, dflt, tpe) =>
+      case FiniteLambda(mapping, dflt, tpe) =>
         val sze = tpe.from.size + 1
         val subArgs = mapping.flatMap { case (args, v) => args :+ v }
         val builder = (as: Seq[Expr]) => {
@@ -64,10 +63,9 @@ object Extractors {
             case Seq() => Seq.empty
             case _ => sys.error("unexpected number of key/value expressions")
           }
-          val (nas, nd) = if (dflt.isDefined) (as.init, Some(as.last)) else (as, None)
-          PartialLambda(rec(nas), nd, tpe)
+          FiniteLambda(rec(as.init), as.last, tpe)
         }
-        Some((subArgs ++ dflt, builder))
+        Some((subArgs :+ dflt, builder))
       case Forall(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 
@@ -147,7 +145,7 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetUnion(es(0), es(1)))
       case SetDifference(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetDifference(es(0), es(1)))
-      case mg@MapApply(t1, t2) =>
+      case mg @ MapApply(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapApply(es(0), es(1)))
       case MapUnion(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapUnion(es(0), es(1)))
@@ -167,9 +165,9 @@ object Extractors {
         Some(Seq(const, body), (es: Seq[Expr]) => Assert(es(0), oerr, es(1)))
 
       /* Other operators */
-      case fi@FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
-      case mi@MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
-      case fa@Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))
+      case fi @ FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
+      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
+      case fa @ Application(caller, args) => Some(caller +: args, as => Application(as.head, as.tail))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
@@ -199,7 +197,7 @@ object Extractors {
           val l = as.length
           nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
-      case na@NonemptyArray(elems, None) =>
+      case na @ NonemptyArray(elems, None) =>
         val ArrayType(tpe) = na.getType
         val (indexes, elsOrdered) = elems.toSeq.unzip
 
@@ -250,6 +248,8 @@ object Extractors {
         None
     }
   }
+  
+  // Extractors for types are available at Types.NAryType
 
   trait Extractable {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)]
@@ -367,7 +367,7 @@ object Extractors {
 
     def unapply(me : MatchExpr) : Option[(Pattern, Expr, Expr)] = {
       Option(me) collect {
-        case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, variablesOf(scrut)) =>
+        case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, ExprOps.variablesOf(scrut)) =>
           ( pattern, scrut, body )
       }
     }

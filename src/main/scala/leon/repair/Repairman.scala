@@ -3,6 +3,7 @@
 package leon
 package repair
 
+import leon.datagen.GrammarDataGen
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -25,7 +26,6 @@ import synthesis.Witnesses._
 import synthesis.graph.{dotGenIds, DotGenerator}
 
 import rules._
-import grammars._
 
 class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   implicit val ctx = ctx0
@@ -155,7 +155,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           }(DebugSectionReport)
 
           if (synth.settings.generateDerivationTrees) {
-            val dot = new DotGenerator(search.g)
+            val dot = new DotGenerator(search)
             dot.writeFile("derivation"+ dotGenIds.nextGlobal + ".dot")
           }
 
@@ -236,29 +236,10 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
   def discoverTests(): ExamplesBank = {
 
-    import bonsai.enumerators._
-
     val maxEnumerated = 1000
     val maxValid      = 400
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
-    val enum      = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree, Expr]](ValueGrammar.getProductions)
-
-    val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).map(unwrapTuple(_, fd.params.size))
-
-    val filtering: Seq[Expr] => Boolean = fd.precondition match {
-      case None =>
-        _ => true
-      case Some(pre) =>
-        val argIds = fd.paramIds
-        evaluator.compile(pre, argIds) match {
-          case Some(evalFun) =>
-            val sat = EvaluationResults.Successful(BooleanLiteral(true));
-            { (es: Seq[Expr]) => evalFun(new solvers.Model((argIds zip es).toMap)) == sat }
-          case None =>
-            { _ => false }
-        }
-    }
 
     val inputsToExample: Seq[Expr] => Example = { ins =>
       evaluator.eval(functionInvocation(fd, ins)) match {
@@ -269,10 +250,10 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       }
     }
 
-    val generatedTests = inputs
-      .take(maxEnumerated)
-      .filter(filtering)
-      .take(maxValid)
+    val dataGen = new GrammarDataGen(evaluator)
+
+    val generatedTests = dataGen
+      .generateFor(fd.paramIds, fd.precOrTrue, maxValid, maxEnumerated)
       .map(inputsToExample)
       .toList
 

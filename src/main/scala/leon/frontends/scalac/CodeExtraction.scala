@@ -22,7 +22,7 @@ import Common._
 import Extractors._
 import Constructors._
 import ExprOps._
-import TypeOps._
+import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
 
@@ -136,10 +136,6 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private var currentFunDef: FunDef = null
-
-    //This is a bit misleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
-    //that it can have any owner
-    private var owners: Map[Identifier, Option[FunDef]] = Map()
 
     // This one never fails, on error, it returns Untyped
     def leonType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = {
@@ -317,19 +313,45 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def fillLeonUnit(u: ScalaUnit): Unit = {
+      def extractClassMembers(sym: Symbol, tpl: Template): Unit = {
+        for (t <- tpl.body if !t.isEmpty) {
+          extractFunOrMethodBody(Some(sym), t)
+        }
+
+        classToInvariants.get(sym).foreach { bodies =>
+          val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
+          fd.addFlag(IsADTInvariant)
+
+          val cd = classesToClasses(sym)
+          cd.registerMethod(fd)
+          cd.addFlag(IsADTInvariant)
+          val ctparams = sym.tpe match {
+            case TypeRef(_, _, tps) =>
+              extractTypeParams(tps).map(_._1)
+            case _ =>
+              Nil
+          }
+
+          val tparamsMap = (ctparams zip cd.tparams.map(_.tp)).toMap
+          val dctx = DefContext(tparamsMap)
+
+          val body = andJoin(bodies.toSeq.filter(_ != EmptyTree).map {
+            body => flattenBlocks(extractTreeOrNoTree(body)(dctx))
+          })
+
+          fd.fullBody = body
+        }
+      }
+
       for (t <- u.defs) t match {
         case t if isIgnored(t.symbol) =>
           // ignore
 
         case ExAbstractClass(_, sym, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExCaseClass(_, sym, _, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExObjectDef(n, templ) =>
           for (t <- templ.body if !t.isEmpty) t match {
@@ -338,14 +360,10 @@ trait CodeExtraction extends ASTExtractors {
               None
 
             case ExAbstractClass(_, sym, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case ExCaseClass(_, sym, _, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case t =>
               extractFunOrMethodBody(None, t)
@@ -446,6 +464,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private var isMethod = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
+    private var classToInvariants = Map[Symbol, Set[Tree]]()
 
     /**
      * For the function in $defs with name $owner, find its parameter with index $index,
@@ -547,8 +566,53 @@ trait CodeExtraction extends ASTExtractors {
             if (tpe != id.getType) println(tpe, id.getType)
             LeonValDef(id.setPos(t.pos)).setPos(t.pos)
           }
+
           //println(s"Fields of $sym")
           ccd.setFields(fields)
+
+          // checks whether this type definition could lead to an infinite type
+          def computeChains(tpe: LeonType): Map[TypeParameterDef, Set[LeonClassDef]] = {
+            var seen: Set[LeonClassDef] = Set.empty
+            var chains: Map[TypeParameterDef, Set[LeonClassDef]] = Map.empty
+            
+            def rec(tpe: LeonType): Set[LeonClassDef] = tpe match {
+              case ct: ClassType =>
+                val root = ct.classDef.root
+                if (!seen(ct.classDef.root)) {
+                  seen += ct.classDef.root
+                  for (cct <- ct.root.knownCCDescendants;
+                       (tp, tpe) <- cct.classDef.tparams zip cct.tps) {
+                    val relevant = rec(tpe)
+                    chains += tp -> (chains.getOrElse(tp, Set.empty) ++ relevant)
+                    for (cd <- relevant; vd <- cd.fields) {
+                      rec(vd.getType)
+                    }
+                  }
+                }
+                Set(root)
+
+              case Types.NAryType(tpes, _) =>
+                tpes.flatMap(rec).toSet
+            }
+
+            rec(tpe)
+            chains
+          }
+
+          val chains = computeChains(ccd.typed)
+
+          def check(tp: TypeParameterDef, seen: Set[LeonClassDef]): Unit = chains.get(tp) match {
+            case Some(classDefs) =>
+              if ((seen intersect classDefs).nonEmpty) {
+                outOfSubsetError(sym.pos, "Infinite types are not allowed")
+              } else {
+                for (cd <- classDefs; tp <- cd.tparams) check(tp, seen + cd)
+              }
+            case None =>
+          }
+
+          for (tp <- ccd.tparams) check(tp, Set.empty)
+
         case _ =>
       }
 
@@ -571,6 +635,9 @@ trait CodeExtraction extends ASTExtractors {
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
+
+        case ExRequiredExpression(body) =>
+          classToInvariants += sym -> (classToInvariants.getOrElse(sym, Set.empty) + body)
 
         // Default values for parameters
         case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>
@@ -625,6 +692,8 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
+    private val invId = FreshIdentifier("inv", BooleanType)
+
     private var isLazy = Set[LeonValDef]()
 
     private var defsToDefs = Map[Symbol, FunDef]()
@@ -639,7 +708,6 @@ trait CodeExtraction extends ASTExtractors {
         val ptpe = leonType(sym.tpe)(nctx, sym.pos)
         val tpe = if (sym.isByNameParam) FunctionType(Seq(), ptpe) else ptpe
         val newID = FreshIdentifier(sym.name.toString, tpe).setPos(sym.pos)
-        owners += (newID -> None)
         val vd = LeonValDef(newID).setPos(sym.pos)
 
         if (sym.isByNameParam) {
@@ -798,21 +866,7 @@ trait CodeExtraction extends ASTExtractors {
         }} else body0
 
       val finalBody = try {
-        flattenBlocks(extractTreeOrNoTree(body)(fctx)) match {
-          case e if e.getType.isInstanceOf[ArrayType] =>
-            getOwner(e) match {
-              case Some(Some(fd)) if fd == funDef =>
-                e
-
-              case None =>
-                e
-
-              case _ =>
-                outOfSubsetError(body, "Function cannot return an array that is not locally defined")
-            }
-          case e =>
-            e
-        }
+        flattenBlocks(extractTreeOrNoTree(body)(fctx))
       } catch {
         case e: ImpureCodeEncounteredException =>
           e.emit()
@@ -825,6 +879,10 @@ trait CodeExtraction extends ASTExtractors {
 
           funDef.addFlag(IsAbstract)
           NoTree(funDef.returnType)
+      }
+
+      if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
+        reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
       }
 
       funDef.fullBody = finalBody
@@ -955,11 +1013,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       try {
-        val res = extractTree(tr)
-        if (dctx.isExtern) {
-          reporter.warning(res.getPos, "External function could be extracted as Leon tree")
-        }
-        res
+        extractTree(tr)
       } catch {
         case e: ImpureCodeEncounteredException =>
           if (dctx.isExtern) {
@@ -1012,6 +1066,30 @@ trait CodeExtraction extends ASTExtractors {
 
           Ensuring(b, post)
 
+        case t @ ExComputesExpression(body, expected) =>
+          val b = extractTreeOrNoTree(body).setPos(body.pos)
+          val expected_expr = extractTreeOrNoTree(expected).setPos(expected.pos)
+          
+          val resId = FreshIdentifier("res", b.getType).setPos(current.pos)
+          val post = Lambda(Seq(LeonValDef(resId)), Equals(Variable(resId), expected_expr)).setPos(current.pos)
+
+          Ensuring(b, post)
+          
+        case t @ ExByExampleExpression(input, output) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val output_expr  =  extractTreeOrNoTree(output).setPos(output.pos)
+          Passes(input_expr, output_expr, MatchCase(WildcardPattern(None), Some(BooleanLiteral(false)), NoTree(output_expr.getType))::Nil)
+          
+        case t @ ExAskExpression(input, output) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val output_expr = extractTreeOrNoTree(output).setPos(output.pos)
+          
+          val resId = FreshIdentifier("res", output_expr.getType).setPos(current.pos)
+          val post = Lambda(Seq(LeonValDef(resId)),
+              Passes(input_expr, Variable(resId), MatchCase(WildcardPattern(None), Some(BooleanLiteral(false)), NoTree(output_expr.getType))::Nil)).setPos(current.pos)
+
+          Ensuring(output_expr, post)
+          
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
           val b     = rest.map(extractTreeOrNoTree).getOrElse(UnitLiteral())
@@ -1090,15 +1168,6 @@ trait CodeExtraction extends ASTExtractors {
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
           val valTree = extractTree(bdy)
 
-          if(valTree.getType.isInstanceOf[ArrayType]) {
-            getOwner(valTree) match {
-              case None =>
-                owners += (newID -> Some(currentFunDef))
-              case _ =>
-                outOfSubsetError(tr, "Cannot alias array")
-            }
-          }
-
           val restTree = rest match {
             case Some(rst) =>
               val nctx = dctx.withNewVar(vs -> (() => Variable(newID)))
@@ -1138,7 +1207,7 @@ trait CodeExtraction extends ASTExtractors {
             case _ =>
               (Nil, restTree)
           }
-          LetDef(funDefWithBody +: other_fds, block)
+          letDef(funDefWithBody +: other_fds, block)
 
         // FIXME case ExDefaultValueFunction
 
@@ -1150,15 +1219,6 @@ trait CodeExtraction extends ASTExtractors {
           val binderTpe = extractType(tpt)
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
           val valTree = extractTree(bdy)
-
-          if(valTree.getType.isInstanceOf[ArrayType]) {
-            getOwner(valTree) match {
-              case None =>
-                owners += (newID -> Some(currentFunDef))
-              case Some(_) =>
-                outOfSubsetError(tr, "Cannot alias array")
-            }
-          }
 
           val restTree = rest match {
             case Some(rst) => {
@@ -1178,9 +1238,6 @@ trait CodeExtraction extends ASTExtractors {
           case Some(fun) =>
             val Variable(id) = fun()
             val rhsTree = extractTree(rhs)
-            if(rhsTree.getType.isInstanceOf[ArrayType] && getOwner(rhsTree).isDefined) {
-              outOfSubsetError(tr, "Cannot alias array")
-            }
             Assignment(id, rhsTree)
 
           case None =>
@@ -1221,18 +1278,6 @@ trait CodeExtraction extends ASTExtractors {
             case Variable(_) =>
             case _ =>
               outOfSubsetError(tr, "Array update only works on variables")
-          }
-
-          getOwner(lhsRec) match {
-          //  case Some(Some(fd)) if fd != currentFunDef =>
-          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
-
-          //  case Some(None) =>
-          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
-
-            case Some(_) =>
-
-            case None => sys.error("This array: " + lhsRec + " should have had an owner")
           }
 
           val indexRec = extractTree(index)
@@ -1309,7 +1354,6 @@ trait CodeExtraction extends ASTExtractors {
             val aTpe  = extractType(tpt)
             val oTpe  = oracleType(ops.pos, aTpe)
             val newID = FreshIdentifier(sym.name.toString, oTpe)
-            owners += (newID -> None)
             newID
           }
 
@@ -1331,7 +1375,6 @@ trait CodeExtraction extends ASTExtractors {
           val vds = args map { vd =>
             val aTpe = extractType(vd.tpt)
             val newID = FreshIdentifier(vd.symbol.name.toString, aTpe)
-            owners += (newID -> None)
             LeonValDef(newID)
           }
 
@@ -1347,7 +1390,6 @@ trait CodeExtraction extends ASTExtractors {
           val vds = args map { case (tpt, sym) =>
             val aTpe = extractType(tpt)
             val newID = FreshIdentifier(sym.name.toString, aTpe)
-            owners += (newID -> None)
             LeonValDef(newID)
           }
 
@@ -1908,34 +1950,6 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    private def getReturnedExpr(expr: LeonExpr): Seq[LeonExpr] = expr match {
-      case Let(_, _, rest) => getReturnedExpr(rest)
-      case LetVar(_, _, rest) => getReturnedExpr(rest)
-      case LeonBlock(_, rest) => getReturnedExpr(rest)
-      case IfExpr(_, thenn, elze) => getReturnedExpr(thenn) ++ getReturnedExpr(elze)
-      case MatchExpr(_, cses) => cses.flatMap{ cse => getReturnedExpr(cse.rhs) }
-      case _ => Seq(expr)
-    }
-
-    def getOwner(exprs: Seq[LeonExpr]): Option[Option[FunDef]] = {
-      val exprOwners: Seq[Option[Option[FunDef]]] = exprs.map {
-        case Variable(id) =>
-          owners.get(id)
-        case _ =>
-          None
-      }
-
-      if(exprOwners.contains(None))
-        None
-      else if(exprOwners.contains(Some(None)))
-        Some(None)
-      else if(exprOwners.exists(o1 => exprOwners.exists(o2 => o1 != o2)))
-        Some(None)
-      else
-        exprOwners.head
-    }
-
-    def getOwner(expr: LeonExpr): Option[Option[FunDef]] = getOwner(getReturnedExpr(expr))
   }
 
   def containsLetDef(expr: LeonExpr): Boolean = {

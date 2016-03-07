@@ -65,7 +65,7 @@ case object ADTSplit extends Rule("ADT Split.") {
       case Some((id, act, cases)) =>
         val oas = p.as.filter(_ != id)
 
-        val subInfo = for(ccd <- cases) yield {
+        val subInfo0 = for(ccd <- cases) yield {
            val cct    = CaseClassType(ccd, act.tps)
 
            val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
@@ -87,6 +87,10 @@ case object ADTSplit extends Rule("ADT Split.") {
            val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
            (cct, subProblem, subPattern)
+        }
+
+        val subInfo = subInfo0.sortBy{ case (cct, _, _) =>
+          cct.fieldsTypes.count { t => t == act }
         }
 
 

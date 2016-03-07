@@ -8,11 +8,11 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps.typeParamsOf
 import purescala.Extractors._
 import purescala.Constructors._
-import codegen.runtime.LeonCodeGenRuntimeMonitor
-import codegen.runtime.LeonCodeGenRuntimeHenkinMonitor
 import utils.UniqueCounter
+import runtime.{Monitor, StdMonitor}
 
 import cafebabe._
 import cafebabe.AbstractByteCodes._
@@ -24,21 +24,61 @@ import scala.collection.JavaConverters._
 
 import java.lang.reflect.Constructor
 
+import synthesis.Problem
 
 class CompilationUnit(val ctx: LeonContext,
                       val program: Program,
                       val params: CodeGenParams = CodeGenParams.default) extends CodeGeneration {
 
+
   protected[codegen] val requireQuantification = program.definedFunctions.exists { fd =>
     exists { case _: Forall => true case _ => false } (fd.fullBody)
   }
 
-  protected[codegen] val requireMonitor = params.requireMonitor || requireQuantification
-
   val loader = new CafebabeClassLoader(classOf[CompilationUnit].getClassLoader)
 
   var classes = Map[Definition, ClassFile]()
+
   var defToModuleOrClass = Map[Definition, Definition]()
+
+  val abstractFunDefs = program.definedFunctions.filter(_.body.isEmpty).map(_.id).toSet
+
+  val runtimeCounter = new UniqueCounter[Unit]
+
+  var runtimeTypeToIdMap = Map[TypeTree, Int]()
+  var runtimeIdToTypeMap = Map[Int, TypeTree]()
+  def registerType(tpe: TypeTree): Int = runtimeTypeToIdMap.get(tpe) match {
+    case Some(id) => id
+    case None =>
+      val id = runtimeCounter.nextGlobal
+      runtimeTypeToIdMap += tpe -> id
+      runtimeIdToTypeMap += id -> tpe
+      id
+  }
+
+  var runtimeProblemMap  = Map[Int, (Seq[TypeParameter], Problem)]()
+
+  def registerProblem(p: Problem, tps: Seq[TypeParameter]): Int = {
+    val id = runtimeCounter.nextGlobal
+    runtimeProblemMap += id -> (tps, p)
+    id
+  }
+
+  var runtimeForallMap = Map[Int, (Seq[TypeParameter], Forall)]()
+
+  def registerForall(f: Forall, tps: Seq[TypeParameter]): Int = {
+    val id = runtimeCounter.nextGlobal
+    runtimeForallMap += id -> (tps, f)
+    id
+  }
+
+  var runtimeAbstractMap = Map[Int, FunDef]()
+
+  def registerAbstractFD(fd: FunDef): Int = {
+    val id = runtimeCounter.nextGlobal
+    runtimeAbstractMap += id -> fd
+    id
+  }
 
   def defineClass(df: Definition) {
     val cName = defToJVMName(df)
@@ -65,8 +105,7 @@ class CompilationUnit(val ctx: LeonContext,
   def leonClassToJVMInfo(cd: ClassDef): Option[(String, String)] = {
     classes.get(cd) match {
       case Some(cf) =>
-        val monitorType = if (requireMonitor) "L"+MonitorClass+";" else ""
-        val sig = "(" + monitorType + cd.fields.map(f => typeToJVM(f.getType)).mkString("") + ")V"
+        val sig = "(L"+MonitorClass+";" + cd.fields.map(f => typeToJVM(f.getType)).mkString("") + ")V"
         Some((cf.className, sig))
       case _ => None
     }
@@ -84,9 +123,9 @@ class CompilationUnit(val ctx: LeonContext,
    */
   def leonFunDefToJVMInfo(fd: FunDef): Option[(String, String, String)] = {
     funDefInfo.get(fd).orElse {
-      val monitorType = if (requireMonitor) "L"+MonitorClass+";" else ""
-
-      val sig = "(" + monitorType + fd.params.map(a => typeToJVM(a.getType)).mkString("") + ")" + typeToJVM(fd.returnType)
+      val sig = "(L"+MonitorClass+";" +
+        (if (fd.tparams.nonEmpty) "[I" else "") +
+        fd.params.map(a => typeToJVM(a.getType)).mkString("") + ")" + typeToJVM(fd.returnType)
 
       defToModuleOrClass.get(fd).flatMap(m => classes.get(m)) match {
         case Some(cf) =>
@@ -127,30 +166,14 @@ class CompilationUnit(val ctx: LeonContext,
     conss.last
   }
 
-  def modelToJVM(model: solvers.Model, maxInvocations: Int, check: Boolean): LeonCodeGenRuntimeMonitor = model match {
-    case hModel: solvers.HenkinModel =>
-      val lhm = new LeonCodeGenRuntimeHenkinMonitor(maxInvocations, check)
-      for ((lambda, domain) <- hModel.doms.lambdas) {
-        val (afName, _, _) = compileLambda(lambda)
-        val lc = loader.loadClass(afName)
+  def getMonitor(model: solvers.Model, maxInvocations: Int): Monitor = {
+    val bodies = model.toSeq.filter { case (id, v) => abstractFunDefs(id) }.toMap
+    val domains = model match {
+      case hm: solvers.PartialModel => Some(hm.domains)
+      case _ => None
+    }
 
-        for (args <- domain) {
-          // note here that it doesn't matter that `lhm` doesn't yet have its domains
-          // filled since all values in `args` should be grounded
-          val inputJvm = tupleConstructor.newInstance(args.map(valueToJVM(_)(lhm)).toArray).asInstanceOf[leon.codegen.runtime.Tuple]
-          lhm.add(lc, inputJvm)
-        }
-      }
-
-      for ((tpe, domain) <- hModel.doms.tpes; args <- domain) {
-        val tpeId = typeId(tpe)
-        // same remark as above about valueToJVM(_)(lhm)
-        val inputJvm = tupleConstructor.newInstance(args.map(valueToJVM(_)(lhm)).toArray).asInstanceOf[leon.codegen.runtime.Tuple]
-        lhm.add(tpeId, inputJvm)
-      }
-      lhm
-    case _ =>
-      new LeonCodeGenRuntimeMonitor(maxInvocations)
+    new StdMonitor(this, maxInvocations, bodies, domains)
   }
 
   /** Translates Leon values (not generic expressions) to JVM compatible objects.
@@ -159,7 +182,7 @@ class CompilationUnit(val ctx: LeonContext,
     * This means it is safe to return AnyRef (as opposed to primitive types), because
     * reflection needs this anyway.
     */
-  def valueToJVM(e: Expr)(implicit monitor: LeonCodeGenRuntimeMonitor): AnyRef = e match {
+  def valueToJVM(e: Expr)(implicit monitor: Monitor): AnyRef = e match {
     case IntLiteral(v) =>
       new java.lang.Integer(v)
 
@@ -190,8 +213,8 @@ class CompilationUnit(val ctx: LeonContext,
     case CaseClass(cct, args) =>
       caseClassConstructor(cct.classDef) match {
         case Some(cons) =>
-          val realArgs = if (requireMonitor) monitor +: args.map(valueToJVM) else  args.map(valueToJVM)
-          cons.newInstance(realArgs.toArray : _*).asInstanceOf[AnyRef]
+          val jvmArgs = monitor +: args.map(valueToJVM)
+          cons.newInstance(jvmArgs.toArray : _*).asInstanceOf[AnyRef]
         case None =>
           ctx.reporter.fatalError("Case class constructor not found?!?")
       }
@@ -215,12 +238,8 @@ class CompilationUnit(val ctx: LeonContext,
       }
       m
 
-    case f @ PartialLambda(mapping, dflt, _) =>
-      val l = if (dflt.isDefined) {
-        new leon.codegen.runtime.PartialLambda(dflt.get)
-      } else {
-        new leon.codegen.runtime.PartialLambda()
-      }
+    case f @ FiniteLambda(mapping, dflt, _) =>
+      val l = new leon.codegen.runtime.FiniteLambda(valueToJVM(dflt))
 
       for ((ks,v) <- mapping) {
         // Force tuple even with 1/0 elems.
@@ -229,6 +248,22 @@ class CompilationUnit(val ctx: LeonContext,
         l.add(kJvm,vJvm)
       }
       l
+
+    case l @ Lambda(args, body) =>
+      val (afName, closures, tparams, consSig) = compileLambda(l)
+      val args = closures.map { case (id, _) =>
+        if (id == monitorID) monitor
+        else if (id == tpsID) typeParamsOf(l).toSeq.sortBy(_.id.uniqueName).map(registerType).toArray
+        else throw CompilationException(s"Unexpected closure $id in Lambda compilation")
+      }
+
+      val lc = loader.loadClass(afName)
+      val conss = lc.getConstructors.sortBy(_.getParameterTypes.length)
+      println(conss)
+      assert(conss.nonEmpty)
+      val lambdaConstructor = conss.last
+      println(args.toArray)
+      lambdaConstructor.newInstance(args.toArray : _*).asInstanceOf[AnyRef]
 
     case f @ IsTyped(FiniteArray(elems, default, IntLiteral(length)), ArrayType(underlying)) =>
       if (length < 0) {
@@ -271,10 +306,6 @@ class CompilationUnit(val ctx: LeonContext,
 
     case _ =>
       throw CompilationException(s"Unexpected expression $e in valueToJVM")
-
-    // Just slightly overkill...
-    //case _ =>
-    //  compileExpression(e, Seq()).evalToJVM(Seq(),monitor)
   }
 
   /** Translates JVM objects back to Leon values of the appropriate type */
@@ -340,6 +371,15 @@ class CompilationUnit(val ctx: LeonContext,
       }.toMap
       FiniteMap(pairs, from, to)
 
+    case (lambda: runtime.FiniteLambda, ft @ FunctionType(from, to)) =>
+      val mapping = lambda.mapping.asScala.map { entry =>
+        val k = jvmToValue(entry._1, tupleTypeWrap(from))
+        val v = jvmToValue(entry._2, to)
+        unwrapTuple(k, from.size) -> v
+      }
+      val dflt = jvmToValue(lambda.dflt, to)
+      FiniteLambda(mapping.toSeq, dflt, ft)
+
     case (lambda: runtime.Lambda, _: FunctionType) =>
       val cls = lambda.getClass
 
@@ -390,11 +430,7 @@ class CompilationUnit(val ctx: LeonContext,
 
     val argsTypes = args.map(a => typeToJVM(a.getType))
 
-    val realArgs = if (requireMonitor) {
-      ("L" + MonitorClass + ";") +: argsTypes
-    } else {
-      argsTypes
-    }
+    val realArgs = ("L" + MonitorClass + ";") +: argsTypes
 
     val m = cf.addMethod(
       typeToJVM(e.getType),
@@ -410,11 +446,7 @@ class CompilationUnit(val ctx: LeonContext,
 
     val ch = m.codeHandler
 
-    val newMapping = if (requireMonitor) {
-      args.zipWithIndex.toMap.mapValues(_ + 1) + (monitorID -> 0)
-    } else {
-      args.zipWithIndex.toMap
-    }
+    val newMapping = Map(monitorID -> 0) ++ args.zipWithIndex.toMap.mapValues(_ + 1)
 
     mkExpr(e, ch)(NoLocals.withVars(newMapping))
 
@@ -480,10 +512,10 @@ class CompilationUnit(val ctx: LeonContext,
        * method invocations here :(
        */
       val locals = NoLocals.withVar(monitorID -> ch.getFreshVar)
-      ch << New(MonitorClass) << DUP
-      ch << Ldc(Int.MaxValue) // Allow "infinite" method calls
-      ch << InvokeSpecial(MonitorClass, cafebabe.Defaults.constructorName, "(I)V")
+      ch << New(NoMonitorClass) << DUP
+      ch << InvokeSpecial(NoMonitorClass, cafebabe.Defaults.constructorName, "()V")
       ch << AStore(locals.varToLocal(monitorID).get) // position 0
+
       for (lzy <- lazyFields) { initLazyField(ch, cName, lzy, isStatic = true)(locals) }
       for (field <- strictFields) { initStrictField(ch, cName , field, isStatic = true)(locals) }
       ch  << RETURN

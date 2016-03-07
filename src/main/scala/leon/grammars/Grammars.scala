@@ -7,6 +7,7 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.TypeOps._
+import transformers.OneOf
 
 import synthesis.{SynthesisContext, Problem}
 
@@ -16,6 +17,7 @@ object Grammars {
     BaseGrammar ||
     EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }) ||
     OneOf(inputs) ||
+    Constants(currentFunction.fullBody) ||
     FunctionCalls(prog, currentFunction, inputs.map(_.getType), exclude) ||
     SafeRecursiveCalls(prog, ws, pc)
   }
@@ -28,3 +30,4 @@ object Grammars {
     g.filter(g => g.subTrees.forall(t => typeDepth(t.getType) <= b))
   }
 }
+

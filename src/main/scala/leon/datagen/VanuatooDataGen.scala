@@ -13,7 +13,7 @@ import purescala.Constructors._
 
 import codegen.CompilationUnit
 import codegen.CodeGenParams
-import codegen.runtime.LeonCodeGenRuntimeMonitor
+import codegen.runtime.StdMonitor
 import vanuatoo.{Pattern => VPattern, _}
 
 import evaluators._
@@ -131,7 +131,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           Constructor[Expr, TypeTree](subs, ft, { s =>
             val grouped = s.grouped(from.size + 1).toSeq
             val mapping = grouped.init.map { case args :+ res => (args -> res) }
-            PartialLambda(mapping, Some(grouped.last.last), ft)
+            FiniteLambda(mapping, grouped.last.last, ft)
           }, ft.asString(ctx) + "@" + size)
         }
         constructors += ft -> cs
@@ -262,7 +262,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       Some((args : Expr) => {
         try {
-          val monitor = new LeonCodeGenRuntimeMonitor(unit.params.maxFunctionInvocations)
+          val monitor = new StdMonitor(unit, unit.params.maxFunctionInvocations, Map())
+
           val jvmArgs = ce.argsToJVM(Seq(args), monitor)
 
           val result  = ce.evalFromJVM(jvmArgs, monitor)

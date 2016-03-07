@@ -178,7 +178,7 @@ object LazyExpressionLifter {
       case d          => d
     })
     val progWithClasses =
-      if (createUniqueIds) addDefs(progWithFuns, fvClasses, anchorDef.get)
+      if (createUniqueIds) ProgramUtil.addDefs(progWithFuns, fvClasses, anchorDef.get)
       else progWithFuns
     if (!newfuns.isEmpty) {
       val modToNewDefs = newfuns.values.groupBy(_._2).map { case (k, v) => (k, v.map(_._1)) }.toMap

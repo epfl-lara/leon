@@ -60,7 +60,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *   post(res)
    * }
    *
-   * 3) Completes abstract definitions:
+   * 3) Completes abstract definitions (IF NOT EXTERN):
    *
    *  def foo(a: T) = {
    *    require(..a..)
@@ -92,14 +92,14 @@ object ConversionPhase extends UnitPhase[Program] {
    * (in practice, there will be no pre-and postcondition)
    */
 
-  def convert(e : Expr, ctx : LeonContext) : Expr = {
+  def convert(e : Expr, ctx : LeonContext, isExtern: Boolean) : Expr = {
     val (pre, body, post) = breakDownSpecs(e)
 
     // Ensure that holes are not found in pre and/or post conditions
     (pre ++ post).foreach {
       preTraversal{
         case h : Hole =>
-          ctx.reporter.error(s"Holes are not supported in pre- or postconditions. @ ${h.getPos}")
+          ctx.reporter.error(s"Holes like $h are not supported in pre- or postconditions. @ ${h.getPos}")
         case wo: WithOracle =>
           ctx.reporter.error(s"WithOracle expressions are not supported in pre- or postconditions: ${wo.asString(ctx)} @ ${wo.getPos}")
         case _ =>
@@ -183,8 +183,12 @@ object ConversionPhase extends UnitPhase[Program] {
         }
 
       case None =>
-        val newPost = post getOrElse Lambda(Seq(ValDef(FreshIdentifier("res", e.getType))), BooleanLiteral(true))
-        withPrecondition(Choose(newPost), pre)
+        if (isExtern) {
+          e
+        } else {
+          val newPost = post getOrElse Lambda(Seq(ValDef(FreshIdentifier("res", e.getType))), BooleanLiteral(true))
+          withPrecondition(Choose(newPost), pre)
+      }
     }
 
     // extract spec from chooses at the top-level
@@ -202,7 +206,7 @@ object ConversionPhase extends UnitPhase[Program] {
   def apply(ctx: LeonContext, pgm: Program): Unit = {
     // TODO: remove side-effects
     for (fd <- pgm.definedFunctions) {
-      fd.fullBody = convert(fd.fullBody,ctx)
+      fd.fullBody = convert(fd.fullBody, ctx, fd.annotations("extern"))
     }
   }
 

@@ -31,7 +31,8 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
   def toExpr = {
-    letDef(defs.toList, guardedTerm)
+    if(defs.isEmpty) guardedTerm else
+    LetDef(defs.toList, guardedTerm)
   }
 
   // Projects a solution (ignore several output variables)

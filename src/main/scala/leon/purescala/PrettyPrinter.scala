@@ -81,15 +81,12 @@ class PrettyPrinter(opts: PrinterOptions,
         }
         p"$name"
 
-      case Old(id) =>
-        p"old($id)"
-
       case Variable(id) =>
         p"$id"
 
       case Let(b,d,e) =>
-          p"""|val $b = $d
-              |$e"""
+        p"""|val $b = $d
+            |$e"""
 
       case LetDef(a::q,body) =>
         p"""|$a
@@ -117,11 +114,17 @@ class PrettyPrinter(opts: PrinterOptions,
             |}"""
 
       case p@Passes(in, out, tests) =>
-        optP {
-          p"""|($in, $out) passes {
-              |  ${nary(tests, "\n")}
-              |}"""
+        tests match {
+          case Seq(MatchCase(_, Some(BooleanLiteral(false)), NoTree(_))) =>
+            p"""|byExample($in, $out)"""
+          case _ =>
+            optP {
+              p"""|($in, $out) passes {
+                  |  ${nary(tests, "\n")}
+                  |}"""
+            }
         }
+        
 
       case c @ WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>
@@ -273,19 +276,15 @@ class PrettyPrinter(opts: PrinterOptions,
       case Lambda(args, body) =>
         optP { p"($args) => $body" }
 
-      case PartialLambda(mapping, dflt, _) =>
+      case FiniteLambda(mapping, dflt, _) =>
         optP {
           def pm(p: (Seq[Expr], Expr)): PrinterHelpers.Printable =
             (pctx: PrinterContext) => p"${purescala.Constructors.tupleWrap(p._1)} => ${p._2}"(pctx)
 
           if (mapping.isEmpty) {
-            p"{}"
+            p"{ * => ${dflt} }"
           } else {
-            p"{ ${nary(mapping map pm)} }"
-          }
-
-          if (dflt.isDefined) {
-            p" getOrElse ${dflt.get}"
+            p"{ ${nary(mapping map pm)}, * => ${dflt} }"
           }
         }
 

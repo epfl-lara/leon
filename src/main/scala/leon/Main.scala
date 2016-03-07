@@ -34,8 +34,9 @@ object Main {
   }
 
   // Add whatever you need here.
-  lazy val allComponents: Set[LeonComponent] = allPhases.toSet ++ Set(
-    solvers.z3.FairZ3Component, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component)
+  lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
+    solvers.combinators.UnrollingProcedure, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
+  )
 
   /*
    * This object holds the options that determine the selected pipeline of Leon.
@@ -45,18 +46,18 @@ object Main {
     val name = "main"
     val description = "Selection of Leon functionality. Default: verify"
 
-    val optEval = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[code|default]")
-    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify", false)
-    val optRepair = LeonFlagOptionDef("repair", "Repair selected functions", false)
-    val optSynthesis = LeonFlagOptionDef("synthesis", "Partial synthesis of choose() constructs", false)
-    val optIsabelle = LeonFlagOptionDef("isabelle", "Run Isabelle verification", false)
-    val optNoop = LeonFlagOptionDef("noop", "No operation performed, just output program", false)
-    val optVerify = LeonFlagOptionDef("verify", "Verify function contracts", false)
-    val optHelp = LeonFlagOptionDef("help", "Show help message", false)
-    val optInstrument = LeonFlagOptionDef("instrument", "Instrument the code for inferring time/depth/stack bounds", false)
-    val optInferInv = LeonFlagOptionDef("inferInv", "Infer invariants from (instrumented) the code", false)
+    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[codegen|default]")
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",     false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                 false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                  false)
+    val optIsabelle    = LeonFlagOptionDef("isabelle",    "Run Isabelle verification",                                 false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",               false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                 false)
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
+    val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
+    val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
     val optLazyEval = LeonFlagOptionDef("lazy", "Handles programs that may use the lazy construct", false)
-    val optGenc = LeonFlagOptionDef("genc", "Generate C code", false)
+    val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
       Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval, optGenc)
@@ -115,9 +116,11 @@ object Main {
             s"Malformed option $opt. Options should have the form --name or --name=value")
       }
       // Find respective LeonOptionDef, or report an unknown option
-      val df = allOptions.find(_.name == name).getOrElse {
-        initReporter.error(s"Unknown option: $name")
-        displayHelp(initReporter, error = true)
+      val df = allOptions.find(_. name == name).getOrElse{
+        initReporter.fatalError(
+          s"Unknown option: $name\n" +
+          "Try 'leon --help' for more information."
+        )
       }
       df.parse(value)(initReporter)
     }

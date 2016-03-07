@@ -5,6 +5,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
+import leon.purescala.TypeOps.instantiateType
 import purescala.Extractors._
 import purescala.Types._
 import java.io._
@@ -108,7 +109,6 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
     resetUntempCalls(formula.fd, newUntemplatedCalls ++ calls)
   }
 
-  import leon.purescala.TypeOps._
   def specForCall(call: Call): Option[Expr] = {
     val argmap = formalToActual(call)
     val tfd = call.fi.tfd

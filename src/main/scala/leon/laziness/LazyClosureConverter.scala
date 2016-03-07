@@ -27,7 +27,7 @@ import leon.TransformationPhase
 import LazinessUtil._
 import ProgramUtil._
 import PredicateUtil._
-import purescala.TypeOps._
+import purescala.TypeOps.bestRealType
 
 /**
  * (a) add state to every function in the program
@@ -780,7 +780,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     transformCaseClasses
     assignBodiesToFunctions
     assignContractsForEvals
-    addDefs(
+    ProgramUtil.addDefs(
       copyProgram(p,
         (defs: Seq[Definition]) => defs.flatMap {
           case fd: FunDef if funMap.contains(fd) =>

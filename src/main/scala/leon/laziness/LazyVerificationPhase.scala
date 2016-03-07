@@ -13,7 +13,6 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Extractors._
 import purescala.Types._
-import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
 import leon.verification.VerificationPhase
@@ -118,7 +117,7 @@ object LazyVerificationPhase {
         if (debugInferProgram)
           prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
 
-        val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram, 
+        val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram,
             funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)
         new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)
       } else {

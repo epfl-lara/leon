@@ -1,4 +1,4 @@
-package leon
+package leon.utils
 
 import scala.collection.mutable.ArrayBuffer
 

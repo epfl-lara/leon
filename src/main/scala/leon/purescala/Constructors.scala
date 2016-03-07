@@ -131,7 +131,7 @@ object Constructors {
     */
   def caseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
     caseClass match {
-      case CaseClass(ct, fields) if ct.classDef == classType.classDef =>
+      case CaseClass(ct, fields) if ct.classDef == classType.classDef && !ct.classDef.hasInvariant =>
         fields(ct.classDef.selectorID2Index(selector))
       case _ =>
         CaseClassSelector(classType, caseClass, selector)
@@ -317,6 +317,13 @@ object Constructors {
   }
 
   /** $encodingof simplified `fn(realArgs)` (function application).
+    * Transforms
+    * {{{ ((x: A, y: B) => g(x, y))(c, d) }}}
+    * into
+    * {{{val x0 = c
+    * val y0 = d
+    * g(x0, y0)}}}
+    * and further simplifies it.
     * @see [[purescala.Expressions.Lambda Lambda]]
     * @see [[purescala.Expressions.Application Application]]
     */
@@ -338,6 +345,7 @@ object Constructors {
       val (ids, bds) = defs.unzip
 
       letTuple(ids, tupleWrap(bds), replaceFromIDs(subst, body))
+
     case _ =>
       Application(fn, realArgs)
    }

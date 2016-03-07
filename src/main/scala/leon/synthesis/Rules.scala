@@ -35,8 +35,10 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 
 /** Contains the list of all available rules for synthesis */
 object Rules {
+
+  def all: List[Rule] = all(false)
   /** Returns the list of all available rules for synthesis */
-  def all = List[Rule](
+  def all(naiveGrammar: Boolean): List[Rule] = List[Rule](
     StringRender,
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
@@ -54,8 +56,8 @@ object Rules {
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
-    CEGIS,
-    TEGIS,
+    if(naiveGrammar) NaiveCEGIS else CEGIS,
+    //TEGIS,
     //BottomUpTEGIS,
     rules.Assert,
     DetupleOutput,

@@ -1,21 +1,20 @@
 package leon
 package synthesis.disambiguation
 
+import datagen.GrammarDataGen
 import synthesis.Solution
 import evaluators.DefaultEvaluator
 import purescala.Expressions._
 import purescala.ExprOps
-import purescala.Constructors._
-import purescala.Extractors._
 import purescala.Types.{StringType, TypeTree}
 import purescala.Common.Identifier
 import purescala.Definitions.Program
 import purescala.DefOps
-import grammars.ValueGrammar
-import bonsai.enumerators.MemoizedEnumerator
+import grammars._
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
-import grammars._
+import evaluators.AbstractEvaluator
+import scala.annotation.tailrec
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -69,15 +68,15 @@ object QuestionBuilder {
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
   object SpecialStringValueGrammar extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
-       case StringType =>
-          List(
-            terminal(StringLiteral("")),
-            terminal(StringLiteral("a")),
-            terminal(StringLiteral("\"'\n\t")),
-            terminal(StringLiteral("Lara 2007"))
-          )
-       case _ => ValueGrammar.computeProductions(t)
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+      case StringType =>
+        List(
+          terminal(StringLiteral("")),
+          terminal(StringLiteral("a")),
+          terminal(StringLiteral("\"'\n\t")),
+          terminal(StringLiteral("Lara 2007"))
+        )
+      case _ => ValueGrammar.computeProductions(t)
     }
   }
 }
@@ -92,11 +91,9 @@ object QuestionBuilder {
  * 
  * @tparam T A subtype of Expr that will be the type used in the Question[T] results.
  * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
- * @param ruleApplication The set of solutions for the body of f
  * @param filter A function filtering which outputs should be considered for comparison.
- * It takes as input the sequence of outputs already considered for comparison, and the new output.
- * It should return Some(result) if the result can be shown, and None else.
- * @return An ordered
+ *               It takes as input the sequence of outputs already considered for comparison, and the new output.
+ *               It should return Some(result) if the result can be shown, and None else.
  * 
  */
 class QuestionBuilder[T <: Expr](
@@ -129,35 +126,72 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-    val e = new DefaultEvaluator(c, newProgram)
+    val e = new AbstractEvaluator(c, newProgram)
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    e.eval(s.term, modelResult).result
+    for{x <- e.eval(s.term, modelResult).result
+        res = x._1
+        simp = ExprOps.simplifyArithmetic(res)}
+      yield simp
+  }
+  
+  /** Make all generic values unique.
+    * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
+  def makeGenericValuesUnique(a: Expr): Expr = {
+    var genVals = Set[Expr with Terminal]()
+    def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
+      case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
+      case StringLiteral(s) =>
+        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val prefix = s.take(i+1)
+        val suffix = s.drop(i+1)
+        Some(StringLiteral(prefix + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+      case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
+      case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
+      case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
+      case otherLiteral => None
+    }
+    @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
+          if(genVals contains g)
+            freshenValue(g) match {
+              case None => g
+              case Some(v) => freshValue(v)
+            }
+          else {
+            genVals += g
+            g
+          }
+    }
+    ExprOps.postMap{ e => e match {
+      case g:Expr with Terminal =>
+        Some(freshValue(g))
+      case _ => None
+    }}(a)
   }
   
   /** Returns a list of input/output questions to ask to the user. */
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
-    
-    val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree,Expr]](value_enumerator.getProductions)
-    val values = enum.iterator(tupleTypeWrap(_argTypes))
-    val instantiations = values.map {
-      v => input.zip(unwrapTuple(v, input.size))
-    }
-    
-    val enumerated_inputs = instantiations.take(expressionsToTake).toList
-    
+
+    val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
+    val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake)
+    .map(inputs =>
+      inputs.map(id_expr =>
+        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toList
+
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
     val questions = ListBuffer[Question[T]]()
-    for{possible_input             <- enumerated_inputs
-        current_output_nonfiltered <- run(solution, possible_input)
-        current_output             <- filter(Seq(), current_output_nonfiltered)} {
+    for {
+      possibleInput            <- enumerated_inputs
+      currentOutputNonFiltered <- run(solution, possibleInput)
+      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+    } {
       
-      val alternative_outputs = ((ListBuffer[T](current_output) /: alternatives) { (prev, alternative) =>
-        run(alternative, possible_input) match {
-          case Some(alternative_output) if alternative_output != current_output =>
+      val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
+        run(alternative, possibleInput) match {
+          case Some(alternative_output) if alternative_output != currentOutput =>
             filter(prev, alternative_output) match {
               case Some(alternative_output_filtered) =>
                 prev += alternative_output_filtered
@@ -165,9 +199,9 @@ class QuestionBuilder[T <: Expr](
             }
           case _ => prev
         }
-      }).drop(1).toList.distinct
-      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(current_output)) {
-        questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
+      }.drop(1).toList.distinct
+      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
+        questions += Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
       }
     }
     questions.toList.sortBy(_questionSorMethod(_))

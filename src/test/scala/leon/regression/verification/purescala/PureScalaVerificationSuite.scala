@@ -19,8 +19,8 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
   val opts: List[List[String]] = {
     List(
       List("--feelinglucky"),
-      List("--codegen", "--evalground", "--feelinglucky"),
-      List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky")
+      List("--codegen", /*"--evalground",*/ "--feelinglucky"),
+      List("--solvers=fairz3,enum", "--codegen", /*"--evalground",*/ "--feelinglucky")
     ) ++ (
       if (isZ3Available) List(
         List("--solvers=smt-z3", "--feelinglucky")
@@ -46,6 +46,7 @@ class PureScalaValidSuite2 extends PureScalaValidSuite {
 }
 class PureScalaValidSuite3 extends PureScalaValidSuite {
   val optionVariants = List(opts(2))
+  override val ignored = Seq("valid/Predicate.scala")
 }
 class PureScalaValidSuiteZ3 extends PureScalaValidSuite {
   val optionVariants = if (isZ3Available) List(opts(3)) else Nil

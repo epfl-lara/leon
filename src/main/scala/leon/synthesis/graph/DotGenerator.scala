@@ -6,7 +6,11 @@ import leon.utils.UniqueCounter
 
 import java.io.{File, FileWriter, BufferedWriter}
 
-class DotGenerator(g: Graph) {
+class DotGenerator(search: Search) {
+
+  implicit val ctx = search.ctx
+
+  val g = search.g
 
   private val idCounter = new UniqueCounter[Unit]
   idCounter.nextGlobal // Start with 1
@@ -80,11 +84,13 @@ class DotGenerator(g: Graph) {
   }
 
   def nodeDesc(n: Node): String = n match {
-    case an: AndNode => an.ri.toString
-    case on: OrNode => on.p.toString
+    case an: AndNode => an.ri.asString
+    case on: OrNode => on.p.asString
   }
 
   def drawNode(res: StringBuffer, name: String, n: Node) {
+
+    val index = n.parent.map(_.descendants.indexOf(n) + " ").getOrElse("")
 
     def escapeHTML(str: String) = str.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 
@@ -109,10 +115,10 @@ class DotGenerator(g: Graph) {
         res append "<TR><TD BORDER=\"0\">"+escapeHTML(n.cost.asString)+"</TD></TR>"
     }
 
-    res append "<TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(limit(nodeDesc(n)))+"</TD></TR>"
+    res append "<TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(limit(index + nodeDesc(n)))+"</TD></TR>"
 
     if (n.isSolved) {
-      res append "<TR><TD BGCOLOR=\""+color+"\">"+escapeHTML(limit(n.generateSolutions().head.toString))+"</TD></TR>"
+      res append "<TR><TD BGCOLOR=\""+color+"\">"+escapeHTML(limit(n.generateSolutions().head.asString))+"</TD></TR>"
     }
 
     res append "</TABLE>>, shape = \"none\" ];\n"

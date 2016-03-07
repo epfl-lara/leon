@@ -9,14 +9,12 @@ import Common._
 import Expressions._
 import Types._
 import Definitions._
-import org.apache.commons.lang3.StringEscapeUtils
 
-/** This pretty-printer only print valid scala syntax */
+/** This pretty-printer only prints valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions,
                    opgm: Option[Program],
                    sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, opgm, sb) {
 
-  private val dbquote = "\""
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
     tree match {

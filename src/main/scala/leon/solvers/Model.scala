@@ -5,6 +5,7 @@ package solvers
 
 import purescala.Expressions._
 import purescala.Common.Identifier
+import purescala.Quantification.Domains
 import purescala.ExprOps._
 
 trait AbstractModel[+This <: Model with AbstractModel[This]]
@@ -40,8 +41,9 @@ trait AbstractModel[+This <: Model with AbstractModel[This]]
       "Model()"
     } else {
       (for ((k,v) <- mapping.toSeq.sortBy(_._1)) yield {
-        f"  ${k.asString}%-20s -> ${v.asString}"
-      }).mkString("Model(\n", ",\n", ")")
+        val valuePadded = v.asString.replaceAll("\n", "\n"+(" "*26))
+        f"  ${k.asString}%-20s -> ${valuePadded}"
+      }).mkString("Model(\n", ",\n", "\n)")
     }
   }
 }
@@ -68,6 +70,7 @@ class Model(protected val mapping: Map[Identifier, Expr])
   def isDefinedAt(id: Identifier): Boolean = mapping.isDefinedAt(id)
   def get(id: Identifier): Option[Expr] = mapping.get(id)
   def getOrElse[E >: Expr](id: Identifier, e: E): E = get(id).getOrElse(e)
+  def ids = mapping.keys
   def apply(id: Identifier): Expr = get(id).getOrElse { throw new IllegalArgumentException }
 }
 
@@ -77,4 +80,22 @@ object Model {
 
 class ModelBuilder extends AbstractModelBuilder[Model] {
   def result = new Model(mapBuilder.result)
+}
+
+class PartialModel(mapping: Map[Identifier, Expr], val domains: Domains)
+  extends Model(mapping)
+     with AbstractModel[PartialModel] {
+
+  override def newBuilder = new PartialModelBuilder(domains)
+}
+
+object PartialModel {
+  def empty = new PartialModel(Map.empty, Domains.empty)
+}
+
+class PartialModelBuilder(domains: Domains)
+  extends ModelBuilder
+     with AbstractModelBuilder[PartialModel] {
+
+  override def result = new PartialModel(mapBuilder.result, domains)
 }

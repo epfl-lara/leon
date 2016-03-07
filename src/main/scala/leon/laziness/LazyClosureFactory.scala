@@ -13,7 +13,6 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Extractors._
 import purescala.Types._
-import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
 import java.io.File
