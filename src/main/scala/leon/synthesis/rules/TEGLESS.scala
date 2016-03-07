@@ -19,8 +19,6 @@ case object TEGLESS extends TEGISLike[NonTerminal[String]]("TEGLESS") {
       case Guide(expr) => expr
     }
 
-    val inputs = p.as.map(_.toVariable)
-
     sctx.reporter.ifDebug { printer =>
       printer("Guides available:")
       for (g <- guides) {
@@ -28,7 +26,7 @@ case object TEGLESS extends TEGISLike[NonTerminal[String]]("TEGLESS") {
       }
     }
 
-    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, sctx, p)).foldLeft[ExpressionGrammar[NonTerminal[String]]](Empty())(_ || _)
+    val guidedGrammar = guides.map(SimilarTo(_, sctx, p)).foldLeft[ExpressionGrammar[NonTerminal[String]]](Empty())(_ || _)
 
     TegisParams(
       grammar = guidedGrammar,

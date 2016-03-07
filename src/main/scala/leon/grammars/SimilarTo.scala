@@ -14,20 +14,15 @@ import synthesis._
 
 /** A grammar that generates expressions by inserting small variations in [[e]]
  * @param e The [[Expr]] to which small variations will be inserted
- * @param terminals A set of [[Expr]]s that may be inserted into [[e]] as small variations
  */
-case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[NonTerminal[String]] {
+case class SimilarTo(e: Expr, sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[NonTerminal[String]] {
 
   val excludeFCalls = sctx.settings.functionsToIgnore
 
   val normalGrammar: ExpressionGrammar[NonTerminal[String]] = DepthBoundedGrammar(EmbeddedGrammar(
-      BaseGrammar ||
-      EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ terminals.map { _.getType }) ||
-      OneOf(terminals.toSeq :+ e) ||
-      FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
-      SafeRecursiveCalls(sctx.program, p.ws, p.pc),
-    { (t: TypeTree)      => NonTerminal(t, "B", None)},
-    { (l: NonTerminal[String]) => l.getType }
+    Grammars.default(sctx, p, Seq(e)),
+    (t: TypeTree) => NonTerminal(t, "B", None),
+    (l: NonTerminal[String]) => l.getType
   ), 1)
 
   type L = NonTerminal[String]
@@ -148,9 +143,9 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
           gens(e, gl, subs, { case ss => builder(ss) })
       }
 
-      val terminalsMatching = terminals.collect {
-        case IsTyped(term, tpe) if tpe == gl.getType && term != e =>
-          gl -> terminal(term)
+      val terminalsMatching = p.as.collect {
+        case IsTyped(term, tpe) if tpe == gl.getType && Variable(term) != e =>
+          gl -> terminal(Variable(term))
       }
 
       val variations = e.getType match {
