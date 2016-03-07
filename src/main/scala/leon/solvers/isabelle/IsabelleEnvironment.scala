@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import leon.LeonContext
 import leon.OptionsHelpers._
-import leon.SharedOptions
+import leon.GlobalOptions
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Common._
@@ -34,7 +34,7 @@ object IsabelleEnvironment {
 
     val funFilter =
       // FIXME duplicated from AnalysisPhase
-      filterInclusive[FunDef](context.findOption(SharedOptions.optFunctions).map(fdMatcher(program)), Some(_.annotations contains "library"))
+      filterInclusive[FunDef](context.findOption(GlobalOptions.optFunctions).map(fdMatcher(program)), Some(_.annotations contains "library"))
 
     val funs = program.definedFunctions.filter(funFilter)
 

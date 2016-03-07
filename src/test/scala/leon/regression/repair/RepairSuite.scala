@@ -38,9 +38,9 @@ class RepairSuite extends LeonRegressionSuite {
       reporter = reporter,
       interruptManager = new InterruptManager(reporter),
       options = Seq(
-        LeonOption(SharedOptions.optFunctions)(Seq(fileToFun(name))),
+        LeonOption(GlobalOptions.optFunctions)(Seq(fileToFun(name))),
         LeonOption(VerificationPhase.optParallelVCs)(true),
-        LeonOption(SharedOptions.optTimeout)(180L)
+        LeonOption(GlobalOptions.optTimeout)(180L)
       )
     )
 

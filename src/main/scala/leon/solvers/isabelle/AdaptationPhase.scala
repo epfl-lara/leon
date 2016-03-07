@@ -32,7 +32,7 @@ object AdaptationPhase extends TransformationPhase {
       CaseClass(CaseClassType(dummy, List(tree)), Nil)
 
     val enabled =
-      context.findOptionOrDefault(SharedOptions.optSelectedSolvers).contains("isabelle") ||
+      context.findOptionOrDefault(GlobalOptions.optSelectedSolvers).contains("isabelle") ||
       context.findOptionOrDefault(Main.MainComponent.optIsabelle)
 
     if (!enabled) program

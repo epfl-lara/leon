@@ -71,7 +71,7 @@ trait CodeExtraction extends ASTExtractors {
   /** An exception thrown when non-purescala compatible code is encountered. */
   sealed class ImpureCodeEncounteredException(pos: Position, msg: String, ot: Option[Tree]) extends Exception(msg) {
     def emit() {
-      val debugInfo = if (ctx.findOptionOrDefault(SharedOptions.optDebug) contains utils.DebugSectionTrees) {
+      val debugInfo = if (ctx.findOptionOrDefault(GlobalOptions.optDebug) contains utils.DebugSectionTrees) {
         ot.map { t =>
           val strWr = new java.io.StringWriter()
           new global.TreePrinter(new java.io.PrintWriter(strWr)).printTree(t)

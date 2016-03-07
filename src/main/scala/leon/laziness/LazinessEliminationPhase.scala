@@ -116,7 +116,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       checkInstrumentationSpecs(instProg, checkCtx,
         checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false))
     // dump stats
-    if (ctx.findOption(SharedOptions.optBenchmark).getOrElse(false)) {
+    if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
       val modid = prog.units.find(_.isMainUnit).get.id
       val filename = modid + "-stats.txt"
       val pw = new PrintWriter(filename)

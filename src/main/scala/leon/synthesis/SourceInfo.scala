@@ -21,7 +21,7 @@ object SourceInfo {
   }
 
   def extractFromProgram(ctx: LeonContext, prog: Program): List[SourceInfo] = {
-    val functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet }
+    val functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet }
 
     def excludeByDefault(fd: FunDef): Boolean = {
       fd.annotations contains "library"

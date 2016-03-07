@@ -32,7 +32,7 @@ object SynthesisPhase extends TransformationPhase {
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)
-    val timeout = ctx.findOption(SharedOptions.optTimeout)
+    val timeout = ctx.findOption(GlobalOptions.optTimeout)
     if (ms.isDefined && timeout.isDefined) {
       ctx.reporter.warning("Defining timeout with manual search")
     }
@@ -58,7 +58,7 @@ object SynthesisPhase extends TransformationPhase {
       costModel = costModel,
       rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar)),
       manualSearch = ms,
-      functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
+      functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),
       cegisUseVanuatoo = ctx.findOptionOrDefault(optCEGISVanuatoo),
       cegisMaxSize = ctx.findOptionOrDefault(optCEGISMaxSize).toInt

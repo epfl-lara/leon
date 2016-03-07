@@ -4,7 +4,6 @@ package leon
 package solvers
 package combinators
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Quantification._
