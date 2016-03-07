@@ -23,7 +23,7 @@ class Synthesizer(val context : LeonContext,
 
   val reporter = context.reporter
 
-  lazy val sctx = SynthesisContext.fromSynthesizer(this)
+  lazy val sctx = new SynthesisContext(context, settings, ci.fd, program)
 
   implicit val debugSection = leon.utils.DebugSectionSynthesis
 

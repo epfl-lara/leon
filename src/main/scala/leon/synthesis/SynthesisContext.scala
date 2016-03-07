@@ -31,15 +31,3 @@ class SynthesisContext(
   }
 
 }
-
-object SynthesisContext {
-
-  def fromSynthesizer(synth: Synthesizer) = {
-    new SynthesisContext(
-      synth.context,
-      synth.settings,
-      synth.ci.fd,
-      synth.program
-    )
-  }
-}
