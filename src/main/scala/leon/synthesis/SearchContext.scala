@@ -4,6 +4,7 @@ package leon
 package synthesis
 
 import graph._
+import purescala.Expressions.Expr
 
 /**
  * This is context passed down rules, and include search-wise context, as well
@@ -11,7 +12,7 @@ import graph._
  */
 class SearchContext (
   sctx: SynthesisContext,
-  val ci: SourceInfo,
+  val source: Expr,
   val currentNode: Node,
   val search: Search
 ) extends SynthesisContext(

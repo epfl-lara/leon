@@ -284,7 +284,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             .getOrElse(hctx.reporter.fatalError("Unable to get outer solution"))
         }
 
-        val program0 = addFunDefs(hctx.program, Seq(cTreeFd, phiFd) ++ outerSolution.defs, hctx.ci.fd)
+        val program0 = addFunDefs(hctx.program, Seq(cTreeFd, phiFd) ++ outerSolution.defs, hctx.functionContext)
 
         cTreeFd.body = None
 
@@ -295,11 +295,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         )
 
         replaceFunDefs(program0){
-          case fd if fd == hctx.ci.fd =>
+          case fd if fd == hctx.functionContext =>
             val nfd = fd.duplicate()
 
             nfd.fullBody = postMap {
-              case src if src eq hctx.ci.source =>
+              case src if src eq hctx.source =>
                 Some(outerSolution.term)
 
               case _ => None
