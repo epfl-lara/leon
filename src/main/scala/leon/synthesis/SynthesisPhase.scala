@@ -10,7 +10,7 @@ import purescala.Definitions.{Program, FunDef}
 import leon.utils._
 import graph._
 
-object SynthesisPhase extends TransformationPhase {
+object SynthesisPhase extends UnitPhase[Program] {
   val name        = "Synthesis"
   val description = "Partial synthesis of \"choose\" constructs. Also used by repair during the synthesis stage."
 
@@ -65,7 +65,7 @@ object SynthesisPhase extends TransformationPhase {
     )
   }
 
-  def apply(ctx: LeonContext, program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program): Unit = {
     val options = processOptions(ctx)
 
     val chooses = SourceInfo.extractFromProgram(ctx, program)
@@ -106,7 +106,6 @@ object SynthesisPhase extends TransformationPhase {
       ctx.reporter.info("")
     }
 
-    program
   }
 
 }
