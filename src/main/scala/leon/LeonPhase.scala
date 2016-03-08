@@ -28,7 +28,7 @@ abstract class UnitPhase[T] extends LeonPhase[T, T] {
   def apply(ctx: LeonContext, p: T): Unit
 
   override def run(ctx: LeonContext, p: T) = {
-    ctx.reporter.debug("Running unit phase phase: " + name)(utils.DebugSectionLeon)
+    ctx.reporter.debug("Running unit phase: " + name)(utils.DebugSectionLeon)
     apply(ctx, p)
     (ctx, p)
   }
