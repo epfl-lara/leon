@@ -189,7 +189,7 @@ object ProgramUtil {
                  uniqueIdDisplay: Boolean = true, excludeLibrary: Boolean = true): Program = {
 
     val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) if fd.isTheoryOperation || fd.isLibrary =>
+      case (accMap, fd) if fd.isTheoryOperation || fd.isLibrary || fd.isInvariant =>
         accMap + (fd -> fd)
       case (accMap, fd) => {
         val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
@@ -232,7 +232,7 @@ object ProgramUtil {
   }
 
   def functionsWOFields(fds: Seq[FunDef]): Seq[FunDef] = {
-    fds.filter(_.isRealFunction)
+    fds.filter(fd => fd.isRealFunction)
   }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
@@ -307,12 +307,12 @@ object PredicateUtil {
   def isTemplateExpr(expr: Expr): Boolean = {
     var foundVar = false
     postTraversal {
-      case e @ Variable(id) => 
+      case e @ Variable(id) =>
         if (!TemplateIdFactory.IsTemplateIdentifier(id))
-          foundVar = true              
-      case e @ ResultVariable(_) => 
-        foundVar = true              
-      case e => 
+          foundVar = true
+      case e @ ResultVariable(_) =>
+        foundVar = true
+      case e =>
     }(expr)
     !foundVar
   }

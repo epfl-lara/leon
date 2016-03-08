@@ -41,15 +41,9 @@ import invariant.util.ProgramUtil._
 class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
 
   val typeClasses = {
-    var tc = new DisjointSets[TypeTree]() /*{
-      override def union(x: TypeTree, y: TypeTree) {
-        if (!x.isInstanceOf[TypeParameter] || !y.isInstanceOf[TypeParameter])
-          throw new IllegalStateException(s"Unifying: $x and $y")
-        super.union(x, y)
-      }
-    }*/
+    var tc = new DisjointSets[TypeTree]()
     p.definedFunctions.foreach {
-      case fd if fd.hasBody && !fd.isLibrary =>
+      case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
         postTraversal {
           case call @ FunctionInvocation(TypedFunDef(fd, tparams), args) =>
             // unify formal type parameters with actual type arguments
@@ -83,8 +77,6 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
                       tc.union(t1, t2)
                     case _ =>
                   }
-                //                                case (tf: TypeParameter, ta: TypeParameter) =>
-                //                                  tc.union(tf, ta)
                 case (t1, t2) =>
                 /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
                     + s"do not match for call: $call")*/
@@ -114,7 +106,7 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
   val equivTypeParams = typeClasses.toMap
 
   val fdMap = p.definedFunctions.collect {
-    case fd if !fd.isLibrary =>
+    case fd if !fd.isLibrary && !fd.isInvariant =>
       val (tempTPs, otherTPs) = fd.tparams.map(_.tp).partition {
         case tp if isPlaceHolderTParam(tp) => true
         case _ => false
@@ -145,7 +137,6 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
       } map TypeParameterDef
       val nfd = new FunDef(fd.id.freshen, ntparams, fd.params.map(vd => ValDef(paramMap(vd.id))),
         instf(fd.returnType))
-      //println("New fd: "+nfd)
       fd -> (nfd, tpMap, paramMap)
   }.toMap
 

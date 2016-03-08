@@ -69,7 +69,7 @@ object WeightedSched {
   @memoize
   def sched(jobIndex: BigInt): BigInt = {
     require(depsEval(jobIndex) &&
-        (jobIndex == 0 || evalLem(prevCompatibleJob(jobIndex), jobIndex-1)))
+        (jobIndex == 0 || prevCompatibleJob(jobIndex) >= 0)) //evalLem(prevCompatibleJob(jobIndex), jobIndex-1)))
     val (st, fn, w) = jobInfo(jobIndex)
     if(jobIndex == 0) w
     else {

@@ -39,7 +39,7 @@ import leon.invariant.engine._
 object LazyVerificationPhase {
 
   val debugInstVCs = false
-  val debugInferProgram = true
+  val debugInferProgram = false
 
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
@@ -136,7 +136,7 @@ object LazyVerificationPhase {
    * Note: we also skip verification of uninterpreted functions
    */
   def shouldGenerateVC(fd: FunDef) = {
-    !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
+    !fd.isInvariant && !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
       fd.postcondition.exists { post =>
         val Lambda(Seq(resdef), pbody) = post
         accessesSecondRes(pbody, resdef.id)

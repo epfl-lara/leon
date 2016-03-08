@@ -26,12 +26,11 @@ import leon.Main
 import leon.transformations._
 import LazinessUtil._
 
-class LazyInstrumenter(p: Program, clFactory: LazyClosureFactory) {
+class LazyInstrumenter(p: Program, ctx: LeonContext, clFactory: LazyClosureFactory) {
 
   val exprInstFactory = (x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) =>
       new LazyExprInstrumenter(x, y)(z)
   val serialInst = new SerialInstrumenter(p, Some(exprInstFactory))
-
   /*def funsWithInstSpecs  = {
     serialInst.instToInstrumenter.values.flatMap{inst =>
       inst.getRootFuncs(p)

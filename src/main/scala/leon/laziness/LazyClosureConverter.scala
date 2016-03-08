@@ -63,7 +63,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   }
 
   val funMap = p.definedFunctions.collect {
-    case fd if (fd.hasBody && !fd.isLibrary) =>
+    case fd if (fd.hasBody && !fd.isLibrary && !fd.isInvariant) => // skipping class invariants for now.
       // replace lazy types in parameters and return values
       val nparams = fd.params map { vd =>
         val nparam = makeIdOfType(vd.id, replaceLazyTypes(vd.getType))
@@ -135,7 +135,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         Equals(valres.id.toVariable,
           FunctionInvocation(TypedFunDef(ufd, tparams), params.map(_.id.toVariable))), // res = funUI(..)
         Lambda(Seq(ValDef(resid)), resid.toVariable)) // holds
-      pred.addFlag(Annotation("axiom", Seq())) // mark it as @library
+      pred.addFlag(Annotation("axiom", Seq())) // @axiom is similar to @library
       (k -> (ufd, Some(pred)))
 
     case (k, v) if lazyops(k) =>

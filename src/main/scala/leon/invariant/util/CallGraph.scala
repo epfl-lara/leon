@@ -60,12 +60,12 @@ class CallGraph {
 
   /**
    * Sorting functions in reverse topological order.
-   * For functions within an SCC, we preserve the initial order 
+   * For functions within an SCC, we preserve the initial order
    * given as input
    */
-  def reverseTopologicalOrder(initOrder: Seq[FunDef]): Seq[FunDef] = {  
+  def reverseTopologicalOrder(initOrder: Seq[FunDef]): Seq[FunDef] = {
     val orderMap = initOrder.zipWithIndex.toMap
-    graph.sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }    
+    graph.sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }
   }
 
   override def toString: String = {

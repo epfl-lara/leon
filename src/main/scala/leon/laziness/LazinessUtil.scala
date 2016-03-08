@@ -54,7 +54,7 @@ object LazinessUtil {
         val out = new BufferedWriter(new FileWriter(outputFile))
         // remove '@' from the end of the identifier names
         val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p, purescala.PrinterOptions(printUniqueIds = uniqueIds)),
+        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(u, purescala.PrinterOptions(printUniqueIds = uniqueIds)),
           m => m.group("base") + m.group("mid") + (
             if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
         //val pgmText = ScalaPrinter.apply(p)
@@ -171,7 +171,7 @@ object LazinessUtil {
     case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
       Some(innerType)
     case _ => None
-  }  
+  }
 
   def opNameToCCName(name: String) = {
     name.capitalize + "@"

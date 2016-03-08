@@ -62,7 +62,7 @@ object LazyExpressionLifter {
 
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
     val fdmap = prog.definedFunctions.collect {
-      case fd if !fd.isLibrary =>
+      case fd if !fd.isLibrary && !fd.isInvariant =>
         val nname = FreshIdentifier(fd.id.name)
         val nfd =
           if (createUniqueIds && needsId(fd)) {
@@ -152,7 +152,7 @@ object LazyExpressionLifter {
         case e => e
       }
       md.definedFunctions.foreach {
-        case fd if fd.hasBody && !fd.isLibrary =>
+        case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
           // create a free list iterator
           val nfd = fdmap(fd)
           val fliter =

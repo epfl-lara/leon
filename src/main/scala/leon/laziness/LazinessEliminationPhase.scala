@@ -38,13 +38,13 @@ import leon.invariant.engine._
 import LazyVerificationPhase._
 import utils._
 import java.io.
-_
+  _
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  */
 object LazinessEliminationPhase extends TransformationPhase {
-  val debugLifting = false
   val dumpInputProg = false
+  val debugLifting = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
@@ -78,50 +78,43 @@ object LazinessEliminationPhase extends TransformationPhase {
 
     // refEq is by default false
     val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
-    if (dumpLiftProg) {
+    if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted")
-    }
 
     val funsManager = new LazyFunctionsManager(nprog)
     val closureFactory = new LazyClosureFactory(nprog)
     val progWithClosures = (new LazyClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
-    if (dumpProgramWithClosures) {
-      //println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures, purescala.PrinterOptions(printUniqueIds = true)))
+    if (dumpProgramWithClosures)
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
-    }
 
     //Rectify type parameters and local types
     val typeCorrectProg = (new TypeRectifier(progWithClosures, closureFactory)).apply
     if (dumpTypeCorrectProg)
-      println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
+      prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
-    val progWithPre =  (new ClosurePreAsserter(typeCorrectProg)).apply
-    if (dumpProgWithPreAsserts) {
-      //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    if (dumpProgWithPreAsserts)
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
-    }
 
     // verify the contracts that do not use resources
     val progWOInstSpecs = InliningPhase.apply(ctx, removeInstrumentationSpecs(progWithPre))
-    if (dumpProgWOInstSpecs) {
-      //println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
+    if (dumpProgWOInstSpecs)
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
-    }
+
     val checkCtx = contextForChecks(ctx)
     if (!skipStateVerification)
       checkSpecifications(progWOInstSpecs, checkCtx)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), closureFactory)
+    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory)
     val instProg = instrumenter.apply
-    if (dumpInstrumentedProgram) {
-      //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
+    if (dumpInstrumentedProgram)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
-    }
+
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
       checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false))
+        checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false))
     // dump stats
     if (ctx.findOption(SharedOptions.optBenchmark).getOrElse(false)) {
       val modid = prog.units.find(_.isMainUnit).get.id
