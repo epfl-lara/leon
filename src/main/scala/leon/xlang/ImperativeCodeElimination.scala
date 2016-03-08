@@ -155,7 +155,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           val (rVal, rScope, rFun) = toFunction(e)
           val scope = (body: Expr) => {
             rVal match {
-              case FunctionInvocation(tfd, args) if tfd.hasPrecondition =>
+              case FunctionInvocation(tfd, args) =>
                 rScope(replaceNames(rFun, Let(FreshIdentifier("tmp", tfd.returnType), rVal, accScope(body))))
               case _ =>
                 rScope(replaceNames(rFun, accScope(body)))
