@@ -30,7 +30,7 @@ case object Focus extends PreprocessingRule("Focus") {
         
     }
 
-    val fd      = hctx.ci.fd
+    val fd      = hctx.functionContext
     val program = hctx.program
 
     val evaluator = new DefaultEvaluator(hctx, program)

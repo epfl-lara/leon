@@ -86,7 +86,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
     val orNode = search.g.root
     if (!orNode.isExpanded) {
-      val hctx = new SearchContext(synth.sctx, synth.ci, orNode, search)
+      val hctx = new SearchContext(synth.sctx, synth.ci.source, orNode, search)
       orNode.expand(hctx)
     }
     val andNodes = orNode.descendants.collect {
@@ -104,7 +104,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     
     val solutions = (search.traversePath(path) match {
       case Some(an: AndNode) =>
-        val hctx = new SearchContext(synth.sctx, synth.ci, an, search)
+        val hctx = new SearchContext(synth.sctx, synth.ci.source, an, search)
         an.ri.apply(hctx)
       case _ => throw new Exception("Was not an and node")
     }) match {
