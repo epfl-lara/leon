@@ -41,20 +41,20 @@ class OrbUnitTestSuite extends LeonTestSuite {
 
   test("TestElimination") {ctx =>
     val exprs = Seq(Equals(a, b), Equals(c, Plus(a, b)), GreaterEquals(Plus(c, d), zero))
-    println("Exprs: "+exprs)
-    val elimVars = Set(a, b, c).map(_.id)
+    //println("Exprs: "+exprs)
+    val retainVars = Set(d).map(_.id)
     val ctrs = exprs map ConstraintUtil.createConstriant
-    val nctrs = apply1PRuleOnDisjunct(ctrs.collect{ case c: LinearConstraint => c }, elimVars, None)
+    val nctrs = apply1PRuleOnDisjunct(ctrs.collect{ case c: LinearConstraint => c }, retainVars, None)
     //println("Constraints after elimination: "+nctrs)
     assert(nctrs.size == 1)
   }
 
   test("TestElimination2") {ctx =>
     val exprs = Seq(Equals(zero, Plus(a, b)), Equals(a, zero), GreaterEquals(Plus(b, c), zero))
-    println("Exprs: "+exprs)
-    val elimVars = Set(a, b).map(_.id)
+    //println("Exprs: "+exprs)
+    val retainVars = Set(c).map(_.id)
     val ctrs = exprs map ConstraintUtil.createConstriant
-    val nctrs = apply1PRuleOnDisjunct(ctrs.collect{ case c: LinearConstraint => c }, elimVars, None)
+    val nctrs = apply1PRuleOnDisjunct(ctrs.collect{ case c: LinearConstraint => c }, retainVars, None)
     //println("Constraints after elimination: "+nctrs)
     assert(nctrs.size == 1)
   }

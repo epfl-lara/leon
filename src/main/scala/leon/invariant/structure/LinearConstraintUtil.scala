@@ -376,7 +376,7 @@ object LinearConstraintUtil {
         }
       case _ => Seq() // drop constraints with `oneSidedVars`
     } ++ currEqs).distinct // note: this is very important!!
-    Stats.updateCounterStats(currEqs.size, "UneliminatedEqualities", "disjuncts")
+    Stats.updateCumStats(currEqs.size, "UneliminatedEqualities")
     resctrs
   }
 
