@@ -3,6 +3,7 @@
 package leon
 
 import leon.utils._
+import leon.verification.VerificationReport
 
 object Main {
 
@@ -11,7 +12,7 @@ object Main {
       frontends.scalac.ExtractionPhase,
       frontends.scalac.ClassgenPhase,
       utils.TypingPhase,
-      FileOutputPhase,
+      utils.FileOutputPhase,
       purescala.RestoreMethods,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
@@ -192,14 +193,18 @@ object Main {
           ExtractionPhase andThen
           new PreprocessingPhase(xlangF)
 
-      val verification = if (xlangF) VerificationPhase andThen FixReportLabels else VerificationPhase
+      val verification =
+        VerificationPhase andThen
+        (if (xlangF) FixReportLabels else NoopPhase[VerificationReport]()) andThen
+        PrintReportPhase
+      val termination  = TerminationPhase andThen PrintReportPhase
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(verification, TerminationPhase)
-        else if (terminationF) TerminationPhase
+        else if (analysisF) Pipeline.both(verification, termination)
+        else if (terminationF) termination
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
@@ -264,23 +269,7 @@ object Main {
       val timer = ctx.timers.total.start()
 
       // Run pipeline
-      val ctx2 = pipeline.run(ctx, args.toList) match {
-        case (ctx2, (vReport: verification.VerificationReport, tReport: termination.TerminationReport)) =>
-          ctx2.reporter.info(vReport.summaryString)
-          ctx2.reporter.info(tReport.summaryString)
-          ctx2
-
-        case (ctx2, report: verification.VerificationReport) =>
-          ctx2.reporter.info(report.summaryString)
-          ctx2
-
-        case (ctx2, report: termination.TerminationReport) =>
-          ctx2.reporter.info(report.summaryString)
-          ctx2
-
-        case (ctx2, _) =>
-          ctx2
-      }
+      val (ctx2, _) = pipeline.run(ctx, args.toList)
 
       timer.stop()
 
