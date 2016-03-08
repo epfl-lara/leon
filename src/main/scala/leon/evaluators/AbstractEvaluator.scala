@@ -58,7 +58,7 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
         case _ =>
-          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases :" + cases)
+          throw RuntimeError("MatchError(Abstract evaluation): "+rscrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
       }
 
     case FunctionInvocation(tfd, args) =>
@@ -80,7 +80,11 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
           (functionInvocation(tfd.fd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
         } else {
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          e(body)(frame, gctx)
+          try {
+            e(body)(frame, gctx)
+          } catch {
+            case e: RuntimeError => (functionInvocation(tfd.fd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
+          }
         }
       }
       callResult
