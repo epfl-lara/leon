@@ -16,44 +16,28 @@ class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) e
 
   override def run(ctx: LeonContext, p: Program): (LeonContext, Program) = {
 
-    def debugTrees(title: String): LeonPhase[Program, Program] = {
-      if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
-        PrintTreePhase(title)
-      } else {
-        NoopPhase[Program]()
-      }
-    }
-
-    val checkX = if (desugarXLang) {
-      NoopPhase[Program]()
-    } else {
-      NoXLangFeaturesChecking
-    }
+    def debugTrees(title: String) =
+      PrintTreePhase(title).when(ctx.reporter.isDebugEnabled(DebugSectionTrees))
 
     val pipeBegin =
-      debugTrees("Program after extraction") andThen
-      checkX                                 andThen
-      MethodLifting                          andThen
-      TypingPhase                            andThen
-      synthesis.ConversionPhase              andThen
+      debugTrees("Program after extraction")      andThen
+      NoXLangFeaturesChecking.when(!desugarXLang) andThen
+      MethodLifting                               andThen
+      TypingPhase                                 andThen
+      synthesis.ConversionPhase                   andThen
       InliningPhase
 
-    val pipeX = if (!genc && desugarXLang) {
-      // Do not desugar when generating C code
+    // Do not desugar xlang when generating C code
+    val pipeX = (
       XLangDesugaringPhase andThen
       debugTrees("Program after xlang desugaring")
-    } else {
-      NoopPhase[Program]()
-    }
+    ) when (!genc && desugarXLang)
 
-    def pipeEnd = if (genc) {
-      // No InjectAsserts, FunctionClosure and AdaptationPhase phases
-      NoopPhase[Program]()
-    } else {
+    def pipeEnd = (
       InjectAsserts  andThen
       FunctionClosure andThen
       AdaptationPhase
-    }
+    ) when (!genc)
 
     val phases =
       pipeBegin andThen

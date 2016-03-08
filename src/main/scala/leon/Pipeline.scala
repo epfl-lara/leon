@@ -13,6 +13,12 @@ abstract class Pipeline[-F, +T] {
     }
   }
 
+  def when[F2 <: F, T2 >: T](cond: Boolean)(implicit tps: F2 =:= T2): Pipeline[F2, T2] = {
+    if (cond) this else new Pipeline[F2, T2] {
+      def run(ctx: LeonContext, v: F2): (LeonContext, T2) = (ctx, v)
+    }
+  }
+
   def run(ctx: LeonContext, v: F): (LeonContext, T)
 }
 

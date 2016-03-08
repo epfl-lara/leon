@@ -37,9 +37,9 @@ trait VerificationSuite extends LeonRegressionSuite {
       new PreprocessingPhase(desugarXLang)
 
     val analysis =
-      (if (isabelle) AdaptationPhase else NoopPhase[Program]) andThen
+      AdaptationPhase.when(isabelle) andThen
       VerificationPhase andThen
-      (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
+      FixReportLabels.when(desugarXLang)
 
     val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
 
