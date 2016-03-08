@@ -5,7 +5,6 @@ package leon
 import purescala.Definitions.Program
 
 trait LeonPhase[-F, +T] extends Pipeline[F, T] with LeonComponent {
-
   // def run(ac: LeonContext)(v: F): T
 }
 
@@ -22,6 +21,7 @@ abstract class TransformationPhase extends LeonPhase[Program, Program] {
     ctx.reporter.debug("Running transformation phase: " + name)(utils.DebugSectionLeon)
     (ctx, apply(ctx, p))
   }
+
 }
 
 abstract class UnitPhase[T] extends LeonPhase[T, T] {

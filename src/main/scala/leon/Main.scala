@@ -195,7 +195,7 @@ object Main {
 
       val verification =
         VerificationPhase andThen
-        (if (xlangF) FixReportLabels else NoopPhase[VerificationReport]()) andThen
+        FixReportLabels.when(xlangF) andThen
         PrintReportPhase
       val termination  = TerminationPhase andThen PrintReportPhase
 
