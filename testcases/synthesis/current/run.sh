@@ -44,3 +44,7 @@ run testcases/synthesis/current/AddressBook/Merge.scala
 
 # RunLength
 run testcases/synthesis/current/RunLength/RunLength.scala
+
+# Diffs
+run testcases/synthesis/current/Diffs/Diffs.scala
+
