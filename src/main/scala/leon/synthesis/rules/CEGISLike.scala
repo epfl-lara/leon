@@ -38,7 +38,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
     val exSolverTo  = 2000L
-    val cexSolverTo = 2000L
+    val cexSolverTo = 3000L
 
     // Track non-deterministic programs up to 100'000 programs, or give up
     val nProgramsLimit = 100000
