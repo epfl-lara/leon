@@ -25,7 +25,7 @@ abstract class SolverFactory[+S <: Solver : TypeTag] {
 
 object SolverFactory {
   def apply[S <: Solver : TypeTag](builder: () => S): SolverFactory[S] = {
-    new SolverFactory[S] {
+    new SolverFactory[S] {2
       def getNewSolver() = builder()
     }
   }
