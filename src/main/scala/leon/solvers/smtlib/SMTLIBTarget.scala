@@ -31,7 +31,7 @@ import _root_.smtlib.parser.Terms.{
   _
 }
 import _root_.smtlib.parser.CommandsResponses.{ Error => ErrorResponse, _ }
-import _root_.smtlib.theories._
+import _root_.smtlib.theories.{Constructors => SmtLibConstructors, _}
 import _root_.smtlib.theories.experimental._
 import _root_.smtlib.interpreters.ProcessInterpreter
 
@@ -415,7 +415,7 @@ trait SMTLIBTarget extends Interruptible {
           case more =>
             val es = freshSym("e")
             SMTLet(VarBinding(es, toSMT(e)), Seq(),
-              Core.Or(oneOf.map(FunctionApplication(_, Seq(es: Term))): _*))
+              SmtLibConstructors.or(oneOf.map(FunctionApplication(_, Seq(es: Term)))))
         }
 
       case CaseClass(cct, es) =>
@@ -615,8 +615,8 @@ trait SMTLIBTarget extends Interruptible {
       case RealTimes(a, b)           => Reals.Mul(toSMT(a), toSMT(b))
       case RealDivision(a, b)        => Reals.Div(toSMT(a), toSMT(b))
 
-      case And(sub)                  => Core.And(sub.map(toSMT): _*)
-      case Or(sub)                   => Core.Or(sub.map(toSMT): _*)
+      case And(sub)                  => SmtLibConstructors.and(sub.map(toSMT))
+      case Or(sub)                   => SmtLibConstructors.or(sub.map(toSMT))
       case IfExpr(cond, thenn, elze) => Core.ITE(toSMT(cond), toSMT(thenn), toSMT(elze))
       case f @ FunctionInvocation(_, sub) =>
         if (sub.isEmpty) declareFunction(f.tfd) else {
