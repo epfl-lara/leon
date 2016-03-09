@@ -89,7 +89,7 @@ object SynthesisPhase extends UnitPhase[Program] {
           }
 
           solutions.headOption foreach { case (sol, _) =>
-            val expr = sol.toSimplifiedExpr(ctx, program)
+            val expr = sol.toSimplifiedExpr(ctx, program, ci.fd)
             fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
             functions += fd
           }

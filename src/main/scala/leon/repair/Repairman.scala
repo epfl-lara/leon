@@ -132,7 +132,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
-                val solExpr = sol.toSimplifiedExpr(ctx, program)
+                val solExpr = sol.toSimplifiedExpr(ctx, program, fd)
                 val totalSolSize = formulaSize(solExpr)
                 (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
               case _ =>
@@ -162,7 +162,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             reporter.info(ASCIIHelpers.title("Repair successful:"))
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
-              val expr = sol.toSimplifiedExpr(ctx, synth.program)
+              val expr = sol.toSimplifiedExpr(ctx, synth.program, fd)
               reporter.info(expr.asString(program)(ctx))
             }
           }
