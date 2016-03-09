@@ -204,7 +204,7 @@ object LinearConstraintUtil {
           || e.isInstanceOf[GreaterEquals])) => {
 
           //check if the expression has real valued sub-expressions
-          val isReal = hasReals(e1) || hasReals(e2)
+          val isReal = hasRealsOrTemplates(e1) || hasRealsOrTemplates(e2)
           val (newe, newop) = e match {
             case t: Equals        => (Minus(e1, e2), Equals)
             case t: LessEquals    => (Minus(e1, e2), LessEquals)

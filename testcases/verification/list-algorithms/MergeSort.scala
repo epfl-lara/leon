@@ -1,5 +1,6 @@
-import leon.lang._
-import leon.annotation._
+import leon._
+import lang._
+import annotation._
 
 object MergeSort {
   sealed abstract class List

@@ -1,11 +1,11 @@
-package orb
+package wihtOrb
 
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
-import leon.invariant._
+import leon._
+import mem._
+import lang._
+import annotation._
+import instrumentation._
+import invariant._
 
 object Knapscak {
   sealed abstract class IList {
@@ -16,8 +16,17 @@ object Knapscak {
       }
     } ensuring(_ >= 0)
   }
-  case class Cons(x: (BigInt, BigInt), tail: IList) extends IList // a list of pairs of weights and values
-  case class Nil() extends IList
+  case class Cons(x: (BigInt, BigInt), tail: IList) extends IList { // a list of pairs of weights and values
+    @ignore
+    override def toString: String = {
+      if(tail == Nil()) x.toString
+      else x.toString + "," + tail.toString
+    }
+  }
+  case class Nil() extends IList {
+    @ignore
+    override def toString = ""
+  }
 
   def deps(i: BigInt, items: IList): Boolean = {
     require(i >= 0)
@@ -78,7 +87,7 @@ object Knapscak {
     else {
       Cons((i,ri), bottomup(i + 1, w, items))
     }
-  } ensuring(items.size <= 10 ==> time <= ? * (w - i + 1))
+  } ensuring(_ => items.size <= 10 ==> time <= ? * (w - i + 1))
 
   /**
    * Computes the list of optimal solutions of all weights up to 'w'
@@ -86,7 +95,7 @@ object Knapscak {
   def knapSackSol(w: BigInt, items: IList) = {
     require(w >= 0 && items.size <= 10) //  the second requirement is only to keep the bounds linear for z3 to work
     bottomup(0, w, items)
-  } ensuring(time <= ? * w + ?)
+  } ensuring(_ => time <= ? * w + ?)
 
   /**
    * Lemmas of deps
@@ -104,4 +113,20 @@ object Knapscak {
     require(x >= 0 && y >= 0)
     (x <= y && deps(y, items)) ==> deps(x, items)
   } holds
+
+  @ignore
+  def main(args: Array[String]) {
+    import scala.util.Random
+    // pick some random weights and values
+    val weightsnValues1 = (1 to 10).foldRight(Nil(): IList){
+      case (i, acc) => Cons((i, i), acc)
+    }
+    val reslist1 = knapSackSol(100, weightsnValues1) // without memoization this will take too long
+    println("Optimal solutions: "+reslist1.toString)
+    val weightsnValues2 = ((1 to 10) zip (10 to 1 by -1)).foldRight(Nil(): IList){
+      case ((i, j), acc) => Cons((i, j), acc)
+    }
+    val reslist2 = knapSackSol(100, weightsnValues2)
+    println("Optimal solutions for set 2: "+reslist2.toString)
+  }
 }

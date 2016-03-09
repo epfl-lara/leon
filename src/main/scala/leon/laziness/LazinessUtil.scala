@@ -69,14 +69,14 @@ object LazinessUtil {
 
   def isLazyInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.apply"
+      fullName(fd)(p) == "leon.lazyeval.$"
     case _ =>
       false
   }
 
   def isEagerInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.eager"
+      fullName(fd)(p) == "leon.lazyeval.eager"
     case _ =>
       false
   }
@@ -84,7 +84,7 @@ object LazinessUtil {
   def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.$.inState" || fn == "leon.lazyeval.Mem.inState")
+      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inState")
     case _ =>
       false
   }
@@ -92,33 +92,33 @@ object LazinessUtil {
   def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.$.outState" || fn == "leon.lazyeval.Mem.outState")
+      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outState")
     case _ =>
       false
   }
 
   def isEvaluatedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.isEvaluated"
+      fullName(fd)(p) == "leon.lazyeval.Lazy.isEvaluated"
     case _ => false
   }
 
   def isSuspInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.isSuspension"
+      fullName(fd)(p) == "leon.lazyeval.Lazy.isSuspension"
     case _ => false
   }
 
   def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
       val fn = fullName(cct.classDef)(p)
-      (fn == "leon.lazyeval.$.WithState" || fn == "leon.lazyeval.Mem.memWithState")
+      (fn == "leon.lazyeval.WithState" || fn == "leon.mem.memWithState")
     case _ => false
   }
 
   def isMemCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.lazyeval.Mem"
+      fullName(cct.classDef)(p) == "leon.mem.Mem"
     case _ => false
   }
 
@@ -130,31 +130,31 @@ object LazinessUtil {
     case FunctionInvocation(TypedFunDef(fd, _), _) =>
       val fn = fullName(fd)(p)
       (fn == "leon.lazyeval.WithState.withState" ||
-          fn == "leon.lazyeval.memWithState.withState")
+          fn == "leon.mem.memWithState.withState")
     case _ => false
   }
 
   def isCachedInv(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.Mem.isCached"
+      fullName(fd)(p) == "leon.mem.Mem.isCached"
     case _ => false
   }
 
   def isValueInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.value"
+      fullName(fd)(p) == "leon.lazyeval.Lazy.value"
     case _ => false
   }
 
   def isStarInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$.*"
+      fullName(fd)(p) == "leon.lazyeval.Lazy.*"
     case _ => false
   }
 
   def isLazyType(tpe: TypeTree): Boolean = tpe match {
     case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
-      cid.name == "$"
+      cid.name == "Lazy"
     case _ => false
   }
 

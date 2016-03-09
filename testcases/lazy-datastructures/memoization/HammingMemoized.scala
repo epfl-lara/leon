@@ -1,8 +1,9 @@
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
+import leon._
+
+import mem._
+import lang._
+import annotation._
+import instrumentation._
 
 /**
  * A memoized version of the implementation of Hamming problem shown in
@@ -54,8 +55,8 @@ object Hamming {
     require(n == 0 || n > 0 && depsEval(n - 1))
     ham(n).v
   } ensuring (res => {
-    val in = Mem.inState[Data]
-    val out = Mem.outState[Data]
+    val in = inState[Data]
+    val out = outState[Data]
     (n == 0 || depsEvalMono(n-1, in, out)) && // instantiation
       time <= 170
   })

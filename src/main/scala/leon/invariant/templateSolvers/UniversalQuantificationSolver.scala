@@ -2,6 +2,7 @@ package leon
 package invariant.templateSolvers
 
 import z3.scala._
+import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -245,8 +246,9 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       Stats.updateCounter(1, "disjuncts")
       if (verbose) {
         reporter.info("Candidate invariants")
-        TemplateInstantiator.getAllInvariants(tempModel, ctrTracker.getFuncs).foreach(
-          entry => reporter.info(entry._1.id + "-->" + entry._2))
+        TemplateInstantiator.getAllInvariants(tempModel, ctrTracker.getFuncs).foreach{
+          case(f, inv) => reporter.info(f.id + "-->" + PrettyPrinter(inv))
+        }
       }
       val modRefiner = new ModelRefiner(tempModel)
       sat = modRefiner.nextCandidate match {

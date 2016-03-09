@@ -1,11 +1,12 @@
-package orb
+package withOrb
 
-import leon.lazyeval._
-import leon.lazyeval.$._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
-import leon.invariant._
+import leon._
+import lazyeval._
+import lang._
+import annotation._
+import instrumentation._
+import invariant._
+import stats._
 
 /**
  * TODO Multiple instantiations of type parameters is not supported yet,
@@ -43,10 +44,10 @@ object BottomUpMergeSort {
       }
     } ensuring (_ >= 0)
   }
-  case class SCons(x: BigInt, tail: $[IStream]) extends IStream
+  case class SCons(x: BigInt, tail: Lazy[IStream]) extends IStream
   case class SNil() extends IStream
   @inline
-  def ssize(l: $[IStream]): BigInt = (l*).size
+  def ssize(l: Lazy[IStream]): BigInt = (l*).size
 
   /**
    * A list of suspensions
@@ -73,7 +74,7 @@ object BottomUpMergeSort {
       }
     } ensuring (_ >= 0)
   }
-  case class LCons(x: $[IStream], tail: LList) extends LList
+  case class LCons(x: Lazy[IStream], tail: LList) extends LList
   case class LNil() extends LList
 
   /**
@@ -109,14 +110,15 @@ object BottomUpMergeSort {
       case _ =>
         constructMergeTree(pairs(l))
     }
-  } ensuring (res => res.size <= 1 && res.fullSize == l.fullSize &&
+  } ensuring {res =>
+    res.size <= 1 && res.fullSize == l.fullSize &&
     (res match {
       case LCons(il, LNil()) =>
         res.fullSize == ssize(il) // this is implied by the previous conditions
       case _ => true
     }) &&
     res.valid &&
-    time <= ? * l.size + ?)
+    time <= ? * l.size + ?}
 
   /**
    *  A function that merges two sorted streams of integers.
@@ -125,7 +127,7 @@ object BottomUpMergeSort {
    */
   @invisibleBody
   @usePost
-  def merge(a: $[IStream], b: $[IStream]): IStream = {
+  def merge(a: Lazy[IStream], b: Lazy[IStream]): IStream = {
     require(((a*) != SNil() || b.isEvaluated) && // if one of the arguments is Nil then the other is evaluated
         ((b*) != SNil() || a.isEvaluated) &&
         ((a*) != SNil() || (b*) != SNil())) // at least one of the arguments is not Nil
@@ -142,22 +144,27 @@ object BottomUpMergeSort {
         }
     }
   } ensuring (res => ssize(a) + ssize(b) == res.size &&
-       time <= ? * res.size + ?) // note: res.size >= 1 // here stack is max of a and b
+       //time <= ? * res.size + ?) // note: res.size >= 1 // here stack is max of a and b
+      time <= 67 * res.size - 47) // Orb cannot infer this due to issues with CVC4 set solving !
 
   /**
    * Converts a list of integers to a list of streams of integers
    */
+  val nilStream: IStream = SNil()
+
   @invisibleBody
   def IListToLList(l: IList): LList = {
     l match {
       case INil() => LNil()
       case ICons(x, xs) =>
-        LCons(SCons(x, SNil()), IListToLList(xs))
+        LCons(SCons(x, nilStream), IListToLList(xs))
     }
-  } ensuring (res => res.fullSize == l.size &&
-    res.size == l.size &&
-    res.valid &&
-    time <= ? * l.size + ?)
+  } ensuring { res =>
+    res.fullSize == l.size &&
+      res.size == l.size &&
+      res.valid &&
+      time <= ? * l.size + ?
+  }
 
   /**
    * Takes list of integers and returns a sorted stream of integers.
@@ -182,4 +189,50 @@ object BottomUpMergeSort {
       case SCons(x, rest) => x
     }
   } ensuring (res => time <= ? * l.size + ?)
+
+  def kthMin(l: IStream, k: BigInt): BigInt = {
+    require(k >= 0)
+    l match {
+      case SCons(x, xs) =>
+        if (k == 0) x
+        else
+          kthMin(xs.value, k - 1)
+      case SNil() => BigInt(0)
+    }
+  } //ensuring (_ => time <= ? * (k * ssize(l)) + ? * k + ?)
+
+  @ignore
+  def main(args: Array[String]) {
+    //import eagerEval.MergeSort
+    import scala.util.Random
+    import scala.math.BigInt
+    import stats._
+    import collection._
+
+    println("Running merge sort test...")
+    val length = 3000000
+    val maxIndexValue = 100
+    val randomList = Random.shuffle((0 until length).toList)
+    val l1 = randomList.foldRight(List[BigInt]()){
+      case (i, acc) => BigInt(i) :: acc
+    }
+    val l2 = randomList.foldRight(INil(): IList){
+      case (i, acc) => ICons(BigInt(i), acc)
+    }
+    println(s"Created inputs of size (${l1.size},${l2.size}), starting operations...")
+    val sort2 = timed{ mergeSort(l2) }{t => println(s"Lazy merge sort completed in ${t/1000.0} sec") }
+    //val sort1 = timed{ MergeSort.msort((x: BigInt, y: BigInt) => x <= y)(l1) } {t => println(s"Eager merge sort completed in ${t/1000.0} sec") }
+    // sample 10 elements from a space of [0-100]
+    val rand = Random
+    var totalTime1 = 0L
+    var totalTime2 = 0L
+    for(i <- 0 until 10) {
+      val idx = rand.nextInt(maxIndexValue)
+      //val e1 = timed { sort1(idx) } { totalTime1 +=_ }
+      val e2 = timed { kthMin(sort2, idx) }{ totalTime2 += _ }
+      //println(s"Element at index $idx - Eager: $e1 Lazy: $e2")
+      //assert(e1 == e2)
+    }
+    println(s"Time-taken to pick first 10 minimum elements - Eager: ${totalTime1/1000.0}s Lazy: ${totalTime2/1000.0}s")
+  }
 }

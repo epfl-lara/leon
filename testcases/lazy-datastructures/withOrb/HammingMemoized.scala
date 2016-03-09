@@ -1,11 +1,11 @@
-package orb
+package withOrb
 
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
-import leon.invariant._
+import leon._
+import mem._
+import lang._
+import annotation._
+import instrumentation._
+import invariant._
 
 /**
  * A memoized version of the implementation of Hamming problem shown in
@@ -13,8 +13,17 @@ import leon.invariant._
  */
 object Hamming {
   sealed abstract class IList
-  case class Cons(x: BigInt, tail: IList) extends IList
-  case class Nil() extends IList
+  case class Cons(x: BigInt, tail: IList) extends IList {
+    @ignore
+    override def toString: String = {
+      if(tail == Nil()) x.toString
+      else x.toString + "," + tail.toString
+    }
+  }
+  case class Nil() extends IList {
+    @ignore
+    override def toString = ""
+  }
 
   case class Data(v: BigInt, i2: BigInt, i3: BigInt, i5: BigInt)
 
@@ -25,9 +34,9 @@ object Hamming {
     if(n == BigInt(0)) Data(1, 0, 0, 0)
     else {
       val Data(x, i2, i3, i5) = ham(n-1)
-      val a = ham(i2).i2 * 2
-      val b = ham(i3).i3 * 3
-      val c = ham(i5).i5 * 5
+      val a = ham(i2).v * 2
+      val b = ham(i3).v * 3
+      val c = ham(i5).v * 5
       val (v, ni, nj, nk) = threeWayMerge(a, b, c, i2, i3, i5)
       Data(v, ni, nj, nk)
     }
@@ -57,8 +66,8 @@ object Hamming {
     require(n == 0 || n > 0 && depsEval(n - 1))
     ham(n).v
   } ensuring (res => {
-    val in = Mem.inState[Data]
-    val out = Mem.outState[Data]
+    val in = inState[Data]
+    val out =outState[Data]
     (n == 0 || depsEvalMono(n-1, in, out)) && // instantiation
       time <= ?
   })
@@ -86,4 +95,11 @@ object Hamming {
       else if(b < c && b < a)   (b, i2    , i3 + 1, i5    )
       else/*if(c < a && c < b)*/(c, i2    , i3    , i5 + 1)
    }
+
+  @ignore
+  def main(args: Array[String]) {
+    import collection._
+    val hlist = hammingList(100) // without memoization this will take too long
+    println("Hamming numbers: "+hlist)
+  }
 }

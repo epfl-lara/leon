@@ -30,7 +30,7 @@ object TemplateIdFactory {
   }
 
   def copyIdentifier(id: Identifier) : Identifier = {
-    val freshid = FreshIdentifier(id.name, RealType, false)
+    val freshid = FreshIdentifier(id.name, id.getType, false)
     ids += freshid
     freshid
   }

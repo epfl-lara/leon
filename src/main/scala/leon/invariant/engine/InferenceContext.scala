@@ -45,9 +45,9 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val statsSuffix = leonContext.findOption(optStatsSuffix).getOrElse("-stats" + FileCountGUID.getID)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
-  // convets qmarks to templates
+  // converts qmarks to templates
   val qMarksRemovedProg = {
-    val funToTmpl = instrumentedProg.definedFunctions.collect {
+    val funToTmpl = userLevelFunctions(instrumentedProg).collect {
       case fd if fd.hasTemplate =>
         fd -> fd.getTemplate
     }.toMap
@@ -58,9 +58,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
 
   val inferProgram = {
     // convert nonlinearity to recursive functions
-    nlelim(if (usereals)
-      (new IntToRealProgram())(qMarksRemovedProg)
-    else qMarksRemovedProg)
+    nlelim(if (usereals) (new IntToRealProgram())(qMarksRemovedProg) else qMarksRemovedProg)
   }
 
   // other utilities

@@ -1,11 +1,11 @@
 package orb
 
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
-import leon.invariant._
+import leon._
+import mem._
+import lang._
+import annotation._
+import instrumentation._
+import invariant._
 
 /**
  * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
@@ -22,7 +22,9 @@ object PackratParsing {
   case class Digit() extends Terminal
 
   /**
-   * A mutable array of tokens returned by the lexer
+   * A mutable array of tokens returned by the lexer.
+   * The string of tokens is reversed i.e,
+   * string(legnth-1) represents the first char and string(0) represents the last char.
    */
   @ignore
   var string = Array[Terminal]()
@@ -33,7 +35,7 @@ object PackratParsing {
   @extern
   def lookup(i: BigInt): Terminal = {
     string(i.toInt)
-  } ensuring(_ => time <= 1)
+  } ensuring (_ => time <= 1)
 
   sealed abstract class Result {
     /**
@@ -43,7 +45,7 @@ object PackratParsing {
     @inline
     def smallerIndex(i: BigInt) = this match {
       case Parsed(m) => m < i
-      case _ => true
+      case _         => true
     }
   }
   case class Parsed(rest: BigInt) extends Result
@@ -53,48 +55,53 @@ object PackratParsing {
   @memoize
   @invstate
   def pAdd(i: BigInt): Result = {
-    require(depsEval(i) &&
-      pMul(i).isCached && pPrim(i).isCached &&
-      resEval(i, pMul(i))) // lemma inst
-
+    require {
+      if (depsEval(i) && pMul(i).isCached && pPrim(i).isCached)
+        resEval(i, pMul(i)) // lemma inst
+      else false
+    }
     // Rule 1: Add <- Mul + Add
-    pMul(i) match {
+    val mulRes = pMul(i)
+    mulRes match {
       case Parsed(j) =>
         if (j > 0 && lookup(j) == Plus()) {
           pAdd(j - 1) match {
             case Parsed(rem) =>
               Parsed(rem)
             case _ =>
-              pMul(i) // Rule2: Add <- Mul
+              mulRes // Rule2: Add <- Mul
           }
-        } else pMul(i)
+        } else mulRes
       case _ =>
-        pMul(i)
+        mulRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?)
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 26
 
   @invisibleBody
   @memoize
   @invstate
   def pMul(i: BigInt): Result = {
-    require(depsEval(i) && pPrim(i).isCached &&
-      resEval(i, pPrim(i)) // lemma inst
-      )
+    require{
+      if (depsEval(i) && pPrim(i).isCached)
+        resEval(i, pPrim(i)) // lemma inst
+      else false
+    }
     // Rule 1: Mul <- Prim *  Mul
-    pPrim(i) match {
+    val primRes = pPrim(i)
+    primRes match {
       case Parsed(j) =>
-        if (j > 0 && lookup(j) == Plus()) {
+        if (j > 0 && lookup(j) == Times()) {
           pMul(j - 1) match {
             case Parsed(rem) =>
               Parsed(rem)
             case _ =>
-              pPrim(i) // Rule2: Mul <- Prim
+              primRes // Rule2: Mul <- Prim
           }
-        } else pPrim(i)
+        } else primRes
       case _ =>
-        pPrim(i)
+        primRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?)
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 26
 
   @invisibleBody
   @memoize
@@ -106,23 +113,24 @@ object PackratParsing {
       if (i > 0)
         Parsed(i - 1) // Rule1: Prim <- Digit
       else
-        Parsed(-1)  // here, we can use -1 to convery that the suffix is empty
+        Parsed(-1) // here, we can use -1 to convey that the suffix is empty
     } else if (char == Open() && i > 0) {
       pAdd(i - 1) match { // Rule 2: pPrim <- ( Add )
         case Parsed(rem) =>
-          Parsed(rem)
+          if (rem >= 0 && lookup(rem) == Close()) Parsed(rem - 1)
+          else NoParse()
         case _ =>
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && time <= ?)
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 28
 
   //@inline
-  def depsEval(i: BigInt) = i == 0 || (i > 0 && allEval(i-1))
+  def depsEval(i: BigInt) = i == 0 || (i > 0 && allEval(i - 1))
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    (pPrim(i).isCached && pMul(i).isCached && pAdd(i).isCached) &&(
+    (pPrim(i).isCached && pMul(i).isCached && pAdd(i).isCached) && (
       if (i == 0) true
       else allEval(i - 1))
   }
@@ -152,17 +160,51 @@ object PackratParsing {
     })
   }
 
-  @invisibleBody
+  /*@invisibleBody
   def invoke(i: BigInt): (Result, Result, Result) = {
-    require(i == 0 || (i > 0 && allEval(i-1)))
+    require(i == 0 || (i > 0 && allEval(i - 1)))
     (pPrim(i), pMul(i), pAdd(i))
   } ensuring (res => {
-    val in = Mem.inState[Result]
-    val out = Mem.outState[Result]
-    (if(i >0) evalMono(i-1, in, out) else true) &&
-    allEval(i) &&
-    time <= ?
-  })
+    val in = inState[Result]
+    val out = outState[Result]
+    (if (i > 0) evalMono(i - 1, in, out) else true) &&
+      allEval(i) &&
+      time <= ?
+  })*/
+
+  def invokePrim(i: BigInt): Result = {
+    require(depsEval(i))
+    pPrim(i)
+  } ensuring { res =>
+    val in = inState[Result]
+    val out = outState[Result]
+    (if (i > 0) evalMono(i - 1, in, out) else true)
+  }
+
+  def invokeMul(i: BigInt): Result = {
+    require(depsEval(i))
+    invokePrim(i) match {
+      case _ => pMul(i)
+    }
+  } ensuring { res =>
+    val in = inState[Result]
+    val out = outState[Result]
+    (if (i > 0) evalMono(i - 1, in, out) else true)
+  }
+
+  @invisibleBody
+  def invoke(i: BigInt): Result = {
+    require(depsEval(i))
+    invokeMul(i) match {
+      case _ => pAdd(i)
+    }
+  } ensuring { res =>
+    val in = inState[Result]
+    val out = outState[Result]
+    (if (i > 0) evalMono(i - 1, in, out) else true) &&
+      allEval(i) &&
+      time <= ? // 189
+  }
 
   /**
    * Parsing a string of length 'n+1'.
@@ -172,11 +214,34 @@ object PackratParsing {
   @invisibleBody
   def parse(n: BigInt): Result = {
     require(n >= 0)
-    if(n == 0) invoke(n)._3
+    if (n == 0) invoke(n)
     else {
-      val tailres = parse(n-1) // we parse the prefixes ending at 0, 1, 2, 3, ..., n
-      invoke(n)._3
+      parse(n - 1) match { // we parse the prefixes ending at 0, 1, 2, 3, ..., n
+        case _ =>
+          invoke(n)
+      }
     }
-  } ensuring(_ => allEval(n) &&
-      time <= ? * n + ?)
+  } ensuring (_ => allEval(n) &&
+    time <= ? * n + ?) // 198 * n + 192
+
+  @ignore
+  def main(args: Array[String]) {
+    // note: we can run only one test in each run as the cache needs to be cleared between the tests,
+    // which is not currently supported by the api's
+    test1()
+    //test2()
+  }
+
+  @ignore
+  def test1() {
+    // list of tokens to parse. The list is reversed i.e, the first char is at the last index, the last char is at the first index.
+    string = Array(Plus(), Digit(), Times(), Close(), Digit(), Plus(), Digit(), Open()) // d *  ( d + d ) +
+    println("Parsing Expression 1: " + parse(string.length - 1))
+  }
+
+  @ignore
+  def test2() {
+    string = Array(Times(), Digit(), Open()) // ( d *
+    println("Parsing Expression 2: " + parse(string.length - 1))
+  }
 }

@@ -114,8 +114,9 @@ object LazyVerificationPhase {
         val inferctx = new InferenceContext(p, ctxForInf)
         val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
 
-        if (debugInferProgram)
+        if (debugInferProgram){
           prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
+        }
 
         val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram,
             funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)

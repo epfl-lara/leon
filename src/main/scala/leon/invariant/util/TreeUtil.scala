@@ -117,22 +117,23 @@ object ProgramUtil {
   }
 
   /**
-   * For functions for which `funToTmpl` is not defined, their templates
-   * will be removed
+   * For functions for which `funToTmpl` is not defined, their templates will be removed.
+   * Will only consider user-level functions.
    */
   def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
                                   funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = false): Program = {
 
-    val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) if fd.isTheoryOperation =>
-        accMap + (fd -> fd)
+    val keys = funToTmpl.keySet ++ funToPost.keySet
+    val userLevelFuns = userLevelFunctions(prog).toSet
+    if(!keys.diff(userLevelFuns).isEmpty)
+      throw new IllegalStateException("AssignTemplate function called on library functions: "+ keys.diff(userLevelFuns))
+
+    val funMap = userLevelFuns.foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) => {
         val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
-        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-        accMap.updated(fd, newfd)
+        accMap + (fd -> new FunDef(freshId, fd.tparams, fd.params, fd.returnType))
       }
     }
-
     val mapExpr = mapFunctionsInExpr(funMap) _
     for ((from, to) <- funMap) {
       to.fullBody = if (!funToTmpl.contains(from)) {
@@ -185,17 +186,12 @@ object ProgramUtil {
     newprog
   }
 
-  def updatePost(funToPost: Map[FunDef, Lambda], prog: Program,
-                 uniqueIdDisplay: Boolean = true, excludeLibrary: Boolean = true): Program = {
+  def updatePost(funToPost: Map[FunDef, Lambda], prog: Program, uniqueIdDisplay: Boolean = true): Program = {
 
-    val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) if fd.isTheoryOperation || fd.isLibrary || fd.isInvariant =>
-        accMap + (fd -> fd)
-      case (accMap, fd) => {
+    val funMap = userLevelFunctions(prog).foldLeft(Map[FunDef, FunDef]()) {
+      case (accMap, fd) =>
         val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
-        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-        accMap.updated(fd, newfd)
-      }
+        accMap + (fd -> new FunDef(freshId, fd.tparams, fd.params, fd.returnType))
     }
     val mapExpr = mapFunctionsInExpr(funMap) _
     for ((from, to) <- funMap) {
@@ -233,6 +229,15 @@ object ProgramUtil {
 
   def functionsWOFields(fds: Seq[FunDef]): Seq[FunDef] = {
     fds.filter(fd => fd.isRealFunction)
+  }
+
+  /**
+   * Functions that are not theory-operations or library methods that are not a part of the main unit
+   */
+  def userLevelFunctions(program: Program): Seq[FunDef] = {
+    program.units.flatMap { u =>
+      u.definedFunctions.filter(fd => !fd.isTheoryOperation && (u.isMainUnit || !(fd.isLibrary || fd.isInvariant)))
+    }
   }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
@@ -340,14 +345,27 @@ object PredicateUtil {
    */
   def hasReals(expr: Expr): Boolean = {
     var foundReal = false
-    simplePostTransform {
-      case e => {
-        if (e.getType == RealType)
+    postTraversal {
+      case e if e.getType == RealType =>
           foundReal = true
-        e
-      }
+      case _ =>
     }(expr)
     foundReal
+  }
+
+  /**
+   * Checks if the expression has real valued sub-expressions.
+   */
+  def hasRealsOrTemplates(expr: Expr): Boolean = {
+    var found = false
+    postTraversal {
+      case Variable(id) if id.getType == RealType || TemplateIdFactory.IsTemplateIdentifier(id) =>
+        found = true
+      case e if e.getType == RealType =>
+        found = true
+      case _ =>
+    }(expr)
+    found
   }
 
   /**
@@ -358,12 +376,10 @@ object PredicateUtil {
    */
   def hasInts(expr: Expr): Boolean = {
     var foundInt = false
-    simplePostTransform {
-      case e: Terminal if (e.getType == Int32Type || e.getType == IntegerType) => {
+    postTraversal {
+      case e: Terminal if (e.getType == Int32Type || e.getType == IntegerType) =>
         foundInt = true
-        e
-      }
-      case e => e
+      case _ =>
     }(expr)
     foundInt
   }

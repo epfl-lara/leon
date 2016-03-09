@@ -120,8 +120,6 @@ class CegisCore(ctx: InferenceContext,
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (spuriousTempIds.nonEmpty)
           throw new IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
-        if (hasReals(instFormula))
-          throw new IllegalStateException("Reals in instFormula: " + instFormula)
 
         //println("solving instantiated vcs...")
         val solver1 = new ExtendedUFSolver(context, program)
@@ -158,16 +156,11 @@ class CegisCore(ctx: InferenceContext,
             val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver),
               timeoutMillis - elapsedTime))
             val (res1, newModel) = if (solveAsInt) {
-              //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
-              val rti = new RealToInt()
-              val intctr = rti.mapRealToInt(And(newctr, initRealCtr))
-              val intObjective = rti.mapRealToInt(tempVarSum)
-              val (res1, intModel) =
-                if (minimizeSum)
-                  minimizeIntegers(intctr, intObjective)
-                else
-                  solver2.solveSAT(intctr)
-              (res1, rti.unmapModel(intModel))
+              val intctr = And(newctr, initRealCtr)
+              if (minimizeSum)
+                minimizeIntegers(intctr, tempVarSum)
+              else
+                solver2.solveSAT(intctr)
             } else {
               if (minimizeSum) {
                 minimizeReals(And(newctr, initRealCtr), tempVarSum)

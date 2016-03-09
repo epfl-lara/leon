@@ -100,13 +100,12 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
 
   //TOOD: note associativity property of multiplication is not taken into account
   def apply(program: Program): Program = {
-
     //create a fundef for each function in the program
-    val newFundefs = program.definedFunctions.map((fd) => {
-      val newFunType = FunctionType(fd.tparams.map((currParam) => currParam.tp), fd.returnType)
+    val newFundefs = userLevelFunctions(program).map { fd =>
+      val newFunType = FunctionType(fd.tparams.map(_.tp), fd.returnType)
       val newfd = new FunDef(FreshIdentifier(fd.id.name, newFunType, false), fd.tparams, fd.params, fd.returnType)
-      (fd, newfd)
-    }).toMap
+      (fd -> newfd)
+    }.toMap
 
     //note, handling templates variables is slightly tricky as we need to preserve a*x as it is
     val tmult = TypedFunDef(multFun, Seq())
@@ -135,49 +134,44 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
     }
 
     //create a body, pre, post for each newfundef
-    newFundefs.foreach((entry) => {
-      val (fd, newfd) = entry
-
-      //add a new precondition
-      newfd.precondition =
-        if (fd.precondition.isDefined)
-          Some(replaceFun(fd.precondition.get))
-        else None
-
-      //add a new body
-      newfd.body = if (fd.hasBody) {
-        //replace variables by constants if possible
-        val simpBody = simplifyLets(fd.body.get)
-        Some(replaceFun(simpBody))
-      } else None
-
-      //add a new postcondition
-      newfd.postcondition = if (fd.postcondition.isDefined) {
-        //we need to handle template and postWoTemplate specially
-        val Lambda(resultBinders, _) = fd.postcondition.get
-        val tmplExpr = fd.templateExpr
-        val newpost = if (fd.hasTemplate) {
-          val FunctionInvocation(tmpfd, Seq(Lambda(tmpvars, tmpbody))) = tmplExpr.get
-          val newtmp = FunctionInvocation(tmpfd, Seq(Lambda(tmpvars,
-            replaceFun(tmpbody, tmpvars.map(_.id).toSet))))
-          fd.postWoTemplate match {
-            case None =>
-              newtmp
-            case Some(postExpr) =>
-              And(replaceFun(postExpr), newtmp)
-          }
-        } else
-          replaceFun(fd.getPostWoTemplate)
-
-        Some(Lambda(resultBinders, newpost))
-      } else None
-
-      fd.flags.foreach(newfd.addFlag(_))
-    })       
+    newFundefs.foreach {
+      case (fd, newfd) =>
+        //add a new precondition
+        newfd.precondition =
+          if (fd.precondition.isDefined)
+            Some(replaceFun(fd.precondition.get))
+          else None
+        //add a new body
+        newfd.body = if (fd.hasBody) {
+          //replace variables by constants if possible
+          val simpBody = simplifyLets(fd.body.get)
+          Some(replaceFun(simpBody))
+        } else None
+        //add a new postcondition
+        newfd.postcondition = if (fd.postcondition.isDefined) {
+          //we need to handle template and postWoTemplate specially
+          val Lambda(resultBinders, _) = fd.postcondition.get
+          val tmplExpr = fd.templateExpr
+          val newpost = if (fd.hasTemplate) {
+            val FunctionInvocation(tmpfd, Seq(Lambda(tmpvars, tmpbody))) = tmplExpr.get
+            val newtmp = FunctionInvocation(tmpfd, Seq(Lambda(tmpvars,
+              replaceFun(tmpbody, tmpvars.map(_.id).toSet))))
+            fd.postWoTemplate match {
+              case None =>
+                newtmp
+              case Some(postExpr) =>
+                And(replaceFun(postExpr), newtmp)
+            }
+          } else
+            replaceFun(fd.getPostWoTemplate)
+          Some(Lambda(resultBinders, newpost))
+        } else None
+        fd.flags.foreach(newfd.addFlag(_))
+    }
     val transProg = copyProgram(program, (defs: Seq[Definition]) => {
       defs.map {
-        case fd: FunDef => newFundefs(fd)
-        case d => d
+        case fd: FunDef if newFundefs.contains(fd) => newFundefs(fd)
+        case d          => d
       }
     })
     val newprog =

@@ -1,37 +1,66 @@
-import leon.invariant._
-import leon.instrumentation._
+package orb
+
+import leon._
+import annotation._
+import invariant._
+import instrumentation._
 
 object BigNums {
+  sealed abstract class Digit
+  case class Zero() extends Digit {
+    @ignore 
+    override def toString = "0"
+  }
+  case class One() extends Digit {
+    @ignore 
+    override def toString = "1"
+  }
+  
   sealed abstract class BigNum
-  case class Cons(head: BigInt, tail: BigNum) extends BigNum
+  case class Cons(head: Digit, tail: BigNum) extends BigNum
   case class Nil() extends BigNum
 
-  def incrTime(l: BigNum) : BigInt = {
+  /**
+   * Time taken by the increment method
+   * The number of leading one's
+   */
+  def leadingOnes(l: BigNum) : BigInt = {
     l match {
       case Nil() => 1
-      case Cons(x, tail) =>
-        if(x == 0) 1
-        else 1 + incrTime(tail)
+      case Cons(Zero(), tail) => 1
+      case Cons(_, tail) => 1 + leadingOnes(tail)
     }
   }
 
-  def potentialIncr(l: BigNum) : BigInt = {
+  /**
+   * Total number of one's in the number
+   */
+  def numOnes(l: BigNum) : BigInt = {
     l match {
       case Nil() => 0
-      case Cons(x, tail) =>
-        if(x == 0) potentialIncr(tail)
-        else 1 + potentialIncr(tail)
+      case Cons(Zero(), tail) => numOnes(tail)
+      case Cons(_, tail) => 1 + numOnes(tail)
     }
   }
-
+  
+  /**
+   * Increments a number
+   */
   def increment(l: BigNum) : BigNum = {
     l match {
-      case Nil() => Cons(1,l)
-      case Cons(x, tail) =>
-        if(x == 0) Cons(1, tail)
-        else Cons(0, increment(tail))
+      case Nil()              => Cons(One(), l)
+      case Cons(Zero(), tail) => Cons(One(), tail)
+      case Cons(_, tail) => 
+        Cons(Zero(), increment(tail))
     }
-  } ensuring (res => time <= ? * incrTime(l) + ? && incrTime(l) + potentialIncr(res) - potentialIncr(l) <= ?)
+  } ensuring (res => time <= ? * leadingOnes(l) + ? && leadingOnes(l) + numOnes(res) - numOnes(l) <= ?)
+  
+  def firstDigit(l: BigNum): Digit = {
+    require(l != Nil())
+    l match {
+      case Cons(d, _) => d
+    }
+  }
 
   /**
    * Nop is the number of operations
@@ -41,7 +70,7 @@ object BigNums {
     else {
       incrUntil(nop-1, increment(l))
     }
-  } ensuring (res => time <= ? * nop + ? * potentialIncr(l) + ?)
+  } ensuring (res => time <= ? * nop + ? * numOnes(l) + ?)
 
   def count(nop: BigInt) : BigNum = {
     incrUntil(nop, Nil())

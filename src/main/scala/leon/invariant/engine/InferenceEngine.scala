@@ -140,9 +140,9 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
         // not usef for now
         /*val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(ctx, startProg)),
             startProg, ctx.reporter)*/
-        startProg.definedFunctions.map(fd => fd -> getOrCreateTemplateForFun(fd)).toMap
+        userLevelFunctions(startProg).map(fd => fd -> getOrCreateTemplateForFun(fd)).toMap
       } else
-        startProg.definedFunctions.collect { case fd if fd.hasTemplate => fd -> fd.getTemplate }.toMap
+        userLevelFunctions(startProg).collect { case fd if fd.hasTemplate => fd -> fd.getTemplate }.toMap
     val progWithTemplates = assignTemplateAndCojoinPost(funToTmpl, startProg)
     var analyzedSet = Map[FunDef, InferenceCondition]()
 
@@ -191,7 +191,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                 // now the templates of these functions will be replaced by inferred invariants
                 val invs = TemplateInstantiator.getAllInvariants(model.get, funsWithTemplates)
                 // collect templates of remaining functions
-                val funToTmpl = prog.definedFunctions.collect {
+                val funToTmpl = userLevelFunctions(prog).collect {
                   case fd if !invs.contains(fd) && fd.hasTemplate =>
                     fd -> fd.getTemplate
                 }.toMap

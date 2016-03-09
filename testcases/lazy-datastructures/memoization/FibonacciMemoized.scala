@@ -1,8 +1,8 @@
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
+import leon._
+import mem._
+import lang._
+import annotation._
+import instrumentation._
 //import leon.invariant._
 
 object FibMem {

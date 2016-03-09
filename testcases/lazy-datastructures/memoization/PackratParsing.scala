@@ -1,5 +1,5 @@
-import leon.lazyeval._
-import leon.lazyeval.Mem._
+import leon._
+import leon.mem._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
@@ -33,7 +33,6 @@ object PackratParsing {
     string(i.toInt)
   } ensuring(_ => time <= 1)
 
-
   sealed abstract class Result {
     /**
      * Checks if the index in the result (if any) is
@@ -51,47 +50,52 @@ object PackratParsing {
   @memoize
   @invstate
   def pAdd(i: BigInt): Result = {
-    require(depsEval(i) &&
-      pMul(i).isCached && pPrim(i).isCached &&
-      resEval(i, pMul(i))) // lemma inst
-
+    require {
+      if (depsEval(i) && pMul(i).isCached && pPrim(i).isCached)
+        resEval(i, pMul(i))
+      else false
+    } // lemma inst
     // Rule 1: Add <- Mul + Add
-    pMul(i) match {
+    val v = pMul(i)
+    v match {
       case Parsed(j) =>
         if (j > 0 && lookup(j) == Plus()) {
           pAdd(j - 1) match {
             case Parsed(rem) =>
               Parsed(rem)
             case _ =>
-              pMul(i) // Rule2: Add <- Mul
+              v // Rule2: Add <- Mul
           }
-        } else pMul(i)
+        } else v
       case _ =>
-        pMul(i)
+        v
     }
-  } ensuring (res => res.smallerIndex(i) && time <= 40)
+  } ensuring (res => res.smallerIndex(i) && time <= 26)
 
   @memoize
   @invstate
   def pMul(i: BigInt): Result = {
-    require(depsEval(i) && pPrim(i).isCached &&
-      resEval(i, pPrim(i)) // lemma inst
-      )
+    require {
+      if (depsEval(i) && pPrim(i).isCached)
+        resEval(i, pPrim(i)) // lemma inst
+      else false
+    }
     // Rule 1: Mul <- Prim *  Mul
-    pPrim(i) match {
+    val v = pPrim(i)
+    v match {
       case Parsed(j) =>
         if (j > 0 && lookup(j) == Plus()) {
           pMul(j - 1) match {
             case Parsed(rem) =>
               Parsed(rem)
             case _ =>
-              pPrim(i) // Rule2: Mul <- Prim
+              v // Rule2: Mul <- Prim
           }
-        } else pPrim(i)
+        } else v
       case _ =>
-        pPrim(i)
+        v
     }
-  } ensuring (res => res.smallerIndex(i) && time <= 40)
+  } ensuring (res => res.smallerIndex(i) && time <= 26)
 
   @memoize
   @invstate
@@ -106,14 +110,15 @@ object PackratParsing {
     } else if (char == Open() && i > 0) {
       pAdd(i - 1) match { // Rule 2: pPrim <- ( Add )
         case Parsed(rem) =>
-          Parsed(rem)
+          if (rem >= 0 && lookup(rem) == Close()) Parsed(rem - 1)
+          else NoParse()
         case _ =>
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && time <= 30)
+  } ensuring (res => res.smallerIndex(i) && time <= 28)
 
-  @inline
+  //@inline
   def depsEval(i: BigInt) = i == 0 || (i > 0 && allEval(i-1))
 
   def allEval(i: BigInt): Boolean = {
@@ -138,7 +143,6 @@ object PackratParsing {
   /**
    * Instantiates the lemma `depsLem` on the result index (if any)
    */
-  @inline
   def resEval(i: BigInt, res: Result) = {
     (res match {
       case Parsed(j) =>
@@ -148,16 +152,38 @@ object PackratParsing {
     })
   }
 
-  def invoke(i: BigInt): (Result, Result, Result) = {
-    require(i == 0 || (i > 0 && allEval(i-1)))
-    (pPrim(i), pMul(i), pAdd(i))
-  } ensuring (res => {
-    val in = Mem.inState[Result]
-    val out = Mem.outState[Result]
+  def invokePrim(i: BigInt): Result = {
+    require(depsEval(i))
+    pPrim(i)
+  } ensuring {res =>
+    val in = inState[Result]
+    val out = outState[Result]
+    (if(i >0) evalMono(i-1, in, out) else true)
+  }
+
+  def invokeMul(i: BigInt): Result = {
+    require(depsEval(i))
+    invokePrim(i) match {
+      case _ => pMul(i)
+    }
+  } ensuring {res =>
+    val in = inState[Result]
+    val out = outState[Result]
+    (if(i >0) evalMono(i-1, in, out) else true)
+  }
+
+  def invoke(i: BigInt): Result = {
+    require(depsEval(i))
+    invokeMul(i) match {
+      case _ => pAdd(i)
+    }
+  } ensuring{ res =>
+    val in = inState[Result]
+    val out = outState[Result]
     (if(i >0) evalMono(i-1, in, out) else true) &&
     allEval(i) &&
-    time <= 200
-  })
+    time <= 189
+  }
 
   /**
    * Parsing a string of length 'n+1'.
@@ -166,11 +192,12 @@ object PackratParsing {
    */
   def parse(n: BigInt): Result = {
     require(n >= 0)
-    if(n == 0) invoke(n)._3
+    if(n == 0) invoke(n)
     else {
-      val tailres = parse(n-1) // we parse the prefixes ending at 0, 1, 2, 3, ..., n
-      invoke(n)._3
+      parse(n-1) match { // we parse the prefixes ending at 0, 1, 2, 3, ..., n
+        case _ => invoke(n)
+      }
     }
   } ensuring(_ => allEval(n) &&
-      time <= 250*n + 250)
+      time <= 198*n + 192)
 }

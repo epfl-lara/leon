@@ -1,12 +1,12 @@
-package lazybenchmarks
+package withorb
 
-import leon.lazyeval._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
-import leon.lazyeval.$._
-import leon.collection._
-import leon.invariant._
+import leon._
+import lazyeval._
+import lang._
+import annotation._
+import instrumentation._
+import collection._
+import invariant._
 
 /**
  * This file is the collection of programs in the ESOP 2015 paper.
@@ -15,14 +15,14 @@ import leon.invariant._
  */
 object Esop15Benchmarks {
   sealed abstract class IStream
-  case class SCons(x: BigInt, tail: $[IStream]) extends IStream
+  case class SCons(x: BigInt, tail: Lazy[IStream]) extends IStream
   case class SNil() extends IStream
 
   sealed abstract class StreamPairs
-  case class PCons(pair: (BigInt, BigInt), tail: $[StreamPairs]) extends StreamPairs
+  case class PCons(pair: (BigInt, BigInt), tail: Lazy[StreamPairs]) extends StreamPairs
   case class PNil() extends StreamPairs
 
-  def zipWith(xs: $[IStream], ys: $[IStream]): StreamPairs = {
+  def zipWith(xs: Lazy[IStream], ys: Lazy[IStream]): StreamPairs = {
     (xs.value, ys.value) match {
       case (SCons(x, xtail), SCons(y, ytail)) =>
         PCons((x, y), $(zipWith(xtail, ytail)))
@@ -44,7 +44,7 @@ object Esop15Benchmarks {
     SCons(0, SCons(1, $(nextFib(0, 1, n))))
   }
 
-  def nthFib(n: BigInt, fs: $[IStream]): BigInt = {
+  def nthFib(n: BigInt, fs: Lazy[IStream]): BigInt = {
     require(n >= 0)
     fs.value match {
       case SCons(x, tail) =>

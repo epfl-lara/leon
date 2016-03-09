@@ -141,38 +141,6 @@ object ExpressionTransformer {
           val (resvalue, valuecjs) = transform(value, true)
           (resbody, (valuecjs + Equals(binder.toVariable, resvalue)) ++ bodycjs)
 
-        //the value is a tuple in the following case
-        /*case LetTuple(binders, value, body) =>
-          //TODO: do we have to consider reuse of let variables ?
-          val (resbody, bodycjs) = transform(body, true)
-          val (resvalue, valuecjs) = transform(value, true)
-          //here we optimize the case where resvalue itself has tuples
-          val newConjuncts = resvalue match {
-            case Tuple(args) => {
-              binders.zip(args).map((elem) => {
-                val (bind, arg) = elem
-                Equals(bind.toVariable, arg)
-              })
-            }
-            case _ => {
-              //may it is better to assign resvalue to a temporary variable (if it is not already a variable)
-              val (resvalue2, cjs) = resvalue match {
-                case t: Terminal => (t, Seq())
-                case _ => {
-                  val freshres = createTemp("tres", resvalue.getType, langContext).toVariable
-                  (freshres, Seq(Equals(freshres, resvalue)))
-                }
-              }
-              var i = 0
-              val cjs2 = binders.map((bind) => {
-                i += 1
-                Equals(bind.toVariable, TupleSelect(resvalue2, i))
-              })
-              (cjs ++ cjs2)
-            }
-          }
-          (resbody, (valuecjs ++ newConjuncts) ++ bodycjs)*/
-
         case _ => conjoinWithinClause(e, transform, insideFunction)
       }
     }

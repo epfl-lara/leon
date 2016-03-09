@@ -61,8 +61,8 @@ object LazyExpressionLifter {
     lazy val needsId = funsMan.callersnTargetOfLazyCons
 
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
-    val fdmap = prog.definedFunctions.collect {
-      case fd if !fd.isLibrary && !fd.isInvariant =>
+    val fdmap = ProgramUtil.userLevelFunctions(prog).collect {
+      case fd if fd.hasBody =>
         val nname = FreshIdentifier(fd.id.name)
         val nfd =
           if (createUniqueIds && needsId(fd)) {
@@ -74,15 +74,14 @@ object LazyExpressionLifter {
         (fd -> nfd)
     }.toMap
 
-    lazy val lazyFun = ProgramUtil.functionByFullName("leon.lazyeval.$.apply", prog).get
-    lazy val valueFun = ProgramUtil.functionByFullName("leon.lazyeval.$.value", prog).get
+    lazy val lazyFun = ProgramUtil.functionByFullName("leon.lazyeval.$", prog).get
+    lazy val valueFun = ProgramUtil.functionByFullName("leon.lazyeval.Lazy.value", prog).get
 
     var anchorDef: Option[FunDef] = None // a hack to find anchors
     prog.modules.foreach { md =>
       def exprLifter(inmem: Boolean)(fl: Option[FreeVarListIterator])(expr: Expr) = expr match {
-        // is this $(e) where e is not a funtion
         case finv @ FunctionInvocation(lazytfd, Seq(callByNameArg)) if isLazyInvocation(finv)(prog) =>
-          val Lambda(Seq(), arg) = callByNameArg  // extract the call-by-name parameter
+          val Lambda(Seq(), arg) = callByNameArg // extract the call-by-name parameter
           arg match {
             case _: FunctionInvocation =>
               finv
@@ -116,11 +115,11 @@ object LazyExpressionLifter {
                   fvVars :+ fl.get.nextExpr
                 else fvVars
               FunctionInvocation(lazytfd, Seq(Lambda(Seq(),
-                  FunctionInvocation(TypedFunDef(argfun, tparams), params))))
+                FunctionInvocation(TypedFunDef(argfun, tparams), params))))
           }
 
         // is the argument of eager invocation not a variable ?
-        case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn@Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
+        case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn @ Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
           val rootType = bestRealType(tp)
           val ntps = Seq(rootType)
           arg match {
@@ -129,7 +128,7 @@ object LazyExpressionLifter {
             case _ =>
               val freshid = FreshIdentifier("t", rootType)
               Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps),
-                  Seq(Lambda(Seq(), freshid.toVariable))))
+                Seq(Lambda(Seq(), freshid.toVariable))))
           }
 
         // is this an invocation of a memoized  function ?
@@ -169,8 +168,12 @@ object LazyExpressionLifter {
               val nargs = args map rec(inmem || isMemCons(e)(prog))
               exprLifter(inmem)(fliter)(op(nargs))
           }
-          nfd.fullBody = rec(false)(fd.fullBody)
-        case _ => ;
+          if(fd.hasPrecondition)
+            nfd.precondition = Some(rec(true)(fd.precondition.get))
+          if (fd.hasPostcondition)
+            nfd.postcondition = Some(rec(true)(fd.postcondition.get))
+          nfd.body = Some(rec(false)(fd.body.get))
+        case fd =>
       }
     }
     val progWithFuns = copyProgram(prog, (defs: Seq[Definition]) => defs.map {

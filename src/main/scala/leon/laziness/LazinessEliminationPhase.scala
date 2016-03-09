@@ -44,7 +44,6 @@ import java.io.
  */
 object LazinessEliminationPhase extends TransformationPhase {
   val dumpInputProg = false
-  val debugLifting = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
@@ -79,7 +78,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     // refEq is by default false
     val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
-      prettyPrintProgramToFile(nprog, ctx, "-lifted")
+      prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
     val funsManager = new LazyFunctionsManager(nprog)
     val closureFactory = new LazyClosureFactory(nprog)

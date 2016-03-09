@@ -26,8 +26,10 @@ object InstrumentationPhase extends TransformationPhase {
   val description = "Instruments the program for all counters needed"
 
   def apply(ctx: LeonContext, program: Program): Program = {
-    val instprog = new SerialInstrumenter(program)
-    instprog.apply
+    val si = new SerialInstrumenter(program)
+    val instprog = si.apply
+    //println("Instrumented Program: "+ScalaPrinter.apply(instprog, purescala.PrinterOptions(printUniqueIds = true)))
+    instprog
   }
 }
 
@@ -36,6 +38,7 @@ class SerialInstrumenter(program: Program,
   val debugInstrumentation = false
 
   val exprInstFactory = exprInstOpt.getOrElse((x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) => new ExprInstrumenter(x, y)(z))
+
   val instToInstrumenter: Map[Instrumentation, Instrumenter] =
     Map(Time -> new TimeInstrumenter(program, this),
       Depth -> new DepthInstrumenter(program, this),
@@ -44,7 +47,7 @@ class SerialInstrumenter(program: Program,
       TPR -> new TPRInstrumenter(program, this))
 
   // a map from functions to the list of instrumentations to be performed for the function
-  lazy val funcInsts = {
+  val funcInsts = {
     var emap = MutableMap[FunDef, List[Instrumentation]]()
     def update(fd: FunDef, inst: Instrumentation) {
       if (emap.contains(fd))
@@ -59,7 +62,7 @@ class SerialInstrumenter(program: Program,
     }
     emap.toMap
   }
-  lazy val instFuncs = funcInsts.keySet //should we exclude theory operations ?
+  val instFuncs = funcInsts.keySet
 
   def instrumenters(fd: FunDef) = funcInsts(fd) map instToInstrumenter.apply _
   def instTypes(fd: FunDef) = funcInsts(fd).map(_.getType)
@@ -72,121 +75,118 @@ class SerialInstrumenter(program: Program,
 
   def apply: Program = {
 
-    //create new functions. Augment the return type of a function iff the postcondition uses
-    //the instrumentation variable or if the function is transitively called from such a function
-    //note: need not instrument fields
-    val funMap = functionsWOFields(program.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd: FunDef) if fd.isTheoryOperation =>
-        accMap + (fd -> fd)
-      case (accMap, fd) => {
+    if (instFuncs.isEmpty) program
+    else {
+      //create new functions. Augment the return type of a function iff the postcondition uses
+      //the instrumentation variable or if the function is transitively called from such a function
+      var funMap = Map[FunDef, FunDef]()
+      (userLevelFunctions(program) ++ instFuncs).distinct.foreach { fd =>
         if (instFuncs.contains(fd)) {
           val newRetType = TupleType(fd.returnType +: instTypes(fd))
           // let the names of the function encode the kind of instrumentations performed
           val freshId = FreshIdentifier(fd.id.name + "-" + funcInsts(fd).map(_.name).mkString("-"), newRetType)
           val newfd = new FunDef(freshId, fd.tparams, fd.params, newRetType)
-          accMap + (fd -> newfd)
+          funMap += (fd -> newfd)
         } else {
           //here we need not augment the return types but do need to create a new copy
           val freshId = FreshIdentifier(fd.id.name, fd.returnType)
           val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-          accMap + (fd -> newfd)
+          funMap += (fd -> newfd)
         }
       }
-    }
 
-    def mapExpr(ine: Expr): Expr = {
-      simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
-          if (instFuncs.contains(tfd.fd))
-            TupleSelect(FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args), 1)
-          else
-            FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
-        case _ => e
-      })(ine)
-    }
-
-    def mapBody(body: Expr, from: FunDef, to: FunDef) = {
-      val res =
-        if (from.isExtern) {
-          // this is an extern function, we must only rely on the specs
-          // so make the body empty
-          NoTree(to.returnType)
-        } else if (instFuncs.contains(from)) {
-          //(new ExprInstrumenter(funMap, this)(from)(body))
-          exprInstFactory(funMap, this, from)(body)
-        } else
-          mapExpr(body)
-      res
-    }
-
-    def mapPost(pred: Expr, from: FunDef, to: FunDef) = {
-      pred match {
-        case Lambda(Seq(ValDef(fromRes)), postCond) if (instFuncs.contains(from)) =>
-          val toResId = FreshIdentifier(fromRes.name, to.returnType, true)
-          val newpost = postMap((e: Expr) => e match {
-            case Variable(`fromRes`) =>
-              Some(TupleSelect(toResId.toVariable, 1))
-
-            case _ if funcInsts(from).exists(_.isInstVariable(e)) =>
-              val inst = funcInsts(from).find(_.isInstVariable(e)).get
-              Some(TupleSelect(toResId.toVariable, instIndex(from)(inst)))
-
-            case _ =>
-              None
-          })(postCond)
-          Lambda(Seq(ValDef(toResId)), mapExpr(newpost))
-        case _ =>
-          mapExpr(pred)
+      def mapExpr(ine: Expr): Expr = {
+        simplePostTransform((e: Expr) => e match {
+          case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
+            if (instFuncs.contains(tfd.fd))
+              TupleSelect(FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args), 1)
+            else
+              FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
+          case _ => e
+        })(ine)
       }
-    }
 
-    // Map the bodies and preconditions
-    for ((from, to) <- funMap) {
-      //copy annotations
-      from.flags.foreach(to.addFlag(_))
-      to.fullBody = from.fullBody match {
-        case b @ NoTree(_) => NoTree(to.returnType)
-        case Require(pre, body) =>
-          //here 'from' does not have a postcondition but 'to' will always have a postcondition
-          val toPost =
-            Lambda(Seq(ValDef(FreshIdentifier("res", to.returnType))), BooleanLiteral(true))
-          val bodyPre =
-            Require(mapExpr(pre), mapBody(body, from, to))
-          Ensuring(bodyPre, toPost)
-
-        case Ensuring(Require(pre, body), post) =>
-          Ensuring(Require(mapExpr(pre), mapBody(body, from, to)),
-            mapPost(post, from, to))
-
-        case Ensuring(body, post) =>
-          Ensuring(mapBody(body, from, to), mapPost(post, from, to))
-
-        case body =>
-          val toPost =
-            Lambda(Seq(ValDef(FreshIdentifier("res", to.returnType))), BooleanLiteral(true))
-          Ensuring(mapBody(body, from, to), toPost)
+      def mapBody(body: Expr, from: FunDef, to: FunDef) = {
+        val res =
+          if (from.isExtern) {
+            // this is an extern function, we must only rely on the specs
+            // so make the body empty
+            NoTree(to.returnType)
+          } else if (instFuncs.contains(from)) {
+            exprInstFactory(funMap, this, from)(body)
+          } else
+            mapExpr(body)
+        res
       }
+
+      def mapPost(pred: Expr, from: FunDef, to: FunDef) = {
+        pred match {
+          case Lambda(Seq(ValDef(fromRes)), postCond) if (instFuncs.contains(from)) =>
+            val toResId = FreshIdentifier(fromRes.name, to.returnType, true)
+            val newpost = postMap((e: Expr) => e match {
+              case Variable(`fromRes`) =>
+                Some(TupleSelect(toResId.toVariable, 1))
+
+              case _ if funcInsts(from).exists(_.isInstVariable(e)) =>
+                val inst = funcInsts(from).find(_.isInstVariable(e)).get
+                Some(TupleSelect(toResId.toVariable, instIndex(from)(inst)))
+
+              case _ =>
+                None
+            })(postCond)
+            Lambda(Seq(ValDef(toResId)), mapExpr(newpost))
+          case _ =>
+            mapExpr(pred)
+        }
+      }
+
+      // Map the bodies and preconditions
+      for ((from, to) <- funMap) {
+        //copy annotations
+        from.flags.foreach(to.addFlag(_))
+        to.fullBody = from.fullBody match {
+          case b @ NoTree(_) => NoTree(to.returnType)
+          case Require(pre, body) =>
+            //here 'from' does not have a postcondition but 'to' will always have a postcondition
+            val toPost =
+              Lambda(Seq(ValDef(FreshIdentifier("res", to.returnType))), BooleanLiteral(true))
+            val bodyPre =
+              Require(mapExpr(pre), mapBody(body, from, to))
+            Ensuring(bodyPre, toPost)
+
+          case Ensuring(Require(pre, body), post) =>
+            Ensuring(Require(mapExpr(pre), mapBody(body, from, to)),
+              mapPost(post, from, to))
+
+          case Ensuring(body, post) =>
+            Ensuring(mapBody(body, from, to), mapPost(post, from, to))
+
+          case body =>
+            val toPost =
+              Lambda(Seq(ValDef(FreshIdentifier("res", to.returnType))), BooleanLiteral(true))
+            Ensuring(mapBody(body, from, to), toPost)
+        }
+      }
+
+      val additionalFuncs = funMap.flatMap {
+        case (k, _) =>
+          if (instFuncs(k))
+            instrumenters(k).flatMap(_.additionalfunctionsToAdd)
+          else List()
+      }.toList.distinct
+
+      val newprog = copyProgram(program, (defs: Seq[Definition]) =>
+        defs.map {
+          case fd: FunDef if funMap.contains(fd) =>
+            funMap(fd)
+          case d => d
+        } ++ additionalFuncs)
+      if (debugInstrumentation)
+        println("After Instrumentation: \n" + ScalaPrinter.apply(newprog))
+
+      ProgramSimplifier(newprog, instFuncs.toSeq)
     }
-
-    val additionalFuncs = funMap.flatMap {
-      case (k, _) =>
-        if (instFuncs(k))
-          instrumenters(k).flatMap(_.additionalfunctionsToAdd)
-        else List()
-    }.toList.distinct
-
-    val newprog = copyProgram(program, (defs: Seq[Definition]) =>
-      defs.map {
-        case fd: FunDef if funMap.contains(fd) =>
-          funMap(fd)
-        case d => d
-      } ++ additionalFuncs)
-    if (debugInstrumentation)
-      println("After Instrumentation: \n" + ScalaPrinter.apply(newprog))
-
-    ProgramSimplifier(newprog)
   }
-
 }
 
 class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrumenter)(implicit currFun: FunDef) {
@@ -250,11 +250,9 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
               val valexpr = TupleSelect(resvar, 1)
               val instexprs = instrumenters.map { m =>
                 val calleeInst =
-                  if (serialInst.funcInsts(fd).contains(m.inst) &&
-                    fd.isUserFunction) {
-                    // ignoring fields here
+                  if (serialInst.funcInsts(fd).contains(m.inst) && fd.isUserFunction) {
                     List(serialInst.selectInst(fd)(resvar, m.inst))
-                  } else List()
+                  } else List() // ignoring fields here
                 //Note we need to ensure that the last element of list is the instval of the finv
                 m.instrument(e, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar))
               }
@@ -411,12 +409,6 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
     case n @ Operator(ss, recons) =>
       tupleify(e, ss, recons)
 
-    /*      case b @ BinaryOperator(s1, s2, recons) =>
-        tupleify(e, Seq(s1, s2), { case Seq(s1, s2) => recons(s1, s2) })
-
-      case u @ UnaryOperator(s, recons) =>
-        tupleify(e, Seq(s), { case Seq(s) => recons(s) })
-*/
     case t: Terminal =>
       tupleify(e, Seq(), { case Seq() => t })
   }
@@ -431,7 +423,6 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
     val instExprs = instrumenters map { m =>
       m.instrumentBody(newe,
         selectInst(bodyId.toVariable, m.inst))
-
     }
     Let(bodyId, transformed,
       Tuple(TupleSelect(bodyId.toVariable, 1) +: instExprs))

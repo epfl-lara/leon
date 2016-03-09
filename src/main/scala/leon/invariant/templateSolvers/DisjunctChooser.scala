@@ -181,7 +181,7 @@ class DisjunctChooser(ctx: InferenceContext, program: Program, ctrTracker: Const
       if (debugElimination && verifyInvariant) {
         println("checking invariant for disjunct before elimination...")
         checkInvariant(createAnd((lnctrs ++ temps).map(_.template)), leonctx, program)
-      }      
+      }
       // for debugging
       val debugger =
         if (debugElimination && verifyInvariant) {

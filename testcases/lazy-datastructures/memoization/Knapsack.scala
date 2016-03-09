@@ -1,8 +1,7 @@
-import leon.lazyeval._
-import leon.lazyeval.Mem._
-import leon.lang._
-import leon.annotation._
-import leon.instrumentation._
+import leon._
+import mem._
+import annotation._
+import instrumentation._
 //import leon.invariant._
 
 object Knapscak {
@@ -76,7 +75,7 @@ object Knapscak {
     else {
       Cons((i,ri), bottomup(i + 1, w, items))
     }
-  } ensuring(items.size <= 10 ==> time <= 500 * (w - i + 1))
+  } ensuring(_ => items.size <= 10 ==> time <= 500 * (w - i + 1))
 
   /**
    * Computes the list of optimal solutions of all weights up to 'w'
@@ -84,7 +83,7 @@ object Knapscak {
   def knapSackSol(w: BigInt, items: IList) = {
     require(w >= 0 && items.size <= 10) //  the second requirement is only to keep the bounds linear for z3 to work
     bottomup(0, w, items)
-  } ensuring(time <= 500*w + 510)
+  } ensuring(_ => time <= 500*w + 510)
 
   /**
    * Lemmas of deps
