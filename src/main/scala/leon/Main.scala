@@ -3,7 +3,6 @@
 package leon
 
 import leon.utils._
-import leon.verification.VerificationReport
 
 object Main {
 
@@ -31,7 +30,8 @@ object Main {
       invariant.engine.InferInvariantsPhase,
       laziness.LazinessEliminationPhase,
       genc.GenerateCPhase,
-      genc.CFileOutputPhase)
+      genc.CFileOutputPhase
+    )
   }
 
   // Add whatever you need here.
