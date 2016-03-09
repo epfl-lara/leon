@@ -97,7 +97,7 @@ class Synthesizer(val context : LeonContext,
 
       val (size, calls, proof) = result.headOption match {
         case Some((sol, trusted)) =>
-          val expr = sol.toSimplifiedExpr(context, program)
+          val expr = sol.toSimplifiedExpr(context, program, ci.fd)
           val pr = trusted match {
             case Some(true) => "✓"
             case Some(false) => "✗"
@@ -165,7 +165,7 @@ class Synthesizer(val context : LeonContext,
   def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
     // We replace the choose with the body of the synthesized solution
 
-    val solutionExpr = sol.toSimplifiedExpr(context, program)
+    val solutionExpr = sol.toSimplifiedExpr(context, program, ci.fd)
 
     val (npr, fdMap) = replaceFunDefs(program)({
       case fd if fd eq ci.fd =>

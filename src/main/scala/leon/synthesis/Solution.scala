@@ -54,8 +54,8 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
 
-  def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
-    Simplifiers.bestEffort(ctx, p)(toExpr)
+  def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
+    withoutSpec(Simplifiers.bestEffort(ctx, p)(req(within.precOrTrue, toExpr))).get
   }
 }
 
