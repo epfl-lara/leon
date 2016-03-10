@@ -25,8 +25,11 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    val TopLevelAnds(pcs) = p.pc
+    val existingCalls = pcs.collect { case Equals(_, fi: FunctionInvocation) => fi }.toSet
 
-    val (orig, calls, _) = terminatingCalls(hctx.program, p.ws, p.pc, None, false).unzip3
+    val calls = terminatingCalls(hctx.program, p.ws, p.pc, None, false)
+      .map(_._1).filterNot(existingCalls)
 
     if (calls.isEmpty) return Nil
 
@@ -76,14 +79,12 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
         }
 
         val newWs = calls map Terminating
-
         val TopLevelAnds(ws) = p.ws
-
         try {
           val newProblem = p.copy(
             as = p.as ++ recs,
             pc = andJoin(p.pc +: posts),
-            ws = andJoin((ws diff orig) ++ newWs),
+            ws = andJoin(ws ++ newWs),
             eb = p.eb.map(mapExample)
           )
 

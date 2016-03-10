@@ -19,7 +19,7 @@ case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Expr) extends Express
     val calls = terminatingCalls(prog,ws, pc, Some(t), true)
 
     calls.map { c => (c: @unchecked) match {
-      case (_, fi, Some(free)) =>
+      case (fi, Some(free)) =>
         val freeSeq = free.toSeq
 
         nonTerminal(

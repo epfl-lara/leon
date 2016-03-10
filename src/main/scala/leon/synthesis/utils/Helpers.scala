@@ -43,10 +43,10 @@ object Helpers {
     * @param ws Helper predicates that contain [[Terminating]]s with the initial calls
     * @param pc The path condition
     * @param tpe The expected type for the returned function calls. If absent, all types are permitted.
-    * @return A list of trips of (original terminating call, safe function call, holes),
+    * @return A list of pairs (safe function call, holes),
     *         where holes stand for the rest of the arguments of the function.
    */
-  def terminatingCalls(prog: Program, ws: Expr, pc: Expr, tpe: Option[TypeTree], introduceHoles: Boolean): List[(Terminating, FunctionInvocation, Option[Set[Identifier]])] = {
+  def terminatingCalls(prog: Program, ws: Expr, pc: Expr, tpe: Option[TypeTree], introduceHoles: Boolean): List[(FunctionInvocation, Option[Set[Identifier]])] = {
 
     val TopLevelAnds(wss) = ws
     val TopLevelAnds(clauses) = pc
@@ -88,13 +88,13 @@ object Helpers {
     }
 
     val res = gs.flatMap {
-      case term@Terminating(FunctionInvocation(tfd, args)) if tpe forall (isSubtypeOf(tfd.returnType, _)) =>
+      case Terminating(FunctionInvocation(tfd, args)) if tpe forall (isSubtypeOf(tfd.returnType, _)) =>
         val ids = tfd.params.map(vd => FreshIdentifier("<hole>", vd.getType, true)).toList
 
         for (((a, i), tpe) <- args.zipWithIndex zip tfd.params.map(_.getType);
               smaller <- argsSmaller(a, tpe)) yield {
           val newArgs = (if (introduceHoles) ids.map(_.toVariable) else args).updated(i, smaller)
-          (term, FunctionInvocation(tfd, newArgs), if(introduceHoles) Some(ids.toSet - ids(i)) else None)
+          (FunctionInvocation(tfd, newArgs), if(introduceHoles) Some(ids.toSet - ids(i)) else None)
         }
       case _ =>
         Nil
