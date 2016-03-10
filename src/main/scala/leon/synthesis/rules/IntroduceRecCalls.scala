@@ -29,7 +29,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
     val existingCalls = pcs.collect { case Equals(_, fi: FunctionInvocation) => fi }.toSet
 
     val calls = terminatingCalls(hctx.program, p.ws, p.pc, None, false)
-      .map(_._1).filterNot(existingCalls)
+      .map(_._1).distinct.filterNot(existingCalls)
 
     if (calls.isEmpty) return Nil
 
