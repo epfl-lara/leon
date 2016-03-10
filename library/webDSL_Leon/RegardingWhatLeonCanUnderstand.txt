@@ -1,0 +1,7 @@
+  Last edited: 10/03/2016 at 10h30
+
+  * Pour leon, il faut pas mettre de val dans les classes qu'on donne a leon
+  * Leon: Ne pas utiliser de class sans "case"
+  * Leon: Ne pas utiliser de classe abstraite/Trait qui n'ont pas de descendant
+  * Leon ne reconnait pas les List de scala
+  * ne pas mettre de var dans les classes qu'on donne a leon
