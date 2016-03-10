@@ -392,11 +392,9 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      /*
       case LetPattern(p,s,rhs) =>
         p"""|val $p = $s
             |$rhs"""
-      */
 
       case MatchExpr(s, csc) =>
         optP {
