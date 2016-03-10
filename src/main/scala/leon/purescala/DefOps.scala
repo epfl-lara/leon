@@ -388,7 +388,7 @@ object DefOps {
   }(p)
 
   private def defaultCdMap(cc: CaseClass, ccd: CaseClassType): Option[Expr] = (cc, ccd) match {
-    case (CaseClass(old, args), newCcd) if old.classDef != newCcd =>
+    case (CaseClass(old, args), newCcd) if old.classDef != newCcd.classDef =>
       Some(CaseClass(newCcd, args))
     case _ =>
       None
@@ -401,7 +401,7 @@ object DefOps {
     * @param ciMapF Given a previous case class invocation and its new case class definition, returns the expression to use.
     *               By default it is the case class construction using the new case class definition.
     * @return the new program with a map from the old case classes to the new case classes, with maps concerning identifiers and function definitions. */
-  def replaceCaseClassDefs(p: Program)(_cdMapF: CaseClassDef => Option[Option[AbstractClassType] => CaseClassDef],
+  def replaceCaseClassDefs(p: Program)(cdMapF: CaseClassDef => Option[Option[AbstractClassType] => CaseClassDef],
                                        ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap)
                                        : (Program, Map[ClassDef, ClassDef], Map[Identifier, Identifier], Map[FunDef, FunDef]) = {
     var cdMapFCache = Map[CaseClassDef, Option[Option[AbstractClassType] => CaseClassDef]]()
@@ -413,7 +413,7 @@ object DefOps {
       cd match {
         case ccd: CaseClassDef =>
           cdMapFCache.getOrElse(ccd, {
-            val new_cd_potential = _cdMapF(ccd)
+            val new_cd_potential = cdMapF(ccd)
             cdMapFCache += ccd -> new_cd_potential
             new_cd_potential
           })
