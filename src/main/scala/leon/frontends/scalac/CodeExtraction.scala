@@ -707,8 +707,8 @@ trait CodeExtraction extends ASTExtractors {
           //cd.registerMethod(fd)
 
         case t@ ExMutatorAccessorFunction(fsym, _, _, _, _) =>
-          println("FOUND mutator: " + t)
-          println("accessed: " + fsym.accessed)
+          //println("FOUND mutator: " + t)
+          //println("accessed: " + fsym.accessed)
           isMutator += fsym
           //val fd = defineFunDef(fsym, Some(cd))(defCtx)
 
@@ -1306,7 +1306,6 @@ trait CodeExtraction extends ASTExtractors {
         }
 
         case a@ExAssign(sym, rhs) => {
-          println("extracted assign: " + sym + " = " + rhs)
           dctx.mutableVars.get(sym) match {
           case Some(fun) =>
             val Variable(id) = fun()
@@ -1680,8 +1679,6 @@ trait CodeExtraction extends ASTExtractors {
 
             //mutable variables
             case (IsTyped(rec, cct: CaseClassType), name, List(e1)) if isMutator(sym) =>
-              println("Searching for mutator: " + name)
-              println(cct.classDef.varFields)
               val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
               FieldAssignment(rec, id, e1)
 

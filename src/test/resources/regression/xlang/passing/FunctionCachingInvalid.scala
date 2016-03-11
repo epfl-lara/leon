@@ -1,7 +1,7 @@
 import leon.lang._
 import leon.collection._
 
-object FunctionCaching {
+object FunctionCachingInvalid {
 
   case class FunCache(var cached: Map[BigInt, BigInt])
 

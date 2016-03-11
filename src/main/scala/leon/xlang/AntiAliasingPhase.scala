@@ -20,16 +20,13 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
 
-    updateCaseClassesWithVarFields(pgm)
-    println(pgm)
-
     val fds = allFunDefs(pgm)
     fds.foreach(fd => checkAliasing(fd)(ctx))
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
     val effects = effectsAnalysis(pgm)
-    println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
+    //println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
 
     //for each fun def, all the vars the the body captures. Only
     //mutable types.
@@ -59,7 +56,7 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
-    println(res._1)
+    //println(res._1)
     res._1
   }
 
@@ -408,44 +405,5 @@ object AntiAliasingPhase extends TransformationPhase {
 
     CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(expr.getPos)
   }
-
-  private def updateCaseClassesWithVarFields(program: Program) = {
-    val extras = (for {
-      ccd <- program.definedClasses.collect{ case (c: CaseClassDef) => c }
-    } yield {
-      (ccd, ccd.varFields.map(vd => (ValDef(vd.id), vd.value)))
-    })
-    updateCaseClassFields(extras)(program)
-  }
-
-  private def updateCaseClassFields(extras: Seq[(CaseClassDef, Seq[(ValDef, Expr)])])(program: Program) = {
-
-    def updateBody(body: Expr): Expr = {
-      preMap({
-        case CaseClass(ct, args) => extras.find(p => p._1 == ct.classDef).map{
-          case (ccd, extraFields) =>
-            CaseClass(CaseClassType(ccd, ct.tps), args ++ extraFields.map{ case (_, v) => v })
-        }
-        case fa@MutableFieldAccess(cct, rec, id) => 
-          Some(CaseClassSelector(CaseClassType(cct.classDef, cct.tps), rec, id))
-          //extras.find(p => p._1 == cct.classDef).map{
-          //  case (ccd, extraFields) => caseClassSelector(cct, rec, id)
-          //}
-        case _ => None
-      })(body)
-    }
-
-    extras.foreach{ case (ccd, extraFields) => ccd.setFields(ccd.fields ++ extraFields.map(_._1)) }
-    for {
-      fd <- program.definedFunctions
-    } {
-      fd.body = fd.body.map(body => updateBody(body))
-      fd.precondition = fd.precondition.map(pre => updateBody(pre))
-      fd.postcondition = fd.postcondition.map(post => updateBody(post))
-    }
-    extras.foreach{ case (ccd, _) => ccd.setVarFields(Nil) }
-
-  }
-
 
 }
