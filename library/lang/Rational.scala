@@ -13,31 +13,31 @@ case class Rational(numerator: BigInt, denominator: BigInt) {
 
   def +(that: Rational): Rational = {
     Rational(this.numerator*that.denominator + that.numerator*this.denominator, this.denominator*that.denominator)
-  } ensuring(res => res.isRational)
+  }
 
   def -(that: Rational): Rational = {
     Rational(this.numerator*that.denominator - that.numerator*this.denominator, this.denominator*that.denominator)
-  } ensuring(res => res.isRational)
+  }
 
   def unary_- : Rational = {
     Rational(-this.numerator, this.denominator)
-  } ensuring(res => res.isRational)
+  }
 
   def *(that: Rational): Rational = {
     Rational(this.numerator*that.numerator, this.denominator*that.denominator)
-  } ensuring(res => res.isRational)
+  }
 
   def /(that: Rational): Rational = {
     require(that.nonZero)
     val newNumerator = this.numerator*that.denominator
     val newDenominator = this.denominator*that.numerator
     normalize(newNumerator, newDenominator)
-  } ensuring(res => res.isRational)
+  }
 
   def reciprocal: Rational = {
     require(this.nonZero)
     normalize(this.denominator, this.numerator)
-  } ensuring(res => res.isRational)
+  }
 
 
   def ~(that: Rational): Boolean = {
