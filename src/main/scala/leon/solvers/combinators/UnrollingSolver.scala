@@ -663,7 +663,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   override def foundAnswer(res: Option[Boolean], model: Model = Model.empty, core: Set[Expr] = Set.empty) = {
     super.foundAnswer(res, model, core)
 
-    if (!interrupted && res == None && model == None) {
+    if (!interrupted && res.isEmpty && model.isEmpty) {
       reporter.ifDebug { debug =>
         debug("Unknown result!?")
       }

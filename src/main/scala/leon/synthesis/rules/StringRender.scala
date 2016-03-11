@@ -419,7 +419,7 @@ case object StringRender extends Rule("StringRender") {
             .excludeFunction(hctx.functionContext)
             .prettyPrintersForType(input.getType)(hctx, hctx.program)
             .map(l => (application(l, Seq(input)), List[Identifier]())) // Use already pre-defined pretty printers.
-          val exprs1 = exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(fd, _)), _) if fd == hctx.functionContext => 0 case _ => 1}
+          val exprs1 = exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}
           val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), List[Identifier]()))
           val defaultConverters: Stream[WithIds[Expr]] = exprs1.toStream #::: exprs2.toStream
           val recursiveConverters: Stream[WithIds[Expr]] =
