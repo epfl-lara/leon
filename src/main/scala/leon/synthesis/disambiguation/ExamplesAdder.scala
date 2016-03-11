@@ -4,7 +4,7 @@ package synthesis
 package disambiguation
 
 import purescala.Types.FunctionType
-import purescala.Common.FreshIdentifier
+import purescala.Common.{FreshIdentifier, Identifier}
 import purescala.Constructors.{ and, tupleWrap }
 import purescala.Definitions.{ FunDef, Program, ValDef }
 import purescala.ExprOps
@@ -53,6 +53,36 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
   
   private def filterCases(cases: Seq[MatchCase]) = cases.filter(c => c.optGuard != Some(BooleanLiteral(false)))
   
+  def addToExpr(post: Expr, id: Identifier, inputVariables: Expr, newCases: Seq[MatchCase]): Expr = {
+    if(purescala.ExprOps.exists(_.isInstanceOf[Passes])(post)) {
+      post match {
+        case TopLevelAnds(exprs) =>
+          val i = exprs.lastIndexWhere { x => x match {
+            case Passes(in, out, cases) if in == inputVariables && out == Variable(id) => true
+            case _ => false
+          } }
+          if(i == -1) {
+            Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases)))
+            //ctx0.reporter.info("No top-level passes in postcondition, adding it:  " + fd)
+          } else {
+            val newPasses = exprs(i) match {
+              case Passes(in, out, cases) =>
+                Passes(in, out, (filterCases(cases) ++ newCases).distinct )
+              case _ => ???
+            }
+            val newPost = and(exprs.updated(i, newPasses) : _*)
+            Lambda(Seq(ValDef(id)), newPost)
+            //ctx0.reporter.info("Adding the example to the passes postcondition: " + fd)
+          }
+      }
+    } else {
+      Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases)))
+      //ctx0.reporter.info("No passes in postcondition, adding it:" + fd)
+    }
+    
+    
+  }
+  
   /** Adds the given input/output examples to the function definitions */
   def addToFunDef(fd: FunDef, examples: Seq[(Expr, Expr)]): Unit = {
     val params = if(_removeFunctionParameters) fd.params.filter(x => !x.getType.isInstanceOf[FunctionType]) else fd.params
@@ -60,38 +90,14 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
     val newCases = examples.map{ case (in, out) => exampleToCase(in, out) }
     fd.postcondition match {
       case Some(Lambda(Seq(ValDef(id)), post)) =>
-        if(fd.postcondition.exists { e => purescala.ExprOps.exists(_.isInstanceOf[Passes])(e) }) {
-          post match {
-            case TopLevelAnds(exprs) =>
-              val i = exprs.lastIndexWhere { x => x match {
-                case Passes(in, out, cases) if in == inputVariables && out == Variable(id) => true
-                case _ => false
-              } }
-              if(i == -1) {
-                fd.postcondition = Some(Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases))))
-                //ctx0.reporter.info("No top-level passes in postcondition, adding it:  " + fd)
-              } else {
-                val newPasses = exprs(i) match {
-                  case Passes(in, out, cases) =>
-                    Passes(in, out, (filterCases(cases) ++ newCases).distinct )
-                  case _ => ???
-                }
-                val newPost = and(exprs.updated(i, newPasses) : _*)
-                fd.postcondition = Some(Lambda(Seq(ValDef(id)), newPost))
-                //ctx0.reporter.info("Adding the example to the passes postcondition: " + fd)
-              }
-          }
-        } else {
-          fd.postcondition = Some(Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases))))
-          //ctx0.reporter.info("No passes in postcondition, adding it:" + fd)
-        }
+        fd.postcondition = Some(addToExpr(post, id, inputVariables, newCases))
       case None =>
         val id = FreshIdentifier("res", fd.returnType, false)
-        fd.postcondition = Some(Lambda(Seq(ValDef(id)), Passes(inputVariables, Variable(id), newCases)))
-        //ctx0.reporter.info("No postcondition, adding it: " + fd)
+        fd.postcondition = Some(addToExpr(BooleanLiteral(true), id, inputVariables, newCases))
     }
     fd.body match { // TODO: Is it correct to discard the choose construct inside the body?
-      case Some(Choose(Lambda(Seq(ValDef(id)), bodyChoose))) => fd.body = Some(Hole(id.getType, Nil))
+      case Some(Choose(Lambda(Seq(ValDef(id)), bodyChoose))) =>
+        fd.body = Some(Choose(addToExpr(bodyChoose, id, inputVariables, newCases)))
       case _ =>
     }
   }
