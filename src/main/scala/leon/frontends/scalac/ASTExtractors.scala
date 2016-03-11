@@ -399,14 +399,17 @@ trait ASTExtractors {
           }.get.asInstanceOf[DefDef]
 
           val valDefs = constructor.vparamss.flatten
+          println("valDefs: " + valDefs)
 
           //impl.children foreach println
 
           val symbols = impl.children.collect {
-            case df: DefDef if df.symbol.isStable && df.symbol.isAccessor &&
-                df.symbol.isParamAccessor =>
-              df.symbol
+            case df@DefDef(_, name, _, _, _, _) if 
+              df.symbol.isAccessor && df.symbol.isParamAccessor 
+              && !name.endsWith("_$eq") => df.symbol
           }
+          println("symbols: " + symbols)
+          //println("symbols accessed: " + symbols.map(_.accessed))
 
           val vars = impl.children.collect {
             case vf: ValDef if vf.symbol.isPrivate && vf.symbol.isVar => vf

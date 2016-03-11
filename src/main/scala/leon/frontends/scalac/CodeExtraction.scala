@@ -580,7 +580,7 @@ trait CodeExtraction extends ASTExtractors {
             val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
             val id = cachedWithOverrides(fsym, Some(ccd), tpe)
             if (tpe != id.getType) println(tpe, id.getType)
-            LeonValDef(id.setPos(t.pos)).setPos(t.pos)
+            LeonValDef(id.setPos(t.pos)).setPos(t.pos).setIsVar(fsym.accessed.isVar)
           }
 
           //println(s"Fields of $sym")
@@ -1682,7 +1682,7 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(rec, cct: CaseClassType), name, List(e1)) if isMutator(sym) =>
               println("Searching for mutator: " + name)
               println(cct.classDef.varFields)
-              val id = cct.classDef.varFields.find(_.id.name == name.dropRight(2)).get.id
+              val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
               FieldAssignment(rec, id, e1)
 
             case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.classDef.varFields.exists(_.id.name == name) =>
