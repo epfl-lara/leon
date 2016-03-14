@@ -5,7 +5,7 @@ package leon.utils
 import scala.collection.mutable.ArrayBuffer
 
 class GrowableIterable[T](init: Seq[T], growth: Iterator[T], canGrow: () => Boolean) extends Iterable[T] {
-  private val buffer = new ArrayBuffer[T]() ++ init
+  private var buffer = new ArrayBuffer[T]() ++ init
 
   private val cachingIterator = new Iterator[T] {
     def hasNext = canGrow() && growth.hasNext
@@ -27,6 +27,6 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T], canGrow: () => Bool
   }
 
   def sortBufferBy[B](f: T => B)(implicit ord: math.Ordering[B]) = {
-    buffer.sortBy(f)
+    buffer = buffer.sortBy(f)
   }
 }
