@@ -156,8 +156,8 @@ trait Z3StringConverters  {
     def convertExpr(expr: Expr)(implicit bindings: Map[Identifier, Expr]): Expr
     object TypeConverted {
       def unapply(t: TypeTree): Option[TypeTree] = Some(t match {
-        case cct@CaseClassType(ccd, args) => CaseClassType(convertClassDef(ccd).asInstanceOf[CaseClassDef], args)
-        case act@AbstractClassType(acd, args) => AbstractClassType(convertClassDef(acd).asInstanceOf[AbstractClassDef], args)
+        case cct@CaseClassType(ccd, args) => CaseClassType(convertClassDef(ccd).asInstanceOf[CaseClassDef], args map convertType)
+        case act@AbstractClassType(acd, args) => AbstractClassType(convertClassDef(acd).asInstanceOf[AbstractClassDef], args map convertType)
         case NAryType(es, builder) => 
           builder(es map convertType)
       })
@@ -280,7 +280,7 @@ trait Z3StringConverters  {
     def isTypeToConvert(tpe: TypeTree): Boolean = 
       TypeOps.exists(StringType == _)(tpe)
     def convertType(tpe: TypeTree): TypeTree = tpe match {
-      case StringType => StringList.typed
+      case StringType => StringListTyped
       case TypeConverted(t) => t
     }
     def convertPattern(e: Pattern): Pattern = e match {
@@ -344,7 +344,7 @@ trait Z3StringConverters  {
     def isTypeToConvert(tpe: TypeTree): Boolean = 
       TypeOps.exists(t => TypeOps.isSubtypeOf(t, StringListTyped))(tpe)
     def convertType(tpe: TypeTree): TypeTree = tpe match {
-      case StringList | StringCons | StringNil => StringType
+      case StringListTyped | StringConsTyped | StringNilTyped => StringType
       case TypeConverted(t) => t
     }
     def convertPattern(e: Pattern): Pattern = e match {
