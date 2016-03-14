@@ -222,3 +222,93 @@ but instead
 
  package leon.test.myTestPackage
 
+Using Leon in IntelliJ
+----------------------
+
+You can maybe encounter some problems installing Leon, because of the various dependencies needed.
+Here is a step-by-step guide having as a goal to help you installing your first leon project and to be sure that every
+dependencies are present and correctly linked.
+
+The advantage of using IntelliJ IDEA is that it provides a Scala plugin which allows you to directly import SBT project
+into it.
+
+**Installation:**
+
+* `SBT 0.13.x <http://www.scala-sbt.org/>`_ (as described above)
+* `IntelliJ IDEA <https://www.jetbrains.com/idea/download/>`_
+* Leon project files, available in GitHub (as described above)
+* Java SE Development Kit 8 or 7 (as described above)
+* Support for at least one external solver (See :ref:`smt-solvers`)
+
+**Setup STB in your project:**
+
+Leon requires the Build class, which is a class created by SBT in its folder *target* when you compile your project the
+first time. Also, it will be comfortable to run leon through terminal command, in order to easily specify arguments.
+We will resolve both of theses things running the command:
+
+.. code-block:: bash
+
+ $ sbt package script
+
+ This will create the *leon* executable file that you can now use typing ```./leon```. You are not required to recompile
+ this file after modifying your project, because instead of being a real executable, *leon* is a scriptthat modifies the
+ scala compiler, giving it the path to Leon, and then compile the file you specified. You can open *leon*
+ in terminal ```cat leon``` to realize that.
+
+**Setup IntelliJ:**
+
+IntelliJ provides a Scala plugin. It will normally offer to install it by its own the first time you load a scala file,
+anyway we suggest you to install it manually before starting. Doing so will allow you to use sbt wizard import
+later.
+
+In *Preferences -> Plugins* search for *Scala* and install it.
+
+**Import Leon:**
+
+Use the *New project from existing source...* (*Import project* in welcome window) wizard of IntelliJ to import Leon.
+Select the *SBT* external model and let
+IntelliJ install it with the default options. Specify the Java SDK 1.8. When choosing the modules to import, only
+select *Leon* and *Leon-build*
+(maybe called *root* and *root-build*), we will import manually the other modules later.
+
+You would now see only the *Leon* module in the IntelliJ project explorer. If you see *bonsai* or *smt-lib*, just
+delete them.
+
+**Setup dependencies:**
+
+By right-clicking on Leon, choose *Open Module Setting*. Here you will set all the dependencies, in the so named tab. If
+SBT import tool worked well, you will see all needed dependencies present in your list and we will enable some of them.
+Anyway, if some of them are not present (which happened to me), you can add it by your own clicking
+`` "+" --> Add jar or folder --> ... ```. I will specify the path where you can find each dependencies
+
+Enable:
+
+* scala-smt-lib (can be found at ~/.sbt/0.13/staging/.../scala-smtlib/target/scala-2.11/classes)
+* bonsai (can be found at ~/.sbt/0.13/stagging/.../bonsai/target/scala-2.11/classes)
+* libisabel
+* libisabel-setub
+* scala-lang:... (enable all of them) (can be found at ~/.ivy2/cache/org.scala-lang/...)
+* scalatest
+
+If project has no SDK, add Java Library 1.8 (JDK 1.8)
+
+The scala-lang:scala-library and scala-lang:scala-compiler must stand for the scala SDK provided by intelliJ, so
+normally you haven't to add it. Anyway, if you encounter some problems, download it at with "+" -> Library -> Global Library
+-> New Library and select the latest *Ivy* available. Ensure you have at least Scala 2.11 and NOT 2.10. Ensure also that
+this added scala SDK are listed BELOW the scala-lang provided by SBT, so it has lower priority.
+
+*.sbt* and *.ivy2* are folders created by SBT and are place in your home folder. If the *classes* folders don't exist
+in bonsai or smt-lib, proceed a compilation using
+sbt tool: move in the root folder of concerned project (typically .sbt/0.13/staging/.../bonsai/) and
+type ```sbt clean compile```.
+
+If you find that some other modules are required to your project, feel free to add them but keep them below the ones
+described in the priority list.
+
+**Check your installation:**
+
+*Make* the project in IntelliJ and try running it on some test files, like
+
+.. code-block:: bash
+
+ $ ./leon testcases/verification/datastructures/AssociativeList.scala
