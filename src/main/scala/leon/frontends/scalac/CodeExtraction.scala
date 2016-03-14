@@ -689,7 +689,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // normal fields
         case t @ ExFieldDef(fsym, _, _) =>
-          println(fsym + "matched as ExFieldDef")
+          //println(fsym + "matched as ExFieldDef")
           // we will be using the accessor method of this field everywhere
           isMethod += fsym
           val fd = defineFieldFunDef(fsym, false, Some(cd))(defCtx)
@@ -698,7 +698,7 @@ trait CodeExtraction extends ASTExtractors {
           cd.registerMethod(fd)
 
         case t @ ExMutableFieldDef(fsym, _, _) =>
-          println(fsym + "matched as ExMutableFieldDef")
+          //println(fsym + "matched as ExMutableFieldDef")
           // we will be using the accessor method of this field everywhere
           //isMethod += fsym
           //val fd = defineFieldFunDef(fsym, false, Some(cd))(defCtx)
