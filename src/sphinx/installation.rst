@@ -250,10 +250,10 @@ We will resolve both of theses things running the command:
 
  $ sbt package script
 
- This will create the *leon* executable file that you can now use typing ```./leon```. You are not required to recompile
- this file after modifying your project, because instead of being a real executable, *leon* is a scriptthat modifies the
- scala compiler, giving it the path to Leon, and then compile the file you specified. You can open *leon*
- in terminal ```cat leon``` to realize that.
+This will create the *leon* executable file that you can now use typing ```./leon```. You are not required to recompile
+this file after modifying your project, because *leon* file is actually a script that modifies the
+scala compiler, giving it the path to Leon, and then compile the file you specified. You can open *leon*
+in terminal ```cat leon``` to realize that.
 
 **Setup IntelliJ:**
 
@@ -279,7 +279,7 @@ delete them.
 By right-clicking on Leon, choose *Open Module Setting*. Here you will set all the dependencies, in the so named tab. If
 SBT import tool worked well, you will see all needed dependencies present in your list and we will enable some of them.
 Anyway, if some of them are not present (which happened to me), you can add it by your own clicking
-`` "+" --> Add jar or folder --> ... ```. I will specify the path where you can find each dependencies
+``` "+" --> Add jar or folder --> ... ```. I will specify the path where you can find each dependencies
 
 Enable:
 
