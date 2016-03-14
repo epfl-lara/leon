@@ -217,7 +217,7 @@ object AntiAliasingPhase extends TransformationPhase {
               if(duplicatedParams.nonEmpty) 
                 ctx.reporter.fatalError(fi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
 
-              val freshRes = FreshIdentifier("res", nfd.returnType)
+              val freshRes = FreshIdentifier("res", nfd.typed(fd.tps).returnType)
 
               val extractResults = Block(
                 modifiedArgs.zipWithIndex.map(p => Assignment(p._1.id, TupleSelect(freshRes.toVariable, p._2 + 2))),

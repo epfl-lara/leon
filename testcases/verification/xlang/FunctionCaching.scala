@@ -3,40 +3,38 @@ import leon.collection._
 
 object FunctionCaching {
 
-  case class Cache() {
-    var cached: Map[BigInt, BigInt] = Map()
-    //contains the set of elements where cache has been used
-    var cacheHit: Set[BigInt] = Set()
-  }
+  case class CachedFun[A,B](fun: (A) => B, var cached: Map[A, B], var cacheHit: Set[A]) {
 
-  def cachedFun(f: (BigInt) => BigInt, x: BigInt)(implicit cache: Cache) = {
-    cache.cached.get(x) match {
-      case None() =>
-        val res = f(x)
-        cache.cached = cache.cached.updated(x, res)
-        res
-      case Some(cached) =>
-        cache.cacheHit = cache.cacheHit ++ Set(x)
-        cached
+    def call(a: A): B = {
+      cached.get(a) match {
+        case None() =>
+          val res = fun(a)
+          cached = cached.updated(a, res)
+          res
+        case Some(res) =>
+          cacheHit = cacheHit ++ Set(a)
+          res
+      }
     }
+
   }
 
   def funProperlyCached(x: BigInt, fun: (BigInt) => BigInt, trash: List[BigInt]): Boolean = {
-    implicit val cache = Cache()
-    val res1 = cachedFun(fun, x)
-    multipleCalls(trash, x, fun)
-    val res2 = cachedFun(fun, x)
-    res1 == res2 && cache.cacheHit.contains(x)
+    val cachedFun = CachedFun[BigInt, BigInt](fun, Map(), Set())
+    val res1 = cachedFun.call(x)
+    multipleCalls(trash, cachedFun, x)
+    val res2 = cachedFun.call(x)
+    res1 == res2 && cachedFun.cacheHit.contains(x)
   } holds
 
-  def multipleCalls(args: List[BigInt], x: BigInt, fun: (BigInt) => BigInt)(implicit cache: Cache): Unit = {
-    require(cache.cached.isDefinedAt(x))
+  def multipleCalls(args: List[BigInt], cachedFun: CachedFun[BigInt, BigInt], x: BigInt): Unit = {
+    require(cachedFun.cached.isDefinedAt(x))
     args match {
       case Nil() => ()
       case y::ys =>
-        cachedFun(fun, y)
-        multipleCalls(ys, x, fun)
+        cachedFun.call(x)
+        multipleCalls(ys, cachedFun, x)
     }
-  } ensuring(_ => old(cache).cached.get(x) == cache.cached.get(x))
+  } ensuring(_ => old(cachedFun).cached.get(x) == cachedFun.cached.get(x))
 
 }
