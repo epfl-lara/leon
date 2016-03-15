@@ -78,13 +78,13 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
 
     def pad(prefix: String, message: String): String = {
       val lines = message.split("\\n").toList
-      val padding = " " * prefix.size
-      prefix + lines.head + "\n" + lines.tail.map(padding + _).mkString("\n")
+      val padding = " " * (prefix.length + 1)
+      prefix + " " + lines.head + "\n" + lines.tail.map(padding + _).mkString("\n")
     }
 
     import hctx.reporter.info
 
-    val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
+    val prefix = f"[${Option(ri.rule.asString).getOrElse("?")}%-20s]"
 
     info(pad(prefix, ri.problem.asString))
 
@@ -96,11 +96,11 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
         isSolved = sols.nonEmpty
 
         if (sols.isEmpty) {
-          info(prefix+"Failed")
+          info(s"$prefix Failed")
           isDeadEnd = true
         } else {
           val sol = sols.head
-          val morePrefix = s"$prefix Solved ${(if(sol.isTrusted) "" else " (untrusted)")} with: "
+          val morePrefix = s"$prefix Solved ${if(sol.isTrusted) "" else "(untrusted)"} with: "
           info(pad(morePrefix, sol.asString))
         }
 
@@ -111,8 +111,8 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
         }
 
       case RuleExpanded(probs) =>
-        info(prefix+"Decomposed into:")
-        val morePrefix = prefix + " - "
+        info(s"$prefix Decomposed into:")
+        val morePrefix = s"$prefix -"
         for(p <- probs) { 
           info(pad(morePrefix, p.asString))
         }
