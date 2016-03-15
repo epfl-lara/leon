@@ -1,5 +1,6 @@
 import leon.lang._
 import leon.annotation._
+import leon.proof._
 
 object PropositionalLogic {
 
@@ -75,11 +76,6 @@ object PropositionalLogic {
   def fv(f : Formula) = { vars(nnf(f)) }
 
   @induct
-  def wrongCommutative(f: Formula) : Boolean = {
-    nnf(simplify(f)) == simplify(nnf(f))
-  } holds
-
-  @induct
   def simplifyPreservesNNF(f: Formula) : Boolean = {
     require(isNNF(f))
     isNNF(simplify(f))
@@ -95,5 +91,88 @@ object PropositionalLogic {
   def simplifyIsStable(f: Formula) : Boolean = {
     require(isSimplified(f))
     simplify(f) == f
+  } holds
+
+  def and(lhs: Formula, rhs: Formula): Formula = And(lhs, rhs)
+  def or(lhs: Formula, rhs: Formula): Formula = Or(lhs, rhs)
+  
+  def simplifyPreserveNNFNot(f: Formula): Boolean = {
+    (nnf(Not(simplify(f))) == nnf(Not(f))) because {
+      f match {
+        case And(lhs, rhs) => {
+          nnf(Not(simplify(f)))                                ==| trivial                     |
+          nnf(Not(And(simplify(lhs), simplify(rhs))))          ==| trivial                     |
+          or(nnf(Not(simplify(lhs))), nnf(Not(simplify(rhs)))) ==| simplifyPreserveNNFNot(lhs) |
+          or(nnf(Not(lhs)), nnf(Not(simplify(rhs))))           ==| simplifyPreserveNNFNot(rhs) |
+          or(nnf(Not(lhs)), nnf(Not(rhs)))                     ==| trivial                     |
+          nnf(Not(And(lhs, rhs)))                              ==| trivial                     |
+          nnf(Not(f))
+        } qed
+        case Or(lhs, rhs) => {
+          nnf(Not(simplify(f)))                                 ==| trivial                     |
+          nnf(Not(Or(simplify(lhs), simplify(rhs))))            ==| trivial                     |
+          and(nnf(Not(simplify(lhs))), nnf(Not(simplify(rhs)))) ==| simplifyPreserveNNFNot(lhs) |
+          and(nnf(Not(lhs)), nnf(Not(simplify(rhs))))           ==| simplifyPreserveNNFNot(rhs) |
+          and(nnf(Not(lhs)), nnf(Not(rhs)))                     ==| trivial                     |
+          nnf(Not(Or(lhs, rhs)))                                ==| trivial                     |
+          nnf(Not(f))
+        } qed
+        case Implies(lhs, rhs) => {
+          nnf(Not(simplify(f)))                                      ==| trivial                     |
+          nnf(Not(Or(Not(simplify(lhs)), simplify(rhs))))            ==| trivial                     |
+          and(nnf(Not(Not(simplify(lhs)))), nnf(Not(simplify(rhs)))) ==| trivial                     |
+          and(nnf(simplify(lhs)), nnf(Not(simplify(rhs))))           ==| simplifyPreserveNNFNot(rhs) |
+          and(nnf(simplify(lhs)), nnf(Not(rhs)))                     ==| simplifyPreserveNNF(lhs)    |
+          and(nnf(lhs), nnf(Not(rhs)))                               ==| trivial                     |
+          nnf(Not(Implies(lhs, rhs)))
+        } qed
+        case Not(g) => {
+          nnf(Not(simplify(f)))      ==| trivial                |
+          nnf(Not(Not(simplify(g)))) ==| trivial                |
+          nnf(simplify(g))           ==| simplifyPreserveNNF(g) |
+          nnf(g)                     ==| trivial                |
+          nnf(Not(Not(g)))           ==| trivial                |
+          nnf(Not(f))
+        } qed
+        case Literal(_) => trivial
+      }
+    }
+  } holds
+  
+  def simplifyPreserveNNF(f: Formula): Boolean = {
+    (nnf(simplify(f)) == nnf(f)) because {
+      f match {
+        case And(lhs, rhs) => {
+          nnf(simplify(f))                            ==| trivial                  |
+          and(nnf(simplify(lhs)), nnf(simplify(rhs))) ==| simplifyPreserveNNF(lhs) |
+          and(nnf(lhs), nnf(simplify(rhs)))           ==| simplifyPreserveNNF(rhs) |
+          and(nnf(lhs), nnf(rhs))                     ==| trivial                  |
+          nnf(f)
+        } qed
+        case Or(lhs, rhs) => {
+          nnf(simplify(f))                           ==| trivial                  |
+          or(nnf(simplify(lhs)), nnf(simplify(rhs))) ==| simplifyPreserveNNF(lhs) |
+          or(nnf(lhs), nnf(simplify(rhs)))           ==| simplifyPreserveNNF(rhs) |
+          or(nnf(lhs), nnf(rhs))                     ==| trivial                  |
+          nnf(f)
+        } qed
+        case Implies(lhs, rhs) => {
+          nnf(simplify(f))                                ==| trivial                       |
+          nnf(or(Not(simplify(lhs)), simplify(rhs)))      ==| trivial                       |
+          or(nnf(Not(simplify(lhs))), nnf(simplify(rhs))) ==| simplifyPreserveNNF(rhs)      |
+          or(nnf(Not(simplify(lhs))), nnf(rhs))           ==| trivial                       |
+          or(nnf(simplify(Not(lhs))), nnf(rhs))           ==| simplifyPreserveNNF(Not(lhs)) |
+          or(nnf(Not(lhs)), nnf(rhs))                     ==| trivial                       |
+          nnf(f)
+        } qed
+        case Not(g) => {
+          nnf(simplify(f))      ==| trivial                   |
+          nnf(Not(simplify(g))) ==| simplifyPreserveNNFNot(g) |
+          nnf(Not(g))           ==| trivial                   |
+          nnf(f)
+        } qed
+        case Literal(_) => trivial
+      }
+    }
   } holds
 }
