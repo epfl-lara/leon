@@ -609,6 +609,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
        * First phase of CEGIS: discover potential programs (that work on at least one input)
        */
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
+        timers.tentative.start()
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = phiFd.applied
@@ -675,6 +676,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               Some(None)
           }
         } finally {
+          timers.tentative.stop()
           solverf.reclaim(solver)
           solverf.shutdown()
         }
@@ -684,6 +686,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
        * Second phase of CEGIS: verify a given program by looking for CEX inputs
        */
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
+        timers.cex.start()
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
@@ -715,6 +718,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               None
           }
         } finally {
+          timers.cex.stop()
           solverf.reclaim(solver)
           solverf.shutdown()
         }
@@ -886,11 +890,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             }
               // CEGIS Loop at a given unfolding level
             while (result.isEmpty && !interruptManager.isInterrupted && !ndProgram.allProgramsClosed) {
-              timers.loop.start()
               hctx.reporter.debug("Programs left: " + ndProgram.prunedPrograms.size)
 
               // Phase 0: If the number of remaining programs is small, validate them individually
               if (programsReduced()) {
+                timers.validate.start()
                 val programsToValidate = ndProgram.prunedPrograms
                 hctx.reporter.debug(s"Will send ${programsToValidate.size} program(s) to validate individually")
                 ndProgram.validatePrograms(programsToValidate) match {
@@ -906,6 +910,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                     gi ++= newCexs
                 }
                 hctx.reporter.debug(s"#Programs after validating individually: ${ndProgram.prunedPrograms.size}")
+                timers.validate.stop()
               }
 
               if (result.isEmpty && !ndProgram.allProgramsClosed) {
@@ -967,7 +972,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                     result = Some(RuleFailed())
                 }
               }
-              timers.loop.stop()
             }
 
           } while(ndProgram.unfolding < maxSize && result.isEmpty && !interruptManager.isInterrupted)
