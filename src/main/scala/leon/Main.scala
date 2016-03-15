@@ -57,7 +57,7 @@ object Main {
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
     val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
-    val optLazyEval = LeonFlagOptionDef("lazy", "Handles programs that may use the lazy construct", false)
+    val optLazyEval    = LeonFlagOptionDef("lazy",        "Handles programs that may use the 'lazy' construct",        false)
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
@@ -109,15 +109,13 @@ object Main {
     val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
     val leonOptions: Seq[LeonOption[Any]] = options.map { opt =>
-      val (name, value) = try {
-        OptionsHelpers.nameValue(opt)
-      } catch {
-        case _: IllegalArgumentException =>
-          initReporter.fatalError(
-            s"Malformed option $opt. Options should have the form --name or --name=value")
-      }
+      val (name, value) = OptionsHelpers.nameValue(opt).getOrElse(
+        initReporter.fatalError(
+          s"Malformed option $opt. Options should have the form --name or --name=value"
+        )
+      )
       // Find respective LeonOptionDef, or report an unknown option
-      val df = allOptions.find(_. name == name).getOrElse{
+      val df = allOptions.find(_.name == name).getOrElse{
         initReporter.fatalError(
           s"Unknown option: $name\n" +
           "Try 'leon --help' for more information."
@@ -128,7 +126,8 @@ object Main {
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {
-        case LeonOption(GlobalOptions.optDebug, sections) => sections.asInstanceOf[Set[DebugSection]]
+        case LeonOption(GlobalOptions.optDebug, sections) =>
+          sections.asInstanceOf[Set[DebugSection]]
       }.getOrElse(Set[DebugSection]())
     )
 

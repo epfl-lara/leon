@@ -51,19 +51,16 @@ object GlobalOptions extends LeonComponent {
     }
     val default = Set[DebugSection]()
     val usageRhs = "d1,d2,..."
-    val debugParser: OptionParser[Set[DebugSection]] = s => {
+    private val debugParser: OptionParser[Set[DebugSection]] = s => {
       if (s == "all") {
-        DebugSections.all
+        Some(DebugSections.all)
       } else {
-        DebugSections.all.find(_.name == s) match {
-          case Some(rs) =>
-            Set(rs)
-          case None =>
-            throw new IllegalArgumentException
-        }
+        DebugSections.all.find(_.name == s).map(Set(_))
       }
     }
-    val parser: String => Set[DebugSection] = setParser[Set[DebugSection]](debugParser)(_).flatten
+    val parser: String => Option[Set[DebugSection]] = {
+      setParser[Set[DebugSection]](debugParser)(_).map(_.flatten)
+    }
   }
 
   val optTimeout = LeonLongOptionDef(
