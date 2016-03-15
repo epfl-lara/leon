@@ -11,6 +11,7 @@ import java.io.File
 import java.io.FileWriter
 import java.io.BufferedWriter
 import scala.util.matching.Regex
+import utils.FileOutputPhase
 
 object LazinessUtil {
 
@@ -19,13 +20,7 @@ object LazinessUtil {
   }
 
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
-    val optOutputDirectory = new LeonOptionDef[String] {
-      val name = "o"
-      val description = "Output directory"
-      val default = "leon.out"
-      val usageRhs = "dir"
-      val parser = (x: String) => x
-    }
+    val optOutputDirectory = FileOutputPhase.optOutputDirectory
     val outputFolder = ctx.findOptionOrDefault(optOutputDirectory)
     try {
       new File(outputFolder).mkdir()
