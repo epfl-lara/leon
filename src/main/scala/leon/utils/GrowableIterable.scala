@@ -4,8 +4,10 @@ package leon.utils
 
 import scala.collection.mutable.ArrayBuffer
 
-class GrowableIterable[T](init: Seq[T], growth: Iterator[T], canGrow: () => Boolean) extends Iterable[T] {
+class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T] {
   private var buffer = new ArrayBuffer[T]() ++ init
+
+  var canGrow = () => true
 
   private val cachingIterator = new Iterator[T] {
     def hasNext = canGrow() && growth.hasNext

@@ -797,6 +797,10 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         // We keep number of failures per test to pull the better ones to the front
         val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
+        // This is the starting test-base
+        val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
+        def hasInputExamples = gi.nonEmpty
+
         var n = 1
 
         try {
@@ -811,12 +815,8 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
             def nPassing = ndProgram.prunedPrograms.size
 
-            def programsReduced() = nPassing <= 10 || nInitial / nPassing > testReductionRatio 
-
-            // This is the starting test-base
-            val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator, programsReduced)
-
-            def hasInputExamples = gi.nonEmpty
+            def programsReduced() = nPassing <= 10 || nInitial / nPassing > testReductionRatio
+            gi.canGrow = programsReduced
 
             def allInputExamples() = {
               if (n == 10 || n == 50 || n % 500 == 0) {
