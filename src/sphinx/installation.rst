@@ -297,10 +297,7 @@ normally you haven't to add it. Anyway, if you encounter some problems, download
 -> New Library and select the latest *Ivy* available. Ensure you have at least Scala 2.11 and NOT 2.10. Ensure also that
 this added scala SDK are listed BELOW the scala-lang provided by SBT, so it has lower priority.
 
-*.sbt* and *.ivy2* are folders created by SBT and are place in your home folder. If the *classes* folders don't exist
-in bonsai or smt-lib, proceed a compilation using
-sbt tool: move in the root folder of concerned project (typically .sbt/0.13/staging/.../bonsai/) and
-type ```sbt clean compile```.
+*.sbt* and *.ivy2* are folders created by SBT and are place in your home folder.
 
 If you find that some other modules are required to your project, feel free to add them but keep them below the ones
 described in the priority list.
