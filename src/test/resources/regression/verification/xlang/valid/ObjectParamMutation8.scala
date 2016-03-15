@@ -1,6 +1,6 @@
 import leon.lang._
 
-object ObjectParamMutation1 {
+object ObjectParamMutation8 {
 
   case class A[B](var y: B)
 

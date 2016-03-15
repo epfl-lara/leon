@@ -53,21 +53,6 @@ object Expressions {
     }
   }
 
-  /*
-   * An access to a primitive field of a case class, but which is not in the
-   * argument list (no selector existing).
-   */
-  case class MutableFieldAccess(classType: CaseClassType, obj: Expr, varId: Identifier) extends XLangExpr with Extractable with PrettyPrintable {
-    val getType = classType.classDef.varFields.find(_.id == varId).map(_.getType).getOrElse(Untyped)
-
-    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
-      Some((Seq(obj), (es: Seq[Expr]) => MutableFieldAccess(classType, es(0), varId)))
-    }
-
-    def printWith(implicit pctx: PrinterContext) {
-      p"${obj}.${varId}"
-    }
-  }
   case class FieldAssignment(obj: Expr, varId: Identifier, expr: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
 

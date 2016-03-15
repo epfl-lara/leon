@@ -720,11 +720,6 @@ object DefOps {
           case (ccd, extraFields) =>
             CaseClass(CaseClassType(ccd, ct.tps), args ++ extraFields.map{ case (_, v) => v })
         }
-        case fa@leon.xlang.Expressions.MutableFieldAccess(cct, rec, id) => 
-          Some(CaseClassSelector(CaseClassType(cct.classDef, cct.tps), rec, id))
-          //extras.find(p => p._1 == cct.classDef).map{
-          //  case (ccd, extraFields) => caseClassSelector(cct, rec, id)
-          //}
         case _ => None
       })(body)
     }

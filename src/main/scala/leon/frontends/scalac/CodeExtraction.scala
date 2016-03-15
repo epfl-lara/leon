@@ -12,7 +12,6 @@ import Definitions.{
   ClassDef    => LeonClassDef,
   ModuleDef   => LeonModuleDef,
   ValDef      => LeonValDef,
-  VarDef      => LeonVarDef,
   Import      => LeonImport,
   _
 }
@@ -216,10 +215,10 @@ trait CodeExtraction extends ASTExtractors {
           // ignore
 
         case ExAbstractClass(o2, sym, tmpl) =>
-          seenClasses += sym -> ((Nil, Nil, tmpl))
+          seenClasses += sym -> ((Nil, tmpl))
 
-        case ExCaseClass(o2, sym, args, vars, tmpl) =>
-          seenClasses += sym -> ((args, vars, tmpl))
+        case ExCaseClass(o2, sym, args, tmpl) =>
+          seenClasses += sym -> ((args, tmpl))
 
         case ExObjectDef(n, templ) =>
           for (t <- templ.body if !t.isEmpty) t match {
@@ -227,10 +226,10 @@ trait CodeExtraction extends ASTExtractors {
               // ignore
 
             case ExAbstractClass(_, sym, tmpl) =>
-              seenClasses += sym -> ((Nil, Nil, tmpl))
+              seenClasses += sym -> ((Nil, tmpl))
 
-            case ExCaseClass(_, sym, args, vars, tmpl) =>
-              seenClasses += sym -> ((args, vars, tmpl))
+            case ExCaseClass(_, sym, args, tmpl) =>
+              seenClasses += sym -> ((args, tmpl))
 
             case _ =>
           }
@@ -250,7 +249,7 @@ trait CodeExtraction extends ASTExtractors {
         case t @ ExAbstractClass(o2, sym, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case t @ ExCaseClass(o2, sym, args, vars, _) =>
+        case t @ ExCaseClass(o2, sym, args, _) =>
           Some(getClassDef(sym, t.pos))
 
         case t @ ExObjectDef(n, templ) =>
@@ -264,7 +263,7 @@ trait CodeExtraction extends ASTExtractors {
             case ExAbstractClass(_, sym, _) =>
               Some(getClassDef(sym, t.pos))
 
-            case ExCaseClass(_, sym, _, _, _) =>
+            case ExCaseClass(_, sym, _, _) =>
               Some(getClassDef(sym, t.pos))
 
             // Functions
@@ -365,7 +364,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExAbstractClass(_, sym, tpl) =>
           extractClassMembers(sym, tpl)
 
-        case ExCaseClass(_, sym, _, _, tpl) =>
+        case ExCaseClass(_, sym, _, tpl) =>
           extractClassMembers(sym, tpl)
 
         case ExObjectDef(n, templ) =>
@@ -377,7 +376,7 @@ trait CodeExtraction extends ASTExtractors {
             case ExAbstractClass(_, sym, tpl) =>
               extractClassMembers(sym, tpl)
 
-            case ExCaseClass(_, sym, _, _, tpl) =>
+            case ExCaseClass(_, sym, _, tpl) =>
               extractClassMembers(sym, tpl)
 
             case t =>
@@ -423,7 +422,7 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    private var seenClasses = Map[Symbol, (Seq[(Symbol, ValDef)], Seq[(Symbol, ValDef)], Template)]()
+    private var seenClasses = Map[Symbol, (Seq[(Symbol, ValDef)], Template)]()
     private var classesToClasses  = Map[Symbol, LeonClassDef]()
 
     def oracleType(pos: Position, tpe: LeonType) = {
@@ -460,9 +459,9 @@ trait CodeExtraction extends ASTExtractors {
         case Some(cd) => cd
         case None =>
           if (seenClasses contains sym) {
-            val (args, vars, tmpl) = seenClasses(sym)
+            val (args, tmpl) = seenClasses(sym)
 
-            extractClassDef(sym, args, vars, tmpl)
+            extractClassDef(sym, args, tmpl)
           } else {
             outOfSubsetError(pos, "Class "+sym.fullName+" not defined?")
           }
@@ -503,7 +502,7 @@ trait CodeExtraction extends ASTExtractors {
       paramsToDefaultValues += (theParam -> fd)
     }
 
-    def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], vars: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
+    def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
 
       //println(s"Extracting $sym")
 
@@ -628,17 +627,6 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           for (tp <- ccd.tparams) check(tp, Set.empty)
-
-          val varFields = vars.map(t => {
-            val sym = t._1
-            val vd = t._2
-            val tpe = leonType(vd.tpt.tpe)(defCtx, sym.pos)
-            val id = cachedWithOverrides(sym, Some(ccd), tpe)
-            val value = extractTree(vd.children(1))(DefContext())
-            if (tpe != id.getType) println(tpe, id.getType)
-            LeonVarDef(id.setPos(vd.pos), value).setPos(vd.pos)
-          })
-          ccd.setVarFields(varFields)
 
         case _ =>
       }
@@ -1681,11 +1669,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(rec, cct: CaseClassType), name, List(e1)) if isMutator(sym) =>
               val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
               FieldAssignment(rec, id, e1)
-
-            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.classDef.varFields.exists(_.id.name == name) =>
-              val id = cct.classDef.varFields.find(_.id.name == name).get.id
-              MutableFieldAccess(cct, rec, id)
-
 
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>

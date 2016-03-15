@@ -372,9 +372,6 @@ class PrettyPrinter(opts: PrinterOptions,
         p"$id : ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
-      case vd @ VarDef(id, value) =>
-        p"var $id : ${vd.getType} = $value"
-
       case This(_)              => p"this"
       case (tfd: TypedFunDef)   => p"typed def ${tfd.id}[${tfd.tps}]"
       case TypeParameterDef(tp) => p"$tp"
@@ -533,10 +530,9 @@ class PrettyPrinter(opts: PrinterOptions,
           p" extends ${par.id}${nary(tparams, ", ", "[", "]")}"
         }
 
-        if (ccd.methods.nonEmpty || ccd.varFields.nonEmpty) {
+        if (ccd.methods.nonEmpty) {
           p"""| {
-              |  ${(if(ccd.methods.nonEmpty) { nary(ccd.methods, "\n\n") } else "")}
-              |  ${(if(ccd.varFields.nonEmpty) { nary(ccd.varFields, "\n\n") } else "")}
+              |  ${nary(ccd.methods, "\n\n") }
               |}"""
         }
 

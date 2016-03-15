@@ -391,7 +391,7 @@ trait ASTExtractors {
     }
 
     object ExCaseClass {
-      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Seq[(Symbol,ValDef)], Template)] = cd match {
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if isCaseClass(cd) || isImplicitClass(cd) => {
           val constructor: DefDef = impl.children.find {
             case ExConstructorDef() => true
@@ -411,18 +411,6 @@ trait ASTExtractors {
           //println("symbols: " + symbols)
           //println("symbols accessed: " + symbols.map(_.accessed))
 
-          val vars = impl.children.collect {
-            case vf: ValDef if vf.symbol.isPrivate && vf.symbol.isVar => vf
-          }
-          val varAccessors = impl.children.collect {
-            case df@DefDef(_, name, _, _, _, _) if 
-              !df.symbol.isStable && df.symbol.isAccessor && !df.symbol.isParamAccessor && 
-              !name.endsWith("_$eq") => df
-          }
-          val varsFinal = varAccessors.zip(vars).map(p => (p._1.symbol, p._2))
-          //println("extracted vars: " + vars)
-          //println("extracted var accessors: " + varAccessors)
-
           //if (symbols.size != valDefs.size) {
           //  println(" >>>>> " + cd.name)
           //  symbols foreach println
@@ -431,7 +419,7 @@ trait ASTExtractors {
 
           val args = symbols zip valDefs
 
-          Some((name.toString, cd.symbol, args, varsFinal, impl))
+          Some((name.toString, cd.symbol, args, impl))
         }
         case _ => None
       }

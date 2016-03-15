@@ -62,17 +62,6 @@ object Definitions {
     def toVariable : Variable = Variable(id)
   }
 
-  case class VarDef(id: Identifier, value: Expr) extends Definition with Typed {
-    self: Serializable =>
-
-    val getType = id.getType
-
-    def subDefinitions = Seq()
-
-    /** Transform this [[VarDef]] into a [[Expressions.Variable Variable]] */
-    def toVariable : Variable = Variable(id)
-  }
-
   /** A wrapper for a program. For now a program is simply a single object. */
   case class Program(units: List[UnitDef]) extends Definition {
     val id = FreshIdentifier("program")
@@ -384,14 +373,6 @@ object Definitions {
 
     def setFields(fields: Seq[ValDef]) {
       _fields = fields
-    }
-
-    private var _varFields = Seq[VarDef]()
-
-    def varFields = _varFields
-
-    def setVarFields(fields: Seq[VarDef]) {
-      _varFields = fields
     }
 
     val isAbstract = false
