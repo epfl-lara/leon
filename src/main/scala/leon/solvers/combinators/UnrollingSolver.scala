@@ -215,180 +215,14 @@ trait AbstractUnrollingSolver[T]
 
   private def getPartialModel: PartialModel = {
     val wrapped = solverGetModel
-
-    val typeInsts = templateGenerator.manager.typeInstantiations
-    val partialInsts = templateGenerator.manager.partialInstantiations
-    val lambdaInsts = templateGenerator.manager.lambdaInstantiations
-
-    val typeDomains: Map[TypeTree, Set[Seq[Expr]]] = typeInsts.map {
-      case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
-    }
-
-    val funDomains: Map[Identifier, Set[Seq[Expr]]] = freeVars.toMap.map { case (id, idT) =>
-      id -> partialInsts.get(idT).toSeq.flatten.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
-    }
-
-    val lambdaDomains: Map[Lambda, Set[Seq[Expr]]] = lambdaInsts.map {
-      case (l, domain) => l -> domain.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
-    }
-
-    val model = new Model(freeVars.toMap.map { case (id, _) =>
-      val value = wrapped.get(id).getOrElse(simplestValue(id.getType))
-      id -> (funDomains.get(id) match {
-        case Some(domain) =>
-          val dflt = value match {
-            case FiniteLambda(_, dflt, _) => dflt
-            case Lambda(_, IfExpr(_, _, dflt)) => dflt
-            case _ => scala.sys.error("Can't extract default from " + value)
-          }
-
-          FiniteLambda(domain.toSeq.map { es =>
-            val optEv = evaluator.eval(application(value, es)).result
-            es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(value, es)))
-          }, dflt, id.getType.asInstanceOf[FunctionType])
-
-        case None => postMap {
-          case p @ FiniteLambda(mapping, dflt, tpe) =>
-            Some(FiniteLambda(typeDomains.get(tpe) match {
-              case Some(domain) => domain.toSeq.map { es =>
-                val optEv = evaluator.eval(application(value, es)).result
-                es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(value, es)))
-              }
-              case _ => Seq.empty
-            }, dflt, tpe))
-          case _ => None
-        } (value)
-      })
-    })
-
-    val domains = new Domains(lambdaDomains, typeDomains)
-    new PartialModel(model.toMap, domains)
+    val view = templateGenerator.manager.getModel(freeVars.toMap, evaluator, wrapped.get, wrapped.eval)
+    view.getPartialModel
   }
 
   private def getTotalModel: Model = {
     val wrapped = solverGetModel
-
-    def checkForalls(quantified: Set[Identifier], body: Expr): Option[String] = {
-      val matchers = collect[(Expr, Seq[Expr])] {
-        case QuantificationMatcher(e, args) => Set(e -> args)
-        case _ => Set.empty
-      } (body)
-
-      if (matchers.isEmpty)
-        return Some("No matchers found.")
-
-      val matcherToQuants = matchers.foldLeft(Map.empty[Expr, Set[Identifier]]) {
-        case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
-          case Variable(id) if quantified(id) => Set(id)
-          case _ => Set.empty[Identifier]
-        }))
-      }
-
-      val bijectiveMappings = matcherToQuants.filter(_._2.nonEmpty).groupBy(_._2)
-      if (bijectiveMappings.size > 1)
-        return Some("Non-bijective mapping for symbol " + bijectiveMappings.head._2.head._1.asString)
-
-      def quantifiedArg(e: Expr): Boolean = e match {
-        case Variable(id) => quantified(id)
-        case QuantificationMatcher(_, args) => args.forall(quantifiedArg)
-        case _ => false
-      }
-
-      postTraversal(m => m match {
-        case QuantificationMatcher(_, args) =>
-          val qArgs = args.filter(quantifiedArg)
-
-          if (qArgs.nonEmpty && qArgs.size < args.size)
-            return Some("Mixed ground and quantified arguments in " + m.asString)
-
-        case Operator(es, _) if es.collect { case Variable(id) if quantified(id) => id }.nonEmpty =>
-          return Some("Invalid operation on quantifiers " + m.asString)
-
-        case (_: Equals) | (_: And) | (_: Or) | (_: Implies) => // OK
-
-        case Operator(es, _) if (es.flatMap(variablesOf).toSet & quantified).nonEmpty =>
-          return Some("Unandled implications from operation " + m.asString)
-
-        case _ =>
-      }) (body)
-
-      body match {
-        case Variable(id) if quantified(id) =>
-          Some("Unexpected free quantifier " + id.asString)
-        case _ => None
-      }
-    }
-
-    val issues: Iterable[(Seq[Identifier], Expr, String)] = for {
-      q <- templateGenerator.manager.quantifications.view
-      if wrapped.eval(q.holds, BooleanType) == Some(BooleanLiteral(true))
-      msg <- checkForalls(q.quantifiers.map(_._1).toSet, q.body)
-    } yield (q.quantifiers.map(_._1), q.body, msg)
-
-    if (issues.nonEmpty) {
-      val (quantifiers, body, msg) = issues.head
-      reporter.warning("Model soundness not guaranteed for \u2200" +
-        quantifiers.map(_.asString).mkString(",") + ". " + body.asString+" :\n => " + msg)
-    }
-
-    val typeInsts = templateGenerator.manager.typeInstantiations
-    val partialInsts = templateGenerator.manager.partialInstantiations
-
-    def extractCond(params: Seq[Identifier], args: Seq[(T, Expr)], structure: Map[T, Identifier]): Seq[Expr] = (params, args) match {
-      case (id +: rparams, (v, arg) +: rargs) =>
-        if (templateGenerator.manager.isQuantifier(v)) {
-          structure.get(v) match {
-            case Some(pid) => Equals(Variable(id), Variable(pid)) +: extractCond(rparams, rargs, structure)
-            case None => extractCond(rparams, rargs, structure + (v -> id))
-          }
-        } else {
-          Equals(Variable(id), arg) +: extractCond(rparams, rargs, structure)
-        }
-      case _ => Seq.empty
-    }
-
-    new Model(freeVars.toMap.map { case (id, idT) =>
-      val value = wrapped.get(id).getOrElse(simplestValue(id.getType))
-      id -> (id.getType match {
-        case FunctionType(from, to) =>
-          val params = from.map(tpe => FreshIdentifier("x", tpe, true))
-          val domain = partialInsts.get(idT).orElse(typeInsts.get(bestRealType(id.getType))).toSeq.flatten
-          val conditionals = domain.flatMap { case (b, m) =>
-            wrapped.extract(b, m).map { args =>
-              val result = evaluator.eval(application(value, args)).result.getOrElse {
-                scala.sys.error("Unexpectedly failed to evaluate " + application(value, args))
-              }
-
-              val cond = if (m.args.exists(arg => templateGenerator.manager.isQuantifier(arg.encoded))) {
-                extractCond(params, m.args.map(_.encoded) zip args, Map.empty)
-              } else {
-                (params zip args).map(p => Equals(Variable(p._1), p._2))
-              }
-
-              cond -> result
-            }
-          }
-
-          val filteredConds = conditionals
-            .foldLeft(Map.empty[Seq[Expr], Expr]) { case (mapping, (conds, result)) =>
-              if (mapping.isDefinedAt(conds)) mapping else mapping + (conds -> result)
-            }
-
-          if (filteredConds.isEmpty) {
-            // TODO: warning??
-            value
-          } else {
-            val rest :+ ((_, dflt)) = filteredConds.toSeq.sortBy(_._1.size)
-            val body = rest.foldLeft(dflt) { case (elze, (conds, res)) =>
-              if (conds.isEmpty) elze else IfExpr(andJoin(conds), res, elze)
-            }
-
-            Lambda(params.map(ValDef(_)), body)
-          }
-
-        case _ => value
-      })
-    })
+    val view = templateGenerator.manager.getModel(freeVars.toMap, evaluator, wrapped.get, wrapped.eval)
+    view.getTotalModel
   }
 
   def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
@@ -430,7 +264,7 @@ trait AbstractUnrollingSolver[T]
             } else if (partialModels) {
               (true, getPartialModel)
             } else {
-              val clauses = templateGenerator.manager.checkClauses
+              val clauses = unrollingBank.getFiniteRangeClauses
               if (clauses.isEmpty) {
                 (true, extractModel(solverGetModel))
               } else {
@@ -473,8 +307,10 @@ trait AbstractUnrollingSolver[T]
                 if (valid) {
                   foundAnswer(Some(true), model)
                 } else {
-                  reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
-                  reporter.error(model.asString(context))
+                  reporter.error(
+                    "Something went wrong. The model should have been valid, yet we got this: " +
+                    model.asString(context) +
+                    " for formula " + andJoin(assumptionsSeq ++ constraints).asString)
                   foundAnswer(None, model)
                 }
               }
@@ -534,11 +370,23 @@ trait AbstractUnrollingSolver[T]
               }
 
             case Some(true) =>
-              if (this.feelingLucky && !interrupted) {
-                // we might have been lucky :D
-                val model = extractModel(solverGetModel)
-                val valid = validateModel(model, assumptionsSeq, silenceErrors = true)
-                if (valid) foundAnswer(Some(true), model)
+              if (!interrupted) {
+                val model = solverGetModel
+
+                if (this.feelingLucky) {
+                  // we might have been lucky :D
+                  val extracted = extractModel(model)
+                  val valid = validateModel(extracted, assumptionsSeq, silenceErrors = true)
+                  if (valid) foundAnswer(Some(true), extracted)
+                }
+
+                if (!foundDefinitiveAnswer) {
+                  unrollingBank.decreaseAllGenerations()
+
+                  for (b <- templateGenerator.manager.getBlockersToPromote(model.eval)) {
+                    unrollingBank.promoteBlocker(b)
+                  }
+                }
               }
 
             case None =>

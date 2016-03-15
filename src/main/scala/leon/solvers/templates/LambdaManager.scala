@@ -99,7 +99,7 @@ trait KeyedTemplate[T, E <: Expr] {
       case _ => Seq.empty
     }
 
-    structure -> rec(structure).map(dependencies)
+    structure -> rec(structure).distinct.map(dependencies)
   }
 }
 
@@ -325,7 +325,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
       instantiated += key
 
       if (knownFree(tpe) contains caller) {
-        instantiation withApp (key -> TemplateAppInfo(caller, trueT, args))
+        instantiation
       } else if (byID contains caller) {
         instantiation withApp (key -> TemplateAppInfo(byID(caller), trueT, args))
       } else {

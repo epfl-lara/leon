@@ -19,6 +19,8 @@ import purescala.Types._
 case class UnsoundExtractionException(ast: Z3AST, msg: String)
   extends Exception("Can't extract " + ast + " : " + msg)
 
+object AbstractZ3Solver
+
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
 trait AbstractZ3Solver extends Solver {
@@ -45,8 +47,19 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  protected[leon] val z3cfg : Z3Config
-  protected[leon] var z3 : Z3Context    = null
+  // FIXME: (dirty?) hack to bypass z3lib bug.
+  // Uses the unique AbstractZ3Solver to ensure synchronization (no assumption on context).
+  protected[leon] val z3cfg : Z3Config =
+    AbstractZ3Solver.synchronized(new Z3Config(
+      "MODEL"             -> true,
+      "TYPE_CHECK"        -> true,
+      "WELL_SORTED_CHECK" -> true
+    ))
+  toggleWarningMessages(true)
+
+  protected[leon] var z3 : Z3Context = null
+
+  lazy protected val solver = z3.mkSolver()
 
   override def free(): Unit = {
     freed = true
@@ -73,28 +86,21 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  def genericValueToDecl(gv: GenericValue): Z3FuncDecl = {
-    generics.cachedB(gv) {
-      z3.mkFreshFuncDecl(gv.tp.id.uniqueName+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
-    }
-  }
-
   // ADT Manager
   protected val adtManager = new ADTManager(context)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
   protected val functions = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
-  protected val generics  = new IncrementalBijection[GenericValue, Z3FuncDecl]()
   protected val lambdas   = new IncrementalBijection[FunctionType, Z3FuncDecl]()
   protected val sorts     = new IncrementalBijection[TypeTree, Z3Sort]()
   protected val variables = new IncrementalBijection[Expr, Z3AST]()
 
-  protected val constructors  = new IncrementalBijection[TypeTree, Z3FuncDecl]()
-  protected val selectors     = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
-  protected val testers       = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+  protected val constructors = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+  protected val selectors    = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
+  protected val testers      = new IncrementalBijection[TypeTree, Z3FuncDecl]()
 
   var isInitialized = false
-  protected[leon] def initZ3() {
+  protected[leon] def initZ3(): Unit = {
     if (!isInitialized) {
       val timer = context.timers.solvers.z3.init.start()
 
@@ -102,7 +108,6 @@ trait AbstractZ3Solver extends Solver {
 
       functions.clear()
       lambdas.clear()
-      generics.clear()
       sorts.clear()
       variables.clear()
       constructors.clear()
@@ -117,11 +122,7 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  protected[leon] def restartZ3() {
-    isInitialized = false
-
-    initZ3()
-  }
+  initZ3()
 
   def rootType(ct: TypeTree): TypeTree = ct match {
     case ct: ClassType => ct.root
@@ -218,7 +219,7 @@ trait AbstractZ3Solver extends Solver {
     case Int32Type | BooleanType | IntegerType | RealType | CharType =>
       sorts.toB(oldtt)
 
-    case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | UnitType) =>
+    case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | _: TypeParameter | UnitType) =>
       sorts.cachedB(tpe) {
         declareStructuralSort(tpe)
       }
@@ -237,14 +238,6 @@ trait AbstractZ3Solver extends Solver {
         val toSort = typeToSort(to)
 
         z3.mkArraySort(fromSort, toSort)
-      }
-
-    case tt @ TypeParameter(id) =>
-      sorts.cachedB(tt) {
-        val symbol = z3.mkFreshStringSymbol(id.name)
-        val newTPSort = z3.mkUninterpretedSort(symbol)
-
-        newTPSort
       }
 
     case ft @ FunctionType(from, to) =>
@@ -531,9 +524,10 @@ trait AbstractZ3Solver extends Solver {
           z3.mkStore(m, rec(k), rec(CaseClass(library.someType(t), Seq(v))))
         }
 
-
       case gv @ GenericValue(tp, id) =>
-        z3.mkApp(genericValueToDecl(gv))
+        typeToSort(tp)
+        val constructor = constructors.toB(tp)
+        constructor(rec(InfiniteIntegerLiteral(id)))
 
       case other =>
         unsupported(other)
@@ -607,8 +601,6 @@ trait AbstractZ3Solver extends Solver {
             val tfd = functions.toA(decl)
             assert(tfd.params.size == argsSize)
             FunctionInvocation(tfd, args.zip(tfd.params).map{ case (a, p) => rec(a, p.getType) })
-          } else if (generics containsB decl)  {
-            generics.toA(decl)
           } else if (constructors containsB decl) {
             constructors.toA(decl) match {
               case cct: CaseClassType =>
@@ -640,6 +632,13 @@ trait AbstractZ3Solver extends Solver {
                   case (s : IntLiteral, arr) => unsound(args(1), "invalid array type")
                   case (size, _) => unsound(args(0), "invalid array size")
                 }
+
+              case tp @ TypeParameter(id) =>
+                val InfiniteIntegerLiteral(n) = rec(args(0), IntegerType)
+                GenericValue(tp, n.toInt)
+
+              case t =>
+                unsupported(t, "Woot? structural type that is non-structural")
             }
           } else {
             tpe match {
@@ -670,10 +669,6 @@ trait AbstractZ3Solver extends Solver {
                     }, leonElseValue, ft)
                 }
               }
-
-              case tp: TypeParameter =>
-                val id = t.toString.split("!").last.toInt
-                GenericValue(tp, id)
 
               case MapType(from, to) =>
                 rec(t, RawArrayType(from, library.optionType(to))) match {

@@ -518,7 +518,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       implicit val debugSection = utils.DebugSectionVerification
 
-      ctx.reporter.debug("Executing forall!")
+      ctx.reporter.debug("Executing forall: " + f.asString)
 
       val mapping = variablesOf(f).map(id => id -> rctx.mappings(id)).toMap
       val context = mapping.toSeq.sortBy(_._1.uniqueName).map(_._2)
@@ -546,7 +546,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
               val domainCnstr = orJoin(quorums.map { quorum =>
                 val quantifierDomains = quorum.flatMap { case (path, caller, args) =>
-                  val matcher = e(expr) match {
+                  val matcher = e(caller) match {
                     case l: Lambda => gctx.lambdas.getOrElse(l, l)
                     case ev => ev
                   }

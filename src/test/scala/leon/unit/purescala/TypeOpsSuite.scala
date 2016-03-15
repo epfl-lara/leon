@@ -19,13 +19,13 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     val tp2   = TypeParameter.fresh("A")
     val tp3   = TypeParameter.fresh("B")
 
-    val listD = AbstractClassDef(FreshIdentifier("List"), Seq(tpD), None)
+    val listD = new AbstractClassDef(FreshIdentifier("List"), Seq(tpD), None)
     val listT = listD.typed
 
-    val nilD  = CaseClassDef(FreshIdentifier("Nil"),  Seq(tpD), Some(listT), false)
+    val nilD  = new CaseClassDef(FreshIdentifier("Nil"),  Seq(tpD), Some(listT), false)
     val nilT  = nilD.typed
 
-    val consD = CaseClassDef(FreshIdentifier("Cons"), Seq(tpD), Some(listT), false)
+    val consD = new CaseClassDef(FreshIdentifier("Cons"), Seq(tpD), Some(listT), false)
     val consT = consD.typed
 
     // Simple tests for fixed types

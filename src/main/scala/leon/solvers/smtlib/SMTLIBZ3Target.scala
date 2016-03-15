@@ -72,10 +72,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
                                 (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
     (t, otpe) match {
-      case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
-        val n = s.name.split("!").toList.last
-        GenericValue(tp, n.toInt)
-
       case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), Some(tpe)) =>
         if (letDefs contains k) {
           // Need to recover value form function model

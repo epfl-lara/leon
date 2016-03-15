@@ -497,10 +497,10 @@ class PrettyPrinter(opts: PrinterOptions,
             |  ${nary(defs, "\n\n")}
             |}"""
 
-      case acd @ AbstractClassDef(id, tparams, parent) =>
-        p"abstract class $id${nary(tparams, ", ", "[", "]")}"
+      case acd : AbstractClassDef =>
+        p"abstract class ${acd.id}${nary(acd.tparams, ", ", "[", "]")}"
 
-        parent.foreach{ par =>
+        acd.parent.foreach{ par =>
           p" extends ${par.id}"
         }
 
@@ -510,22 +510,22 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
-        if (isObj) {
-          p"case object $id"
+      case ccd : CaseClassDef =>
+        if (ccd.isCaseObject) {
+          p"case object ${ccd.id}"
         } else {
-          p"case class $id"
+          p"case class ${ccd.id}"
         }
 
-        p"${nary(tparams, ", ", "[", "]")}"
+        p"${nary(ccd.tparams, ", ", "[", "]")}"
 
-        if (!isObj) {
+        if (!ccd.isCaseObject) {
           p"(${ccd.fields})"
         }
 
-        parent.foreach { par =>
+        ccd.parent.foreach { par =>
           // Remember child and parents tparams are simple bijection
-          p" extends ${par.id}${nary(tparams, ", ", "[", "]")}"
+          p" extends ${par.id}${nary(ccd.tparams, ", ", "[", "]")}"
         }
 
         if (ccd.methods.nonEmpty) {

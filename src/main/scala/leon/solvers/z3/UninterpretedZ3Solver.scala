@@ -29,18 +29,6 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
 
-  // this is fixed
-  protected[leon] val z3cfg = new Z3Config(
-    "MODEL" -> true,
-    "TYPE_CHECK" -> true,
-    "WELL_SORTED_CHECK" -> true
-  )
-  toggleWarningMessages(true)
-
-  initZ3()
-
-  val solver = z3.mkSolver()
-
   def push() {
     solver.push()
     freeVariables.push()

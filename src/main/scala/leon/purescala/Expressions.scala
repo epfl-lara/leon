@@ -444,7 +444,6 @@ object Expressions {
     * This is useful e.g. to present counterexamples of generic types.
     */
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
-  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
     val getType = tp
   }
 

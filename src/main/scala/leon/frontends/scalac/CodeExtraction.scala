@@ -333,12 +333,12 @@ trait CodeExtraction extends ASTExtractors {
         }
 
         classToInvariants.get(sym).foreach { bodies =>
+          val cd = classesToClasses(sym)
           val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
           fd.addFlag(IsADTInvariant)
+          fd.addFlags(cd.flags.collect { case annot : purescala.Definitions.Annotation => annot })
 
-          val cd = classesToClasses(sym)
           cd.registerMethod(fd)
-          cd.addFlag(IsADTInvariant)
           val ctparams = sym.tpe match {
             case TypeRef(_, _, tps) =>
               extractTypeParams(tps).map(_._1)
@@ -381,7 +381,6 @@ trait CodeExtraction extends ASTExtractors {
 
             case t =>
               extractFunOrMethodBody(None, t)
-
           }
         case _ =>
       }
@@ -559,9 +558,9 @@ trait CodeExtraction extends ASTExtractors {
 
       // Extract class
       val cd = if (sym.isAbstractClass) {
-        AbstractClassDef(id, tparams, parent.map(_._1))
+        new AbstractClassDef(id, tparams, parent.map(_._1))
       } else  {
-        CaseClassDef(id, tparams, parent.map(_._1), sym.isModuleClass)
+        new CaseClassDef(id, tparams, parent.map(_._1), sym.isModuleClass)
       }
       cd.setPos(sym.pos)
       //println(s"Registering $sym")

@@ -22,7 +22,6 @@ import solvers.string.StringSolver
 import programsets.DirectProgramSet
 import programsets.JoinProgramSet
 
-
 /** A template generator for a given type tree. 
   * Extend this class using a concrete type tree,
   * Then use the apply method to get a hole which can be a placeholder for holes in the template.
@@ -210,12 +209,12 @@ case object StringRender extends Rule("StringRender") {
   def askQuestion(input: List[Identifier], r: RuleClosed)(implicit c: LeonContext, p: Program): List[disambiguation.Question[StringLiteral]] = {
     //if !s.contains(EDIT_ME)
     val qb = new disambiguation.QuestionBuilder(input, r.solutions, (seq: Seq[Expr], expr: Expr) => expr match {
-      case s@StringLiteral(slv) if !slv.contains(EDIT_ME) => Some(s)
+      case s @ StringLiteral(slv) if !slv.contains(EDIT_ME) => Some(s)
       case _ => None
     })
     qb.result()
   }
-  
+
   /** Converts the stream of solutions to a RuleApplication */
   def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)])(implicit program: Program): RuleApplication = {
     if(solutions.isEmpty) RuleFailed() else {
@@ -361,8 +360,8 @@ case object StringRender extends Rule("StringRender") {
     
     def extractCaseVariants(cct: CaseClassType, ctx: StringSynthesisContext)
       : (Stream[WithIds[MatchCase]], StringSynthesisResult) = cct match {
-      case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
-        val typeMap = tparams.zip(tparams2).toMap
+      case CaseClassType(ccd: CaseClassDef, tparams2) =>
+        val typeMap = ccd.tparams.zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
         val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
         val (rhs, result) = createFunDefsTemplates(ctx.copy(currentCaseClassParent=Some(cct)), fields.map(Variable)) // Invoke functions for each of the fields.
@@ -387,11 +386,11 @@ case object StringRender extends Rule("StringRender") {
      */
     def constantPatternMatching(fd: FunDef, act: AbstractClassType): WithIds[MatchExpr] = {
       val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
-        case (acc, cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
-          val typeMap = tparams.zip(tparams2).toMap
+        case (acc, cct @ CaseClassType(ccd, tparams2)) =>
+          val typeMap = ccd.tparams.zip(tparams2).toMap
           val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
           val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
-          val rhs = StringLiteral(id.asString)
+          val rhs = StringLiteral(ccd.id.asString)
           MatchCase(pattern, None, rhs)
           acc += ((MatchCase(pattern, None, rhs), Nil))
         case (acc, e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
@@ -458,17 +457,17 @@ case object StringRender extends Rule("StringRender") {
                 val fd = createEmptyFunDef(ctx, dependentType)
                 val ctx2 = preUpdateFunDefBody(dependentType, fd, ctx) // Inserts the FunDef in the assignments so that it can already be used.
                 t.root match {
-                  case act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
+                  case act @ AbstractClassType(acd, tps) =>
                     // Create a complete FunDef body with pattern matching
                     
                     val allKnownDescendantsAreCCAndHaveZeroArgs = act.knownCCDescendants.forall {
-                      case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) => ccd.fields.isEmpty
+                      case CaseClassType(ccd, tparams2) => ccd.fields.isEmpty
                       case _ => false
                     }
                     
                     //TODO: Test other templates not only with Wilcard patterns, but more cases options for non-recursive classes (e.g. Option, Boolean, Finite parameterless case classes.)
                     val (ctx3, cases) = ((ctx2, ListBuffer[Stream[WithIds[MatchCase]]]()) /: act.knownCCDescendants) {
-                      case ((ctx22, acc), cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
+                      case ((ctx22, acc), cct @ CaseClassType(ccd, tparams2)) =>
                         val (newCases, result) = extractCaseVariants(cct, ctx22)
                         val ctx23 = ctx22.copy(result = result)
                         (ctx23, acc += newCases)
@@ -481,7 +480,7 @@ case object StringRender extends Rule("StringRender") {
                     } else allMatchExprsEnd
                     gatherInputs(ctx3.add(dependentType, fd, allMatchExprs), q,
                         result += Stream((functionInvocation(fd, input::ctx.provided_functions.toList.map(Variable)), Nil)))
-                  case cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
+                  case cct @ CaseClassType(ccd, tparams2) =>
                     val (newCases, result3) = extractCaseVariants(cct, ctx2)
                     val allMatchExprs = newCases.map(acase => mergeMatchCases(fd)(Seq(acase)))
                     gatherInputs(ctx2.copy(result = result3).add(dependentType, fd, allMatchExprs), q,

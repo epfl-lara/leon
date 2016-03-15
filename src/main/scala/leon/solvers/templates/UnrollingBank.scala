@@ -100,6 +100,8 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     }
   }
 
+  def getFiniteRangeClauses: Seq[T] = manager.checkClauses
+
   private def registerCallBlocker(gen: Int, id: T, fis: Set[TemplateCallInfo[T]]) {
     val notId = encoder.mkNot(id)
 
@@ -174,7 +176,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
     val blockClauses = freshAppBlocks(appBlocks.keys)
 
-    for((b, infos) <- callBlocks) {
+    for ((b, infos) <- callBlocks) {
       registerCallBlocker(nextGeneration(0), b, infos)
     }
 
@@ -224,6 +226,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def instantiateQuantifiers(force: Boolean = false): Seq[T] = {
     val (newExprs, callBlocks, appBlocks) = manager.instantiateIgnored(force)
     val blockExprs = freshAppBlocks(appBlocks.keys)
+
     val gens = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1))
     val gen = if (gens.nonEmpty) gens.min else 0
 
@@ -366,12 +369,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
       newClauses ++= newCls
     }
-
-    /*
-    for ((app @ (b, _), (gen, _, _, _, infos)) <- thisAppInfos if infos.isEmpty) {
-      registerAppBlocker(nextGeneration(gen), app, infos)
-    }
-    */
 
     reporter.debug(s"   - ${newClauses.size} new clauses")
     //context.reporter.ifDebug { debug =>

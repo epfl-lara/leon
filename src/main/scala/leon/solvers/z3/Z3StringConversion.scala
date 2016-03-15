@@ -20,23 +20,25 @@ object StringEcoSystem {
     val id = FreshIdentifier(name, tpe)
     f(id)
   }
+
   private def withIdentifiers[T](name: String, tpe: TypeTree, name2: String, tpe2: TypeTree = Untyped)(f: (Identifier, Identifier) => T): T = {
     withIdentifier(name, tpe)(id => withIdentifier(name2, tpe2)(id2 => f(id, id2)))
   }
-  
-  val StringList = AbstractClassDef(FreshIdentifier("StringList"), Seq(), None)
+
+  val StringList = new AbstractClassDef(FreshIdentifier("StringList"), Seq(), None)
   val StringListTyped = StringList.typed
   val StringCons = withIdentifiers("head", CharType, "tail", StringListTyped){ (head, tail) =>
-    val d = CaseClassDef(FreshIdentifier("StringCons"), Seq(), Some(StringListTyped), false)
+    val d = new CaseClassDef(FreshIdentifier("StringCons"), Seq(), Some(StringListTyped), false)
     d.setFields(Seq(ValDef(head), ValDef(tail)))
     d
   }
+
   StringList.registerChild(StringCons)
   val StringConsTyped = StringCons.typed
-  val StringNil  = CaseClassDef(FreshIdentifier("StringNil"), Seq(), Some(StringListTyped), false)
+  val StringNil  = new CaseClassDef(FreshIdentifier("StringNil"), Seq(), Some(StringListTyped), false)
   val StringNilTyped = StringNil.typed
   StringList.registerChild(StringNil)
-  
+
   val StringSize = withIdentifiers("l", StringListTyped, "StringSize"){ (lengthArg, id) =>
     val fd = new FunDef(id, Seq(), Seq(ValDef(lengthArg)), IntegerType)
     fd.body = Some(withIdentifiers("h", CharType, "t", StringListTyped){ (h, t) =>
@@ -48,6 +50,7 @@ object StringEcoSystem {
     })
     fd
   }
+
   val StringListConcat = withIdentifiers("x", StringListTyped, "y", StringListTyped) { (x, y) =>
     val fd = new FunDef(FreshIdentifier("StringListConcat"), Seq(), Seq(ValDef(x), ValDef(y)), StringListTyped)
     fd.body = Some(
@@ -61,7 +64,7 @@ object StringEcoSystem {
     )
     fd
   }
-  
+
   val StringTake = withIdentifiers("tt", StringListTyped, "it", StringListTyped) { (tt, it) =>
     val fd = new FunDef(FreshIdentifier("StringTake"), Seq(), Seq(ValDef(tt), ValDef(it)), StringListTyped)
     fd.body = Some{

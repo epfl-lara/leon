@@ -32,14 +32,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   override protected val reporter = context.reporter
   override def reset(): Unit = super[AbstractZ3Solver].reset()
 
-  // FIXME: Dirty hack to bypass z3lib bug. Assumes context is the same over all instances of FairZ3Solver
-  protected[leon] val z3cfg = context.synchronized { new Z3Config(
-    "MODEL" -> true,
-    "TYPE_CHECK" -> true,
-    "WELL_SORTED_CHECK" -> true
-  )}
-  toggleWarningMessages(true)
-
   def solverCheck[R](clauses: Seq[Z3AST])(block: Option[Boolean] => R): R = {
     solver.push()
     for (cls <- clauses) solver.assertCnstr(cls)
@@ -145,12 +137,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     }
   }
 
-  initZ3()
-
-  val solver = z3.mkSolver()
-
   private val incrementals: List[IncrementalState] = List(
-    errors, functions, generics, lambdas, sorts, variables,
+    errors, functions, lambdas, sorts, variables,
     constructors, selectors, testers
   )
 
