@@ -17,9 +17,12 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
 
     /* ------------------------------------------------------- Literals ----- */
-    case CharLiteral(c) => c"'$c'"
-    case IntLiteral(v) => c"$v"
-    case BoolLiteral(b) => c"$b"
+    case CharLiteral(c)   => c"'$c'"
+    case IntLiteral(v)    => c"$v"
+    case BoolLiteral(b)   => c"$b"
+
+    // Mind the fourth and eighth double quotes
+    case StringLiteral(s) => c""""$s""""
 
 
     /* --------------------------------------------------- Definitions  ----- */

@@ -195,6 +195,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case BooleanType => CAST.Bool
       case UnitType    => CAST.Void
 
+      case StringType  => CAST.String
+
       case ArrayType(base) =>
         val typ = CAST.Array(convertToType(base))
         registerType(typ)
@@ -226,6 +228,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case IntLiteral(v)     => CAST.Literal(v)
       case BooleanLiteral(b) => CAST.Literal(b)
       case UnitLiteral()     => CAST.Literal(())
+      case StringLiteral(s)  => CAST.Literal(s)
 
       /* ------------------------------------ Definitions and Statements  ----- */
       case id: Identifier =>

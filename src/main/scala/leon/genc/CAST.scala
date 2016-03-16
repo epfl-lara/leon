@@ -47,13 +47,23 @@ object CAST { // C Abstract Syntax Tree
   /* Compound Types */
   case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
 
+  /* (Basic) String Type */
+  // NOTE it might be better to have data+length structure
+  case object String extends Type("char*")
+
 
   /* --------------------------------------------------------- Literals ----- */
   case class CharLiteral(c: Char) extends Stmt {
     require(isASCII(c)) // See NOTE on char & string
   }
+
   case class IntLiteral(v: Int) extends Stmt
+
   case class BoolLiteral(b: Boolean) extends Stmt
+
+  case class StringLiteral(s: String) extends Stmt {
+    require(isASCII(s)) // See NOTE on char & string
+  }
 
 
   /* ----------------------------------------------------- Definitions  ----- */
@@ -154,6 +164,11 @@ object CAST { // C Abstract Syntax Tree
       else unsupported("Character literals are restricted to the ASCII set")
     }
 
+    def apply(s: String)(implicit pos: Position): StringLiteral = {
+      if (isASCII(s)) StringLiteral(s)
+      else unsupported("String literals are restricted to the ASCII set")
+    }
+
     def apply(i: Int) = IntLiteral(i)
     def apply(b: Boolean) = BoolLiteral(b)
     def apply(u: Unit) = NoStmt
@@ -206,10 +221,11 @@ object CAST { // C Abstract Syntax Tree
   /* ---------------------------------------------------- Introspection ----- */
   implicit class IntrospectionOps(val stmt: Stmt) {
     def isLiteral = stmt match {
-      case _: CharLiteral => true
-      case _: IntLiteral  => true
-      case _: BoolLiteral => true
-      case _              => false
+      case _: CharLiteral   => true
+      case _: IntLiteral    => true
+      case _: BoolLiteral   => true
+      case _: StringLiteral => true
+      case _                => false
     }
 
     // True if statement can be used as a value
@@ -322,6 +338,7 @@ object CAST { // C Abstract Syntax Tree
   /* ---------------------------------------------------------- Details ----- */
   // String & char limitations, see NOTE above
   private def isASCII(c: Char): Boolean = { c >= 0 && c <= 127 }
+  private def isASCII(s: String): Boolean = s forall isASCII
 
   // Type of exception used to report unexpected or unsupported features
   final case class ConversionError(error: String, pos: Position) extends Exception(error)
