@@ -189,268 +189,268 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     implicit val pos = tree.getPos
 
     tree match {
-    /* ---------------------------------------------------------- Types ----- */
-    case CharType    => CAST.Char
-    case Int32Type   => CAST.Int32
-    case BooleanType => CAST.Bool
-    case UnitType    => CAST.Void
+      /* ---------------------------------------------------------- Types ----- */
+      case CharType    => CAST.Char
+      case Int32Type   => CAST.Int32
+      case BooleanType => CAST.Bool
+      case UnitType    => CAST.Void
 
-    case ArrayType(base) =>
-      val typ = CAST.Array(convertToType(base))
-      registerType(typ)
-      typ
+      case ArrayType(base) =>
+        val typ = CAST.Array(convertToType(base))
+        registerType(typ)
+        typ
 
-    case TupleType(bases) =>
-      val typ = CAST.Tuple(bases map convertToType)
-      registerType(typ)
-      typ
+      case TupleType(bases) =>
+        val typ = CAST.Tuple(bases map convertToType)
+        registerType(typ)
+        typ
 
-    case cd: CaseClassDef =>
-      if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
-      if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
-      if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
-      if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
-      if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
+      case cd: CaseClassDef =>
+        if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
+        if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
+        if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
+        if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
+        if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
 
-      val id     = convertToId(cd.id)
-      val fields = cd.fields map convertToVar
-      val typ    = CAST.Struct(id, fields)
+        val id     = convertToId(cd.id)
+        val fields = cd.fields map convertToVar
+        val typ    = CAST.Struct(id, fields)
 
-      registerType(typ)
-      typ
+        registerType(typ)
+        typ
 
-    case CaseClassType(cd, _) => convertToStruct(cd) // reuse `case CaseClassDef`
+      case CaseClassType(cd, _) => convertToStruct(cd) // reuse `case CaseClassDef`
 
-    /* ------------------------------------------------------- Literals ----- */
-    case CharLiteral(c)    => CAST.Literal(c)
-    case IntLiteral(v)     => CAST.Literal(v)
-    case BooleanLiteral(b) => CAST.Literal(b)
-    case UnitLiteral()     => CAST.Literal(())
+      /* ------------------------------------------------------- Literals ----- */
+      case CharLiteral(c)    => CAST.Literal(c)
+      case IntLiteral(v)     => CAST.Literal(v)
+      case BooleanLiteral(b) => CAST.Literal(b)
+      case UnitLiteral()     => CAST.Literal(())
 
-    /* ------------------------------------ Definitions and Statements  ----- */
-    case id: Identifier =>
-      if (id.name == "main") CAST.Id("main") // and not `main0`
-      else                   CAST.Id(id.uniqueName)
+      /* ------------------------------------ Definitions and Statements  ----- */
+      case id: Identifier =>
+        if (id.name == "main") CAST.Id("main") // and not `main0`
+        else                   CAST.Id(id.uniqueName)
 
-    // Function parameter
-    case vd: ValDef  => buildVal(vd.id, vd.getType)
+      // Function parameter
+      case vd: ValDef  => buildVal(vd.id, vd.getType)
 
-    // Accessing variable
-    case v: Variable => buildAccessVar(v.id)
+      // Accessing variable
+      case v: Variable => buildAccessVar(v.id)
 
-    case Block(exprs, last) =>
-      // Interleave the "bodies" of flatten expressions and their values
-      // and generate a Compound statement
-      (exprs :+ last) map convertToStmt reduce { _ ~ _ }
+      case Block(exprs, last) =>
+        // Interleave the "bodies" of flatten expressions and their values
+        // and generate a Compound statement
+        (exprs :+ last) map convertToStmt reduce { _ ~ _ }
 
-    case Let(b, v, r)    => buildLet(b, v, r, false)
-    case LetVar(b, v, r) => buildLet(b, v, r, true)
+      case Let(b, v, r)    => buildLet(b, v, r, false)
+      case LetVar(b, v, r) => buildLet(b, v, r, true)
 
-    case LetDef(fds, rest) =>
-      fds foreach convertToFun // The functions get registered there
-      convertToStmt(rest)
+      case LetDef(fds, rest) =>
+        fds foreach convertToFun // The functions get registered there
+        convertToStmt(rest)
 
-    case Assignment(varId, expr) =>
-      val f = convertAndFlatten(expr)
-      val x = buildAccessVar(varId)
+      case Assignment(varId, expr) =>
+        val f = convertAndFlatten(expr)
+        val x = buildAccessVar(varId)
 
-      val assign = CAST.Assign(x, f.value)
+        val assign = CAST.Assign(x, f.value)
 
-      f.body ~~ assign
+        f.body ~~ assign
 
-    case tuple @ Tuple(exprs) =>
-      val struct = convertToStruct(tuple.getType)
-      val types  = struct.fields map { _.typ }
-      val fs     = convertAndNormaliseExecution(exprs, types)
-      val args   = fs.values.zipWithIndex map {
-        case (arg, idx) => (CAST.Tuple.getNthId(idx + 1), arg)
-      }
+      case tuple @ Tuple(exprs) =>
+        val struct = convertToStruct(tuple.getType)
+        val types  = struct.fields map { _.typ }
+        val fs     = convertAndNormaliseExecution(exprs, types)
+        val args   = fs.values.zipWithIndex map {
+          case (arg, idx) => (CAST.Tuple.getNthId(idx + 1), arg)
+        }
 
-      fs.bodies ~~ CAST.StructInit(args, struct)
+        fs.bodies ~~ CAST.StructInit(args, struct)
 
-    case TupleSelect(tuple1, idx) => // here idx is already 1-based
-      val struct = convertToStruct(tuple1.getType)
-      val tuple2 = convertToStmt(tuple1)
+      case TupleSelect(tuple1, idx) => // here idx is already 1-based
+        val struct = convertToStruct(tuple1.getType)
+        val tuple2 = convertToStmt(tuple1)
 
-      val fs = normaliseExecution((tuple2, struct) :: Nil)
+        val fs = normaliseExecution((tuple2, struct) :: Nil)
 
-      val tuple = fs.values.head
+        val tuple = fs.values.head
 
-      fs.bodies ~~ CAST.AccessField(tuple, CAST.Tuple.getNthId(idx))
+        fs.bodies ~~ CAST.AccessField(tuple, CAST.Tuple.getNthId(idx))
 
-    case ArrayLength(array1) =>
-      val array2    = convertToStmt(array1)
-      val arrayType = convertToType(array1.getType)
+      case ArrayLength(array1) =>
+        val array2    = convertToStmt(array1)
+        val arrayType = convertToType(array1.getType)
 
-      val fs = normaliseExecution((array2, arrayType) :: Nil)
+        val fs = normaliseExecution((array2, arrayType) :: Nil)
 
-      val array = fs.values.head
+        val array = fs.values.head
 
-      fs.bodies ~~ CAST.AccessField(array, CAST.Array.lengthId)
+        fs.bodies ~~ CAST.AccessField(array, CAST.Array.lengthId)
 
-    case ArraySelect(array1, index1) =>
-      val array2    = convertToStmt(array1)
-      val arrayType = convertToType(array1.getType)
-      val index2    = convertToStmt(index1)
+      case ArraySelect(array1, index1) =>
+        val array2    = convertToStmt(array1)
+        val arrayType = convertToType(array1.getType)
+        val index2    = convertToStmt(index1)
 
-      val fs = normaliseExecution((array2, arrayType) :: (index2, CAST.Int32) :: Nil)
+        val fs = normaliseExecution((array2, arrayType) :: (index2, CAST.Int32) :: Nil)
 
-      val array  = fs.values(0)
-      val index  = fs.values(1)
-      val ptr    = CAST.AccessField(array, CAST.Array.dataId)
-      val select = CAST.SubscriptOp(ptr, index)
+        val array  = fs.values(0)
+        val index  = fs.values(1)
+        val ptr    = CAST.AccessField(array, CAST.Array.dataId)
+        val select = CAST.SubscriptOp(ptr, index)
 
-      fs.bodies ~~ select
+        fs.bodies ~~ select
 
-    case NonemptyArray(elems, Some((value1, length1))) if elems.isEmpty =>
-      val length2   = convertToStmt(length1)
-      val valueType = convertToType(value1.getType)
-      val value2    = convertToStmt(value1)
+      case NonemptyArray(elems, Some((value1, length1))) if elems.isEmpty =>
+        val length2   = convertToStmt(length1)
+        val valueType = convertToType(value1.getType)
+        val value2    = convertToStmt(value1)
 
-      val fs = normaliseExecution((length2, CAST.Int32) :: (value2, valueType) :: Nil)
-      val length = fs.values(0)
-      val value  = fs.values(1)
-
-      fs.bodies ~~ CAST.ArrayInit(length, valueType, value)
-
-    case NonemptyArray(elems, Some(_)) =>
-      CAST.unsupported("NonemptyArray with non empty elements is not supported")
-
-    case NonemptyArray(elems, None) => // Here elems is non-empty
-      // Sort values according the the key (aka index)
-      val indexes = elems.keySet.toSeq.sorted
-      val values  = indexes map { elems(_) }
-
-      // Assert all types are the same
-      val types   = values map { e => convertToType(e.getType) }
-      val typ     = types(0)
-      val allSame = types forall { _ == typ }
-      if (!allSame) CAST.unsupported("Heterogenous arrays are not supported")
-
-      val fs = convertAndNormaliseExecution(values, types)
-
-      fs.bodies ~~ CAST.ArrayInitWithValues(typ, fs.values)
-
-    case ArrayUpdate(array1, index1, newValue1) =>
-      val array2    = convertToStmt(array1)
-      val index2    = convertToStmt(index1)
-      val newValue2 = convertToStmt(newValue1)
-      val values    = array2    :: index2    :: newValue2 :: Nil
-
-      val arePure   = values forall { _.isPure }
-      val areValues = array2.isValue && index2.isValue // no newValue here
-
-      newValue2 match {
-        case CAST.IfElse(cond, thn, elze) if arePure && areValues =>
-          val array  = array2
-          val index  = index2
-          val ptr    = CAST.AccessField(array, CAST.Array.dataId)
-          val select = CAST.SubscriptOp(ptr, index)
-
-          val ifelse = buildIfElse(cond, injectAssign(select, thn),
-                                         injectAssign(select, elze))
-
-          ifelse
-
-        case _ =>
-          val arrayType = convertToType(array1.getType)
-          val indexType = CAST.Int32
-          val valueType = convertToType(newValue1.getType)
-          val types     = arrayType :: indexType :: valueType :: Nil
-
-          val fs = normaliseExecution(values, types)
-
-          val array    = fs.values(0)
-          val index    = fs.values(1)
-          val newValue = fs.values(2)
-
-          val ptr    = CAST.AccessField(array, CAST.Array.dataId)
-          val select = CAST.SubscriptOp(ptr, index)
-          val assign = CAST.Assign(select, newValue)
-
-          fs.bodies ~~ assign
-      }
-
-    case CaseClass(typ, args1) =>
-      val struct    = convertToStruct(typ)
-      val types     = struct.fields map { _.typ }
-      val argsFs    = convertAndNormaliseExecution(args1, types)
-      val fieldsIds = typ.classDef.fieldsIds map convertToId
-      val args      = fieldsIds zip argsFs.values
-
-      argsFs.bodies ~~ CAST.StructInit(args, struct)
-
-    case CaseClassSelector(_, x1, fieldId) =>
-      val struct = convertToStruct(x1.getType)
-      val x2     = convertToStmt(x1)
-
-      val fs = normaliseExecution((x2, struct) :: Nil)
-      val x  = fs.values.head
-
-      fs.bodies ~~ CAST.AccessField(x, convertToId(fieldId))
-
-    case LessThan(lhs, rhs)       => buildBinOp(lhs, "<",   rhs)
-    case GreaterThan(lhs, rhs)    => buildBinOp(lhs, ">",   rhs)
-    case LessEquals(lhs, rhs)     => buildBinOp(lhs, "<=",  rhs)
-    case GreaterEquals(lhs, rhs)  => buildBinOp(lhs, ">=",  rhs)
-    case Equals(lhs, rhs)         => buildBinOp(lhs, "==",  rhs)
-
-    case Not(rhs)                 => buildUnOp (     "!",   rhs)
-
-    case And(exprs)               => buildMultiOp("&&", exprs)
-    case Or(exprs)                => buildMultiOp("||", exprs)
-
-    case BVPlus(lhs, rhs)         => buildBinOp(lhs, "+",   rhs)
-    case BVMinus(lhs, rhs)        => buildBinOp(lhs, "-",   rhs)
-    case BVUMinus(rhs)            => buildUnOp (     "-",   rhs)
-    case BVTimes(lhs, rhs)        => buildBinOp(lhs, "*",   rhs)
-    case BVDivision(lhs, rhs)     => buildBinOp(lhs, "/",   rhs)
-    case BVRemainder(lhs, rhs)    => buildBinOp(lhs, "%",   rhs)
-    case BVNot(rhs)               => buildUnOp (     "~",   rhs)
-    case BVAnd(lhs, rhs)          => buildBinOp(lhs, "&",   rhs)
-    case BVOr(lhs, rhs)           => buildBinOp(lhs, "|",   rhs)
-    case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",   rhs)
-    case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, "<<",  rhs)
-    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>", rhs)
-    case BVLShiftRight(lhs, rhs)  => CAST.unsupported("operator >>> not supported")
-
-    // Ignore assertions for now
-    case Ensuring(body, _)  => convert(body)
-    case Require(_, body)   => convert(body)
-    case Assert(_, _, body) => convert(body)
-
-    case IfExpr(cond1, thn1, elze1) =>
-      val condF = convertAndFlatten(cond1)
-      val thn   = convertToStmt(thn1)
-      val elze  = convertToStmt(elze1)
-
-      condF.body ~~ buildIfElse(condF.value, thn, elze)
-
-    case While(cond1, body1) =>
-      val cond = convertToStmt(cond1)
-      val body = convertToStmt(body1)
-
-      if (cond.isPureValue) CAST.While(cond, body)
-      else {
-        // Transform while (cond) { body } into
-        // while (true) { if (cond) { body } else { break } }
-        val condF = flatten(cond)
-        val ifelse  = condF.body ~~ buildIfElse(condF.value, CAST.NoStmt, CAST.Break)
-        CAST.While(CAST.True, ifelse ~ body)
-      }
-
-    case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
-      // In addition to regular function parameters, add the callee's extra parameters
-      val id        = convertToId(fd.id)
-      val types     = tfd.params map { p => convertToType(p.getType) }
-      val fs        = convertAndNormaliseExecution(stdArgs, types)
-      val extraArgs = funCtx.toArgs(getFunExtraArgs(id))
-      val args      = extraArgs ++ fs.values
-
-      fs.bodies ~~ CAST.Call(id, args)
-
-    case unsupported =>
-      CAST.unsupported(s"$unsupported (of type ${unsupported.getClass}) is currently not supported by GenC")
+        val fs = normaliseExecution((length2, CAST.Int32) :: (value2, valueType) :: Nil)
+        val length = fs.values(0)
+        val value  = fs.values(1)
+
+        fs.bodies ~~ CAST.ArrayInit(length, valueType, value)
+
+      case NonemptyArray(elems, Some(_)) =>
+        CAST.unsupported("NonemptyArray with non empty elements is not supported")
+
+      case NonemptyArray(elems, None) => // Here elems is non-empty
+        // Sort values according the the key (aka index)
+        val indexes = elems.keySet.toSeq.sorted
+        val values  = indexes map { elems(_) }
+
+        // Assert all types are the same
+        val types   = values map { e => convertToType(e.getType) }
+        val typ     = types(0)
+        val allSame = types forall { _ == typ }
+        if (!allSame) CAST.unsupported("Heterogenous arrays are not supported")
+
+        val fs = convertAndNormaliseExecution(values, types)
+
+        fs.bodies ~~ CAST.ArrayInitWithValues(typ, fs.values)
+
+      case ArrayUpdate(array1, index1, newValue1) =>
+        val array2    = convertToStmt(array1)
+        val index2    = convertToStmt(index1)
+        val newValue2 = convertToStmt(newValue1)
+        val values    = array2    :: index2    :: newValue2 :: Nil
+
+        val arePure   = values forall { _.isPure }
+        val areValues = array2.isValue && index2.isValue // no newValue here
+
+        newValue2 match {
+          case CAST.IfElse(cond, thn, elze) if arePure && areValues =>
+            val array  = array2
+            val index  = index2
+            val ptr    = CAST.AccessField(array, CAST.Array.dataId)
+            val select = CAST.SubscriptOp(ptr, index)
+
+            val ifelse = buildIfElse(cond, injectAssign(select, thn),
+                                           injectAssign(select, elze))
+
+            ifelse
+
+          case _ =>
+            val arrayType = convertToType(array1.getType)
+            val indexType = CAST.Int32
+            val valueType = convertToType(newValue1.getType)
+            val types     = arrayType :: indexType :: valueType :: Nil
+
+            val fs = normaliseExecution(values, types)
+
+            val array    = fs.values(0)
+            val index    = fs.values(1)
+            val newValue = fs.values(2)
+
+            val ptr    = CAST.AccessField(array, CAST.Array.dataId)
+            val select = CAST.SubscriptOp(ptr, index)
+            val assign = CAST.Assign(select, newValue)
+
+            fs.bodies ~~ assign
+        }
+
+      case CaseClass(typ, args1) =>
+        val struct    = convertToStruct(typ)
+        val types     = struct.fields map { _.typ }
+        val argsFs    = convertAndNormaliseExecution(args1, types)
+        val fieldsIds = typ.classDef.fieldsIds map convertToId
+        val args      = fieldsIds zip argsFs.values
+
+        argsFs.bodies ~~ CAST.StructInit(args, struct)
+
+      case CaseClassSelector(_, x1, fieldId) =>
+        val struct = convertToStruct(x1.getType)
+        val x2     = convertToStmt(x1)
+
+        val fs = normaliseExecution((x2, struct) :: Nil)
+        val x  = fs.values.head
+
+        fs.bodies ~~ CAST.AccessField(x, convertToId(fieldId))
+
+      case LessThan(lhs, rhs)       => buildBinOp(lhs, "<",  rhs)
+      case GreaterThan(lhs, rhs)    => buildBinOp(lhs, ">",  rhs)
+      case LessEquals(lhs, rhs)     => buildBinOp(lhs, "<=", rhs)
+      case GreaterEquals(lhs, rhs)  => buildBinOp(lhs, ">=", rhs)
+      case Equals(lhs, rhs)         => buildBinOp(lhs, "==", rhs)
+
+      case Not(rhs)                 => buildUnOp (     "!",  rhs)
+
+      case And(exprs)               => buildMultiOp("&&", exprs)
+      case Or(exprs)                => buildMultiOp("||", exprs)
+
+      case BVPlus(lhs, rhs)         => buildBinOp(lhs, "+",  rhs)
+      case BVMinus(lhs, rhs)        => buildBinOp(lhs, "-",  rhs)
+      case BVUMinus(rhs)            => buildUnOp (     "-",  rhs)
+      case BVTimes(lhs, rhs)        => buildBinOp(lhs, "*",  rhs)
+      case BVDivision(lhs, rhs)     => buildBinOp(lhs, "/",  rhs)
+      case BVRemainder(lhs, rhs)    => buildBinOp(lhs, "%",  rhs)
+      case BVNot(rhs)               => buildUnOp (     "~",  rhs)
+      case BVAnd(lhs, rhs)          => buildBinOp(lhs, "&",  rhs)
+      case BVOr(lhs, rhs)           => buildBinOp(lhs, "|",  rhs)
+      case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",  rhs)
+      case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, "<<", rhs)
+      case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>", rhs)
+      case BVLShiftRight(lhs, rhs)  => CAST.unsupported("operator >>> not supported")
+
+      // Ignore assertions for now
+      case Ensuring(body, _)  => convert(body)
+      case Require(_, body)   => convert(body)
+      case Assert(_, _, body) => convert(body)
+
+      case IfExpr(cond1, thn1, elze1) =>
+        val condF = convertAndFlatten(cond1)
+        val thn   = convertToStmt(thn1)
+        val elze  = convertToStmt(elze1)
+
+        condF.body ~~ buildIfElse(condF.value, thn, elze)
+
+      case While(cond1, body1) =>
+        val cond = convertToStmt(cond1)
+        val body = convertToStmt(body1)
+
+        if (cond.isPureValue) CAST.While(cond, body)
+        else {
+          // Transform while (cond) { body } into
+          // while (true) { if (cond) { body } else { break } }
+          val condF = flatten(cond)
+          val ifelse  = condF.body ~~ buildIfElse(condF.value, CAST.NoStmt, CAST.Break)
+          CAST.While(CAST.True, ifelse ~ body)
+        }
+
+      case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
+        // In addition to regular function parameters, add the callee's extra parameters
+        val id        = convertToId(fd.id)
+        val types     = tfd.params map { p => convertToType(p.getType) }
+        val fs        = convertAndNormaliseExecution(stdArgs, types)
+        val extraArgs = funCtx.toArgs(getFunExtraArgs(id))
+        val args      = extraArgs ++ fs.values
+
+        fs.bodies ~~ CAST.Call(id, args)
+
+      case unsupported =>
+        CAST.unsupported(s"$unsupported (of type ${unsupported.getClass}) is currently not supported by GenC")
     }
   }
 
