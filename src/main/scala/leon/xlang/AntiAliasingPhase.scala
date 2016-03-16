@@ -214,9 +214,9 @@ object AntiAliasingPhase extends TransformationPhase {
             val nfi = FunctionInvocation(nfd.typed(fd.tps), args).setPos(fi)
             val fiEffects = effects.getOrElse(fd.fd, Set())
             if(fiEffects.nonEmpty) {
-              val modifiedArgs: Seq[Variable] = 
+              val modifiedArgs: Seq[(Identifier, Expr)] =// functionInvocationEffects(fi, fiEffects)
                 args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
-                    .map(_._1.asInstanceOf[Variable])
+                    .map(arg => (findReceiverId(arg._1).get, arg._1))
 
               val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
               if(duplicatedParams.nonEmpty) 
@@ -225,7 +225,15 @@ object AntiAliasingPhase extends TransformationPhase {
               val freshRes = FreshIdentifier("res", nfd.typed(fd.tps).returnType)
 
               val extractResults = Block(
-                modifiedArgs.zipWithIndex.map(p => Assignment(p._1.id, TupleSelect(freshRes.toVariable, p._2 + 2))),
+                modifiedArgs.zipWithIndex.map{ case ((id, expr), index) => {
+                  val resSelect = TupleSelect(freshRes.toVariable, index + 2)
+                  expr match {
+                    case CaseClassSelector(_, obj, mid) =>
+                      Assignment(id, deepCopy(obj, mid, resSelect))
+                    case _ =>
+                      Assignment(id, resSelect)
+                  }
+                }},
                 TupleSelect(freshRes.toVariable, 1))
 
 
@@ -243,9 +251,7 @@ object AntiAliasingPhase extends TransformationPhase {
     })(body, aliasedParams.toSet)
   }
 
-  //TODO: in the future, any object with vars could be aliased and so
-  //      we will need a general property
-
+  //for each fundef, the set of modified params (by index)
   private type Effects = Map[FunDef, Set[Int]]
 
   /*
@@ -315,10 +321,7 @@ object AntiAliasingPhase extends TransformationPhase {
       //TODO: the require should be fine once we consider nested functions as well
       //require(effects.isDefinedAt(fi.tfd.fd)
       val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
-      fi.args.zipWithIndex.flatMap{
-        case (Variable(id), i) if mutatedParams.contains(i) => Some(id)
-        case _ => None
-      }.toSet
+      functionInvocationEffects(fi, mutatedParams).toSet
     }
 
     rec()
@@ -414,6 +417,15 @@ object AntiAliasingPhase extends TransformationPhase {
     case _ => false
   }
 
+  //return the set of modified variables arguments to a function invocation,
+  //given the effect of the fun def invoked.
+  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
+    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
+      case (Some(id), i) if effects.contains(i) => Some(id)
+      case _ => None
+    }
+  }
+
   //private def extractFieldPath(o: Expr): (Expr, List[Identifier]) = {
   //  def rec(o: Expr): List[Identifier] = o match {
   //    case CaseClassSelector(_, r, i) =>
@@ -426,7 +438,6 @@ object AntiAliasingPhase extends TransformationPhase {
   //}
 
   private def deepCopy(rec: Expr, id: Identifier, nv: Expr): Expr = {
-
     val sub = copy(rec, id, nv)
     rec match {
       case CaseClassSelector(_, r, i) =>
@@ -434,22 +445,6 @@ object AntiAliasingPhase extends TransformationPhase {
       case expr => sub
     }
   }
-        
-  //  val (obj, path) = extractFieldPath(rec)
-
-  //  def rec(o: Expr, path: List[Identifier]): Expr = {
-  //    val ct@CaseClassType(ccd, _) = cc.getType
-  //    path match {
-  //      case id::ids =>
-  //        val nested = CaseClassSelector(CaseClassType(ct.classDef, ct.tps), o, id)
-  //        copy(o, id, rec(nested, ids))
-  //      case Nil =>
-  //        copy
-  //    }
-  //  }
-
-  //  rec(obj, path ::: List(id))
-  //}
 
   private def copy(cc: Expr, id: Identifier, nv: Expr): Expr = {
     val ct@CaseClassType(ccd, _) = cc.getType
@@ -459,7 +454,6 @@ object AntiAliasingPhase extends TransformationPhase {
       else
         CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
     )
-
     CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
   }
 
