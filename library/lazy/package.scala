@@ -22,10 +22,10 @@ object $ {
    * Should be used only in ensuring.
    * TODO: enforce this.
    */
-  @extern @library
+  @extern
   def inState[T] : Set[$[T]] = sys.error("inState method is not executable!")
 
-  @extern @library
+  @extern
   def outState[T] : Set[$[T]] = sys.error("outState method is not executable")
 
   /**
