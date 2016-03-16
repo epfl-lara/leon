@@ -342,21 +342,23 @@ object AntiAliasingPhase extends TransformationPhase {
       val params = fd.params.map(_.id).toSet
       checkReturnValue(bd, params)
       preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
-        case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
+        case l@Let(id, v, b) if isMutableType(v.getType) => {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
             case ArrayUpdated(_, _, _) => ()
-            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+            case CaseClass(_, _) => ()
+            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           }
           (None, bindings + id)
         }
-        case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
+        case l@LetVar(id, v, b) if isMutableType(v.getType) => {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
             case ArrayUpdated(_, _, _) => ()
-            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+            case CaseClass(_, _) => ()
+            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           }
           (None, bindings + id)
         }
