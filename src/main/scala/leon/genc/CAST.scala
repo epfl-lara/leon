@@ -7,6 +7,14 @@ import utils.{ Position, UniqueCounter }
 
 /*
  * Here are defined classes used to represent AST of C programs.
+ *
+ * NOTE on char and string: because the C character and string literals
+ * encoding sets are highly dependent on platforms and compilers, only
+ * basic single-byte characters from the ASCII set are supported at the
+ * moment.
+ *
+ * Details on such literals can be found in the C99 standard in §3.7,
+ * §6.4.4.4 and §6.4.5, and more.
  */
 
 object CAST { // C Abstract Syntax Tree
@@ -31,6 +39,7 @@ object CAST { // C Abstract Syntax Tree
   case class Pointer(typ: Type) extends Type(s"$typ*")
 
   /* Primitive Types */
+  case object Char extends Type("char")     // See NOTE on char & string
   case object Int32 extends Type("int32_t") // Requires <stdint.h>
   case object Bool extends Type("bool")     // Requires <stdbool.h>
   case object Void extends Type("void")
@@ -40,6 +49,9 @@ object CAST { // C Abstract Syntax Tree
 
 
   /* --------------------------------------------------------- Literals ----- */
+  case class CharLiteral(c: Char) extends Stmt {
+    require(isASCII(c)) // See NOTE on char & string
+  }
   case class IntLiteral(v: Int) extends Stmt
   case class BoolLiteral(b: Boolean) extends Stmt
 
@@ -136,6 +148,17 @@ object CAST { // C Abstract Syntax Tree
 
 
   /* -------------------------------------------------------- Factories ----- */
+  object Literal {
+    def apply(c: Char)(implicit pos: Position): CharLiteral = {
+      if (isASCII(c)) CharLiteral(c)
+      else unsupported("Character literals are restricted to the ASCII set")
+    }
+
+    def apply(i: Int) = IntLiteral(i)
+    def apply(b: Boolean) = BoolLiteral(b)
+    def apply(u: Unit) = NoStmt
+  }
+
   object Op {
     def apply(op: String, rhs: Stmt) = UnOp(Id(op), rhs)
     def apply(op: String, rhs: Stmt, lhs: Stmt) = MultiOp(Id(op), rhs :: lhs :: Nil)
@@ -183,6 +206,7 @@ object CAST { // C Abstract Syntax Tree
   /* ---------------------------------------------------- Introspection ----- */
   implicit class IntrospectionOps(val stmt: Stmt) {
     def isLiteral = stmt match {
+      case _: CharLiteral => true
       case _: IntLiteral  => true
       case _: BoolLiteral => true
       case _              => false
@@ -296,6 +320,9 @@ object CAST { // C Abstract Syntax Tree
 
 
   /* ---------------------------------------------------------- Details ----- */
+  // String & char limitations, see NOTE above
+  private def isASCII(c: Char): Boolean = { c >= 0 && c <= 127 }
+
   // Type of exception used to report unexpected or unsupported features
   final case class ConversionError(error: String, pos: Position) extends Exception(error)
 

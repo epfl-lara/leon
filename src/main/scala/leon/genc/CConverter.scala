@@ -190,6 +190,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     tree match {
     /* ---------------------------------------------------------- Types ----- */
+    case CharType    => CAST.Char
     case Int32Type   => CAST.Int32
     case BooleanType => CAST.Bool
     case UnitType    => CAST.Void
@@ -221,9 +222,10 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case CaseClassType(cd, _) => convertToStruct(cd) // reuse `case CaseClassDef`
 
     /* ------------------------------------------------------- Literals ----- */
-    case IntLiteral(v)     => CAST.IntLiteral(v)
-    case BooleanLiteral(b) => CAST.BoolLiteral(b)
-    case UnitLiteral()     => CAST.NoStmt
+    case CharLiteral(c)    => CAST.Literal(c)
+    case IntLiteral(v)     => CAST.Literal(v)
+    case BooleanLiteral(b) => CAST.Literal(b)
+    case UnitLiteral()     => CAST.Literal(())
 
     /* ------------------------------------ Definitions and Statements  ----- */
     case id: Identifier =>
