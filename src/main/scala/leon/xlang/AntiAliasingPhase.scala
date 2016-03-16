@@ -169,11 +169,16 @@ object AntiAliasingPhase extends TransformationPhase {
       }
 
       case as@FieldAssignment(o, id, v) => {
-        val ro@Variable(oid) = o
-        if(bindings.contains(oid))
-          (Some(Assignment(oid, copy(o, id, v))), bindings)
-        else
-          (None, bindings)
+        findReceiverId(o) match {
+          case None => 
+            ctx.reporter.fatalError(as.getPos, "Unsupported form of field assignment: " + as)
+          case Some(oid) => {
+            if(bindings.contains(oid))
+              (Some(Assignment(oid, deepCopy(o, id, v))), bindings)
+            else
+              (None, bindings)
+          }
+        }
       }
 
       case l@Let(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
@@ -264,11 +269,7 @@ object AntiAliasingPhase extends TransformationPhase {
           effects += (fd -> Set())
         case Some(body) => {
           val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
-          val mutatedParams = mutableParams.filter(vd => exists {
-            case ArrayUpdate(Variable(a), _, _) => a == vd.id
-            case FieldAssignment(Variable(a), _, _) => a == vd.id
-            case _ => false
-          }(body))
+          val mutatedParams = mutableParams.filter(vd => exists(expr => isMutationOf(expr, vd.id))(body))
           val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
             case (vd, i) if mutatedParams.contains(vd) => Some(i)
             case _ => None
@@ -328,7 +329,7 @@ object AntiAliasingPhase extends TransformationPhase {
   def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
     def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
       getReturnedExpr(body).foreach{
-        case IsTyped(v@Variable(id), ArrayType(_)) if bindings.contains(id) =>
+        case IsTyped(v@Variable(id), tpe) if isMutableType(tpe) && bindings.contains(id) =>
           ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object: " + v)
         case _ => ()
       }
@@ -390,20 +391,76 @@ object AntiAliasingPhase extends TransformationPhase {
           nestedFunDefsOf(bd)) + fd)
 
 
-  private def isMutableType(tpe: TypeTree): Boolean =
-    tpe.isInstanceOf[ArrayType] || tpe.isInstanceOf[ClassType]
+  private def findReceiverId(o: Expr): Option[Identifier] = o match {
+    case Variable(id) => Some(id)
+    case CaseClassSelector(_, e, _) => findReceiverId(e)
+    case _ => None
+  }
 
 
-  private def copy(expr: Expr, id: Identifier, nv: Expr) = {
-    val ct@CaseClassType(ccd, _) = expr.getType
+  private def isMutableType(tpe: TypeTree): Boolean = tpe match {
+    case (arr: ArrayType) => true
+    case CaseClassType(ccd, _) if ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType)) => true
+    case _ => false
+  }
+
+
+  /*
+   * Check if expr is mutating variable id
+   */
+  private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
+    case ArrayUpdate(Variable(a), _, _) => a == id
+    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
+    case _ => false
+  }
+
+  //private def extractFieldPath(o: Expr): (Expr, List[Identifier]) = {
+  //  def rec(o: Expr): List[Identifier] = o match {
+  //    case CaseClassSelector(_, r, i) =>
+  //      val res = toFieldPath(r)
+  //      (res._1, i::res)
+  //    case expr => (expr, Nil)
+  //  }
+  //  val res = rec(o)
+  //  (res._1, res._2.reverse)
+  //}
+
+  private def deepCopy(rec: Expr, id: Identifier, nv: Expr): Expr = {
+
+    val sub = copy(rec, id, nv)
+    rec match {
+      case CaseClassSelector(_, r, i) =>
+        deepCopy(r, i, sub)
+      case expr => sub
+    }
+  }
+        
+  //  val (obj, path) = extractFieldPath(rec)
+
+  //  def rec(o: Expr, path: List[Identifier]): Expr = {
+  //    val ct@CaseClassType(ccd, _) = cc.getType
+  //    path match {
+  //      case id::ids =>
+  //        val nested = CaseClassSelector(CaseClassType(ct.classDef, ct.tps), o, id)
+  //        copy(o, id, rec(nested, ids))
+  //      case Nil =>
+  //        copy
+  //    }
+  //  }
+
+  //  rec(obj, path ::: List(id))
+  //}
+
+  private def copy(cc: Expr, id: Identifier, nv: Expr): Expr = {
+    val ct@CaseClassType(ccd, _) = cc.getType
     val newFields = ccd.fields.map(vd =>
       if(vd.id == id)
         nv
       else
-        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), expr, vd.id)
+        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
     )
 
-    CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(expr.getPos)
+    CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
   }
 
 }
