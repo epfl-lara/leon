@@ -3,7 +3,7 @@
 package leon
 package genc
 
-import utils.UniqueCounter
+import utils.{ Position, UniqueCounter }
 
 /*
  * Here are defined classes used to represent AST of C programs.
@@ -11,6 +11,7 @@ import utils.UniqueCounter
 
 object CAST { // C Abstract Syntax Tree
 
+  /* ------------------------------------------------------------- Tree ----- */
   sealed abstract class Tree
   case object NoTree extends Tree
 
@@ -270,7 +271,7 @@ object CAST { // C Abstract Syntax Tree
     def ~~~(others: Seq[Stmt]) = Compound(stmts) ~~ others
   }
 
-  val True = BoolLiteral(true)
+  val True  = BoolLiteral(true)
   val False = BoolLiteral(false)
 
 
@@ -292,5 +293,13 @@ object CAST { // C Abstract Syntax Tree
   object FreshVal {
     def apply(typ: Type, prefix: String = "") = Val(FreshId(prefix), typ)
   }
+
+
+  /* ---------------------------------------------------------- Details ----- */
+  // Type of exception used to report unexpected or unsupported features
+  final case class ConversionError(error: String, pos: Position) extends Exception(error)
+
+  private[genc] def unsupported(detail: String)(implicit pos: Position) =
+    throw ConversionError(s"Unsupported feature: $detail", pos)
 }
 

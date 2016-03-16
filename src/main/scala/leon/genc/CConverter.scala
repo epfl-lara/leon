@@ -14,7 +14,14 @@ import scala.reflect.ClassTag
 // don't import CAST._ to decrease possible confusion between the two ASTs
 
 class CConverter(val ctx: LeonContext, val prog: Program) {
-  def convert: CAST.Prog = convertToProg(prog)
+  // Conversion entry point
+  def convert: CAST.Prog = try {
+    convertToProg(prog)
+  } catch {
+    case CAST.ConversionError(error, pos) =>
+      val msg = s"GenC repported the following error:\n$error"
+      ctx.reporter.fatalError(pos, msg)
+  }
 
   // Global data: keep track of the custom types and function of the input program
   // Using sequences and not sets to keep track of order/dependencies
@@ -142,10 +149,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   // Extract inner functions too
   private def convertToFun(fd: FunDef)(implicit funCtx: FunCtx) = {
+    implicit val pos = fd.getPos
+
     // Forbid return of array as they are allocated on the stack
-    if (containsArrayType(fd.returnType)) {
-      fatalError("Returning arrays is currently not allowed")
-    }
+    if (containsArrayType(fd.returnType))
+      CAST.unsupported("Returning arrays is currently not allowed")
 
     val id        = convertToId(fd.id)
     val retType   = convertToType(fd.returnType)
@@ -177,7 +185,10 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     fun
   }
 
-  private def convert(tree: Tree)(implicit funCtx: FunCtx): CAST.Tree = tree match {
+  private def convert(tree: Tree)(implicit funCtx: FunCtx): CAST.Tree = {
+    implicit val pos = tree.getPos
+
+    tree match {
     /* ---------------------------------------------------------- Types ----- */
     case Int32Type   => CAST.Int32
     case BooleanType => CAST.Bool
@@ -194,11 +205,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       typ
 
     case cd: CaseClassDef =>
-      if (cd.isAbstract)         fatalError("Abstract types are not supported")
-      if (cd.hasParent)          fatalError("Inheritance is not supported")
-      if (cd.isCaseObject)       fatalError("Case Objects are not supported")
-      if (cd.tparams.length > 0) fatalError("Type Parameters are not supported")
-      if (cd.methods.length > 0) fatalError("Methods are not yet supported")
+      if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
+      if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
+      if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
+      if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
+      if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
 
       val id     = convertToId(cd.id)
       val fields = cd.fields map convertToVar
@@ -301,7 +312,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       fs.bodies ~~ CAST.ArrayInit(length, valueType, value)
 
     case NonemptyArray(elems, Some(_)) =>
-      fatalError("NonemptyArray with non empty elements is not supported")
+      CAST.unsupported("NonemptyArray with non empty elements is not supported")
 
     case NonemptyArray(elems, None) => // Here elems is non-empty
       // Sort values according the the key (aka index)
@@ -312,7 +323,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       val types   = values map { e => convertToType(e.getType) }
       val typ     = types(0)
       val allSame = types forall { _ == typ }
-      if (!allSame) fatalError("Heterogenous arrays are not supported")
+      if (!allSame) CAST.unsupported("Heterogenous arrays are not supported")
 
       val fs = convertAndNormaliseExecution(values, types)
 
@@ -399,7 +410,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",   rhs)
     case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, "<<",  rhs)
     case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>", rhs)
-    case BVLShiftRight(lhs, rhs)  => fatalError("operator >>> not supported")
+    case BVLShiftRight(lhs, rhs)  => CAST.unsupported("operator >>> not supported")
 
     // Ignore assertions for now
     case Ensuring(body, _)  => convert(body)
@@ -417,9 +428,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       val cond = convertToStmt(cond1)
       val body = convertToStmt(body1)
 
-      if (cond.isPureValue) {
-        CAST.While(cond, body)
-      } else {
+      if (cond.isPureValue) CAST.While(cond, body)
+      else {
         // Transform while (cond) { body } into
         // while (true) { if (cond) { body } else { break } }
         val condF = flatten(cond)
@@ -438,7 +448,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       fs.bodies ~~ CAST.Call(id, args)
 
     case unsupported =>
-      fatalError(s"$unsupported (of type ${unsupported.getClass}) is currently not supported by GenC")
+      CAST.unsupported(s"$unsupported (of type ${unsupported.getClass}) is currently not supported by GenC")
+    }
   }
 
   private def buildVar(id: Identifier, typ: TypeTree)(implicit funCtx: FunCtx) =
