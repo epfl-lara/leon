@@ -52,6 +52,10 @@ object Definitions {
 
     var defaultValue : Option[FunDef] = None
 
+    var isVar: Boolean = false
+
+    def setIsVar(b: Boolean): this.type = { this.isVar = b; this }
+
     def subDefinitions = Seq()
 
     /** Transform this [[ValDef]] into a [[Expressions.Variable Variable]] */

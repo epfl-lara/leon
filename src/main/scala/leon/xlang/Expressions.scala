@@ -53,6 +53,18 @@ object Expressions {
     }
   }
 
+  case class FieldAssignment(obj: Expr, varId: Identifier, expr: Expr) extends XLangExpr with Extractable with PrettyPrintable {
+    val getType = UnitType
+
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(obj, expr), (es: Seq[Expr]) => FieldAssignment(es(0), varId, es(1))))
+    }
+
+    def printWith(implicit pctx: PrinterContext) {
+      p"${obj}.${varId} = ${expr};"
+    }
+  }
+
   case class While(cond: Expr, body: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
     var invariant: Option[Expr] = None

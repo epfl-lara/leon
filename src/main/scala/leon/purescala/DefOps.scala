@@ -711,4 +711,27 @@ object DefOps {
     )
   }
 
+  def augmentCaseClassFields(extras: Seq[(CaseClassDef, Seq[(ValDef, Expr)])])
+                            (program: Program) = {
+
+    def updateBody(body: Expr): Expr = {
+      preMap({
+        case CaseClass(ct, args) => extras.find(p => p._1 == ct.classDef).map{
+          case (ccd, extraFields) =>
+            CaseClass(CaseClassType(ccd, ct.tps), args ++ extraFields.map{ case (_, v) => v })
+        }
+        case _ => None
+      })(body)
+    }
+
+    extras.foreach{ case (ccd, extraFields) => ccd.setFields(ccd.fields ++ extraFields.map(_._1)) }
+    for {
+      fd <- program.definedFunctions
+    } {
+      fd.body = fd.body.map(body => updateBody(body))
+      fd.precondition = fd.precondition.map(pre => updateBody(pre))
+      fd.postcondition = fd.postcondition.map(post => updateBody(post))
+    }
+  }
+
 }

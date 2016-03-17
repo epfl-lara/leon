@@ -19,12 +19,14 @@ object AntiAliasingPhase extends TransformationPhase {
   val description = "Make aliasing explicit"
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
+
     val fds = allFunDefs(pgm)
     fds.foreach(fd => checkAliasing(fd)(ctx))
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
     val effects = effectsAnalysis(pgm)
+    //println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
 
     //for each fun def, all the vars the the body captures. Only
     //mutable types.
@@ -33,7 +35,7 @@ object AntiAliasingPhase extends TransformationPhase {
     } yield {
       val allFreeVars = fd.body.map(bd => variablesOf(bd)).getOrElse(Set())
       val freeVars = allFreeVars -- fd.params.map(_.id)
-      val mutableFreeVars = freeVars.filter(id => id.getType.isInstanceOf[ArrayType])
+      val mutableFreeVars = freeVars.filter(id => isMutableType(id.getType))
       (fd, mutableFreeVars)
     }).toMap
 
@@ -166,12 +168,25 @@ object AntiAliasingPhase extends TransformationPhase {
           (None, bindings)
       }
 
-      case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
+      case as@FieldAssignment(o, id, v) => {
+        findReceiverId(o) match {
+          case None => 
+            ctx.reporter.fatalError(as.getPos, "Unsupported form of field assignment: " + as)
+          case Some(oid) => {
+            if(bindings.contains(oid))
+              (Some(Assignment(oid, deepCopy(o, id, v))), bindings)
+            else
+              (None, bindings)
+          }
+        }
+      }
+
+      case l@Let(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
         val varDecl = LetVar(id, v, b).setPos(l)
         (Some(varDecl), bindings + id)
       }
 
-      case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
+      case l@LetVar(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
         (None, bindings + id)
       }
 
@@ -199,18 +214,26 @@ object AntiAliasingPhase extends TransformationPhase {
             val nfi = FunctionInvocation(nfd.typed(fd.tps), args).copiedFrom(fi)
             val fiEffects = effects.getOrElse(fd.fd, Set())
             if(fiEffects.nonEmpty) {
-              val modifiedArgs: Seq[Variable] = 
+              val modifiedArgs: Seq[(Identifier, Expr)] =// functionInvocationEffects(fi, fiEffects)
                 args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
-                    .map(_._1.asInstanceOf[Variable])
+                    .map(arg => (findReceiverId(arg._1).get, arg._1))
 
               val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
               if(duplicatedParams.nonEmpty) 
                 ctx.reporter.fatalError(fi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
 
-              val freshRes = FreshIdentifier("res", nfd.returnType)
+              val freshRes = FreshIdentifier("res", nfd.typed(fd.tps).returnType)
 
               val extractResults = Block(
-                modifiedArgs.zipWithIndex.map(p => Assignment(p._1.id, TupleSelect(freshRes.toVariable, p._2 + 2))),
+                modifiedArgs.zipWithIndex.map{ case ((id, expr), index) => {
+                  val resSelect = TupleSelect(freshRes.toVariable, index + 2)
+                  expr match {
+                    case CaseClassSelector(_, obj, mid) =>
+                      Assignment(id, deepCopy(obj, mid, resSelect))
+                    case _ =>
+                      Assignment(id, resSelect)
+                  }
+                }},
                 TupleSelect(freshRes.toVariable, 1))
 
 
@@ -228,9 +251,7 @@ object AntiAliasingPhase extends TransformationPhase {
     })(body, aliasedParams.toSet)
   }
 
-  //TODO: in the future, any object with vars could be aliased and so
-  //      we will need a general property
-
+  //for each fundef, the set of modified params (by index)
   private type Effects = Map[FunDef, Set[Int]]
 
   /*
@@ -253,14 +274,8 @@ object AntiAliasingPhase extends TransformationPhase {
         case None =>
           effects += (fd -> Set())
         case Some(body) => {
-          val mutableParams = fd.params.filter(vd => vd.getType match {
-            case ArrayType(_) => true
-            case _ => false
-          })
-          val mutatedParams = mutableParams.filter(vd => exists {
-            case ArrayUpdate(Variable(a), _, _) => a == vd.id
-            case _ => false
-          }(body))
+          val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
+          val mutatedParams = mutableParams.filter(vd => exists(expr => isMutationOf(expr, vd.id))(body))
           val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
             case (vd, i) if mutatedParams.contains(vd) => Some(i)
             case _ => None
@@ -306,10 +321,7 @@ object AntiAliasingPhase extends TransformationPhase {
       //TODO: the require should be fine once we consider nested functions as well
       //require(effects.isDefinedAt(fi.tfd.fd)
       val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
-      fi.args.zipWithIndex.flatMap{
-        case (Variable(id), i) if mutatedParams.contains(i) => Some(id)
-        case _ => None
-      }.toSet
+      functionInvocationEffects(fi, mutatedParams).toSet
     }
 
     rec()
@@ -320,8 +332,11 @@ object AntiAliasingPhase extends TransformationPhase {
   def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
     def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
       getReturnedExpr(body).foreach{
-        case IsTyped(v@Variable(id), ArrayType(_)) if bindings.contains(id) =>
-          ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object: " + v)
+        case expr if isMutableType(expr.getType) => 
+          findReceiverId(expr).foreach(id =>
+            if(bindings.contains(id))
+              ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
+          )
         case _ => ()
       }
     }
@@ -330,21 +345,23 @@ object AntiAliasingPhase extends TransformationPhase {
       val params = fd.params.map(_.id).toSet
       checkReturnValue(bd, params)
       preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
-        case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
+        case l@Let(id, v, b) if isMutableType(v.getType) => {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
             case ArrayUpdated(_, _, _) => ()
-            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+            case CaseClass(_, _) => ()
+            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           }
           (None, bindings + id)
         }
-        case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
+        case l@LetVar(id, v, b) if isMutableType(v.getType) => {
           v match {
             case FiniteArray(_, _, _) => ()
             case FunctionInvocation(_, _) => ()
             case ArrayUpdated(_, _, _) => ()
-            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+            case CaseClass(_, _) => ()
+            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           }
           (None, bindings + id)
         }
@@ -380,4 +397,69 @@ object AntiAliasingPhase extends TransformationPhase {
       pgm.definedFunctions.flatMap(fd => 
         fd.body.toSet.flatMap((bd: Expr) =>
           nestedFunDefsOf(bd)) + fd)
+
+
+  private def findReceiverId(o: Expr): Option[Identifier] = o match {
+    case Variable(id) => Some(id)
+    case CaseClassSelector(_, e, _) => findReceiverId(e)
+    case _ => None
+  }
+
+
+  private def isMutableType(tpe: TypeTree): Boolean = tpe match {
+    case (arr: ArrayType) => true
+    case CaseClassType(ccd, _) if ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType)) => true
+    case _ => false
+  }
+
+
+  /*
+   * Check if expr is mutating variable id
+   */
+  private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
+    case ArrayUpdate(Variable(a), _, _) => a == id
+    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
+    case _ => false
+  }
+
+  //return the set of modified variables arguments to a function invocation,
+  //given the effect of the fun def invoked.
+  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
+    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
+      case (Some(id), i) if effects.contains(i) => Some(id)
+      case _ => None
+    }
+  }
+
+  //private def extractFieldPath(o: Expr): (Expr, List[Identifier]) = {
+  //  def rec(o: Expr): List[Identifier] = o match {
+  //    case CaseClassSelector(_, r, i) =>
+  //      val res = toFieldPath(r)
+  //      (res._1, i::res)
+  //    case expr => (expr, Nil)
+  //  }
+  //  val res = rec(o)
+  //  (res._1, res._2.reverse)
+  //}
+
+  private def deepCopy(rec: Expr, id: Identifier, nv: Expr): Expr = {
+    val sub = copy(rec, id, nv)
+    rec match {
+      case CaseClassSelector(_, r, i) =>
+        deepCopy(r, i, sub)
+      case expr => sub
+    }
+  }
+
+  private def copy(cc: Expr, id: Identifier, nv: Expr): Expr = {
+    val ct@CaseClassType(ccd, _) = cc.getType
+    val newFields = ccd.fields.map(vd =>
+      if(vd.id == id)
+        nv
+      else
+        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
+    )
+    CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
+  }
+
 }
