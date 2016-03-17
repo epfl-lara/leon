@@ -15,6 +15,7 @@ run testcases/synthesis/current/List/Delete.scala
 run testcases/synthesis/current/List/Union.scala
 run testcases/synthesis/current/List/Diff.scala
 run testcases/synthesis/current/List/Split.scala
+run testcases/synthesis/current/List/ListOfSize.scala
 
 # SortedList
 run testcases/synthesis/current/SortedList/Insert.scala
