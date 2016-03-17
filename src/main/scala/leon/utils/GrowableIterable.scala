@@ -19,14 +19,16 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T]
     }
   }
 
-  def += (more: T)      = buffer +=  more
-  def ++=(more: Seq[T]) = buffer ++= more
-  def -= (less: T)      = buffer -=  less
-  def --=(less: Seq[T]) = buffer --= less
+  def += (more: T)           = buffer +=  more
+  def ++=(more: Iterable[T]) = buffer ++= more
+  def -= (less: T)           = buffer -=  less
+  def --=(less: Iterable[T]) = buffer --= less
 
   def iterator: Iterator[T] = {
     buffer.iterator ++ cachingIterator
   }
+
+  def bufferedCount = buffer.size
 
   def sortBufferBy[B](f: T => B)(implicit ord: math.Ordering[B]) = {
     buffer = buffer.sortBy(f)
