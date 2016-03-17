@@ -11,6 +11,7 @@ import ExprOps._
 import Types._
 import Constructors._
 import TypeOps.instantiateType
+import xlang.Expressions._
 
 object MethodLifting extends TransformationPhase {
 

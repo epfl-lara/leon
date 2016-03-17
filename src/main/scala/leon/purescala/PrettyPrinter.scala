@@ -367,6 +367,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case Not(expr) => p"\u00AC$expr"
 
       case vd @ ValDef(id) =>
+        if(vd.isVar)
+          p"var "
         p"$id : ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
@@ -530,7 +532,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
         if (ccd.methods.nonEmpty) {
           p"""| {
-              |  ${nary(ccd.methods, "\n\n")}
+              |  ${nary(ccd.methods, "\n\n") }
               |}"""
         }
 
