@@ -472,13 +472,17 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   private def buildLet(id: Identifier, value: Expr, rest1: Expr, forceVar: Boolean)
                       (implicit funCtx: FunCtx): CAST.Stmt = {
-    val (x, stmt) = buildDeclInitVar(id, value, forceVar)
+    // Handle special case with Unit: don't create a var
+    if (value.getType == UnitType) convertToStmt(value) ~ convertToStmt(rest1)
+    else {
+      val (x, stmt) = buildDeclInitVar(id, value, forceVar)
 
-    // Augment ctx for the following instructions
-    val funCtx2 = funCtx.extend(x)
-    val rest    = convertToStmt(rest1)(funCtx2)
+      // Augment ctx for the following instructions
+      val funCtx2 = funCtx.extend(x)
+      val rest    = convertToStmt(rest1)(funCtx2)
 
-    stmt ~ rest
+      stmt ~ rest
+    }
   }
 
 
@@ -682,7 +686,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         // Similarly to buildDeclInitVar:
         val (tmp, body) = f.value match {
           case CAST.IfElse(cond, thn, elze) =>
-            val tmp    = CAST.FreshVar(typ.mutable, "normexec")
+            val tmp    = CAST.FreshVar(typ.removeConst, "normexec")
             val decl   = CAST.DeclVar(tmp)
             val ifelse = buildIfElse(cond, injectAssign(tmp, thn), injectAssign(tmp, elze))
             val body   = f.body ~~ decl ~ ifelse

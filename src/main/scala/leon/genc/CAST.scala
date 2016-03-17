@@ -27,11 +27,6 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------ Types ----- */
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
-
-    def mutable: Type = this match {
-      case Const(typ) => typ.mutable
-      case _          => this
-    }
   }
 
   /* Type Modifiers */
@@ -80,7 +75,9 @@ object CAST { // C Abstract Syntax Tree
       else name
   }
 
-  case class Var(id: Id, typ: Type) extends Def
+  case class Var(id: Id, typ: Type) extends Def {
+    require(!typ.isVoid)
+  }
 
   /* ----------------------------------------------------------- Stmts  ----- */
   abstract class Stmt extends Tree
@@ -313,6 +310,23 @@ object CAST { // C Abstract Syntax Tree
 
   val True  = BoolLiteral(true)
   val False = BoolLiteral(false)
+
+
+  implicit class TypeOps(val typ: Type) {
+    // Test whether a given type is made of void
+    def isVoid: Boolean = typ match {
+      case Void       => true
+      case Const(t)   => t.isVoid
+      case Pointer(t) => t.isVoid // TODO is this a good idea since it can represent anything?
+      case _          => false
+    }
+
+    // Remove any const qualifier from the given type
+    def removeConst: Type = typ match {
+      case Const(t) => t.removeConst
+      case _        => typ
+    }
+  }
 
 
   /* ------------------------------------------------ Fresh Generators  ----- */
