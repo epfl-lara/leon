@@ -371,12 +371,12 @@ object DefOps {
 
   def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap): Expr = {
     preMap {
-      case MatchExpr(scrut, cases) =>
+      case me@MatchExpr(scrut, cases) =>
         Some(MatchExpr(scrut, cases.map(matchcase => matchcase match {
-          case MatchCase(pattern, guard, rhs) => MatchCase(replaceFunCalls(pattern, fdMapF), guard, rhs)
-        })))
+          case mc@MatchCase(pattern, guard, rhs) => MatchCase(replaceFunCalls(pattern, fdMapF), guard, rhs).copiedFrom(mc)
+        })).copiedFrom(me))
       case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        fiMapF(fi, fdMapF(fd)).map(_.setPos(fi))
+        fiMapF(fi, fdMapF(fd)).map(_.copiedFrom(fi))
       case _ =>
         None
     }(e)

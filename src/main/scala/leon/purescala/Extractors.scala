@@ -210,7 +210,7 @@ object Extractors {
         Seq(cond, thenn, elze),
         { case Seq(c, t, e) => IfExpr(c, t, e) }
       ))
-      case MatchExpr(scrut, cases) => Some((
+      case m@MatchExpr(scrut, cases) => Some((
         scrut +: cases.flatMap { _.expressions },
         (es: Seq[Expr]) => {
           var i = 1
@@ -219,7 +219,7 @@ object Extractors {
             case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 2), es(i - 1))
           }
 
-          matchExpr(es.head, newcases)
+          matchExpr(es.head, newcases).copiedFrom(m)
         }
       ))
       case Passes(in, out, cases) => Some((

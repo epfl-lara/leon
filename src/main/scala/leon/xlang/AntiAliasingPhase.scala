@@ -181,7 +181,7 @@ object AntiAliasingPhase extends TransformationPhase {
         //so we need to ignore the second times by checking if updatedFunDefs 
         //contains a mapping or not
         val nfds = fds.map(fd => updatedFunDefs.get(fd).getOrElse(fd))
-        (Some(LetDef(nfds, body)), bindings)
+        (Some(LetDef(nfds, body).copiedFrom(l)), bindings)
       }
 
       case fi@FunctionInvocation(fd, args) => {
@@ -196,7 +196,7 @@ object AntiAliasingPhase extends TransformationPhase {
         updatedFunDefs.get(fd.fd) match {
           case None => (None, bindings)
           case Some(nfd) => {
-            val nfi = FunctionInvocation(nfd.typed(fd.tps), args).setPos(fi)
+            val nfi = FunctionInvocation(nfd.typed(fd.tps), args).copiedFrom(fi)
             val fiEffects = effects.getOrElse(fd.fd, Set())
             if(fiEffects.nonEmpty) {
               val modifiedArgs: Seq[Variable] = 
