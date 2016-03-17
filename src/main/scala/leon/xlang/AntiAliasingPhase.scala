@@ -332,8 +332,11 @@ object AntiAliasingPhase extends TransformationPhase {
   def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
     def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
       getReturnedExpr(body).foreach{
-        case IsTyped(v@Variable(id), tpe) if isMutableType(tpe) && bindings.contains(id) =>
-          ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object: " + v)
+        case expr if isMutableType(expr.getType) => 
+          findReceiverId(expr).foreach(id =>
+            if(bindings.contains(id))
+              ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
+          )
         case _ => ()
       }
     }
