@@ -39,7 +39,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
     import hctx.reporter._
 
-    val exSolverTo  = 2000L
+    val exSolverTo  = 500L
     val cexSolverTo = 3000L
 
     // Track non-deterministic programs up to 100'000 programs, or give up
