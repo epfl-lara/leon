@@ -3,8 +3,6 @@
 package leon
 package purescala
 
-import Expressions.Expr
-import Types.TypeTree
 import Common._
 import utils._
 
