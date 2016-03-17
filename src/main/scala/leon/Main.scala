@@ -13,7 +13,7 @@ object Main {
       utils.TypingPhase,
       utils.FileOutputPhase,
       purescala.RestoreMethods,
-      xlang.ArrayTransformation,
+      xlang.AntiAliasingPhase,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       xlang.FixReportLabels,

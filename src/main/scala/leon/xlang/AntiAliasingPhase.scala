@@ -63,8 +63,8 @@ object AntiAliasingPhase extends TransformationPhase {
   /*
    * Create a new FunDef for a given FunDef in the program.
    * Adapt the signature to express its effects. In case the
-   * function has no effect, this will still introduce a fresh
-   * FunDef as the body might have to be updated anyway.
+   * function has no effect, this will still return the original
+   * fundef.
    */
   private def updateFunDef(fd: FunDef, effects: Effects)(ctx: LeonContext): FunDef = {
 
@@ -87,13 +87,13 @@ object AntiAliasingPhase extends TransformationPhase {
     //  case _ => ()
     //})
 
-    val newReturnType: TypeTree = if(aliasedParams.isEmpty) fd.returnType else {
-      tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
+    if(aliasedParams.isEmpty) fd else {
+      val newReturnType: TypeTree = tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
+      val newFunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, newReturnType)
+      newFunDef.addFlags(fd.flags)
+      newFunDef.setPos(fd)
+      newFunDef
     }
-    val newFunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, newReturnType)
-    newFunDef.addFlags(fd.flags)
-    newFunDef.setPos(fd)
-    newFunDef
   }
 
   private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]])
