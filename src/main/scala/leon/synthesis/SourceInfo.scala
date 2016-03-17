@@ -39,7 +39,7 @@ object SourceInfo {
     }
 
     if (results.isEmpty) {
-      ctx.reporter.warning("No 'choose' found. Maybe the functions you chose do not exist?")
+      ctx.reporter.warning("No 'choose' found. Maybe the functions you indicated do not exist?")
     }
 
     results.sortBy(_.source.getPos)

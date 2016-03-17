@@ -55,6 +55,8 @@ class Synthesizer(val context : LeonContext,
 
     val s = getSearch
 
+    reporter.info(ASCIIHelpers.title(s"Synthesizing '${ci.fd.id}'"))
+
     val t = context.timers.synthesis.search.start()
 
     val sols = s.search(sctx)
