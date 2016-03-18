@@ -144,7 +144,7 @@ class Synthesizer(val context : LeonContext,
     val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
 
     try {
-      val vctx = VerificationContext(context, npr, solverf, context.reporter)
+      val vctx = new VerificationContext(context, npr, solverf)
       val vcs = generateVCs(vctx, fds)
       val vcreport = checkVCs(vctx, vcs, stopWhen = _.isInvalid)
 

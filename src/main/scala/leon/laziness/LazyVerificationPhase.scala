@@ -199,7 +199,6 @@ object LazyVerificationPhase {
 
   def checkVCs(vcs: List[VC], checkCtx: LeonContext, p: Program) = {
     val timeout: Option[Long] = None
-    val reporter = checkCtx.reporter
     // Solvers selection and validation
     val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
     val solverF = timeout match {
@@ -208,7 +207,7 @@ object LazyVerificationPhase {
       case None =>
         baseSolverF
     }
-    val vctx = VerificationContext(checkCtx, p, solverF, reporter)
+    val vctx = new VerificationContext(checkCtx, p, solverF)
     try {
       VerificationPhase.checkVCs(vctx, vcs)
       //println("Resource Verification Results: \n" + veriRep.summaryString)
