@@ -45,7 +45,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     // Track non-deterministic programs up to 100'000 programs, or give up
     val nProgramsLimit = 100000
 
-    val timers = hctx.timers.synthesis.cegis
+    val timers = hctx.timers.synthesis.applications.CEGIS
 
     // CEGIS Flags to activate or deactivate features
     val useOptTimeout = hctx.settings.cegisUseOptTimeout
@@ -144,7 +144,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       // Update the c-tree after an increase in termsize
       def updateCTree(): Unit = {
-        hctx.timers.synthesis.cegis.updateCTree.start()
+        timers.updateCTree.start()
         def freshB() = {
           val id = FreshIdentifier("B", BooleanType, true)
           bs += id
@@ -198,7 +198,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         excludedPrograms = Set()
         prunedPrograms = allPrograms().toSet
 
-        hctx.timers.synthesis.cegis.updateCTree.stop()
+        timers.updateCTree.stop()
       }
 
       // Returns a count of all possible programs

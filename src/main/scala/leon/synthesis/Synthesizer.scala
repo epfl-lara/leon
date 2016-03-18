@@ -137,6 +137,9 @@ class Synthesizer(val context : LeonContext,
     import verification.VerificationPhase._
     import verification.VerificationContext
 
+    val timer = context.timers.synthesis.validation
+    timer.start()
+
     reporter.info("Solution requires validation")
 
     val (npr, fds) = solutionToProgram(sol)
@@ -160,6 +163,7 @@ class Synthesizer(val context : LeonContext,
         (new PartialSolution(search.strat, false).getSolutionFor(search.g.root), Some(false))
       }
     } finally {
+      timer.stop()
       solverf.shutdown()
     }
   }
