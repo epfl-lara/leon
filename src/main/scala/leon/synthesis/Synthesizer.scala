@@ -3,7 +3,7 @@
 package leon
 package synthesis
 
-import leon.purescala.Expressions.Choose
+import purescala.Expressions.Choose
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.DefOps._
