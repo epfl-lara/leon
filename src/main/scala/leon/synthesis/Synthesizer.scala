@@ -174,6 +174,11 @@ class Synthesizer(val context : LeonContext,
       case fd if fd eq ci.fd =>
         val nfd = fd.duplicate()
         nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)
+        (fd.body, fd.postcondition) match {
+          case (Some(Choose(pred)), None) =>
+            nfd.postcondition = Some(pred)
+          case _ =>
+        }
         Some(nfd)
       case _ => None
     })
