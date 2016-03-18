@@ -3,6 +3,7 @@
 package leon
 package synthesis
 
+import leon.purescala.Expressions.Choose
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.DefOps._
@@ -145,7 +146,7 @@ class Synthesizer(val context : LeonContext,
     try {
       val vctx = VerificationContext(context, npr, solverf, context.reporter)
       val vcs = generateVCs(vctx, fds)
-      val vcreport = checkVCs(vctx, vcs)
+      val vcreport = checkVCs(vctx, vcs, stopWhen = _.isInvalid)
 
       if (vcreport.totalValid == vcreport.totalConditions) {
         (sol, Some(true))

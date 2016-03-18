@@ -208,7 +208,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       val report = VerificationPhase.checkVCs(
         vctx,
         vcs,
-        stopAfter = Some({ (vc, vr) => vr.isInvalid })
+        stopWhen = _.isInvalid
       )
 
       val vrs = report.vrs
