@@ -167,7 +167,6 @@ object Main {
     val helpF = ctx.findOptionOrDefault(optHelp)
     val noopF = ctx.findOptionOrDefault(optNoop)
     val synthesisF = ctx.findOptionOrDefault(optSynthesis)
-    val xlangF = ctx.findOptionOrDefault(GlobalOptions.optXLang)
     val repairF = ctx.findOptionOrDefault(optRepair)
     val isabelleF = ctx.findOptionOrDefault(optIsabelle)
     val terminationF = ctx.findOptionOrDefault(optTermination)
@@ -179,9 +178,6 @@ object Main {
     val lazyevalF = ctx.findOptionOrDefault(optLazyEval)
     val analysisF = verifyF && terminationF
     // Check consistency in options
-    if (gencF && !xlangF) {
-      ctx.reporter.fatalError("Generating C code with --genc requires --xlang")
-    }
 
     if (helpF) {
       displayVersion(ctx.reporter)
@@ -190,13 +186,13 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         ClassgenPhase andThen
           ExtractionPhase andThen
-          new PreprocessingPhase(xlangF)
+          new PreprocessingPhase
 
       val verification =
         VerificationPhase andThen
-        FixReportLabels.when(xlangF) andThen
+        FixReportLabels andThen
         PrintReportPhase
-      val termination  = TerminationPhase andThen PrintReportPhase
+      val termination = TerminationPhase andThen PrintReportPhase
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase

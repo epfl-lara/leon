@@ -10,7 +10,7 @@ import java.io.File
 class XLangDesugaringSuite extends LeonRegressionSuite {
   // Hard-code output directory, for Eclipse purposes
 
-  val pipeline = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase(true)
+  val pipeline = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase
 
   def testFrontend(f: File, forError: Boolean) = {
     test ("Testing " + f.getName) {

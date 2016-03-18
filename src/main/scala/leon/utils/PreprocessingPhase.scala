@@ -9,7 +9,7 @@ import leon.solvers.isabelle.AdaptationPhase
 import leon.verification.InjectAsserts
 import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase}
 
-class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) extends LeonPhase[Program, Program] {
+class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Program] {
 
   val name = "preprocessing"
   val description = "Various preprocessings on Leon programs"
@@ -21,7 +21,6 @@ class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) e
 
     val pipeBegin =
       debugTrees("Program after extraction")      andThen
-      NoXLangFeaturesChecking.when(!desugarXLang) andThen
       MethodLifting                               andThen
       TypingPhase                                 andThen
       synthesis.ConversionPhase                   andThen
@@ -31,7 +30,7 @@ class PreprocessingPhase(desugarXLang: Boolean = false, genc: Boolean = false) e
     val pipeX = (
       XLangDesugaringPhase andThen
       debugTrees("Program after xlang desugaring")
-    ) when (!genc && desugarXLang)
+    ) when (!genc)
 
     def pipeEnd = (
       InjectAsserts  andThen

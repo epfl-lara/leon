@@ -8,10 +8,10 @@ import java.io.File
 
 class FrontEndsSuite extends LeonRegressionSuite {
 
-  def testFrontend(f: File, xlang: Boolean, forError: Boolean) = {
+  def testFrontend(f: File, forError: Boolean) = {
     val pipeline =
       frontends.scalac.ExtractionPhase     andThen
-      new utils.PreprocessingPhase(xlang)  andThen
+      new utils.PreprocessingPhase  andThen
       NoopPhase()
 
     test ("Testing " + f.getName) {
@@ -37,13 +37,13 @@ class FrontEndsSuite extends LeonRegressionSuite {
   val baseDir = "regression/frontends/"
 
   forEachFileIn(baseDir+"passing/") { f => 
-    testFrontend(f, false, false)
+    testFrontend(f, false)
   }
   forEachFileIn(baseDir+"error/simple/") { f =>
-    testFrontend(f, false, true)
+    testFrontend(f, true)
   }
   forEachFileIn(baseDir+"error/xlang/") { f =>
-    testFrontend(f, true, true)
+    testFrontend(f, true)
   }
 
 }
