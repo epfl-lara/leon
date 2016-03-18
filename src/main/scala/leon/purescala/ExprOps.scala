@@ -192,7 +192,7 @@ object ExprOps extends { val Deconstructor = Operator } with GenTreeOps[Expr] {
 
   /** Computes the depth of the expression's tree */
   def depth(e: Expr): Int = {
-    fold[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
+    fold[Int]{ (_, sub) => 1 + (0 +: sub).max }(e)
   }
 
   /** Applies the function to the I/O constraint and simplifies the resulting constraint */
