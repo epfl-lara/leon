@@ -9,6 +9,6 @@ class IsabelleVerificationSuite extends VerificationSuite {
   val testDir = "regression/verification/isabelle/"
   override val isabelle = true
 
-  val optionVariants: List[List[String]] = List(List("--isabelle:download=true", "--solvers=isabelle"))
+  val optionVariants: List[List[String]] = List(List("--solvers=isabelle"))
 
 }

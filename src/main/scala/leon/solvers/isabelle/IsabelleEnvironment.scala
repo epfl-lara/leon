@@ -28,9 +28,6 @@ object IsabelleEnvironment {
 
   def apply(context: LeonContext, program: Program): Future[IsabelleEnvironment] = {
     val version = Version(isabelleVersion)
-    val base = Paths.get(context.findOptionOrDefault(Component.optBase))
-    val download = context.findOptionOrDefault(Component.optDownload)
-    val build = context.findOptionOrDefault(Component.optBuild)
     val dump = context.findOptionOrDefault(Component.optDump)
     val strict = context.findOptionOrDefault(Component.optStrict)
 
@@ -53,35 +50,21 @@ object IsabelleEnvironment {
       }
     }.toList
 
-    val home = base.resolve(s"Isabelle${version.identifier}")
-
-    val setup =
-      if (Files.isDirectory(home))
-        Future.successful { Setup(home, Component.platform, version) }
-      else if (!download)
-        context.reporter.fatalError(s"No $version found at $base. Please install manually or set '${Component.optDownload.name}' flag to true.")
-      else
-        Component.platform match {
-          case o: OfficialPlatform =>
-            context.reporter.info(s"No $version found at $base")
-            context.reporter.info(s"Preparing $version environment ...")
-            Setup.install(o, version)
-          case _ =>
-            context.reporter.fatalError(s"No $version found at $base. Platform unsupported, please install manually.")
-        }
+    context.reporter.info(s"Preparing Isabelle setup (this might take a while) ...")
+    val setup = Setup.defaultSetup(version)
 
     val system = setup.flatMap { setup =>
-      val env = Implementations.makeEnvironment(setup.home, classOf[edu.tum.cs.isabelle.impl.Environment])
-      val config = Configuration.fromPath(Component.leonBase, "Leon")
+      val resources = Resources.dumpIsabelleResources()
+      val config = resources.makeConfiguration(Nil, "Leon")
 
-      if (build) {
+      setup.makeEnvironment.flatMap { env =>
         context.reporter.info(s"Building session ...")
         if (!System.build(env, config))
           context.reporter.internalError("Build failed")
-      }
 
-      context.reporter.info(s"Starting $version instance ...")
-      System.create(env, config)
+        context.reporter.info(s"Starting $version instance ...")
+        System.create(env, config)
+      }
     }
 
     val thy = system.flatMap { system =>
@@ -126,10 +109,12 @@ object IsabelleEnvironment {
 
     functions.flatMap(_.data).foreach { _ =>
       if (dump.isEmpty)
-        system.flatMap(_.invoke(Report)(())).assertSuccess(context).foreach { report =>
-          context.reporter.debug(s"Report for $theory ...")
-          report.foreach { case (key, value) =>
-            context.reporter.debug(s"$key: ${canonicalizeOutput(value)}")
+        system.foreach { sys =>
+          sys.invoke(Report)(()).assertSuccess(context).foreach { report =>
+            context.reporter.debug(s"Report for $theory ...")
+            report.foreach { case (key, value) =>
+              context.reporter.debug(s"$key: ${canonicalizeOutput(sys, value)}")
+            }
           }
         }
       else
