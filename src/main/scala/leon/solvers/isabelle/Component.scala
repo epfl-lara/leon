@@ -17,11 +17,8 @@ object Component extends LeonComponent {
   val name = "Isabelle"
   val description = "Isabelle solver"
 
-  val leonBase =
-    Paths.get(Option(System.getProperty("leon.base")).getOrElse(".")).toAbsolutePath()
-
-  val platform =
-    Platform.guess.getOrElse(Platform.genericPlatform(leonBase.resolve("contrib").toAbsolutePath()))
+  def platform =
+    Platform.guess.getOrElse(sys.error("Unknown platform; can't run Isabelle here"))
 
   val optMapping = LeonFlagOptionDef(
     name = "isabelle:mapping",

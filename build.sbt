@@ -88,13 +88,11 @@ script := {
       s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
     }
     val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(System.getProperty("path.separator"))
-    val base = baseDirectory.value.getAbsolutePath
     IO.write(f, s"""|#!/bin/bash --posix
                     |
                     |SCALACLASSPATH="$paths"
-                    |BASEDIRECTORY="$base"
                     |
-                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dleon.base="$${BASEDIRECTORY}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
+                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
                     |""".stripMargin)
     f.setExecutable(true)
   } catch {
