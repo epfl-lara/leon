@@ -276,6 +276,19 @@ trait SubTreeOps[SubTree <: Tree]  {
     rec(e, c)
   }
 
+  def preFoldWithContext[C](f: (SubTree, C) => C, combiner: (SubTree, C, Seq[C]) => C)
+                           (e: SubTree, c: C): C = {
+
+    def rec(eIn: SubTree, cIn: C): C = {
+      val ctx = f(eIn, cIn)
+      val Deconstructor(es, _) = eIn
+      val cs = es.map{ rec(_, ctx) }
+      combiner(eIn, ctx, cs)
+    }
+
+    rec(e, c)
+  }
+
   /*
    * =============
    * Auxiliary API

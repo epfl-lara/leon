@@ -98,7 +98,7 @@ object Types {
 
     assert(classDef.tparams.size == tps.size)
 
-    def fields = {
+    lazy val fields = {
       val tmap = (classDef.tparams zip tps).toMap
       if (tmap.isEmpty) {
         classDef.fields
