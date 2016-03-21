@@ -667,6 +667,9 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           case (e, p) => mapForPattern(e, p)
         }.toMap
 
+      case InstanceOfPattern(b, ct) =>
+        bindIn(b, Some(ct))
+
       case other =>
         bindIn(other.binder)
     }

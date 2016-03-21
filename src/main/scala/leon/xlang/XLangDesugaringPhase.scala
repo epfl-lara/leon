@@ -3,6 +3,7 @@
 package leon
 package xlang
 
+import utils._
 import purescala.Definitions.Program
 
 object XLangDesugaringPhase extends LeonPhase[Program, Program] {
@@ -11,8 +12,13 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
   val description = "Desugar xlang features into PureScala"
 
   override def run(ctx: LeonContext, pgm: Program): (LeonContext, Program) = {
+
+    def debugTrees(title: String) =
+      PrintTreePhase(title).when(ctx.reporter.isDebugEnabled(DebugSectionTrees))
+
     val phases =
       AntiAliasingPhase andThen
+      debugTrees("Program after anti-aliasing") andThen
       EpsilonElimination andThen
       ImperativeCodeElimination
 
