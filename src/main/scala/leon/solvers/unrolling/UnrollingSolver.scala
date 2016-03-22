@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package combinators
+package unrolling
 
 import purescala.Common._
 import purescala.Definitions._
@@ -15,7 +15,7 @@ import purescala.Types._
 import purescala.TypeOps.bestRealType
 import utils._
 
-import templates._
+import theories._
 import evaluators._
 import Template._
 
@@ -55,9 +55,7 @@ trait AbstractUnrollingSolver[T]
   protected var definitiveModel  : Model = Model.empty
   protected var definitiveCore   : Set[Expr] = Set.empty
 
-  def check: Option[Boolean] = {
-    genericCheck(Set.empty)
-  }
+  def check: Option[Boolean] = genericCheck(Set.empty)
 
   def getModel: Model = if (foundDefinitiveAnswer && definitiveAnswer.getOrElse(false)) {
     definitiveModel
@@ -71,14 +69,14 @@ trait AbstractUnrollingSolver[T]
     Set.empty
   }
 
-  private val freeVars    = new IncrementalMap[Identifier, T]()
   private val constraints = new IncrementalSeq[Expr]()
+  private val freeVars    = new IncrementalMap[Identifier, T]()
 
   protected var interrupted : Boolean = false
 
   protected val reporter = context.reporter
 
-  lazy val templateGenerator = new TemplateGenerator(templateEncoder, assumePreHolds)
+  lazy val templateGenerator = new TemplateGenerator(theoryEncoder, templateEncoder, assumePreHolds)
   lazy val unrollingBank = new UnrollingBank(context, templateGenerator)
 
   def push(): Unit = {
@@ -110,11 +108,15 @@ trait AbstractUnrollingSolver[T]
     interrupted = false
   }
 
-  def assertCnstr(expression: Expr, bindings: Map[Identifier, T]): Unit = {
-    constraints += expression
-    freeVars ++= bindings
+  protected def declareVariable(id: Identifier): T
 
-    val newClauses = unrollingBank.getClauses(expression, bindings.map { case (k, v) => Variable(k) -> v })
+  def assertCnstr(expression: Expr): Unit = {
+    constraints += expression
+    val bindings = variablesOf(expression).map(id => id -> freeVars.cached(id) {
+      declareVariable(theoryEncoder.encode(id))
+    }).toMap
+
+    val newClauses = unrollingBank.getClauses(expression, bindings)
     for (cl <- newClauses) {
       solverAssert(cl)
     }
@@ -128,6 +130,8 @@ trait AbstractUnrollingSolver[T]
   }
 
   implicit val printable: T => Printable
+
+  val theoryEncoder: TheoryEncoder
   val templateEncoder: TemplateEncoder[T]
 
   def solverAssert(cnstr: T): Unit
@@ -166,8 +170,16 @@ trait AbstractUnrollingSolver[T]
   def solverUnsatCore: Option[Seq[T]]
 
   trait ModelWrapper {
-    def get(id: Identifier): Option[Expr]
-    def eval(elem: T, tpe: TypeTree): Option[Expr]
+    def modelEval(elem: T, tpe: TypeTree): Option[Expr]
+
+    def eval(elem: T, tpe: TypeTree): Option[Expr] = modelEval(elem, theoryEncoder.encode(tpe)).map {
+      expr => theoryEncoder.decode(expr)(Map.empty)
+    }
+
+    def get(id: Identifier): Option[Expr] = eval(freeVars(id), theoryEncoder.encode(id.getType)).filter {
+      case Variable(_) => false
+      case _ => true
+    }
 
     private[AbstractUnrollingSolver] def extract(b: T, m: Matcher[T]): Option[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
@@ -228,6 +240,7 @@ trait AbstractUnrollingSolver[T]
   def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
     foundDefinitiveAnswer = false
 
+    // TODO: theory encoder for assumptions!?
     val encoder = templateGenerator.encoder.encodeExpr(freeVars.toMap) _
     val assumptionsSeq       : Seq[Expr]    = assumptions.toSeq
     val encodedAssumptions   : Seq[T]       = assumptionsSeq.map(encoder)
@@ -241,7 +254,7 @@ trait AbstractUnrollingSolver[T]
       }).toSet
     }
 
-    while(!foundDefinitiveAnswer && !interrupted) {
+    while (!foundDefinitiveAnswer && !interrupted) {
       reporter.debug(" - Running search...")
       var quantify = false
 
@@ -432,8 +445,12 @@ trait AbstractUnrollingSolver[T]
   }
 }
 
-class UnrollingSolver(val context: LeonContext, val program: Program, underlying: Solver)
-  extends AbstractUnrollingSolver[Expr] {
+class UnrollingSolver(
+  val context: LeonContext,
+  val program: Program,
+  underlying: Solver,
+  theories: TheoryEncoder = NoEncoder
+) extends AbstractUnrollingSolver[Expr] {
 
   override val name = "U:"+underlying.name
 
@@ -444,10 +461,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   val printable = (e: Expr) => e
 
   val templateEncoder = new TemplateEncoder[Expr] {
-    def encodeId(id: Identifier): Expr= {
-      Variable(id.freshen)
-    }
-
+    def encodeId(id: Identifier): Expr= Variable(id.freshen)
     def encodeExpr(bindings: Map[Identifier, Expr])(e: Expr): Expr = {
       replaceFromIDs(bindings, e)
     }
@@ -468,11 +482,11 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
     }
   }
 
+  val theoryEncoder = theories
+
   val solver = underlying
 
-  def assertCnstr(expression: Expr): Unit = {
-    assertCnstr(expression, variablesOf(expression).map(id => id -> id.toVariable).toMap)
-  }
+  def declareVariable(id: Identifier): Variable = id.toVariable
 
   def solverAssert(cnstr: Expr): Unit = {
     solver.assertCnstr(cnstr)
@@ -491,8 +505,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
 
   def solverGetModel: ModelWrapper = new ModelWrapper {
     val model = solver.getModel
-    def get(id: Identifier): Option[Expr] = model.get(id)
-    def eval(elem: Expr, tpe: TypeTree): Option[Expr] = evaluator.eval(elem, model).result
+    def modelEval(elem: Expr, tpe: TypeTree): Option[Expr] = evaluator.eval(elem, model).result
     override def toString = model.toMap.mkString("\n")
   }
 

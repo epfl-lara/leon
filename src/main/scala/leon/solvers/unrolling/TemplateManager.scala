@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import purescala.Common._
 import purescala.Definitions._
@@ -470,7 +470,7 @@ class FunctionTemplate[T] private(
   override def toString : String = str
 }
 
-class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) extends IncrementalState {
+class TemplateManager[T](protected[unrolling] val encoder: TemplateEncoder[T]) extends IncrementalState {
   private val condImplies = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
   private val condImplied = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
 

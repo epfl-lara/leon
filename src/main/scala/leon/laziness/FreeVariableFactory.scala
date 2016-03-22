@@ -15,22 +15,22 @@ import purescala.Types._
  */
 object FreeVariableFactory {
 
-  val fvClass = AbstractClassDef(FreshIdentifier("FreeVar@"), Seq(), None)
+  val fvClass = new AbstractClassDef(FreshIdentifier("FreeVar@"), Seq(), None)
   val fvType = AbstractClassType(fvClass, Seq())
   val varCase = {
-    val cdef = CaseClassDef(FreshIdentifier("Var@"), Seq(), Some(fvType), false)
+    val cdef = new CaseClassDef(FreshIdentifier("Var@"), Seq(), Some(fvType), false)
     cdef.setFields(Seq(ValDef(FreshIdentifier("fl", fvType))))
     fvClass.registerChild(cdef)
     cdef
   }
   val nextCase = {
-    val cdef = CaseClassDef(FreshIdentifier("NextVar@"), Seq(), Some(fvType), false)
+    val cdef = new CaseClassDef(FreshIdentifier("NextVar@"), Seq(), Some(fvType), false)
     cdef.setFields(Seq(ValDef(FreshIdentifier("fl", fvType))))
     fvClass.registerChild(cdef)
     cdef
   }
   val nilCase = {
-    val cdef = CaseClassDef(FreshIdentifier("NilVar@"), Seq(), Some(fvType), false)
+    val cdef = new CaseClassDef(FreshIdentifier("NilVar@"), Seq(), Some(fvType), false)
     fvClass.registerChild(cdef)
     cdef
   }

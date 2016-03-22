@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import purescala.Common._
 import purescala.Expressions._
@@ -161,13 +161,14 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     clause
   }
 
-  def getClauses(expr: Expr, bindings: Map[Expr, T]): Seq[T] = {
+  def getClauses(expr: Expr, bindings: Map[Identifier, T]): Seq[T] = {
     // OK, now this is subtle. This `getTemplate` will return
     // a template for a "fake" function. Now, this template will
     // define an activating boolean...
-    val template = templateGenerator.mkTemplate(expr)
+    val (template, mapping) = templateGenerator.mkTemplate(expr)
+    val reverse = mapping.map(p => p._2 -> p._1)
 
-    val trArgs = template.tfd.params.map(vd => Left(bindings(Variable(vd.id))))
+    val trArgs = template.tfd.params.map(vd => Left(bindings(reverse(vd.id))))
 
     // ...now this template defines clauses that are all guarded
     // by that activating boolean. If that activating boolean is 
@@ -211,7 +212,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def promoteBlocker(b: T) = {
     if (callInfos contains b) {
       val (_, origGen, notB, fis) = callInfos(b)
-      
+
       callInfos += b -> (1, origGen, notB, fis)
     }
 

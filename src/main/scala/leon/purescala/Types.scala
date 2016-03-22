@@ -80,6 +80,7 @@ object Types {
   }
 
   case class SetType(base: TypeTree) extends TypeTree
+  case class BagType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class FunctionType(from: Seq[TypeTree], to: TypeTree) extends TypeTree
   case class ArrayType(base: TypeTree) extends TypeTree

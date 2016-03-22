@@ -59,7 +59,7 @@ class LazyClosureFactory(p: Program) {
           ops.tail.forall(op => isMemoized(op) == isMemoized(ops.head))
         }
         val absTParams = (1 to tpcount).map(i => TypeParameterDef(TypeParameter.fresh("T" + i)))
-        tpename -> AbstractClassDef(FreshIdentifier(typeNameToADTName(tpename), Untyped),
+        tpename -> new AbstractClassDef(FreshIdentifier(typeNameToADTName(tpename), Untyped),
           absTParams, None)
     }.toMap
     var opToAdt = Map[FunDef, CaseClassDef]()
@@ -76,7 +76,7 @@ class LazyClosureFactory(p: Program) {
           assert(opfd.tparams.size == absTParamsDef.size)
           val absType = AbstractClassType(absClass, opfd.tparams.map(_.tp))
           val classid = FreshIdentifier(opNameToCCName(opfd.id.name), Untyped)
-          val cdef = CaseClassDef(classid, opfd.tparams, Some(absType), isCaseObject = false)
+          val cdef = new CaseClassDef(classid, opfd.tparams, Some(absType), isCaseObject = false)
           val nfields = opfd.params.map { vd =>
             val fldType = vd.getType
             unwrapLazyType(fldType) match {
@@ -105,7 +105,7 @@ class LazyClosureFactory(p: Program) {
             case NAryType(tparams, tcons) => tcons(absTParams)
           }
           val eagerid = FreshIdentifier("Eager" + TypeUtil.typeNameWOParams(clresType))
-          val eagerClosure = CaseClassDef(eagerid, absTParamsDef,
+          val eagerClosure = new CaseClassDef(eagerid, absTParamsDef,
             Some(AbstractClassType(absClass, absTParams)), isCaseObject = false)
           eagerClosure.setFields(Seq(ValDef(FreshIdentifier("a", clresType))))
           absClass.registerChild(eagerClosure)
@@ -166,7 +166,7 @@ class LazyClosureFactory(p: Program) {
       val fldType = SetType(AbstractClassType(absClass, tparams))
       ValDef(FreshIdentifier(typeToFieldName(tn), fldType))
     }
-    val ccd = CaseClassDef(FreshIdentifier("State@"), tparams map TypeParameterDef, None, false)
+    val ccd = new CaseClassDef(FreshIdentifier("State@"), tparams map TypeParameterDef, None, false)
     ccd.setFields(fields)
     ccd
   }

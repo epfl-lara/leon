@@ -2,14 +2,16 @@
 
 package leon.utils
 
+import scala.collection.mutable.{Map => MutableMap}
+
 object Bijection {
   def apply[A, B](a: Iterable[(A, B)]): Bijection[A, B] = new Bijection[A, B] ++= a
   def apply[A, B](a: (A, B)*): Bijection[A, B] = apply(a.toSeq)
 }
 
 class Bijection[A, B] extends Iterable[(A, B)] {
-  protected var a2b = Map[A, B]()
-  protected var b2a = Map[B, A]()
+  protected val a2b = MutableMap[A, B]()
+  protected val b2a = MutableMap[B, A]()
   
   def iterator = a2b.iterator
 
@@ -28,8 +30,8 @@ class Bijection[A, B] extends Iterable[(A, B)] {
   }
 
   def clear(): Unit = {
-    a2b = Map()
-    b2a = Map()
+    a2b.clear()
+    b2a.clear()
   }
 
   def getA(b: B) = b2a.get(b)
@@ -71,5 +73,10 @@ class Bijection[A, B] extends Iterable[(A, B)] {
   }
   def composeB[C](c: B => C): Bijection[A, C] = {
     new Bijection[A, C] ++= this.a2b.map(kv => kv._1 -> c(kv._2))
+  }
+
+  def swap: Bijection[B, A] = new Bijection[B, A] {
+    override protected val a2b = Bijection.this.b2a
+    override protected val b2a = Bijection.this.a2b
   }
 }

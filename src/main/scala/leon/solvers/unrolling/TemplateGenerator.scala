@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import purescala.Common._
 import purescala.Expressions._
@@ -14,13 +14,15 @@ import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Quantification._
 
+import theories._
 import utils.SeqUtils._
 import Instantiation._
 
-class TemplateGenerator[T](val encoder: TemplateEncoder[T],
+class TemplateGenerator[T](val theories: TheoryEncoder,
+                           val encoder: TemplateEncoder[T],
                            val assumePreHolds: Boolean) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
-  private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
+  private var cacheExpr = Map[Expr, (FunctionTemplate[T], Map[Identifier, Identifier])]()
 
   private type Clauses = (
     Map[Identifier,T],
@@ -45,20 +47,24 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
   val manager = new QuantificationManager[T](encoder)
 
-  def mkTemplate(body: Expr): FunctionTemplate[T] = {
-    if (cacheExpr contains body) {
-      return cacheExpr(body)
+  def mkTemplate(raw: Expr): (FunctionTemplate[T], Map[Identifier, Identifier]) = {
+    if (cacheExpr contains raw) {
+      return cacheExpr(raw)
     }
 
-    val arguments = variablesOf(body).toSeq.map(ValDef(_))
+    val mapping = variablesOf(raw).map(id => id -> theories.encode(id)).toMap
+    val body = theories.encode(raw)(mapping)
+
+    val arguments = mapping.values.toSeq.map(ValDef(_))
     val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true), Nil, arguments, body.getType)
 
     fakeFunDef.precondition = Some(andJoin(arguments.map(vd => manager.typeUnroller(vd.toVariable))))
     fakeFunDef.body = Some(body)
 
     val res = mkTemplate(fakeFunDef.typed, false)
-    cacheExpr += body -> res
-    res
+    val p = (res, mapping)
+    cacheExpr += raw -> p
+    p
   }
 
   def mkTemplate(tfd: TypedFunDef, isRealFunDef: Boolean = true): FunctionTemplate[T] = {

@@ -2,24 +2,23 @@
 
 package leon.utils
 
-class IncrementalBijection[A,B] extends Bijection[A,B] with IncrementalState {
-  private var a2bStack = List[Map[A,B]]()
-  private var b2aStack = List[Map[B,A]]()
+import scala.collection.mutable.{Map => MutableMap, Stack}
 
-  private def recursiveGet[T,U](stack: List[Map[T,U]], t: T): Option[U] = stack match {
-    case t2u :: xs => t2u.get(t) orElse recursiveGet(xs, t)
-    case Nil => None
-  }
+class IncrementalBijection[A,B] extends Bijection[A,B] with IncrementalState {
+  protected val a2bStack = Stack[MutableMap[A,B]]()
+  protected val b2aStack = Stack[MutableMap[B,A]]()
 
   override def getA(b: B) = b2a.get(b) match {
     case s @ Some(a) => s
-    case None => recursiveGet(b2aStack, b)
+    case None => b2aStack.view.flatMap(_.get(b)).headOption
   }
 
   override def getB(a: A) = a2b.get(a) match {
     case s @ Some(b) => s
-    case None => recursiveGet(a2bStack, a)
+    case None => a2bStack.view.flatMap(_.get(a)).headOption
   }
+
+  override def iterator = aToB.iterator
 
   def aToB: Map[A,B] = {
     a2bStack.reverse.foldLeft(Map[A,B]()) { _ ++ _ } ++ a2b
@@ -37,22 +36,30 @@ class IncrementalBijection[A,B] extends Bijection[A,B] with IncrementalState {
 
   def reset() : Unit = {
     super.clear()
-    a2bStack = Nil
-    b2aStack = Nil
+    a2bStack.clear()
+    b2aStack.clear()
   }
 
   def push(): Unit = {
-    a2bStack = a2b :: a2bStack
-    b2aStack = b2a :: b2aStack
-    a2b = Map()
-    b2a = Map()
+    a2bStack.push(a2b.clone)
+    b2aStack.push(b2a.clone)
+    a2b.clear()
+    b2a.clear()
   }
 
   def pop(): Unit = {
-    a2b = a2bStack.head
-    b2a = b2aStack.head
-    a2bStack = a2bStack.tail
-    b2aStack = b2aStack.tail
+    a2b.clear()
+    a2b ++= a2bStack.head
+    b2a.clear()
+    b2a ++= b2aStack.head
+    a2bStack.pop()
+    b2aStack.pop()
   }
 
+  override def swap: IncrementalBijection[B, A] = new IncrementalBijection[B, A] {
+    override protected val a2b = IncrementalBijection.this.b2a
+    override protected val b2a = IncrementalBijection.this.a2b
+    override protected val a2bStack = IncrementalBijection.this.b2aStack
+    override protected val b2aStack = IncrementalBijection.this.a2bStack
+  }
 }

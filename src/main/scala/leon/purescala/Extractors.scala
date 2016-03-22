@@ -144,6 +144,12 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetUnion(es(0), es(1)))
       case SetDifference(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetDifference(es(0), es(1)))
+      case MultiplicityInBag(e1, e2) =>
+        Some(Seq(e1, e2), (es: Seq[Expr]) => MultiplicityInBag(es(0), es(1)))
+      case BagIntersection(e1, e2) =>
+        Some(Seq(e1, e2), (es: Seq[Expr]) => BagIntersection(es(0), es(1)))
+      case BagUnion(e1, e2) =>
+        Some(Seq(e1, e2), (es: Seq[Expr]) => BagUnion(es(0), es(1)))
       case mg @ MapApply(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapApply(es(0), es(1)))
       case MapUnion(t1, t2) =>
@@ -173,6 +179,9 @@ object Extractors {
       case SubString(t1, a, b) => Some((t1::a::b::Nil, es => SubString(es(0), es(1), es(2))))
       case FiniteSet(els, base) =>
         Some((els.toSeq, els => FiniteSet(els.toSet, base)))
+      case FiniteBag(els, base) =>
+        val seq = els.toSeq
+        Some((seq.map(_._1), els => FiniteBag((els zip seq.map(_._2)).toMap, base)))
       case FiniteMap(args, f, t) => {
         val subArgs = args.flatMap { case (k, v) => Seq(k, v) }.toSeq
         val builder = (as: Seq[Expr]) => {
@@ -381,5 +390,4 @@ object Extractors {
       }
     }
   }
-
 }

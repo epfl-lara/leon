@@ -235,7 +235,7 @@ object Definitions {
     self =>
 
     def subDefinitions = fields ++ methods ++ tparams 
-      
+
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
     def fields: Seq[ValDef]
@@ -364,7 +364,7 @@ object Definitions {
       val acd = new AbstractClassDef(id, tparams, parent)
       acd.addFlags(this.flags)
       if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => acd.setInvariant(inv))
-      parent.map(_.classDef.ancestors.map(_.registerChild(acd)))
+      parent.foreach(_.classDef.registerChild(acd))
       acd.copiedFrom(this)
     }
   }
@@ -418,7 +418,7 @@ object Definitions {
       cd.setFields(fields)
       cd.addFlags(this.flags)
       if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => cd.setInvariant(inv))
-      parent.map(_.classDef.ancestors.map(_.registerChild(cd)))
+      parent.foreach(_.classDef.registerChild(cd))
       cd.copiedFrom(this)
     }
   }

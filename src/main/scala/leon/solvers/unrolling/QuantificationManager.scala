@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import leon.utils._
 import purescala.Common._

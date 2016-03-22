@@ -209,9 +209,10 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def listEdgeToString(l: List[Edge]): String = ??? by example
     |}
     """.stripMargin.replaceByExample)
+
   implicit val (ctx, program) = getFixture()
-  
-  val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si ).toMap
+
+  val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si).toMap
 
   def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
     val (fd, program) = applyStringRenderOn(functionName)
@@ -260,6 +261,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     def apply(types: TypeTree*)(args: Expr*) =
       FunctionInvocation(fd.typed(types), args)
   }
+
   // Mimics the file above, allows construction of expressions.
   case class Constructors(program: Program) {
     implicit val p = program

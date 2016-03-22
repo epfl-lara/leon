@@ -252,7 +252,7 @@ trait AbstractZ3Solver extends Solver {
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {
 
-    var z3Vars: Map[Identifier,Z3AST] = if(initialMap.nonEmpty) {
+    var z3Vars: Map[Identifier,Z3AST] = if (initialMap.nonEmpty) {
       initialMap
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of

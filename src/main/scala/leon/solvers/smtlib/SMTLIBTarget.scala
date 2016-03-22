@@ -294,7 +294,6 @@ trait SMTLIBTarget extends Interruptible {
         conflicts.foreach { declareStructuralSort }
         declareStructuralSort(t)
     }
-
   }
 
   protected def declareVariable(id: Identifier): SSymbol = {

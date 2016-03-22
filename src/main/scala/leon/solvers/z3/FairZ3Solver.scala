@@ -4,7 +4,6 @@ package leon
 package solvers
 package z3
 
-import utils._
 import _root_.z3.scala._
 
 import purescala.Common._
@@ -13,8 +12,8 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 
-import solvers.templates._
-import solvers.combinators._
+import unrolling._
+import theories._
 
 class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
@@ -31,6 +30,10 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
   override protected val reporter = context.reporter
   override def reset(): Unit = super[AbstractZ3Solver].reset()
+
+  def declareVariable(id: Identifier): Z3AST = variables.cachedB(Variable(id)) {
+    templateEncoder.encodeId(id)
+  }
 
   def solverCheck[R](clauses: Seq[Z3AST])(block: Option[Boolean] => R): R = {
     solver.push()
@@ -80,14 +83,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
     */
 
-    def get(id: Identifier): Option[Expr] = variables.getB(id.toVariable).flatMap {
-      z3ID => eval(z3ID, id.getType) match {
-        case Some(Variable(id)) => None
-        case e => e
-      }
-    }
-
-    def eval(elem: Z3AST, tpe: TypeTree): Option[Expr] = tpe match {
+    def modelEval(elem: Z3AST, tpe: TypeTree): Option[Expr] = tpe match {
       case BooleanType => model.evalAs[Boolean](elem).map(BooleanLiteral)
       case Int32Type => model.evalAs[Int](elem).map(IntLiteral).orElse {
         model.eval(elem).flatMap(t => softFromZ3Formula(model, t, Int32Type))
@@ -105,6 +101,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   val printable = (z3: Z3AST) => new Printable {
     def asString(implicit ctx: LeonContext) = z3.toString
   }
+
+  val theoryEncoder = StringEncoder
 
   val templateEncoder = new TemplateEncoder[Z3AST] {
     def encodeId(id: Identifier): Z3AST = {
@@ -170,13 +168,9 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     }
   }
 
-  def assertCnstr(expression: Expr): Unit = {
+  override def assertCnstr(expression: Expr): Unit = {
     try {
-      val bindings = variablesOf(expression).map(id => id -> variables.cachedB(Variable(id)) {
-        templateGenerator.encoder.encodeId(id)
-      }).toMap
-
-      assertCnstr(expression, bindings)
+      super.assertCnstr(expression)
     } catch {
       case _: Unsupported =>
         addError()

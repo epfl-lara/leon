@@ -134,14 +134,14 @@ object LazinessUtil {
   }
 
   def isLazyType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
-      cid.name == "Lazy"
+    case CaseClassType(ccd, Seq(_)) if !ccd.hasParent && !ccd.isCaseObject =>
+      ccd.id.name == "Lazy"
     case _ => false
   }
 
   def isMemType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
-      cid.name == "Mem"
+    case CaseClassType(ccd, Seq(_)) if !ccd.hasParent && !ccd.isCaseObject =>
+      ccd.id.name == "Mem"
     case _ => false
   }
 

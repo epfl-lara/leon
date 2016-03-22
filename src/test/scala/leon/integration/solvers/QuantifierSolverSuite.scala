@@ -13,7 +13,7 @@ import leon.LeonOption
 
 import leon.solvers._
 import leon.solvers.smtlib._
-import leon.solvers.combinators._
+import leon.solvers.cvc4._
 import leon.solvers.z3._
 
 class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
@@ -27,10 +27,10 @@ class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
       ("fairz3",   (ctx: LeonContext, pgm: Program) => new FairZ3Solver(ctx, pgm))
     ) else Nil) ++
     (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
+      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
     ) else Nil) ++
     (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
+      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new CVC4UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
     ) else Nil)
   }
 

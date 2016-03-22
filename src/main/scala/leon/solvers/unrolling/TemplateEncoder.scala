@@ -2,10 +2,18 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
-import purescala.Common.Identifier
-import purescala.Expressions.Expr
+import purescala.Common._
+import purescala.Expressions._
+import purescala.Definitions._
+import purescala.Extractors._
+import purescala.ExprOps._
+import purescala.Types._
+
+import utils._
+
+import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
 trait TemplateEncoder[T] {
   def encodeId(id: Identifier): T
@@ -21,3 +29,4 @@ trait TemplateEncoder[T] {
 
   def extractNot(v: T): Option[T]
 }
+
