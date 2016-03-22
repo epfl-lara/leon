@@ -1,10 +1,9 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
 package combinators
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Quantification._
@@ -664,7 +663,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   override def foundAnswer(res: Option[Boolean], model: Model = Model.empty, core: Set[Expr] = Set.empty) = {
     super.foundAnswer(res, model, core)
 
-    if (!interrupted && res == None && model == None) {
+    if (!interrupted && res.isEmpty && model.isEmpty) {
       reporter.ifDebug { debug =>
         debug("Unknown result!?")
       }

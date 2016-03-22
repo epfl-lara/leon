@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -9,7 +9,8 @@ import purescala.Quantification.Domains
 import purescala.ExprOps._
 
 trait AbstractModel[+This <: Model with AbstractModel[This]]
-  extends scala.collection.IterableLike[(Identifier, Expr), This] {
+  extends scala.collection.IterableLike[(Identifier, Expr), This]
+  with Printable {
 
   protected val mapping: Map[Identifier, Expr]
 

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -10,12 +10,12 @@ import purescala.ExprOps._
 import purescala.Constructors._
 import scala.concurrent.duration._
 
-case object Ground extends Rule("Ground") {
+case object Ground extends NormalizingRule("Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
       List(new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext): RuleApplication = {
-          val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(10.seconds))
+          val solver = SimpleSolverAPI(hctx.solverFactory.withTimeout(10.seconds))
 
           val result = solver.solveSAT(p.phi) match {
             case (Some(true), model) =>

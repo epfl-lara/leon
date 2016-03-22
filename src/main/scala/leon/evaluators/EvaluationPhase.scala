@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package evaluators
@@ -15,7 +15,7 @@ object EvaluationPhase extends UnitPhase[Program] {
   implicit val debugSection = utils.DebugSectionEvaluation
 
   def apply(ctx: LeonContext, program: Program): Unit = {
-    val evalFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
+    val evalFuns: Option[Seq[String]] = ctx.findOption(GlobalOptions.optFunctions)
 
     val evaluator = ctx.findOptionOrDefault(MainComponent.optEval)
 

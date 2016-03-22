@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -367,6 +367,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case Not(expr) => p"\u00AC$expr"
 
       case vd @ ValDef(id) =>
+        if(vd.isVar)
+          p"var "
         p"$id : ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
@@ -392,11 +394,9 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      /*
       case LetPattern(p,s,rhs) =>
         p"""|val $p = $s
             |$rhs"""
-      */
 
       case MatchExpr(s, csc) =>
         optP {
@@ -530,7 +530,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
         if (ccd.methods.nonEmpty) {
           p"""| {
-              |  ${nary(ccd.methods, "\n\n")}
+              |  ${nary(ccd.methods, "\n\n") }
               |}"""
         }
 
@@ -658,8 +658,8 @@ class PrettyPrinter(opts: PrinterOptions,
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
     case (_, Some(
-      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr |
-      _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose
+      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr | _: MatchCase |
+      _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose | _ : Tuple
     )) => false
     case (ex: StringConcat, Some(_: StringConcat)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false

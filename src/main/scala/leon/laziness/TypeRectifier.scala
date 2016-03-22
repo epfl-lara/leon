@@ -1,29 +1,15 @@
 package leon
 package laziness
 
-import invariant.factories._
-import invariant.util.Util._
-import invariant.util._
 import invariant.structure.FunctionUtils._
-import purescala.ScalaPrinter
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.DefOps._
 import purescala.Extractors._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
-import java.io.File
-import java.io.FileWriter
-import java.io.BufferedWriter
-import scala.util.matching.Regex
-import leon.purescala.PrettyPrinter
-import leon.LeonContext
-import leon.LeonOptionDef
-import leon.Main
-import leon.TransformationPhase
 import LazinessUtil._
 import leon.invariant.datastructure.DisjointSets
 import invariant.util.ProgramUtil._
@@ -34,14 +20,11 @@ import invariant.util.ProgramUtil._
  * Result is a program in which all type paramters of functions, types of
  * parameters of functions are correct.
  * The subsequent phase performs a local type inference.
- * @param placeHolderParameter Expected to returns true iff a type parameter
- * 														is meant as a placeholder and cannot be used
- * 														to represent a unified type
  */
 class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
 
   val typeClasses = {
-    var tc = new DisjointSets[TypeTree]()
+    val tc = new DisjointSets[TypeTree]()
     p.definedFunctions.foreach {
       case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
         postTraversal {

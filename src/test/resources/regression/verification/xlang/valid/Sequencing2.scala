@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 object Sequencing2 {
 
   def test(): Int = {

@@ -1,4 +1,5 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 import leon.lang._
 
 object WhileAsFun1 {

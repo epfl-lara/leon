@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package grammars
@@ -12,7 +12,7 @@ import purescala.Constructors._
   * without regard of context (variables in scope, current function etc.)
   * Also does some trivial simplifications.
   */
-case object BaseGrammar extends ExpressionGrammar[TypeTree] {
+case object BaseGrammar extends SimpleExpressionGrammar {
 
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
     case BooleanType =>
@@ -42,9 +42,9 @@ case object BaseGrammar extends ExpressionGrammar[TypeTree] {
         terminal(InfiniteIntegerLiteral(1), Tags.One ),
         nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
         nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times)//,
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
       )
 
     case TupleType(stps) =>

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -9,14 +9,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import Witnesses._
 
-case class SourceInfo(fd: FunDef,
-                      pc: Expr,
-                      source: Expr,
-                      spec: Expr,
-                      eb: ExamplesBank) {
-
-  val problem = Problem.fromSourceInfo(this)
-}
+case class SourceInfo(fd: FunDef, source: Expr, problem: Problem)
 
 object SourceInfo {
 
@@ -28,7 +21,7 @@ object SourceInfo {
   }
 
   def extractFromProgram(ctx: LeonContext, prog: Program): List[SourceInfo] = {
-    val functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet }
+    val functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet }
 
     def excludeByDefault(fd: FunDef): Boolean = {
       fd.annotations contains "library"
@@ -54,7 +47,7 @@ object SourceInfo {
 
   def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[SourceInfo] = {
 
-    val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
+    val term = Terminating(fd.applied)
 
     val eFinder = new ExamplesFinder(ctx, prog)
 
@@ -68,12 +61,15 @@ object SourceInfo {
         ExamplesBank.empty
       }
 
-      val ci = SourceInfo(fd, and(path, term), ch, ch.pred, outerEb)
+      val p = Problem.fromSpec(ch.pred, and(path, term), outerEb, Some(fd))
 
-      val pcEb = eFinder.generateForPC(ci.problem.as, path, 20)
-      val chooseEb = eFinder.extractFromProblem(ci.problem)
+      val pcEb = eFinder.generateForPC(p.as, path, 20)
+      val chooseEb = eFinder.extractFromProblem(p)
+      val eb = (outerEb union chooseEb) union pcEb
 
-      ci.copy(eb = (outerEb union chooseEb) union pcEb)
+      val betterP = p.copy(eb = eb)
+
+      SourceInfo(fd, ch, betterP)
     }
   }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -16,7 +16,7 @@ object Definitions {
     
     val id: Identifier
 
-    def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
+    def subDefinitions: Seq[Definition] // The enclosed scopes/definitions by this definition
   
     def containsDef(df: Definition): Boolean = {
       subDefinitions.exists { sd =>
@@ -51,6 +51,10 @@ object Definitions {
     val getType = id.getType
 
     var defaultValue : Option[FunDef] = None
+
+    var isVar: Boolean = false
+
+    def setIsVar(b: Boolean): this.type = { this.isVar = b; this }
 
     def subDefinitions = Seq()
 
@@ -113,14 +117,21 @@ object Definitions {
       }
     }
   }
-  
-  /** Object definition */
+
+  /** Definition of a compilation unit, corresponding to a source file
+    *
+    * @param id The name of the file this [[UnitDef]] was compiled from
+    * @param pack The package of this [[UnitDef]]
+    * @param imports The imports of this [[UnitDef]]
+    * @param defs The [[Definition]]s (classes and objects) in this [[UnitDef]]
+    * @param isMainUnit Whether this is a user-provided file or a library file
+    */
   case class UnitDef(
     id: Identifier,
-    pack : PackageRef,
-    imports : Seq[Import],
-    defs : Seq[Definition],
-    isMainUnit : Boolean // false for libraries/imports
+    pack: PackageRef,
+    imports: Seq[Import],
+    defs: Seq[Definition],
+    isMainUnit: Boolean
   ) extends Definition {
      
     def subDefinitions = defs
@@ -161,8 +172,7 @@ object Definitions {
       UnitDef(id, Nil, Nil, modules, true)
   }
   
-  /** Objects work as containers for class definitions, functions (def's) and
-   * val's. */
+  /** Corresponds to an '''object''' in scala. Contains [[FunDef]]s, [[ClassDef]]s and [[ValDef]]s. */
   case class ModuleDef(id: Identifier, defs: Seq[Definition], isPackageObject: Boolean) extends Definition {
     
     def subDefinitions = defs
@@ -184,7 +194,14 @@ object Definitions {
     }
   }
 
-  // A class that represents flags that annotate a FunDef with different attributes
+  /** A trait that represents flags that annotate a ClassDef with different attributes */
+  sealed trait ClassFlag
+
+  object ClassFlag {
+    def fromName(name: String, args: Seq[Option[Any]]): ClassFlag = Annotation(name, args)
+  }
+
+  /** A trait that represents flags that annotate a FunDef with different attributes */
   sealed trait FunctionFlag
 
   object FunctionFlag {
@@ -192,13 +209,6 @@ object Definitions {
       case "inline" => IsInlined
       case _ => Annotation(name, args)
     }
-  }
-
-  // A class that represents flags that annotate a ClassDef with different attributes
-  sealed trait ClassFlag
-
-  object ClassFlag {
-    def fromName(name: String, args: Seq[Option[Any]]): ClassFlag = Annotation(name, args)
   }
 
   // Whether this FunDef was originally a (lazy) field
@@ -218,9 +228,9 @@ object Definitions {
   case object IsInlined extends FunctionFlag
   // Is an ADT invariant method
   case object IsADTInvariant extends FunctionFlag with ClassFlag
+  case object IsInner extends FunctionFlag
 
-  /** Useful because case classes and classes are somewhat unified in some
-   * patterns (of pattern-matching, that is) */
+  /** Represents a class definition (either an abstract- or a case-class) */
   sealed trait ClassDef extends Definition {
     self =>
 
@@ -352,12 +362,12 @@ object Definitions {
     ): AbstractClassDef = {
       val acd = new AbstractClassDef(id, tparams, parent)
       acd.addFlags(this.flags)
-      parent.map(_.classDef.ancestors.map(_.registerChild(acd)))
+      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(acd)))
       acd.copiedFrom(this)
     }
   }
 
-  /** Case classes/objects. */
+  /** Case classes/ case objects. */
   case class CaseClassDef(id: Identifier,
                           tparams: Seq[TypeParameterDef],
                           parent: Option[AbstractClassType],
@@ -393,7 +403,7 @@ object Definitions {
     def typed: CaseClassType = typed(tparams.map(_.tp))
     
     /** Duplication of this [[CaseClassDef]].
-      * @note This will not replace recursive case class def calls in [[arguments]] nor the parent abstract class types
+      * @note This will not replace recursive [[CaseClassDef]] calls in [[fields]] nor the parent abstract class types
       */
     def duplicate(
       id: Identifier                    = this.id.freshen,
@@ -406,7 +416,7 @@ object Definitions {
       cd.setFields(fields)
       cd.addFlags(this.flags)
       cd.copiedFrom(this)
-      parent.map(_.classDef.ancestors.map(_.registerChild(cd)))
+      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(cd)))
       cd
     }
   }
@@ -501,6 +511,7 @@ object Definitions {
     def isRealFunction    = !canBeField
     def isSynthetic       = flags contains IsSynthetic
     def isInvariant       = flags contains IsADTInvariant
+    def isInner           = flags contains IsInner
     def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
     /* Wrapping in TypedFunDef */
@@ -519,6 +530,9 @@ object Definitions {
     def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
 
     def paramIds = params map { _.id }
+
+    def applied(args: Seq[Expr]): FunctionInvocation = Constructors.functionInvocation(this, args)
+    def applied = FunctionInvocation(this.typed, this.paramIds map Variable)
   }
 
 
@@ -602,6 +616,8 @@ object Definitions {
         res
       })
     }
+
+    // Methods that extract expressions from the underlying FunDef, using a cache
 
     def fullBody      = cached(fd.fullBody)
     def body          = fd.body map cached

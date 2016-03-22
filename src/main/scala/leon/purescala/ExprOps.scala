@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -43,33 +43,33 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
   def preTransformWithBinders(f: (Expr, Set[Identifier]) => Expr, initBinders: Set[Identifier] = Set())(e: Expr) = {
     import xlang.Expressions.LetVar
-    def rec(binders: Set[Identifier], e: Expr): Expr = (f(e, binders) match {
-      case LetDef(fds, bd) =>
+    def rec(binders: Set[Identifier], e: Expr): Expr = f(e, binders) match {
+      case ld@LetDef(fds, bd) =>
         fds.foreach(fd => {
           fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
         })
-        LetDef(fds, rec(binders, bd))
-      case Let(i, v, b) =>
-        Let(i, rec(binders + i, v), rec(binders + i, b))
-      case LetVar(i, v, b) =>
-        LetVar(i, rec(binders + i, v), rec(binders + i, b))
-      case MatchExpr(scrut, cses) =>
-        MatchExpr(rec(binders, scrut), cses map { case MatchCase(pat, og, rhs) =>
+        LetDef(fds, rec(binders, bd)).copiedFrom(ld)
+      case l@Let(i, v, b) =>
+        Let(i, rec(binders + i, v), rec(binders + i, b)).copiedFrom(l)
+      case lv@LetVar(i, v, b) =>
+        LetVar(i, rec(binders + i, v), rec(binders + i, b)).copiedFrom(lv)
+      case m@MatchExpr(scrut, cses) =>
+        MatchExpr(rec(binders, scrut), cses map { case mc@MatchCase(pat, og, rhs) =>
           val newBs = binders ++ pat.binders
-          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs))
-        })
-      case Passes(in, out, cses) =>
-        Passes(rec(binders, in), rec(binders, out), cses map { case MatchCase(pat, og, rhs) =>
+          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs)).copiedFrom(mc)
+        }).copiedFrom(m)
+      case p@Passes(in, out, cses) =>
+        Passes(rec(binders, in), rec(binders, out), cses map { case mc@MatchCase(pat, og, rhs) =>
           val newBs = binders ++ pat.binders
-          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs))
-        })
-      case Lambda(args, bd) =>
-        Lambda(args, rec(binders ++ args.map(_.id), bd))
-      case Forall(args, bd) =>
-        Forall(args, rec(binders ++ args.map(_.id), bd))
-      case Deconstructor(subs, builder) =>
-        builder(subs map (rec(binders, _)))
-    }).copiedFrom(e)
+          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs)).copiedFrom(mc)
+        }).copiedFrom(p)
+      case l@Lambda(args, bd) =>
+        Lambda(args, rec(binders ++ args.map(_.id), bd)).copiedFrom(l)
+      case f@Forall(args, bd) =>
+        Forall(args, rec(binders ++ args.map(_.id), bd)).copiedFrom(f)
+      case d@Deconstructor(subs, builder) =>
+        builder(subs map (rec(binders, _))).copiedFrom(d)
+    }
 
     rec(initBinders, e)
   }
@@ -287,9 +287,9 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
       case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
       case Let(i, e, b)       => Some(Let(subst(i), e, b))
-      case MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
+      case m@MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
         cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
-      }))
+      }).copiedFrom(m))
       case Passes(in, out, cses) => Some(Passes(in, out, cses.map { cse =>
         cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
       }))
@@ -1436,10 +1436,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
               else (m: Apriori) => None} &&
           (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
 
-        case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
-          idHomo(tfd1.fd.id, tfd2.fd.id)(apriori) && tfd1.tps.zip(tfd2.tps).mergeall{ case (t1, t2) => if(t1 == t2) (m: Apriori) => Option(m) else (m: Apriori) => None} &&
-          (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
-
         case (Lambda(defs, body), Lambda(defs2, body2)) =>
           // We remove variables introduced by lambdas.
           ((defs zip defs2).mergeall{ case (ValDef(a1), ValDef(a2)) =>
@@ -1558,8 +1554,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
       }
 
-      import synthesis.Witnesses.Terminating
-
       val res = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
@@ -1588,14 +1582,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           // TODO: Check type params
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-
-        case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
-          // TODO: Check type params
-          fdHomo(tfd1.fd, tfd2.fd) &&
-          (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-
-        case (v1, v2) if isValue(v1) && isValue(v2) =>
-          v1 == v2
 
         case Same(Deconstructor(es1, _), Deconstructor(es2, _)) =>
           (es1.size == es2.size) &&
@@ -2050,7 +2036,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
   def liftClosures(e: Expr): (Set[FunDef], Expr) = {
     var fds: Map[FunDef, FunDef] = Map()
 
-    import synthesis.Witnesses.Terminating
     val res1 = preMap({
       case LetDef(lfds, b) =>
         val nfds = lfds.map(fd => fd -> fd.duplicate())
@@ -2062,13 +2047,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {
           Some(FunctionInvocation(fds(tfd.fd).typed(tfd.tps), args))
-        } else {
-          None
-        }
-
-      case Terminating(tfd, args) =>
-        if (fds contains tfd.fd) {
-          Some(Terminating(fds(tfd.fd).typed(tfd.tps), args))
         } else {
           None
         }

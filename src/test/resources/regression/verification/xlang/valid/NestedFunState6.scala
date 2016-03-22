@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 object NestedFunState6 {
 
   def simpleSideEffect(n: BigInt): BigInt = {

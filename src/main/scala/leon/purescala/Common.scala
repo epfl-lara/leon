@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -9,7 +9,6 @@ import Types._
 import Definitions.Program
 
 object Common {
-
 
   abstract class Tree extends Positioned with Serializable with Printable {
     def copiedFrom(o: Tree): this.type = {
@@ -42,8 +41,6 @@ object Common {
     private val tpe: TypeTree,
     private val alwaysShowUniqueID: Boolean = false
   ) extends Tree with Typed with Ordered[Identifier] {
-
-    self: Serializable =>
 
     val getType = tpe
 
@@ -116,6 +113,7 @@ object Common {
     id1.toString == id2.toString
   }
 
+  /** Returns true if the two group of identifiers ovelap. */
   def aliased(ids1 : Set[Identifier], ids2 : Set[Identifier]) = {
     val s1 = ids1.groupBy{ _.toString }.keySet
     val s2 = ids2.groupBy{ _.toString }.keySet

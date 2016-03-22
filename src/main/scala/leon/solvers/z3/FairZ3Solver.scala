@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -7,22 +7,14 @@ package z3
 import utils._
 import _root_.z3.scala._
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Constructors._
-import purescala.Quantification._
 import purescala.ExprOps._
 import purescala.Types._
 
 import solvers.templates._
 import solvers.combinators._
-import Template._
-
-import evaluators._
-
-import termination._
 
 class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
@@ -212,7 +204,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   override def foundAnswer(res: Option[Boolean], model: Model = Model.empty, core: Set[Expr] = Set.empty) = {
     super.foundAnswer(res, model, core)
 
-    if (!interrupted && res == None && model == None) {
+    if (!interrupted && res.isEmpty && model.isEmpty) {
       reporter.ifDebug { debug => 
         if (solver.getReasonUnknown != "canceled") {
           debug("Z3 returned unknown: " + solver.getReasonUnknown)

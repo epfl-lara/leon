@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package grammars
@@ -16,7 +16,7 @@ import purescala.Expressions._
   * @param types The candidate real type parameters for [[currentFunction]]
   * @param exclude An additional set of functions for which no calls will be generated
   */
-case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends ExpressionGrammar[TypeTree] {
+case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends SimpleExpressionGrammar {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
@@ -63,8 +63,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
                  }
                }
              } else {
-               /* All type parameters that used to be free are assigned
-                */
+               // All type parameters that used to be free are assigned
                List(tfd)
              }
            case None =>
@@ -75,7 +74,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
        }
      }
 
-     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || (exclude contains tfd.fd)
+     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || tfd.fd.isInner || (exclude contains tfd.fd)
      val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
 
      funcs.map{ tfd =>

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -14,7 +14,7 @@ import leon.utils.Simplifiers
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) {
+class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) extends Printable {
 
   def asString(implicit ctx: LeonContext) = {
     "⟨ "+pre.asString+" | "+defs.map(_.asString).mkString(" ")+" "+term.asString+" ⟩" 
@@ -54,8 +54,8 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
 
-  def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
-    Simplifiers.bestEffort(ctx, p)(toExpr)
+  def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
+    withoutSpec(Simplifiers.bestEffort(ctx, p)(req(within.precOrTrue, toExpr))).get
   }
 }
 
@@ -96,6 +96,6 @@ object Solution {
 
   def UNSAT(implicit p: Problem): Solution = {
     val tpe = tupleTypeWrap(p.xs.map(_.getType))
-    Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))
+    Solution(BooleanLiteral(false), Set(), Error(tpe, "Path condition is UNSAT!"))
   }
 }

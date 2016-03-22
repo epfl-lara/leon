@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -11,6 +11,7 @@ import ExprOps._
 import Types._
 import Constructors._
 import TypeOps.instantiateType
+import xlang.Expressions._
 
 object MethodLifting extends TransformationPhase {
 

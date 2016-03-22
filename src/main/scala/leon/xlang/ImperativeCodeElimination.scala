@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package xlang
@@ -21,7 +21,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
   def apply(ctx: LeonContext, pgm: Program): Unit = {
     for {
       fd <- pgm.definedFunctions
-      body <- fd.body
+      body <- fd.body if exists(requireRewriting)(body)
     } {
       val (res, scope, _) = toFunction(body)(State(fd, Set(), Map()))
       fd.body = Some(scope(res))
@@ -349,6 +349,14 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case Block(_, res) => Some(res)
       case _ => None
     })(expr)
+  }
+
+  private def requireRewriting(expr: Expr) = expr match {
+    case (e: Block) => true
+    case (e: Assignment) => true
+    case (e: While) => true
+    case (e: LetVar) => true
+    case _ => false
   }
 
 }

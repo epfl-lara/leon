@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 
@@ -8,8 +8,14 @@ abstract class Pipeline[-F, +T] {
   def andThen[G](thenn: Pipeline[T, G]): Pipeline[F, G] = new Pipeline[F,G] {
     def run(ctx: LeonContext, v: F): (LeonContext, G) = {
       val (ctx2, s) = self.run(ctx, v)
-      if(ctx.findOptionOrDefault(SharedOptions.optStrictPhases)) ctx.reporter.terminateIfError()
+      if(ctx.findOptionOrDefault(GlobalOptions.optStrictPhases)) ctx.reporter.terminateIfError()
       thenn.run(ctx2, s)
+    }
+  }
+
+  def when[F2 <: F, T2 >: T](cond: Boolean)(implicit tps: F2 =:= T2): Pipeline[F2, T2] = {
+    if (cond) this else new Pipeline[F2, T2] {
+      def run(ctx: LeonContext, v: F2): (LeonContext, T2) = (ctx, v)
     }
   }
 

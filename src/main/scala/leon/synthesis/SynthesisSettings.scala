@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -18,6 +18,6 @@ case class SynthesisSettings(
   // Cegis related options
   cegisUseOptTimeout: Boolean = true,
   cegisUseVanuatoo  : Boolean = false,
-  cegisMaxSize: Int           = 5
+  cegisMaxSize: Int           = 7
 
 )

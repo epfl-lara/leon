@@ -1,12 +1,16 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.utils
 
 import scala.collection.mutable.ArrayBuffer
 
 class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T] {
-  var buffer = new ArrayBuffer[T]() ++ init
+  private var buffer = new ArrayBuffer[T]() ++ init
 
-  val cachingIterator = new Iterator[T] {
-    def hasNext = growth.hasNext
+  var canGrow = () => true
+
+  private val cachingIterator = new Iterator[T] {
+    def hasNext = canGrow() && growth.hasNext
 
     def next() = {
       val res = growth.next()
@@ -14,6 +18,11 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T]
       res
     }
   }
+
+  def += (more: T)      = buffer +=  more
+  def ++=(more: Seq[T]) = buffer ++= more
+  def -= (less: T)      = buffer -=  less
+  def --=(less: Seq[T]) = buffer --= less
 
   def iterator: Iterator[T] = {
     buffer.iterator ++ cachingIterator

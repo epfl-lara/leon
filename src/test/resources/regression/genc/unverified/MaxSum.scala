@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 import leon.lang._
 
 /* VSTTE 2010 challenge 1 */

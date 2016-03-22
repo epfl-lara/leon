@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -35,17 +35,18 @@ object Helpers {
   }
 
   /** Given an initial set of function calls provided by a list of [[Terminating]],
-   *  returns function calls that will hopefully be safe to call recursively from within this initial function calls.
-   *
-   *  For each returned call, one argument is substituted by a "smaller" one, while the rest are left as holes.
-   *
-   *  @param prog The current program
-   *  @param tpe The expected type for the returned function calls
-   *  @param ws Helper predicates that contain [[Terminating]]s with the initial calls
-   *  @param pc The path condition
-   *  @return A list of pairs of (safe function call, holes), where holes stand for the rest of the arguments of the function.
+    * returns function calls that will hopefully be safe to call recursively from within this initial function calls.
+    *
+    * For each returned call, one argument is substituted by a "smaller" one, while the rest are left as holes.
+    *
+    * @param prog The current program
+    * @param ws Helper predicates that contain [[Terminating]]s with the initial calls
+    * @param pc The path condition
+    * @param tpe The expected type for the returned function calls. If absent, all types are permitted.
+    * @return A list of pairs (safe function call, holes),
+    *         where holes stand for the rest of the arguments of the function.
    */
-  def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(FunctionInvocation, Set[Identifier])] = {
+  def terminatingCalls(prog: Program, ws: Expr, pc: Expr, tpe: Option[TypeTree], introduceHoles: Boolean): List[(FunctionInvocation, Option[Set[Identifier]])] = {
 
     val TopLevelAnds(wss) = ws
     val TopLevelAnds(clauses) = pc
@@ -60,9 +61,19 @@ object Helpers {
       case _ => None
     }
     
+    val z   = InfiniteIntegerLiteral(0)
+    val one = InfiniteIntegerLiteral(1)
     val knownSmallers = clauses.collect {
       case Equals(v: Variable, s@CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
       case Equals(s@CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
+      case GreaterThan(v: Variable, `z`) =>
+        Some(v -> Minus(v, one))
+      case LessThan(`z`, v: Variable) =>
+        Some(v -> Minus(v, one))
+      case LessThan(v: Variable, `z`) =>
+        Some(v -> Plus(v, one))
+      case GreaterThan(`z`, v: Variable) =>
+        Some(v -> Plus(v, one))
     }.flatten.groupBy(_._1).mapValues(v => v.map(_._2))
 
     def argsSmaller(e: Expr, tpe: TypeTree): Seq[Expr] = e match {
@@ -73,18 +84,17 @@ object Helpers {
         }.flatten
       case v: Variable =>
         knownSmallers.getOrElse(v, Seq())
-
       case _ => Nil
     }
 
     val res = gs.flatMap {
-      case Terminating(tfd, args) if isSubtypeOf(tfd.returnType, tpe) =>
+      case Terminating(FunctionInvocation(tfd, args)) if tpe forall (isSubtypeOf(tfd.returnType, _)) =>
         val ids = tfd.params.map(vd => FreshIdentifier("<hole>", vd.getType, true)).toList
 
         for (((a, i), tpe) <- args.zipWithIndex zip tfd.params.map(_.getType);
               smaller <- argsSmaller(a, tpe)) yield {
-          val args = ids.map(_.toVariable).updated(i, smaller)
-          (FunctionInvocation(tfd, args), ids.toSet - ids(i))
+          val newArgs = (if (introduceHoles) ids.map(_.toVariable) else args).updated(i, smaller)
+          (FunctionInvocation(tfd, newArgs), if(introduceHoles) Some(ids.toSet - ids(i)) else None)
         }
       case _ =>
         Nil

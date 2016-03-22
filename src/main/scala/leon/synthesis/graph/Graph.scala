@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -7,8 +7,8 @@ package graph
 import leon.utils.StreamUtils.cartesianProduct
 import leon.utils.DebugSectionSynthesis
 
-sealed class Graph(val cm: CostModel, problem: Problem) {
-  val root = new RootNode(cm, problem)
+sealed class Graph(problem: Problem) {
+  val root = new RootNode(problem)
 
   // Returns closed/total
   def getStats(from: Node = root): (Int, Int) = {
@@ -27,14 +27,15 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
   }
 }
 
-sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
+sealed abstract class Node(val parent: Option[Node]) extends Printable {
 
   def asString(implicit ctx: LeonContext): String
 
   var descendants: List[Node] = Nil
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
-  def expand(hctx: SearchContext)
+
+  def expand(implicit hctx: SearchContext)
 
   val p: Problem
 
@@ -45,12 +46,9 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
   var solutions: Option[Stream[Solution]] = None
   var selectedSolution = -1
 
-  // Costs
-  var cost: Cost = computeCost()
+  var isDeadEnd: Boolean = false
 
-  def isDeadEnd: Boolean = {
-    cm.isImpossible(cost)
-  }
+  def isOpen = !isDeadEnd && !isSolved
 
   // For non-terminals, selected children for solution
   var selected: List[Node] = Nil
@@ -63,96 +61,69 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
       composeSolutions(selected.map(n => n.generateSolutions()))
     }
   }
-
-  def computeCost(): Cost = solutions match {
-    case Some(sols) if sols.isEmpty =>
-      cm.impossible
-
-    case Some(sols) =>
-      if (sols.hasDefiniteSize) {
-        sols.map { sol => cm.solution(sol) } .min
-      } else {
-        cm.solution(sols.head)
-      }
-
-    case None =>
-      val costs = if (isExpanded) {
-        Some(descendants.map { _.cost })
-      } else {
-        None
-      }
-
-      this match {
-        case an: AndNode =>
-          cm.andNode(an, costs)
-
-        case on: OrNode =>
-          costs.map(_.min).getOrElse(cm.problem(on.p))
-      }
-  }
-
-  def updateCost(): Unit = {
-    cost = computeCost()
-    parent.foreach(_.updateCost())
-  }
 }
 
 /** Represents the conjunction of search nodes.
-  * @param cm The cost model used when prioritizing, evaluating and expanding
   * @param parent Some node. None if it is the root node.
   * @param ri The rule instantiation that created this AndNode.
   **/
-class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) extends Node(cm, parent) {
+class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(parent) {
   val p = ri.problem
 
   override def asString(implicit ctx: LeonContext) = "\u2227 "+ri.asString
 
-  def expand(hctx: SearchContext): Unit = {
+  def expand(implicit hctx: SearchContext): Unit = {
     require(!isExpanded)
     isExpanded = true
 
-    implicit val ctx = hctx.sctx.context
+    def pad(prefix: String, message: String): String = {
+      val lines = message.split("\\n").toList
+      val padding = " " * (prefix.length + 1)
+      prefix + " " + lines.head + "\n" + lines.tail.map(padding + _).mkString("\n")
+    }
 
-    import hctx.sctx.reporter.info
+    import hctx.reporter.info
 
-    val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
+    val prefix = f"[${Option(ri.rule.asString).getOrElse("?")}%-20s]"
 
-    info(prefix+ri.problem.asString)
+    info(pad(prefix, ri.problem.asString))
 
     ri.apply(hctx) match {
       case RuleClosed(sols) =>
         solutions = Some(sols)
         selectedSolution = 0
 
-        updateCost()
-
         isSolved = sols.nonEmpty
 
         if (sols.isEmpty) {
-          info(prefix+"Failed")
+          info(s"$prefix Failed")
+          isDeadEnd = true
         } else {
           val sol = sols.head
-          info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol.asString+"...")
+          val morePrefix = s"$prefix Solved ${if(sol.isTrusted) "" else "(untrusted)"} with: "
+          info(pad(morePrefix, sol.asString))
         }
 
         parent.foreach{ p =>
-          p.updateCost()
           if (isSolved) {
             p.onSolved(this)
           }
         }
 
       case RuleExpanded(probs) =>
-        info(prefix+"Decomposed into:")
-        for(p <- probs) {
-          info(prefix+"     - "+p.asString)
+        info(s"$prefix Decomposed into:")
+        val morePrefix = s"$prefix -"
+        for(p <- probs) { 
+          info(pad(morePrefix, p.asString))
         }
 
-        descendants = probs.map(p => new OrNode(cm, Some(this), p))
+        descendants = probs.map(p => new OrNode(Some(this), p))
+
+        if (descendants.isEmpty) {
+          isDeadEnd = true
+        }
 
         selected = descendants
-
-        updateCost()
     }
   }
 
@@ -177,42 +148,43 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 }
 
-class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
+class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
 
   override def asString(implicit ctx: LeonContext) = "\u2228 "+p.asString
 
   implicit val debugSection = DebugSectionSynthesis
   
   def getInstantiations(hctx: SearchContext): List[RuleInstantiation] = {
-    val rules = hctx.sctx.rules
+    val rules = hctx.settings.rules
 
     val rulesPrio = rules.groupBy(_.priority).toSeq.sortBy(_._1)
 
-    for ((_, rs) <- rulesPrio) {
+    for ((prio, rs) <- rulesPrio) {
       
       val results = rs.flatMap{ r =>
-        hctx.context.reporter.ifDebug(printer => printer("Testing rule: " + r))
-        hctx.context.timers.synthesis.instantiations.get(r.asString(hctx.sctx.context)).timed {
+        hctx.reporter.ifDebug(printer => printer("Testing rule: " + r))
+        hctx.timers.synthesis.instantiations.get(r.asString(hctx)).timed {
           r.instantiateOn(hctx, p)
         }
       }.toList
 
       if (results.nonEmpty) {
-        return results
+        // We want to force all NormalizingRule's anyway, so no need to branch out.
+        // Just force the first one, and the rest may be applied afterwards.
+        return if (prio == RulePriorityNormalizing) results.take(1) else results
       }
     }
+
     Nil
   }
 
-  def expand(hctx: SearchContext): Unit = {
+  def expand(implicit hctx: SearchContext): Unit = {
     require(!isExpanded)
 
     val ris = getInstantiations(hctx)
 
-    descendants = ris.map(ri => new AndNode(cm, Some(this), ri))
+    descendants = ris.map(ri => new AndNode(Some(this), ri))
     selected = List()
-
-    updateCost()
 
     isExpanded = true
   }
@@ -228,4 +200,4 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
   }
 }
 
-class RootNode(cm: CostModel, p: Problem) extends OrNode(cm, None, p)
+class RootNode(p: Problem) extends OrNode(None, p)

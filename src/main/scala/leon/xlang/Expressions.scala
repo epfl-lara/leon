@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package xlang
@@ -50,6 +50,18 @@ object Expressions {
 
     def printWith(implicit pctx: PrinterContext) {
       p"$varId = $expr;"
+    }
+  }
+
+  case class FieldAssignment(obj: Expr, varId: Identifier, expr: Expr) extends XLangExpr with Extractable with PrettyPrintable {
+    val getType = UnitType
+
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(obj, expr), (es: Seq[Expr]) => FieldAssignment(es(0), varId, es(1))))
+    }
+
+    def printWith(implicit pctx: PrinterContext) {
+      p"${obj}.${varId} = ${expr};"
     }
   }
 
@@ -117,18 +129,6 @@ object Expressions {
     }
 
     override def isSimpleExpr = false
-  }
-
-  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with Extractable with PrettyPrintable{
-    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
-      Some((Seq(expr), (es: Seq[Expr]) => Waypoint(i, es.head, tpe)))
-    }
-
-    def printWith(implicit pctx: PrinterContext) {
-      p"waypoint_$i($expr)"
-    }
-
-    val getType = tpe
   }
 
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends XLangExpr with Extractable with PrettyPrintable {

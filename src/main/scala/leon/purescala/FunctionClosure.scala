@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -8,8 +8,8 @@ import Expressions._
 import ExprOps._
 import Constructors._
 import TypeOps.instantiateType
-import leon.purescala.Common.Identifier
-import leon.purescala.Types.TypeParameter
+import Common.Identifier
+import Types.TypeParameter
 import utils.GraphOps._
 
 object FunctionClosure extends TransformationPhase {
@@ -108,6 +108,7 @@ object FunctionClosure extends TransformationPhase {
     }
 
     val funs = closed.values.toSeq.map{ _.newFd }
+    funs foreach (_.addFlag(IsInner))
 
     // Recursively close new functions
     fd +: funs.flatMap(close)

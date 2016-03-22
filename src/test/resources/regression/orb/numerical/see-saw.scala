@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 object SeeSaw {
   def s(x: BigInt, y: BigInt, z: BigInt): BigInt = {
     require(y >= 0)

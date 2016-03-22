@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -219,7 +219,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
     def storeGuarded(guardVar: Identifier, expr: Expr) : Unit = {
-      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean." + (
+      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean. " + (
         purescala.ExprOps.fold[String]{ (e, se) => 
           s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
         }(expr)

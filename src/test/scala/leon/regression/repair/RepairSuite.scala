@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.regression.repair
 
@@ -34,13 +34,13 @@ class RepairSuite extends LeonRegressionSuite {
     val reporter = new TestSilentReporter
     //val reporter = new DefaultReporter(Set(utils.DebugSectionRepair))
 
-    val ctx = LeonContext(
+    val ctx = new LeonContext(
       reporter = reporter,
       interruptManager = new InterruptManager(reporter),
       options = Seq(
-        LeonOption(SharedOptions.optFunctions)(Seq(fileToFun(name))),
+        LeonOption(GlobalOptions.optFunctions)(Seq(fileToFun(name))),
         LeonOption(VerificationPhase.optParallelVCs)(true),
-        LeonOption(SharedOptions.optTimeout)(180L)
+        LeonOption(GlobalOptions.optTimeout)(180L)
       )
     )
 

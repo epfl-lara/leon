@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package xlang
@@ -12,7 +12,6 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
 
   override def run(ctx: LeonContext, pgm: Program): (LeonContext, Program) = {
     val phases =
-      //ArrayTransformation andThen
       AntiAliasingPhase andThen
       EpsilonElimination andThen
       ImperativeCodeElimination

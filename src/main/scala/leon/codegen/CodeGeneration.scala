@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package codegen
@@ -200,7 +200,12 @@ trait CodeGeneration {
     val body = if (params.checkContracts) {
       funDef.fullBody
     } else {
-      funDef.body.getOrElse(throw CompilationException("Can't compile a FunDef without body: "+funDef.id.name))
+      funDef.body.getOrElse(
+        if(funDef.annotations contains "extern") {
+          Error(funDef.id.getType, "Body of " + funDef.id.name + " not implemented at compile-time and still executed.")
+        } else {
+          throw CompilationException("Can't compile a FunDef without body: "+funDef.id.name)
+        })
     }
 
     val locals = NoLocals.withVars(newMapping).withTypes(funDef.tparams.map(_.tp))

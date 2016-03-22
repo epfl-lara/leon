@@ -1,10 +1,9 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package repair
 package rules
 
-import sun.nio.cs.StreamEncoder
 import synthesis._
 import leon.evaluators._
 
@@ -31,11 +30,10 @@ case object Focus extends PreprocessingRule("Focus") {
         
     }
 
-    val fd      = hctx.ci.fd
-    val ctx     = hctx.sctx.context
-    val program = hctx.sctx.program
+    val fd      = hctx.functionContext
+    val program = hctx.program
 
-    val evaluator = new DefaultEvaluator(ctx, program)
+    val evaluator = new DefaultEvaluator(hctx, program)
 
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
@@ -97,7 +95,7 @@ case object Focus extends PreprocessingRule("Focus") {
         case c if c eq cond => Some(not(cond))
         case _ => None
       }(fdSpec)
-      forAllTests(ndSpec, Map(), new AngelicEvaluator(new RepairNDEvaluator(ctx, program, cond)))
+      forAllTests(ndSpec, Map(), new AngelicEvaluator(new RepairNDEvaluator(hctx, program, cond)))
     }
 
     guides.flatMap {
@@ -166,7 +164,7 @@ case object Focus extends PreprocessingRule("Focus") {
             val eb3 = if (vars.nonEmpty) {
               eb2.mapIns(ebF)
             } else {
-              eb2
+              eb2.eb
             }
 
             val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })

@@ -1,40 +1,13 @@
 package leon
 package laziness
 
-import invariant.factories._
-import invariant.util.Util._
 import invariant.util._
 import invariant.structure.FunctionUtils._
 import purescala.ScalaPrinter
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.DefOps._
-import purescala.Extractors._
-import purescala.Types._
-import leon.invariant.util.TypeUtil._
-import leon.invariant.util.LetTupleSimplification._
-import leon.verification.VerificationPhase
-import java.io.File
-import java.io.FileWriter
-import java.io.BufferedWriter
-import scala.util.matching.Regex
-import leon.purescala.PrettyPrinter
-import leon.solvers._
-import leon.solvers.z3._
-import leon.transformations._
-import leon.LeonContext
-import leon.LeonOptionDef
-import leon.Main
-import leon.TransformationPhase
 import LazinessUtil._
-import invariant.datastructure._
-import invariant.util.ProgramUtil._
-import purescala.Constructors._
-import leon.verification._
-import PredicateUtil._
-import leon.invariant.engine._
 import LazyVerificationPhase._
 import utils._
 import java.io.
@@ -115,7 +88,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       checkInstrumentationSpecs(instProg, checkCtx,
         checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false))
     // dump stats
-    if (ctx.findOption(SharedOptions.optBenchmark).getOrElse(false)) {
+    if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
       val modid = prog.units.find(_.isMainUnit).get.id
       val filename = modid + "-stats.txt"
       val pw = new PrintWriter(filename)

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package frontends.scalac
@@ -399,14 +399,17 @@ trait ASTExtractors {
           }.get.asInstanceOf[DefDef]
 
           val valDefs = constructor.vparamss.flatten
+          //println("valDefs: " + valDefs)
 
           //impl.children foreach println
 
           val symbols = impl.children.collect {
-            case df: DefDef if df.symbol.isStable && df.symbol.isAccessor &&
-                df.symbol.isParamAccessor =>
-              df.symbol
+            case df@DefDef(_, name, _, _, _, _) if 
+              df.symbol.isAccessor && df.symbol.isParamAccessor 
+              && !name.endsWith("_$eq") => df.symbol
           }
+          //println("symbols: " + symbols)
+          //println("symbols accessed: " + symbols.map(_.accessed))
 
           //if (symbols.size != valDefs.size) {
           //  println(" >>>>> " + cd.name)
@@ -500,6 +503,36 @@ trait ASTExtractors {
         case _ => None
       }
     }
+
+    object ExMutatorAccessorFunction {
+      def unapply(dd: DefDef): Option[(Symbol, Seq[Symbol], Seq[ValDef], Type, Tree)] = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
+          vparamss.size <= 1 && name != nme.CONSTRUCTOR && 
+          !dd.symbol.isSynthetic && dd.symbol.isAccessor && name.endsWith("_$eq")
+        ) =>
+          Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
+        case _ => None
+      }
+    }
+    object ExMutableFieldDef {
+
+      /** Matches a definition of a strict var field inside a class constructor */
+      def unapply(vd: SymTree) : Option[(Symbol, Type, Tree)] = {
+        val sym = vd.symbol
+        vd match {
+          // Implemented fields
+          case ValDef(mods, name, tpt, rhs) if (
+            !sym.isCaseAccessor && !sym.isParamAccessor && 
+            !sym.isLazy && !sym.isSynthetic && !sym.isAccessor && sym.isVar
+          ) =>
+            println("matched a var accessor field: sym is: " + sym)
+            println("getterIn is: " + sym.getterIn(sym.owner))
+            // Since scalac uses the accessor symbol all over the place, we pass that instead:
+            Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
+          case _ => None
+        }
+      }
+    }
        
     object ExFieldDef {
       /** Matches a definition of a strict field inside a class constructor */
@@ -509,7 +542,7 @@ trait ASTExtractors {
           // Implemented fields
           case ValDef(mods, name, tpt, rhs) if (
             !sym.isCaseAccessor && !sym.isParamAccessor && 
-            !sym.isLazy && !sym.isSynthetic && !sym.isAccessor 
+            !sym.isLazy && !sym.isSynthetic && !sym.isAccessor && !sym.isVar
           ) =>
             // Since scalac uses the accessor symbol all over the place, we pass that instead:
             Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
@@ -598,16 +631,6 @@ trait ASTExtractors {
               TypeApply(ExSymbol("leon", "lang", "xlang", "epsilon"), typeTree :: Nil),
               Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, predicateBody) :: Nil) =>
             Some((typeTree, vd.symbol, predicateBody))
-        case _ => None
-      }
-    }
-
-    object ExWaypointExpression {
-      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
-        case Apply(
-              TypeApply(ExSymbol("leon", "lang", "xlang", "waypoint"), typeTree :: Nil),
-              List(i, expr)) =>
-            Some((typeTree, i, expr))
         case _ => None
       }
     }
@@ -705,6 +728,7 @@ trait ASTExtractors {
     object ExAssign {
       def unapply(tree: Assign): Option[(Symbol,Tree)] = tree match {
         case Assign(id@Ident(_), rhs) => Some((id.symbol, rhs))
+        //case Assign(sym@Select(This(_), v), rhs) => Some((sym.symbol, rhs))
         case _ => None
       }
     }
