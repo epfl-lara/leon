@@ -11,6 +11,7 @@ import purescala.Definitions.{ FunDef, Program, ValDef }
 import purescala.ExprOps
 import purescala.Extractors.TopLevelAnds
 import purescala.Expressions._
+import leon.utils.Simplifiers
 
 /**
  * @author Mikael
@@ -54,7 +55,8 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
   
   private def filterCases(cases: Seq[MatchCase]) = cases.filter(c => c.optGuard != Some(BooleanLiteral(false)))
   
-  def addToExpr(post: Expr, id: Identifier, inputVariables: Expr, newCases: Seq[MatchCase]): Expr = {
+  def addToExpr(_post: Expr, id: Identifier, inputVariables: Expr, newCases: Seq[MatchCase]): Expr = {
+    val post=  Simplifiers.bestEffort(ctx0, program)(_post)
     if(purescala.ExprOps.exists(_.isInstanceOf[Passes])(post)) {
       post match {
         case TopLevelAnds(exprs) =>
