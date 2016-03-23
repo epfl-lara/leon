@@ -14,6 +14,7 @@ import purescala.Types._
 
 import unrolling._
 import theories._
+import utils._
 
 class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
