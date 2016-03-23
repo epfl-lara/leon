@@ -34,6 +34,9 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
     val inferctx = new InferenceContext(program,  ctx)
     val report = (new InferenceEngine(inferctx)).runWithTimeout()
     //println("Final Program: \n" +PrettyPrinter.apply(InferenceReportUtil.pushResultsToInput(inferctx, report.conditions)))
+    if(!ctx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
+      println("Inference Result: \n"+report.summaryString)
+    }
     report
   }
 }

@@ -22,7 +22,9 @@ object GlobalOptions extends LeonComponent {
   val optXLang = LeonFlagOptionDef("xlang", "Support for extra program constructs (imperative,...)", false)
 
   val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
-  
+
+  val optSilent = LeonFlagOptionDef("silent", "Do not display progress messages or  results to the console", false)
+
   val optFunctions = new LeonOptionDef[Seq[String]] {
     val name = "functions"
     val description = "Only consider functions f1, f2, ..."
@@ -78,6 +80,7 @@ object GlobalOptions extends LeonComponent {
     optSelectedSolvers,
     optDebug,
     optWatch,
-    optTimeout
+    optTimeout,
+    optSilent
   )
 }

@@ -10,12 +10,12 @@ import purescala.ExprOps._
 import LazinessUtil._
 import LazyVerificationPhase._
 import utils._
-import java.io.
-  _
+import java.io._
+import invariant.engine.InferenceReport
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  */
-object LazinessEliminationPhase extends TransformationPhase {
+object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
   val dumpInputProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
