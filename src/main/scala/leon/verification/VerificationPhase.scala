@@ -22,6 +22,7 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
   implicit val debugSection = utils.DebugSectionVerification
 
   def apply(ctx: LeonContext, program: Program): VerificationReport = {
+    println("we are in verification phase apply method")
     val filterFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
     val timeout:    Option[Long]        = ctx.findOption(SharedOptions.optTimeout)
 
@@ -37,12 +38,14 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
         baseSolverF
     }
 
+    println("before verification context")
     val vctx = VerificationContext(ctx, program, solverF, reporter)
 
     reporter.debug("Generating Verification Conditions...")
 
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
 
+    println("filter")
     val fdFilter = {
       import OptionsHelpers._
 
@@ -51,13 +54,17 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
     val toVerify = program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
+
     for(funDef <- toVerify) {
       if (excludeByDefault(funDef)) {
         reporter.warning("Forcing verification of " + funDef.qualifiedName(program) + " which was assumed verified")
       }
     }
 
+
+
     try {
+      println("before generate VCs")
       val vcs = generateVCs(vctx, toVerify)
 
       reporter.debug("Checking Verification Conditions...")

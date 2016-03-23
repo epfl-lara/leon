@@ -215,10 +215,13 @@ object Main {
   private var hasFatal = false
 
   def main(args: Array[String]) {
+    println("enter main")
+
     val argsl = args.toList
 
     // Process options
     val ctx = try {
+      println("enter ctx")
       processOptions(argsl)
 
     } catch {
@@ -240,13 +243,15 @@ object Main {
     ctx.interruptManager.registerSignalHandler()
 
     val doWatch = ctx.findOptionOrDefault(SharedOptions.optWatch)
-
+    println("just before doWatch")
     if (doWatch) {
+      println("enter doWatch")
       val watcher = new FilesWatcher(ctx, ctx.files ++ Build.libFiles.map { new java.io.File(_) })
       watcher.onChange {
         execute(args, ctx)
       }
     } else {
+      println("else doWatch")
       execute(args, ctx)
     }
 
@@ -254,38 +259,49 @@ object Main {
   }
 
   def execute(args: Seq[String], ctx0: LeonContext): Unit = {
+    println("enter execute")
     val ctx = ctx0.copy(reporter = new DefaultReporter(ctx0.reporter.debugSections))
 
     try {
+      println("try execute")
       // Compute leon pipeline
+      println("compute pipeline")
       val pipeline = computePipeline(ctx)
 
+      println("compute timer")
       val timer = ctx.timers.total.start()
 
       // Run pipeline
+      println("run pipeline")
       val ctx2 = pipeline.run(ctx, args.toList) match {
         case (ctx2, (vReport: verification.VerificationReport, tReport: termination.TerminationReport)) =>
+          println("case 1")
           ctx2.reporter.info(vReport.summaryString)
           ctx2.reporter.info(tReport.summaryString)
           ctx2
 
         case (ctx2, report: verification.VerificationReport) =>
+          println("case 2")
           ctx2.reporter.info(report.summaryString)
           ctx2
 
         case (ctx2, report: termination.TerminationReport) =>
+          println("case 3")
           ctx2.reporter.info(report.summaryString)
           ctx2
 
         case (ctx2, _) =>
+          println("case 4")
           ctx2
       }
 
       timer.stop()
 
+      println("print reporter")
       ctx2.reporter.whenDebug(DebugSectionTimers) { debug =>
         ctx2.timers.outputTable(debug)
       }
+      println("end print reporter")
       hasFatal = false
     } catch {
       case LeonFatalError(None) =>

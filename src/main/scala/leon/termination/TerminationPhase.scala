@@ -4,6 +4,7 @@ package leon
 package termination
 
 import purescala.Definitions._
+import java.lang.System
 
 object TerminationPhase extends SimpleLeonPhase[Program, TerminationReport] {
   val name = "Termination"
