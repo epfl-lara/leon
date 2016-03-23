@@ -204,7 +204,7 @@ object Main {
         else if (repairF) RepairPhase
         else if (analysisF) Pipeline.both(verification, termination)
         else if (terminationF) termination
-        else if (isabelleF) IsabellePhase
+        else if (isabelleF) IsabellePhase andThen PrintReportPhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
