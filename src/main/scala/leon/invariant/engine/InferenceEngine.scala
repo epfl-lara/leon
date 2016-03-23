@@ -23,7 +23,7 @@ import Stats._
  * This phase performs automatic invariant inference.
  * TODO: should time be implicitly made positive
  */
-class InferenceEngine(ctx: InferenceContext) extends Interruptible {
+class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
 
   val debugBottomupIterations = false
   val debugAnalysisOrder = false

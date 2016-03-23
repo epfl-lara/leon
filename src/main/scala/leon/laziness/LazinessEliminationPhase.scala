@@ -41,7 +41,33 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
    * TODO: add inlining annotations for optimization.
    */
   def apply(ctx: LeonContext, prog: Program): LazyVerificationReport = {
+    val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
+    val checkCtx = contextForChecks(ctx)
+    val stateVeri =
+      if (!skipStateVerification)
+        Some(checkSpecifications(progWOInstSpecs, checkCtx))
+      else None
 
+    val resourceVeri =
+      if (!skipResourceVerification)
+        Some(checkInstrumentationSpecs(instProg, checkCtx,
+          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false)))
+      else None
+    // dump stats if enabled
+    if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
+      val modid = prog.units.find(_.isMainUnit).get.id
+      val filename = modid + "-stats.txt"
+      val pw = new PrintWriter(filename)
+      Stats.dumpStats(pw)
+      SpecificStats.dumpOutputs(pw)
+      ctx.reporter.info("Stats dumped to file: " + filename)
+      pw.close()
+    }
+    // return a report
+    new LazyVerificationReport(stateVeri, resourceVeri)
+  }
+
+  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
 
@@ -73,35 +99,12 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     if (dumpProgWOInstSpecs)
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
-    val checkCtx = contextForChecks(ctx)
-    val stateVeri =
-      if (!skipStateVerification)
-        Some(checkSpecifications(progWOInstSpecs, checkCtx))
-      else None
-
     // instrument the program for resources (note: we avoid checking preconditions again here)
     val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
-
-    val resourceVeri =
-      if (!skipResourceVerification)
-        Some(checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false)))
-      else None
-    // dump stats if enabled
-    if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
-      val modid = prog.units.find(_.isMainUnit).get.id
-      val filename = modid + "-stats.txt"
-      val pw = new PrintWriter(filename)
-      Stats.dumpStats(pw)
-      SpecificStats.dumpOutputs(pw)
-      ctx.reporter.info("Stats dumped to file: " + filename)
-      pw.close()
-    }
-    // return a report
-    new LazyVerificationReport(stateVeri, resourceVeri)
+    (progWOInstSpecs, instProg)
   }
 
   /**
