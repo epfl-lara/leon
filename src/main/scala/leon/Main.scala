@@ -216,7 +216,7 @@ object Main {
         else if (lazyevalF) LazinessEliminationPhase
         else if (comparisonF) ComparisonPhase
         else {
-          println("we do verification")
+          println("we do verification, by default")
           verification
         }
       }
@@ -286,7 +286,8 @@ object Main {
       val timer = ctx.timers.total.start()
 
       // Run pipeline
-      println("run pipeline")
+      println("run pipeline with args ", args.toList)
+      println("run pipeline with ctx ", ctx.toString)
       val ctx2 = pipeline.run(ctx, args.toList) match {
         case (ctx2, (vReport: verification.VerificationReport, tReport: termination.TerminationReport)) =>
           println("case 1")
@@ -296,6 +297,11 @@ object Main {
 
         case (ctx2, report: verification.VerificationReport) =>
           println("case 2")
+          ctx2.reporter.info(report.summaryString)
+          ctx2
+
+        case (ctx2, report: comparison.ComparisonReport) =>
+          println("case 2.5")
           ctx2.reporter.info(report.summaryString)
           ctx2
 

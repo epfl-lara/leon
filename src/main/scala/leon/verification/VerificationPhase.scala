@@ -27,9 +27,12 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
     val timeout:    Option[Long]        = ctx.findOption(SharedOptions.optTimeout)
 
     val reporter = ctx.reporter
+    println("reporter is", reporter.toString)
 
     // Solvers selection and validation
     val baseSolverF = SolverFactory.getFromSettings(ctx, program)
+    //println("program is ", program.toString)
+    //println("context is ", ctx.toString)
 
     val solverF = timeout match {
       case Some(sec) =>
