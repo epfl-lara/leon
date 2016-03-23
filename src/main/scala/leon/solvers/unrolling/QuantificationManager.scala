@@ -1194,8 +1194,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
           partials.get(encoded).orElse(types.get(tpe)).map { domain =>
             val conditionals = domain.flatMap { case (b, m) =>
               extract(b, m).map { args =>
-                val result = evaluator.eval(application(value, args)).result.getOrElse {
-                  scala.sys.error("Unexpectedly failed to evaluate " + application(value, args))
+                val result = evaluator.eval(application(f, args)).result.getOrElse {
+                  scala.sys.error("Unexpectedly failed to evaluate " + application(f, args))
                 }
 
                 val cond = if (m.args.exists(arg => isQuantifier(arg.encoded))) {
