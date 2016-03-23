@@ -20,6 +20,14 @@ object LazyVerificationPhase {
   val debugInstVCs = false
   val debugInferProgram = false
 
+  class LazyVerificationReport(val stateVerification: Option[VerificationReport],
+      val resourceVeri: Option[VerificationReport]) {
+    def inferReport= resourceVeri match {
+      case Some(inf: InferenceReport) => Some(inf)
+      case _ => None
+    }
+  }
+
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
       exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
@@ -66,7 +74,7 @@ object LazyVerificationPhase {
     Stats.updateCounterStats(withcvc.map(_._2.timeMs.getOrElse(0L)).sum, "CVC4-Time", "CVC4SolvedVCs")
   }
 
-  def checkSpecifications(prog: Program, checkCtx: LeonContext) {
+  def checkSpecifications(prog: Program, checkCtx: LeonContext): VerificationReport = {
     // convert 'axiom annotation to library
     prog.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
@@ -75,10 +83,13 @@ object LazyVerificationPhase {
     val report = VerificationPhase.apply(checkCtx, prog)
     // collect stats
     collectCumulativeStats(report)
-    println(report.summaryString)
+    if(!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
+      println(report.summaryString)
+    }
+    report
   }
 
-  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext, useOrb: Boolean) = {
+  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext, useOrb: Boolean): VerificationReport = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
@@ -106,7 +117,9 @@ object LazyVerificationPhase {
         collectCumulativeStats(rep)
         rep
       }
-    println("Resource Verification Results: \n" + rep.summaryString)
+    if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false))
+      println("Resource Verification Results: \n" + rep.summaryString)
+    rep
   }
 
   def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
