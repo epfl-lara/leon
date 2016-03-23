@@ -259,7 +259,7 @@ in terminal ```cat leon``` to realize that.
 
 IntelliJ provides a Scala plugin. It will normally offer to install it by its own the first time you load a scala file,
 anyway we suggest you to install it manually before starting. Doing so will allow you to use sbt wizard import
-later.
+in the next step.
 
 In *Preferences -> Plugins* search for *Scala* and install it.
 
