@@ -397,7 +397,7 @@ trait AbstractUnrollingSolver[T]
                   unrollingBank.decreaseAllGenerations()
 
                   for (b <- templateGenerator.manager.getBlockersToPromote(model.eval)) {
-                    unrollingBank.promoteBlocker(b)
+                    unrollingBank.promoteBlocker(b, force = true)
                   }
                 }
               }

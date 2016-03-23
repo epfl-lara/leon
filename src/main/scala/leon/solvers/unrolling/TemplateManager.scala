@@ -497,6 +497,7 @@ class TemplateManager[T](protected[unrolling] val encoder: TemplateEncoder[T]) e
   def blocker(b: T): Unit = condImplies += (b -> Set.empty)
   def isBlocker(b: T): Boolean = condImplies.isDefinedAt(b) || condImplied.isDefinedAt(b)
   def blockerParents(b: T): Set[T] = condImplied(b)
+  def blockerChildren(b: T): Set[T] = condImplies(b)
 
   def implies(b1: T, b2: T): Unit = implies(b1, Set(b2))
   def implies(b1: T, b2s: Set[T]): Unit = {

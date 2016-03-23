@@ -196,7 +196,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     clauses
   }
 
-  def nextGeneration(gen: Int) = gen + 3
+  def nextGeneration(gen: Int) = gen + 5
 
   def decreaseAllGenerations() = {
     for ((block, (gen, origGen, ast, infos)) <- callInfos) {
@@ -209,19 +209,34 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     }
   }
 
-  def promoteBlocker(b: T) = {
-    if (callInfos contains b) {
-      val (_, origGen, notB, fis) = callInfos(b)
+  def promoteBlocker(b: T, force: Boolean = false): Boolean = {
+    var seen: Set[T] = Set.empty
+    var promoted: Boolean = false
 
-      callInfos += b -> (1, origGen, notB, fis)
+    def rec(b: T): Unit = if (!seen(b)) {
+      seen += b
+      if (callInfos contains b) {
+        val (_, origGen, notB, fis) = callInfos(b)
+
+        callInfos += b -> (1, origGen, notB, fis)
+        promoted = true
+      }
+
+      if (blockerToApps contains b) {
+        val app = blockerToApps(b)
+        val (_, origGen, _, notB, infos) = appInfos(app)
+
+        appInfos += app -> (1, origGen, b, notB, infos)
+        promoted = true
+      }
+
+      if (!promoted && force) {
+        for (cb <- templateGenerator.manager.blockerChildren(b)) rec(cb)
+      }
     }
 
-    if (blockerToApps contains b) {
-      val app = blockerToApps(b)
-      val (_, origGen, _, notB, infos) = appInfos(app)
-
-      appInfos += app -> (1, origGen, b, notB, infos)
-    }
+    rec(b)
+    promoted
   }
 
   def instantiateQuantifiers(force: Boolean = false): Seq[T] = {
