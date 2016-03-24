@@ -131,14 +131,15 @@ object LazyVerificationPhase {
     new InferenceContext(p, ctxForInf)
   }
 
-  def checkUsingOrb(infEngine: InferenceEngine, inferctx: InferenceContext) = {
+  def checkUsingOrb(infEngine: InferenceEngine, inferctx: InferenceContext,
+      progressCallback: Option[InferenceCondition => Unit] = None) = {
     if (debugInferProgram) {
       prettyPrintProgramToFile(inferctx.inferProgram, inferctx.leonContext, "-inferProg", true)
     }
     val funsToCheck = inferctx.initProgram.definedFunctions.filter(shouldGenerateVC)
     val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
     val results = infEngine.analyseProgram(inferctx.inferProgram,
-      funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)
+      funsToCheck.map(InstUtil.userFunctionName), vcSolver, progressCallback)
     new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)
   }
 
