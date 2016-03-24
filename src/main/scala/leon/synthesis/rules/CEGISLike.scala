@@ -274,7 +274,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       private val phiFd = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
 
       // The program with the body of the current function replaced by the current partial solution
-      private val (innerProgram, origFdMap) = {
+      private val (innerProgram, origIdMap, origFdMap, origCdMap) = {
 
         val outerSolution = {
           new PartialSolution(hctx.search.strat, true)
@@ -313,7 +313,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           case fd =>
             Some(fd.duplicate())
         }
+      }
 
+      private val outerToInner = new purescala.TreeTransformer {
+        override def transform(id: Identifier): Identifier = origIdMap.getOrElse(id, id)
+        override def transform(cd: ClassDef): ClassDef = origCdMap.getOrElse(cd, cd)
+        override def transform(fd: FunDef): FunDef = origFdMap.getOrElse(fd, fd)
       }
 
       /**
@@ -322,9 +327,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
        * to the CEGIS-specific program, 'outer' refers to the actual program on
        * which we do synthesis.
        */
-      private def outerExprToInnerExpr(e: Expr): Expr = {
-        replaceFunCalls(e, {fd => origFdMap.getOrElse(fd, fd) })
-      }
+      private def outerExprToInnerExpr(e: Expr): Expr = outerToInner.transform(e)(Map.empty)
 
       private val innerPc  = outerExprToInnerExpr(p.pc)
       private val innerPhi = outerExprToInnerExpr(p.phi)

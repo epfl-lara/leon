@@ -9,6 +9,9 @@ import Expressions._
 import Extractors._
 import Types._
 
+import utils._
+import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
+
 trait TreeTransformer {
   def transform(id: Identifier): Identifier = id
   def transform(cd: ClassDef): ClassDef = cd
@@ -22,11 +25,11 @@ trait TreeTransformer {
         transform(default), transform(tpe).asInstanceOf[FunctionType]).copiedFrom(e)
     case Lambda(args, body) =>
       val newArgs = args.map(vd => ValDef(transform(vd.id)))
-      val newBindings = (args zip newArgs).filter(p => p._1 != p._2).map(p => p._1.id -> p._2.id)
+      val newBindings = (args zip newArgs).map(p => p._1.id -> p._2.id)
       Lambda(newArgs, transform(body)(bindings ++ newBindings)).copiedFrom(e)
     case Forall(args, body) =>
       val newArgs = args.map(vd => ValDef(transform(vd.id)))
-      val newBindings = (args zip newArgs).filter(p => p._1 != p._2).map(p => p._1.id -> p._2.id)
+      val newBindings = (args zip newArgs).map(p => p._1.id -> p._2.id)
       Forall(newArgs, transform(body)(bindings ++ newBindings)).copiedFrom(e)
     case Let(a, expr, body) =>
       val newA = transform(a)
@@ -49,6 +52,12 @@ trait TreeTransformer {
       AsInstanceOf(transform(expr), transform(ct).asInstanceOf[ClassType]).copiedFrom(e)
     case MatchExpr(scrutinee, cases) =>
       MatchExpr(transform(scrutinee), for (cse @ MatchCase(pattern, guard, rhs) <- cases) yield {
+        val (newPattern, newBindings) = transform(pattern)
+        val allBindings = bindings ++ newBindings
+        MatchCase(newPattern, guard.map(g => transform(g)(allBindings)), transform(rhs)(allBindings)).copiedFrom(cse)
+      }).copiedFrom(e)
+    case Passes(in, out, cases) =>
+      Passes(transform(in), transform(out), for (cse @ MatchCase(pattern, guard, rhs) <- cases) yield {
         val (newPattern, newBindings) = transform(pattern)
         val allBindings = bindings ++ newBindings
         MatchCase(newPattern, guard.map(g => transform(g)(allBindings)), transform(rhs)(allBindings)).copiedFrom(cse)
@@ -81,26 +90,26 @@ trait TreeTransformer {
     case InstanceOfPattern(binder, ct) =>
       val newBinder = binder map transform
       val newPat = InstanceOfPattern(newBinder, transform(ct).asInstanceOf[ClassType]).copiedFrom(pat)
-      (newPat, (binder zip newBinder).filter(p => p._1 != p._2).toMap)
+      (newPat, (binder zip newBinder).toMap)
     case WildcardPattern(binder) =>
       val newBinder = binder map transform
       val newPat = WildcardPattern(newBinder).copiedFrom(pat)
-      (newPat, (binder zip newBinder).filter(p => p._1 != p._2).toMap)
+      (newPat, (binder zip newBinder).toMap)
     case CaseClassPattern(binder, ct, subs) =>
       val newBinder = binder map transform
       val (newSubs, subBinders) = (subs map transform).unzip
       val newPat = CaseClassPattern(newBinder, transform(ct).asInstanceOf[CaseClassType], newSubs).copiedFrom(pat)
-      (newPat, (binder zip newBinder).filter(p => p._1 != p._2).toMap ++ subBinders.flatten)
+      (newPat, (binder zip newBinder).toMap ++ subBinders.flatten)
     case TuplePattern(binder, subs) =>
       val newBinder = binder map transform
       val (newSubs, subBinders) = (subs map transform).unzip
       val newPat = TuplePattern(newBinder, newSubs).copiedFrom(pat)
-      (newPat, (binder zip newBinder).filter(p => p._1 != p._2).toMap ++ subBinders.flatten)
+      (newPat, (binder zip newBinder).toMap ++ subBinders.flatten)
     case UnapplyPattern(binder, TypedFunDef(fd, tpes), subs) =>
       val newBinder = binder map transform
       val (newSubs, subBinders) = (subs map transform).unzip
       val newPat = UnapplyPattern(newBinder, TypedFunDef(transform(fd), tpes map transform), newSubs).copiedFrom(pat)
-      (newPat, (binder zip newBinder).filter(p => p._1 != p._2).toMap ++ subBinders.flatten)
+      (newPat, (binder zip newBinder).toMap ++ subBinders.flatten)
     case PatternExtractor(subs, builder) =>
       val (newSubs, subBinders) = (subs map transform).unzip
       (builder(newSubs).copiedFrom(pat), subBinders.flatten.toMap)

@@ -388,9 +388,13 @@ trait AbstractUnrollingSolver[T]
 
                 if (this.feelingLucky) {
                   // we might have been lucky :D
-                  val extracted = extractModel(model)
-                  val valid = validateModel(extracted, assumptionsSeq, silenceErrors = true)
-                  if (valid) foundAnswer(Some(true), extracted)
+                  try {
+                    val extracted = extractModel(model)
+                    val valid = validateModel(extracted, assumptionsSeq, silenceErrors = true)
+                    if (valid) foundAnswer(Some(true), extracted)
+                  } catch {
+                    case u: Unsupported =>
+                  }
                 }
 
                 if (!foundDefinitiveAnswer) {

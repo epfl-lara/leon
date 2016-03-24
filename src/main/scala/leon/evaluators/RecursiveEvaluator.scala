@@ -191,8 +191,18 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case _ => BooleanLiteral(lv == rv)
       }
 
-    case CaseClass(cd, args) =>
-      CaseClass(cd, args.map(e))
+    case CaseClass(cct, args) =>
+      val cc = CaseClass(cct, args.map(e))
+      if (cct.classDef.hasInvariant) {
+        e(FunctionInvocation(cct.invariant.get, Seq(cc))) match {
+          case BooleanLiteral(true) =>
+          case BooleanLiteral(false) =>
+            throw RuntimeError("ADT invariant violation for " + cct.classDef.id.asString + " reached in evaluation.: " + cct.invariant.get.asString)
+          case other =>
+            throw RuntimeError(typeErrorMsg(other, BooleanType))
+        }
+      }
+      cc
 
     case AsInstanceOf(expr, ct) =>
       val le = e(expr)

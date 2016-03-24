@@ -167,7 +167,7 @@ class Synthesizer(val context : LeonContext,
 
     val solutionExpr = sol.toSimplifiedExpr(context, program, ci.fd)
 
-    val (npr, fdMap) = replaceFunDefs(program)({
+    val (npr, _, fdMap, _) = replaceFunDefs(program)({
       case fd if fd eq ci.fd =>
         val nfd = fd.duplicate()
         nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)

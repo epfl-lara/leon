@@ -212,30 +212,40 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def promoteBlocker(b: T, force: Boolean = false): Boolean = {
     var seen: Set[T] = Set.empty
     var promoted: Boolean = false
+    var blockers: Seq[Set[T]] = Seq(Set(b))
 
-    def rec(b: T): Unit = if (!seen(b)) {
-      seen += b
-      if (callInfos contains b) {
-        val (_, origGen, notB, fis) = callInfos(b)
+    do {
+      val (bs +: rest) = blockers
+      blockers = rest
 
-        callInfos += b -> (1, origGen, notB, fis)
-        promoted = true
-      }
+      val next = (for (b <- bs if !seen(b)) yield {
+        seen += b
 
-      if (blockerToApps contains b) {
-        val app = blockerToApps(b)
-        val (_, origGen, _, notB, infos) = appInfos(app)
+        if (callInfos contains b) {
+          val (_, origGen, notB, fis) = callInfos(b)
 
-        appInfos += app -> (1, origGen, b, notB, infos)
-        promoted = true
-      }
+          callInfos += b -> (1, origGen, notB, fis)
+          promoted = true
+        }
 
-      if (!promoted && force) {
-        for (cb <- templateGenerator.manager.blockerChildren(b)) rec(cb)
-      }
-    }
+        if (blockerToApps contains b) {
+          val app = blockerToApps(b)
+          val (_, origGen, _, notB, infos) = appInfos(app)
 
-    rec(b)
+          appInfos += app -> (1, origGen, b, notB, infos)
+          promoted = true
+        }
+
+        if (force) {
+          templateGenerator.manager.blockerChildren(b)
+        } else {
+          Set.empty[T]
+        }
+      }).flatten
+
+      if (next.nonEmpty) blockers :+= next
+    } while (!promoted && blockers.nonEmpty)
+
     promoted
   }
 
