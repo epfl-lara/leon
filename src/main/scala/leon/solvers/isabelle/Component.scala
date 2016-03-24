@@ -17,30 +17,8 @@ object Component extends LeonComponent {
   val name = "Isabelle"
   val description = "Isabelle solver"
 
-  val leonBase =
-    Paths.get(Option(System.getProperty("leon.base")).getOrElse(".")).toAbsolutePath()
-
-  val platform =
-    Platform.guess.getOrElse(Platform.genericPlatform("generic", leonBase.resolve("contrib").toAbsolutePath()))
-
-  val optBase = LeonStringOptionDef(
-    name = "isabelle:base",
-    description = "Base directory of the Isabelle installation",
-    default = platform.setupStorage.toString,
-    usageRhs = "path"
-  )
-
-  val optDownload = LeonFlagOptionDef(
-    name = "isabelle:download",
-    description = "Automatic download of Isabelle",
-    default = false
-  )
-
-  val optBuild = LeonFlagOptionDef(
-    name = "isabelle:build",
-    description = "Automatic build of Isabelle/Leon",
-    default = true
-  )
+  def platform =
+    Platform.guess.getOrElse(sys.error("Unknown platform; can't run Isabelle here"))
 
   val optMapping = LeonFlagOptionDef(
     name = "isabelle:mapping",
@@ -62,6 +40,6 @@ object Component extends LeonComponent {
   )
 
   override val definedOptions: Set[LeonOptionDef[Any]] =
-    Set(optBase, optDownload, optBuild, optMapping, optDump, optStrict)
+    Set(optMapping, optDump, optStrict)
 
 }

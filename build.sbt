@@ -28,10 +28,11 @@ if(System.getProperty("sun.arch.data.model") == "64") {
 
 resolvers ++= Seq(
   "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-  "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+  "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-val libisabelleVersion = "0.2"
+val libisabelleVersion = "0.3"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.7",
@@ -39,7 +40,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
   "info.hupel" %% "libisabelle" % libisabelleVersion,
   "info.hupel" %% "libisabelle-setup" % libisabelleVersion,
-  "info.hupel" %% "pide-2015" % libisabelleVersion,
   "org.slf4j" % "slf4j-nop" % "1.7.13",
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2",
@@ -88,13 +88,11 @@ script := {
       s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
     }
     val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(System.getProperty("path.separator"))
-    val base = baseDirectory.value.getAbsolutePath
     IO.write(f, s"""|#!/bin/bash --posix
                     |
                     |SCALACLASSPATH="$paths"
-                    |BASEDIRECTORY="$base"
                     |
-                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dleon.base="$${BASEDIRECTORY}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
+                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
                     |""".stripMargin)
     f.setExecutable(true)
   } catch {

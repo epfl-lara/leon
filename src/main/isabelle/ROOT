@@ -1,4 +1,4 @@
-session Leon_Deps = "HOL-Protocol2015" +
+session Leon_Deps = "HOL-Protocol" +
   theories
     "~~/src/HOL/Word/Word"
     "~~/src/HOL/Library/Simps_Case_Conv"

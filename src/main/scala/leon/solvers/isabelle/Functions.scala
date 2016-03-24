@@ -14,6 +14,7 @@ import leon.purescala.Types._
 import leon.utils._
 
 import edu.tum.cs.isabelle._
+import edu.tum.cs.isabelle.pure.{Expr => _, _}
 
 final class Functions(context: LeonContext, program: Program, types: Types, funs: List[FunDef], system: System)(implicit ec: ExecutionContext) {
 
