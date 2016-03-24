@@ -157,6 +157,8 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
         case BooleanType | UnitType | CharType | IntegerType |
              RealType | Int32Type | StringType | (_: TypeParameter) => false
 
+        case at: ArrayType => true
+
         case NAryType(tpes, _) => tpes.exists(requireTypeUnrolling)
       }
 
@@ -204,6 +206,9 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
 
     case FunctionType(_, _) =>
       FreshFunction(expr)
+
+    case at: ArrayType =>
+      GreaterEquals(ArrayLength(expr), IntLiteral(0))
 
     case _ => scala.sys.error("TODO")
   }

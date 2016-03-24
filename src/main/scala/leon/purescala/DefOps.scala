@@ -286,11 +286,22 @@ object DefOps {
     }
   }
 
-  private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[Expr] = (fi, nfd) match {
-    case (FunctionInvocation(old, args), newfd) if old.fd != newfd =>
-      Some(FunctionInvocation(newfd.typed(old.tps), args))
-    case _ =>
-      None
+  def replaceDefsInProgram(p: Program)(fdMap: Map[FunDef, FunDef] = Map.empty,
+                                       cdMap: Map[ClassDef, ClassDef] = Map.empty): Program = {
+    p.copy(units = for (u <- p.units) yield {
+      u.copy(defs = u.defs.map {
+        case m : ModuleDef =>
+          m.copy(defs = for (df <- m.defs) yield {
+            df match {
+              case cd : ClassDef => cdMap.getOrElse(cd, cd)
+              case fd : FunDef => fdMap.getOrElse(fd, fd)
+              case d => d
+            }
+        })
+        case cd: ClassDef => cdMap.getOrElse(cd, cd)
+        case d => d
+      })
+    })
   }
 
   def replaceDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
@@ -365,22 +376,17 @@ object DefOps {
       nfd.fullBody = transformer.transform(fd.fullBody)(bindings)
     }
 
-    val newP = p.copy(units = for (u <- p.units) yield {
-      u.copy(defs = u.defs.map {
-        case m : ModuleDef =>
-          m.copy(defs = for (df <- m.defs) yield {
-            df match {
-              case cd : ClassDef => transformer.transform(cd)
-              case fd : FunDef => transformer.transform(fd)
-              case d => d
-            }
-        })
-        case cd: ClassDef => transformer.transform(cd)
-        case d => d
-      })
-    })
+    val fdsMap = fdMap.toMap
+    val cdsMap = cdMap.toMap
+    val newP = replaceDefsInProgram(p)(fdsMap, cdsMap)
+    (newP, idMap.toMap, fdsMap, cdsMap)
+  }
 
-    (newP, idMap.toMap, fdMap.toMap, cdMap.toMap)
+  private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[Expr] = (fi, nfd) match {
+    case (FunctionInvocation(old, args), newfd) if old.fd != newfd =>
+      Some(FunctionInvocation(newfd.typed(old.tps), args))
+    case _ =>
+      None
   }
 
   /** Clones the given program by replacing some functions by other functions.

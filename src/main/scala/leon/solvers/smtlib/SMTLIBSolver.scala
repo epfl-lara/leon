@@ -91,9 +91,13 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program, theo
 
             for (me <- smodel) me match {
               case DefineFun(SMTFunDef(s, args, kind, e)) if syms(s) =>
-                val id = variables.toA(s)
-                val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
-                model += ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap)
+                try {
+                  val id = variables.toA(s)
+                  val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
+                  model += ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap)
+                } catch {
+                  case _: Unsupported =>
+                }
               case _ =>
             }
 
