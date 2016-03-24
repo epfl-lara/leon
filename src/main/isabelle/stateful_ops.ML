@@ -486,10 +486,10 @@ fun lookup_datatype (name, raw_constructors) =
         (Codec.Left ("unknown datatype " ^ name), lthy)
     | SOME {ctrs, discs, selss, split, split_asm, case_thms, ...} =>
         let
-          val raw_constructors = sort_wrt snd (raw_constructors)
+          val raw_constructors = sort_by snd (raw_constructors)
           val (names, terms) =
             map (fst o dest_Const) ctrs ~~ (discs ~~ selss)
-            |> sort_wrt fst
+            |> sort_by fst
             |> split_list
           fun process (internal_name, name) (disc, sels) =
             (internal_name, (Const (name, dummyT), dummify_types disc, map dummify_types sels))
