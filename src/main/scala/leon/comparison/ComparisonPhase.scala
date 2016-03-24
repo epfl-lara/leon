@@ -13,20 +13,19 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   override val description: String = "Comparison phase between input program and Leon example suite"
   override val name: String = "Comparison"
 
-  def produceReport(): ComparisonReport = ComparisonReport()
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
     println("you are in apply method of comparison")
 
-    val toVerify = getFunDef(ctx, program)
+    val listFunDef = getFunDef(ctx, program)
     
-    produceReport();
+    ComparisonReport(program, listFunDef)
   }
 
 
   /*
   This method derives from VerificationPhase
-  It's aim is to extract something from the program
+  It's aim is to extract something from the program (FunDef) to begin working
    */
   def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
