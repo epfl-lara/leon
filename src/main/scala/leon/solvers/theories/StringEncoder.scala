@@ -116,7 +116,7 @@ object StringEcoSystem {
   val funDefs = Seq(StringSize, StringListConcat, StringTake, StringDrop, StringSlice)
 }
 
-object StringEncoder extends TheoryEncoder {
+class StringEncoder extends TheoryEncoder {
   import StringEcoSystem._
 
   private val stringBijection = new Bijection[String, Expr]()

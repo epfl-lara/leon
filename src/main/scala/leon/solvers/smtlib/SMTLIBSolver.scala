@@ -16,7 +16,7 @@ import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import theories._
 import utils._
 
-abstract class SMTLIBSolver(val context: LeonContext, val program: Program, theories: TheoryEncoder = NoEncoder) 
+abstract class SMTLIBSolver(val context: LeonContext, val program: Program, theories: TheoryEncoder)
                            extends Solver with SMTLIBTarget with NaiveAssumptionSolver {
 
   /* Solver name */

@@ -10,4 +10,4 @@ import unrolling._
 import theories._
 
 class Z3UnrollingSolver(context: LeonContext, program: Program, underlying: Solver)
-  extends UnrollingSolver(context, program, underlying, theories = StringEncoder)
+  extends UnrollingSolver(context, program, underlying, theories = new StringEncoder)

@@ -103,7 +103,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     def asString(implicit ctx: LeonContext) = z3.toString
   }
 
-  val theoryEncoder = StringEncoder
+  val theoryEncoder = new StringEncoder
 
   val templateEncoder = new TemplateEncoder[Z3AST] {
     def encodeId(id: Identifier): Z3AST = {

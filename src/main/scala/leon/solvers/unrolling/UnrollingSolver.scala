@@ -394,10 +394,11 @@ trait AbstractUnrollingSolver[T]
                 }
 
                 if (!foundDefinitiveAnswer) {
-                  unrollingBank.decreaseAllGenerations()
+                  val promote = templateGenerator.manager.getBlockersToPromote(model.eval)
+                  if (promote.nonEmpty) {
+                    unrollingBank.decreaseAllGenerations()
 
-                  for (b <- templateGenerator.manager.getBlockersToPromote(model.eval)) {
-                    unrollingBank.promoteBlocker(b, force = true)
+                    for (b <- promote) unrollingBank.promoteBlocker(b, force = true)
                   }
                 }
               }
@@ -449,7 +450,7 @@ class UnrollingSolver(
   val context: LeonContext,
   val program: Program,
   underlying: Solver,
-  theories: TheoryEncoder = NoEncoder
+  theories: TheoryEncoder = new NoEncoder
 ) extends AbstractUnrollingSolver[Expr] {
 
   override val name = "U:"+underlying.name

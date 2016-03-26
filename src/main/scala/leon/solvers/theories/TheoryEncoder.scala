@@ -75,7 +75,7 @@ trait TheoryEncoder { self =>
   }
 }
 
-object NoEncoder extends TheoryEncoder {
+class NoEncoder extends TheoryEncoder {
   val encoder = new Encoder
   val decoder = new Decoder
 }

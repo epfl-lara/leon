@@ -16,7 +16,8 @@ import _root_.smtlib.theories.Core.{Equals => _, _}
 import theories._
 
 class SMTLIBZ3Solver(context: LeonContext, program: Program)
-  extends SMTLIBSolver(context, program, StringEncoder) with SMTLIBZ3Target {
+  extends SMTLIBSolver(context, program, new StringEncoder)
+     with SMTLIBZ3Target {
 
   def getProgram: Program = program
 }

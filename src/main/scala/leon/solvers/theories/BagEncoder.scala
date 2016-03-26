@@ -8,7 +8,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 
-object BagEncoder extends TheoryEncoder {
+class BagEncoder(val context: LeonContext) extends TheoryEncoder {
   val encoder = new Encoder
   val decoder = new Decoder
 }

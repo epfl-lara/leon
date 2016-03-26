@@ -357,7 +357,7 @@ object DefOps {
     })
 
     for (cd <- p.definedClasses if requiresReplacement(cd)) trCd(cd)
-    for (fd <- p.definedFunctions if requiresReplacement(fd)) {
+    for (fd <- p.definedFunctions if requiresReplacement(fd) && !(fdMap contains fd)) {
       val newId = transformer.transform(fd.id)
       val newReturn = transformer.transform(fd.returnType)
       val newParams = fd.params map (vd => ValDef(transformer.transform(vd.id)))
@@ -372,8 +372,10 @@ object DefOps {
     }
 
     for ((fd,nfd) <- fdMap) {
-      val bindings = (fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap
-      nfd.fullBody = transformer.transform(fd.fullBody)(bindings)
+      val bindings = (fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap ++
+        nfd.params.map(vd => vd.id -> vd.id)
+
+      nfd.fullBody = transformer.transform(nfd.fullBody)(bindings)
     }
 
     val fdsMap = fdMap.toMap
