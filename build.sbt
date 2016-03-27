@@ -4,7 +4,9 @@ version := "3.0"
 
 organization := "ch.epfl.lara"
 
-scalaVersion := "2.11.7"
+val scalaVer = "2.11.8"
+
+scalaVersion := scalaVer
 
 scalacOptions ++= Seq(
   "-deprecation",
@@ -35,12 +37,12 @@ resolvers ++= Seq(
 val libisabelleVersion = "0.3"
 
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-compiler" % "2.11.7",
+  "org.scala-lang" % "scala-compiler" % scalaVer,
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-  "info.hupel" %% "libisabelle" % libisabelleVersion,
-  "info.hupel" %% "libisabelle-setup" % libisabelleVersion,
   "org.slf4j" % "slf4j-nop" % "1.7.13",
+  "info.hupel" %% "libisabelle" % libisabelleVer,
+  "info.hupel" %% "libisabelle-setup" % libisabelleVer,
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2",
   "com.regblanc" %% "scala-smtlib" % "0.2"
