@@ -13,12 +13,17 @@ import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => SMTFunDef, 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 
-abstract class SMTLIBSolver(val context: LeonContext, val program: Program) 
+import theories._
+import utils._
+
+abstract class SMTLIBSolver(val context: LeonContext, val program: Program, theories: TheoryEncoder)
                            extends Solver with SMTLIBTarget with NaiveAssumptionSolver {
 
   /* Solver name */
   def targetName: String
   override def name: String = "smt-"+targetName
+
+  private val ids = new IncrementalBijection[Identifier, Identifier]()
 
   override def dbg(msg: => Any) = {
     debugOut foreach { o =>
@@ -28,8 +33,10 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   }
 
   /* Public solver interface */
-  def assertCnstr(expr: Expr): Unit = if(!hasError) {
+  def assertCnstr(raw: Expr): Unit = if (!hasError) {
     try {
+      val bindings = variablesOf(raw).map(id => id -> ids.cachedB(id)(theories.encode(id))).toMap
+      val expr = theories.encode(raw)(bindings)
       variablesOf(expr).foreach(declareVariable)
 
       val term = toSMT(expr)(Map())
@@ -84,8 +91,13 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
 
             for (me <- smodel) me match {
               case DefineFun(SMTFunDef(s, args, kind, e)) if syms(s) =>
-                val id = variables.toA(s)
-                model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+                try {
+                  val id = variables.toA(s)
+                  val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
+                  model += ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap)
+                } catch {
+                  case _: Unsupported =>
+                }
               case _ =>
             }
 
@@ -101,14 +113,14 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
     }
   }
 
-  override def getModel: Model = getModel( _ => true)
+  override def getModel: Model = getModel(_ => true)
 
   override def push(): Unit = {
+    ids.push()
     constructors.push()
     selectors.push()
     testers.push()
     variables.push()
-    genericValues.push()
     sorts.push()
     lambdas.push()
     functions.push()
@@ -118,11 +130,11 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   }
 
   override def pop(): Unit = {
+    ids.pop()
     constructors.pop()
     selectors.pop()
     testers.pop()
     variables.pop()
-    genericValues.pop()
     sorts.pop()
     lambdas.pop()
     functions.pop()

@@ -22,10 +22,15 @@ object Quantification {
     qargs: A => Set[B]
   ): Seq[Set[A]] = {
     def expand(m: A): Set[A] = Set(m) ++ margs(m).flatMap(expand)
+    def allQArgs(m: A): Set[B] = qargs(m) ++ margs(m).flatMap(allQArgs)
     val expandedMap: Map[A, Set[A]] = matchers.map(m => m -> expand(m)).toMap
     val reverseMap : Map[A, Set[A]] = expandedMap.toSeq
       .flatMap(p => p._2.map(m => m -> p._1))     // flatten to reversed pairs
       .groupBy(_._1).mapValues(_.map(_._2).toSet) // rebuild map from pair set
+      .map { case (m, ms) =>                      // filter redundant matchers
+        val allM = allQArgs(m)
+        m -> ms.filter(rm => allQArgs(rm) != allM)
+      }
 
     def rec(oms: Seq[A], mSet: Set[A], qss: Seq[Set[B]]): Seq[Set[A]] = {
       if (qss.contains(quantified)) {

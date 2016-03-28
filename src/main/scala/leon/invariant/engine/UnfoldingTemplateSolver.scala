@@ -191,7 +191,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
   }
 
   import leon.solvers._
-  import leon.solvers.combinators.UnrollingSolver
+  import leon.solvers.unrolling.UnrollingSolver
   def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC) = {
     val solFactory = SolverFactory.uninterpreted(leonctx, program)
     val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext, program, solFactory.getNewSolver()) with TimeoutSolver

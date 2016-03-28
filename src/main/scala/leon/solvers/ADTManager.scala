@@ -136,6 +136,17 @@ class ADTManager(ctx: LeonContext) {
         findDependencies(base)
       }
 
+    case tp @ TypeParameter(id) =>
+      if (!(discovered contains t) && !(defined contains t)) {
+        val sym = freshId(id.name)
+
+        val c = Constructor(freshId(sym.name), tp, List(
+          (freshId("val"), IntegerType)
+        ))
+
+        discovered += (tp -> DataType(sym, Seq(c)))
+      }
+
     case _ =>
   }
 }

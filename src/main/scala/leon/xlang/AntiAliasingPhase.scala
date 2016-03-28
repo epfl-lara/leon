@@ -55,9 +55,7 @@ object AntiAliasingPhase extends TransformationPhase {
       updateBody(fd, effects, updatedFunctions, varsInScope)(ctx)
     }
 
-    val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
-    //println(res._1)
-    res._1
+    replaceDefsInProgram(pgm)(updatedFunctions)
   }
 
   /*

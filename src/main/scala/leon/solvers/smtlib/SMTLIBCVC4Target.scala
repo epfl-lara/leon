@@ -50,10 +50,6 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             super.fromSMT(t, otpe)
         }
 
-      case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
-        val n = s.name.split("_").toList.last
-        GenericValue(tp, n.toInt)
-
       case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), Some(SetType(base))) =>
         FiniteSet(Set(), base)
 

@@ -14,7 +14,7 @@ import leon.LeonContext
 
 import leon.solvers._
 import leon.solvers.smtlib._
-import leon.solvers.combinators._
+import leon.solvers.unrolling._
 import leon.solvers.z3._
 
 class GlobalVariablesSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {

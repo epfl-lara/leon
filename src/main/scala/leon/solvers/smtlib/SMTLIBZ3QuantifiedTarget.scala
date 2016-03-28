@@ -65,6 +65,5 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarge
     }
 
     functions.toB(tfd)
-
   }
 }

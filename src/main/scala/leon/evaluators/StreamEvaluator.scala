@@ -14,7 +14,7 @@ import purescala.Expressions._
 import purescala.Quantification._
 
 import leon.solvers.{SolverFactory, PartialModel}
-import leon.solvers.combinators.UnrollingProcedure
+import leon.solvers.unrolling.UnrollingProcedure
 import leon.utils.StreamUtils._
 
 import scala.concurrent.duration._
@@ -166,7 +166,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
             val domainCnstr = orJoin(quorums.map { quorum =>
               val quantifierDomains = quorum.flatMap { case (path, caller, args) =>
-                val optMatcher = e(expr) match {
+                val optMatcher = e(caller) match {
                   case Stream(l: Lambda) => Some(gctx.lambdas.getOrElse(l, l))
                   case Stream(ev) => Some(ev)
                   case _ => None

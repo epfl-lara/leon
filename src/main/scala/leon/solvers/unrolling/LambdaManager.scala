@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import purescala.Common._
 import purescala.Definitions._
@@ -99,7 +99,7 @@ trait KeyedTemplate[T, E <: Expr] {
       case _ => Seq.empty
     }
 
-    structure -> rec(structure).map(dependencies)
+    structure -> rec(structure).distinct.map(dependencies)
   }
 }
 
@@ -196,9 +196,9 @@ class LambdaTemplate[T] private (
 }
 
 class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(encoder) {
-  private[templates] lazy val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
+  private[unrolling] lazy val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
 
-  protected[templates] val byID = new IncrementalMap[T, LambdaTemplate[T]]
+  protected[unrolling] val byID = new IncrementalMap[T, LambdaTemplate[T]]
   protected val byType          = new IncrementalMap[FunctionType, Map[(Expr, Seq[T]), LambdaTemplate[T]]].withDefaultValue(Map.empty)
   protected val applications    = new IncrementalMap[FunctionType, Set[(T, App[T])]].withDefaultValue(Set.empty)
   protected val knownFree       = new IncrementalMap[FunctionType, Set[T]].withDefaultValue(Set.empty)
@@ -325,7 +325,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
       instantiated += key
 
       if (knownFree(tpe) contains caller) {
-        instantiation withApp (key -> TemplateAppInfo(caller, trueT, args))
+        instantiation
       } else if (byID contains caller) {
         instantiation withApp (key -> TemplateAppInfo(byID(caller), trueT, args))
       } else {

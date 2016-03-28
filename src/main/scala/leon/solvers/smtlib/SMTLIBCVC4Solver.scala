@@ -5,9 +5,12 @@ package solvers.smtlib
 
 import OptionParsers._
 
+import solvers.theories._
 import purescala.Definitions.Program
 
-class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) with SMTLIBCVC4Target {
+class SMTLIBCVC4Solver(context: LeonContext, program: Program)
+  extends SMTLIBSolver(context, program, new NoEncoder)
+     with SMTLIBCVC4Target {
 
   def targetName = "cvc4"
 

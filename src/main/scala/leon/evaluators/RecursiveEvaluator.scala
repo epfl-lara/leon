@@ -15,7 +15,7 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.DefOps
 import solvers.{PartialModel, Model, SolverFactory}
-import solvers.combinators.UnrollingProcedure
+import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
@@ -191,8 +191,18 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case _ => BooleanLiteral(lv == rv)
       }
 
-    case CaseClass(cd, args) =>
-      CaseClass(cd, args.map(e))
+    case CaseClass(cct, args) =>
+      val cc = CaseClass(cct, args.map(e))
+      if (cct.classDef.hasInvariant) {
+        e(FunctionInvocation(cct.invariant.get, Seq(cc))) match {
+          case BooleanLiteral(true) =>
+          case BooleanLiteral(false) =>
+            throw RuntimeError("ADT invariant violation for " + cct.classDef.id.asString + " reached in evaluation.: " + cct.invariant.get.asString)
+          case other =>
+            throw RuntimeError(typeErrorMsg(other, BooleanType))
+        }
+      }
+      cc
 
     case AsInstanceOf(expr, ct) =>
       val le = e(expr)
@@ -518,7 +528,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       implicit val debugSection = utils.DebugSectionVerification
 
-      ctx.reporter.debug("Executing forall!")
+      ctx.reporter.debug("Executing forall: " + f.asString)
 
       val mapping = variablesOf(f).map(id => id -> rctx.mappings(id)).toMap
       val context = mapping.toSeq.sortBy(_._1.uniqueName).map(_._2)
@@ -546,7 +556,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
               val domainCnstr = orJoin(quorums.map { quorum =>
                 val quantifierDomains = quorum.flatMap { case (path, caller, args) =>
-                  val matcher = e(expr) match {
+                  val matcher = e(caller) match {
                     case l: Lambda => gctx.lambdas.getOrElse(l, l)
                     case ev => ev
                   }

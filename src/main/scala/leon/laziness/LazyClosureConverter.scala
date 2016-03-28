@@ -742,7 +742,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   }
 
   def transformCaseClasses = p.definedClasses.foreach {
-    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj) if !ccd.flags.contains(Annotation("library", Seq())) &&
+    case ccd: CaseClassDef if !ccd.flags.contains(Annotation("library", Seq())) &&
       ccd.fields.exists(vd => isLazyType(vd.getType)) =>
       val nfields = ccd.fields.map { fld =>
         unwrapLazyType(fld.getType) match {

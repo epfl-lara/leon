@@ -2,7 +2,7 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import purescala.Common._
 import purescala.Definitions._
@@ -24,7 +24,9 @@ object Instantiation {
   type AppBlockers[T]   = Map[(T, App[T]), Set[TemplateAppInfo[T]]]
   type Instantiation[T] = (Clauses[T], CallBlockers[T], AppBlockers[T])
 
-  def empty[T] = (Seq.empty[T], Map.empty[T, Set[TemplateCallInfo[T]]], Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
+  def empty[T] = (Seq.empty[T],
+    Map.empty[T, Set[TemplateCallInfo[T]]],
+    Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
 
   implicit class MapSetWrapper[A,B](map: Map[A,Set[B]]) {
     def merge(that: Map[A,Set[B]]): Map[A,Set[B]] = (map.keys ++ that.keys).map { k =>
@@ -51,14 +53,13 @@ object Instantiation {
 
     def withCalls(calls: CallBlockers[T]): Instantiation[T] = (i._1, i._2 merge calls, i._3)
     def withApps(apps: AppBlockers[T]): Instantiation[T] = (i._1, i._2, i._3 merge apps)
-    def withApp(app: ((T, App[T]), TemplateAppInfo[T])): Instantiation[T] = {
+    def withApp(app: ((T, App[T]), TemplateAppInfo[T])): Instantiation[T] =
       (i._1, i._2, i._3 merge Map(app._1 -> Set(app._2)))
-    }
   }
 }
 
 import Instantiation.{empty => _, _}
-import Template.Arg
+import Template.{Apps, Calls, Functions, Arg}
 
 trait Template[T] { self =>
   val encoder : TemplateEncoder[T]
@@ -71,9 +72,9 @@ trait Template[T] { self =>
   val exprVars : Map[Identifier, T]
   val condTree : Map[Identifier, Set[Identifier]]
 
-  val clauses      : Seq[T]
-  val blockers     : Map[T, Set[TemplateCallInfo[T]]]
-  val applications : Map[T, Set[App[T]]]
+  val clauses      : Clauses[T]
+  val blockers     : Calls[T]
+  val applications : Apps[T]
   val functions    : Set[(T, FunctionType, T)]
   val lambdas      : Seq[LambdaTemplate[T]]
 
@@ -132,6 +133,7 @@ object Template {
     Matcher(encodeExpr(caller), bestRealType(caller.getType), arguments.map(arg => Left(encodeExpr(arg))), encodeExpr(app))
   }
 
+  type Calls[T] = Map[T, Set[TemplateCallInfo[T]]]
   type Apps[T] = Map[T, Set[App[T]]]
   type Functions[T] = Set[(T, FunctionType, T)]
 
@@ -147,7 +149,7 @@ object Template {
     substMap: Map[Identifier, T] = Map.empty[Identifier, T],
     optCall: Option[TypedFunDef] = None,
     optApp: Option[(T, FunctionType)] = None
-  ) : (Clauses[T], CallBlockers[T], Apps[T], Functions[T], Map[T, Set[Matcher[T]]], () => String) = {
+  ) : (Clauses[T], Calls[T], Apps[T], Functions[T], Map[T, Set[Matcher[T]]], () => String) = {
 
     val idToTrId : Map[Identifier, T] =
       condVars ++ exprVars + pathVar ++ arguments ++ substMap ++ lambdas.map(_.ids) ++ quantifications.map(_.qs)
@@ -249,8 +251,8 @@ object Template {
       (blockers, applications, matchers)
     }
 
-    val encodedBlockers : Map[T, Set[TemplateCallInfo[T]]] = blockers.map(p => idToTrId(p._1) -> p._2)
-    val encodedApps : Map[T, Set[App[T]]] = applications.map(p => idToTrId(p._1) -> p._2)
+    val encodedBlockers : Calls[T] = blockers.map(p => idToTrId(p._1) -> p._2)
+    val encodedApps : Apps[T] = applications.map(p => idToTrId(p._1) -> p._2)
     val encodedMatchers : Map[T, Set[Matcher[T]]] = matchers.map(p => idToTrId(p._1) -> p._2)
 
     val stringRepr : () => String = () => {
@@ -271,6 +273,9 @@ object Template {
       }) +
       " * Lambdas            :\n" + lambdas.map { case template =>
         " +> " + template.toString.split("\n").mkString("\n    ") + "\n"
+      }.mkString("\n") +
+      " * Foralls            :\n" + quantifications.map { case template =>
+        " +> " + template.toString.split("\n").mkString("\n    ") + "\n"
       }.mkString("\n")
     }
 
@@ -285,7 +290,7 @@ object Template {
     condTree: Map[Identifier, Set[Identifier]],
     quantifications: Seq[QuantificationTemplate[T]],
     lambdas: Seq[LambdaTemplate[T]],
-    functions: Set[(T, FunctionType, T)],
+    functions: Functions[T],
     baseSubst: Map[T, Arg[T]],
     pathVar: Identifier,
     aVar: T
@@ -351,9 +356,9 @@ object Template {
   def instantiate[T](
     encoder: TemplateEncoder[T],
     manager: TemplateManager[T],
-    clauses: Seq[T],
-    blockers: Map[T, Set[TemplateCallInfo[T]]],
-    applications: Map[T, Set[App[T]]],
+    clauses: Clauses[T],
+    blockers: Calls[T],
+    applications: Apps[T],
     matchers: Map[T, Set[Matcher[T]]],
     substMap: Map[T, Arg[T]]
   ): Instantiation[T] = {
@@ -361,9 +366,9 @@ object Template {
     val substituter : T => T = encoder.substitute(substMap.mapValues(_.encoded))
     val msubst = substMap.collect { case (c, Right(m)) => c -> m }
 
-    val newClauses = clauses.map(substituter)
+    val newClauses: Clauses[T] = clauses.map(substituter)
 
-    val newBlockers = blockers.map { case (b,fis) =>
+    val newBlockers: CallBlockers[T] = blockers.map { case (b,fis) =>
       substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(_.substitute(substituter, msubst))))
     }
 
@@ -451,10 +456,10 @@ class FunctionTemplate[T] private(
   val condVars: Map[Identifier, T],
   val exprVars: Map[Identifier, T],
   val condTree: Map[Identifier, Set[Identifier]],
-  val clauses: Seq[T],
-  val blockers: Map[T, Set[TemplateCallInfo[T]]],
-  val applications: Map[T, Set[App[T]]],
-  val functions: Set[(T, FunctionType, T)],
+  val clauses: Clauses[T],
+  val blockers: Calls[T],
+  val applications: Apps[T],
+  val functions: Functions[T],
   val lambdas: Seq[LambdaTemplate[T]],
   val matchers: Map[T, Set[Matcher[T]]],
   val quantifications: Seq[QuantificationTemplate[T]],
@@ -465,7 +470,7 @@ class FunctionTemplate[T] private(
   override def toString : String = str
 }
 
-class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) extends IncrementalState {
+class TemplateManager[T](protected[unrolling] val encoder: TemplateEncoder[T]) extends IncrementalState {
   private val condImplies = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
   private val condImplied = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
 
@@ -492,6 +497,7 @@ class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) e
   def blocker(b: T): Unit = condImplies += (b -> Set.empty)
   def isBlocker(b: T): Boolean = condImplies.isDefinedAt(b) || condImplied.isDefinedAt(b)
   def blockerParents(b: T): Set[T] = condImplied(b)
+  def blockerChildren(b: T): Set[T] = condImplies(b)
 
   def implies(b1: T, b2: T): Unit = implies(b1, Set(b2))
   def implies(b1: T, b2s: Set[T]): Unit = {

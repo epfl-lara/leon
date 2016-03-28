@@ -2,17 +2,20 @@
 
 package leon
 package solvers
-package templates
+package unrolling
 
 import leon.utils._
 import purescala.Common._
+import purescala.Definitions._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.TypeOps._
-import purescala.Quantification.{QuantificationTypeMatcher => QTM}
+import purescala.Quantification.{QuantificationTypeMatcher => QTM, QuantificationMatcher => QM, Domains}
+
+import evaluators._
 
 import Instantiation._
 import Template._
@@ -55,7 +58,8 @@ class QuantificationTemplate[T](
   val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Seq[LambdaTemplate[T]],
   val dependencies: Map[Identifier, T],
-  val struct: (Forall, Map[Identifier, Identifier])) extends KeyedTemplate[T, Forall] {
+  val struct: (Forall, Map[Identifier, Identifier]),
+  stringRepr: () => String) extends KeyedTemplate[T, Forall] {
 
   val structure = struct._1
   lazy val start = pathVar._2
@@ -89,9 +93,13 @@ class QuantificationTemplate[T](
       },
       lambdas.map(_.substitute(substituter, matcherSubst)),
       dependencies.map { case (id, value) => id -> substituter(value) },
-      struct
+      struct,
+      stringRepr
     )
   }
+
+  private lazy val str : String = stringRepr()
+  override def toString : String = str
 }
 
 object QuantificationTemplate {
@@ -118,7 +126,7 @@ object QuantificationTemplate {
     val insts: (Identifier, T) = inst -> encoder.encodeId(inst)
     val guards: (Identifier, T) = guard -> encoder.encodeId(guard)
 
-    val (clauses, blockers, applications, functions, matchers, _) =
+    val (clauses, blockers, applications, functions, matchers, templateString) =
       Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas, Seq.empty,
         substMap = baseSubstMap + q2s + insts + guards + qs)
 
@@ -128,7 +136,8 @@ object QuantificationTemplate {
 
     new QuantificationTemplate[T](quantificationManager,
       pathVar, qs, q2s, insts, guards._2, quantifiers, condVars, exprVars, condTree,
-      clauses, blockers, applications, matchers, lambdas, keyDeps, key -> structSubst)
+      clauses, blockers, applications, matchers, lambdas, keyDeps, key -> structSubst,
+      () => "Template for " + proposition + " is :\n" + templateString())
   }
 }
 
@@ -171,36 +180,45 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     qkey == key || (qkey.tpe == key.tpe && (qkey.isInstanceOf[TypeKey] || key.isInstanceOf[TypeKey]))
   }
 
-  private val uniformQuantMap: MutableMap[TypeTree, Seq[T]] = MutableMap.empty
-  private val uniformQuantSet: MutableSet[T]                = MutableSet.empty
+  class VariableNormalizer {
+    private val varMap: MutableMap[TypeTree, Seq[T]] = MutableMap.empty
+    private val varSet: MutableSet[T]                = MutableSet.empty
 
-  def isQuantifier(idT: T): Boolean = uniformQuantSet(idT)
-  def uniformQuants(ids: Seq[Identifier]): Seq[T] = {
-    val mapping = ids.groupBy(id => bestRealType(id.getType)).flatMap { case (tpe, idst) =>
-      val prev = uniformQuantMap.get(tpe) match {
-        case Some(seq) => seq
-        case None => Seq.empty
-      }
+    def normalize(ids: Seq[Identifier]): Seq[T] = {
+      val mapping = ids.groupBy(id => bestRealType(id.getType)).flatMap { case (tpe, idst) =>
+        val prev = varMap.get(tpe) match {
+          case Some(seq) => seq
+          case None => Seq.empty
+        }
 
-      if (prev.size >= idst.size) {
-        idst zip prev.take(idst.size)
-      } else {
-        val (handled, newIds) = idst.splitAt(prev.size)
-        val uIds = newIds.map(id => id -> encoder.encodeId(id))
+        if (prev.size >= idst.size) {
+          idst zip prev.take(idst.size)
+        } else {
+          val (handled, newIds) = idst.splitAt(prev.size)
+          val uIds = newIds.map(id => id -> encoder.encodeId(id))
 
-        uniformQuantMap(tpe) = prev ++ uIds.map(_._2)
-        uniformQuantSet ++= uIds.map(_._2)
+          varMap(tpe) = prev ++ uIds.map(_._2)
+          varSet ++= uIds.map(_._2)
 
-        (handled zip prev) ++ uIds
-      }
-    }.toMap
+          (handled zip prev) ++ uIds
+        }
+      }.toMap
 
-    ids.map(mapping)
+      ids.map(mapping)
+    }
+
+    def normalSubst(qs: Seq[(Identifier, T)]): Map[T, T] = {
+      (qs.map(_._2) zip normalize(qs.map(_._1))).toMap
+    }
+
+    def contains(idT: T): Boolean = varSet(idT)
+    def get(tpe: TypeTree): Option[Seq[T]] = varMap.get(tpe)
   }
 
-  private def uniformSubst(qs: Seq[(Identifier, T)]): Map[T, T] = {
-    (qs.map(_._2) zip uniformQuants(qs.map(_._1))).toMap
-  }
+  private val abstractNormalizer = new VariableNormalizer
+  private val concreteNormalizer = new VariableNormalizer
+
+  def isQuantifier(idT: T): Boolean = abstractNormalizer.contains(idT)
 
   override def assumptions: Seq[T] = super.assumptions ++
     quantifications.collect { case q: Quantification => q.currentQ2Var }.toSeq
@@ -217,10 +235,15 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     case (CallerKey(caller, tpe), matchers) => caller -> (matchers ++ instCtx.map.get(TypeKey(tpe)).toMatchers)
   }
 
-  private def matcherDepth(m: Matcher[T]): Int = 1 + (0 +: m.args.map {
-    case Right(ma) => matcherDepth(ma)
+  private def maxDepth(m: Matcher[T]): Int = 1 + (0 +: m.args.map {
+    case Right(ma) => maxDepth(ma)
     case _ => 0
   }).max
+
+  private def totalDepth(m: Matcher[T]): Int = 1 + m.args.map {
+    case Right(ma) => totalDepth(ma)
+    case _ => 0
+  }.sum
 
   private def encodeEnablers(es: Set[T]): T =
     if (es.isEmpty) trueT else encoder.mkAnd(es.toSeq.sortBy(_.toString) : _*)
@@ -365,10 +388,10 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     lazy val quantified: Set[T] = quantifiers.map(_._2).toSet
     lazy val start = pathVar._2
 
-    private lazy val depth = matchers.map(matcherDepth).max
+    private lazy val depth = matchers.map(maxDepth).max
     private lazy val transMatchers: Set[Matcher[T]] = (for {
       (b, ms) <- allMatchers.toSeq
-      m <- ms if !matchers(m) && matcherDepth(m) <= depth
+      m <- ms if !matchers(m) && maxDepth(m) <= depth
     } yield m).toSet
 
     /* Build a mapping from applications in the quantified statement to all potential concrete
@@ -400,19 +423,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
             case (mappings, (qm, instances)) => Set(instances.toSeq.flatMap {
               case (bs, m) => mappings.map(mapping => mapping + ((bs, qm, m)))
             } : _*)
-          }
-
-      /* 2.3. filter out bindings that don't make sense where abstract sub-matchers
-       *      (matchers in arguments of other matchers) are bound to different concrete
-       *      matchers in the argument and quorum positions
-       */
-          allMappings.filter { s =>
-            def expand(ms: Traversable[(Arg[T], Arg[T])]): Set[(Matcher[T], Matcher[T])] = ms.flatMap {
-              case (Right(qm), Right(m)) => Set(qm -> m) ++ expand(qm.args zip m.args)
-              case _ => Set.empty[(Matcher[T], Matcher[T])]
-            }.toSet
-
-            expand(s.map(p => Right(p._2) -> Right(p._3))).groupBy(_._1).forall(_._2.size == 1)
           }
 
           allMappings
@@ -462,7 +472,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
         if (!skip(subst)) {
           if (!isStrict) {
-            ignoreSubst(enablers, subst)
+            val msubst = subst.collect { case (c, Right(m)) => c -> m }
+            val substituter = encoder.substitute(subst.mapValues(_.encoded))
+            ignoredSubsts(this) += ((currentGen + 3, enablers, subst))
           } else {
             instantiation ++= instantiateSubst(enablers, subst, strict = true)
           }
@@ -491,6 +503,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
         val msubst = substMap.collect { case (c, Right(m)) => c -> m }
         val substituter = encoder.substitute(substMap.mapValues(_.encoded))
+        registerBlockers(substituter)
+
         instantiation ++= Template.instantiate(encoder, QuantificationManager.this,
           clauses, blockers, applications, Map.empty, substMap)
 
@@ -501,7 +515,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
           if (strict && (matchers(m) || transMatchers(m))) {
             instantiation ++= instCtx.instantiate(sb, sm)(quantifications.toSeq : _*)
           } else if (!matchers(m)) {
-            ignoredMatchers += ((currentGen + 3, sb, sm))
+            ignoredMatchers += ((currentGen + 2 + totalDepth(m), sb, sm))
           }
         }
 
@@ -509,20 +523,11 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       }
     }
 
-    def ignoreSubst(enablers: Set[T], subst: Map[T, Arg[T]]): Unit = {
-      val msubst = subst.collect { case (c, Right(m)) => c -> m }
-      val substituter = encoder.substitute(subst.mapValues(_.encoded))
-      val nextGen = (if (matchers.forall { m =>
-        val sm = m.substitute(substituter, msubst)
-        instCtx(enablers -> sm)
-      }) currentGen + 3 else currentGen + 3)
-
-      ignoredSubsts(this) += ((nextGen, enablers, subst))
-    }
-
     protected def instanceSubst(enabler: T): Map[T, T]
 
     protected def skip(subst: Map[T, Arg[T]]): Boolean = false
+
+    protected def registerBlockers(substituter: T => T): Unit = ()
   }
 
   private class Quantification (
@@ -543,7 +548,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     val lambdas: Seq[LambdaTemplate[T]],
     val template: QuantificationTemplate[T]) extends MatcherQuantification {
 
-    var currentQ2Var: T = qs._2
+    private var _currentQ2Var: T = qs._2
+    def currentQ2Var = _currentQ2Var
     val holds = qs._2
     val body = {
       val quantified = quantifiers.map(_._1).toSet
@@ -551,14 +557,23 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       replaceFromIDs(mapping, template.structure.body)
     }
 
+    private var _currentInsts: Map[T, Set[T]] = Map.empty
+    def currentInsts = _currentInsts
+
     protected def instanceSubst(enabler: T): Map[T, T] = {
       val nextQ2Var = encoder.encodeId(q2s._1)
 
       val subst = Map(qs._2 -> currentQ2Var, guardVar -> enabler,
         q2s._2 -> nextQ2Var, insts._2 -> encoder.encodeId(insts._1))
 
-      currentQ2Var = nextQ2Var
+      _currentQ2Var = nextQ2Var
       subst
+    }
+
+    override def registerBlockers(substituter: T => T): Unit = {
+      val freshInst = substituter(insts._2)
+      val bs = (blockers.keys ++ applications.keys).map(substituter).toSet
+      _currentInsts += freshInst -> bs
     }
   }
 
@@ -647,69 +662,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       (m: Matcher[T]) => m.args.collect { case Left(a) if quantified(a) => a }.toSet)
   }
 
-  private def instantiateConstants(quantifiers: Seq[(Identifier, T)], matchers: Set[Matcher[T]]): Instantiation[T] = {
-    val quantifierSubst = uniformSubst(quantifiers)
-    val substituter = encoder.substitute(quantifierSubst)
-    var instantiation: Instantiation[T] = Instantiation.empty
-
-    for {
-      m <- matchers
-      sm = m.substitute(substituter, Map.empty)
-      if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
-    } {
-      instantiation ++= instCtx.instantiate(Set.empty, m)(quantifications.toSeq : _*)
-      instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
-    }
-
-    def unifyMatchers(matchers: Seq[Matcher[T]]): Unit = matchers match {
-      case sm +: others =>
-        for (pm <- others if correspond(pm, sm)) {
-          val encodedArgs = (sm.args zip pm.args).map(p => p._1.encoded -> p._2.encoded)
-          val mismatches = encodedArgs.zipWithIndex.collect {
-            case ((sa, pa), idx) if isQuantifier(sa) && isQuantifier(pa) && sa != pa => (idx, (pa, sa))
-          }.toMap
-
-          def extractChains(indexes: Seq[Int], partials: Seq[Seq[Int]]): Seq[Seq[Int]] = indexes match {
-            case idx +: xs =>
-              val (p1, p2) = mismatches(idx)
-              val newPartials = Seq(idx) +: partials.map { seq =>
-                if (mismatches(seq.head)._1 == p2) idx +: seq
-                else if (mismatches(seq.last)._2 == p1) seq :+ idx
-                else seq
-              }
-
-              val (closed, remaining) = newPartials.partition { seq =>
-                mismatches(seq.head)._1 == mismatches(seq.last)._2
-              }
-              closed ++ extractChains(xs, partials ++ remaining)
-
-            case _ => Seq.empty
-          }
-
-          val chains = extractChains(mismatches.keys.toSeq, Seq.empty)
-          val positions = chains.foldLeft(Map.empty[Int, Int]) { (mapping, seq) =>
-            val res = seq.min
-            mapping ++ seq.map(i => i -> res)
-          }
-
-          def extractArgs(args: Seq[Arg[T]]): Seq[Arg[T]] =
-            (0 until args.size).map(i => args(positions.getOrElse(i, i)))
-
-          instantiation ++= instCtx.instantiate(Set.empty, sm.copy(args = extractArgs(sm.args)))(quantifications.toSeq : _*)
-          instantiation ++= instCtx.instantiate(Set.empty, pm.copy(args = extractArgs(pm.args)))(quantifications.toSeq : _*)
-        }
-
-        unifyMatchers(others)
-
-      case _ => 
-    }
-
-    val substMatchers = matchers.map(_.substitute(substituter, Map.empty))
-    unifyMatchers(substMatchers.toSeq)
-
-    instantiation
-  }
-
   def instantiateAxiom(template: LambdaTemplate[T], substMap: Map[T, Arg[T]]): Instantiation[T] = {
     def quantifiedMatcher(m: Matcher[T]): Boolean = m.args.exists(a => a match {
       case Left(v) => isQuantifier(v)
@@ -724,7 +676,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       }
     }
 
-    val quantifiers = quantified zip uniformQuants(quantified)
+    val quantifiers = quantified zip abstractNormalizer.normalize(quantified)
     val key = template.key -> quantifiers
 
     if (quantifiers.isEmpty || lambdaAxioms(key)) {
@@ -805,7 +757,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       case None =>
         val qT = encoder.encodeId(template.qs._1)
         val quantified = template.quantifiers.map(_._2).toSet
-        val matchQuorums = extractQuorums(quantified, template.matchers.flatMap(_._2).toSet, template.lambdas)
+        val matcherSet = template.matchers.flatMap(_._2).toSet
+        val matchQuorums = extractQuorums(quantified, matcherSet, template.lambdas)
 
         var instantiation = Instantiation.empty[T]
 
@@ -843,7 +796,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
           encoder.mkImplies(template.start, encoder.mkEquals(qT, newQs))
         }
 
-        instantiation ++= instantiateConstants(template.quantifiers, template.matchers.flatMap(_._2).toSet)
+        instantiation ++= instantiateConstants(template.quantifiers, matcherSet)
 
         templates += template.key -> qT
         (qT, instantiation)
@@ -874,7 +827,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
 
     for ((bs,m) <- matchersToRelease) {
-      instCtx.instantiate(bs, m)(quantifications.toSeq : _*)
+      instantiation ++= instCtx.instantiate(bs, m)(quantifications.toSeq : _*)
     }
 
     val substsToRelease = quantifications.toList.flatMap { q =>
@@ -896,9 +849,74 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     instantiation
   }
 
+  private def instantiateConstants(quantifiers: Seq[(Identifier, T)], matchers: Set[Matcher[T]]): Instantiation[T] = {
+    var instantiation: Instantiation[T] = Instantiation.empty
+
+    for (normalizer <- List(abstractNormalizer, concreteNormalizer)) {
+      val quantifierSubst = normalizer.normalSubst(quantifiers)
+      val substituter = encoder.substitute(quantifierSubst)
+
+      for {
+        m <- matchers
+        sm = m.substitute(substituter, Map.empty)
+        if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
+      } instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
+
+      def unifyMatchers(matchers: Seq[Matcher[T]]): Instantiation[T] = matchers match {
+        case sm +: others =>
+          var instantiation = Instantiation.empty[T]
+          for (pm <- others if correspond(pm, sm)) {
+            val encodedArgs = (sm.args zip pm.args).map(p => p._1.encoded -> p._2.encoded)
+            val mismatches = encodedArgs.zipWithIndex.collect {
+              case ((sa, pa), idx) if isQuantifier(sa) && isQuantifier(pa) && sa != pa => (idx, (pa, sa))
+            }.toMap
+
+            def extractChains(indexes: Seq[Int], partials: Seq[Seq[Int]]): Seq[Seq[Int]] = indexes match {
+              case idx +: xs =>
+                val (p1, p2) = mismatches(idx)
+                val newPartials = Seq(idx) +: partials.map { seq =>
+                  if (mismatches(seq.head)._1 == p2) idx +: seq
+                  else if (mismatches(seq.last)._2 == p1) seq :+ idx
+                  else seq
+                }
+
+                val (closed, remaining) = newPartials.partition { seq =>
+                  mismatches(seq.head)._1 == mismatches(seq.last)._2
+                }
+                closed ++ extractChains(xs, partials ++ remaining)
+
+              case _ => Seq.empty
+            }
+
+            val chains = extractChains(mismatches.keys.toSeq, Seq.empty)
+            val positions = chains.foldLeft(Map.empty[Int, Int]) { (mapping, seq) =>
+              val res = seq.min
+              mapping ++ seq.map(i => i -> res)
+            }
+
+            def extractArgs(args: Seq[Arg[T]]): Seq[Arg[T]] =
+              (0 until args.size).map(i => args(positions.getOrElse(i, i)))
+
+            instantiation ++= instCtx.instantiate(Set.empty, sm.copy(args = extractArgs(sm.args)))(quantifications.toSeq : _*)
+            instantiation ++= instCtx.instantiate(Set.empty, pm.copy(args = extractArgs(pm.args)))(quantifications.toSeq : _*)
+          }
+
+          instantiation ++ unifyMatchers(others)
+
+        case _ => Instantiation.empty[T]
+      }
+
+      if (normalizer == abstractNormalizer) {
+        val substMatchers = matchers.map(_.substitute(substituter, Map.empty))
+        instantiation ++= unifyMatchers(substMatchers.toSeq)
+      }
+    }
+
+    instantiation
+  }
+
   def checkClauses: Seq[T] = {
     val clauses = new scala.collection.mutable.ListBuffer[T]
-    //val keySets = scala.collection.mutable.Map.empty[MatcherKey, T]
     val keyClause = MutableMap.empty[MatcherKey, (Seq[T], T)]
 
     for ((_, bs, m) <- ignoredMatchers) {
@@ -961,21 +979,270 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       }
     }
 
+    def isQuantified(e: Arg[T]): Boolean = e match {
+      case Left(t) => isQuantifier(t)
+      case Right(m) => m.args.exists(isQuantified)
+    }
+
     for ((key, ctx) <- instCtx.map.instantiations) {
       val QTM(argTypes, _) = key.tpe
 
       for {
-        (tpe,idx) <- argTypes.zipWithIndex
-        quants <- uniformQuantMap.get(tpe) if quants.nonEmpty
+        (tpe, idx) <- argTypes.zipWithIndex
+        quants <- abstractNormalizer.get(tpe) if quants.nonEmpty
         (b, m) <- ctx
-        arg = m.args(idx).encoded if !isQuantifier(arg)
-      } clauses += encoder.mkAnd(quants.map(q => encoder.mkNot(encoder.mkEquals(q, arg))) : _*)
-    }
+        arg = m.args(idx) if !isQuantified(arg)
+      } clauses += encoder.mkAnd(quants.map(q => encoder.mkNot(encoder.mkEquals(q, arg.encoded))) : _*)
 
-    for ((tpe, base +: rest) <- uniformQuantMap; q <- rest) {
-      clauses += encoder.mkEquals(base, q)
+      val byPosition: Iterable[Seq[T]] = ctx.flatMap { case (b, m) =>
+        if (b != trueT) Seq.empty else m.args.zipWithIndex
+      }.groupBy(_._2).map(p => p._2.toSeq.flatMap {
+        case (a, _) => if (isQuantified(a)) Some(a.encoded) else None
+      }).filter(_.nonEmpty)
+
+      for ((a +: as) <- byPosition; a2 <- as) {
+        clauses += encoder.mkEquals(a, a2)
+      }
     }
 
     clauses.toSeq
   }
+
+  trait ModelView {
+    protected val vars: Map[Identifier, T]
+    protected val evaluator: evaluators.DeterministicEvaluator
+
+    protected def get(id: Identifier): Option[Expr]
+    protected def eval(elem: T, tpe: TypeTree): Option[Expr]
+
+    implicit lazy val context = evaluator.context
+    lazy val reporter = context.reporter
+
+    private def extract(b: T, m: Matcher[T]): Option[Seq[Expr]] = {
+      val QTM(fromTypes, _) = m.tpe
+      val optEnabler = eval(b, BooleanType)
+      optEnabler.filter(_ == BooleanLiteral(true)).flatMap { _ =>
+        val optArgs = (m.args zip fromTypes).map { case (arg, tpe) => eval(arg.encoded, tpe) }
+        if (optArgs.forall(_.isDefined)) Some(optArgs.map(_.get))
+        else None
+      }
+    }
+
+    private def functionsOf(expr: Expr, path: Expr): (Seq[(Expr, Expr)], Seq[Expr] => Expr) = {
+
+      def reconstruct(subs: Seq[(Seq[(Expr, Expr)], Seq[Expr] => Expr)],
+                      recons: Seq[Expr] => Expr): (Seq[(Expr, Expr)], Seq[Expr] => Expr) =
+        (subs.flatMap(_._1), (exprs: Seq[Expr]) => {
+          var curr = exprs
+          recons(subs.map { case (es, recons) =>
+            val (used, remaining) = curr.splitAt(es.size)
+            curr = remaining
+            recons(used)
+          })
+        })
+
+      def rec(expr: Expr, path: Expr): (Seq[(Expr, Expr)], Seq[Expr] => Expr) = expr match {
+        case (_: Lambda) | (_: FiniteLambda) =>
+          (Seq(expr -> path), (es: Seq[Expr]) => es.head)
+
+        case Tuple(es) => reconstruct(es.zipWithIndex.map {
+          case (e, i) => rec(e, TupleSelect(path, i + 1))
+        }, Tuple)
+
+        case CaseClass(cct, es) => reconstruct((cct.classDef.fieldsIds zip es).map {
+          case (id, e) => rec(e, CaseClassSelector(cct, path, id))
+        }, CaseClass(cct, _))
+
+        case _ => (Seq.empty, (es: Seq[Expr]) => expr)
+      }
+
+      rec(expr, path)
+    }
+
+    def getPartialModel: PartialModel = {
+      val typeDomains: Map[TypeTree, Set[Seq[Expr]]] = typeInstantiations.map {
+        case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      }
+
+      val lambdaDomains: Map[Lambda, Set[Seq[Expr]]] = lambdaInstantiations.map {
+        case (l, domain) => l -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      }
+
+      val domains = new Domains(lambdaDomains, typeDomains)
+
+      val partialDomains: Map[T, Set[Seq[Expr]]] = partialInstantiations.map {
+        case (t, domain) => t -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      }
+
+      def extractElse(body: Expr): Expr = body match {
+        case IfExpr(cond, thenn, elze) => extractElse(elze)
+        case _ => body
+      }
+
+      val mapping = vars.map { case (id, idT) =>
+        val value = get(id).getOrElse(simplestValue(id.getType))
+        val (functions, recons) = functionsOf(value, Variable(id))
+
+        id -> recons(functions.map { case (f, path) =>
+          val encoded = encoder.encodeExpr(Map(id -> idT))(path)
+          val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
+          partialDomains.get(encoded).orElse(typeDomains.get(tpe)).map { domain =>
+            FiniteLambda(domain.toSeq.map { es =>
+              val optEv = evaluator.eval(application(f, es)).result
+              es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(f, es)))
+            }, f match {
+              case FiniteLambda(_, dflt, _) => dflt
+              case Lambda(_, body) => extractElse(body)
+              case _ => scala.sys.error("What kind of function is this : " + f.asString + " !?")
+            }, tpe)
+          }.getOrElse(f)
+        })
+      }
+
+      new PartialModel(mapping, domains)
+    }
+
+    def getTotalModel: Model = {
+
+      def checkForalls(quantified: Set[Identifier], body: Expr): Option[String] = {
+        val matchers = purescala.ExprOps.collect[(Expr, Seq[Expr])] {
+          case QM(e, args) => Set(e -> args)
+          case _ => Set.empty
+        } (body)
+
+        if (matchers.isEmpty)
+          return Some("No matchers found.")
+
+        val matcherToQuants = matchers.foldLeft(Map.empty[Expr, Set[Identifier]]) {
+          case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
+            case Variable(id) if quantified(id) => Set(id)
+            case _ => Set.empty[Identifier]
+          }))
+        }
+
+        val bijectiveMappings = matcherToQuants.filter(_._2.nonEmpty).groupBy(_._2)
+        if (bijectiveMappings.size > 1)
+          return Some("Non-bijective mapping for symbol " + bijectiveMappings.head._2.head._1.asString)
+
+        def quantifiedArg(e: Expr): Boolean = e match {
+          case Variable(id) => quantified(id)
+          case QM(_, args) => args.forall(quantifiedArg)
+          case _ => false
+        }
+
+        purescala.ExprOps.postTraversal(m => m match {
+          case QM(_, args) =>
+            val qArgs = args.filter(quantifiedArg)
+
+            if (qArgs.nonEmpty && qArgs.size < args.size)
+              return Some("Mixed ground and quantified arguments in " + m.asString)
+
+          case Operator(es, _) if es.collect { case Variable(id) if quantified(id) => id }.nonEmpty =>
+            return Some("Invalid operation on quantifiers " + m.asString)
+
+          case (_: Equals) | (_: And) | (_: Or) | (_: Implies) | (_: Not) => // OK
+
+          case Operator(es, _) if (es.flatMap(variablesOf).toSet & quantified).nonEmpty =>
+            return Some("Unandled implications from operation " + m.asString)
+
+          case _ =>
+        }) (body)
+
+        body match {
+          case Variable(id) if quantified(id) =>
+            Some("Unexpected free quantifier " + id.asString)
+          case _ => None
+        }
+      }
+
+      val issues: Iterable[(Seq[Identifier], Expr, String)] = for {
+        q <- quantifications.view
+        if eval(q.holds, BooleanType) == Some(BooleanLiteral(true))
+        msg <- checkForalls(q.quantifiers.map(_._1).toSet, q.body)
+      } yield (q.quantifiers.map(_._1), q.body, msg)
+
+      if (issues.nonEmpty) {
+        val (quantifiers, body, msg) = issues.head
+        reporter.warning("Model soundness not guaranteed for \u2200" +
+          quantifiers.map(_.asString).mkString(",") + ". " + body.asString+" :\n => " + msg)
+      }
+
+      val types = typeInstantiations
+      val partials = partialInstantiations
+
+      def extractCond(params: Seq[Identifier], args: Seq[(T, Expr)], structure: Map[T, Identifier]): Seq[Expr] = (params, args) match {
+        case (id +: rparams, (v, arg) +: rargs) =>
+          if (isQuantifier(v)) {
+            structure.get(v) match {
+              case Some(pid) => Equals(Variable(id), Variable(pid)) +: extractCond(rparams, rargs, structure)
+              case None => extractCond(rparams, rargs, structure + (v -> id))
+            }
+          } else {
+            Equals(Variable(id), arg) +: extractCond(rparams, rargs, structure)
+          }
+        case _ => Seq.empty
+      }
+
+      new Model(vars.map { case (id, idT) =>
+        val value = get(id).getOrElse(simplestValue(id.getType))
+        val (functions, recons) = functionsOf(value, Variable(id))
+
+        id -> recons(functions.map { case (f, path) =>
+          val encoded = encoder.encodeExpr(Map(id -> idT))(path)
+          val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
+          val params = tpe.from.map(tpe => FreshIdentifier("x", tpe, true))
+          partials.get(encoded).orElse(types.get(tpe)).map { domain =>
+            val conditionals = domain.flatMap { case (b, m) =>
+              extract(b, m).map { args =>
+                val result = evaluator.eval(application(f, args)).result.getOrElse {
+                  scala.sys.error("Unexpectedly failed to evaluate " + application(f, args))
+                }
+
+                val cond = if (m.args.exists(arg => isQuantifier(arg.encoded))) {
+                  extractCond(params, m.args.map(_.encoded) zip args, Map.empty)
+                } else {
+                  (params zip args).map(p => Equals(Variable(p._1), p._2))
+                }
+
+                cond -> result
+              }
+            }.toMap
+
+            if (conditionals.isEmpty) {
+              value
+            } else {
+              val ((_, dflt)) +: rest = conditionals.toSeq.sortBy { case (conds, _) =>
+                (conds.flatMap(variablesOf).toSet.size, conds.size)
+              }
+
+              val body = rest.foldLeft(dflt) { case (elze, (conds, res)) =>
+                if (conds.isEmpty) elze else (elze match {
+                  case pres if res == pres => res
+                  case _ => IfExpr(andJoin(conds), res, elze)
+                })
+              }
+
+              Lambda(params.map(ValDef(_)), body)
+            }
+          }.getOrElse(f)
+        })
+      })
+    }
+  }
+
+  def getModel(vs: Map[Identifier, T], ev: DeterministicEvaluator, _get: Identifier => Option[Expr], _eval: (T, TypeTree) => Option[Expr]) = new ModelView {
+    val vars: Map[Identifier, T] = vs
+    val evaluator: DeterministicEvaluator = ev
+
+    def get(id: Identifier): Option[Expr] = _get(id)
+    def eval(elem: T, tpe: TypeTree): Option[Expr] = _eval(elem, tpe)
+  }
+
+  def getBlockersToPromote(eval: (T, TypeTree) => Option[Expr]): Seq[T] = quantifications.toSeq.flatMap {
+    case q: Quantification if eval(q.qs._2, BooleanType) == Some(BooleanLiteral(false)) =>
+      val falseInsts = q.currentInsts.filter { case (inst, bs) => eval(inst, BooleanType) == Some(BooleanLiteral(false)) }
+      falseInsts.flatMap(_._2)
+    case _ => Seq.empty
+  }
 }
+

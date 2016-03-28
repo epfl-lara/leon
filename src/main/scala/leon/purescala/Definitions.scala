@@ -186,11 +186,11 @@ object Definitions {
     }
 
     lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = defs.collect {
-      case c@CaseClassDef(_, _, Some(p), _) => c
+      case c : CaseClassDef if c.parent.isDefined => c
     }.groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
-      case c @ CaseClassDef(_, _, None, _) => c
+      case c : CaseClassDef if !c.parent.isDefined => c
     }
   }
 
@@ -227,7 +227,7 @@ object Definitions {
   // Is inlined
   case object IsInlined extends FunctionFlag
   // Is an ADT invariant method
-  case object IsADTInvariant extends FunctionFlag with ClassFlag
+  case object IsADTInvariant extends FunctionFlag
   case object IsInner extends FunctionFlag
 
   /** Represents a class definition (either an abstract- or a case-class) */
@@ -235,7 +235,7 @@ object Definitions {
     self =>
 
     def subDefinitions = fields ++ methods ++ tparams 
-      
+
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
     def fields: Seq[ValDef]
@@ -280,12 +280,13 @@ object Definitions {
 
     private var _invariant: Option[FunDef] = None
 
-    def invariant = _invariant
-    def hasInvariant = flags contains IsADTInvariant
-    def setInvariant(fd: FunDef): Unit = {
-      addFlag(IsADTInvariant)
-      _invariant = Some(fd)
+    def invariant: Option[FunDef] = parent.flatMap(_.classDef.invariant).orElse(_invariant)
+    def setInvariant(fd: FunDef): Unit = parent match {
+      case Some(act) => act.classDef.setInvariant(fd)
+      case None => _invariant = Some(fd)
     }
+
+    def hasInvariant: Boolean = invariant.isDefined || (root.knownChildren.exists(cd => cd.methods.exists(_.isInvariant)))
 
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
@@ -336,9 +337,9 @@ object Definitions {
   }
 
   /** Abstract classes. */
-  case class AbstractClassDef(id: Identifier,
-                              tparams: Seq[TypeParameterDef],
-                              parent: Option[AbstractClassType]) extends ClassDef {
+  class AbstractClassDef(val id: Identifier,
+                         val tparams: Seq[TypeParameterDef],
+                         val parent: Option[AbstractClassType]) extends ClassDef {
 
     val fields = Nil
     val isAbstract   = true
@@ -362,16 +363,17 @@ object Definitions {
     ): AbstractClassDef = {
       val acd = new AbstractClassDef(id, tparams, parent)
       acd.addFlags(this.flags)
-      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(acd)))
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => acd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(acd))
       acd.copiedFrom(this)
     }
   }
 
   /** Case classes/ case objects. */
-  case class CaseClassDef(id: Identifier,
-                          tparams: Seq[TypeParameterDef],
-                          parent: Option[AbstractClassType],
-                          isCaseObject: Boolean) extends ClassDef {
+  class CaseClassDef(val id: Identifier,
+                     val tparams: Seq[TypeParameterDef],
+                     val parent: Option[AbstractClassType],
+                     val isCaseObject: Boolean) extends ClassDef {
 
     private var _fields = Seq[ValDef]()
 
@@ -393,14 +395,14 @@ object Definitions {
         )
       } else index
     }
-    
+
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
 
+    def typed: CaseClassType = typed(tparams.map(_.tp))
     def typed(tps: Seq[TypeTree]): CaseClassType = {
       require(tps.length == tparams.length)
       CaseClassType(this, tps)
     }
-    def typed: CaseClassType = typed(tparams.map(_.tp))
     
     /** Duplication of this [[CaseClassDef]].
       * @note This will not replace recursive [[CaseClassDef]] calls in [[fields]] nor the parent abstract class types
@@ -415,9 +417,9 @@ object Definitions {
       val cd = new CaseClassDef(id, tparams, parent, isCaseObject)
       cd.setFields(fields)
       cd.addFlags(this.flags)
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => cd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(cd))
       cd.copiedFrom(this)
-      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(cd)))
-      cd
     }
   }
 

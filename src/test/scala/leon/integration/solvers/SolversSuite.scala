@@ -13,7 +13,6 @@ import leon.LeonContext
 
 import leon.solvers._
 import leon.solvers.smtlib._
-import leon.solvers.combinators._
 import leon.solvers.z3._
 
 class SolversSuite extends LeonTestSuiteWithProgram {
@@ -22,13 +21,13 @@ class SolversSuite extends LeonTestSuiteWithProgram {
 
   val getFactories: Seq[(String, (LeonContext, Program) => Solver)] = {
     (if (SolverFactory.hasNativeZ3) Seq(
-      ("fairz3",   (ctx: LeonContext, pgm: Program) => new Z3StringFairZ3Solver(ctx, pgm))
+      ("fairz3",   (ctx: LeonContext, pgm: Program) => new FairZ3Solver(ctx, pgm))
     ) else Nil) ++
     (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBZ3Solver(ctx, pgm)))
+      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
     ) else Nil) ++
     (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBCVC4Solver(ctx, pgm)))
+      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new Z3UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
     ) else Nil)
   }
 
@@ -49,7 +48,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
 
   val vs = types.map(FreshIdentifier("v", _).toVariable)
 
-      // We need to make sure models are not co-finite
+  // We need to make sure models are not co-finite
   val cnstrs = vs.map(v => v.getType match {
     case UnitType =>
       Equals(v, simplestValue(v.getType))
@@ -77,7 +76,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
               fail(s"Solver $solver - Model does not contain "+v.id.uniqueName+" of type "+v.getType)
             }
           }
-        case _ =>
+        case res =>
           fail(s"Solver $solver - Constraint "+cnstr.asString+" is unsat!? Solver was "+solver.getClass)
       }
     } finally {

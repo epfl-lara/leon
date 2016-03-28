@@ -388,7 +388,7 @@ object Expressions {
     * @param out The output expression
     * @param cases The cases to compare against
     */
-  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
+  case class Passes(in: Expr, out: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
 
     val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
@@ -444,7 +444,6 @@ object Expressions {
     * This is useful e.g. to present counterexamples of generic types.
     */
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
-  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
     val getType = tp
   }
 
@@ -846,6 +845,43 @@ object Expressions {
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
     val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
+
+  /* Bag operations */
+  /** $encodingof `Bag[base](elements)` */
+  case class FiniteBag(elements: Map[Expr, Int], base: TypeTree) extends Expr {
+    val getType = BagType(base).unveilUntyped
+  }
+  /** $encodingof `bag.get(element)` or `bag(element)` */
+  case class MultiplicityInBag(element: Expr, bag: Expr) extends Expr {
+    val getType = IntegerType
+  }
+  /** $encodingof `bag.length` */
+  /*
+  case class BagCardinality(bag: Expr) extends Expr {
+    val getType = IntegerType
+  }
+  */
+  /** $encodingof `bag1.subsetOf(bag2)` */
+  /*
+  case class SubbagOf(bag1: Expr, bag2: Expr) extends Expr {
+    val getType  = BooleanType
+  }
+  */
+  /** $encodingof `bag1.intersect(bag2)` */
+  case class BagIntersection(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+  /** $encodingof `bag1 ++ bag2` */
+  case class BagUnion(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+  /** $encodingof `bag1 -- bag2` */
+  /*
+  case class SetDifference(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+  */
+  
 
   // TODO: Add checks for these expressions too
 

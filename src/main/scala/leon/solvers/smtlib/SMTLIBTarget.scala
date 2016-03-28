@@ -153,7 +153,6 @@ trait SMTLIBTarget extends Interruptible {
   protected val selectors     = new IncrementalBijection[(TypeTree, Int), SSymbol]()
   protected val testers       = new IncrementalBijection[TypeTree, SSymbol]()
   protected val variables     = new IncrementalBijection[Identifier, SSymbol]()
-  protected val genericValues = new IncrementalBijection[GenericValue, SSymbol]()
   protected val sorts         = new IncrementalBijection[TypeTree, Sort]()
   protected val functions     = new IncrementalBijection[TypedFunDef, SSymbol]()
   protected val lambdas       = new IncrementalBijection[FunctionType, SSymbol]()
@@ -226,13 +225,6 @@ trait SMTLIBTarget extends Interruptible {
       unsupported(other, "Unable to extract from raw array for " + tpe)
   }
 
-  protected def declareUninterpretedSort(t: TypeParameter): Sort = {
-    val s = id2sym(t.id)
-    val cmd = DeclareSort(s, 0)
-    emit(cmd)
-    Sort(SMTIdentifier(s))
-  }
-
   protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
@@ -252,10 +244,7 @@ trait SMTLIBTarget extends Interruptible {
         case FunctionType(from, to) =>
           Ints.IntSort()
 
-        case tp: TypeParameter =>
-          declareUninterpretedSort(tp)
-
-        case _: ClassType | _: TupleType | _: ArrayType | UnitType =>
+        case _: ClassType | _: TupleType | _: ArrayType | _: TypeParameter | UnitType =>
           declareStructuralSort(tpe)
 
         case other =>
@@ -305,7 +294,6 @@ trait SMTLIBTarget extends Interruptible {
         conflicts.foreach { declareStructuralSort }
         declareStructuralSort(t)
     }
-
   }
 
   protected def declareVariable(id: Identifier): SSymbol = {
@@ -532,13 +520,9 @@ trait SMTLIBTarget extends Interruptible {
         toSMT(matchToIfThenElse(m))
 
       case gv @ GenericValue(tpe, n) =>
-        genericValues.cachedB(gv) {
-          val v = declareVariable(FreshIdentifier("gv" + n, tpe))
-          for ((ogv, ov) <- genericValues.aToB if ogv.getType == tpe) {
-            emit(SMTAssert(Core.Not(Core.Equals(v, ov))))
-          }
-          v
-        }
+        declareSort(tpe)
+        val constructor = constructors.toB(tpe)
+        FunctionApplication(constructor, Seq(toSMT(InfiniteIntegerLiteral(n))))
 
       /**
        * ===== Everything else =====
@@ -803,11 +787,12 @@ trait SMTLIBTarget extends Interruptible {
           case cct: CaseClassType =>
             val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
             CaseClass(cct, rargs)
+
           case tt: TupleType =>
             val rargs = args.zip(tt.bases).map(fromSMT)
             tupleWrap(rargs)
 
-          case at@ArrayType(baseType) =>
+          case at @ ArrayType(baseType) =>
             val IntLiteral(size) = fromSMT(args(0), Int32Type)
             val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
 
@@ -824,6 +809,10 @@ trait SMTLIBTarget extends Interruptible {
 
               finiteArray(entries, None, baseType)
             }
+
+          case tp @ TypeParameter(id) =>
+            val InfiniteIntegerLiteral(n) = fromSMT(args(0), IntegerType)
+            GenericValue(tp, n.toInt)
 
           case t =>
             unsupported(t, "Woot? structural type that is non-structural")
