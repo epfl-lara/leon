@@ -223,6 +223,7 @@ object MethodLifting extends TransformationPhase {
 
             Some(and(classPre(fd), compositePre))
           }
+
           val postSimple = {
             val trivial = post.forall {
               case SimpleCase(_, Lambda(_, BooleanLiteral(true))) => true
@@ -239,6 +240,7 @@ object MethodLifting extends TransformationPhase {
               ).setPos(fd))
             }
           }
+
           val bodySimple = {
             val trivial = body forall {
               case SimpleCase(_, NoTree(_)) => true

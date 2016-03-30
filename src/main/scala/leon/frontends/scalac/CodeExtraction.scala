@@ -334,11 +334,16 @@ trait CodeExtraction extends ASTExtractors {
 
         classToInvariants.get(sym).foreach { bodies =>
           val cd = classesToClasses(sym)
-          val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
-          fd.addFlag(IsADTInvariant)
-          fd.addFlags(cd.flags.collect { case annot : purescala.Definitions.Annotation => annot })
 
-          cd.registerMethod(fd)
+          for (c <- (cd.ancestors.toSet ++ cd.root.knownDescendants + cd) if !c.methods.exists(_.isInvariant)) {
+            val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
+            fd.addFlag(IsADTInvariant)
+            fd.addFlags(c.flags.collect { case annot : purescala.Definitions.Annotation => annot })
+            fd.fullBody = BooleanLiteral(true)
+            c.registerMethod(fd)
+          }
+
+          val fd = cd.methods.find(_.isInvariant).get
           val ctparams = sym.tpe match {
             case TypeRef(_, _, tps) =>
               extractTypeParams(tps).map(_._1)

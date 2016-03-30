@@ -286,7 +286,7 @@ object Definitions {
       case None => _invariant = Some(fd)
     }
 
-    def hasInvariant: Boolean = invariant.isDefined || (root.knownChildren.exists(cd => cd.methods.exists(_.isInvariant)))
+    def hasInvariant: Boolean = invariant.isDefined || (this +: root.knownDescendants).exists(cd => cd.methods.exists(_.isInvariant))
 
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
