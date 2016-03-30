@@ -104,6 +104,8 @@ object Main {
 
   def processOptions(args: Seq[String]): LeonContext = {
 
+    println("args of the processOption", args.toString())
+
     val initReporter = new DefaultReporter(Set())
 
     val options = args.filter(_.startsWith("--")).toSet
