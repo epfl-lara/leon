@@ -27,6 +27,8 @@ object IsabelleEnvironment {
   private implicit val debugSection = DebugSectionIsabelle
 
   def apply(context: LeonContext, program: Program): Future[IsabelleEnvironment] = {
+    LeonLoggerFactory.reporter = context.reporter
+
     val version = Version(isabelleVersion)
     val dump = context.findOptionOrDefault(Component.optDump)
     val strict = context.findOptionOrDefault(Component.optStrict)
