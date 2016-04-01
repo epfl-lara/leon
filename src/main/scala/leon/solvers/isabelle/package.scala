@@ -22,7 +22,7 @@ import shapeless.tag
 object `package` {
 
   val theory = "Leon_Runtime"
-  val isabelleVersion = "2015"
+  val isabelleVersion = "2016"
 
 
   implicit class FutureResultOps[A](val future: Future[ProverResult[A]]) extends AnyVal {
