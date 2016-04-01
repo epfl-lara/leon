@@ -53,16 +53,12 @@ object Common {
     override def hashCode: Int = globalId
 
     override def toString: String = {
-      if (alwaysShowUniqueID) {
-        name + (if (id > 0) id else "")
-      } else {
-        name
-      }
+      if (alwaysShowUniqueID) uniqueName else name
     }
 
-    def uniqueNameDelimited(delim: String) = name + delim + id
+    def uniqueNameDelimited(delim: String) = s"$name$delim$id"
 
-    def uniqueName: String = uniqueNameDelimited("")
+    def uniqueName: String = uniqueNameDelimited("$")
 
     def toVariable: Variable = Variable(this)
 
