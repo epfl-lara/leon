@@ -27,12 +27,18 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   // Using sequences and not sets to keep track of order/dependencies
   private var typeDecls = Seq[CAST.Struct]()
   private var functions = Seq[CAST.Fun]()
+  // Includes don't need specific orders, hence we use a set
+  private var includes  = Set[CAST.Include]() // for manually defined functions
 
   // Extra information about inner functions' context
   // See classes VarInfo and FunCtx and functions convertToFun and
   // FunctionInvocation conversion
   private var funExtraArgss = Map[CAST.Id, Seq[CAST.Id]]()
   private val emptyFunCtx   = FunCtx(Seq())
+
+  private def registerInclude(incl: CAST.Include) {
+    includes = includes + incl
+  }
 
   private def registerType(typ: CAST.Struct) {
     // Types might be processed more than once as the corresponding CAST type
@@ -86,7 +92,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     debug(s"Converting the main unit:\n$mainUnit")
     collectSymbols(mainUnit)
 
-    CAST.Prog(typeDecls, functions)
+    CAST.Prog(includes, typeDecls, functions)
   }
 
   // Look for function and structure definitions
@@ -145,6 +151,10 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     // Generate parameters (var + type)
     def toParams = vars map { _.toParam }
+
+    // Check whether this context is empy or not
+    // i.e. if the function being extracted is a top level one
+    def isEmpty = vars.isEmpty
   }
 
   // Extract inner functions too
@@ -155,6 +165,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     if (containsArrayType(fd.returnType))
       CAST.unsupported("Returning arrays is currently not allowed")
 
+    // Extract basic information
     val id        = convertToId(fd.id)
     val retType   = convertToType(fd.returnType)
     val stdParams = fd.params map convertToVar
@@ -164,19 +175,45 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     val extraParams = funCtx.toParams
     val params      = extraParams ++ stdParams
 
-    // Function LeonContext:
-    // 1) Save the variables of the current context for later function invocation
-    // 2) Lift & augment funCtx with the current function's arguments
-    // 3) Propagate it to the current function's body
+    // Two main cases to handle for body extraction:
+    //  - either the function is defined in Scala, or
+    //  - the user provided a C code to use instead
 
-    registerFunExtraArgs(id, funCtx.extractIds)
+    debug(s"Processing ${fd.id} with annotations: ${fd.annotations}")
 
-    val funCtx2 = funCtx.lift.extend(stdParams)
+    val manual = "cCode.function"
+    val body = if (fd.annotations contains manual) {
+      if (!funCtx.isEmpty)
+        CAST.unsupported(s"External code cannot be specified for nested functions")
 
-    val b    = convertToStmt(fd.fullBody)(funCtx2)
-    val body = retType match {
-      case CAST.Void => b
-      case _         => injectReturn(b)
+      val Seq(Some(includes0), Some(code0)) = fd.extAnnotations(manual)
+      val includes = includes0.asInstanceOf[String]
+      val code = code0.asInstanceOf[String]
+      debug(s"Extracted includes: $includes")
+
+      // Register all the necessary includes
+      includes split ':' foreach { i => registerInclude(CAST.Include(i)) }
+
+      val body = code.replaceAllLiterally("__FUNCTION__", id.name)
+
+      Right(body.stripMargin)
+    } else {
+      // Function Context:
+      // 1) Save the variables of the current context for later function invocation
+      // 2) Lift & augment funCtx with the current function's arguments
+      // 3) Propagate it to the current function's body
+
+      registerFunExtraArgs(id, funCtx.extractIds)
+
+      val funCtx2 = funCtx.lift.extend(stdParams)
+
+      val b    = convertToStmt(fd.fullBody)(funCtx2)
+      val body = retType match {
+        case CAST.Void => b
+        case _         => injectReturn(b)
+      }
+
+      Left(body)
     }
 
     val fun = CAST.Fun(id, retType, params, body)

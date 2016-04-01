@@ -64,9 +64,13 @@ object CAST { // C Abstract Syntax Tree
   /* ----------------------------------------------------- Definitions  ----- */
   abstract class Def extends Tree
 
-  case class Prog(structs: Seq[Struct], functions: Seq[Fun]) extends Def
+  case class Include(file: String) extends Def
 
-  case class Fun(id: Id, retType: Type, params: Seq[Var], body: Stmt) extends Def
+  case class Prog(includes: Set[Include], structs: Seq[Struct], functions: Seq[Fun]) extends Def
+
+  // Manually defined function through the cCode.function annotation have a string
+  // for signature+body instead of the usual Stmt AST exclusively for the body
+  case class Fun(id: Id, retType: Type, params: Seq[Var], body: Either[Stmt, String]) extends Def
 
   case class Id(name: String) extends Def {
     // `|` is used as the margin delimiter and can cause trouble in some situations
