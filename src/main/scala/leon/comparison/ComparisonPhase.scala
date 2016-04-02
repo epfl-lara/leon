@@ -17,7 +17,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
 
   def extractBaseToCompare(ctx: LeonContext, files: List[String]) = {
-    val extraction = ClassgenPhase andThen ExtractionPhase andThen new PreprocessingPhase(false)
+    val extraction =  ExtractionPhase andThen new PreprocessingPhase(false)
     val (_, prog) = extraction.run(ctx, files)
 
     getFunDef(ctx, prog)
@@ -37,16 +37,24 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     println("--------------")
     println("listFunDef is : ", listFunDef.toString())
     println("And the first element is : ", listFunDef.tail.head.toString)
-
+    println("--------------")
+    println("COMPARED PROG")
+    println("--------------")
     println("tparam head is ", listFunDef.tail.head.tparams.toString())
     println("param head is ", listFunDef.tail.head.params.toString())
     println("return type is ", listFunDef.tail.head.returnType.toString)
-    println("body head is", listFunDef.tail.head.fullBody.toString)
+    println("body head is", listFunDef.tail.head.body.toString)
+    println("fullBody head is", listFunDef.tail.head.fullBody.toString)
+
+    println("--------------")
+    println("BASE PROG")
+    println("--------------")
 
     println("tparam compared head is ", testcasesProg.tail.head.tparams.toString())
     println("param compared head is ", testcasesProg.tail.head.params.toString())
     println("return compared type is ", testcasesProg.tail.head.returnType.toString)
-    println("body compared head is", testcasesProg.tail.head.fullBody.toString)
+    println("body compared head is ", testcasesProg.tail.head.body.toString)
+    println("fullBody compared head is", testcasesProg.tail.head.fullBody.toString)
 
     println("we compare")
 
@@ -74,19 +82,23 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   }
 
   def compare(p1: List[FunDef], p2: List[FunDef]): List[(FunDef, FunDef)] = {
+    println("--------------")
+    println("COMPARISON")
+    println("--------------")
     for{
       f1 <- p1
       f2 <- p2
-      if(f1.body == f2.body)
+      if(compareFunDef(f1, f2))
     } yield {
       (f1, f2)
     }
   }
 
   def compareFunDef(f1: FunDef, f2: FunDef): Boolean = {
+
     println("f1 ", f1.params.toString())
     println("f2 ", f2.params.toString())
-    if (f1.tparams == f2.tparams) true
+    if (f1.body == f2.body) true
     else false
   }
 }
