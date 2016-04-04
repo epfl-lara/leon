@@ -4,11 +4,9 @@ package leon
 package grammars
 
 import purescala.Types._
-import purescala.TypeOps._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Common._
-import purescala.Constructors._
 
 case object Closures extends ExpressionGrammar {
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {

@@ -29,8 +29,6 @@ sealed class Graph(problem: Problem) {
 
 sealed abstract class Node(val parent: Option[Node]) extends Printable {
 
-  def asString(implicit ctx: LeonContext): String
-
   var descendants: List[Node] = Nil
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false

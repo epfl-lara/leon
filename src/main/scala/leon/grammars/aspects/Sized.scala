@@ -4,7 +4,6 @@ package leon
 package grammars
 package aspects
 
-import purescala.Expressions.Expr
 import utils.SeqUtils._
 
 /**
@@ -13,7 +12,7 @@ import utils.SeqUtils._
 case class Sized(size: Int) extends Aspect {
   def asString(implicit ctx: LeonContext) = "|"+size+"|"
 
-  def applyTo(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+  def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     val optimizeCommut = true
 
     ps.flatMap { p =>

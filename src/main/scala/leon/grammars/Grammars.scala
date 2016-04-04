@@ -7,7 +7,6 @@ import synthesis.Witnesses.Hint
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Types._
-import purescala.TypeOps._
 import purescala.Extractors.TopLevelAnds
 import purescala.ExprOps.formulaSize
 

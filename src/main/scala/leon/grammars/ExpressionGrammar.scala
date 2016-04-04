@@ -4,21 +4,19 @@ package leon
 package grammars
 
 import purescala.Expressions._
-import purescala.Types._
 import purescala.Common._
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-/** Represents a context-free grammar of expressions
-  */
+/** Represents a context-free grammar of expressions */
 abstract class ExpressionGrammar {
 
   private[this] val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
 
   /** The list of production rules for this grammar for a given nonterminal.
-    * This is the cached version of [[getProductions]] which clients should use.
     *
     * @param lab The nonterminal for which production rules will be generated
+    * @note This is the cached version of [[computeProductions]]. Clients should use this method.
     */
   def getProductions(lab: Label)(implicit ctx: LeonContext) = {
     cache.getOrElse(lab, {
@@ -28,12 +26,12 @@ abstract class ExpressionGrammar {
     })
   }
 
-  /** The list of production rules for this grammar for a given nonterminal
+  /** The list of production rules for this grammar for a given nonterminal.
     *
     * @param lab The nonterminal for which production rules will be generated
+    * @note Clients should use the cached version, [[getProductions]] instead
     */
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
-
 
   def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
     lab.aspects.foldLeft(ps) {
@@ -41,6 +39,7 @@ abstract class ExpressionGrammar {
     }
   }
 
+  /** Union of grammars */
   final def ||(that: ExpressionGrammar): ExpressionGrammar = {
     Union(Seq(this, that))
   }
@@ -65,7 +64,6 @@ abstract class ExpressionGrammar {
         case _ => l1.asString < l2.asString
       }
     }
-
 
     for ((lab, gs) <- cache.toSeq.sortWith(sorter)) {
       val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "

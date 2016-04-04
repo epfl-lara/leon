@@ -11,9 +11,9 @@ import purescala.Constructors._
 import purescala.Extractors._
 import utils.SeqUtils._
 
-/**
- * Attach sizes to labels and transmit them down accordingly
- */
+/** Generates expressions similar to a given expression
+  * @param e The expression for which similar ones will be generated
+  */
 case class SimilarTo(e: Expr) extends Aspect {
   type Prods = Seq[ProductionRule[Label, Expr]]
 
@@ -28,7 +28,7 @@ case class SimilarTo(e: Expr) extends Aspect {
    *                f(a, ~b~)
    *                f(b, a)   // if non-commut
    */
-  def applyTo(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+  def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     def isCommutative(e: Expr) = e match {
       case _: Plus | _: Times => true
       case _ => false
@@ -63,7 +63,7 @@ case class SimilarTo(e: Expr) extends Aspect {
       }
 
       val subs: Prods = e match {
-        case Operator(as, b) if as.size > 0 =>
+        case Operator(as, b) if as.nonEmpty =>
           for ((a, i) <- as.zipWithIndex) yield {
             ProductionRule[Label, Expr](
               List(Label(a.getType).withAspect(SimilarTo(a))),

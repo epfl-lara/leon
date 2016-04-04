@@ -4,8 +4,6 @@ package leon
 package grammars
 
 import purescala.Types._
-import purescala.Expressions._
-import purescala.Constructors._
 
 case class Label(tpe: TypeTree, aspects: List[Aspect] = Nil) extends Typed {
   val getType = tpe

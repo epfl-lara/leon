@@ -4,10 +4,8 @@ package leon
 package grammars
 package aspects
 
-import purescala.Expressions.Expr
-
 /**
- * Persistant aspects allow label information to be propagated down:
+ * Persistent aspects allow label information to be propagated down:
  * Int{e} means (Int with a terminal 'e'). And thus, the Closure grammar
  * is able to have, as production:
  *   Int=>Int  :=  (e: Int) => Int{e}
@@ -19,8 +17,8 @@ import purescala.Expressions.Expr
  * like:
  *   e + 1
  */
-abstract class PersistantAspect extends Aspect {
-  def applyTo(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+abstract class PersistentAspect extends Aspect {
+  def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     ps.map { p =>
       p.copy(subTrees = p.subTrees.map(lab => lab.withAspect(this)))
     }
