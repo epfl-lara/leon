@@ -4,4 +4,8 @@
   *
   * Provides the basic types and definitions for the Leon system.
   */
-package object leon { }
+package object leon {
+  implicit class BooleanToOption(cond: Boolean) {
+    def option[A](v: A) = if (cond) Some(v) else None
+  }
+}

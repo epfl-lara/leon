@@ -1,9 +1,9 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
-package leon.regression.verification
+package leon
+package regression.verification
 package purescala
 
-import smtlib.interpreters.{CVC4Interpreter, Z3Interpreter}
 import leon.solvers.SolverFactory
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
@@ -20,16 +20,9 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
     List(
       List("--feelinglucky"),
       List("--codegen", /*"--evalground",*/ "--feelinglucky"),
-      List("--solvers=fairz3,enum", "--codegen", /*"--evalground",*/ "--feelinglucky")
-    ) ++ (
-      if (isZ3Available) List(
-        List("--solvers=smt-z3", "--feelinglucky")
-      ) else Nil
-    ) ++ (
-      if (isCVC4Available) List(
-        List("--solvers=smt-cvc4", "--feelinglucky")
-      ) else Nil
-    )
+      List("--solvers=fairz3,enum", "--codegen", /*"--evalground",*/ "--feelinglucky")) ++
+      isZ3Available.option(List("--solvers=smt-z3", "--feelinglucky")) ++
+      isCVC4Available.option(List("--solvers=smt-cvc4", "--feelinglucky"))
   }
 
 }
@@ -49,13 +42,25 @@ class PureScalaValidSuite3 extends PureScalaValidSuite {
   override val ignored = Seq("valid/Predicate.scala")
 }
 class PureScalaValidSuiteZ3 extends PureScalaValidSuite {
-  val optionVariants = if (isZ3Available) List(opts(3)) else Nil
+  val optionVariants = isZ3Available.option(opts(3)).toList
 }
 class PureScalaValidSuiteCVC4 extends PureScalaValidSuite {
-  val optionVariants = if (isCVC4Available) opts.takeRight(1) else Nil
+  val optionVariants = isCVC4Available.option(opts.last).toList
 }
 
-class PureScalaInvalidSuite extends PureScalaVerificationSuite {
+trait PureScalaInvalidSuite extends PureScalaVerificationSuite {
   override def testAll() = testInvalid()
-  val optionVariants = opts
+}
+
+class PureScalaInvalidSuiteFairZ3 extends PureScalaInvalidSuite {
+  val optionVariants = opts.take(3)
+}
+
+class PureScalaInvalidSuiteCVC4 extends PureScalaInvalidSuite {
+  val optionVariants = isCVC4Available.option(opts.last).toList
+  override val ignored = List("invalid/BinarySearchTreeQuant.scala", "valid/PropositionalLogic.scala")
+}
+
+class PureScalaInvalidSuiteZ3 extends PureScalaInvalidSuite {
+  val optionVariants = isZ3Available.option(opts(3)).toList
 }
