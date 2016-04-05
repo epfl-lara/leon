@@ -44,8 +44,8 @@ libraryDependencies ++= Seq(
   "info.hupel" %% "libisabelle-setup" % libisabelleVer,
   "info.hupel" %% "slf4j-impl-helper" % "0.1",
   "org.ow2.asm" % "asm-all" % "5.0.4",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2",
-  "com.regblanc" %% "scala-smtlib" % "0.2"
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"//,
+  //"com.regblanc" %% "scala-smtlib" % "0.2"
 )
 
 lazy val scriptName = "leon"
@@ -170,10 +170,12 @@ parallelExecution in GenCTest := false
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
 lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10eaaee4ea0ff6567f4f866922cb871bae2da0ac")
+lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "f3c5c174ff30c18e171f919ccc300d590e7762a0")
 
 lazy val root = (project in file(".")).
   configs(RegressionTest, IsabelleTest, GenCTest, IntegrTest).
   dependsOn(bonsai).
+  dependsOn(scalaSmtlib).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IsabelleTest)(Defaults.testTasks ++ testSettings): _*).
