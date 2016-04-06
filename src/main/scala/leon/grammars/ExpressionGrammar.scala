@@ -18,7 +18,7 @@ abstract class ExpressionGrammar {
     * @param lab The nonterminal for which production rules will be generated
     * @note This is the cached version of [[computeProductions]]. Clients should use this method.
     */
-  def getProductions(lab: Label)(implicit ctx: LeonContext) = {
+  final def getProductions(lab: Label)(implicit ctx: LeonContext) = {
     cache.getOrElse(lab, {
       val res = applyAspects(lab, computeProductions(lab))
       cache += lab -> res
@@ -33,7 +33,7 @@ abstract class ExpressionGrammar {
     */
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
 
-  def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+  protected def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
     lab.aspects.foldLeft(ps) {
       case (ps, a) => a.applyTo(lab, ps)
     }

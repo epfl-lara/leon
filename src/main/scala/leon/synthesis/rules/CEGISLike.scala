@@ -9,9 +9,9 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.ExprOps._
+import purescala.TypeOps.depth
 import purescala.DefOps._
 import purescala.Constructors._
-import purescala.TypeOps.typeDepth
 
 import solvers._
 import grammars._
@@ -77,8 +77,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       val grammar = params.grammar
 
-      //def rootLabel = SizedNonTerm(params.rootLabel(tupleTypeWrap(p.xs.map(_.getType))), termSize)
-      def rootLabel = params.rootLabel(targetType).withAspect(Sized(termSize))
+      def rootLabel = params.rootLabel(targetType).withAspect(TypeDepthBound(depth(targetType) + 1)).withAspect(Sized(termSize))
 
       def init(): Unit = {
         updateCTree()

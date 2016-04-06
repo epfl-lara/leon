@@ -29,5 +29,8 @@ object Grammars {
     val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
     default(sctx.program, p.as.map(_.toVariable) ++ hints ++ extraHints, sctx.functionContext, sctx.settings.functionsToIgnore)
   }
+
+  def similarTo(e: Expr, base: ExpressionGrammar) = {
+  }
 }
 

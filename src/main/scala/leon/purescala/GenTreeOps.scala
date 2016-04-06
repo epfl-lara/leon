@@ -333,4 +333,10 @@ trait GenTreeOps[SubTree <: Tree]  {
     res
   }
 
+  /** Computes the depth of the expression's tree */
+  def depth(e: SubTree): Int = {
+    fold[Int]{ (_, sub) => 1 + (0 +: sub).max }(e)
+  }
+
+
 }

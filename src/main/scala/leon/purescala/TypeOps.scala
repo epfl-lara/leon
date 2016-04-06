@@ -14,10 +14,6 @@ object TypeOps extends GenTreeOps[TypeTree] {
 
   val Deconstructor = NAryType
 
-  def typeDepth(t: TypeTree): Int = t match {
-    case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
-  }
-
   def typeParamsOf(expr: Expr): Set[TypeParameter] = {
     ExprOps.collect(e => typeParamsOf(e.getType))(expr)
   }

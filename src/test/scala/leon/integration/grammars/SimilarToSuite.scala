@@ -138,19 +138,13 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
     for ((vs, from, exp) <- tests) {
       // SimilarTo(<from>) should produce <exp>
 
-      val sctx = new SynthesisContext(fix._1, SynthesisSettings(), ofd.getOrElse(fix._2.definedFunctions.head), fix._2)
-      val p = Problem(vs.map(_.id), BooleanLiteral(true), BooleanLiteral(true), BooleanLiteral(true), Nil, ExamplesBank.empty)
-
       val g = OneOf(vs)
       val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](g.getProductions)
-      val exprs = enum.iterator(Label(exp.getType).withAspect(SimilarTo(from)))
+      val exprs = enum.iterator(Label(exp.getType).withAspect(SimilarTo(Seq(from))))
 
       //println(s"SimilarTo(${from.asString}):")
 
-      if (!(exprs.exists { e => 
-        //println(s" - ${e.asString}")
-        e == exp
-      })) {
+      if (!exprs.contains(exp)) {
         info("Productions: ")
         g.printProductions(info(_))
 

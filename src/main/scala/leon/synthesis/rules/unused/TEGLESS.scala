@@ -8,6 +8,7 @@ import purescala.Types._
 import purescala.Extractors._
 import Witnesses._
 import grammars._
+import grammars.aspects.{SimilarTo, DepthBound}
 
 case object TEGLESS extends TEGISLike("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
@@ -25,15 +26,9 @@ case object TEGLESS extends TEGISLike("TEGLESS") {
       }
     }
 
-    val guidedGrammar = guides.map(SimilarTo(_, sctx, p)).foldLeft[ExpressionGrammar](Empty())(_ || _)
-
     TegisParams(
-      grammar = guidedGrammar,
-      //rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") }
-      rootLabel = { (tpe: TypeTree) => Label(tpe) }
+      grammar = Grammars.default(sctx, p),
+      rootLabel = { (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides)) }
     )
   }
 }
-
-
-

@@ -11,13 +11,13 @@ import purescala.Constructors._
 import purescala.Extractors._
 import utils.SeqUtils._
 
-/** Generates expressions similar to a given expression
-  * @param e The expression for which similar ones will be generated
+/** Generates expressions similar to a [[Seq]] of given expressions
+  * @param es The expressions for which similar ones will be generated
   */
-case class SimilarTo(e: Expr) extends Aspect {
+case class SimilarTo(es: Seq[Expr]) extends Aspect {
   type Prods = Seq[ProductionRule[Label, Expr]]
 
-  def asString(implicit ctx: LeonContext) = "~"+e.asString+"~"
+  def asString(implicit ctx: LeonContext) = es.mkString("~", "~", "~")
 
   def term(e: Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1): ProductionRule[Label, Expr] = {
     ProductionRule(Nil, { case Seq() => e }, tag, cost)
@@ -34,7 +34,7 @@ case class SimilarTo(e: Expr) extends Aspect {
       case _ => false
     }
 
-    val similarProds: Prods = if (isSubtypeOf(e.getType, lab.getType)) {
+    val similarProds: Prods = es.filter(e => isSubtypeOf(e.getType, lab.getType)).flatMap { e =>
       val swaps: Prods = e match {
         case Operator(as, b) if as.nonEmpty && !isCommutative(e) =>
           val ast = as.zipWithIndex.groupBy(_._1.getType).mapValues(_.map(_._2).toList)
@@ -66,7 +66,7 @@ case class SimilarTo(e: Expr) extends Aspect {
         case Operator(as, b) if as.nonEmpty =>
           for ((a, i) <- as.zipWithIndex) yield {
             ProductionRule[Label, Expr](
-              List(Label(a.getType).withAspect(SimilarTo(a))),
+              List(Label(a.getType).withAspect(SimilarTo(Seq(a)))),
               { case Seq(e) =>
                 b(as.updated(i, e))
               },
@@ -127,8 +127,6 @@ case class SimilarTo(e: Expr) extends Aspect {
       }
 
       swaps ++ subs ++ typeVariations ++ ccVariations
-    } else {
-      Nil
     }
 
     ps ++ similarProds

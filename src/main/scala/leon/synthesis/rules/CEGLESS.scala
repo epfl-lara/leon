@@ -8,6 +8,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
 import grammars._
+import grammars.aspects._
 import Witnesses._
 
 case object CEGLESS extends CEGISLike("CEGLESS") {
@@ -25,12 +26,9 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
       }
     }
 
-    val guidedGrammar = Union(guides.map(SimilarTo(_, sctx, p)))
-
     CegisParams(
-      grammar = guidedGrammar,
-      //rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") },
-      rootLabel = { (tpe: TypeTree) => Label(tpe) },
+      grammar = Grammars.default(sctx, p),
+      rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides)),
       optimizations = false,
       maxSize = Some((0 +: guides.map(depth(_) + 1)).max)
     )

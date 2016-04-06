@@ -13,9 +13,7 @@ import purescala.Types.TypeTree
 case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
-      //grammar = Grammars.typeDepthBound(Grammars.default(sctx, p), 2), // This limits type depth
-      //rootLabel = {(tpe: TypeTree) => tpe },
-      grammar = Grammars.default(sctx, p), // This limits type depth
+      grammar = Grammars.default(sctx, p),
       rootLabel = Label(_),
       optimizations = false
     )
@@ -28,9 +26,7 @@ case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
 case object CEGIS extends CEGISLike("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
-      //grammar = TaggedGrammar(base),
-      //rootLabel = TaggedNonTerm(_, Tags.Top, 0, None),
-      grammar = NaiveCEGIS.getParams(sctx,p).grammar,
+      grammar = Grammars.default(sctx, p),
       rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
       optimizations = true
     )
