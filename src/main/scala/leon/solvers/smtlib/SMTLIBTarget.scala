@@ -197,8 +197,14 @@ trait SMTLIBTarget extends Interruptible {
         unsupported(r, "Solver returned a co-finite set which is not supported.")
       }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
-
       FiniteSet(r.elems.keySet, base)
+
+    case BagType(base) =>
+      if (r.default != InfiniteIntegerLiteral(0)) {
+        unsupported(r, "Solver returned an infinite bag which is not supported.")
+      }
+      require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
+      FiniteBag(r.elems, base)
 
     case RawArrayType(from, to) =>
       r

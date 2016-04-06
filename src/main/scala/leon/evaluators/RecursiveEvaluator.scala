@@ -186,6 +186,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       (lv,rv) match {
         case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
+        case (FiniteBag(el1, _),FiniteBag(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
         case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
@@ -466,40 +467,40 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
+    case SetAdd(s1, elem) =>
+      (e(s1), e(elem)) match {
+        case (FiniteSet(els1, tpe), evElem) => FiniteSet(els1 + evElem, tpe)
+        case (le, re) => throw EvalError(typeErrorMsg(le, s1.getType))
+      }
+
     case SetUnion(s1,s2) =>
       (e(s1), e(s2)) match {
-        case (f@FiniteSet(els1, _),FiniteSet(els2, _)) =>
-          val SetType(tpe) = f.getType
-          FiniteSet(els1 ++ els2, tpe)
-        case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
+        case (FiniteSet(els1, tpe), FiniteSet(els2, _)) => FiniteSet(els1 ++ els2, tpe)
+        case (le, re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
     case SetIntersection(s1,s2) =>
       (e(s1), e(s2)) match {
-        case (f @ FiniteSet(els1, _), FiniteSet(els2, _)) =>
-          val newElems = els1 intersect els2
-          val SetType(tpe) = f.getType
-          FiniteSet(newElems, tpe)
+        case (FiniteSet(els1, tpe), FiniteSet(els2, _)) => FiniteSet(els1 intersect els2, tpe)
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
     case SetDifference(s1,s2) =>
       (e(s1), e(s2)) match {
-        case (f @ FiniteSet(els1, _),FiniteSet(els2, _)) =>
-          val SetType(tpe) = f.getType
-          val newElems = els1 -- els2
-          FiniteSet(newElems, tpe)
+        case (FiniteSet(els1, tpe), FiniteSet(els2, _)) => FiniteSet(els1 -- els2, tpe)
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
     case ElementOfSet(el,s) => (e(el), e(s)) match {
-      case (e, f @ FiniteSet(els, _)) => BooleanLiteral(els.contains(e))
+      case (e, FiniteSet(els, _)) => BooleanLiteral(els.contains(e))
       case (l,r) => throw EvalError(typeErrorMsg(r, SetType(l.getType)))
     }
+
     case SubsetOf(s1,s2) => (e(s1), e(s2)) match {
-      case (f@FiniteSet(els1, _),FiniteSet(els2, _)) => BooleanLiteral(els1.subsetOf(els2))
+      case (FiniteSet(els1, _),FiniteSet(els2, _)) => BooleanLiteral(els1.subsetOf(els2))
       case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
     }
+
     case SetCardinality(s) =>
       val sr = e(s)
       sr match {
@@ -509,6 +510,61 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case f @ FiniteSet(els, base) =>
       FiniteSet(els.map(e), base)
+
+    case BagAdd(bag, elem) => (e(bag), e(elem)) match {
+      case (FiniteBag(els, tpe), evElem) => FiniteBag(els + (evElem -> (els.get(evElem) match {
+        case Some(InfiniteIntegerLiteral(i)) => InfiniteIntegerLiteral(i + 1)
+        case Some(i) => throw EvalError(typeErrorMsg(i, IntegerType))
+        case None => InfiniteIntegerLiteral(0)
+      })), tpe)
+
+      case (le, re) => throw EvalError(typeErrorMsg(le, bag.getType))
+    }
+
+    case MultiplicityInBag(elem, bag) => (e(elem), e(bag)) match {
+      case (evElem, FiniteBag(els, tpe)) => els.getOrElse(evElem, InfiniteIntegerLiteral(0))
+      case (le, re) => throw EvalError(typeErrorMsg(re, bag.getType))
+    }
+
+    case BagIntersection(b1, b2) => (e(b1), e(b2)) match {
+      case (FiniteBag(els1, tpe), FiniteBag(els2, _)) => FiniteBag(els1.flatMap { case (k, v) =>
+        val i = (v, els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => i1 min i2
+          case (le, re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+
+        if (i <= 0) None else Some(k -> InfiniteIntegerLiteral(i))
+      }, tpe)
+
+      case (le, re) => throw EvalError(typeErrorMsg(le, b1.getType))
+    }
+
+    case BagUnion(b1, b2) => (e(b1), e(b2)) match {
+      case (FiniteBag(els1, tpe), FiniteBag(els2, _)) => FiniteBag((els1.keys ++ els2.keys).toSet.map { (k: Expr) =>
+        k -> ((els1.getOrElse(k, InfiniteIntegerLiteral(0)), els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
+          case (le, re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        })
+      }.toMap, tpe)
+
+      case (le, re) => throw EvalError(typeErrorMsg(le, b1.getType))
+    }
+
+    case BagDifference(b1, b2) => (e(b1), e(b2)) match {
+      case (FiniteBag(els1, tpe), FiniteBag(els2, _)) => FiniteBag(els1.flatMap { case (k, v) =>
+        val i = (v, els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => i1 - i2
+          case (le, re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+
+        if (i <= 0) None else Some(k -> InfiniteIntegerLiteral(i))
+      }, tpe)
+
+      case (le, re) => throw EvalError(typeErrorMsg(le, b1.getType))
+    }
+
+    case FiniteBag(els, base) =>
+      FiniteBag(els.map{ case (k, v) => (e(k), e(v)) }, base)
 
     case l @ Lambda(_, _) =>
       val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap

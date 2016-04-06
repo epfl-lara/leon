@@ -9,11 +9,12 @@ import purescala.Expressions._
 import purescala.Constructors._
 import purescala.Types._
 
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
+import _root_.smtlib.common._
+import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
-import _root_.smtlib.theories.ArraysEx
+import _root_.smtlib.theories._
 
 trait SMTLIBZ3Target extends SMTLIBTarget {
 
@@ -44,6 +45,8 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         case SetType(base) =>
           super.declareSort(BooleanType)
           declareSetSort(base)
+        case BagType(base) =>
+          declareSort(RawArrayType(base, IntegerType))
         case _ =>
           super.declareSort(t)
       }
@@ -112,6 +115,9 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
       SMTEquals(ArrayMap(SSymbol("implies"), toSMT(ss), toSMT(s)), allTrue)
 
+    case SetAdd(s, e) =>
+      ArraysEx.Store(toSMT(s), toSMT(e), True())
+
     case ElementOfSet(e, s) =>
       ArraysEx.Select(toSMT(s), toSMT(e))
 
@@ -127,6 +133,39 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
     case SetIntersection(l, r) =>
       ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
+
+    case fb @ FiniteBag(elems, base) =>
+      declareSort(fb.getType)
+
+      toSMT(RawArrayValue(base, elems, InfiniteIntegerLiteral(0)))
+
+    case BagAdd(b, e) =>
+      val bid = FreshIdentifier("b", b.getType, true)
+      val eid = FreshIdentifier("e", e.getType, true)
+      val (bSym, eSym) = (id2sym(bid), id2sym(eid))
+      SMTLet(VarBinding(bSym, toSMT(b)), Seq(VarBinding(eSym, toSMT(e))), ArraysEx.Store(bSym, eSym,
+        Ints.Add(ArraysEx.Select(bSym, eSym), Ints.NumeralLit(1))))
+
+    case MultiplicityInBag(e, b) =>
+      ArraysEx.Select(toSMT(b), toSMT(e))
+
+    case BagUnion(b1, b2) =>
+      val plus = SortedSymbol("+", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
+      ArrayMap(plus, toSMT(b1), toSMT(b2))
+
+    case BagIntersection(b1, b2) =>
+      val abs   = SortedSymbol("abs", List(IntegerType).map(declareSort), declareSort(IntegerType))
+      val plus  = SortedSymbol("+", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
+      val minus = SortedSymbol("-", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
+      val div   = SortedSymbol("/", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
+
+      val did = FreshIdentifier("d", b1.getType, true)
+      val dSym = id2sym(did)
+
+      val all2 = ArrayConst(declareSort(IntegerType), Ints.NumeralLit(2))
+
+      SMTLet(VarBinding(dSym, ArrayMap(minus, toSMT(b1), toSMT(b2))), Seq(),
+        ArrayMap(div, ArrayMap(plus, dSym, ArrayMap(abs, dSym)), all2))
 
     case _ =>
       super.toSMT(e)
@@ -159,8 +198,16 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       throw LeonFatalError("Unable to extract "+s)
   }
 
+  protected object SortedSymbol {
+    def apply(op: String, from: List[Sort], to: Sort) = {
+      def simpleSort(s: Sort): Boolean = s.subSorts.isEmpty && !s.id.isIndexed
+      assert(from.forall(simpleSort) && simpleSort(to), "SortedSymbol is only defined for simple sorts")
+      SList(SSymbol(op), SList(from.map(_.id.symbol): _*), to.id.symbol)
+    }
+  }
+
   protected object ArrayMap {
-    def apply(op: SSymbol, arrs: Term*) = {
+    def apply(op: SExpr, arrs: Term*) = {
       FunctionApplication(
         QualifiedIdentifier(SMTIdentifier(SSymbol("map"), List(op))),
         arrs

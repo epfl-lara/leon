@@ -1461,19 +1461,25 @@ trait CodeExtraction extends ASTExtractors {
           Forall(vds, exBody)
 
         case ExFiniteMap(tptFrom, tptTo, args) =>
-          val singletons = args.collect {
-            case ExTuple(tpes, trees) if trees.size == 2 =>
-              (extractTree(trees(0)), extractTree(trees(1)))
-          }.toMap
-
-          if (singletons.size != args.size) {
-            outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
-          }
-
-          FiniteMap(singletons, extractType(tptFrom), extractType(tptTo))
+          FiniteMap(args.map {
+            case ExTuple(tpes, Seq(key, value)) =>
+              (extractTree(key), extractTree(value))
+            case tree =>
+              val ex = extractTree(tree)
+              (TupleSelect(ex, 1), TupleSelect(ex, 2))
+          }.toMap, extractType(tptFrom), extractType(tptTo))
 
         case ExFiniteSet(tpt, args) =>
           FiniteSet(args.map(extractTree).toSet, extractType(tpt))
+
+        case ExFiniteBag(tpt, args) =>
+          FiniteBag(args.map {
+            case ExTuple(tpes, Seq(key, value)) =>
+              (extractTree(key), extractTree(value))
+            case tree =>
+              val ex = extractTree(tree)
+              (TupleSelect(ex, 1), TupleSelect(ex, 2))
+          }.toMap, extractType(tpt))
 
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
@@ -1669,6 +1675,7 @@ trait CodeExtraction extends ASTExtractors {
               val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
               FieldAssignment(rec, id, e1)
 
+
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>
               a1
@@ -1686,6 +1693,8 @@ trait CodeExtraction extends ASTExtractors {
               SubString(a1, start, StringLength(a1))
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type), IsTyped(end, IntegerType | Int32Type))) =>
               SubString(a1, start, end)
+
+
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>
               Plus(a1, a2)
@@ -1708,6 +1717,7 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
               LessEquals(a1, a2)
 
+
             //Real methods
             case (IsTyped(a1, RealType), "+", List(IsTyped(a2, RealType))) =>
               RealPlus(a1, a2)
@@ -1725,6 +1735,7 @@ trait CodeExtraction extends ASTExtractors {
               LessThan(a1, a2)
             case (IsTyped(a1, RealType), "<=", List(IsTyped(a2, RealType))) =>
               LessEquals(a1, a2)
+
 
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
@@ -1760,12 +1771,14 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int32Type))) =>
               LessEquals(a1, a2)
 
+
             // Boolean methods
             case (IsTyped(a1, BooleanType), "&&", List(IsTyped(a2, BooleanType))) =>
               and(a1, a2)
 
             case (IsTyped(a1, BooleanType), "||", List(IsTyped(a2, BooleanType))) =>
               or(a1, a2)
+
 
             // Set methods
             case (IsTyped(a1, SetType(b1)), "size", Nil) =>
@@ -1776,6 +1789,9 @@ trait CodeExtraction extends ASTExtractors {
 
             //case (IsTyped(a1, SetType(b1)), "max", Nil) =>
             //  SetMax(a1)
+
+            case (IsTyped(a1, SetType(b1)), "+", List(a2)) =>
+              SetAdd(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "++", List(IsTyped(a2, SetType(b2))))  if b1 == b2 =>
               SetUnion(a1, a2)
@@ -1794,6 +1810,27 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, SetType(b1)), "isEmpty", List()) =>
               Equals(a1, FiniteSet(Set(), b1))
+
+
+            // Bag methods
+            case (IsTyped(a1, BagType(b1)), "+", List(a2)) =>
+              BagAdd(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "++", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagUnion(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "&", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagIntersection(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "--", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagDifference(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "get", List(a2)) =>
+              MultiplicityInBag(a2, a1)
+
+            case (IsTyped(a1, BagType(b1)), "isEmpty", List()) =>
+              Equals(a1, FiniteBag(Map(), b1))
+
 
             // Array methods
             case (IsTyped(a1, ArrayType(vt)), "apply", List(a2)) =>
@@ -1925,6 +1962,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, btt :: Nil) if isSetSym(sym) =>
         SetType(extractType(btt))
+
+      case TypeRef(_, sym, btt :: Nil) if isBagSym(sym) =>
+        BagType(extractType(btt))
 
       case TypeRef(_, sym, List(ftt,ttt)) if isMapSym(sym) =>
         MapType(extractType(ftt), extractType(ttt))
