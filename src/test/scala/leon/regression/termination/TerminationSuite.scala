@@ -33,7 +33,7 @@ class TerminationSuite extends LeonRegressionSuite {
     }
 
     val ignored = List(
-      //"termination/valid/NNF.scala",
+      "termination/valid/NNF.scala",
       //"verification/purescala/valid/MergeSort.scala",
       "verification/purescala/valid/Nested14.scala"
     )
