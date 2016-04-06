@@ -32,7 +32,10 @@ import scala.language.implicitConversions
   * operations on Leon expressions.
   *
   */
-object ExprOps extends { val Deconstructor = Operator } with GenTreeOps[Expr] {
+object ExprOps extends GenTreeOps[Expr] {
+
+  val Deconstructor = Operator
+
   /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
