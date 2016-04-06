@@ -124,9 +124,18 @@ object AntiAliasingPhase extends TransformationPhase {
         val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body) 
         val explicitBody = makeSideEffectsExplicit(freshBody, fd, freshLocalVars, effects, updatedFunDefs, varsInScope)(ctx)
 
+        //only now we rewrite variables that stil refer to original higher order functions
+        val ftRewritings: Map[Identifier, Identifier] =
+          fd.params.zip(newFunDef.params).filter({
+            case (ValDef(IsTyped(oid, oft)), ValDef(IsTyped(nid, nft))) if oid != nft => true
+            case _ => false
+          }).map(p => (p._1.id, p._2.id)).toMap
+        val explicitBody2 = replaceFromIDs(ftRewritings.map(p => (p._1, p._2.toVariable)), explicitBody)
+              
+
         //WARNING: only works if side effects in Tuples are extracted from left to right,
         //         in the ImperativeTransformation phase.
-        val finalBody: Expr = Tuple(explicitBody +: freshLocalVars.map(_.toVariable))
+        val finalBody: Expr = Tuple(explicitBody2 +: freshLocalVars.map(_.toVariable))
 
         freshLocalVars.zip(aliasedParams).foldLeft(finalBody)((bd, vp) => {
           LetVar(vp._1, Variable(vp._2), bd)
