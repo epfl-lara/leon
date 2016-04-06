@@ -183,11 +183,10 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
    * Uses default postcondition VC, but can be overriden in the case of non-standard VCs
    */
   def verifyVC(newprog: Program, newroot: FunDef) = {
-    (newroot.postcondition, newroot.body) match {
-      case (Some(post), Some(body)) =>
-        val vc = implies(newroot.precOrTrue, application(post, Seq(body)))
-        solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition))
-    }
+    val post = newroot.postcondition.get
+    val body = newroot.body.get
+    val vc = implies(newroot.precOrTrue, application(post, Seq(body)))
+    solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition))
   }
 
   import leon.solvers._
