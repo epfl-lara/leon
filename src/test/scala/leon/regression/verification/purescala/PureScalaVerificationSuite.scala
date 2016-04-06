@@ -59,7 +59,7 @@ class PureScalaInvalidSuiteFairZ3 extends PureScalaInvalidSuite {
 
 class PureScalaInvalidSuiteCVC4 extends PureScalaInvalidSuite {
   val optionVariants = isCVC4Available.option(opts.last).toList
-  override val ignored = List("invalid/BinarySearchTreeQuant.scala", "valid/PropositionalLogic.scala")
+  override val ignored = List("invalid/BinarySearchTreeQuant.scala", "invalid/PropositionalLogic.scala")
 }
 
 class PureScalaInvalidSuiteZ3 extends PureScalaInvalidSuite {
