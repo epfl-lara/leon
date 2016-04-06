@@ -304,6 +304,11 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           }
         }
 
+      //TODO: handle vars in scope, just like LetDef
+      case ld@Lambda(params, body) =>
+        val (bodyVal, bodyScope, bodyFun) = toFunction(body)
+        (Lambda(params, bodyScope(bodyVal)).copiedFrom(ld), (e: Expr) => e, Map())
+
       case c @ Choose(b) =>
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
