@@ -361,7 +361,7 @@ object Expressions {
   }
   
   // Extracts without taking care of the binder. (contrary to Extractos.Pattern)
-  object PatternExtractor extends SubTreeOps.Extractor[Pattern] {
+  object PatternExtractor extends TreeExtractor[Pattern] {
     def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
       case (_: InstanceOfPattern) | (_: WildcardPattern) | (_: LiteralPattern[_]) =>
         Some(Seq(), es => e)
@@ -375,7 +375,9 @@ object Expressions {
     }
   }
   
-  object PatternOps extends { val Deconstructor = PatternExtractor } with SubTreeOps[Pattern]
+  object PatternOps extends GenTreeOps[Pattern] {
+    val Deconstructor = PatternExtractor
+  }
 
   /** Symbolic I/O examples as a match/case.
     * $encodingof `out == (in match { cases; case _ => out })`

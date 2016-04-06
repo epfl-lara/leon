@@ -6,13 +6,12 @@ package purescala
 import Common._
 import utils._
 
-object SubTreeOps {
-  trait Extractor[SubTree <: Tree] {
-    def unapply(e: SubTree): Option[(Seq[SubTree], (Seq[SubTree]) => SubTree)]
-  }
+trait TreeExtractor[SubTree <: Tree] {
+  def unapply(e: SubTree): Option[(Seq[SubTree], (Seq[SubTree]) => SubTree)]
 }
-trait SubTreeOps[SubTree <: Tree]  {
-  val Deconstructor: SubTreeOps.Extractor[SubTree]
+
+trait GenTreeOps[SubTree <: Tree]  {
+  val Deconstructor: TreeExtractor[SubTree]
   
   /* ========
    * Core API
@@ -208,7 +207,6 @@ trait SubTreeOps[SubTree <: Tree]  {
                       the current node
     * @param init the initial value
     * @param expr the expression on which to apply the transform
-    *
     * @see [[simpleTransform]]
     * @see [[simplePreTransform]]
     * @see [[simplePostTransform]]

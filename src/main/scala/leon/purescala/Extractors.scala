@@ -10,7 +10,7 @@ import Constructors._
 
 object Extractors {
 
-  object Operator extends SubTreeOps.Extractor[Expr] {
+  object Operator extends TreeExtractor[Expr] {
     def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {
       /* Unary operators */
       case Not(t) =>

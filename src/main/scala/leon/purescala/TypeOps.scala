@@ -10,7 +10,10 @@ import Expressions._
 import Extractors._
 import Constructors._
 
-object TypeOps extends { val Deconstructor = NAryType } with SubTreeOps[TypeTree] {
+object TypeOps extends GenTreeOps[TypeTree] {
+
+  val Deconstructor = NAryType
+
   def typeDepth(t: TypeTree): Int = t match {
     case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
   }

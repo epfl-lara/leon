@@ -20,19 +20,19 @@ import scala.language.implicitConversions
   *
   * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  *   - [[SubTreeOps.fold foldRight]]
-  *   - [[SubTreeOps.preTraversal preTraversal]]
-  *   - [[SubTreeOps.postTraversal postTraversal]]
-  *   - [[SubTreeOps.preMap preMap]]
-  *   - [[SubTreeOps.postMap postMap]]
-  *   - [[SubTreeOps.genericTransform genericTransform]]
+  *   - [[GenTreeOps.fold foldRight]]
+  *   - [[GenTreeOps.preTraversal preTraversal]]
+  *   - [[GenTreeOps.postTraversal postTraversal]]
+  *   - [[GenTreeOps.preMap preMap]]
+  *   - [[GenTreeOps.postMap postMap]]
+  *   - [[GenTreeOps.genericTransform genericTransform]]
   *
   * These operations usually take a higher order function that gets applied to the
   * expression tree in some strategy. They provide an expressive way to build complex
   * operations on Leon expressions.
   *
   */
-object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
+object ExprOps extends { val Deconstructor = Operator } with GenTreeOps[Expr] {
   /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
