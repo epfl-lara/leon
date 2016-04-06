@@ -6,6 +6,6 @@
   */
 package object leon {
   implicit class BooleanToOption(cond: Boolean) {
-    def option[A](v: A) = if (cond) Some(v) else None
+    def option[A](v: => A) = if (cond) Some(v) else None
   }
 }
