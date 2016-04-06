@@ -966,28 +966,6 @@ object ExprOps extends GenTreeOps[Expr] {
     postMap(transform, applyRec = true)(expr)
   }
 
-  private def noCombiner(e: Expr, subCs: Seq[Unit]) = ()
-  private def noTransformer[C](e: Expr, c: C) = (e, c)
-
-  def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
-    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
-    val newPost = (e: Expr, c: Unit) => (post(e), ())
-
-    genericTransform[Unit](newPre, newPost, noCombiner)(())(expr)._1
-  }
-
-  def simplePreTransform(pre: Expr => Expr)(expr: Expr) = {
-    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
-
-    genericTransform[Unit](newPre, (_, _), noCombiner)(())(expr)._1
-  }
-
-  def simplePostTransform(post: Expr => Expr)(expr: Expr) = {
-    val newPost = (e: Expr, c: Unit) => (post(e), ())
-
-    genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
-  }
-
   /** Simplify If expressions when the branch is predetermined by the path condition */
   def simplifyTautologies(sf: SolverFactory[Solver])(expr : Expr) : Expr = {
     val solver = SimpleSolverAPI(sf)
@@ -1080,27 +1058,15 @@ object ExprOps extends GenTreeOps[Expr] {
     }
   }
 
-
   def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
   }
 
-  def patternSize(p: Pattern): Int = p match {
-    case wp: WildcardPattern =>
-      1
-    case _ =>
-      1 + p.binder.size + p.subPatterns.map(patternSize).sum
-  }
-
-  def formulaSize(e: Expr): Int = e match {
+  override def formulaSize(e: Expr): Int = e match {
     case ml: MatchExpr =>
-      formulaSize(ml.scrutinee) + ml.cases.map {
-        case MatchCase(p, og, rhs) =>
-          formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
-      }.sum
-
-    case Deconstructor(es, _) =>
-      es.map(formulaSize).sum+1
+      super.formulaSize(e) + ml.cases.map(cs => PatternOps.formulaSize(cs.pattern)).sum
+    case _ =>
+      super.formulaSize(e)
   }
 
   /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/
@@ -1396,8 +1362,6 @@ object ExprOps extends GenTreeOps[Expr] {
             h && g && e
         }(apriori)
       }
-
-      import synthesis.Witnesses.Terminating
 
       val res: Option[Apriori] = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>

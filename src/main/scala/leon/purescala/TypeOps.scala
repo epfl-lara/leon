@@ -7,8 +7,6 @@ import Types._
 import Definitions._
 import Common._
 import Expressions._
-import Extractors._
-import Constructors._
 
 object TypeOps extends GenTreeOps[TypeTree] {
 

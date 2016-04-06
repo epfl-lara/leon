@@ -6,11 +6,22 @@ package purescala
 import Common._
 import utils._
 
+/** A type that pattern matches agains a type of [[Tree]] and extracts it subtrees,
+  * and a builder that reconstructs a tree of the same type from subtrees.
+  *
+  * @tparam SubTree The type of the tree
+  */
 trait TreeExtractor[SubTree <: Tree] {
   def unapply(e: SubTree): Option[(Seq[SubTree], (Seq[SubTree]) => SubTree)]
 }
 
+/** Generic tree traversals based on a deconstructor of a specific tree type
+  *
+  * @tparam SubTree The type of the tree
+  */
 trait GenTreeOps[SubTree <: Tree]  {
+
+  /** An extractor for [[SubTree]]*/
   val Deconstructor: TreeExtractor[SubTree]
   
   /* ========
@@ -231,7 +242,34 @@ trait GenTreeOps[SubTree <: Tree]  {
 
     rec(expr, init)
   }
-  
+
+  protected def noCombiner(e: SubTree, subCs: Seq[Unit]) = ()
+  protected def noTransformer[C](e: SubTree, c: C) = (e, c)
+
+  /** A [[genericTransform]] with the trivial combiner that returns () */
+  def simpleTransform(pre: SubTree => SubTree, post: SubTree => SubTree)(tree: SubTree) = {
+    val newPre  = (e: SubTree, c: Unit) => (pre(e), ())
+    val newPost = (e: SubTree, c: Unit) => (post(e), ())
+
+    genericTransform[Unit](newPre, newPost, noCombiner)(())(tree)._1
+  }
+
+  /** A [[simpleTransform]] without a post-transformation */
+  def simplePreTransform(pre: SubTree => SubTree)(tree: SubTree) = {
+    val newPre  = (e: SubTree, c: Unit) => (pre(e), ())
+
+    genericTransform[Unit](newPre, (_, _), noCombiner)(())(tree)._1
+  }
+
+  /** A [[simpleTransform]] without a pre-transformation */
+  def simplePostTransform(post: SubTree => SubTree)(tree: SubTree) = {
+    val newPost = (e: SubTree, c: Unit) => (post(e), ())
+
+    genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(tree)._1
+  }
+
+
+
   /** Pre-transformation of the tree, with a context value from "top-down".
     *
     * Takes a partial function of replacements.
@@ -316,7 +354,7 @@ trait GenTreeOps[SubTree <: Tree]  {
 
   /** Counts how many times the predicate holds in sub-expressions */
   def count(matcher: SubTree => Int)(e: SubTree): Int = {
-    fold[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
+    fold[Int]({ (e, subs) => matcher(e) + subs.sum } )(e)
   }
 
   /** Replaces bottom-up sub-expressions by looking up for them in a map */
@@ -333,7 +371,13 @@ trait GenTreeOps[SubTree <: Tree]  {
     res
   }
 
-  /** Computes the depth of the expression's tree */
+  /** Computes the size of a tree */
+  def formulaSize(t: SubTree): Int = {
+    val Deconstructor(ts, _) = t
+    ts.map(formulaSize).sum + 1
+  }
+
+  /** Computes the depth of the tree */
   def depth(e: SubTree): Int = {
     fold[Int]{ (_, sub) => 1 + (0 +: sub).max }(e)
   }
