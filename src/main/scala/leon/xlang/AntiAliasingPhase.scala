@@ -77,7 +77,10 @@ object AntiAliasingPhase extends TransformationPhase {
     }.map(_.id)
 
     val newParams = fd.params.map(vd => vd.getType match {
-      case (ft: FunctionType) => ValDef(vd.id.duplicate(tpe = makeFunctionTypeExplicit(ft)))
+      case (ft: FunctionType) => {
+        val nft = makeFunctionTypeExplicit(ft)
+        if(ft == nft) vd else ValDef(vd.id.duplicate(tpe = nft))
+      }
       case _ => vd
     })
 
