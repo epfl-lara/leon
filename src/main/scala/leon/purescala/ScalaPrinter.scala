@@ -28,12 +28,19 @@ class ScalaPrinter(opts: PrinterOptions,
       case Choose(pred)              => p"choose($pred)"
 
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
+      case SetAdd(s,e)               => optP { p"$s + $e" }
       case ElementOfSet(e,s)         => p"$s.contains($e)"
       case SetUnion(l,r)             => optP { p"$l ++ $r" }
       case SetDifference(l,r)        => optP { p"$l -- $r" }
       case SetIntersection(l,r)      => optP { p"$l & $r" }
       case SetCardinality(s)         => p"$s.size"
       case SubsetOf(subset,superset) => p"$subset.subsetOf($superset)"
+
+      case b @ FiniteBag(els, t)     => p"Bag[$t]($els)"
+      case BagAdd(s,e)               => optP { p"$s + $e" }
+      case BagUnion(l,r)             => optP { p"$l ++ $r" }
+      case BagDifference(l,r)        => optP { p"$l -- $r" }
+      case BagIntersection(l,r)      => optP { p"$l & $r" }
 
       case MapUnion(l,r)             => optP { p"$l ++ $r" }
       case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"

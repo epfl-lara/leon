@@ -823,11 +823,20 @@ object Expressions {
   }
   /** $encodingof `set + elem` */
   case class SetAdd(set: Expr, elem: Expr) extends Expr {
-    val getType = set.getType
+    val getType = {
+      val base = set.getType match {
+        case SetType(base) => base
+        case _ => Untyped
+      }
+      checkParamTypes(Seq(elem.getType), Seq(base), SetType(base).unveilUntyped)
+    }
   }
   /** $encodingof `set.contains(element)` or `set(element)` */
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
-    val getType = BooleanType
+    val getType = checkParamTypes(Seq(element.getType), Seq(set.getType match {
+      case SetType(base) => base
+      case _ => Untyped
+    }), BooleanType)
   }
   /** $encodingof `set.length` */
   case class SetCardinality(set: Expr) extends Expr {
@@ -835,7 +844,10 @@ object Expressions {
   }
   /** $encodingof `set.subsetOf(set2)` */
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
-    val getType  = BooleanType
+    val getType = (set1.getType, set2.getType) match {
+      case (SetType(b1), SetType(b2)) if b1 == b2 => BooleanType
+      case _ => Untyped
+    }
   }
   /** $encodingof `set & set2` */
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
@@ -857,11 +869,20 @@ object Expressions {
   }
   /** $encodingof `bag + elem` */
   case class BagAdd(bag: Expr, elem: Expr) extends Expr {
-    val getType = bag.getType
+    val getType = {
+      val base = bag.getType match {
+        case BagType(base) => base
+        case _ => Untyped
+      }
+      checkParamTypes(Seq(base), Seq(elem.getType), BagType(base).unveilUntyped)
+    }
   }
   /** $encodingof `bag.get(element)` or `bag(element)` */
   case class MultiplicityInBag(element: Expr, bag: Expr) extends Expr {
-    val getType = IntegerType
+    val getType = checkParamTypes(Seq(element.getType), Seq(bag.getType match {
+      case BagType(base) => base
+      case _ => Untyped
+    }), IntegerType)
   }
   /** $encodingof `bag1 & bag2` */
   case class BagIntersection(bag1: Expr, bag2: Expr) extends Expr {

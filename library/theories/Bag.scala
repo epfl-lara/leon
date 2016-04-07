@@ -6,8 +6,6 @@ import leon.annotation._
 
 @library
 sealed case class Bag[T](f: T => BigInt) {
-  require(forall((x: T) => f(x) >= 0))
-
   def get(x: T): BigInt = f(x)
   def add(elem: T): Bag[T] = Bag((x: T) => f(x) + (if (x == elem) 1 else 0))
   def union(that: Bag[T]): Bag[T] = Bag((x: T) => f(x) + that.f(x))

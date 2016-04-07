@@ -259,7 +259,9 @@ trait AbstractUnrollingSolver[T]
       var quantify = false
 
       def check[R](clauses: Seq[T])(block: Option[Boolean] => R) =
-        if (partialModels) solverCheckAssumptions(clauses)(block) else solverCheck(clauses)(block)
+        if (partialModels || templateGenerator.manager.quantifications.isEmpty)
+          solverCheckAssumptions(clauses)(block)
+        else solverCheck(clauses)(block)
 
       val timer = context.timers.solvers.check.start()
       check(encodedAssumptions.toSeq ++ unrollingBank.satisfactionAssumptions) { res =>
