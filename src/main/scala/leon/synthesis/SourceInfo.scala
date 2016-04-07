@@ -63,7 +63,7 @@ object SourceInfo {
 
       val p = Problem.fromSpec(ch.pred, and(path, term), outerEb, Some(fd))
 
-      val pcEb = eFinder.generateForPC(p.as, path, 20)
+      val pcEb = eFinder.generateForPC(p.as, path, ctx, 20)
       val chooseEb = eFinder.extractFromProblem(p)
       val eb = (outerEb union chooseEb) union pcEb
 

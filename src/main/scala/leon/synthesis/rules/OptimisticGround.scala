@@ -45,7 +45,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
                   case (Some(false), _) =>
-                    // Model apprears valid, but it might be a fake expression (generic values)
+                    // Model appears valid, but it might be a fake expression (generic values)
                     val outExpr = tupleWrap(p.xs.map(valuateWithModel(satModel)))
 
                     if (!isRealExpr(outExpr)) {

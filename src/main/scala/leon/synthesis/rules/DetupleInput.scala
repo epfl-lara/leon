@@ -112,11 +112,10 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       val sub = Problem(newAs, subWs, subPc, subProblem, p.xs, eb).withWs(hints)
 
       val s = { (e: Expr) =>
-        LetPattern(
-          tuplePatternWrap(patts),
-          tupleWrap(as map Variable),
-          simplePostTransform(revMap)(e)
-        )
+        val body = simplePostTransform(revMap)(e)
+        (patts zip as).foldRight(body) { case ((patt, a), bd) =>
+          LetPattern(patt, a.toVariable, bd)
+        }
       }
      
       Some(decomp(List(sub), forwardMap(s), s"Detuple ${as.mkString(", ")}"))
