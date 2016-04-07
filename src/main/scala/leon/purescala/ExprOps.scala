@@ -219,7 +219,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
         Some(caseClassSelector(cct, cc, id))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) && !isPurelyFunctional(c) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && isPurelyFunctional(c) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -333,10 +333,10 @@ object ExprOps extends GenTreeOps[Expr] {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if !isPurelyFunctional(t) =>
+      case letExpr @ Let(i, t: Terminal, b) if isPurelyFunctional(t) =>
         Some(replaceFromIDs(Map(i -> t), b))
 
-      case letExpr @ Let(i,e,b) if !isPurelyFunctional(e) =>
+      case letExpr @ Let(i,e,b) if isPurelyFunctional(e) =>
         val occurrences = count {
           case Variable(`i`) => 1
           case _ => 0
@@ -350,7 +350,7 @@ object ExprOps extends GenTreeOps[Expr] {
           None
         }
 
-      case LetPattern(patt, e0, body) if !isPurelyFunctional(e0) =>
+      case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
         // Will turn the match-expression with a single case into a list of lets.
 
         // Just extra safety...
@@ -991,8 +991,8 @@ object ExprOps extends GenTreeOps[Expr] {
     */
   def isPurelyFunctional(e: Expr): Boolean = {
     exists {
-      case _ : Error | _ : Choose | _: Hole | _: WithOracle => true
-      case _ => false
+      case _ : Error | _ : Choose | _: Hole | _: WithOracle => false
+      case _ => true
     }(e)
   }
 

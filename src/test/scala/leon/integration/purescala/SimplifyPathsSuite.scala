@@ -86,4 +86,16 @@ class SimplifyPathsSuite extends LeonTestSuite {
     val out = simplifyPaths(ctx, in)
     assert(out === exp)
   }
+
+  test("Simplify Paths 04 - error - 1") { ctx =>
+    val in = And(Error(BooleanType, ""), aV)
+    val out = simplifyPaths(ctx, in)
+    assert(out === in)
+  }
+
+  test("Simplify Paths 05 - error - 2") { ctx =>
+    val in = And(BooleanLiteral(false), Error(BooleanType, ""))
+    val out = simplifyPaths(ctx, in)
+    assert(out === BooleanLiteral(false))
+  }
 }

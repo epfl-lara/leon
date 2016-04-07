@@ -290,7 +290,7 @@ object Constructors {
     */
   // @mk I simplified that because it seemed dangerous and unnessecary
   def equality(a: Expr, b: Expr) = {
-    if (a.isInstanceOf[Terminal] && !isPurelyFunctional(a) && a == b ) {
+    if (a.isInstanceOf[Terminal] && isPurelyFunctional(a) && a == b ) {
       BooleanLiteral(true)
     } else  {
       Equals(a, b)
