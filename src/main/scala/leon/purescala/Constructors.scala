@@ -288,21 +288,12 @@ object Constructors {
   /** $encodingof simplified `... == ...` (equality).
     * @see [[purescala.Expressions.Equals Equals]]
     */
+  // @mk I simplified that because it seemed dangerous and unnessecary
   def equality(a: Expr, b: Expr) = {
-    if (a == b && isDeterministic(a)) {
+    if (a.isInstanceOf[Terminal] && !isPurelyFunctional(a) && a == b ) {
       BooleanLiteral(true)
     } else  {
-      (a, b) match {
-        case (a: Literal[_], b: Literal[_]) =>
-          if (a.value == b.value) {
-            BooleanLiteral(true)
-          } else {
-            BooleanLiteral(false)
-          }
-
-        case _ =>
-          Equals(a, b)
-      }
+      Equals(a, b)
     }
   }
 

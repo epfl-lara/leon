@@ -3,7 +3,7 @@
 package leon
 package purescala
 
-import collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
 import Common._
 import Definitions._
 import Expressions._

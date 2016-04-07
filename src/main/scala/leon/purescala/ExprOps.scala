@@ -219,7 +219,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
         Some(caseClassSelector(cct, cc, id))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) && !evalOrderSensitive(c) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && !isPurelyFunctional(c) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -315,10 +315,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def rec(e: Expr): Option[Expr] = e match {
       case l: Terminal => None
-      case e if isGround(e) => eval.eval(e) match {
-        case EvaluationResults.Successful(v) => Some(v)
-        case _ => None
-      }
+      case e if isGround(e) => eval.eval(e).result // returns None if eval fails
       case _ => None
     }
 
@@ -336,10 +333,10 @@ object ExprOps extends GenTreeOps[Expr] {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if !evalOrderSensitive(t) =>
+      case letExpr @ Let(i, t: Terminal, b) if !isPurelyFunctional(t) =>
         Some(replaceFromIDs(Map(i -> t), b))
 
-      case letExpr @ Let(i,e,b) if !evalOrderSensitive(e) =>
+      case letExpr @ Let(i,e,b) if !isPurelyFunctional(e) =>
         val occurrences = count {
           case Variable(`i`) => 1
           case _ => 0
@@ -353,7 +350,7 @@ object ExprOps extends GenTreeOps[Expr] {
           None
         }
 
-      case LetPattern(patt, e0, body) if !evalOrderSensitive(e0) =>
+      case LetPattern(patt, e0, body) if !isPurelyFunctional(e0) =>
         // Will turn the match-expression with a single case into a list of lets.
 
         // Just extra safety...
@@ -980,7 +977,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
   /** Returns true if the expression is deterministic /
     * does not contain any [[purescala.Expressions.Choose Choose]]
-    * or [[purescala.Expressions.Hole Hole]] or [[purescala.Expressions.WithOracle]]
+    * or [[purescala.Expressions.Hole Hole]] or [[purescala.Expressions.WithOracle WithOracle]]
     */
   def isDeterministic(e: Expr): Boolean = {
     exists {
@@ -989,10 +986,10 @@ object ExprOps extends GenTreeOps[Expr] {
     }(e)
   }
 
-  /** Returns if this expression would change the results of a program
-    * if its evaluation order in the program changed
+  /** Returns if this expression behaves as a purely functional construct,
+    * i.e. always returns the same value (for the same environment) and has no side-effects
     */
-  def evalOrderSensitive(e: Expr): Boolean = {
+  def isPurelyFunctional(e: Expr): Boolean = {
     exists {
       case _ : Error | _ : Choose | _: Hole | _: WithOracle => true
       case _ => false
@@ -1517,7 +1514,7 @@ object ExprOps extends GenTreeOps[Expr] {
      * TODO: We ignore type parameters here, we might want to make sure it's
      * valid. What's Leon's semantics w.r.t. erasure?
      */
-    def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
+    def areExhaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
 
       tpe match {
         case TupleType(tpes) =>
@@ -1526,7 +1523,7 @@ object ExprOps extends GenTreeOps[Expr] {
               bs
           }
 
-          areExaustive(tpes zip subs.transpose)
+          areExhaustive(tpes zip subs.transpose)
 
         case _: ClassType =>
 
@@ -1569,7 +1566,7 @@ object ExprOps extends GenTreeOps[Expr] {
             if (subs.isEmpty) {
               false
             } else {
-              areExaustive(tpes zip subs.transpose)
+              areExhaustive(tpes zip subs.transpose)
             }
           }
 
@@ -1610,7 +1607,7 @@ object ExprOps extends GenTreeOps[Expr] {
         return false
     }
 
-    areExaustive(Seq((m.scrutinee.getType, patterns)))
+    areExhaustive(Seq((m.scrutinee.getType, patterns)))
   }
 
   /** Flattens a function that contains a LetDef with a direct call to it
