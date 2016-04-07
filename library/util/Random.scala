@@ -29,4 +29,3 @@ object Random {
   } ensuring(res => res >= 0 && res < max)
 
 }
-
