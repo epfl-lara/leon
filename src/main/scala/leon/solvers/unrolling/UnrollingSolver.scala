@@ -172,8 +172,12 @@ trait AbstractUnrollingSolver[T]
   trait ModelWrapper {
     def modelEval(elem: T, tpe: TypeTree): Option[Expr]
 
-    def eval(elem: T, tpe: TypeTree): Option[Expr] = modelEval(elem, theoryEncoder.encode(tpe)).map {
-      expr => theoryEncoder.decode(expr)(Map.empty)
+    def eval(elem: T, tpe: TypeTree): Option[Expr] = modelEval(elem, theoryEncoder.encode(tpe)).flatMap {
+      expr => try {
+        Some(theoryEncoder.decode(expr)(Map.empty))
+      } catch {
+        case u: Unsupported => None
+      }
     }
 
     def get(id: Identifier): Option[Expr] = eval(freeVars(id), theoryEncoder.encode(id.getType)).filter {

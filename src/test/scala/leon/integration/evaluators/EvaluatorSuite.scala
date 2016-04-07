@@ -49,9 +49,28 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
        |
        |  def finite() : Set[Int] = Set(1, 2, 3)
        |  def build(x : Int, y : Int, z : Int) : Set[Int] = Set(x, y, z)
+       |  def add(s1 : Set[Int], e: Int) : Set[Int] = s1 + e
        |  def union(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 ++ s2
        |  def inter(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 & s2
        |  def diff(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 -- s2
+       |}""".stripMargin,
+
+    """|import leon.lang._
+       |object Bags {
+       |  sealed abstract class List
+       |  case class Nil() extends List
+       |  case class Cons(head : Int, tail : List) extends List
+       |
+       |  def content(l : List) : Bag[Int] = l match {
+       |    case Nil() => Bag.empty[Int]
+       |    case Cons(x, xs) => content(xs) + x
+       |  }
+       |
+       |  def finite() : Bag[Int] = Bag((1, 1), (2, 2), (3, 3))
+       |  def add(s1 : Bag[Int], e: Int) : Bag[Int] = s1 + e
+       |  def union(s1 : Bag[Int], s2 : Bag[Int]) : Bag[Int] = s1 ++ s2
+       |  def inter(s1 : Bag[Int], s2 : Bag[Int]) : Bag[Int] = s1 & s2
+       |  def diff(s1 : Bag[Int], s2 : Bag[Int]) : Bag[Int] = s1 -- s2
        |}""".stripMargin,
 
     """|import leon.lang._
@@ -295,6 +314,8 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       eval(e, fcall("Sets.content")(cons12))         === s12
       eval(e, fcall("Sets.build")(i(1), i(2), i(3))) === s123
       eval(e, fcall("Sets.build")(i(1), i(2), i(2))) === s12
+      eval(e, fcall("Sets.add")(s12, i(2)))          === s12
+      eval(e, fcall("Sets.add")(s12, i(3)))          === s123
       eval(e, fcall("Sets.union")(s123, s246))       === s12346
       eval(e, fcall("Sets.union")(s246, s123))       === s12346
       eval(e, fcall("Sets.inter")(s123, s246))       === s2
@@ -305,6 +326,39 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       eval(e, Equals(fcall("Sets.union")(s123, s246), fcall("Sets.union")(s246, s123))) === T
       eval(e, Equals(fcall("Sets.inter")(s123, s246), fcall("Sets.inter")(s246, s123))) === T
       eval(e, Equals(fcall("Sets.diff")(s123, s246),  fcall("Sets.diff")(s246, s123)))   === F
+    }
+  }
+
+  test("Bags") { implicit fix  =>
+    val nil = cc("Bags.Nil")()
+    def cons(es: Expr*) = cc("Bags.Cons")(es: _*)
+
+    val cons12 = cons(i(1), cons(i(2), nil))
+    val cons122 = cons(i(1), cons(i(2), cons(i(2), nil)))
+
+    def fb(is: (Int, Int)*) = FiniteBag(is.map(p => i(p._1) -> bi(p._2)).toMap, Int32Type)
+
+    val b12    = fb(1 -> 1, 2 -> 1)
+    val b123   = fb(1 -> 1, 2 -> 1, 3 -> 1)
+    val b246   = fb(2 -> 1, 4 -> 1, 6 -> 1)
+    val b1223  = fb(1 -> 1, 2 -> 2, 3 -> 1)
+
+    for(e <- allEvaluators) {
+      eval(e, fcall("Bags.finite")())                === fb(1 -> 1, 2 -> 2, 3 -> 3)
+      eval(e, fcall("Bags.content")(nil))            === fb()
+      eval(e, fcall("Bags.content")(cons12))         === fb(1 -> 1, 2 -> 1)
+      eval(e, fcall("Bags.content")(cons122))        === fb(1 -> 1, 2 -> 2)
+      eval(e, fcall("Bags.add")(b12, i(2)))          === fb(1 -> 1, 2 -> 2)
+      eval(e, fcall("Bags.add")(b12, i(3)))          === fb(1 -> 1, 2 -> 1, 3 -> 1)
+      eval(e, fcall("Bags.union")(b123, b246))       === fb(1 -> 1, 2 -> 2, 3 -> 1, 4 -> 1, 6 -> 1)
+      eval(e, fcall("Bags.union")(b246, b123))       === fb(1 -> 1, 2 -> 2, 3 -> 1, 4 -> 1, 6 -> 1)
+      eval(e, fcall("Bags.inter")(b123, b246))       === fb(2 -> 1)
+      eval(e, fcall("Bags.inter")(b246, b123))       === fb(2 -> 1)
+      eval(e, fcall("Bags.inter")(b1223, b123))      === b123
+      eval(e, fcall("Bags.diff")(b123, b246))        === fb(1 -> 1, 3 -> 1)
+      eval(e, fcall("Bags.diff")(b246, b123))        === fb(4 -> 1, 6 -> 1)
+      eval(e, fcall("Bags.diff")(b1223, b123))       === fb(2 -> 1)
+      eval(e, fcall("Bags.diff")(b123, b1223))       === fb()
     }
   }
 

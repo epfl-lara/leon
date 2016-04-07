@@ -112,7 +112,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
           val subs = (1 to size).flatMap(i => List(sub, IntegerType)).toList
           Constructor[Expr, TypeTree](subs, bt, s => FiniteBag(s.grouped(2).map {
-            case List(k, i @ InfiniteIntegerLiteral(v)) =>
+            case Seq(k, i @ InfiniteIntegerLiteral(v)) =>
               k -> (if (v > 0) i else InfiniteIntegerLiteral(-v + 1))
           }.toMap, sub), bt.asString(ctx)+"@"+size)
         }
@@ -360,8 +360,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       def computeNext(): Option[Seq[Expr]] = {
         //return None
-        while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
+        while (total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
           val model = it.next()
+          it.hasNext // FIXME: required for some reason by StubGenerator or will return false during loop check
 
           if (model eq null) {
             total = maxEnumerated

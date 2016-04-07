@@ -515,7 +515,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       case (FiniteBag(els, tpe), evElem) => FiniteBag(els + (evElem -> (els.get(evElem) match {
         case Some(InfiniteIntegerLiteral(i)) => InfiniteIntegerLiteral(i + 1)
         case Some(i) => throw EvalError(typeErrorMsg(i, IntegerType))
-        case None => InfiniteIntegerLiteral(0)
+        case None => InfiniteIntegerLiteral(1)
       })), tpe)
 
       case (le, re) => throw EvalError(typeErrorMsg(le, bag.getType))

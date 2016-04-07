@@ -2,56 +2,55 @@
 
 package leon.codegen.runtime;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.HashMap;
 
 /** If someone wants to make it an efficient implementation of immutable
  *  sets, go ahead. */
 public final class Bag {
-  private final HashMap<Object, Integer> _underlying;
+  private final HashMap<Object, BigInt> _underlying;
 
-  protected final HashMap<Object, Integer> underlying() {
+  protected final HashMap<Object, BigInt> underlying() {
     return _underlying;
   }
 
   public Bag() {
-    _underlying = new HashMap<Object, Integer>();
+    _underlying = new HashMap<Object, BigInt>();
   }
 
-  private Bag(HashMap<Object, Integer> u) {
+  private Bag(HashMap<Object, BigInt> u) {
     _underlying = u;
   }
 
   // Uses mutation! Useful at building time.
   public void add(Object e) {
-    add(e, 1);
+    add(e, BigInt.ONE);
   }
 
   // Uses mutation! Useful at building time.
-  private void add(Object e, int count) {
-    _underlying.put(e, get(e) + count);
+  public void add(Object e, BigInt count) {
+    _underlying.put(e, get(e).add(count));
   }
 
-  public Iterator<java.util.Map.Entry<Object, Integer>> getElements() {
+  public Iterator<java.util.Map.Entry<Object, BigInt>> getElements() {
     return _underlying.entrySet().iterator();
   }
 
-  public int get(Object element) {
-    Integer r = _underlying.get(element);
-    if (r == null) return 0;
-    else return r.intValue();
+  public BigInt get(Object element) {
+    BigInt r = _underlying.get(element);
+    if (r == null) return BigInt.ZERO;
+    else return r;
   }
 
   public Bag plus(Object e) {
-    Bag n = new Bag(new HashMap<Object, Integer>(_underlying));
+    Bag n = new Bag(new HashMap<Object, BigInt>(_underlying));
     n.add(e);
     return n;
   }
 
   public Bag union(Bag b) {
-    Bag n = new Bag(new HashMap<Object, Integer>(_underlying));
-    for (java.util.Map.Entry<Object, Integer> entry : b.underlying().entrySet()) {
+    Bag n = new Bag(new HashMap<Object, BigInt>(_underlying));
+    for (java.util.Map.Entry<Object, BigInt> entry : b.underlying().entrySet()) {
       n.add(entry.getKey(), entry.getValue());
     }
     return n;
@@ -59,18 +58,19 @@ public final class Bag {
 
   public Bag intersect(Bag b) {
     Bag n = new Bag();
-    for (java.util.Map.Entry<Object, Integer> entry : _underlying.entrySet()) {
-      int m = Math.min(entry.getValue(), b.get(entry.getKey()));
-      if (m > 0) n.add(entry.getKey(), m);
+    for (java.util.Map.Entry<Object, BigInt> entry : _underlying.entrySet()) {
+      BigInt b1 = entry.getValue(), b2 = b.get(entry.getKey());
+      BigInt m = b1.lessThan(b2) ? b1 : b2;
+      if (m.greaterThan(BigInt.ZERO)) n.add(entry.getKey(), m);
     }
     return n;
   }
 
   public Bag difference(Bag b) {
     Bag n = new Bag();
-    for (java.util.Map.Entry<Object, Integer> entry : _underlying.entrySet()) {
-      int m = entry.getValue() - b.get(entry.getKey());
-      if (m > 0) n.add(entry.getKey(), m);
+    for (java.util.Map.Entry<Object, BigInt> entry : _underlying.entrySet()) {
+      BigInt m = entry.getValue().sub(b.get(entry.getKey()));
+      if (m.greaterThan(BigInt.ZERO)) n.add(entry.getKey(), m);
     }
     return n;
   }
@@ -82,11 +82,11 @@ public final class Bag {
 
     Bag other = (Bag) that;
     for (Object key : _underlying.keySet()) {
-      if (get(key) != other.get(key)) return false;
+      if (!get(key).equals(other.get(key))) return false;
     }
 
     for (Object key : other.underlying().keySet()) {
-      if (get(key) != other.get(key)) return false;
+      if (!get(key).equals(other.get(key))) return false;
     }
 
     return true;
@@ -97,7 +97,7 @@ public final class Bag {
     StringBuilder sb = new StringBuilder();
     sb.append("Bag(");
     boolean first = true;
-    for (java.util.Map.Entry<Object, Integer> entry : _underlying.entrySet()) {
+    for (java.util.Map.Entry<Object, BigInt> entry : _underlying.entrySet()) {
       if(!first) {
         sb.append(", ");
         first = false;

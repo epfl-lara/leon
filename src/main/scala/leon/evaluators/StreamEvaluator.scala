@@ -397,6 +397,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     case (Equals(_, _), Seq(lv, rv)) =>
       (lv, rv) match {
         case (FiniteSet(el1, _), FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
+        case (FiniteBag(el1, _), FiniteBag(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _), FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
         case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
@@ -540,14 +541,23 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       (el, er) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 >= i2)
-        case (a@FractionalLiteral(_, _), b@FractionalLiteral(_, _)) =>
+        case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
           val FractionalLiteral(n, _) = e(RealMinus(a, b)).head
           BooleanLiteral(n >= 0)
         case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 >= c2)
         case (le, re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    case (IsTyped(su@SetUnion(s1, s2), tpe), Seq(
+    case (IsTyped(sa @ SetAdd(_, _), tpe), Seq(
+      IsTyped(FiniteSet(els1, _), SetType(tpe1)),
+      IsTyped(elem, tpe2)
+    )) =>
+      FiniteSet(
+        els1 + elem,
+        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(sa, tpe)))
+      )
+
+    case (IsTyped(su @ SetUnion(s1, s2), tpe), Seq(
       IsTyped(FiniteSet(els1, _), SetType(tpe1)),
       IsTyped(FiniteSet(els2, _), SetType(tpe2))
     )) =>
@@ -556,7 +566,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
         leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(su, tpe)))
       )
 
-    case (IsTyped(su@SetIntersection(s1, s2), tpe), Seq(
+    case (IsTyped(su @ SetIntersection(s1, s2), tpe), Seq(
       IsTyped(FiniteSet(els1, _), SetType(tpe1)),
       IsTyped(FiniteSet(els2, _), SetType(tpe2))
     )) =>
@@ -565,7 +575,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
         leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(su, tpe)))
       )
 
-    case (IsTyped(su@SetDifference(s1, s2), tpe), Seq(
+    case (IsTyped(su @ SetDifference(s1, s2), tpe), Seq(
       IsTyped(FiniteSet(els1, _), SetType(tpe1)),
       IsTyped(FiniteSet(els2, _), SetType(tpe2))
     )) =>
@@ -586,6 +596,69 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     case (FiniteSet(_, base), els) =>
       FiniteSet(els.toSet, base)
 
+    case (IsTyped(ba @ BagAdd(_, _), tpe), Seq(
+      IsTyped(FiniteBag(els1, _), BagType(tpe1)),
+      IsTyped(e, tpe2)
+    )) =>
+      FiniteBag(
+        els1 + (e -> (els1.getOrElse(e, InfiniteIntegerLiteral(0)) match {
+          case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(i + 1)
+          case il => throw EvalError(typeErrorMsg(il, IntegerType))
+        })),
+        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(ba, tpe)))
+      )
+
+    case (IsTyped(bu @ BagUnion(b1, b2), tpe), Seq(
+      IsTyped(FiniteBag(els1, _), BagType(tpe1)),
+      IsTyped(FiniteBag(els2, _), BagType(tpe2))
+    )) =>
+      FiniteBag(
+        (els1.keys ++ els2.keys).map(k => k -> {
+          ((els1.getOrElse(k, InfiniteIntegerLiteral(0)), els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+            case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
+            case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
+          })
+        }).toMap,
+        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bu, tpe)))
+      )
+
+    case (IsTyped(bi @ BagIntersection(s1, s2), tpe), Seq(
+      IsTyped(FiniteBag(els1, _), BagType(tpe1)),
+      IsTyped(FiniteBag(els2, _), BagType(tpe2))
+    )) =>
+      FiniteBag(
+        els1.flatMap { case (k, e) => 
+          val res = (e, els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+            case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => i1 min i2
+            case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
+          }
+          if (res <= 0) None else Some(k -> InfiniteIntegerLiteral(res))
+        },
+        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bi, tpe)))
+      )
+
+    case (IsTyped(bd @ BagDifference(s1, s2), tpe), Seq(
+      IsTyped(FiniteBag(els1, _), BagType(tpe1)),
+      IsTyped(FiniteBag(els2, _), BagType(tpe2))
+    )) =>
+      FiniteBag(
+        els1.flatMap { case (k, e) =>
+          val res = (e, els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+            case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => i1 - i2
+            case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
+          }
+          if (res <= 0) None else Some(k -> InfiniteIntegerLiteral(res))
+        },
+        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bd, tpe)))
+      )
+
+    case (MultiplicityInBag(_, _), Seq(e, FiniteBag(els, _))) =>
+      els.getOrElse(e, InfiniteIntegerLiteral(0))
+
+    case (fb @ FiniteBag(_, _), els) =>
+      val Operator(_, builder) = fb
+      builder(els)
+
     case (ArrayLength(_), Seq(FiniteArray(_, _, IntLiteral(length)))) =>
       IntLiteral(length)
 
@@ -602,15 +675,15 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
         .orElse(if (index >= 0 && index < length) default else None)
         .getOrElse(throw RuntimeError(s"Array out of bounds error during evaluation:\n array = $fa, index = $index"))
 
-    case (fa@FiniteArray(_, _, _), subs) =>
+    case (fa @ FiniteArray(_, _, _), subs) =>
       val Operator(_, builder) = fa
       builder(subs)
 
-    case (fm@FiniteMap(_, _, _), subs) =>
+    case (fm @ FiniteMap(_, _, _), subs) =>
       val Operator(_, builder) = fm
       builder(subs)
 
-    case (g@MapApply(_, _), Seq(FiniteMap(m, _, _), k)) =>
+    case (g @ MapApply(_, _), Seq(FiniteMap(m, _, _), k)) =>
       m.getOrElse(k, throw RuntimeError("Key not found: " + k.asString))
 
     case (u@IsTyped(MapUnion(_, _), MapType(kT, vT)), Seq(FiniteMap(m1, _, _), FiniteMap(m2, _, _))) =>
