@@ -17,6 +17,7 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
       PrintTreePhase(title).when(ctx.reporter.isDebugEnabled(DebugSectionTrees))
 
     val phases =
+      IntroduceGlobalStatePhase andThen
       AntiAliasingPhase andThen
       debugTrees("Program after anti-aliasing") andThen
       EpsilonElimination andThen
