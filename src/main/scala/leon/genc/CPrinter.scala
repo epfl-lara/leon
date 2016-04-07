@@ -11,18 +11,35 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   def print(tree: Tree) = pp(tree)(PrinterContext(0, this))
 
+  private def escape(c: Char): String = c match {
+    case '\b' => "\\b"
+    case '\t' => "\\t"
+    case '\n' => "\\n"
+    case '\f' => "\\f"
+    case '\r' => "\\r"
+    case '\\' => "\\\\"
+    case '\'' => "\\'"
+    case '\"' => "\\\""
+    case c => c.toString
+  }
+
+  private def escape(s: String): String = {
+    import org.apache.commons.lang3.StringEscapeUtils
+    StringEscapeUtils.escapeJava(s)
+  }
+
   private[genc] def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
     /* ---------------------------------------------------------- Types ----- */
     case typ: Type => c"${typ.toString}"
 
 
     /* ------------------------------------------------------- Literals ----- */
-    case CharLiteral(c)   => c"'$c'"
+    case CharLiteral(c)   => c"'${escape(c)}'"
     case IntLiteral(v)    => c"$v"
     case BoolLiteral(b)   => c"$b"
 
     // Mind the fourth and eighth double quotes
-    case StringLiteral(s) => c""""$s""""
+    case StringLiteral(s) => c""""${escape(s)}""""
 
 
     /* --------------------------------------------------- Definitions  ----- */
