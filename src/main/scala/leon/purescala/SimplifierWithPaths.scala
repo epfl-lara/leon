@@ -54,28 +54,37 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
   }
 
   protected override def rec(e: Expr, path: C) = e match {
+    case Require(pre, body) if impliedBy(pre, path) =>
+      body
+
     case IfExpr(cond, thenn, elze) =>
-      super.rec(e, path) match {
-        case IfExpr(BooleanLiteral(true) , t, _) => t
-        case IfExpr(BooleanLiteral(false), _, e) => e
-        case ite => ite
-      }
-
-    case And(es) =>
-      var soFar = path
-      var continue = true
-      val r = andJoin(for(e <- es if continue) yield {
-        val se = rec(e, soFar)
-        if(se == BooleanLiteral(false)) continue = false
-        soFar = register(se, soFar)
-        se
-      }).copiedFrom(e)
-
-      if (continue) {
-        r
+      if (impliedBy(cond, path)) {
+        rec(thenn, path)
+      } else if (contradictedBy(cond, path)) {
+        rec(elze, path)
       } else {
-        BooleanLiteral(false).copiedFrom(e)
+        super.rec(e, path)
       }
+
+    case And(e +: _) if contradictedBy(e, path) =>
+      BooleanLiteral(false).copiedFrom(e)
+
+    case And(e +: es) if impliedBy(e, path) =>
+      val remaining = if (es.size > 1) And(es).copiedFrom(e) else es.head
+      rec(remaining, path)
+
+    case Or(e +: _) if impliedBy(e, path) =>
+      BooleanLiteral(true).copiedFrom(e)
+
+    case Or(e +: es) if contradictedBy(e, path) =>
+      val remaining = if (es.size > 1) Or(es).copiedFrom(e) else es.head
+      rec(remaining, path)
+
+    case Implies(lhs, rhs) if impliedBy(lhs, path) =>
+      rec(rhs, path)
+
+    case Implies(lhs, rhs) if contradictedBy(lhs, path) =>
+      BooleanLiteral(true).copiedFrom(e)
 
     case me@MatchExpr(scrut, cases) =>
       val rs = rec(scrut, path)
@@ -91,7 +100,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
             stillPossible = false
           }
 
-          Some((cs match {
+          Seq((cs match {
             case SimpleCase(p, rhs) =>
               SimpleCase(p, rec(rhs, cond))
             case GuardedCase(p, g, rhs) =>
@@ -106,35 +115,18 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
                 GuardedCase(p, newGuard, rec(rhs, cond))
           }).copiedFrom(cs))
         } else {
-          None
+          Seq()
         }
       }
       newCases match {
-        case List() => Error(e.getType, "Unreachable code").copiedFrom(e)
-        case List(theCase) if !scrut.getType.isInstanceOf[AbstractClassType] =>
-          // Avoid AbstractClassType as it may lead to invalid field accesses
-          replaceFromIDs(mapForPattern(scrut, theCase.pattern), theCase.rhs)
-        case _ => matchExpr(rs, newCases).copiedFrom(e)
-      }
-
-    case Or(es) =>
-      var soFar = path
-      var continue = true
-      val r = orJoin(for(e <- es if continue) yield {
-        val se = rec(e, soFar)
-        if(se == BooleanLiteral(true)) continue = false
-        soFar = register(Not(se), soFar)
-        se
-      }).copiedFrom(e)
-
-      if (continue) {
-        r
-      } else {
-        BooleanLiteral(true).copiedFrom(e)
+        case List() =>
+          Error(e.getType, "Unreachable code").copiedFrom(e)
+        case _ =>
+          matchExpr(rs, newCases).copiedFrom(e)
       }
 
     case a @ Assert(pred, _, body) if impliedBy(pred, path) =>
-      body.copiedFrom(a)
+      body
 
     case b if b.getType == BooleanType && impliedBy(b, path) =>
       BooleanLiteral(true).copiedFrom(b)

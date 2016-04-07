@@ -50,10 +50,9 @@ class SimplifyPathsSuite extends LeonTestSuite {
       MatchCase(LiteralPattern(None, BooleanLiteral(false)), None, Not(cV))
 
     ))
-    val exp = cV
 
     val out = simplifyPaths(ctx, in)
-    assert(out === exp)
+    assert(out.asInstanceOf[MatchExpr].cases.size == 1)
   }
 
   test("Simplify Paths 03 - ") { ctx =>

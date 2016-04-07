@@ -219,7 +219,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
         Some(caseClassSelector(cct, cc, id))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && !evalOrderSensitive(c) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -336,12 +336,12 @@ object ExprOps extends GenTreeOps[Expr] {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
+      case letExpr @ Let(i, t: Terminal, b) if !evalOrderSensitive(t) =>
         Some(replaceFromIDs(Map(i -> t), b))
 
-      case letExpr @ Let(i,e,b) if isDeterministic(b) => {
+      case letExpr @ Let(i,e,b) if !evalOrderSensitive(e) =>
         val occurrences = count {
-          case Variable(x) if x == i => 1
+          case Variable(`i`) => 1
           case _ => 0
         }(b)
 
@@ -352,79 +352,33 @@ object ExprOps extends GenTreeOps[Expr] {
         } else {
           None
         }
-      }
 
-      case letTuple @ LetTuple(ids, Tuple(exprs), body) if isDeterministic(body) =>
-        var newBody = body
+      case LetPattern(patt, e0, body) if !evalOrderSensitive(e0) =>
+        // Will turn the match-expression with a single case into a list of lets.
 
-        val (remIds, remExprs) = (ids zip exprs).filter {
-          case (id, value: Terminal) =>
-            newBody = replaceFromIDs(Map(id -> value), newBody)
-            //we replace, so we drop old
-            false
-          case (id, value) =>
-            val occurences = count {
-              case Variable(x) if x == id => 1
-              case _ => 0
-            }(body)
-
-            if(occurences == 0) {
-              false
-            } else if(occurences == 1) {
-              newBody = replace(Map(Variable(id) -> value), newBody)
-              false
-            } else {
-              true
-            }
-        }.unzip
-
-        Some(Constructors.letTuple(remIds, tupleWrap(remExprs), newBody))
-
-      case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
-        val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-          case (v,i) => v -> tupleSelect(tExpr, i + 1, true).copiedFrom(v)
+        // Just extra safety...
+        val e = (e0.getType, patt) match {
+          case (_:AbstractClassType, CaseClassPattern(_, cct, _)) =>
+            asInstOf(e0, cct)
+          case (at: AbstractClassType, InstanceOfPattern(_, ct)) if at != ct =>
+            asInstOf(e0, ct)
+          case _ =>
+            e0
         }
 
-        Some(replace(substMap, body))
-
-      case l @ LetTuple(ids, tExpr, body) if isDeterministic(body) =>
-        val arity = ids.size
-        val zeroVec = Seq.fill(arity)(0)
-        val idMap   = ids.zipWithIndex.toMap.mapValues(i => zeroVec.updated(i, 1))
-
-        // A map containing vectors of the form (0, ..., 1, ..., 0) where
-        // the one corresponds to the index of the identifier in the
-        // LetTuple. The idea is that we can sum such vectors up to compute
-        // the occurences of all variables in one traversal of the
-        // expression.
-
-        val occurences : Seq[Int] = fold[Seq[Int]]({ case (e, subs) =>
-          e match {
-            case Variable(x) => idMap.getOrElse(x, zeroVec)
-            case _ => subs.foldLeft(zeroVec) { case (a1, a2) =>
-                (a1 zip a2).map(p => p._1 + p._2)
-              }
-          }
-        })(body)
-
-        val total = occurences.sum
-
-        if(total == 0) {
-          Some(body)
-        } else if(total == 1) {
-          val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-            case (v,i) => v -> tupleSelect(tExpr, i + 1, ids.size).copiedFrom(v)
-          }
-
-          Some(replace(substMap, body))
-        } else {
-          None
+        // Sort lets in dependency order
+        val lets = mapForPattern(e, patt).toList.sortWith {
+          case ((id1, e1), (id2, e2)) => exists{ _ == Variable(id1) }(e2)
         }
+
+        Some(lets.foldRight(body) {
+          case ((id, e), bd) => Let(id, e, bd)
+        })
 
       case _ => None
     }
 
-    postMap(simplerLet)(expr)
+    postMap(simplerLet, applyRec = true)(expr)
   }
 
   /** Fully expands all let expressions. */
@@ -435,7 +389,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
-      case n @ Deconstructor(args, recons) => {
+      case n @ Deconstructor(args, recons) =>
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a, s)
@@ -450,8 +404,7 @@ object ExprOps extends GenTreeOps[Expr] {
           recons(rargs)
         else
           n
-      }
-      case unhandled => scala.sys.error("Unhandled case in expandLets: " + unhandled)
+      case unhandled => throw LeonFatalError("Unhandled case in expandLets: " + unhandled)
     }
 
     def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = {
@@ -966,50 +919,6 @@ object ExprOps extends GenTreeOps[Expr] {
     postMap(transform, applyRec = true)(expr)
   }
 
-  /** Simplify If expressions when the branch is predetermined by the path condition */
-  def simplifyTautologies(sf: SolverFactory[Solver])(expr : Expr) : Expr = {
-    val solver = SimpleSolverAPI(sf)
-
-    def pre(e : Expr) = e match {
-
-      case LetDef(fds, expr) =>
-       for(fd <- fds if fd.hasPrecondition) {
-          val pre = fd.precondition.get
-
-          solver.solveVALID(pre) match {
-            case Some(true)  =>
-              fd.precondition = None
-  
-            case Some(false) => solver.solveSAT(pre) match {
-              case (Some(false), _) =>
-                fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
-              case _ =>
-            }
-            case None =>
-          }
-       }
-       e
-      case IfExpr(cond, thenn, elze) =>
-        try {
-          solver.solveVALID(cond) match {
-            case Some(true)  => thenn
-            case Some(false) => solver.solveVALID(Not(cond)) match {
-              case Some(true) => elze
-              case _ => e
-            }
-            case None => e
-          }
-        } catch {
-          // let's give up when the solver crashes
-          case _ : Exception => e
-        }
-
-      case _ => e
-    }
-
-    simplePreTransform(pre)(expr)
-  }
-
   def simplifyPaths(sf: SolverFactory[Solver], initC: List[Expr] = Nil): Expr => Expr = {
     new SimplifierWithPaths(sf, initC).transform
   }
@@ -1069,16 +978,25 @@ object ExprOps extends GenTreeOps[Expr] {
       super.formulaSize(e)
   }
 
-  /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/
+  /** Returns true if the expression is deterministic /
+    * does not contain any [[purescala.Expressions.Choose Choose]]
+    * or [[purescala.Expressions.Hole Hole]] or [[purescala.Expressions.WithOracle]]
+    */
   def isDeterministic(e: Expr): Boolean = {
-    preTraversal{
-      case Choose(_) => return false
-      case Hole(_, _) => return false
-      //@EK FIXME: do we need it?
-      //case Error(_, _) => return false
-      case _ =>
+    exists {
+      case _ : Choose | _: Hole | _: WithOracle => false
+      case _ => true
     }(e)
-    true
+  }
+
+  /** Returns if this expression would change the results of a program
+    * if its evaluation order in the program changed
+    */
+  def evalOrderSensitive(e: Expr): Boolean = {
+    exists {
+      case _ : Error | _ : Choose | _: Hole | _: WithOracle => true
+      case _ => false
+    }(e)
   }
 
   /** Returns the value for an identifier given a model. */
