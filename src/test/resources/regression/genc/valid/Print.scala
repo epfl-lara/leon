@@ -16,7 +16,33 @@ object Print {
      """
   )
   def myprint(x: Int): Unit = {
-    println(x)
+    print(x)
+  }
+
+  @extern
+  @cCode.function(
+    includes = "stdio.h",
+    code = """
+      |void __FUNCTION__(char c) {
+      |  printf("%c", c);
+      |}
+      """
+  )
+  def myprint(c: Char): Unit = {
+    print(c)
+  }
+
+  @extern
+  @cCode.function(
+    includes = "stdio.h",
+    code = """
+      |void __FUNCTION__(char* s) {
+      |  printf("%s", s);
+      |}
+      """
+  )
+  def myprint(s: String): Unit = {
+    print(s)
   }
 
   def foo = myprint(58)
@@ -24,6 +50,15 @@ object Print {
   def main() = {
     myprint(42)
     foo
+
+    // Testing escaped characters support
+    myprint('\n')
+    myprint('\t')
+    myprint('\"')
+    myprint('\\')
+    myprint('\'')
+    myprint("\"ab'&\n\t\\\\")
+    myprint('\n')
     0
   }
 }
