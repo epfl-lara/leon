@@ -18,7 +18,7 @@ import invariant.engine._
 object LazyVerificationPhase {
 
   val debugInstVCs = false
-  val debugInferProgram = false
+  val debugInferProgram = true
 
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {

@@ -152,7 +152,7 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
           reporter.info("Creating VC for " + recFun.id)
           // instantiate the body with new types
           val tparamMap = (recFun.tparams zip recFunTyped.tps).toMap
-          val paramMap = recFun.params.map{pdef =>
+          val paramMap = recFun.params.map { pdef =>
             pdef.id -> FreshIdentifier(pdef.id.name, instantiateType(pdef.id.getType, tparamMap))
           }.toMap
           val freshBody = instantiateType(freshenLocals(recFun.body.get), tparamMap, paramMap)
@@ -186,14 +186,12 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
       //here inline the body and conjoin it with the guard
       //Important: make sure we use a fresh body expression here, and freshenlocals
       val tparamMap = (callee.tparams zip tfd.tps).toMap
-      val freshBody = instantiateType(freshenLocals(callee.body.get), tparamMap, Map())
-      val calleeSummary = Equals(getFunctionReturnVariable(callee), freshBody)
-      val argmap1 = formalToActual(call)
-      val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary), ctx.multOp)
-
+      val freshBody = instantiateType(replace(formalToActual(call),
+        Equals(getFunctionReturnVariable(callee), freshenLocals(callee.body.get))),
+        tparamMap, Map())
+      val inlinedSummary = ExpressionTransformer.normalizeExpr(freshBody, ctx.multOp)
       if (this.dumpInlinedSummary)
-        println(s"Inlined Summary of ${callee.id}: " + inlinedSummary)
-
+        println(s"Call: ${call} \n FunDef: $callee \n Inlined Summary of ${callee.id}: $inlinedSummary")
       //conjoin the summary with the disjunct corresponding to the 'guard'
       //note: the parents of the summary are the parents of the call plus the callee function
       formula.conjoinWithDisjunct(calldata.guard, inlinedSummary, (callee +: calldata.parents), calldata.inSpec)
