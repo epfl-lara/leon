@@ -112,26 +112,25 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
   }
 
   def specForCall(call: Call): Option[Expr] = {
-    val argmap = formalToActual(call)
     val tfd = call.fi.tfd
     val callee = tfd.fd
     if (callee.hasPostcondition) {
+      //get the postcondition without templates
+      val rawpost = freshenLocals(callee.getPostWoTemplate)
+      val rawspec =
+        if (callee.hasPrecondition) {
+          val pre = freshenLocals(callee.precondition.get)
+          if (ctx.assumepre)
+            And(pre, rawpost)
+          else
+            Implies(pre, rawpost)
+        } else {
+          rawpost
+        }
       // instantiate the post
       val tparamMap = (callee.tparams zip tfd.tps).toMap
-      val trans = freshenLocals _ andThen (e => instantiateType(e, tparamMap, Map()))
-      //get the postcondition without templates
-      val rawpost = trans(callee.getPostWoTemplate)
-      val rawspec = if (callee.hasPrecondition) {
-        val pre = trans(callee.precondition.get)
-        if (ctx.assumepre)
-          And(pre, rawpost)
-        else
-          Implies(pre, rawpost)
-      } else {
-        rawpost
-      }
-      val spec = replace(argmap, rawspec)
-      val inlinedSpec = ExpressionTransformer.normalizeExpr(spec, ctx.multOp)
+      val instSpec =  instantiateType(replace(formalToActual(call), rawspec), tparamMap, Map())
+      val inlinedSpec = ExpressionTransformer.normalizeExpr(instSpec, ctx.multOp)
       Some(inlinedSpec)
     } else {
       None
@@ -144,14 +143,13 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
     if (callee.hasTemplate) {
       val argmap = formalToActual(call)
       val tparamMap = (callee.tparams zip tfd.tps).toMap
-      val tempExpr = replace(argmap, instantiateType(callee.getTemplate, tparamMap, Map()))
+      val tempExpr = instantiateType(replace(argmap, freshenLocals(callee.getTemplate)), tparamMap, Map())
       val template = if (callee.hasPrecondition) {
-        val pre = replace(argmap, instantiateType(callee.precondition.get, tparamMap, Map()))
-        val freshPre =  freshenLocals(pre)
+        val pre = instantiateType(replace(argmap, freshenLocals(callee.precondition.get)), tparamMap, Map())
         if (ctx.assumepre)
-          And(freshPre, tempExpr)
+          And(pre, tempExpr)
         else
-          Implies(freshPre, tempExpr)
+          Implies(pre, tempExpr)
       } else {
         tempExpr
       }

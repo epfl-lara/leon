@@ -33,12 +33,19 @@ object LazinessUtil {
       val outputFile = s"$outputFolder${File.separator}${u.id.toString}$suffix.scala"
       try {
         val out = new BufferedWriter(new FileWriter(outputFile))
+        val plainText = ScalaPrinter.apply(u, purescala.PrinterOptions(printUniqueIds = uniqueIds))
+        //println("Plain text: "+plainText)
         // remove '@' from the end of the identifier names
         val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(u, purescala.PrinterOptions(printUniqueIds = uniqueIds)),
-          m => m.group("base") + m.group("mid") + (
-            if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
-        //val pgmText = ScalaPrinter.apply(p)
+
+        val pgmText = try{ pat.replaceAllIn(plainText,
+          m => {
+            m.group("base") + m.group("mid") + (
+              if (!m.group("star").isEmpty()) "S" else "") + m.group("rest")
+          })
+        } catch {
+          case _: IndexOutOfBoundsException => plainText
+        }
         out.write(pgmText)
         out.close()
       } catch {
