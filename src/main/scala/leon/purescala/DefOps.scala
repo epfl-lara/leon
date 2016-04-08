@@ -135,13 +135,13 @@ object DefOps {
   }
   
   private def getNameUnderImports(pathFrom: List[Definition], namesOf: List[String]): Seq[List[String]] = {
-    (pathFrom match {
+    pathFrom match {
       case (u: UnitDef) :: _ =>
         val imports = u.imports.map {
           case Import(path, true) => path
           case Import(path, false) => path.init
         }.toList
-  
+
         def stripImport(of: List[String], imp: List[String]): Option[List[String]] = {
           if (of.startsWith(imp)) {
             Some(stripPrefix(of, imp))
@@ -149,13 +149,13 @@ object DefOps {
             None
           }
         }
-  
+
         for {imp <- imports
-             strippedImport <- stripImport(namesOf, imp)    
+             strippedImport <- stripImport(namesOf, imp)
         } yield strippedImport
       case _ =>
         Nil
-    })
+    }
   }
 
   def pathToNames(path: List[Definition], useUniqueIds: Boolean): List[String] = {
@@ -384,7 +384,6 @@ object DefOps {
   /** Clones the given program by replacing some classes by other classes.
     * 
     * @param p The original program
-    * @param cdMapF Given c returns Some(d) where d can take an abstract parent and return a class e if c should be replaced by e, and None if c should be kept.
     * @param ciMapF Given a previous case class invocation and its new case class definition, returns the expression to use.
     *               By default it is the case class construction using the new case class definition.
     * @return the new program with a map from the old case classes to the new case classes, with maps concerning identifiers and function definitions. */
@@ -599,15 +598,15 @@ object DefOps {
           ciMapF(ci, tpMap(ct)).map(_.setPos(ci))
         case CaseClassSelector(cct, expr, identifier) =>
           val new_cct = tpMap(cct)
-          val selection = (if(new_cct != cct || new_cct.classDef.fieldsIds != cct.classDef.fieldsIds) idMap(identifier) else identifier)
+          val selection = if (new_cct != cct || new_cct.classDef.fieldsIds != cct.classDef.fieldsIds) idMap(identifier) else identifier
           Some(CaseClassSelector(new_cct, expr, selection))
         case IsInstanceOf(e, ct) => Some(IsInstanceOf(e, tpMap(ct)))
         case AsInstanceOf(e, ct) => Some(AsInstanceOf(e, tpMap(ct)))
         case MatchExpr(scrut, cases) => 
           Some(MatchExpr(scrut, cases.map{ 
-              case MatchCase(pattern, optGuard, rhs) =>
-                MatchCase(replaceClassDefUse(pattern), optGuard, rhs)
-            }))
+            case MatchCase(pattern, optGuard, rhs) =>
+              MatchCase(replaceClassDefUse(pattern), optGuard, rhs)
+          }))
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
           defaultFiMap(fi, fdMap(fd)).map(_.setPos(fi))
         case _ =>
