@@ -36,7 +36,7 @@ class DefinitionTransformer(
   private val tmpDefs: MutableSet[Definition] = MutableSet.empty
 
   private def transformDefs(base: Definition): Unit = {
-    val deps = dependencies(base)
+    val deps = dependencies(base) + base
     val (cds, fds) = {
       val (c, f) = deps.partition(_.isInstanceOf[ClassDef])
       (c.map(_.asInstanceOf[ClassDef]), f.map(_.asInstanceOf[FunDef]))
