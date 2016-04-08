@@ -234,7 +234,6 @@ object Expressions {
   /* Universal Quantification */
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
-    assert(body.getType == BooleanType)
     val getType = BooleanType
   }
 
