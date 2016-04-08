@@ -18,7 +18,7 @@ import invariant.engine._
 object LazyVerificationPhase {
 
   val debugInstVCs = false
-  val debugInferProgram = false
+  val debugInferProgram = true
 
   class LazyVerificationReport(val stateVerification: Option[VerificationReport],
       val resourceVeri: Option[VerificationReport]) {

@@ -33,7 +33,7 @@ import PredicateUtil._
 import SolverUtil._
 
 object NLTemplateSolver {
-  val verbose = false
+  val verbose = true
 }
 
 class NLTemplateSolver(ctx: InferenceContext, program: Program,
