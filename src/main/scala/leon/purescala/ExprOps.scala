@@ -856,6 +856,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
     case SetType(baseType)          => FiniteSet(Set(), baseType)
+    case BagType(baseType)          => FiniteBag(Map(), baseType)
     case MapType(fromType, toType)  => FiniteMap(Map(), fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => EmptyArray(tpe)

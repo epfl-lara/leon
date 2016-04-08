@@ -9,7 +9,7 @@ import solvers.theories._
 import purescala.Definitions.Program
 
 class SMTLIBCVC4Solver(context: LeonContext, program: Program)
-  extends SMTLIBSolver(context, program, new NoEncoder)
+  extends SMTLIBSolver(context, program, new BagEncoder(context, program))
      with SMTLIBCVC4Target {
 
   def targetName = "cvc4"

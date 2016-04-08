@@ -10,4 +10,4 @@ import unrolling._
 import theories._
 
 class CVC4UnrollingSolver(context: LeonContext, program: Program, underlying: Solver)
-  extends UnrollingSolver(context, program, underlying, theories = new NoEncoder)
+  extends UnrollingSolver(context, program, underlying, theories = new BagEncoder(context, program))

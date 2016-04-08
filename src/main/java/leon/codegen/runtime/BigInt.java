@@ -5,6 +5,8 @@ package leon.codegen.runtime;
 import java.math.BigInteger;
 
 public final class BigInt {
+  public static final BigInt ZERO = new BigInt(BigInteger.ZERO);
+  public static final BigInt ONE  = new BigInt(BigInteger.ONE);
 
   private final BigInteger _underlying;
 

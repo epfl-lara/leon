@@ -97,7 +97,7 @@ class DefinitionTransformer(
 
     for (fd <- requiredFds) {
       val nfd = fdMap.toB(fd)
-      fd.fullBody = transform(fd.fullBody)((fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap)
+      nfd.fullBody = transform(fd.fullBody)((fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap)
     }
   }
 }

@@ -106,6 +106,19 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         constructors += st -> cs
         cs
       })
+
+    case bt @ BagType(sub) =>
+      constructors.getOrElse(bt, {
+        val cs = for (size <- List(0, 1, 2, 5)) yield {
+          val subs = (1 to size).flatMap(i => List(sub, IntegerType)).toList
+          Constructor[Expr, TypeTree](subs, bt, s => FiniteBag(s.grouped(2).map {
+            case Seq(k, i @ InfiniteIntegerLiteral(v)) =>
+              k -> (if (v > 0) i else InfiniteIntegerLiteral(-v + 1))
+          }.toMap, sub), bt.asString(ctx)+"@"+size)
+        }
+        constructors += bt -> cs
+        cs
+      })
     
     case tt @ TupleType(parts) =>
       constructors.getOrElse(tt, {
@@ -117,7 +130,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case mt @ MapType(from, to) =>
       constructors.getOrElse(mt, {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
-          val subs   = (1 to size).flatMap(i => List(from, to)).toList
+          val subs = (1 to size).flatMap(i => List(from, to)).toList
           Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toMap, from, to), mt.asString(ctx)+"@"+size)
         }
         constructors += mt -> cs
@@ -347,8 +360,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       def computeNext(): Option[Seq[Expr]] = {
         //return None
-        while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
+        while (total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
           val model = it.next()
+          it.hasNext // FIXME: required for some reason by StubGenerator or will return false during loop check
 
           if (model eq null) {
             total = maxEnumerated

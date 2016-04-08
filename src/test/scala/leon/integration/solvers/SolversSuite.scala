@@ -41,6 +41,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
     StringType,
     TypeParameter.fresh("T"),
     SetType(IntegerType),
+    BagType(IntegerType),
     MapType(IntegerType, IntegerType),
     FunctionType(Seq(IntegerType), IntegerType),
     TupleType(Seq(IntegerType, BooleanType, Int32Type))
@@ -54,6 +55,8 @@ class SolversSuite extends LeonTestSuiteWithProgram {
       Equals(v, simplestValue(v.getType))
     case SetType(base) =>
       Not(ElementOfSet(simplestValue(base), v))
+    case BagType(base) =>
+      Not(Equals(MultiplicityInBag(simplestValue(base), v), simplestValue(IntegerType)))
     case MapType(from, to) =>
       Not(Equals(MapApply(v, simplestValue(from)), simplestValue(to)))
     case FunctionType(froms, to) =>
