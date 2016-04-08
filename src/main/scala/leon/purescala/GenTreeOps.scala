@@ -23,7 +23,7 @@ trait GenTreeOps[SubTree <: Tree]  {
 
   /** An extractor for [[SubTree]]*/
   val Deconstructor: TreeExtractor[SubTree]
-  
+
   /* ========
    * Core API
    * ========

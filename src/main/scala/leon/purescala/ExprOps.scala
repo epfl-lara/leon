@@ -187,7 +187,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
-        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)))
+        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)).copiedFrom(l))
 
       case _ => None
     }(expr)
@@ -196,14 +196,14 @@ object ExprOps extends GenTreeOps[Expr] {
   /** Applies the function to the I/O constraint and simplifies the resulting constraint */
   def applyAsMatches(p : Passes, f : Expr => Expr) = {
     f(p.asConstraint) match {
-      case Equals(newOut, MatchExpr(newIn, newCases)) => {
+      case Equals(newOut, MatchExpr(newIn, newCases)) =>
         val filtered = newCases flatMap {
           case MatchCase(p, g, `newOut`) => None
           case other => Some(other)
         }
         Passes(newIn, newOut, filtered)
-      }
-      case other => other
+      case other =>
+        other
     }
   }
 
@@ -217,7 +217,7 @@ object ExprOps extends GenTreeOps[Expr] {
         Some(letTuple(ids, v, tupleSelect(b, ts, true)))
 
       case CaseClassSelector(cct, cc: CaseClass, id) =>
-        Some(caseClassSelector(cct, cc, id))
+        Some(caseClassSelector(cct, cc, id).copiedFrom(e))
 
       case IfExpr(c, thenn, elze) if (thenn == elze) && isPurelyFunctional(c) =>
         Some(thenn)
@@ -229,10 +229,10 @@ object ExprOps extends GenTreeOps[Expr] {
         Some(IfExpr(c, elze, thenn).copiedFrom(e))
 
       case IfExpr(c, BooleanLiteral(false), BooleanLiteral(true)) =>
-        Some(Not(c))
+        Some(Not(c).copiedFrom(e))
 
       case FunctionInvocation(tfd, List(IfExpr(c, thenn, elze))) =>
-        Some(IfExpr(c, FunctionInvocation(tfd, List(thenn)), FunctionInvocation(tfd, List(elze))))
+        Some(IfExpr(c, FunctionInvocation(tfd, List(thenn)), FunctionInvocation(tfd, List(elze))).copiedFrom(e))
 
       case _ =>
         None
@@ -331,12 +331,24 @@ object ExprOps extends GenTreeOps[Expr] {
     * @note the code is simple but far from optimal (many traversals...)
     */
   def simplifyLets(expr: Expr) : Expr = {
-    def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if isPurelyFunctional(t) =>
-        Some(replaceFromIDs(Map(i -> t), b))
+    def freeComputable(e: Expr) = e match {
+      case TupleSelect(Variable(_), _) => true
+      case CaseClassSelector(_, Variable(_), _) => true
+      case FiniteSet(els, _) => els.isEmpty
+      case FiniteMap(els, _, _) => els.isEmpty
+      case _: Terminal => true
+      case _ => false
+    }
 
-      case letExpr @ Let(i,e,b) if isPurelyFunctional(e) =>
+    def simplerLet(t: Expr): Option[Expr] = t match {
+
+      case Let(i, e, b) if freeComputable(e) && isPurelyFunctional(e) =>
+        // computation is very quick and code easy to read, always inline
+        Some(replaceFromIDs(Map(i -> e), b))
+
+      case Let(i,e,b) if isPurelyFunctional(e) =>
+        // computation may be slow, or code complicated to read, inline at most once
         val occurrences = count {
           case Variable(`i`) => 1
           case _ => 0
@@ -350,8 +362,9 @@ object ExprOps extends GenTreeOps[Expr] {
           None
         }
 
-      case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
+      /*case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
         // Will turn the match-expression with a single case into a list of lets.
+        // @mk it is not clear at all that we want this
 
         // Just extra safety...
         val e = (e0.getType, patt) match {
@@ -364,13 +377,29 @@ object ExprOps extends GenTreeOps[Expr] {
         }
 
         // Sort lets in dependency order
-        val lets = mapForPattern(e, patt).toList.sortWith {
+        val lets = mapForPattern(e, patt).toSeq.sortWith {
           case ((id1, e1), (id2, e2)) => exists{ _ == Variable(id1) }(e2)
         }
 
         Some(lets.foldRight(body) {
           case ((id, e), bd) => Let(id, e, bd)
-        })
+        })*/
+
+      case MatchExpr(scrut, cases) =>
+        // Merge match within match
+        var changed = false
+        val newCases = cases map {
+          case MatchCase(patt, g, LetPattern(innerPatt, Variable(id), body)) if patt.binders contains id =>
+            changed = true
+            val newPatt = PatternOps.preMap {
+              case WildcardPattern(Some(`id`)) => Some(innerPatt.withBinder(id))
+              case _ => None
+            }(patt)
+            MatchCase(newPatt, g, body)
+          case other =>
+            other
+        }
+        if(changed) Some(MatchExpr(scrut, newCases)) else None
 
       case _ => None
     }
