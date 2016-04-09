@@ -17,10 +17,12 @@ class DefinitionTransformer(
   fdMap: Bijection[FunDef    , FunDef    ] = new Bijection[FunDef    , FunDef    ],
   cdMap: Bijection[ClassDef  , ClassDef  ] = new Bijection[ClassDef  , ClassDef  ]) extends TreeTransformer {
 
-  override def transform(id: Identifier): Identifier = idMap.cachedB(id) {
+  private def transform(id: Identifier, freshen: Boolean): Identifier = idMap.cachedB(id) {
     val ntpe = transform(id.getType)
-    if (ntpe == id.getType) id else id.duplicate(tpe = ntpe)
+    if (ntpe == id.getType && !freshen) id else id.duplicate(tpe = ntpe)
   }
+
+  override def transform(id: Identifier): Identifier = transform(id, false)
 
   protected def transformFunDef(fd: FunDef): Option[FunDef] = None
   override def transform(fd: FunDef): FunDef = {
@@ -94,14 +96,14 @@ class DefinitionTransformer(
     def trCd(cd: ClassDef): ClassDef = cdMap.cachedB(cd) {
       val parent = cd.parent.map(act => act.copy(classDef = trCd(act.classDef).asInstanceOf[AbstractClassDef]))
       cd match {
-        case acd: AbstractClassDef => acd.duplicate(id = transform(acd.id), parent = parent)
-        case ccd: CaseClassDef => ccd.duplicate(id = transform(ccd.id), parent = parent)
+        case acd: AbstractClassDef => acd.duplicate(id = transform(acd.id, true), parent = parent)
+        case ccd: CaseClassDef => ccd.duplicate(id = transform(ccd.id, true), parent = parent)
       }
     }
 
     for (cd <- requiredCds) trCd(cd)
     for (fd <- requiredFds) {
-      val newId = transform(fd.id)
+      val newId = transform(fd.id, true)
       val newReturn = transform(fd.returnType)
       val newParams = fd.params map (vd => ValDef(transform(vd.id)))
       fdMap += fd -> fd.duplicate(id = newId, params = newParams, returnType = newReturn)
