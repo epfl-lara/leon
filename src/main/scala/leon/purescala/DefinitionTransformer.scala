@@ -17,12 +17,14 @@ class DefinitionTransformer(
   fdMap: Bijection[FunDef    , FunDef    ] = new Bijection[FunDef    , FunDef    ],
   cdMap: Bijection[ClassDef  , ClassDef  ] = new Bijection[ClassDef  , ClassDef  ]) extends TreeTransformer {
 
-  private def transform(id: Identifier, freshen: Boolean): Identifier = idMap.cachedB(id) {
+  private def transform(id: Identifier, freshen: Boolean): Identifier = {
     val ntpe = transform(id.getType)
     if (ntpe == id.getType && !freshen) id else id.duplicate(tpe = ntpe)
   }
 
-  override def transform(id: Identifier): Identifier = transform(id, false)
+  override def transform(id: Identifier): Identifier = idMap.cachedB(id) {
+    transform(id, false)
+  }
 
   protected def transformFunDef(fd: FunDef): Option[FunDef] = None
   override def transform(fd: FunDef): FunDef = {
