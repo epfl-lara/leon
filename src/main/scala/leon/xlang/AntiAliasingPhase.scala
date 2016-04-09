@@ -53,6 +53,7 @@ object AntiAliasingPhase extends TransformationPhase {
     val cdsMap = program.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
     val fdsMap = program.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
     val pgm = replaceDefsInProgram(program)(fdsMap, cdsMap)
+    //println(leon.purescala.ScalaPrinter(pgm, ctx))//leon.purescala.ScalaPrinter.create(leon.purescala.PrinterOptions(printTypes = true), Some(pgm)).pp(pgm))
     //println(pgm)
 
     val fds = allFunDefs(pgm)
