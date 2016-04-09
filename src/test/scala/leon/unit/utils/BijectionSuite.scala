@@ -60,12 +60,12 @@ class BijectionSuite extends FunSuite {
     b += (11 -> 33)
     b += (13 -> 32)
 
-    assert(b.getB(12) == Some(34))
-    assert(b.getB(13) == Some(32))
-    assert(b.getB(11) == Some(33))
-    assert(b.getA(34) == Some(12))
-    assert(b.getA(32) == Some(13))
-    assert(b.getA(33) == Some(11))
+    assert(b.getB(12) === Some(34))
+    assert(b.getB(13) === Some(32))
+    assert(b.getB(11) === Some(33))
+    assert(b.getA(34) === Some(12))
+    assert(b.getA(32) === Some(13))
+    assert(b.getA(33) === Some(11))
   }
 
   test("Bijection get or else is working") {
