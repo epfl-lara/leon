@@ -11,6 +11,9 @@ import leon.purescala.DefOps._
 import leon.purescala.Types._
 import leon.purescala.Constructors._
 import leon.purescala.Extractors._
+import leon.purescala.DependencyFinder
+import leon.purescala.DefinitionTransformer
+import leon.utils.Bijection
 import leon.xlang.Expressions._
 
 object AntiAliasingPhase extends TransformationPhase {
@@ -18,27 +21,44 @@ object AntiAliasingPhase extends TransformationPhase {
   val name = "Anti-Aliasing"
   val description = "Make aliasing explicit"
 
-  override def apply(ctx: LeonContext, pgm: Program): Program = {
+
+  override def apply(ctx: LeonContext, program: Program): Program = {
 
     //mapping for case classes that needs to be replaced
-    val ccdMap: Map[CaseClassDef, CaseClassDef] =
-      (for {
-        ccd <- pgm.singleCaseClasses
-      } yield (ccd, updateCaseClassDef(ccd)(ctx))).toMap.filter(p => p._1 != p._2)
-    //def ccdMapF(ccd: CaseClassDef): Option[Option[AbstractClassType] => CaseClassDef] = {
-    //  ccdMap.get(ccd).filter(_ != ccd).map(ncd => (_ => ncd))
-    //}
-    //val pgm = replaceCaseClassDefs(program)(ccdMapF)._1
-    //val pgm = replaceDefs(program)(
-    //            fd => None,
-    //            cd => if(cd.isInstanceOf[CaseClassDef]) ccdMap.get(cd.asInstanceOf[CaseClassDef]) else None
-    //          )._1
+    //var ccdMap: Map[CaseClassDef, CaseClassDef] =
+    //  (for {
+    //    ccd <- program.singleCaseClasses
+    //  } yield (ccd, updateCaseClassDef(ccd))).toMap.filter(p => p._1 != p._2)
+
+
+    //println("ccdMap: " + ccdMap)
+    //val ccdBijection: Bijection[ClassDef, ClassDef] = Bijection(ccdMap)
+    //val (pgm, _, _, _) = replaceDefs(program)(fd => None, cd => ccdBijection.getB(cd))
+    //println(pgm)
+
+    //val dependencies = new DependencyFinder
+    //ccdMap = updateCaseClassDefs(ccdMap, dependencies, pgm)
+
+    //val idsMap: Map[Identifier, Identifier] = ccdMap.flatMap(p => {
+    //  p._1.fields.zip(p._2.fields).filter(pvd => pvd._1.id != pvd._2).map(p => (p._1.id, p._2.id))
+    //}).toMap
+    val transformer = new DefinitionTransformer {
+      override def transform(tpe: TypeTree): TypeTree = tpe match {
+        case (ft: FunctionType) => makeFunctionTypeExplicit(ft)
+        case _ => super.transform(tpe)
+      }
+      //override def transformClassDef(cd: ClassDef): Option[ClassDef] = ccdBijection.getB(cd)
+    }
+    //pgm.singleCaseClasses.foreach(ccd => println(ccd + " -> " + defTf.transform(ccd)))
+    val cdsMap = program.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
+    val fdsMap = program.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
+    val pgm = replaceDefsInProgram(program)(fdsMap, cdsMap)
+    //println(pgm)
 
     val fds = allFunDefs(pgm)
     fds.foreach(fd => checkAliasing(fd)(ctx))
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
-    var updatedCaseClasses: Map[ClassDef, ClassDef] = Map()
 
     val effects = effectsAnalysis(pgm)
     //println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
@@ -61,16 +81,31 @@ object AntiAliasingPhase extends TransformationPhase {
     for {
       fd <- fds
     } {
-      updatedFunctions += (fd -> updateFunDef(fd, effects, ccdMap)(ctx))
+      updatedFunctions += (fd -> updateFunDef(fd, effects)(ctx))
     }
 
     for {
       fd <- fds
     } {
-      updateBody(fd, effects, updatedFunctions, varsInScope, ccdMap)(ctx)
+      updateBody(fd, effects, updatedFunctions, varsInScope)(ctx)
     }
 
-    replaceDefsInProgram(pgm)(updatedFunctions, ccdMap.asInstanceOf[Map[ClassDef, ClassDef]])
+    replaceDefsInProgram(pgm)(updatedFunctions, Map[ClassDef, ClassDef]())
+
+    //pgm.copy(units = for (u <- pgm.units) yield {
+    //  u.copy(defs = u.defs.map {
+    //    case m : ModuleDef =>
+    //      m.copy(defs = for (df <- m.defs) yield {
+    //        df match {
+    //          case cd : CaseClassDef => ccdBijection.getBorElse(cd, cd)
+    //          case fd : FunDef => updatedFunctions.getOrElse(fd, fd)
+    //          case d => d
+    //        }
+    //    })
+    //    case cd: CaseClassDef => ccdBijection.getBorElse(cd, cd)
+    //    case d => d
+    //  })
+    //})
   }
 
   /*
@@ -83,7 +118,7 @@ object AntiAliasingPhase extends TransformationPhase {
    * about the effect they could perform (returning any mutable type that
    * they receive).
    */
-  private def updateFunDef(fd: FunDef, effects: Effects, ccdMap: Map[CaseClassDef, CaseClassDef])(ctx: LeonContext): FunDef = {
+  private def updateFunDef(fd: FunDef, effects: Effects)(ctx: LeonContext): FunDef = {
 
     val ownEffects = effects(fd)
     val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
@@ -91,17 +126,17 @@ object AntiAliasingPhase extends TransformationPhase {
       case _ => None
     }.map(_.id)
 
-    val newParams = fd.params.map(vd => vd.getType match {
-      case (ft: FunctionType) => {
-        val nft = makeFunctionTypeExplicit(ft)
-        if(ft == nft) vd else ValDef(vd.id.duplicate(tpe = nft))
-      }
-      case (cct: CaseClassType) => ccdMap.get(cct.classDef) match {
-        case Some(ncd) => ValDef(vd.id.duplicate(tpe = ncd.typed))
-        case None => vd
-      }
-      case _ => vd
-    })
+    //val newParams = fd.params.map(vd => vd.getType match {
+    //  case (ft: FunctionType) => {
+    //    val nft = makeFunctionTypeExplicit(ft)
+    //    if(ft == nft) vd else ValDef(vd.id.duplicate(tpe = nft))
+    //  }
+    //  case (cct: CaseClassType) => ccdMap.get(cct.classDef) match {
+    //    case Some(ncd) => ValDef(vd.id.duplicate(tpe = ncd.typed))
+    //    case None => vd
+    //  }
+    //  case _ => vd
+    //})
 
 
     fd.body.foreach(body => getReturnedExpr(body).foreach{
@@ -110,35 +145,47 @@ object AntiAliasingPhase extends TransformationPhase {
       case _ => ()
     })
 
-    if(aliasedParams.isEmpty && fd.params == newParams) fd else {
+    if(aliasedParams.isEmpty) fd else {
       val newReturnType: TypeTree = tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
-      val newFunDef = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType)
+      val newFunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, newReturnType)
       newFunDef.addFlags(fd.flags)
       newFunDef.setPos(fd)
       newFunDef
     }
   }
 
-  private def updateCaseClassDef(ccd: CaseClassDef)(ctx: LeonContext): CaseClassDef = {
-    val newFields = ccd.fields.map(vd => vd.getType match {
-      case (ft: FunctionType) => {
-        val nft = makeFunctionTypeExplicit(ft)
-        if(nft == ft) vd else {
-          ValDef(vd.id.duplicate(tpe = nft))
-        }
-      }
-      case _ => vd
-    })
-    if(newFields != ccd.fields) {
-      ccd.duplicate(fields = newFields)
-    } else {
-      ccd
-    }
-  }
+  //private def updateCaseClassDef(ccd: CaseClassDef): CaseClassDef = {
+  //  val newFields = ccd.fields.map(vd => vd.getType match {
+  //    case (ft: FunctionType) => {
+  //      val nft = makeFunctionTypeExplicit(ft)
+  //      if(nft == ft) vd else {
+  //        ValDef(vd.id.duplicate(tpe = nft))
+  //      }
+  //    }
+  //    case _ => vd
+  //  })
+  //  if(newFields != ccd.fields) {
+  //    ccd.duplicate(fields = newFields)
+  //  } else {
+  //    ccd
+  //  }
+  //}
+
+  //recursively update until fixpoint reach
+  //private def updateCaseClassDefs(ccdMap: Map[CaseClassDef, CaseClassDef], deps: DependencyFinder, pgm: Program): Map[CaseClassDef, CaseClassDef] = {
+  //  for {
+  //    ccd <- pgm.singleCaseClasses
+  //  } {
+  //    if(deps(ccd).exists(_ ==
+  //    (ccd, updateCaseClassDef(ccd))).toMap.filter(p => p._1 != p._2) 
+  //  }
+  //  for
+  //}
 
   private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef], 
-                         varsInScope: Map[FunDef, Set[Identifier]], ccdMap: Map[CaseClassDef, CaseClassDef])
+                         varsInScope: Map[FunDef, Set[Identifier]])
                         (ctx: LeonContext): Unit = {
+    //println("updating: " + fd)
 
     val ownEffects = effects(fd)
     val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
@@ -150,7 +197,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
     if(aliasedParams.isEmpty) {
       val newBody = fd.body.map(body => {
-        makeSideEffectsExplicit(body, fd, Seq(), effects, updatedFunDefs, varsInScope, ccdMap)(ctx)
+        makeSideEffectsExplicit(body, fd, Seq(), effects, updatedFunDefs, varsInScope)(ctx)
       })
       newFunDef.body = newBody
       newFunDef.precondition = fd.precondition
@@ -161,8 +208,8 @@ object AntiAliasingPhase extends TransformationPhase {
 
       val newBody = fd.body.map(body => {
 
-        val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body) 
-        val explicitBody = makeSideEffectsExplicit(freshBody, fd, freshLocalVars, effects, updatedFunDefs, varsInScope, ccdMap)(ctx)
+        val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body)
+        val explicitBody = makeSideEffectsExplicit(freshBody, fd, freshLocalVars, effects, updatedFunDefs, varsInScope)(ctx)
 
         //only now we rewrite function parameters that changed names when the new function was introduced
         val paramRewritings: Map[Identifier, Identifier] =
@@ -207,7 +254,7 @@ object AntiAliasingPhase extends TransformationPhase {
   //using assignments. We also make sure that no aliasing is being done.
   private def makeSideEffectsExplicit
                 (body: Expr, originalFd: FunDef, aliasedParams: Seq[Identifier], effects: Effects, 
-                 updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]], ccdMap: Map[CaseClassDef, CaseClassDef])
+                 updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]])
                 (ctx: LeonContext): Expr = {
 
     val newFunDef = updatedFunDefs(originalFd)
@@ -247,25 +294,26 @@ object AntiAliasingPhase extends TransformationPhase {
       }
     }
 
-    preMapWithContext[(Set[Identifier], Map[Identifier, Expr])]((expr, context) => {
+    preMapWithContext[(Set[Identifier], Map[Identifier, Expr], Set[Expr])]((expr, context) => {
       val bindings = context._1
       val rewritings = context._2
+      val toIgnore = context._3
       expr match {
 
         case l@Let(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
           val varDecl = LetVar(id, v, b).setPos(l)
-          (Some(varDecl), (bindings + id, rewritings))
+          (Some(varDecl), (bindings + id, rewritings, toIgnore))
         }
 
-        case l@Let(id, IsTyped(v, CaseClassType(ccd, _)), b) if ccdMap.contains(ccd) => {
-          val ncd = ccdMap(ccd)
-          val freshId = id.duplicate(tpe = ncd.typed)
-          val freshBody = replaceFromIDs(Map(id -> freshId.toVariable), b)
-          (Some(Let(freshId, v, freshBody).copiedFrom(l)), context)
-        }
+        //case l@Let(id, IsTyped(v, CaseClassType(ccd, _)), b) if ccdMap.contains(ccd) => {
+        //  val ncd = ccdMap(ccd)
+        //  val freshId = id.duplicate(tpe = ncd.typed)
+        //  val freshBody = replaceFromIDs(Map(id -> freshId.toVariable), b)
+        //  (Some(Let(freshId, v, freshBody).copiedFrom(l)), context)
+        //}
 
         case l@LetVar(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
-          (None, (bindings + id, rewritings))
+          (None, (bindings + id, rewritings, toIgnore))
         }
 
         case m@MatchExpr(scrut, cses) if isMutableType(scrut.getType) => {
@@ -276,7 +324,7 @@ object AntiAliasingPhase extends TransformationPhase {
             //binder -> scrut
           }}.toMap
 
-          (None, (bindings, rewritings ++ tmp))
+          (None, (bindings, rewritings ++ tmp, toIgnore))
         }
 
         case up@ArrayUpdate(a, i, v) => {
@@ -324,7 +372,7 @@ object AntiAliasingPhase extends TransformationPhase {
             val freshLocalVars: Seq[Identifier] = aliasedParams.map(v => v.freshen)
             val rewritingMap: Map[Identifier, Identifier] = aliasedParams.zip(freshLocalVars).toMap
             val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body) 
-            val explicitBody = makeSideEffectsExplicit(freshBody, originalFd, freshLocalVars, effects, updatedFunDefs, varsInScope, ccdMap)(ctx)
+            val explicitBody = makeSideEffectsExplicit(freshBody, originalFd, freshLocalVars, effects, updatedFunDefs, varsInScope)(ctx)
 
             //WARNING: only works if side effects in Tuples are extracted from left to right,
             //         in the ImperativeTransformation phase.
@@ -361,53 +409,67 @@ object AntiAliasingPhase extends TransformationPhase {
           }
         }
 
-        case app@Application(callee@Variable(id), args) => {
-          originalFd.params.zip(newFunDef.params)
-                           .find(p => p._1.id == id)
-                           .map(p => p._2.id) match {
-            case Some(newId) =>
-              val ft@FunctionType(_, _) = callee.getType
-              val nft = makeFunctionTypeExplicit(ft)
-
-              if(ft == nft) (None, context) else {
-                val nfi = Application(Variable(newId).copiedFrom(callee), args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
+        case app@Application(callee, args) => {
+          if(toIgnore(app)) (None, context) else {
+            val ft@FunctionType(_, to) = callee.getType
+            to match {
+              case TupleType(tps) if isMutableType(tps.last) => {
+                val nfi = Application(callee, args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
                 val fiEffects = functionTypeEffects(ft)
-                (Some(mapApplication(args, nfi, nft.to, fiEffects, rewritings)), context)
+                (Some(mapApplication(args, nfi, to, fiEffects, rewritings)), (bindings, rewritings, toIgnore + nfi))
               }
-            case None => (None, context)
-          }
-        }
-
-        case app@Application(callee@CaseClassSelector(cct, obj, id), args) => {
-          ccdMap.get(cct.classDef) match {
-            case None =>
-              (None, context)
-            case Some(ncd) => {
-              val nid = cct.classDef.fields.zip(ncd.fields).find(p => id == p._1.id).map(_._2.id).get
-              val nccs = CaseClassSelector(ncd.typed, obj, nid).copiedFrom(callee)
-              val nfi = Application(nccs, args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
-              val ft@FunctionType(_, _) = callee.getType
-              val nft = makeFunctionTypeExplicit(ft)
-              val fiEffects = functionTypeEffects(ft)
-              (Some(mapApplication(args, nfi, nft.to, fiEffects, rewritings)), context)
+              case _ => (None, context)
             }
           }
         }
 
-        case CaseClass(cct, args) => {
-          ccdMap.get(cct.classDef) match {
-            case None =>
-              (None, context)
-            case Some(ncd) => {
-              (Some(CaseClass(ncd.typed, args)), context)
-            }
-          }
-        }
+        //case app@Application(callee@Variable(id), args) => {
+        //  originalFd.params.zip(newFunDef.params)
+        //                   .find(p => p._1.id == id)
+        //                   .map(p => p._2.id) match {
+        //    case Some(newId) =>
+        //      val ft@FunctionType(_, _) = callee.getType
+        //      val nft = makeFunctionTypeExplicit(ft)
+
+        //      if(ft == nft) (None, context) else {
+        //        val nfi = Application(Variable(newId).copiedFrom(callee), args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
+        //        val fiEffects = functionTypeEffects(ft)
+        //        (Some(mapApplication(args, nfi, nft.to, fiEffects, rewritings)), context)
+        //      }
+        //    case None => (None, context)
+        //  }
+        //}
+
+        //case app@Application(callee@CaseClassSelector(cct, obj, id), args) => {
+        //  ccdMap.get(cct.classDef) match {
+        //    case None =>
+        //      (None, context)
+        //    case Some(ncd) => {
+        //      val nid = cct.classDef.fields.zip(ncd.fields).find(p => id == p._1.id).map(_._2.id).get
+        //      val nccs = CaseClassSelector(ncd.typed, obj, nid).copiedFrom(callee)
+        //      val nfi = Application(nccs, args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
+        //      val ft@FunctionType(_, _) = callee.getType
+        //      val nft = makeFunctionTypeExplicit(ft)
+        //      val fiEffects = functionTypeEffects(ft)
+        //      (Some(mapApplication(args, nfi, nft.to, fiEffects, rewritings)), context)
+        //    }
+        //  }
+        //}
+
+        //case CaseClass(cct, args) => {
+        //  ccdMap.get(cct.classDef) match {
+        //    case None =>
+        //      (None, context)
+        //    case Some(ncd) => {
+        //      (Some(CaseClass(ncd.typed, args)), context)
+        //    }
+        //  }
+        //}
 
         case _ => (None, context)
       }
 
-    })(body, (aliasedParams.toSet, Map()))
+    })(body, (aliasedParams.toSet, Map(), Set()))
   }
 
   //for each fundef, the set of modified params (by index)
