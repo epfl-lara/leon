@@ -68,4 +68,14 @@ class BijectionSuite extends FunSuite {
     assert(b.getA(33) == Some(11))
   }
 
+  test("Bijection get or else is working") {
+    val b = new Bijection[Int, Int]
+    b += (12 -> 33)
+
+    assert(b.getBorElse(12, 15) === 33)
+    assert(b.getBorElse(11, 15) === 15)
+    assert(b.getAorElse(12, 15) === 15)
+    assert(b.getAorElse(30, 10) === 10)
+    assert(b.getAorElse(33, 15) === 12)
+  }
 }
