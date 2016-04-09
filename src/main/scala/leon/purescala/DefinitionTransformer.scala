@@ -10,7 +10,7 @@ import Extractors._
 import Types._
 
 import utils._
-import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.{Map => MutableMap}
 
 class DefinitionTransformer(
   idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
@@ -22,18 +22,29 @@ class DefinitionTransformer(
     if (ntpe == id.getType) id else id.duplicate(tpe = ntpe)
   }
 
-  override def transform(fd: FunDef): FunDef = fdMap.getBorElse(fd, if (tmpDefs(fd)) fd else {
-    transformDefs(fd)
-    fdMap.toB(fd)
-  })
+  protected def transformFunDef(fd: FunDef): Option[FunDef] = None
+  override def transform(fd: FunDef): FunDef = {
+    if ((fdMap containsB fd) || (tmpFdMap containsB fd)) fd
+    else if (tmpFdMap containsA fd) tmpFdMap.toB(fd)
+    else fdMap.getBorElse(fd, {
+      transformDefs(fd)
+      fdMap.toB(fd)
+    })
+  }
 
-  override def transform(cd: ClassDef): ClassDef = cdMap.getBorElse(cd, if (tmpDefs(cd)) cd else {
-    transformDefs(cd)
-    cdMap.toB(cd)
-  })
+  protected def transformClassDef(cd: ClassDef): Option[ClassDef] = None
+  override def transform(cd: ClassDef): ClassDef = {
+    if ((cdMap containsB cd) || (tmpCdMap containsB cd)) cd
+    else if (tmpCdMap containsA cd) tmpCdMap.toB(cd)
+    else cdMap.getBorElse(cd, {
+      transformDefs(cd)
+      cdMap.toB(cd)
+    })
+  }
 
   private val dependencies = new DependencyFinder
-  private val tmpDefs: MutableSet[Definition] = MutableSet.empty
+  private val tmpCdMap = new Bijection[ClassDef, ClassDef]
+  private val tmpFdMap = new Bijection[FunDef  , FunDef  ]
 
   private def transformDefs(base: Definition): Unit = {
     val deps = dependencies(base) + base
@@ -42,9 +53,13 @@ class DefinitionTransformer(
       (c.map(_.asInstanceOf[ClassDef]), f.map(_.asInstanceOf[FunDef]))
     }
 
-    tmpDefs ++= cds.filterNot(cdMap containsA _) ++ fds.filterNot(fdMap containsA _)
+    for (cd <- cds if !(cdMap containsA cd) && !(cdMap containsB cd))
+      tmpCdMap += cd -> transformClassDef(cd).getOrElse(cd)
 
-    var requireCache: Map[Definition, Boolean] = Map.empty
+    for (fd <- fds if !(fdMap containsA fd) && !(fdMap containsB fd))
+      tmpFdMap += fd -> transformFunDef(fd).getOrElse(fd)
+
+    val requireCache: MutableMap[Definition, Boolean] = MutableMap.empty
     def required(d: Definition): Boolean = requireCache.getOrElse(d, {
       val res = d match {
         case fd: FunDef =>
@@ -68,7 +83,9 @@ class DefinitionTransformer(
     val allReq = req ++ (deps filter (d => (dependencies(d) & req).nonEmpty))
     val requiredCds = allReq collect { case cd: ClassDef => cd }
     val requiredFds = allReq collect { case fd: FunDef => fd }
-    tmpDefs --= deps
+
+    tmpCdMap.clear()
+    tmpFdMap.clear()
 
     val nonReq = deps filterNot allReq
     cdMap ++= nonReq collect { case cd: ClassDef => cd -> cd }
@@ -84,9 +101,10 @@ class DefinitionTransformer(
 
     for (cd <- requiredCds) trCd(cd)
     for (fd <- requiredFds) {
+      val newId = transform(fd.id)
       val newReturn = transform(fd.returnType)
       val newParams = fd.params map (vd => ValDef(transform(vd.id)))
-      fdMap += fd -> fd.duplicate(id = transform(fd.id), params = newParams, returnType = newReturn)
+      fdMap += fd -> fd.duplicate(id = newId, params = newParams, returnType = newReturn)
     }
 
     for (ccd <- requiredCds collect { case ccd: CaseClassDef => ccd }) {
@@ -97,7 +115,10 @@ class DefinitionTransformer(
 
     for (fd <- requiredFds) {
       val nfd = fdMap.toB(fd)
-      nfd.fullBody = transform(fd.fullBody)((fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap)
+      val bindings = (fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap ++
+        nfd.params.map(vd => vd.id -> vd.id)
+
+      nfd.fullBody = transform(nfd.fullBody)(bindings)
     }
   }
 }

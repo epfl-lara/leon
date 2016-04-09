@@ -1,6 +1,7 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
-package leon.purescala
+package leon
+package purescala
 
 import Definitions._
 import Expressions._
@@ -310,22 +311,11 @@ object DefOps {
                               ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap)
                               : (Program, Map[Identifier, Identifier], Map[FunDef, FunDef], Map[ClassDef, ClassDef]) = {
 
-    val idMap: MutableMap[Identifier, Identifier] = MutableMap.empty
-    val cdMap: MutableMap[ClassDef  , ClassDef  ] = MutableMap.empty
-    val fdMap: MutableMap[FunDef    , FunDef    ] = MutableMap.empty
+    val idMap = new utils.Bijection[Identifier, Identifier]
+    val cdMap = new utils.Bijection[ClassDef  , ClassDef  ]
+    val fdMap = new utils.Bijection[FunDef    , FunDef    ]
 
-    val dependencies = new DependencyFinder
-    val transformer = new TreeTransformer {
-      override def transform(id: Identifier): Identifier = idMap.getOrElse(id, {
-        val ntpe = transform(id.getType)
-        val nid = if (ntpe == id.getType) id else id.duplicate(tpe = ntpe)
-        idMap += id -> nid
-        nid
-      })
-
-      override def transform(cd: ClassDef): ClassDef = cdMap.getOrElse(cd, cd)
-      override def transform(fd: FunDef): FunDef = fdMap.getOrElse(fd, fd)
-
+    val transformer = new DefinitionTransformer(idMap, fdMap, cdMap) {
       override def transform(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = expr match {
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
           val nfi = fiMapF(fi, transform(fd)) getOrElse expr
@@ -335,51 +325,13 @@ object DefOps {
           super.transform(ncc)
         case _ => super.transform(expr)
       }
+
+      override def transformFunDef(fd: FunDef): Option[FunDef] = fdMapF(fd)
+      override def transformClassDef(cd: ClassDef): Option[ClassDef] = cdMapF(cd)
     }
 
-    for (fd <- p.definedFunctions; nfd <- fdMapF(fd)) fdMap += fd -> nfd
-    for (cd <- p.definedClasses; ncd <- cdMapF(cd)) cdMap += cd -> ncd
-
-    def requiresReplacement(d: Definition): Boolean = dependencies(d).exists {
-      case cd: ClassDef => cdMap contains cd
-      case fd: FunDef => fdMap contains fd
-      case _ => false
-    }
-
-    def trCd(cd: ClassDef): ClassDef = cdMap.getOrElse(cd, {
-      val parent = cd.parent.map(act => act.copy(classDef = trCd(act.classDef).asInstanceOf[AbstractClassDef]))
-      val newCd = cd match {
-        case acd: AbstractClassDef => acd.duplicate(parent = parent)
-        case ccd: CaseClassDef => ccd.duplicate(parent = parent)
-      }
-      cdMap += cd -> newCd
-      newCd
-    })
-
-    for (cd <- p.definedClasses if requiresReplacement(cd)) trCd(cd)
-    for (fd <- p.definedFunctions if requiresReplacement(fd) && !(fdMap contains fd)) {
-      val newId = transformer.transform(fd.id)
-      val newReturn = transformer.transform(fd.returnType)
-      val newParams = fd.params map (vd => ValDef(transformer.transform(vd.id)))
-      fdMap += fd -> fd.duplicate(id = newId, params = newParams, returnType = newReturn)
-    }
-
-    for ((cd,ncd) <- cdMap) (cd, ncd) match {
-      case (ccd: CaseClassDef, nccd: CaseClassDef) =>
-        nccd.setFields(ccd.fields map (vd => ValDef(transformer.transform(vd.id))))
-        ccd.invariant.foreach(fd => nccd.setInvariant(transformer.transform(fd)))
-      case _ =>
-    }
-
-    for ((fd,nfd) <- fdMap) {
-      val bindings = (fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap ++
-        nfd.params.map(vd => vd.id -> vd.id)
-
-      nfd.fullBody = transformer.transform(nfd.fullBody)(bindings)
-    }
-
-    val fdsMap = fdMap.toMap
-    val cdsMap = cdMap.toMap
+    val fdsMap = p.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
+    val cdsMap = p.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
     val newP = replaceDefsInProgram(p)(fdsMap, cdsMap)
     (newP, idMap.toMap, fdsMap, cdsMap)
   }
