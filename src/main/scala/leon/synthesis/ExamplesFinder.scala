@@ -121,7 +121,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
     val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
-    val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory(() => new FairZ3Solver(ctx, pgm)))
+    val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory.getFromSettings(ctx, pgm))
 
     val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 

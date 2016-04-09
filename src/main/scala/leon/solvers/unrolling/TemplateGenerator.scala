@@ -250,7 +250,7 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
 
     def requireDecomposition(e: Expr) = {
       exists{
-        case (_: Choose) | (_: Forall) | (_: Lambda) => true
+        case (_: Choose) | (_: Forall) | (_: Lambda) | (_: FiniteLambda) => true
         case (_: Assert) | (_: Ensuring) => true
         case (_: FunctionInvocation) | (_: Application) => true
         case _ => false

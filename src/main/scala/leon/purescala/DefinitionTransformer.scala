@@ -85,31 +85,40 @@ class DefinitionTransformer(
 
     val req = deps filter required
     val allReq = req ++ (deps filter (d => (dependencies(d) & req).nonEmpty))
-    val requiredCds = allReq collect { case cd: ClassDef => cd }
-    val requiredFds = allReq collect { case fd: FunDef => fd }
+
+    val transformedCds = tmpCdMap.filter { case (cd1, cd2) => cd1 ne cd2 }.toMap
+    val transformedFds = tmpFdMap.filter { case (fd1, fd2) => fd1 ne fd2 }.toMap
 
     tmpCdMap.clear()
     tmpFdMap.clear()
 
-    val nonReq = deps filterNot allReq
-    cdMap ++= nonReq collect { case cd: ClassDef => cd -> cd }
-    fdMap ++= nonReq collect { case fd: FunDef => fd -> fd }
+    val requiredCds = allReq.collect { case cd: ClassDef => cd } ++ transformedCds.map(_._1)
+    val requiredFds = allReq.collect { case fd: FunDef => fd } ++ transformedFds.map(_._1)
+
+    val nonCds = deps collect { case cd: ClassDef if !requiredCds(cd) => cd }
+    val nonFds = deps collect { case fd: FunDef if !requiredFds(fd) => fd }
+
+    cdMap ++= nonCds.map(cd => cd -> cd)
+    fdMap ++= nonFds.map(fd => fd -> fd)
 
     def trCd(cd: ClassDef): ClassDef = cdMap.cachedB(cd) {
       val parent = cd.parent.map(act => act.copy(classDef = trCd(act.classDef).asInstanceOf[AbstractClassDef]))
-      cd match {
+      transformedCds.getOrElse(cd, cd) match {
         case acd: AbstractClassDef => acd.duplicate(id = transform(acd.id, true), parent = parent)
         case ccd: CaseClassDef => ccd.duplicate(id = transform(ccd.id, true), parent = parent)
       }
     }
 
-    for (cd <- requiredCds) trCd(cd)
-    for (fd <- requiredFds) {
-      val newId = transform(fd.id, true)
-      val newReturn = transform(fd.returnType)
-      val newParams = fd.params map (vd => ValDef(transform(vd.id)))
-      fdMap += fd -> fd.duplicate(id = newId, params = newParams, returnType = newReturn)
+    def trFd(fd: FunDef): FunDef = fdMap.cachedB(fd) {
+      val ffd = transformedFds.getOrElse(fd, fd)
+      val newId = transform(ffd.id, true)
+      val newReturn = transform(ffd.returnType)
+      val newParams = ffd.params map (vd => ValDef(transform(vd.id)))
+      ffd.duplicate(id = newId, params = newParams, returnType = newReturn)
     }
+
+    for (cd <- requiredCds) trCd(cd)
+    for (fd <- requiredFds) trFd(fd)
 
     for (ccd <- requiredCds collect { case ccd: CaseClassDef => ccd }) {
       val newCcd = cdMap.toB(ccd).asInstanceOf[CaseClassDef]
