@@ -92,12 +92,13 @@ trait AbstractZ3Solver extends Solver {
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
   protected val functions = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
   protected val lambdas   = new IncrementalBijection[FunctionType, Z3FuncDecl]()
-  protected val sorts     = new IncrementalBijection[TypeTree, Z3Sort]()
   protected val variables = new IncrementalBijection[Expr, Z3AST]()
 
   protected val constructors = new IncrementalBijection[TypeTree, Z3FuncDecl]()
   protected val selectors    = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
   protected val testers      = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+
+  protected val sorts     = new IncrementalMap[TypeTree, Z3Sort]()
 
   var isInitialized = false
   protected[leon] def initZ3(): Unit = {
@@ -108,11 +109,11 @@ trait AbstractZ3Solver extends Solver {
 
       functions.clear()
       lambdas.clear()
-      sorts.clear()
       variables.clear()
       constructors.clear()
       selectors.clear()
       testers.clear()
+      sorts.reset()
 
       prepareSorts()
 
@@ -136,7 +137,7 @@ trait AbstractZ3Solver extends Solver {
     adtManager.defineADT(t) match {
       case Left(adts) =>
         declareDatatypes(adts.toSeq)
-        sorts.toB(normalizeType(t))
+        sorts(normalizeType(t))
 
       case Right(conflicts) =>
         conflicts.foreach { declareStructuralSort }
@@ -217,15 +218,15 @@ trait AbstractZ3Solver extends Solver {
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
     case Int32Type | BooleanType | IntegerType | RealType | CharType =>
-      sorts.toB(oldtt)
+      sorts(oldtt)
 
     case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | _: TypeParameter | UnitType) =>
-      sorts.cachedB(tpe) {
+      sorts.cached(tpe) {
         declareStructuralSort(tpe)
       }
 
     case tt @ SetType(base) =>
-      sorts.cachedB(tt) {
+      sorts.cached(tt) {
         z3.mkSetSort(typeToSort(base))
       }
 
@@ -233,7 +234,7 @@ trait AbstractZ3Solver extends Solver {
       typeToSort(RawArrayType(fromType, library.optionType(toType)))
 
     case rat @ RawArrayType(from, to) =>
-      sorts.cachedB(rat) {
+      sorts.cached(rat) {
         val fromSort = typeToSort(from)
         val toSort = typeToSort(to)
 
@@ -241,7 +242,7 @@ trait AbstractZ3Solver extends Solver {
       }
 
     case ft @ FunctionType(from, to) =>
-      sorts.cachedB(ft) {
+      sorts.cached(ft) {
         val symbol = z3.mkFreshStringSymbol(ft.toString)
         z3.mkUninterpretedSort(symbol)
       }
