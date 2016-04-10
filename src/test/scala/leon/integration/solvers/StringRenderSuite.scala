@@ -25,7 +25,7 @@ import scala.language.implicitConversions
 
 class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures {
 
-  override val leonOpts = List("--solvers=smt-z3")
+  override val leonOpts = List("--solvers=smt-cvc4")
 
   test("Template Generator simple"){ case (ctx: LeonContext, program: Program) =>
     val TTG = new TypedTemplateGenerator(IntegerType) {}
