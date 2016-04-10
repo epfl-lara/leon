@@ -123,11 +123,14 @@ class DefinitionTransformer(
       val prevTransformed = cdMap.aSet.filter(a => a ne cdMap.toB(a)) ++ fdMap.aSet.filter(a => a ne fdMap.toB(a))
       val reqs = req ++ transformedCds.map(_._1) ++ transformedFds.map(_._1) ++ prevTransformed
 
-      val fdsToDup = fds filter { fd => req(fd) ||
-        (!(transformedFds contains fd) && (dependencies(fd) & reqs).nonEmpty) }
       val cdsToDup = cds filter { cd => req(cd) ||
         (!(transformedCds contains cd) && (dependencies(cd) & reqs).nonEmpty) ||
         ((transformedCds contains cd) && ((cd.root +: cd.root.knownDescendants).toSet & req).nonEmpty) }
+
+      val fdsToDup = fds filter (fd => req(fd) || {
+        val deps = dependencies(fd)
+        (deps exists { case cd: ClassDef => cdsToDup(cd) case _ => false }) ||
+        (!(transformedFds contains fd) && (deps & reqs).nonEmpty) })
 
       (fdsToDup, cdsToDup)
     }
