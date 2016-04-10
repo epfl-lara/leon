@@ -41,7 +41,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     vars2(1) shouldEqual vars(1)
     expr2 shouldEqual Minus(Variable(vars2(2)), expr)
   }
-  
+
   trait withSymbols {
     val x = FreshIdentifier("x", StringType)
     val y = FreshIdentifier("y", StringType)
@@ -50,7 +50,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val fd = new FunDef(f, Nil, Seq(ValDef(i)), StringType)
     val fdi = FunctionInvocation(fd.typed, Seq(Variable(i)))
   }
-  
+
   test("toEquations working"){ case (ctx: LeonContext, program: Program) =>
     import StringRender._
     new withSymbols {
@@ -119,11 +119,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val newFd = ci.fd.duplicate()
     newFd.body = Some(solutions.head.term)
     val (newProgram2, _, _, _) = DefOps.replaceFunDefs(newProgram)({ fd =>
-      if(fd == ci.fd) {
-        Some(newFd)
-      } else None
-    }, { (fi: FunctionInvocation, fd: FunDef) =>
-      Some(FunctionInvocation(fd.typed, fi.args))
+      if(fd == ci.fd) Some(newFd) else None
     })
     (newFd, newProgram2)
   }

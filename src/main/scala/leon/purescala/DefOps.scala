@@ -330,8 +330,8 @@ object DefOps {
       override def transformClassDef(cd: ClassDef): Option[ClassDef] = cdMapF(cd)
     }
 
-    val fdsMap = p.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
     val cdsMap = p.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
+    val fdsMap = p.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
     val newP = replaceDefsInProgram(p)(fdsMap, cdsMap)
     (newP, idMap.toMap, fdsMap, cdsMap)
   }

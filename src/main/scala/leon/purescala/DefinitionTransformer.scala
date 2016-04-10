@@ -17,13 +17,24 @@ class DefinitionTransformer(
   fdMap: Bijection[FunDef    , FunDef    ] = new Bijection[FunDef    , FunDef    ],
   cdMap: Bijection[ClassDef  , ClassDef  ] = new Bijection[ClassDef  , ClassDef  ]) extends TreeTransformer {
 
-  private def transform(id: Identifier, freshen: Boolean): Identifier = {
+  private def transformId(id: Identifier, freshen: Boolean): Identifier = {
     val ntpe = transform(id.getType)
     if (ntpe == id.getType && !freshen) id else id.duplicate(tpe = ntpe)
   }
 
-  override def transform(id: Identifier): Identifier = idMap.cachedB(id) {
-    transform(id, false)
+  override def transform(id: Identifier): Identifier = transformId(id, false)
+
+  override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
+    case Variable(id) if !(bindings contains id) =>
+      val ntpe = transform(id.getType)
+      Variable(idMap.getB(id) match {
+        case Some(nid) if ntpe == nid.getType => nid
+        case _ =>
+          val nid = transformId(id, false)
+          idMap += id -> nid
+          nid
+      })
+    case _ => super.transform(e)
   }
 
   protected def transformFunDef(fd: FunDef): Option[FunDef] = None
@@ -51,82 +62,115 @@ class DefinitionTransformer(
   private val tmpFdMap = new Bijection[FunDef  , FunDef  ]
 
   private def transformDefs(base: Definition): Unit = {
-    val deps = dependencies(base) + base
     val (cds, fds) = {
+      val deps = dependencies(base) + base
       val (c, f) = deps.partition(_.isInstanceOf[ClassDef])
-      (c.map(_.asInstanceOf[ClassDef]), f.map(_.asInstanceOf[FunDef]))
+      val cds = c.map(_.asInstanceOf[ClassDef]).filter(cd => !(cdMap containsA cd) && !(cdMap containsB cd))
+      val fds = f.map(_.asInstanceOf[FunDef]).filter(fd => !(fdMap containsA fd) && !(fdMap containsB fd))
+      (cds, fds)
     }
 
-    for (cd <- cds if !(cdMap containsA cd) && !(cdMap containsB cd))
-      tmpCdMap += cd -> transformClassDef(cd).getOrElse(cd)
+    val transformedCds = (for (cd <- cds if !(cdMap containsA cd) && !(cdMap containsB cd)) yield {
+      val ncd = transformClassDef(cd).getOrElse(cd)
+      tmpCdMap += cd -> ncd
+      if (cd ne ncd) Some(cd -> ncd) else None
+    }).flatten.toMap
 
-    for (fd <- fds if !(fdMap containsA fd) && !(fdMap containsB fd))
-      tmpFdMap += fd -> transformFunDef(fd).getOrElse(fd)
+    val transformedFds = (for (fd <- fds if !(fdMap containsA fd) && !(fdMap containsB fd)) yield {
+      val nfd = transformFunDef(fd).getOrElse(fd)
+      tmpFdMap += fd -> nfd
+      if (fd ne nfd) Some(fd -> nfd) else None
+    }).flatten.toMap
 
-    val requireCache: MutableMap[Definition, Boolean] = MutableMap.empty
-    def required(d: Definition): Boolean = requireCache.getOrElse(d, {
-      val res = d match {
-        case fd: FunDef =>
-          val newReturn = transform(fd.returnType)
-          lazy val newParams = fd.params.map(vd => ValDef(transform(vd.id)))
-          lazy val newBody = transform(fd.fullBody)((fd.params.map(_.id) zip newParams.map(_.id)).toMap)
-          newReturn != fd.returnType || newParams != fd.params || newBody != fd.fullBody
+    val req: Set[Definition] = {
+      val requireCache: MutableMap[Definition, Boolean] = MutableMap.empty
+      def required(d: Definition): Boolean = requireCache.getOrElse(d, {
+        val res = d match {
+          case funDef: FunDef =>
+            val (fd, checkBody) = transformedFds.get(funDef) match {
+              case Some(fd) => (fd, false)
+              case None => (funDef, true)
+            }
 
-        case cd: ClassDef =>
-          cd.fieldsIds.exists(id => transform(id.getType) != id.getType) ||
-          cd.invariant.exists(required)
+            val newReturn = transform(fd.returnType)
+            lazy val newParams = fd.params.map(vd => ValDef(transform(vd.id)))
+            newReturn != fd.returnType || newParams != fd.params || (checkBody && {
+              val newBody = transform(fd.fullBody)((fd.params.map(_.id) zip newParams.map(_.id)).toMap)
+              newBody != fd.fullBody
+            })
 
-        case _ => scala.sys.error("Should never happen!?")
-      }
+          case cd: ClassDef => !(transformedCds contains cd) &&
+            (cd.fieldsIds.exists(id => transform(id.getType) != id.getType) ||
+              cd.invariant.exists(required))
 
-      requireCache += d -> res
-      res
-    })
+          case _ => scala.sys.error("Should never happen!?")
+        }
 
-    val req = deps filter required
-    val allReq = req ++ (deps filter (d => (dependencies(d) & req).nonEmpty))
+        requireCache += d -> res
+        res
+      })
 
-    val transformedCds = tmpCdMap.filter { case (cd1, cd2) => cd1 ne cd2 }.toMap
-    val transformedFds = tmpFdMap.filter { case (fd1, fd2) => fd1 ne fd2 }.toMap
+      val filtered = (cds ++ fds) filter required
 
-    tmpCdMap.clear()
-    tmpFdMap.clear()
+      // clear can only take place after all calls to required(_) have taken place
+      tmpCdMap.clear()
+      tmpFdMap.clear()
 
-    val requiredCds = allReq.collect { case cd: ClassDef => cd } ++ transformedCds.map(_._1)
-    val requiredFds = allReq.collect { case fd: FunDef => fd } ++ transformedFds.map(_._1)
+      filtered
+    }
 
-    val nonCds = deps collect { case cd: ClassDef if !requiredCds(cd) => cd }
-    val nonFds = deps collect { case fd: FunDef if !requiredFds(fd) => fd }
+    val (fdsToDup: Set[FunDef], cdsToDup: Set[ClassDef]) = {
+      val prevTransformed = cdMap.aSet.filter(a => a ne cdMap.toB(a)) ++ fdMap.aSet.filter(a => a ne fdMap.toB(a))
+      val reqs = req ++ transformedCds.map(_._1) ++ transformedFds.map(_._1) ++ prevTransformed
 
-    cdMap ++= nonCds.map(cd => cd -> cd)
-    fdMap ++= nonFds.map(fd => fd -> fd)
+      val fdsToDup = fds filter { fd => req(fd) ||
+        (!(transformedFds contains fd) && (dependencies(fd) & reqs).nonEmpty) }
+      val cdsToDup = cds filter { cd => req(cd) ||
+        (!(transformedCds contains cd) && (dependencies(cd) & reqs).nonEmpty) ||
+        ((transformedCds contains cd) && ((cd.root +: cd.root.knownDescendants).toSet & req).nonEmpty) }
 
-    def trCd(cd: ClassDef): ClassDef = cdMap.cachedB(cd) {
-      val parent = cd.parent.map(act => act.copy(classDef = trCd(act.classDef).asInstanceOf[AbstractClassDef]))
+      (fdsToDup, cdsToDup)
+    }
+
+    val fdsToTransform = (transformedFds.map(_._1) filterNot fdsToDup).toSet
+    val cdsToTransform = (transformedCds.map(_._1) filterNot cdsToDup).toSet
+
+    val fdsToKeep = fds filterNot (fd => fdsToDup(fd) || fdsToTransform(fd))
+    val cdsToKeep = cds filterNot (cd => cdsToDup(cd) || cdsToTransform(cd))
+
+    fdMap ++= fdsToKeep.map(fd => fd -> fd) ++ fdsToTransform.map(fd => fd -> transformedFds(fd))
+    cdMap ++= cdsToKeep.map(cd => cd -> cd) ++ cdsToTransform.map(cd => cd -> transformedCds(cd))
+
+    def duplicateCd(cd: ClassDef): ClassDef = cdMap.cachedB(cd) {
+      val parent = cd.parent.map(act => act.copy(classDef = duplicateCd(act.classDef).asInstanceOf[AbstractClassDef]))
       transformedCds.getOrElse(cd, cd) match {
-        case acd: AbstractClassDef => acd.duplicate(id = transform(acd.id, true), parent = parent)
-        case ccd: CaseClassDef => ccd.duplicate(id = transform(ccd.id, true), parent = parent)
+        case acd: AbstractClassDef => acd.duplicate(id = transformId(acd.id, true), parent = parent)
+        case ccd: CaseClassDef => ccd.duplicate(id = transformId(ccd.id, true), parent = parent)
       }
     }
 
-    def trFd(fd: FunDef): FunDef = fdMap.cachedB(fd) {
+    def duplicateFd(fd: FunDef): FunDef = fdMap.cachedB(fd) {
       val ffd = transformedFds.getOrElse(fd, fd)
-      val newId = transform(ffd.id, true)
+      val newId = transformId(ffd.id, true)
       val newReturn = transform(ffd.returnType)
-      val newParams = ffd.params map (vd => ValDef(transform(vd.id)))
+      val newParams = ffd.params map (vd => ValDef(transformId(vd.id, true)))
       ffd.duplicate(id = newId, params = newParams, returnType = newReturn)
     }
 
-    for (cd <- requiredCds) trCd(cd)
-    for (fd <- requiredFds) trFd(fd)
+    for (cd <- cdsToDup) duplicateCd(cd)
+    for (fd <- fdsToDup) duplicateFd(fd)
 
-    for (ccd <- requiredCds collect { case ccd: CaseClassDef => ccd }) {
-      val newCcd = cdMap.toB(ccd).asInstanceOf[CaseClassDef]
-      newCcd.setFields(ccd.fields.map(vd => ValDef(transform(vd.id))))
-      ccd.invariant.foreach(fd => newCcd.setInvariant(transform(fd)))
+    for (cd <- (cdsToDup ++ cdsToTransform)) {
+      val newCd = cdMap.toB(cd)
+      cd.invariant.foreach(fd => newCd.setInvariant(transform(fd)))
+      (cd, newCd) match {
+        case (ccd: CaseClassDef, newCcd: CaseClassDef) =>
+          newCcd.setFields(ccd.fields.map(vd => ValDef(transformId(vd.id, true))))
+        case _ =>
+      }
     }
 
-    for (fd <- requiredFds) {
+    for (fd <- (fdsToDup ++ fdsToTransform)) {
       val nfd = fdMap.toB(fd)
       val bindings = (fd.params zip nfd.params).map(p => p._1.id -> p._2.id).toMap ++
         nfd.params.map(vd => vd.id -> vd.id)
