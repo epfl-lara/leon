@@ -377,8 +377,7 @@ object Template {
     manager match {
       case lmanager: LambdaManager[T] =>
         for ((b,apps) <- applications; bp = substituter(b); app <- apps) {
-          val newApp = app.copy(caller = substituter(app.caller), args = app.args.map(_.substitute(substituter, msubst)))
-          instantiation ++= lmanager.instantiateApp(bp, newApp)
+          instantiation ++= lmanager.instantiateApp(bp, app.substitute(substituter, msubst))
         }
 
       case _ =>

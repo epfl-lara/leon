@@ -22,6 +22,11 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
 case class App[T](caller: T, tpe: FunctionType, args: Seq[Arg[T]], encoded: T) {
   override def toString = "(" + caller + " : " + tpe + ")" + args.map(_.encoded).mkString("(", ",", ")")
+  def substitute(substituter: T => T, msubst: Map[T, Matcher[T]]): App[T] = copy(
+    caller = substituter(caller),
+    args = args.map(_.substitute(substituter, msubst)),
+    encoded = substituter(encoded)
+  )
 }
 
 object LambdaTemplate {

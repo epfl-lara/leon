@@ -189,17 +189,19 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
           case (cct: CaseClassType) => Seq(cct)
         }
 
-        MatchExpr(expr, matchers.map { cct =>
+        val cases = matchers.map { cct =>
           val pattern = CaseClassPattern(None, cct, cct.fields.map(vd => WildcardPattern(Some(vd.id))))
           val expr = andJoin(cct.fields.map(vd => typeUnroller(Variable(vd.id))))
           MatchCase(pattern, None, expr)
-        })
+        }
+
+        if (cases.forall(_.rhs == BooleanLiteral(true))) None else Some(MatchExpr(expr, cases))
       } else {
         val fd = classTypeUnroller(ct.root)
-        FunctionInvocation(fd.typed, Seq(expr))
+        Some(FunctionInvocation(fd.typed, Seq(expr)))
       }
 
-      andJoin(inv ++ subtype :+ induct)
+      andJoin(inv ++ subtype ++ induct)
 
     case TupleType(tpes) =>
       andJoin(tpes.zipWithIndex.map(p => typeUnroller(TupleSelect(expr, p._2 + 1))))
