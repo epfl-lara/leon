@@ -54,7 +54,7 @@ object IntroduceGlobalStatePhase extends TransformationPhase {
   }
 
   private def extendFunDefWithState(fd: FunDef, stateCCD: CaseClassDef)(ctx: LeonContext): FunDef = {
-    val newParams = fd.params :+ ValDef(FreshIdentifier("state", stateCCD.typed))
+    val newParams = fd.params :+ ValDef(FreshIdentifier("globalState", stateCCD.typed))
     val newFunDef = new FunDef(fd.id.freshen, fd.tparams, newParams, fd.returnType)
     newFunDef.addFlags(fd.flags)
     newFunDef.setPos(fd)
