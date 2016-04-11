@@ -34,12 +34,14 @@ object DataRacing {
     case (RunnableNil(), RunnableNil()) => ()
   }
 
-  def main(): Unit = {
+  //z3 finds counterexample in 0.5
+  //cvc4 needs 130 seconds
+  def main(): Int = {
     val state = SharedState(0)
     val t1 = RunnableCons((s: SharedState) => s.i = s.i + 1, RunnableNil())
     val t2 = RunnableCons((s: SharedState) => s.i = s.i * 2, RunnableNil())
     execute(t1, t2, state)
-    assert(state.i == 2)
-  }
+    state.i
+  } ensuring(_ == 2)
 
 }
