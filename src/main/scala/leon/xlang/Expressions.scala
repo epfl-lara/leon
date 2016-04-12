@@ -28,8 +28,9 @@ object Expressions {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
 
-    override def getPos = {
-      Position.between(exprs.head.getPos, last.getPos)
+    override def getPos = exprs.headOption match {
+      case Some(head) => Position.between(head.getPos, last.getPos)
+      case None => last.getPos
     }
 
     def printWith(implicit pctx: PrinterContext) {
