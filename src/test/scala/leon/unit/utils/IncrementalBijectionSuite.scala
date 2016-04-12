@@ -118,4 +118,178 @@ class IncrementalBijectionSuite extends FunSuite {
     assert(b.getA(33) === Some(12))
   }
 
+  test("swap simple bijection is working") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    b += (2 -> 20)
+    val c = b.swap
+
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(b.getB(10) === None)
+    assert(b.getB(20) === None)
+    assert(b.getA(10) === Some(1))
+    assert(b.getA(20) === Some(2))
+    assert(b.getA(1) === None)
+    assert(b.getA(2) === None)
+
+    assert(c.getB(1) === None)
+    assert(c.getB(2) === None)
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+    assert(c.getA(10) === None)
+    assert(c.getA(20) === None)
+    assert(c.getA(1) === Some(10))
+    assert(c.getA(2) === Some(20))
+  }
+
+  test("updates to swapped bijection are visible in original") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    val c = b.swap
+    c += (20 -> 2)
+
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(b.getB(10) === None)
+    assert(b.getB(20) === None)
+    assert(b.getA(10) === Some(1))
+    assert(b.getA(20) === Some(2))
+    assert(b.getA(1) === None)
+    assert(b.getA(2) === None)
+
+    assert(c.getB(1) === None)
+    assert(c.getB(2) === None)
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+    assert(c.getA(10) === None)
+    assert(c.getA(20) === None)
+    assert(c.getA(1) === Some(10))
+    assert(c.getA(2) === Some(20))
+  }
+
+  test("swap bijection then overrides some mappings") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    b += (2 -> 20)
+    val c = b.swap
+    b += (1 -> 30)
+
+    assert(b.getB(1) === Some(30))
+    assert(b.getB(2) === Some(20))
+    assert(b.getB(10) === None)
+    assert(b.getB(20) === None)
+    assert(b.getB(30) === None)
+    assert(b.getA(10) === None)
+    assert(b.getA(20) === Some(2))
+    assert(b.getA(30) === Some(1))
+    assert(b.getA(1) === None)
+    assert(b.getA(2) === None)
+
+    assert(c.getB(1) === None)
+    assert(c.getB(2) === None)
+    assert(c.getB(10) === None)
+    assert(c.getB(20) === Some(2))
+    assert(c.getB(30) === Some(1))
+    assert(c.getA(10) === None)
+    assert(c.getA(20) === None)
+    assert(c.getA(30) === None)
+    assert(c.getA(1) === Some(30))
+    assert(c.getA(2) === Some(20))
+  }
+
+  test("Push on a swapped bijection also pushes to original") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    val c = b.swap
+    c.push()
+    c += (20 -> 2)
+
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(b.getB(10) === None)
+    assert(b.getB(20) === None)
+    assert(b.getA(10) === Some(1))
+    assert(b.getA(20) === Some(2))
+    assert(b.getA(1) === None)
+    assert(b.getA(2) === None)
+
+    assert(c.getB(1) === None)
+    assert(c.getB(2) === None)
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+    assert(c.getA(10) === None)
+    assert(c.getA(20) === None)
+    assert(c.getA(1) === Some(10))
+    assert(c.getA(2) === Some(20))
+  }
+
+  test("Pop on a swapped bijection also pop to original") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    val c = b.swap
+    c.push()
+    c += (20 -> 2)
+
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+
+    c.pop()
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === None)
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === None)
+  }
+
+  test("push/pop on a swapped bijection stays consistent") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    val c = b.swap
+    c.push()
+    c += (20 -> 2)
+
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+
+    b.pop()
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === None)
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === None)
+
+    c += (30 -> 3)
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === None)
+    assert(b.getB(3) === Some(30))
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === None)
+    assert(c.getB(30) === Some(3))
+  }
+
+  test("overriding mapping in swap bijection is consistent after a pop") {
+    val b = new IncrementalBijection[Int, Int]
+    b += (1 -> 10)
+    b += (2 -> 20)
+    val c = b.swap
+    c.push()
+    c += (30 -> 1)
+
+    assert(b.getB(1) === Some(30))
+    assert(b.getB(2) === Some(20))
+    assert(c.getB(10) === None)
+    assert(c.getB(20) === Some(2))
+    assert(c.getB(30) === Some(1))
+
+    c.pop()
+    assert(b.getB(1) === Some(10))
+    assert(b.getB(2) === Some(20))
+    assert(c.getB(10) === Some(1))
+    assert(c.getB(20) === Some(2))
+    assert(c.getB(30) === None)
+  }
+
 }

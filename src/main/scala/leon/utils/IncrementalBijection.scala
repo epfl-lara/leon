@@ -75,6 +75,12 @@ class IncrementalBijection[A,B] extends Bijection[A,B] with IncrementalState {
     b2aStack.pop()
   }
 
+  /** Return an IncrementalBijection in the other direction
+    *
+    * The returned bijection remains linked to the original, which
+    * means that any push/pop on any of the two bijection should be
+    * visible in both, same goes for new mappings added.
+    */
   override def swap: IncrementalBijection[B, A] = new IncrementalBijection[B, A] {
     override protected val a2b = IncrementalBijection.this.b2a
     override protected val b2a = IncrementalBijection.this.a2b
