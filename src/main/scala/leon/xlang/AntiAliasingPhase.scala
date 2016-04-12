@@ -667,7 +667,7 @@ object AntiAliasingPhase extends TransformationPhase {
   private def isMutableType(tpe: TypeTree, abstractClasses: Set[ClassType] = Set()): Boolean = tpe match {
     case (ct: ClassType) if abstractClasses.contains(ct) => false
     case (arr: ArrayType) => true
-    case CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType, abstractClasses))
+    case ct@CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType, abstractClasses + ct))
     case (ct: ClassType) => ct.knownDescendants.exists(c => isMutableType(c, abstractClasses + ct))
     case _ => false
   }
