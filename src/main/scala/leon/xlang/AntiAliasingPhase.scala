@@ -84,6 +84,7 @@ object AntiAliasingPhase extends TransformationPhase {
     } {
       updatedFunctions += (fd -> updateFunDef(fd, effects)(ctx))
     }
+    //println(updatedFunctions.filter(p => p._1.id != p._2.id).mkString("\n"))
 
     for {
       fd <- fds

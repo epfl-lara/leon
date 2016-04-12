@@ -34,6 +34,12 @@ class DefinitionTransformer(
           idMap += id -> nid
           nid
       })
+
+    case LetDef(fds, body) =>
+      val rFds = fds map transform
+      val rBody = transform(body)
+      LetDef(rFds, rBody).copiedFrom(e)
+      
     case _ => super.transform(e)
   }
 
