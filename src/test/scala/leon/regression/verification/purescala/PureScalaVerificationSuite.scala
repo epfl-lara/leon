@@ -44,9 +44,9 @@ class PureScalaValidSuite1 extends PureScalaValidSuite {
 class PureScalaValidSuite2 extends PureScalaValidSuite {
   val optionVariants = List(opts(1))
 }
-class PureScalaValidSuite3 extends PureScalaValidSuite {
+class PureScalaValidSuite3 extends PureScalaValidSuite { // tests verification with --codegen parameter
   val optionVariants = List(opts(2))
-  override val ignored = Seq("valid/Predicate.scala")
+  override val ignored = Seq("valid/Predicate.scala","valid/TraceInductTacticTest.scala")
 }
 class PureScalaValidSuiteZ3 extends PureScalaValidSuite {
   val optionVariants = if (isZ3Available) List(opts(3)) else Nil
