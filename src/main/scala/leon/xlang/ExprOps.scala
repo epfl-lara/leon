@@ -21,9 +21,12 @@ object ExprOps {
   def flattenBlocks(expr: Expr): Expr = {
     postMap({
       case Block(exprs, last) =>
-        val nexprs = (exprs :+ last).flatMap{
+        val filtered = exprs.filter{
+          case UnitLiteral() => false
+          case _ => true
+        }
+        val nexprs = (filtered :+ last).flatMap{
           case Block(es2, el) => es2 :+ el
-          case UnitLiteral() => Seq()
           case e2 => Seq(e2)
         }
         Some(nexprs match {
