@@ -92,6 +92,12 @@ class Bijection[A, B] extends Iterable[(A, B)] {
     new Bijection[A, C] ++= this.a2b.map(kv => kv._1 -> c(kv._2))
   }
 
+  /** returns the inverse bijection.
+    *
+    * The returned value is synchronized with the original
+    * Bijection, so changes to any of the two will be visible
+    * in the other one.
+    */
   def swap: Bijection[B, A] = new Bijection[B, A] {
     override protected val a2b = Bijection.this.b2a
     override protected val b2a = Bijection.this.a2b
