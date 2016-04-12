@@ -17,8 +17,8 @@ import bonsai.enumerators.MemoizedEnumerator
 import solvers.Model
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
-
 import leon.LeonContext
+import leon.purescala.Definitions.TypedFunDef
 
 /**
  * @author Mikael
@@ -63,6 +63,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       }).unzip // TODO: Check for unapply with function pattern ?
       (MatchExpr(c1, new_cases).copiedFrom(e), variables.flatten)
     case Operator(lhsrhs, builder) =>
+      // The exprBuilder adds variable definitions needed to compute the arguments.
       val (exprBuilder, children, ids) = (((e: Expr) => e, List[Expr](), ListBuffer[Identifier]()) /: lhsrhs) {
         case ((exprBuilder, children, ids), arg) =>
           val (arg1, argv1) = markBranches(arg)
@@ -75,13 +76,23 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             (exprBuilder, arg::children, ids)
           }
       }
-      if(e.isInstanceOf[FunctionInvocation]) {
-        // Should be different.
-      } else if(ids.isEmpty) {
-        (e, Seq.empty)
-      } else {
-        val body = tupleWrap(Seq(builder(children).copiedFrom(e), or(ids.map(Variable): _*)))
-        (exprBuilder(body), ids)
+      e match {
+        case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+          // Should be different since functions will return a boolean as well.
+          val res_id = FreshIdentifier("res", fd.returnType)
+          val res_b = FreshIdentifier("b", BooleanType)
+          val finalIds = (ids :+ res_b)
+          val finalExpr = 
+            tupleWrap(Seq(Variable(res_id), or(finalIds.map(Variable(_)): _*)))
+          val funCall = letTuple(Seq(res_id, res_b), builder(children).copiedFrom(e), finalExpr)
+          (exprBuilder(funCall), finalIds)
+        case _ =>
+          if(ids.isEmpty) {
+            (e, Seq.empty)
+          } else {
+            val finalExpr = tupleWrap(Seq(builder(children).copiedFrom(e), or(ids.map(Variable): _*)))
+            (exprBuilder(finalExpr), ids)
+          }
       }
   }
   
