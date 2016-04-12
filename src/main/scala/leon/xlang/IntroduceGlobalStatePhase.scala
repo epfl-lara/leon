@@ -19,18 +19,16 @@ object IntroduceGlobalStatePhase extends TransformationPhase {
   val description = "Introduce a global state passed around to all functions that depend on it"
 
 
-  private val globalStateCCD = new CaseClassDef(FreshIdentifier("GlobalState"), Seq(), None, false)
-  private val epsilonSeed = FreshIdentifier("epsilonSeed", IntegerType)
-  globalStateCCD.setFields(Seq(ValDef(epsilonSeed).setIsVar(true)))
-
   override def apply(ctx: LeonContext, pgm: Program): Program = {
+
+    val globalStateCCD = new CaseClassDef(FreshIdentifier("GlobalState"), Seq(), None, false)
+    val epsilonSeed = FreshIdentifier("epsilonSeed", IntegerType)
+    globalStateCCD.setFields(Seq(ValDef(epsilonSeed).setIsVar(true)))
 
     val fds = allFunDefs(pgm)
     var updatedFunctions: Map[FunDef, FunDef] = Map()
     
     val statefulFunDefs = funDefsNeedingState(pgm)
-    //println("Stateful fun def: " + statefulFunDefs.map(_.id))
-
 
     /*
      * The first pass will introduce all new function definitions,
@@ -45,10 +43,14 @@ object IntroduceGlobalStatePhase extends TransformationPhase {
     for {
       fd <- fds if statefulFunDefs.contains(fd)
     } {
-      updateBody(fd, updatedFunctions)(ctx)
+      updateBody(fd, updatedFunctions, globalStateCCD, epsilonSeed)(ctx)
     }
 
-    replaceDefsInProgram(pgm)(updatedFunctions)
+    val pgm0 = replaceDefsInProgram(pgm)(updatedFunctions)
+
+    val globalStateModule = ModuleDef(FreshIdentifier("GlobalStateModule"), Seq(globalStateCCD), false)
+    val globalStateUnit = UnitDef(FreshIdentifier("GlobalStateUnit"), List("leon", "internal"), Seq(), Seq(globalStateModule), false)
+    pgm0.copy(units = globalStateUnit :: pgm0.units)
   }
 
   private def extendFunDefWithState(fd: FunDef, stateCCD: CaseClassDef)(ctx: LeonContext): FunDef = {
@@ -59,7 +61,7 @@ object IntroduceGlobalStatePhase extends TransformationPhase {
     newFunDef
   }
 
-  private def updateBody(fd: FunDef, updatedFunctions: Map[FunDef, FunDef])(ctx: LeonContext): FunDef = {
+  private def updateBody(fd: FunDef, updatedFunctions: Map[FunDef, FunDef], globalStateCCD: CaseClassDef, epsilonSeed: Identifier)(ctx: LeonContext): FunDef = {
     val nfd = updatedFunctions(fd)
     val stateParam: ValDef = nfd.params.last
 
