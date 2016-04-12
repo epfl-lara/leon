@@ -1,10 +1,10 @@
-import leon.lazyeval._
-import leon.lazyeval.$._
-import leon.lang._
-import leon.annotation._
-import leon.collection._
-import leon.instrumentation._
-import leon.math._
+import leon._
+import lazyeval._
+import lang._
+import annotation._
+import collection._
+import instrumentation._
+import math._
 
 /**
  * A constant time deque based on Okasaki's implementation: Fig.8.4 Pg. 112.
@@ -40,13 +40,13 @@ object RealTimeDeque {
       }
     } ensuring (_ >= 0)
   }
-  case class SCons[T](x: T, tail: $[Stream[T]]) extends Stream[T]
+  case class SCons[T](x: T, tail: Lazy[Stream[T]]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
   @inline
-  def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
+  def ssize[T](l: Lazy[Stream[T]]): BigInt = (l*).size
 
-  def isConcrete[T](l: $[Stream[T]]): Boolean = {
+  def isConcrete[T](l: Lazy[Stream[T]]): Boolean = {
     l.isEvaluated && (l* match {
       case SCons(_, tail) =>
         isConcrete(tail)
@@ -55,12 +55,12 @@ object RealTimeDeque {
   }
 
   @invstate
-  def revAppend[T](l1: $[Stream[T]], l2: $[Stream[T]]): $[Stream[T]] = {
+  def revAppend[T](l1: Lazy[Stream[T]], l2: Lazy[Stream[T]]): Lazy[Stream[T]] = {
     require(isConcrete(l1) && isConcrete(l2))
     l1.value match {
       case SNil() => l2
       case SCons(x, tail) =>
-        val nt: $[Stream[T]] = SCons[T](x, l2)
+        val nt: Lazy[Stream[T]] = SCons[T](x, l2)
         revAppend(tail, nt)
     }
   } ensuring(res => ssize(res) == ssize(l1) + ssize(l2) &&
@@ -69,7 +69,7 @@ object RealTimeDeque {
       time <= 20*ssize(l1) + 20)
 
   @invstate
-  def drop[T](n: BigInt, l: $[Stream[T]]): $[Stream[T]] = {
+  def drop[T](n: BigInt, l: Lazy[Stream[T]]): Lazy[Stream[T]] = {
     require(n >= 0 && isConcrete(l) && ssize(l) >= n)
     if (n == 0) {
       l
@@ -84,9 +84,9 @@ object RealTimeDeque {
       time <= 20*n + 20)
 
   @invstate
-  def take[T](n: BigInt, l: $[Stream[T]]): $[Stream[T]] = {
+  def take[T](n: BigInt, l: Lazy[Stream[T]]): Lazy[Stream[T]] = {
     require(n >= 0 && isConcrete(l) && ssize(l) >= n)
-    val r: $[Stream[T]] =
+    val r: Lazy[Stream[T]] =
       if (n == 0) {
         SNil[T]()
       } else {
@@ -102,7 +102,7 @@ object RealTimeDeque {
       time <= 30*n + 30)
 
   @invstate
-  def takeLazy[T](n: BigInt, l: $[Stream[T]]): Stream[T] = {
+  def takeLazy[T](n: BigInt, l: Lazy[Stream[T]]): Stream[T] = {
     require(isConcrete(l) && n >= 1 && ssize(l) >= n)
     l.value match {
       case SCons(x, tail) =>
@@ -115,7 +115,7 @@ object RealTimeDeque {
       time <= 20)
 
   @invstate
-  def rotateRev[T](r: $[Stream[T]], f: $[Stream[T]], a: $[Stream[T]]): Stream[T] = {
+  def rotateRev[T](r: Lazy[Stream[T]], f: Lazy[Stream[T]], a: Lazy[Stream[T]]): Stream[T] = {
     require(isConcrete(r) && isConcrete(f) && isConcrete(a) &&
       {
         val lenf = ssize(f)
@@ -132,7 +132,7 @@ object RealTimeDeque {
       time <= 250)
 
   @invstate
-  def rotateDrop[T](r: $[Stream[T]], i: BigInt, f: $[Stream[T]]): Stream[T] = {
+  def rotateDrop[T](r: Lazy[Stream[T]], i: BigInt, f: Lazy[Stream[T]]): Stream[T] = {
     require(isConcrete(r) && isConcrete(f) && i >= 0 && {
       val lenf = ssize(f)
       val lenr = ssize(r)
@@ -141,7 +141,7 @@ object RealTimeDeque {
     })
     val rval = r.value
     if(i < 2 || rval == SNil[T]()) { // A bug in Okasaki implementation: we must check for: 'rval = SNil()'
-      val a: $[Stream[T]] = SNil[T]()
+      val a: Lazy[Stream[T]] = SNil[T]()
       rotateRev(r, drop(i, f), a)
     } else {
       rval match {
@@ -152,7 +152,7 @@ object RealTimeDeque {
   } ensuring(res => res.size == (r*).size + (f*).size - i &&
       res.isCons && time <= 300)
 
-  def firstUneval[T](l: $[Stream[T]]): $[Stream[T]] = {
+  def firstUneval[T](l: Lazy[Stream[T]]): Lazy[Stream[T]] = {
     if (l.isEvaluated) {
       l* match {
         case SCons(_, tail) =>
@@ -169,8 +169,8 @@ object RealTimeDeque {
       case _ => true
     }))
 
-  case class Queue[T](f: $[Stream[T]], lenf: BigInt, sf: $[Stream[T]],
-      r: $[Stream[T]], lenr: BigInt, sr: $[Stream[T]]) {
+  case class Queue[T](f: Lazy[Stream[T]], lenf: BigInt, sf: Lazy[Stream[T]],
+      r: Lazy[Stream[T]], lenr: BigInt, sr: Lazy[Stream[T]]) {
     def isEmpty = lenf + lenr == 0
     def valid = {
       (firstUneval(f) == firstUneval(sf)) &&
@@ -188,8 +188,8 @@ object RealTimeDeque {
    * A function that takes streams where the size of front and rear streams violate
    * the balance invariant, and restores the balance.
    */
-  def createQueue[T](f: $[Stream[T]], lenf: BigInt, sf: $[Stream[T]],
-      r: $[Stream[T]], lenr: BigInt, sr: $[Stream[T]]): Queue[T] = {
+  def createQueue[T](f: Lazy[Stream[T]], lenf: BigInt, sf: Lazy[Stream[T]],
+      r: Lazy[Stream[T]], lenr: BigInt, sr: Lazy[Stream[T]]): Queue[T] = {
     require(firstUneval(f) == firstUneval(sf) &&
         firstUneval(r) == firstUneval(sr) &&
         (lenf == ssize(f) && lenr == ssize(r)) &&
@@ -219,7 +219,7 @@ object RealTimeDeque {
   /**
    * Forces the schedules, and ensures that `firstUneval` equality is preserved
    */
-  def force[T](tar: $[Stream[T]], htar: $[Stream[T]], other: $[Stream[T]], hother: $[Stream[T]]): $[Stream[T]] = {
+  def force[T](tar: Lazy[Stream[T]], htar: Lazy[Stream[T]], other: Lazy[Stream[T]], hother: Lazy[Stream[T]]): Lazy[Stream[T]] = {
     require(firstUneval(tar) == firstUneval(htar) &&
       firstUneval(other) == firstUneval(hother))
     tar.value match {
@@ -228,8 +228,8 @@ object RealTimeDeque {
     }
   } ensuring (res => {
     //lemma instantiations
-    val in = $.inState[Stream[T]]
-    val out = $.outState[Stream[T]]
+    val in = inState[Stream[T]]
+    val out = outState[Stream[T]]
     funeMonotone(tar, htar, in, out) &&
       funeMonotone(other, hother, in, out) && {
       //properties
@@ -243,7 +243,7 @@ object RealTimeDeque {
   /**
    * Forces the schedules in the queue twice and ensures the `firstUneval` property.
    */
-  def forceTwice[T](q: Queue[T]): ($[Stream[T]], $[Stream[T]]) = {
+  def forceTwice[T](q: Queue[T]): (Lazy[Stream[T]], Lazy[Stream[T]]) = {
     require(q.valid)
     val nsf = force(force(q.sf, q.f, q.r, q.sr), q.f, q.r, q.sr) // forces q.sf twice
     val nsr = force(force(q.sr, q.r, q.f, nsf), q.r, q.f, nsf) // forces q.sr twice
@@ -261,7 +261,7 @@ object RealTimeDeque {
   })*/
 
   def empty[T] = {
-    val nil: $[Stream[T]] = SNil[T]()
+    val nil: Lazy[Stream[T]] = SNil[T]()
     Queue(nil, 0, nil, nil, 0, nil)
   }
 
@@ -315,7 +315,7 @@ object RealTimeDeque {
    * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
    */
   @traceInduct
-  def funeCompose[T](l1: $[Stream[T]], st1: Set[$[Stream[T]]], st2: Set[$[Stream[T]]]): Boolean = {
+  def funeCompose[T](l1: Lazy[Stream[T]], st1: Set[Lazy[Stream[T]]], st2: Set[Lazy[Stream[T]]]): Boolean = {
     require(st1.subsetOf(st2))
     // property
     (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
@@ -327,7 +327,7 @@ object RealTimeDeque {
    * This is a kind of frame axiom for `fune` but is slightly different in that
    * it doesn't require (st2 \ st1) to be disjoint from la and lb.
    */
-  def funeMonotone[T](l1: $[Stream[T]], l2: $[Stream[T]], st1: Set[$[Stream[T]]], st2: Set[$[Stream[T]]]): Boolean = {
+  def funeMonotone[T](l1: Lazy[Stream[T]], l2: Lazy[Stream[T]], st1: Set[Lazy[Stream[T]]], st2: Set[Lazy[Stream[T]]]): Boolean = {
     require((firstUneval(l1) withState st1) == (firstUneval(l2) withState st1) &&
         st1.subsetOf(st2))
      funeCompose(l1, st1, st2) && // lemma instantiations
