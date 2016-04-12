@@ -185,8 +185,8 @@ object Main {
     } else {
       val pipeBegin: Pipeline[List[String], Program] =
         ClassgenPhase andThen
-          ExtractionPhase andThen
-          new PreprocessingPhase
+        ExtractionPhase andThen
+        new PreprocessingPhase(genc = gencF)
 
       val verification =
         VerificationPhase andThen
