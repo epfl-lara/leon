@@ -100,7 +100,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"epsilon(x${getPos.line}_${getPos.col}. $pred)"
+      p"epsilon(x${getPos.line}_${getPos.col} => $pred)"
     }
 
     val getType = tpe
