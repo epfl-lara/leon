@@ -10,18 +10,18 @@ import Constructors._
 
 object Extractors {
 
-  /** Operator Extractor to extract any Expression in a consistent way
+  /** Operator Extractor to extract any Expression in a consistent way.
     *
     * You can match on any Leon Expr, and then get both a Seq[Expr] of
-    * subterms and a builder fonction that take a Seq of subterm (os same
+    * subterms and a builder fonction that takes a Seq of subterms (of same
     * length) and rebuild the original node.
     *
     * Those extractors do not perform any syntactic simplifications. They
-    * rebuild the node using the case class (not the constructor that perform
-    * simplifications). The rationals behind this decision is to have core
+    * rebuild the node using the case class (not the constructor, that performs
+    * simplifications). The rational behind this decision is to have core
     * tools for performing tree transformations that are very predictable, if
     * one need to simplify the tree, it is easy to write/call a simplification
-    * function that would simply apply the constructor for each node.
+    * function that would simply apply the corresponding constructor for each node.
     */
   object Operator extends TreeExtractor[Expr] {
     def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {

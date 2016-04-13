@@ -49,6 +49,10 @@ import leon.test.helpers.ExpressionsDSLVariables
 import leon.purescala.Extractors._
 
 class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures with ExpressionsDSLProgram with ExpressionsDSLVariables {
+
+  //override a because it comes from both Matchers and ExpressionsDSLVariables
+  override val a = null
+
   val sources = List("""
     |import leon.lang._
     |import leon.collection._

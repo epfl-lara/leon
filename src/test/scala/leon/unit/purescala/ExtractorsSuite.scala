@@ -1,6 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
-package leon.unit.xlang
+package leon.unit.purescala
 
 import org.scalatest._
 
