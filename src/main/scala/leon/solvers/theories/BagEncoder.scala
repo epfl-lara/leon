@@ -20,52 +20,52 @@ class BagEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   val BagEquals  = p.library.lookupUnique[FunDef]("leon.theories.Bag.equals")
 
   val encoder = new Encoder {
-    override def transform(e: Expr)(implicit binders: Map[Identifier, Identifier]): Expr = e match {
+    override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case FiniteBag(elems, tpe) =>
         val newTpe = transform(tpe)
         val id = FreshIdentifier("x", newTpe, true)
-        CaseClass(Bag.typed(Seq(newTpe)), Seq(Lambda(Seq(ValDef(id)),
+        Some(CaseClass(Bag.typed(Seq(newTpe)), Seq(Lambda(Seq(ValDef(id)),
           elems.foldRight[Expr](InfiniteIntegerLiteral(0).copiedFrom(e)) { case ((k, v), ite) =>
             IfExpr(Equals(Variable(id), transform(k)), transform(v), ite).copiedFrom(e)
-          }))).copiedFrom(e)
+          }))).copiedFrom(e))
 
       case BagAdd(bag, elem) =>
         val BagType(base) = bag.getType
-        FunctionInvocation(Add.typed(Seq(transform(base))), Seq(transform(bag), transform(elem))).copiedFrom(e)
+        Some(FunctionInvocation(Add.typed(Seq(transform(base))), Seq(transform(bag), transform(elem))).copiedFrom(e))
 
       case MultiplicityInBag(elem, bag) =>
         val BagType(base) = bag.getType
-        FunctionInvocation(Get.typed(Seq(transform(base))), Seq(transform(bag), transform(elem))).copiedFrom(e)
+        Some(FunctionInvocation(Get.typed(Seq(transform(base))), Seq(transform(bag), transform(elem))).copiedFrom(e))
 
       case BagIntersection(b1, b2) =>
         val BagType(base) = b1.getType
-        FunctionInvocation(Intersect.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e)
+        Some(FunctionInvocation(Intersect.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e))
 
       case BagUnion(b1, b2) =>
         val BagType(base) = b1.getType
-        FunctionInvocation(Union.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e)
+        Some(FunctionInvocation(Union.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e))
 
       case BagDifference(b1, b2) =>
         val BagType(base) = b1.getType
-        FunctionInvocation(Difference.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e)
+        Some(FunctionInvocation(Difference.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e))
 
       case Equals(b1, b2) if b1.getType.isInstanceOf[BagType] =>
         val BagType(base) = b1.getType
-        FunctionInvocation(BagEquals.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e)
+        Some(FunctionInvocation(BagEquals.typed(Seq(transform(base))), Seq(transform(b1), transform(b2))).copiedFrom(e))
 
-      case _ => super.transform(e)
+      case _ => None
     }
 
-    override def transform(tpe: TypeTree): TypeTree = tpe match {
-      case BagType(base) => Bag.typed(Seq(transform(base))).copiedFrom(tpe)
-      case _ => super.transform(tpe)
+    override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
+      case BagType(base) => Some(Bag.typed(Seq(transform(base))).copiedFrom(tpe))
+      case _ => None
     }
   }
 
   val decoder = new Decoder {
-    override def transform(e: Expr)(implicit binders: Map[Identifier, Identifier]): Expr = e match {
+    override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case cc @ CaseClass(CaseClassType(Bag, Seq(tpe)), args) =>
-        FiniteBag(args(0) match {
+        Some(FiniteBag(args(0) match {
           case FiniteLambda(mapping, dflt, tpe) =>
             if (dflt != InfiniteIntegerLiteral(0))
               throw new Unsupported(cc, "Bags can't have default value " + dflt.asString(ctx))(ctx)
@@ -81,32 +81,32 @@ class BagEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
             rec(body)
 
           case f => scala.sys.error("Unexpected function " + f.asString(ctx))
-        }, transform(tpe)).copiedFrom(e)
+        }, transform(tpe)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(Add, Seq(_)), Seq(bag, elem)) =>
-        BagAdd(transform(bag), transform(elem)).copiedFrom(e)
+        Some(BagAdd(transform(bag), transform(elem)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(Get, Seq(_)), Seq(bag, elem)) =>
-        MultiplicityInBag(transform(elem), transform(bag)).copiedFrom(e)
+        Some(MultiplicityInBag(transform(elem), transform(bag)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(Intersect, Seq(_)), Seq(b1, b2)) =>
-        BagIntersection(transform(b1), transform(b2)).copiedFrom(e)
+        Some(BagIntersection(transform(b1), transform(b2)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(Union, Seq(_)), Seq(b1, b2)) =>
-        BagUnion(transform(b1), transform(b2)).copiedFrom(e)
+        Some(BagUnion(transform(b1), transform(b2)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(Difference, Seq(_)), Seq(b1, b2)) =>
-        BagDifference(transform(b1), transform(b2)).copiedFrom(e)
+        Some(BagDifference(transform(b1), transform(b2)).copiedFrom(e))
 
       case FunctionInvocation(TypedFunDef(BagEquals, Seq(_)), Seq(b1, b2)) =>
-        Equals(transform(b1), transform(b2)).copiedFrom(e)
+        Some(Equals(transform(b1), transform(b2)).copiedFrom(e))
 
-      case _ => super.transform(e)
+      case _ => None
     }
 
-    override def transform(tpe: TypeTree): TypeTree = tpe match {
-      case CaseClassType(Bag, Seq(base)) => BagType(transform(base)).copiedFrom(tpe)
-      case _ => super.transform(tpe)
+    override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
+      case CaseClassType(Bag, Seq(base)) => Some(BagType(transform(base)).copiedFrom(tpe))
+      case _ => None
     }
 
     override def transform(pat: Pattern): (Pattern, Map[Identifier, Identifier]) = pat match {

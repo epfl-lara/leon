@@ -22,29 +22,41 @@ class DefinitionTransformer(
     if (ntpe == id.getType && !freshen) id else id.duplicate(tpe = ntpe)
   }
 
-  override def transform(id: Identifier): Identifier = transformId(id, false)
+  def transformType(tpe: TypeTree): Option[TypeTree] = None
+  final override def transform(tpe: TypeTree): TypeTree = {
+    super.transform(transformType(tpe).getOrElse(tpe))
+  }
 
-  override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
-    case Variable(id) if !(bindings contains id) =>
-      val ntpe = transform(id.getType)
-      Variable(idMap.getB(id) match {
-        case Some(nid) if ntpe == nid.getType => nid
-        case _ =>
-          val nid = transformId(id, false)
-          idMap += id -> nid
-          nid
-      })
 
-    case LetDef(fds, body) =>
-      val rFds = fds map transform
-      val rBody = transform(body)
-      LetDef(rFds, rBody).copiedFrom(e)
-      
-    case _ => super.transform(e)
+  final override def transform(id: Identifier): Identifier = transformId(id, false)
+
+
+  def transformExpr(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = None
+  final override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = {
+    transformExpr(e) match {
+      case Some(r) => super.transform(r)
+      case None => e match {
+        case Variable(id) if !(bindings contains id) =>
+          val ntpe = transform(id.getType)
+          Variable(idMap.getB(id) match {
+            case Some(nid) if ntpe == nid.getType => nid
+            case _ =>
+              val nid = transformId(id, false)
+              idMap += id -> nid
+              nid
+          })
+        case LetDef(fds, body) =>
+          val rFds = fds map transform
+          val rBody = transform(body)
+          LetDef(rFds, rBody).copiedFrom(e)
+          
+        case _ => super.transform(e)
+      }
+    }
   }
 
   protected def transformFunDef(fd: FunDef): Option[FunDef] = None
-  override def transform(fd: FunDef): FunDef = {
+  final override def transform(fd: FunDef): FunDef = {
     if ((fdMap containsB fd) || (tmpFdMap containsB fd)) fd
     else if (tmpFdMap containsA fd) tmpFdMap.toB(fd)
     else fdMap.getBorElse(fd, {
@@ -54,10 +66,11 @@ class DefinitionTransformer(
   }
 
   protected def transformClassDef(cd: ClassDef): Option[ClassDef] = None
-  override def transform(cd: ClassDef): ClassDef = {
+  final override def transform(cd: ClassDef): ClassDef = {
     if ((cdMap containsB cd) || (tmpCdMap containsB cd)) cd
     else if (tmpCdMap containsA cd) tmpCdMap.toB(cd)
-    else cdMap.getBorElse(cd, {
+    else
+      cdMap.getBorElse(cd, {
       transformDefs(cd)
       cdMap.toB(cd)
     })
@@ -105,7 +118,8 @@ class DefinitionTransformer(
               newBody != fd.fullBody
             })
 
-          case cd: ClassDef => !(transformedCds contains cd) &&
+          case cd: ClassDef => 
+            !(transformedCds contains cd) &&
             (cd.fieldsIds.exists(id => transform(id.getType) != id.getType) ||
               cd.invariant.exists(required))
 

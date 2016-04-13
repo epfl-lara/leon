@@ -40,14 +40,14 @@ trait TheoryEncoder { self =>
 
   def >>(that: TheoryEncoder): TheoryEncoder = new TheoryEncoder {
     val encoder = new Encoder {
-      override def transform(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = {
+      override def transformExpr(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = {
         val mapSeq = bindings.toSeq
         val intermediate = mapSeq.map { case (id, _) => id.duplicate(tpe = self.encoder.transform(id.getType)) }
         val e2 = self.encoder.transform(expr)((mapSeq zip intermediate).map { case ((id, _), id2) => id -> id2 }.toMap)
-        that.encoder.transform(e2)((intermediate zip mapSeq).map { case (id, (_, id2)) => id -> id2 }.toMap)
+        Some(that.encoder.transform(e2)((intermediate zip mapSeq).map { case (id, (_, id2)) => id -> id2 }.toMap))
       }
 
-      override def transform(tpe: TypeTree): TypeTree = that.encoder.transform(self.encoder.transform(tpe))
+      override def transformType(tpe: TypeTree): Option[TypeTree] = Some(that.encoder.transform(self.encoder.transform(tpe)))
 
       override def transform(pat: Pattern): (Pattern, Map[Identifier, Identifier]) = {
         val (pat2, bindings) = self.encoder.transform(pat)
@@ -57,14 +57,14 @@ trait TheoryEncoder { self =>
     }
 
     val decoder = new Decoder {
-      override def transform(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = {
+      override def transformExpr(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = {
         val mapSeq = bindings.toSeq
         val intermediate = mapSeq.map { case (id, _) => id.duplicate(tpe = self.decoder.transform(id.getType)) }
         val e2 = that.decoder.transform(expr)((mapSeq zip intermediate).map { case ((id, _), id2) => id -> id2 }.toMap)
-        self.decoder.transform(e2)((intermediate zip mapSeq).map { case (id, (_, id2)) => id -> id2 }.toMap)
+        Some(self.decoder.transform(e2)((intermediate zip mapSeq).map { case (id, (_, id2)) => id -> id2 }.toMap))
       }
 
-      override def transform(tpe: TypeTree): TypeTree = self.decoder.transform(that.decoder.transform(tpe))
+      override def transformType(tpe: TypeTree): Option[TypeTree] = Some(self.decoder.transform(that.decoder.transform(tpe)))
 
       override def transform(pat: Pattern): (Pattern, Map[Identifier, Identifier]) = {
         val (pat2, bindings) = that.decoder.transform(pat)
