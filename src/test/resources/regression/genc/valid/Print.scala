@@ -47,6 +47,17 @@ object Print {
     print(s)
   }
 
+  def printX(x: Int): Unit = {
+    val out: leon.io.FileOutputStream = leon.io.FileOutputStream.open("test.txt")
+    if (leon.io.FileOutputStream.isOpen(out)) {
+      leon.io.FileOutputStream.write(out, x)
+      leon.io.FileOutputStream.close(out)
+    } else {
+      myprint("CANNOT PRINT ")
+      myprint(x)
+      myprint(" TO FILE test.txt")
+    }
+  }
 
   def main() = {
     myprint(42)
@@ -59,6 +70,8 @@ object Print {
     myprint('\'')
     myprint("\"ab'&\n\t\\\\")
     myprint('\n')
+
+    printX(42)
 
     0
   }
