@@ -103,4 +103,8 @@ self: Assertions =>
 trait ExpressionsDSL extends ExpressionsDSLVariables with ExpressionsDSLProgram with ExpressionsDSLVariables_a {
   self: Assertions =>
   
+  
+  implicit def int2IntLit(i: Int): IntLiteral = IntLiteral(i)
+  implicit def bigInt2IntegerLit(i: BigInt): InfiniteIntegerLiteral = InfiniteIntegerLiteral(i)
+
 }

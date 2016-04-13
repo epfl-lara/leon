@@ -227,8 +227,8 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       merge(Node(v1, Leaf(), Leaf()), h1)
       ),
       (List(h1, h2),
-       GreaterThan(rank(h1), Plus(rank(h2), bi(1))),
-       GreaterThan(rank(h1), rank(h2))
+       GreaterThan(rank(h1), Plus(rank(h2), bi(42))),
+       GreaterThan(rank(h1), Minus(Plus(rank(h2), bi(42)), bi(1)))
       )
     )
 
