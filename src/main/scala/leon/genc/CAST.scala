@@ -46,6 +46,9 @@ object CAST { // C Abstract Syntax Tree
   // NOTE it might be better to have data+length structure
   case object String extends Type("char*")
 
+  /* Typedef */
+  case class TypeDef(orig: Id, alias: Id) extends Type(alias.name)
+
 
   /* --------------------------------------------------------- Literals ----- */
   case class CharLiteral(c: Char) extends Stmt {
@@ -64,9 +67,16 @@ object CAST { // C Abstract Syntax Tree
   /* ----------------------------------------------------- Definitions  ----- */
   abstract class Def extends Tree
 
-  case class Include(file: String) extends Def
+  case class Include(file: String) extends Def {
+    require(!file.isEmpty && isASCII(file))
+  }
 
-  case class Prog(includes: Set[Include], structs: Seq[Struct], functions: Seq[Fun]) extends Def
+  case class Prog(
+    includes:  Set[Include],
+    structs:   Seq[Struct],
+    typedefs:  Seq[TypeDef],
+    functions: Seq[Fun]
+  ) extends Def
 
   // Manually defined function through the cCode.function annotation have a string
   // for signature+body instead of the usual Stmt AST exclusively for the body

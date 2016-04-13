@@ -25,7 +25,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   // Global data: keep track of the custom types and function of the input program
   // Using sequences and not sets to keep track of order/dependencies
-  private var typeDecls = Seq[CAST.Struct]()
+  private var typedefs  = Seq[CAST.TypeDef]()
+  private var structs   = Seq[CAST.Struct]()
   private var functions = Seq[CAST.Fun]()
   // Includes don't need specific orders, hence we use a set
   private var includes  = Set[CAST.Include]() // for manually defined functions
@@ -40,11 +41,18 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     includes = includes + incl
   }
 
-  private def registerType(typ: CAST.Struct) {
+  private def registerTypedef(typedef: CAST.TypeDef) {
+    if (!typedefs.contains(typedef)) {
+      typedefs = typedefs :+ typedef
+      debug(s"New typedef registered: ${typedef.orig} -> ${typedef.alias}")
+    }
+  }
+
+  private def registerStruct(typ: CAST.Struct) {
     // Types might be processed more than once as the corresponding CAST type
     // is not cached and need to be reconstructed several time if necessary
-    if (!typeDecls.contains(typ)) {
-      typeDecls = typeDecls :+ typ
+    if (!structs.contains(typ)) {
+      structs = structs :+ typ
       debug(s"New type registered: $typ")
     }
   }
@@ -92,7 +100,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     debug(s"Converting the main unit:\n$mainUnit")
     collectSymbols(mainUnit)
 
-    CAST.Prog(includes, typeDecls, functions)
+    CAST.Prog(includes, structs, typedefs, functions)
   }
 
   // Look for function and structure definitions
@@ -102,8 +110,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     unit.defs.foreach {
       case ModuleDef(_, funDefs, _) =>
         funDefs.foreach {
-          case fd: FunDef       => convertToFun(fd)    // the function gets registered here
-          case cc: CaseClassDef => convertToStruct(cc) // the type declaration gets registered here
+          case fd: FunDef       => convertToFun(fd)  // the function,
+          case cc: CaseClassDef => convertToType(cc) // the type declaration or the typedef
+                                                     // get registered here
 
           case x => internalError(s"Unknown function definition $x: ${x.getClass}")
         }
@@ -236,29 +245,44 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       case ArrayType(base) =>
         val typ = CAST.Array(convertToType(base))
-        registerType(typ)
+        registerStruct(typ)
         typ
 
       case TupleType(bases) =>
         val typ = CAST.Tuple(bases map convertToType)
-        registerType(typ)
+        registerStruct(typ)
         typ
 
       case cd: CaseClassDef =>
-        if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
-        if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
-        if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
-        if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
-        if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
+        debug(s"Processing ${cd.id} with annotations: ${cd.annotations}")
 
-        val id     = convertToId(cd.id)
-        val fields = cd.fields map convertToVar
-        val typ    = CAST.Struct(id, fields)
+        val manual = "cCode.typedef"
+        if (cd.annotations contains manual) {
+          val Seq(Some(alias0), Some(include0)) = cd.extAnnotations(manual)
+          val alias = alias0.asInstanceOf[String]
+          val include = include0.asInstanceOf[String]
 
-        registerType(typ)
-        typ
+          val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(alias))
 
-      case CaseClassType(cd, _) => convertToStruct(cd) // reuse `case CaseClassDef`
+          if (!include.isEmpty) registerInclude(CAST.Include(include))
+          registerTypedef(typedef)
+          typedef
+        } else {
+          if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
+          if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
+          if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
+          if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
+          if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
+
+          val id     = convertToId(cd.id)
+          val fields = cd.fields map convertToVar
+          val typ    = CAST.Struct(id, fields)
+
+          registerStruct(typ)
+          typ
+        }
+
+      case CaseClassType(cd, _) => convertToType(cd) // reuse `case CaseClassDef`
 
       /* ------------------------------------------------------- Literals ----- */
       case CharLiteral(c)    => CAST.Literal(c)

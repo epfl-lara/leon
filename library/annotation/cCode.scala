@@ -56,4 +56,21 @@ object cCode {
     code: String
   ) extends StaticAnnotation
 
+  /*
+   * Allows the user to define a type (e.g. case class) as a typedef to an
+   * existing type with an optional include file.
+   *
+   * NOTE Using this annotation implies that any member function or attribute
+   *      of the underlying Scala type will not be translated into C code.
+   *
+   * Example:
+   * --------
+   *
+   *    @cCode.typedef(alias = "FILE*", include = "stdio.h")
+   *    case class FileStream(<some Scala properties>)
+   *
+   */
+  @ignore
+  class typedef(alias: String, include: String = "") extends StaticAnnotation
+
 }

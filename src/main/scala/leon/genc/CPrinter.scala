@@ -30,7 +30,8 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   private[genc] def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
     /* ---------------------------------------------------------- Types ----- */
-    case typ: Type => c"${typ.toString}"
+    case TypeDef(Id(orig), Id(alias)) => c"typedef $alias $orig;"
+    case typ: Type                    => c"${typ.toString}"
 
 
     /* ------------------------------------------------------- Literals ----- */
@@ -43,7 +44,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
 
     /* --------------------------------------------------- Definitions  ----- */
-    case Prog(includes, structs, functions) =>
+    case Prog(includes, structs, typedefs, functions) =>
       c"""|/* ------------------------------------ includes ----- */
           |
           |${nary(buildIncludes(includes), sep = "\n")}
@@ -51,6 +52,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |/* ---------------------- data type declarations ----- */
           |
           |${nary(structs map StructDecl, sep = "\n")}
+          |
+          |/* -------------------------------- type aliases ----- */
+          |
+          |${nary(typedefs, sep = "\n")}
           |
           |/* ----------------------- data type definitions ----- */
           |
@@ -216,7 +221,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   private lazy val includes_ = Set("assert.h", "stdbool.h", "stdint.h") map Include
 
   private def buildIncludes(includes: Set[Include]): Seq[String] =
-    (includes_ ++ includes).toSeq map { i => s"#include <${i.file}>" }
+    (includes_ ++ includes).toSeq sortBy { _.file } map { i => s"#include <${i.file}>" }
 
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
