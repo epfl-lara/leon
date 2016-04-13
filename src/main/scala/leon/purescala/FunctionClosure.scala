@@ -42,22 +42,40 @@ object FunctionClosure extends TransformationPhase {
           case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) =>
             fd
         }
-        f -> calls
+        val pcCalls = functionCallsOf(nestedWithPaths(f)) collect {
+          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) =>
+            fd
+        }
+        f -> (calls ++ pcCalls)
       }.toMap
     )
+    //println("nested funs: " + nestedFuns)
+    //println("call graph: " + callGraph)
 
-    def freeVars(fd: FunDef, pc: Expr): Set[Identifier] =
-      variablesOf(fd.fullBody) ++ variablesOf(pc) -- fd.paramIds
+    def freeVars(fd: FunDef): Set[Identifier] = variablesOf(fd.fullBody) -- fd.paramIds
 
     // All free variables one should include.
     // Contains free vars of the function itself plus of all transitively called functions.
-    val transFree = nestedFuns.map { fd =>
-      fd -> (callGraph(fd) + fd).flatMap( (fd2:FunDef) => freeVars(fd2, nestedWithPaths(fd2)) ).toSeq
-    }.toMap
+    // also contains free vars from PC if the PC is relevant to the fundef
+    val transFree = {
+      def step(current: Map[FunDef, Set[Identifier]]): Map[FunDef, Set[Identifier]] = {
+        nestedFuns.map(fd => {
+          val transFreeVars = (callGraph(fd) + fd).flatMap((fd2:FunDef) => freeVars(fd2))
+          val reqPaths = Seq(nestedWithPaths(fd)).filter(pathExpr => exists{
+            case _ => true //TODO: for now we take all PCs, need to refine
+            //case Variable(id) => transFreeVars.contains(id)
+            //case _ => false
+          }(pathExpr))
+          (fd, transFreeVars ++ reqPaths.flatMap(p => variablesOf(p)) -- fd.paramIds)
+        }).toMap
+      }
+      utils.fixpoint(step, -1)(nestedFuns.map(fd => (fd, freeVars(fd))).toMap)
+    }.map(p => (p._1, p._2.toSeq))
+    //println("free vars: " + transFree)
 
     // Closed functions along with a map (old var -> new var).
     val closed = nestedWithPaths.map {
-      case (inner, pc) => inner -> step(inner, fd, pc, transFree(inner))
+      case (inner, pc) => inner -> closeFd(inner, fd, pc, transFree(inner))
     }
 
     // Remove LetDefs from fd
@@ -123,7 +141,7 @@ object FunctionClosure extends TransformationPhase {
   )
 
   // Takes one inner function and closes it. 
-  private def step(inner: FunDef, outer: FunDef, pc: Expr, free: Seq[Identifier]): FunSubst = {
+  private def closeFd(inner: FunDef, outer: FunDef, pc: Expr, free: Seq[Identifier]): FunSubst = {
 
     val tpFresh = outer.tparams map { _.freshen }
     val tparamsMap = outer.tparams.zip(tpFresh map {_.tp}).toMap
