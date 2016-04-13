@@ -33,12 +33,12 @@ object cCode {
    *    // Print a 32-bit integer using the *correct*
    *    // format for printf in C99
    *    @cCode.function(
-   *      includes = "inttypes.h:stdio.h",
    *      code = """
    *        |void __FUNCTION__(int32_t x) {
    *        |  printf("%"PRIi32, x);
    *        |}
-   *        """
+   *        """,
+   *        includes = "inttypes.h:stdio.h"
    *      }
    *    )
    *    def myprint(x: Int): Unit = {

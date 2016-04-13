@@ -10,12 +10,12 @@ object Print {
   // format for printf in C99
   @extern
   @cCode.function(
-   includes = "inttypes.h:stdio.h",
    code = """
      |void __FUNCTION__(int32_t x) {
      |  printf("%"PRIi32, x);
      |}
-     """
+     """,
+    includes = "inttypes.h:stdio.h"
   )
   def myprint(x: Int): Unit = {
     print(x)
@@ -23,12 +23,12 @@ object Print {
 
   @extern
   @cCode.function(
-    includes = "stdio.h",
     code = """
       |void __FUNCTION__(char c) {
       |  printf("%c", c);
       |}
-      """
+      """,
+    includes = "stdio.h"
   )
   def myprint(c: Char): Unit = {
     print(c)
@@ -36,22 +36,20 @@ object Print {
 
   @extern
   @cCode.function(
-    includes = "stdio.h",
     code = """
       |void __FUNCTION__(char* s) {
       |  printf("%s", s);
       |}
-      """
+      """,
+    includes = "stdio.h"
   )
   def myprint(s: String): Unit = {
     print(s)
   }
 
-  def foo = myprint(58)
 
   def main() = {
     myprint(42)
-    foo
 
     // Testing escaped characters support
     myprint('\n')
@@ -61,6 +59,7 @@ object Print {
     myprint('\'')
     myprint("\"ab'&\n\t\\\\")
     myprint('\n')
+
     0
   }
 }
