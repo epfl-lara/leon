@@ -39,6 +39,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   private def registerInclude(incl: CAST.Include) {
     includes = includes + incl
+    debug(s"Registering include: ${incl.file}")
   }
 
   private def registerTypedef(typedef: CAST.TypeDef) {
@@ -195,10 +196,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       if (!funCtx.isEmpty)
         CAST.unsupported(s"External code cannot be specified for nested functions")
 
-      val Seq(Some(includes0), Some(code0)) = fd.extAnnotations(manual)
+      val Seq(Some(code0), Some(includes0)) = fd.extAnnotations(manual)
+      val code     = code0.asInstanceOf[String]
       val includes = includes0.asInstanceOf[String]
-      val code = code0.asInstanceOf[String]
-      debug(s"Extracted includes: $includes")
 
       // Register all the necessary includes
       includes split ':' foreach { i => registerInclude(CAST.Include(i)) }
@@ -259,7 +259,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         val manual = "cCode.typedef"
         if (cd.annotations contains manual) {
           val Seq(Some(alias0), Some(include0)) = cd.extAnnotations(manual)
-          val alias = alias0.asInstanceOf[String]
+          val alias   = alias0.asInstanceOf[String]
           val include = include0.asInstanceOf[String]
 
           val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(alias))

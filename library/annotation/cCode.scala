@@ -9,7 +9,8 @@ object cCode {
   /*
    * Allows the user to manually define the implementation for a C function.
    *
-   * `includes` can hold a colon separated list of required C99 include files.
+   * The option parameter `includes` can hold a colon separated list of
+   * required C99 include files.
    *
    * Because the actual names of the function itself and its parameters
    * might be changed by GenC, the `code` representing the C implementation
@@ -52,8 +53,8 @@ object cCode {
    */
   @ignore
   class function(
-    includes: String,
-    code: String
+    code: String,
+    includes: String = ""
   ) extends StaticAnnotation
 
   /*
