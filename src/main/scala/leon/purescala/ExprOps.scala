@@ -161,6 +161,42 @@ object ExprOps extends GenTreeOps[Expr] {
     rec(pat)
   }
 
+
+  /** Replace each node by its constructor
+    *
+    * Remap the expression by calling the corresponding constructor
+    * for each node of the expression. The constructor will perfom
+    * some local simplifications, resulting in a simplified expression.
+    */
+  def simplifyByConstructors(expr: Expr): Expr = {
+    def step(e: Expr): Option[Expr] = e match {
+      case Not(t) => Some(not(t))
+      case UMinus(t) => Some(uminus(t))
+      case BVUMinus(t) => Some(uminus(t))
+      case RealUMinus(t) => Some(uminus(t))
+      case CaseClassSelector(cd, e, sel) => Some(caseClassSelector(cd, e, sel))
+      case AsInstanceOf(e, ct) => Some(asInstOf(e, ct))
+      case Equals(t1, t2) => Some(equality(t1, t2))
+      case Implies(t1, t2) => Some(implies(t1, t2))
+      case Plus(t1, t2) => Some(plus(t1, t2))
+      case Minus(t1, t2) => Some(minus(t1, t2))
+      case Times(t1, t2) => Some(times(t1, t2))
+      case BVPlus(t1, t2) => Some(plus(t1, t2))
+      case BVMinus(t1, t2) => Some(minus(t1, t2))
+      case BVTimes(t1, t2) => Some(times(t1, t2))
+      case RealPlus(t1, t2) => Some(plus(t1, t2))
+      case RealMinus(t1, t2) => Some(minus(t1, t2))
+      case RealTimes(t1, t2) => Some(times(t1, t2))
+      case And(args) => Some(andJoin(args))
+      case Or(args) => Some(orJoin(args))
+      case Tuple(args) => Some(tupleWrap(args))
+      case MatchExpr(scrut, cases) => Some(matchExpr(scrut, cases))
+      case Passes(in, out, cases) => Some(passes(in, out, cases))
+      case _ => None
+    }
+    postMap(step)(expr)
+  }
+
   /** ATTENTION: Unused, and untested
     * rewrites pattern-matching expressions to use fresh variables for the binders
     */

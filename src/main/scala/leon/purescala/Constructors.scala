@@ -373,6 +373,15 @@ object Constructors {
     case _ => Minus(lhs, rhs)
   }
 
+  def uminus(e: Expr): Expr = e match {
+    case InfiniteIntegerLiteral(bi) if bi == 0 => e
+    case IntLiteral(0) => e
+    case InfiniteIntegerLiteral(bi) if bi < 0 => InfiniteIntegerLiteral(-bi)
+    case IsTyped(_, Int32Type) => BVUMinus(e)
+    case IsTyped(_, RealType) => RealUMinus(e)
+    case _ => UMinus(e)
+  }
+
   /** $encodingof simplified `... * ...` (times).
     * @see [[purescala.Expressions.Times Times]]
     * @see [[purescala.Expressions.BVTimes BVTimes]]
