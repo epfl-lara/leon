@@ -228,10 +228,12 @@ object Extractors {
         (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))
       ))
       case NonemptyArray(elems, Some((default, length))) =>
-        val all = elems.values.toSeq :+ default :+ length
+        val elemsSeq: Seq[(Int, Expr)] = elems.toSeq
+        val all = elemsSeq.map(_._2) :+ default :+ length
         Some((all, as => {
           val l = as.length
-          nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
+          NonemptyArray(elemsSeq.map(_._1).zip(as.take(l - 2)).toMap, 
+                        Some((as(l - 2), as(l - 1))))
         }))
       case na @ NonemptyArray(elems, None) =>
         val ArrayType(tpe) = na.getType
@@ -239,7 +241,7 @@ object Extractors {
 
         Some((
           elsOrdered,
-          es => finiteArray(indexes.zip(es).toMap, None, tpe)
+          es => NonemptyArray(indexes.zip(es).toMap, None)
         ))
       case Tuple(args) => Some((args, es => Tuple(es)))
       case IfExpr(cond, thenn, elze) => Some((
