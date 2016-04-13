@@ -10,11 +10,24 @@ import Constructors._
 
 object Extractors {
 
+  /** Operator Extractor to extract any Expression in a consistent way
+    *
+    * You can match on any Leon Expr, and then get both a Seq[Expr] of
+    * subterms and a builder fonction that take a Seq of subterm (os same
+    * length) and rebuild the original node.
+    *
+    * Those extractors do not perform any syntactic simplifications. They
+    * rebuild the node using the case class (not the constructor that perform
+    * simplifications). The rationals behind this decision is to have core
+    * tools for performing tree transformations that are very predictable, if
+    * one need to simplify the tree, it is easy to write/call a simplification
+    * function that would simply apply the constructor for each node.
+    */
   object Operator extends TreeExtractor[Expr] {
     def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {
       /* Unary operators */
       case Not(t) =>
-        Some((Seq(t), (es: Seq[Expr]) => not(es.head)))
+        Some((Seq(t), (es: Seq[Expr]) => Not(es.head)))
       case Choose(expr) =>
         Some((Seq(expr), (es: Seq[Expr]) => Choose(es.head)))
       case UMinus(t) =>
@@ -40,11 +53,11 @@ object Extractors {
       case SetCardinality(t) =>
         Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
       case CaseClassSelector(cd, e, sel) =>
-        Some((Seq(e), (es: Seq[Expr]) => caseClassSelector(cd, es.head, sel)))
+        Some((Seq(e), (es: Seq[Expr]) => CaseClassSelector(cd, es.head, sel)))
       case IsInstanceOf(e, ct) =>
         Some((Seq(e), (es: Seq[Expr]) => IsInstanceOf(es.head, ct)))
       case AsInstanceOf(e, ct) =>
-        Some((Seq(e), (es: Seq[Expr]) => asInstOf(es.head, ct)))
+        Some((Seq(e), (es: Seq[Expr]) => AsInstanceOf(es.head, ct)))
       case TupleSelect(t, i) =>
         Some((Seq(t), (es: Seq[Expr]) => TupleSelect(es.head, i)))
       case ArrayLength(a) =>
@@ -79,15 +92,15 @@ object Extractors {
         }
       ))
       case Equals(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => equality(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Equals(es(0), es(1)))
       case Implies(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => implies(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Implies(es(0), es(1)))
       case Plus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Plus(es(0), es(1)))
       case Minus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Minus(es(0), es(1)))
       case Times(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Times(es(0), es(1)))
       case Division(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => Division(es(0), es(1)))
       case Remainder(t1, t2) =>
@@ -103,11 +116,11 @@ object Extractors {
       case GreaterEquals(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => GreaterEquals(es(0), es(1)))
       case BVPlus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVPlus(es(0), es(1)))
       case BVMinus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVMinus(es(0), es(1)))
       case BVTimes(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVTimes(es(0), es(1)))
       case BVDivision(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => BVDivision(es(0), es(1)))
       case BVRemainder(t1, t2) =>
@@ -125,11 +138,11 @@ object Extractors {
       case BVLShiftRight(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => BVLShiftRight(es(0), es(1)))
       case RealPlus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => RealPlus(es(0), es(1)))
       case RealMinus(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => RealMinus(es(0), es(1)))
       case RealTimes(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+        Some(Seq(t1, t2), (es: Seq[Expr]) => RealTimes(es(0), es(1)))
       case RealDivision(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => RealDivision(es(0), es(1)))
       case StringConcat(t1, t2) =>
@@ -180,8 +193,8 @@ object Extractors {
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
       case fa @ Application(caller, args) => Some(caller +: args, as => Application(as.head, as.tail))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
-      case And(args) => Some((args, and))
-      case Or(args) => Some((args, or))
+      case And(args) => Some((args, es => And(es)))
+      case Or(args) => Some((args, es => Or(es)))
       case SubString(t1, a, b) => Some((t1::a::b::Nil, es => SubString(es(0), es(1), es(2))))
       case FiniteSet(els, base) =>
         Some((els.toSeq, els => FiniteSet(els.toSet, base)))
@@ -228,7 +241,7 @@ object Extractors {
           elsOrdered,
           es => finiteArray(indexes.zip(es).toMap, None, tpe)
         ))
-      case Tuple(args) => Some((args, tupleWrap))
+      case Tuple(args) => Some((args, es => Tuple(es)))
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
         { case Seq(c, t, e) => IfExpr(c, t, e) }
@@ -242,7 +255,7 @@ object Extractors {
             case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 2), es(i - 1))
           }
 
-          matchExpr(es.head, newcases).copiedFrom(m)
+          MatchExpr(es.head, newcases)
         }
       ))
       case Passes(in, out, cases) => Some((
@@ -255,7 +268,7 @@ object Extractors {
               case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 2), es(i - 1))
             }
 
-            passes(in, out, newcases)
+            Passes(in, out, newcases)
           }
         }
       ))
