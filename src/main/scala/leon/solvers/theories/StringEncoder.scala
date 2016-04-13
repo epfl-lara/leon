@@ -37,23 +37,23 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   }
 
   val encoder = new Encoder {
-    override def transform(e: Expr)(implicit binders: Map[Identifier, Identifier]): Expr = e match {
+    override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case StringLiteral(v)          =>
-        convertFromString(v)
+        Some(convertFromString(v))
       case StringLength(a)           =>
-        FunctionInvocation(Size, Seq(transform(a))).copiedFrom(e)
+        Some(FunctionInvocation(Size, Seq(transform(a))).copiedFrom(e))
       case StringConcat(a, b)        =>
-        FunctionInvocation(Concat, Seq(transform(a), transform(b))).copiedFrom(e)
+        Some(FunctionInvocation(Concat, Seq(transform(a), transform(b))).copiedFrom(e))
       case SubString(a, start, Plus(start2, length)) if start == start2  =>
-        FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e)
+        Some(FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e))
       case SubString(a, start, end)  => 
-        FunctionInvocation(Slice, Seq(transform(a), transform(start), transform(end))).copiedFrom(e)
-      case _ => super.transform(e)
+        Some(FunctionInvocation(Slice, Seq(transform(a), transform(start), transform(end))).copiedFrom(e))
+      case _ => None
     }
 
-    override def transform(tpe: TypeTree): TypeTree = tpe match {
-      case StringType => String
-      case _ => super.transform(tpe)
+    override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
+      case StringType => Some(String)
+      case _ => None
     }
 
     override def transform(pat: Pattern): (Pattern, Map[Identifier, Identifier]) = pat match {
@@ -68,30 +68,30 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   }
 
   val decoder = new Decoder {
-    override def transform(e: Expr)(implicit binders: Map[Identifier, Identifier]): Expr = e match {
+    override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case cc @ CaseClass(cct, args) if TypeOps.isSubtypeOf(cct, String)=>
-        StringLiteral(convertToString(cc)).copiedFrom(cc)
+        Some(StringLiteral(convertToString(cc)).copiedFrom(cc))
       case FunctionInvocation(Size, Seq(a)) =>
-        StringLength(transform(a)).copiedFrom(e)
+        Some(StringLength(transform(a)).copiedFrom(e))
       case FunctionInvocation(Concat, Seq(a, b)) =>
-        StringConcat(transform(a), transform(b)).copiedFrom(e)
+        Some(StringConcat(transform(a), transform(b)).copiedFrom(e))
       case FunctionInvocation(Slice, Seq(a, from, to)) =>
-        SubString(transform(a), transform(from), transform(to)).copiedFrom(e)
+        Some(SubString(transform(a), transform(from), transform(to)).copiedFrom(e))
       case FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(a, start)), length)) =>
         val rstart = transform(start)
-        SubString(transform(a), rstart, plus(rstart, transform(length))).copiedFrom(e)
+        Some(SubString(transform(a), rstart, plus(rstart, transform(length))).copiedFrom(e))
       case FunctionInvocation(Take, Seq(a, length)) =>
-        SubString(transform(a), InfiniteIntegerLiteral(0), transform(length)).copiedFrom(e)
+        Some(SubString(transform(a), InfiniteIntegerLiteral(0), transform(length)).copiedFrom(e))
       case FunctionInvocation(Drop, Seq(a, count)) =>
         val ra = transform(a)
-        SubString(ra, transform(count), StringLength(ra)).copiedFrom(e)
-      case _ => super.transform(e)
+        Some(SubString(ra, transform(count), StringLength(ra)).copiedFrom(e))
+      case _ => None
     }
 
 
-    override def transform(tpe: TypeTree): TypeTree = tpe match {
-      case String | StringCons | StringNil => StringType
-      case _ => super.transform(tpe)
+    override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
+      case String | StringCons | StringNil => Some(StringType)
+      case _ => None
     }
 
     override def transform(pat: Pattern): (Pattern, Map[Identifier, Identifier]) = pat match {

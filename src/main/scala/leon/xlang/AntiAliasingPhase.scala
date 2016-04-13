@@ -43,9 +43,9 @@ object AntiAliasingPhase extends TransformationPhase {
     //  p._1.fields.zip(p._2.fields).filter(pvd => pvd._1.id != pvd._2).map(p => (p._1.id, p._2.id))
     //}).toMap
     val transformer = new DefinitionTransformer {
-      override def transform(tpe: TypeTree): TypeTree = tpe match {
-        case (ft: FunctionType) => makeFunctionTypeExplicit(ft)
-        case _ => super.transform(tpe)
+      override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
+        case (ft: FunctionType) => Some(makeFunctionTypeExplicit(ft))
+        case _ => None
       }
       //override def transformClassDef(cd: ClassDef): Option[ClassDef] = ccdBijection.getB(cd)
     }

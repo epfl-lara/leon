@@ -316,14 +316,16 @@ object DefOps {
     val fdMap = new utils.Bijection[FunDef    , FunDef    ]
 
     val transformer = new DefinitionTransformer(idMap, fdMap, cdMap) {
-      override def transform(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = expr match {
+      override def transformExpr(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = expr match {
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-          val nfi = fiMapF(fi, transform(fd)) getOrElse expr
-          super.transform(nfi)
+          fiMapF(fi, transform(fd))
+          //val nfi = fiMapF(fi, transform(fd)) getOrElse expr
+          //Some(super.transform(nfi))
         case cc @ CaseClass(cct, args) =>
-          val ncc = ciMapF(cc, transform(cct).asInstanceOf[CaseClassType]) getOrElse expr
-          super.transform(ncc)
-        case _ => super.transform(expr)
+          ciMapF(cc, transform(cct).asInstanceOf[CaseClassType])
+          //val ncc = ciMapF(cc, transform(cct).asInstanceOf[CaseClassType]) getOrElse expr
+          //Some(super.transform(ncc))
+        case _ => None
       }
 
       override def transformFunDef(fd: FunDef): Option[FunDef] = fdMapF(fd)
