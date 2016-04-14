@@ -318,14 +318,23 @@ object DefOps {
     val transformer = new DefinitionTransformer(idMap, fdMap, cdMap) {
       override def transformExpr(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = expr match {
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-          fiMapF(fi, transform(fd))
+          val transformFd = transform(fd)
+          if(transformFd != fd)
+            fiMapF(fi, transformFd)
+          else
+            None
           //val nfi = fiMapF(fi, transform(fd)) getOrElse expr
           //Some(super.transform(nfi))
         case cc @ CaseClass(cct, args) =>
-          ciMapF(cc, transform(cct).asInstanceOf[CaseClassType])
+          val transformCct = transform(cct).asInstanceOf[CaseClassType]
+          if(transformCct != cct)
+            ciMapF(cc, transformCct)
+          else
+            None
           //val ncc = ciMapF(cc, transform(cct).asInstanceOf[CaseClassType]) getOrElse expr
           //Some(super.transform(ncc))
-        case _ => None
+        case _ =>
+          None
       }
 
       override def transformFunDef(fd: FunDef): Option[FunDef] = fdMapF(fd)
