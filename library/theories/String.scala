@@ -36,7 +36,8 @@ object String {
   def fromChar(i: Char): String = {
     StringCons(i, StringNil())
   }
-  
+
+  @isabelle.noBody()
   def fromBigInt(i: BigInt): String =
     if(i < 0) StringCons('-', fromBigInt(-i))
     else if(i == BigInt(0)) StringCons('0', StringNil())
@@ -51,6 +52,7 @@ object String {
     else if(i == BigInt(9)) StringCons('9', StringNil())   
     else fromBigInt(i / 10).concat(fromBigInt(i % 10))
 
+  @isabelle.noBody()
   def fromInt(i: Int): String = i match {
     case -2147483648 => StringCons('-', StringCons('2', fromInt(147483648)))
     case i  if i < 0 => StringCons('-', fromInt(-i))
