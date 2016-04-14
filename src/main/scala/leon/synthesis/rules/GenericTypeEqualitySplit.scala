@@ -26,11 +26,12 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
       case _ => Set()
     }
 
-    val TopLevelAnds(as) = and(p.pc, p.phi)
+    val facts: Set[Set[Identifier]] = {
+      val TopLevelAnds(as) = andJoin(p.pc.conditions :+ p.phi)
+      as.toSet.flatMap(getFacts)
+    }
 
-    val facts = as.flatMap(getFacts).toSet
-
-    val candidates = p.as.combinations(2).collect {
+    val candidates = p.allAs.combinations(2).collect {
       case List(IsTyped(a1, TypeParameter(t1)), IsTyped(a2, TypeParameter(t2)))
         if t1 == t2 && !facts(Set(a1, a2)) =>
         (a1, a2)
@@ -42,12 +43,12 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
         val v2 = Variable(a2)
         val subProblems = List(
           p.copy(as  = p.as.diff(Seq(a1)),
-                 pc  = subst(a1 -> v2, p.pc),
+                 pc  = p.pc map (subst(a1 -> v2, _)),
                  ws  = subst(a1 -> v2, p.ws),
                  phi = subst(a1 -> v2, p.phi),
                  eb  = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))),
 
-          p.copy(pc = and(p.pc, not(Equals(v1, v2))),
+          p.copy(pc = p.pc withCond not(Equals(v1, v2)),
                  eb = p.qeb.filterIns(not(Equals(v1, v2))))
         )
 

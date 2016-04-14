@@ -22,17 +22,14 @@ case object ADTSplit extends Rule("ADT Split.") {
     // don't want to split on two variables for which only one split
     // alternative is viable. This should be much less expensive than making
     //  calls to a solver for each pair.
-    var facts = Map[Identifier, CaseClassType]()
-
-    def addFacts(e: Expr): Unit = e match {
-      case Equals(Variable(a), CaseClass(cct, _))         => facts += a -> cct
-      case IsInstanceOf(Variable(a), cct: CaseClassType)  => facts += a -> cct
-      case _ =>
-    }
-
-    val TopLevelAnds(as) = and(p.pc, p.phi)
-    for (e <- as) {
-      addFacts(e)
+    val facts: Map[Identifier, CaseClassType] = {
+      val TopLevelAnds(as) = andJoin(p.pc.conditions :+ p.phi)
+      val instChecks: Seq[(Identifier, CaseClassType)] = as.collect {
+        case IsInstanceOf(Variable(a), cct: CaseClassType) => a -> cct
+        case Equals(Variable(a), CaseClass(cct, _))        => a -> cct
+      }
+      val boundCcs = p.pc.bindings.collect { case (id, CaseClass(cct, _)) => id -> cct }
+      instChecks.toMap ++ boundCcs
     }
 
     val candidates = p.as.collect {
@@ -74,7 +71,7 @@ case object ADTSplit extends Rule("ADT Split.") {
           val whole =  CaseClass(cct, args.map(Variable))
 
           val subPhi = subst(id -> whole, p.phi)
-          val subPC  = subst(id -> whole, p.pc)
+          val subPC  = p.pc map (subst(id -> whole, _))
           val subWS  = subst(id -> whole, p.ws)
 
           val eb2 = p.qeb.mapIns { inInfo =>

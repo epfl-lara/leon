@@ -5,6 +5,7 @@ package synthesis
 package rules
 
 import evaluators.DefaultEvaluator
+import purescala.Path
 import purescala.Definitions.Program
 import purescala.Extractors.TopLevelAnds
 import purescala.Expressions._
@@ -25,8 +26,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val TopLevelAnds(pcs) = p.pc
-    val existingCalls = pcs.collect { case Equals(_, fi: FunctionInvocation) => fi }.toSet
+    val existingCalls = p.pc.bindings.collect { case (_, fi: FunctionInvocation) => fi }.toSet
 
     val calls = terminatingCalls(hctx.program, p.ws, p.pc, None, false)
       .map(_._1).distinct.filterNot(existingCalls)
@@ -35,22 +35,23 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
 
     val specifyCalls = hctx.findOptionOrDefault(SynthesisPhase.optSpecifyRecCalls)
 
-    val (recs, posts) = calls.map { newCall =>
+    val recs = calls.map { newCall =>
       val rec = FreshIdentifier("rec", newCall.getType, alwaysShowUniqueID = true)
 
       // Assume the postcondition of recursive call
-      val post = if (specifyCalls) {
-        Equals(rec.toVariable, newCall)
+      val (bound, path) = if (specifyCalls) {
+        (true, Path.empty withBinding (rec -> newCall))
       } else {
-        application(
+        (false, Path(application(
           newCall.tfd.withParamSubst(newCall.args, newCall.tfd.postOrTrue),
           Seq(rec.toVariable)
-        )
+        )))
       }
-      (rec, post)
-    }.unzip
 
-    val onSuccess = forwardMap(letTuple(recs, tupleWrap(calls), _))
+      (rec, bound, path)
+    }
+
+    val onSuccess = forwardMap(letTuple(recs.map(_._1), tupleWrap(calls), _))
 
     List(new RuleInstantiation(s"Introduce recursive calls ${calls mkString ", "}", SolutionBuilderDecomp(List(p.outType), onSuccess)) {
 
@@ -82,8 +83,8 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
         val TopLevelAnds(ws) = p.ws
         try {
           val newProblem = p.copy(
-            as = p.as ++ recs,
-            pc = andJoin(p.pc +: posts),
+            as = p.as ++ recs.collect { case (r, false, _) => r },
+            pc = recs.map(_._3).foldLeft(p.pc)(_ merge _),
             ws = andJoin(ws ++ newWs),
             eb = p.eb.map(mapExample)
           )

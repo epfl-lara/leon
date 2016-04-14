@@ -31,8 +31,8 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           var predicates: Seq[Expr]           = Seq()
 
           while (result.isEmpty && i < maxTries && continue) {
-            val phi = andJoin(p.pc +: p.phi +: predicates)
-            val notPhi = andJoin(p.pc +: not(p.phi) +: predicates)
+            val phi = p.pc and andJoin(p.phi +: predicates)
+            val notPhi = p.pc and andJoin(not(p.phi) +: predicates)
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>

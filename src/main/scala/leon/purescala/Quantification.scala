@@ -54,7 +54,7 @@ object Quantification {
     res.filter(ms => ms.forall(m => reverseMap(m) subsetOf ms))
   }
 
-  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Expr, Expr, Seq[Expr])]] = {
+  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Path, Expr, Seq[Expr])]] = {
     object QMatcher {
       def unapply(e: Expr): Option[(Expr, Seq[Expr])] = e match {
         case QuantificationMatcher(expr, args) =>
@@ -71,8 +71,8 @@ object Quantification {
     val matchers = allMatchers.map { case ((caller, args), path) => (path, caller, args) }.toSet
 
     extractQuorums(matchers, quantified,
-      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
-      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
+      (p: (Path, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
+      (p: (Path, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
   }
 
   object Domains {

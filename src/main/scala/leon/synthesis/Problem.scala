@@ -3,6 +3,7 @@
 package leon
 package synthesis
 
+import purescala.Path
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
@@ -21,18 +22,20 @@ import Witnesses._
   * @param phi The formula on `as` and `xs` to satisfy
   * @param xs The list of output identifiers for which we want to compute a function
   */
-case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
+case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
 
   def inType  = tupleTypeWrap(as.map(_.getType))
   def outType = tupleTypeWrap(xs.map(_.getType))
 
+  def allAs = as ++ pc.bindings.map(_._1)
+
   def asString(implicit ctx: LeonContext): String = {
-    val pcws = and(ws, pc)
+    val pcws = pc withCond ws
 
     val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
 
     s"""|⟦  ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
-        |   ${pcws.asString} ≺
+        |   ${pcws.toClause.asString} ≺
         |   ⟨ ${phi.asString} ⟩ 
         |   ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
         |⟧  $ebInfo""".stripMargin
@@ -51,7 +54,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
 object Problem {
   def fromSpec(
     spec: Expr,
-    pc: Expr = BooleanLiteral(true),
+    pc: Path = Path.empty,
     eb: ExamplesBank = ExamplesBank.empty,
     fd: Option[FunDef] = None
   ): Problem = {
@@ -61,7 +64,7 @@ object Problem {
     }.toList
 
     val phi = application(simplifyLets(spec), xs map { _.toVariable})
-    val as = (variablesOf(And(pc, phi)) -- xs).toList.sortBy(_.name)
+    val as = (variablesOf(phi) ++ pc.variables -- xs).toList.sortBy(_.name)
 
     val sortedAs = fd match {
       case None => as
@@ -70,14 +73,12 @@ object Problem {
         as.sortBy(a => argsIndex(a))
     }
 
-    val TopLevelAnds(clauses) = pc
-
-    val (pcs, wss) = clauses.partition {
-      case w : Witness => false
+    val (pcs, wss) = pc.partition {
+      case w: Witness => false
       case _ => true
     }
 
-    Problem(sortedAs, andJoin(wss), andJoin(pcs), phi, xs, eb)
+    Problem(sortedAs, andJoin(wss), pcs, phi, xs, eb)
   }
 
 }

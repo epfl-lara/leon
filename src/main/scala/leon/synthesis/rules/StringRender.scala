@@ -229,7 +229,7 @@ case object StringRender extends Rule("StringRender") {
             val term = ExprOps.simplifyString(ExprOps.replaceFromIDs(initMap ++ assignment.mapValues(StringLiteral), singleTemplate))
             val (finalTerm, finalDefs) = makeFunctionsUnique(term, fds.toSet)
             
-            Solution(pre=p.pc, defs=finalDefs, term=finalTerm)
+            Solution(BooleanLiteral(true), finalDefs, finalTerm)
           })
     }
   }

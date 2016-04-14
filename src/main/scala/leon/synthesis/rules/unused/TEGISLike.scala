@@ -36,15 +36,15 @@ abstract class TEGISLike(name: String) extends Rule(name) {
         val params = getParams(hctx, p)
         val grammar = params.grammar
 
-        val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
+        val nTests = if (p.pc.isEmpty) 50 else 20
 
         val useVanuatoo = hctx.settings.cegisUseVanuatoo
 
         val inputGenerator: Iterator[Seq[Expr]] = if (useVanuatoo) {
-          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc, nTests, 3000)
+          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000)
         } else {
           val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000)
         }
 
         val gi = new GrowableIterable[Seq[Expr]](p.eb.examples.map(_.ins).distinct, inputGenerator)

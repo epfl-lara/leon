@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules.unused
 
+import purescala.Path
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Extractors._
@@ -56,7 +57,7 @@ case object ADTInduction extends Rule("ADT Induction") {
 
         // Transformation of conditions, variables and axioms to use the inner variables of the inductive function.
         val innerPhi = substAll(substMap, p.phi)
-        val innerPC  = substAll(substMap, p.pc)
+        val innerPC  = p.pc map (substAll(substMap, _))
         val innerWS  = substAll(substMap, p.ws)
 
         val subProblemsInfo = for (cct <- ct.knownCCDescendants) yield {
@@ -80,12 +81,12 @@ case object ADTInduction extends Rule("ADT Induction") {
           }).flatten
 
           val subPhi = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerPhi)
-          val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerPC)
+          val subPC  = innerPC map (substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), _))
           val subWS  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerWS)
 
           val subPre = IsInstanceOf(Variable(origId), cct)
 
-          val subProblem = Problem(inputs ::: residualArgs, subWS, andJoin(subPC :: postFs), subPhi, p.xs)
+          val subProblem = Problem(inputs ::: residualArgs, subWS, subPC withConds postFs, subPhi, p.xs)
 
           (subProblem, subPre, cct, newIds, recCalls)
         }
@@ -111,17 +112,18 @@ case object ADTInduction extends Rule("ADT Induction") {
               // might only have to enforce it on solutions of base cases.
               None
             } else {
-              val funPre = substAll(substMap, and(p.pc, orJoin(globalPre)))
+              val outerPre = orJoin(globalPre)
+              val funPre = p.pc withCond outerPre map (substAll(substMap, _))
               val funPost = substAll(substMap, p.phi)
               val idPost = FreshIdentifier("res", resType)
 
-              newFun.precondition = Some(funPre)
+              newFun.precondition = funPre
               newFun.postcondition = Some(Lambda(Seq(ValDef(idPost)), letTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
               newFun.body = Some(matchExpr(Variable(inductOn), cases))
 
-              Some(Solution(orJoin(globalPre),
-                            sols.flatMap(_.defs).toSet+newFun,
+              Some(Solution(outerPre,
+                            sols.flatMap(_.defs).toSet + newFun,
                             FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable)),
                             sols.forall(_.isTrusted)
                           ))

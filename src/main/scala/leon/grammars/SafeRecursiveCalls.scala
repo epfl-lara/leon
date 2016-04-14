@@ -3,6 +3,7 @@
 package leon
 package grammars
 
+import purescala.Path
 import purescala.Types._
 import purescala.Definitions._
 import purescala.ExprOps._
@@ -14,7 +15,7 @@ import synthesis.utils.Helpers._
   * @param ws An expression that contains the known set [[synthesis.Witnesses.Terminating]] expressions
   * @param pc The path condition for the generated [[Expr]] by this grammar
   */
-case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Expr) extends SimpleExpressionGrammar {
+case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path) extends SimpleExpressionGrammar {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
     val calls = terminatingCalls(prog,ws, pc, Some(t), true)
 

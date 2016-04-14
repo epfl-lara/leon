@@ -32,6 +32,7 @@ object FunctionClosure extends TransformationPhase {
         case LetDef(fd1, body) => fd1.filter(funDefs)
       }(fd.fullBody)
     }
+
     val nestedWithPaths = (for((fds, path) <- nestedWithPathsFull; fd <- fds) yield (fd, path)).toMap
     val nestedFuns = nestedWithPaths.keys.toSeq
 
@@ -39,24 +40,26 @@ object FunctionClosure extends TransformationPhase {
     val callGraph: Map[FunDef, Set[FunDef]] = transitiveClosure(
       nestedFuns.map { f =>
         val calls = functionCallsOf(f.fullBody) collect {
-          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) =>
-            fd
+          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) => fd
         }
-        val pcCalls = functionCallsOf(nestedWithPaths(f)) collect {
-          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) =>
-            fd
+
+        val pcCalls = functionCallsOf(nestedWithPaths(f).fullClause) collect {
+          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) => fd
         }
+
         f -> (calls ++ pcCalls)
       }.toMap
     )
     //println("nested funs: " + nestedFuns)
     //println("call graph: " + callGraph)
 
-    def freeVars(fd: FunDef): Set[Identifier] = variablesOf(fd.fullBody) -- fd.paramIds
+    def freeVars(fd: FunDef, pc: Path): Set[Identifier] =
+      variablesOf(fd.fullBody) ++ pc.variables -- fd.paramIds -- pc.bindings.map(_._1)
 
     // All free variables one should include.
     // Contains free vars of the function itself plus of all transitively called functions.
     // also contains free vars from PC if the PC is relevant to the fundef
+    /*
     val transFree = {
       def step(current: Map[FunDef, Set[Identifier]]): Map[FunDef, Set[Identifier]] = {
         nestedFuns.map(fd => {
@@ -69,9 +72,17 @@ object FunctionClosure extends TransformationPhase {
           (fd, transFreeVars ++ reqPaths.flatMap(p => variablesOf(p)) -- fd.paramIds)
         }).toMap
       }
+
       utils.fixpoint(step, -1)(nestedFuns.map(fd => (fd, freeVars(fd))).toMap)
     }.map(p => (p._1, p._2.toSeq))
+    */
     //println("free vars: " + transFree)
+
+    // All free variables one should include.
+    // Contains free vars of the function itself plus of all transitively called functions.
+    val transFree = nestedFuns.map { fd =>
+      fd -> (callGraph(fd) + fd).flatMap( (fd2: FunDef) => freeVars(fd2, nestedWithPaths(fd2)) ).toSeq
+    }.toMap
 
     // Closed functions along with a map (old var -> new var).
     val closed = nestedWithPaths.map {
@@ -97,7 +108,7 @@ object FunctionClosure extends TransformationPhase {
     (dummySubst +: closed.values.toSeq).foreach {
       case FunSubst(f, callerMap, callerTMap) =>
         f.fullBody = preMap {
-          case fi@FunctionInvocation(tfd, args) if closed contains tfd.fd =>
+          case fi @ FunctionInvocation(tfd, args) if closed contains tfd.fd =>
             val FunSubst(newCallee, calleeMap, calleeTMap) = closed(tfd.fd)
 
             // This needs some explanation.
@@ -141,7 +152,7 @@ object FunctionClosure extends TransformationPhase {
   )
 
   // Takes one inner function and closes it. 
-  private def closeFd(inner: FunDef, outer: FunDef, pc: Expr, free: Seq[Identifier]): FunSubst = {
+  private def closeFd(inner: FunDef, outer: FunDef, pc: Path, free: Seq[Identifier]): FunSubst = {
 
     val tpFresh = outer.tparams map { _.freshen }
     val tparamsMap = outer.tparams.zip(tpFresh map {_.tp}).toMap
@@ -155,16 +166,15 @@ object FunctionClosure extends TransformationPhase {
       freshVals.map(ValDef(_)),
       instantiateType(inner.returnType, tparamsMap)
     )
-    newFd.precondition = Some(and(pc, inner.precOrTrue))
 
     val instBody = instantiateType(
-      newFd.fullBody,
+      withPath(newFd.fullBody, pc),
       tparamsMap,
       freeMap
     )
 
     newFd.fullBody = preMap {
-      case fi@FunctionInvocation(tfd, args) if tfd.fd == inner =>
+      case fi @ FunctionInvocation(tfd, args) if tfd.fd == inner =>
         Some(FunctionInvocation(
           newFd.typed(tfd.tps ++ tpFresh.map{ _.tp }),
           args ++ freshVals.drop(args.length).map(Variable)

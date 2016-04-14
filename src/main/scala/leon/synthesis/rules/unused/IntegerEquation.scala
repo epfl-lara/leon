@@ -56,7 +56,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
         if(normalizedEq.size == 1) {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
-          val newProblem = Problem(problem.as, problem.ws, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
+          val newProblem = Problem(problem.as, problem.ws, problem.pc withCond eqPre, andJoin(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(s @ Solution(pre, defs, term)) =>
@@ -80,7 +80,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           var freshInputVariables: List[Identifier] = Nil
           var equivalenceConstraints: Map[Expr, Expr] = Map()
           val freshFormula = simplePreTransform({
-            case d@Division(_, _) => {
+            case d @ Division(_, _) => {
               assert(variablesOf(d).intersect(problem.xs.toSet).isEmpty)
               val newVar = FreshIdentifier("d", Int32Type, true) 
               freshInputVariables ::= newVar
@@ -93,7 +93,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, and(eqPre, problem.pc), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, problem.pc withCond eqPre, freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(s @ Solution(pre, defs, term)) => {
@@ -113,7 +113,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
           if (subproblemxs.isEmpty) {
             // we directly solve
-            List(solve(onSuccess(List(Solution(and(eqPre, problem.pc), Set(), UnitLiteral()))).get))
+            List(solve(onSuccess(List(Solution((problem.pc withCond eqPre).toClause, Set(), UnitLiteral()))).get))
           } else {
             List(decomp(List(newProblem), onSuccess, this.name))
           }

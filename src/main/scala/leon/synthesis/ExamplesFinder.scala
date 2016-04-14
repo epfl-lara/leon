@@ -78,7 +78,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   
   /** Extract examples from the passes found in expression */
   def extractFromProblem(p: Problem): ExamplesBank = {
-    val testClusters = extractTestsOf(and(p.pc, p.phi))
+    val testClusters = extractTestsOf(p.pc and p.phi)
 
     // Finally, we keep complete tests covering all as++xs
     val allIds  = (p.as ++ p.xs).toSet
@@ -102,9 +102,9 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       if(this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
       val (mapping, cond) = ex match {
         case io: InOutExample =>
-          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), And(p.pc, p.phi))
+          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), p.pc and p.phi)
         case i =>
-          ((p.as zip i.ins).toMap, p.pc)
+          ((p.as zip i.ins).toMap, p.pc.toClause)
       }
 
       evaluator.eval(cond, mapping) match {

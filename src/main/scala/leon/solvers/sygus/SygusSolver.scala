@@ -59,7 +59,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
 
     val synthPhi = replaceFromIDs(xToFdCall, p.phi)
 
-    val constraint = implies(p.pc, synthPhi)
+    val constraint = p.pc implies synthPhi
 
     emit(FunctionApplication(constraintId, Seq(toSMT(constraint)(bindings))))
 

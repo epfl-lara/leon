@@ -69,7 +69,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
           val (newIds, expr, tMap) = decompose(a)
 
           subProblem = subst(a -> expr, subProblem)
-          subPc      = subst(a -> expr, subPc)
+          subPc      = subPc map (subst(a -> expr, _))
           subWs      = subst(a -> expr, subWs)
           revMap     += expr -> Variable(a)
           hints      +:= Hint(expr)

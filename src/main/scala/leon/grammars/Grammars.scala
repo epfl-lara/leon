@@ -27,7 +27,7 @@ object Grammars {
   def default(sctx: SynthesisContext, p: Problem, extraHints: Seq[Expr] = Seq()): ExpressionGrammar = {
     val TopLevelAnds(ws) = p.ws
     val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
-    default(sctx.program, p.as.map(_.toVariable) ++ hints ++ extraHints, sctx.functionContext, sctx.settings.functionsToIgnore)
+    default(sctx.program, p.allAs.map(_.toVariable) ++ hints ++ extraHints, sctx.functionContext, sctx.settings.functionsToIgnore)
   }
 
   def similarTo(e: Expr, base: ExpressionGrammar) = {

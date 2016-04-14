@@ -330,7 +330,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
        */
       private def outerExprToInnerExpr(e: Expr): Expr = outerToInner.transform(e)(Map.empty)
 
-      private val innerPc  = outerExprToInnerExpr(p.pc)
+      private val innerPc  = p.pc map outerExprToInnerExpr
       private val innerPhi = outerExprToInnerExpr(p.phi)
 
       // The program with the c-tree functions
@@ -453,11 +453,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         timers.testForProgram.start()
         val res = ex match {
           case InExample(ins) =>
-            evaluator.eval(cnstr, p.as.zip(ins).toMap)
+            evaluator.eval(cnstr, p.as.zip(ins).toMap ++ p.pc.bindings)
 
           case InOutExample(ins, outs) =>
             val eq = equality(innerSol, tupleWrap(outs))
-            evaluator.eval(eq, p.as.zip(ins).toMap)
+            evaluator.eval(eq, p.as.zip(ins).toMap ++ p.pc.bindings)
         }
         timers.testForProgram.stop()
 
@@ -521,7 +521,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           //println(innerProgram)
           cTreeFd.fullBody = innerSol
 
-          val cnstr = and(innerPc, letTuple(p.xs, innerSol, Not(innerPhi)))
+          val cnstr = innerPc and letTuple(p.xs, innerSol, Not(innerPhi))
 
           val eval = new DefaultEvaluator(hctx, innerProgram)
 
@@ -625,7 +625,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         //println("-"*80)
         //println(programCTree.asString)
 
-        val toFind = and(innerPc, cnstr)
+        val toFind = innerPc and cnstr
         //println(" --- Constraints ---")
         //println(" - "+toFind.asString)
         try {
@@ -699,8 +699,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         try {
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
-          solver.assertCnstr(innerPc)
-          solver.assertCnstr(Not(cnstr))
+          solver.assertCnstr(innerPc and not(cnstr))
 
           //println("*"*80)
           //println(Not(cnstr))
@@ -749,7 +748,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           val solverf = hctx.solverFactory
           val solver  = solverf.getNewSolver().setTimeout(exSolverTo)
 
-          solver.assertCnstr(p.pc)
+          solver.assertCnstr(p.pc.toClause)
 
           try {
             solver.check match {
@@ -791,15 +790,16 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             case FunctionInvocation(tfd, _) if tfd.fd == hctx.functionContext => true
             case Choose(_) => true
             case _ => false
-          }(p.pc)
+          }(p.pc.toClause)
+
           if (complicated) {
             Iterator()
           } else {
             if (useVanuatoo) {
-              new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc, nTests, 3000).map(InExample)
+              new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
             } else {
               val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
-              new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000).map(InExample)
+              new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
             }
           }
         }

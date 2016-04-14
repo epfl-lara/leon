@@ -173,7 +173,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     try {
       super.assertCnstr(expression)
     } catch {
-      case _: Unsupported =>
+      case u: Unsupported =>
         addError()
     }
   }

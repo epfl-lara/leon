@@ -68,12 +68,12 @@ case object IndependentSplit extends NormalizingRule("IndependentSplit") {
 
     /**** Phase 2 ****/
 
-    val TopLevelAnds(clauses) = and(newP.pc, newP.phi)
+    val TopLevelAnds(clauses) = andJoin(newP.pc.conditions :+ newP.phi)
 
     var independentClasses = Set[Set[Identifier]]()
 
     // We group connect variables together
-    for(c <- clauses) {
+    for (c <- clauses) {
       val vs = variablesOf(c)
 
       var newClasses = Set[Set[Identifier]]()
