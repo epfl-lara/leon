@@ -23,7 +23,7 @@ object FunctionClosure extends TransformationPhase {
     * The strategy is as follows: Remove one layer of nested FunDef's, then call
     * close recursively on the new functions.
     */
-  private def close(fd: FunDef): Seq[FunDef] = { 
+  def close(fd: FunDef): Seq[FunDef] = {
 
     // Directly nested functions with their p.c.
     val nestedWithPathsFull = {
