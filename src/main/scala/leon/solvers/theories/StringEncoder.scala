@@ -22,6 +22,12 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   val Drop   = p.library.lookupUnique[FunDef]("leon.theories.String.drop").typed
   val Slice  = p.library.lookupUnique[FunDef]("leon.theories.String.slice").typed
   val Concat = p.library.lookupUnique[FunDef]("leon.theories.String.concat").typed
+  
+  val FromInt      = p.library.lookupUnique[FunDef]("leon.theories.String.fromInt").typed
+  val FromChar     = p.library.lookupUnique[FunDef]("leon.theories.String.fromChar").typed
+  val FromBoolean  = p.library.lookupUnique[FunDef]("leon.theories.String.fromBoolean").typed
+  val FromBigInt   = p.library.lookupUnique[FunDef]("leon.theories.String.fromBigInt").typed
+  
 
   private val stringBijection = new Bijection[String, Expr]()
   
@@ -48,6 +54,14 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
         Some(FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e))
       case SubString(a, start, end)  => 
         Some(FunctionInvocation(Slice, Seq(transform(a), transform(start), transform(end))).copiedFrom(e))
+      case Int32ToString(a) => 
+        Some(FunctionInvocation(FromInt, Seq(transform(a))).copiedFrom(e))
+      case IntegerToString(a) =>
+        Some(FunctionInvocation(FromBigInt, Seq(transform(a))).copiedFrom(e))
+      case CharToString(a) =>
+        Some(FunctionInvocation(FromChar, Seq(transform(a))).copiedFrom(e))
+      case BooleanToString(a) =>
+        Some(FunctionInvocation(FromBoolean, Seq(transform(a))).copiedFrom(e))
       case _ => None
     }
 
@@ -85,6 +99,14 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
       case FunctionInvocation(Drop, Seq(a, count)) =>
         val ra = transform(a)
         Some(SubString(ra, transform(count), StringLength(ra)).copiedFrom(e))
+      case FunctionInvocation(FromInt, Seq(a)) =>
+        Some(Int32ToString(transform(a)).copiedFrom(e))
+      case FunctionInvocation(FromBigInt, Seq(a)) =>
+        Some(IntegerToString(transform(a)).copiedFrom(e))
+      case FunctionInvocation(FromChar, Seq(a)) =>
+        Some(CharToString(transform(a)).copiedFrom(e))
+      case FunctionInvocation(FromBoolean, Seq(a)) =>
+        Some(BooleanToString(transform(a)).copiedFrom(e))
       case _ => None
     }
 
