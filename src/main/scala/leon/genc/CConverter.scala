@@ -23,7 +23,15 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       ctx.reporter.fatalError(pos, msg)
   }
 
-  // Global data: keep track of the custom types and function of the input program
+  // Initially, only the main unit is processed but if it has dependencies in other
+  // units, they will be processed as well (and their dependencies as well). However,
+  // due to the state of the converter (e.g. function context) we don't do it recursively
+  // but iteratively until all required units have been processed.
+  // See markUnitForProcessing and processRequiredUnits.
+  private var unitsToProcess = Set[UnitDef]()
+  private var processedUnits = Set[UnitDef]()
+
+  // Global data: keep track of the custom types and functions of the input program
   // Using sequences and not sets to keep track of order/dependencies
   private var typedefs  = Seq[CAST.TypeDef]()
   private var structs   = Seq[CAST.Struct]()
@@ -39,13 +47,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   private def registerInclude(incl: CAST.Include) {
     includes = includes + incl
-    debug(s"Registering include: ${incl.file}")
   }
 
   private def registerTypedef(typedef: CAST.TypeDef) {
     if (!typedefs.contains(typedef)) {
       typedefs = typedefs :+ typedef
-      debug(s"New typedef registered: ${typedef.orig} -> ${typedef.alias}")
     }
   }
 
@@ -54,7 +60,6 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     // is not cached and need to be reconstructed several time if necessary
     if (!structs.contains(typ)) {
       structs = structs :+ typ
-      debug(s"New type registered: $typ")
     }
   }
 
@@ -91,16 +96,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   private def convertToProg(prog: Program): CAST.Prog = {
     // Print some debug information about the program's units
-    debug(s"Input units are:")
-    prog.units foreach { u =>
-      debug(
-        "\t" + (if (u.isMainUnit) "*" else "") +
-        u.id.toString +
-        u.imports.mkString(" -> imports [", ", ", "]")
-      )
-    }
+    val unitNames = prog.units map { u => (if (u.isMainUnit) "*" else "") + u.id }
+    debug(s"Input units are: " + unitNames.mkString(", "))
 
-    // Only process the main unit
     val (mainUnits, _) = prog.units partition { _.isMainUnit }
 
     if (mainUnits.size == 0) fatalError("No main unit in the program")
@@ -108,27 +106,57 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     val mainUnit = mainUnits.head
 
-    debug(s"Converting the main unit:\n$mainUnit")
-    collectSymbols(mainUnit)
+    // Start by processing the main unit
+    // Additional units are processed only if a function from the unit is used
+    markUnitForProcessing(mainUnit)
+    processRequiredUnits()
 
     CAST.Prog(includes, structs, typedefs, functions)
   }
 
+  // Mark a given unit as dependency
+  private def markUnitForProcessing(unit: UnitDef) {
+    if (!processedUnits.contains(unit)) {
+      unitsToProcess = unitsToProcess + unit
+    }
+  }
+
+  // Process units until dependency list is empty
+  private def processRequiredUnits() {
+    while (!unitsToProcess.isEmpty) {
+      // Take any unit from the dependency list
+      val unit = unitsToProcess.head
+      unitsToProcess = unitsToProcess - unit
+
+      // Mark it as processed before processing it to prevent infinite loop
+      processedUnits = processedUnits + unit
+      collectSymbols(unit)
+    }
+  }
+
   // Look for function and structure definitions
   private def collectSymbols(unit: UnitDef) {
+    debug(s"Converting unit ${unit.id} which tree is:\n$unit")
+
     implicit val defaultFunCtx = emptyFunCtx
 
-    unit.defs.foreach {
-      case ModuleDef(_, funDefs, _) =>
-        funDefs.foreach {
-          case fd: FunDef       => convertToFun(fd)  // the function,
-          case cc: CaseClassDef => convertToType(cc) // the type declaration or the typedef
-                                                     // get registered here
+    // Note that functions, type declarations or typedefs are registered in convertTo*
+    unit.defs foreach {
+      case ModuleDef(id, defs, _) =>
+        defs foreach {
+          case fd: FunDef       => convertToFun(fd)
+          case cc: CaseClassDef => convertToType(cc)
 
-          case x => internalError(s"Unknown function definition $x: ${x.getClass}")
+          case x =>
+            val prefix = s"[unit = ${unit.id}, module = $id]"
+            internalError(s"$prefix Unexpected definition $x: ${x.getClass}")
         }
 
-      case x => internalError(s"Unexpected definition $x instead of a ModuleDef")
+      case cc: CaseClassDef => convertToType(cc)
+
+      case x =>
+        val prefix = s"[unit = ${unit.id}]"
+        internalError(s"Unexpected definition $x: ${x.getClass}")
     }
   }
 
@@ -181,7 +209,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   private def convertToFun(fd: FunDef)(implicit funCtx: FunCtx) = {
     implicit val pos = fd.getPos
 
-    debug(s"Converting function ${fd.id.uniqueName}")
+    debug(s"Converting function ${fd.id.uniqueName} with annotations: ${fd.annotations}")
 
     // Forbid return of array as they are allocated on the stack
     if (containsArrayType(fd.returnType))
@@ -200,8 +228,6 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     // Two main cases to handle for body extraction:
     //  - either the function is defined in Scala, or
     //  - the user provided a C code to use instead
-
-    debug(s"Processing ${fd.id} with annotations: ${fd.annotations}")
 
     val manual = "cCode.function"
     val body = if (fd.annotations contains manual) {
@@ -516,9 +542,16 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         }
 
       case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
+        // Make sure the called function will be defined at some point
         val funName = fd.id.uniqueName
-        if (!functions.find{ _.id.name == funName }.isDefined)
-          debug(s"\tWARNING $funName was not defined yet.")
+        if (!functions.find{ _.id.name == funName }.isDefined) {
+          val uOpt = prog.units find { _ containsDef fd }
+          val u = uOpt getOrElse { internalError(s"Function $funName was defined nowere!") }
+
+          debug(s"\t$funName is define in unit ${u.id}")
+
+          markUnitForProcessing(u)
+        }
 
         // In addition to regular function parameters, add the callee's extra parameters
         val id        = convertToId(fd.id)
