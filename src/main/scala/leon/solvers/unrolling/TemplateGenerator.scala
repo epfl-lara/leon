@@ -248,15 +248,6 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
     var lambdas = Seq[LambdaTemplate[T]]()
     @inline def registerLambda(lambda: LambdaTemplate[T]) : Unit = lambdas :+= lambda
 
-    def requireDecomposition(e: Expr) = {
-      exists{
-        case (_: Choose) | (_: Forall) | (_: Lambda) | (_: FiniteLambda) => true
-        case (_: Assert) | (_: Ensuring) => true
-        case (_: FunctionInvocation) | (_: Application) => true
-        case _ => false
-      }(e)
-    }
-
     def rec(pathVar: Identifier, expr: Expr): Expr = {
       expr match {
         case a @ Assert(cond, err, body) =>
@@ -300,14 +291,14 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
         case p : Passes    => sys.error("'Passes's should have been eliminated before generating templates.")
 
         case i @ Implies(lhs, rhs) =>
-          if (requireDecomposition(i)) {
+          if (!isSimple(i)) {
             rec(pathVar, Or(Not(lhs), rhs))
           } else {
             implies(rec(pathVar, lhs), rec(pathVar, rhs))
           }
 
         case a @ And(parts) =>
-          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          val partitions = groupWhile(parts)(isSimple)
           partitions.map(andJoin) match {
             case Seq(e) => e
             case seq =>
@@ -336,7 +327,7 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
           }
 
         case o @ Or(parts) =>
-          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          val partitions = groupWhile(parts)(isSimple)
           partitions.map(orJoin) match {
             case Seq(e) => e
             case seq =>
@@ -365,7 +356,7 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
           }
 
         case i @ IfExpr(cond, thenn, elze) => {
-          if(!requireDecomposition(i)) {
+          if(isSimple(i)) {
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", BooleanType, true)

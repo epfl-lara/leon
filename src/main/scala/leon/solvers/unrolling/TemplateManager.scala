@@ -168,10 +168,10 @@ object Template {
           } (expr)
 
           val withPaths = CollectorWithPaths { case FreshFunction(f) => f }.traverse(e)
-          functions ++= withPaths.map { case (f, TopLevelAnds(paths)) =>
+          functions ++= withPaths.map { case (f, path) =>
             val tpe = bestRealType(f.getType).asInstanceOf[FunctionType]
-            val path = andJoin(paths.map(clean))
-            (encodeExpr(and(Variable(b), path)), tpe, encodeExpr(f))
+            val cleanPath = path.map(clean)
+            (encodeExpr(and(Variable(b), cleanPath.toPath)), tpe, encodeExpr(f))
           }
 
           val cleanExpr = clean(e)

@@ -5,6 +5,7 @@ package leon.integration.grammars
 import leon._
 import leon.test._
 import leon.test.helpers._
+import leon.purescala.Path
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Constructors._

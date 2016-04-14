@@ -4,6 +4,7 @@ package leon
 package synthesis
 package utils
 
+import purescala.Path
 import purescala.Definitions._
 import purescala.Types._
 import purescala.Extractors._
@@ -46,10 +47,9 @@ object Helpers {
     * @return A list of pairs (safe function call, holes),
     *         where holes stand for the rest of the arguments of the function.
    */
-  def terminatingCalls(prog: Program, ws: Expr, pc: Expr, tpe: Option[TypeTree], introduceHoles: Boolean): List[(FunctionInvocation, Option[Set[Identifier]])] = {
+  def terminatingCalls(prog: Program, ws: Expr, pc: Path, tpe: Option[TypeTree], introduceHoles: Boolean): List[(FunctionInvocation, Option[Set[Identifier]])] = {
 
     val TopLevelAnds(wss) = ws
-    val TopLevelAnds(clauses) = pc
 
     val gs: List[Terminating] = wss.toList.collect {
       case t : Terminating => t
@@ -60,12 +60,14 @@ object Helpers {
       case (r: Variable) if leastUpperBound(r.getType, v.getType).isDefined => Some(r -> v)
       case _ => None
     }
-    
+
     val z   = InfiniteIntegerLiteral(0)
     val one = InfiniteIntegerLiteral(1)
-    val knownSmallers = clauses.collect {
-      case Equals(v: Variable, s@CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
-      case Equals(s@CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
+    val knownSmallers = (pc.bindings.flatMap {
+      // @nv: used to check both Equals(id, selector) and Equals(selector, id)
+      case (id, s @ CaseClassSelector(cct, r, _)) => subExprsOf(s, id.toVariable)
+      case _ => None
+    } ++ pc.conditions.flatMap {
       case GreaterThan(v: Variable, `z`) =>
         Some(v -> Minus(v, one))
       case LessThan(`z`, v: Variable) =>
@@ -74,7 +76,8 @@ object Helpers {
         Some(v -> Plus(v, one))
       case GreaterThan(`z`, v: Variable) =>
         Some(v -> Plus(v, one))
-    }.flatten.groupBy(_._1).mapValues(v => v.map(_._2))
+      case _ => None
+    }).groupBy(_._1).mapValues(v => v.map(_._2))
 
     def argsSmaller(e: Expr, tpe: TypeTree): Seq[Expr] = e match {
       case CaseClass(cct, args) =>

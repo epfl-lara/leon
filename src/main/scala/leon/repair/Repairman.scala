@@ -4,6 +4,7 @@ package leon
 package repair
 
 import leon.datagen.GrammarDataGen
+import purescala.Path
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors._
@@ -183,7 +184,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val prob = Problem.fromSpec(fd.postOrTrue, andJoin(Seq(pre, guide, term)), eb, Some(fd))
+    val prob = Problem.fromSpec(fd.postOrTrue, Path(Seq(pre, guide, term)), eb, Some(fd))
 
     val ci = SourceInfo(fd, origBody, prob)
 

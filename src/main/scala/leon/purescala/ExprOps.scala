@@ -342,6 +342,18 @@ object ExprOps extends GenTreeOps[Expr] {
     variablesOf(e).isEmpty && isDeterministic(e)
   }
 
+  /** Returns '''true''' if the formula is simple,
+    * which means that it requires no special encoding for an
+    * unrolling solver. See implementation for what this means exactly.
+    */
+  def isSimple(e: Expr): Boolean = !exists {
+    case (_: Choose) | (_: Hole) |
+         (_: Assert) | (_: Ensuring) |
+         (_: Forall) | (_: Lambda) | (_: FiniteLambda) |
+         (_: FunctionInvocation) | (_: Application) => true
+    case _ => false
+  } (e)
+
   /** Returns a function which can simplify all ground expressions which appear in a program context.
     */
   def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
@@ -604,16 +616,16 @@ object ExprOps extends GenTreeOps[Expr] {
     *
     * @see [[purescala.Expressions.Pattern]]
     */
-  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Expr = {
-    def bind(ob: Option[Identifier], to: Expr): Expr = {
+  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Path = {
+    def bind(ob: Option[Identifier], to: Expr): Path = {
       if (!includeBinders) {
-        BooleanLiteral(true)
+        Path.empty
       } else {
-        ob.map(id => Equals(Variable(id), to)).getOrElse(BooleanLiteral(true))
+        ob.map(id => Path.empty withBinding (id -> to)).getOrElse(Path.empty)
       }
     }
 
-    def rec(in: Expr, pattern: Pattern): Expr = {
+    def rec(in: Expr, pattern: Pattern): Path = {
       pattern match {
         case WildcardPattern(ob) =>
           bind(ob, in)
@@ -622,31 +634,32 @@ object ExprOps extends GenTreeOps[Expr] {
           if (ct.parent.isEmpty) {
             bind(ob, in)
           } else {
-            and(IsInstanceOf(in, ct), bind(ob, in))
+            Path(IsInstanceOf(in, ct)) merge bind(ob, in)
           }
 
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.classDef.fields.size == subps.size)
           val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
-          val together = and(bind(ob, in) +: subTests :_*)
-          and(IsInstanceOf(in, cct), together)
+          val together = subTests.foldLeft(bind(ob, in))(_ merge _)
+          Path(IsInstanceOf(in, cct)) merge together
 
         case TuplePattern(ob, subps) =>
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
-          and(bind(ob, in) +: subTests: _*)
+          subTests.foldLeft(bind(ob, in))(_ merge _)
 
         case up @ UnapplyPattern(ob, fd, subps) =>
           def someCase(e: Expr) = {
             // In the case where unapply returns a Some, it is enough that the subpatterns match
-            andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
+            val subTests = unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p) }
+            subTests.foldLeft(Path.empty)(_ merge _).toClause
           }
-          and(up.patternMatch(in, BooleanLiteral(false), someCase).setPos(in), bind(ob, in))
+          Path(up.patternMatch(in, BooleanLiteral(false), someCase).setPos(in)) merge bind(ob, in)
 
-        case LiteralPattern(ob,lit) =>
-          and(Equals(in,lit), bind(ob,in))
+        case LiteralPattern(ob, lit) =>
+          Path(Equals(in, lit)) merge bind(ob, in)
       }
     }
 
@@ -697,15 +710,15 @@ object ExprOps extends GenTreeOps[Expr] {
       case m @ MatchExpr(scrut, cases) =>
         // println("Rewriting the following PM: " + e)
 
-        val condsAndRhs = for(cse <- cases) yield {
+        val condsAndRhs = for (cse <- cases) yield {
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.optGuard match {
-            case Some(g) => and(patCond, replaceFromIDs(map, g))
+            case Some(g) => patCond withCond replaceFromIDs(map, g)
             case None => patCond
           }
           val newRhs = replaceFromIDs(map, cse.rhs)
-          (realCond, newRhs)
+          (realCond.toClause, newRhs)
         }
 
         val bigIte = condsAndRhs.foldRight[Expr](Error(m.getType, "Match is non-exhaustive").copiedFrom(m))((p1, ex) => {
@@ -735,26 +748,26 @@ object ExprOps extends GenTreeOps[Expr] {
     * @see [[purescala.ExprOps#conditionForPattern conditionForPattern]]
     * @see [[purescala.ExprOps#mapForPattern mapForPattern]]
     */
-  def matchExprCaseConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
+  def matchExprCaseConditions(m: MatchExpr, path: Path) : Seq[Path] = {
     val MatchExpr(scrut, cases) = m
-    var pcSoFar = pathCond
-    for (c <- cases) yield {
+    var pcSoFar = path
 
+    for (c <- cases) yield {
       val g = c.optGuard getOrElse BooleanLiteral(true)
       val cond = conditionForPattern(scrut, c.pattern, includeBinders = true)
-      val localCond = pcSoFar :+ cond :+ g
+      val localCond = pcSoFar merge (cond withCond g)
 
       // These contain no binders defined in this MatchCase
       val condSafe = conditionForPattern(scrut, c.pattern)
-      val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
-      pcSoFar ::= not(and(condSafe, gSafe))
+      val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern), g)
+      pcSoFar = pcSoFar merge (condSafe withCond gSafe).negate
 
       localCond
     }
   }
 
   /** Condition to pass this match case, expressed w.r.t scrut only */
-  def matchCaseCondition(scrut: Expr, c: MatchCase): Expr = {
+  def matchCaseCondition(scrut: Expr, c: MatchCase): Path = {
 
     val patternC = conditionForPattern(scrut, c.pattern, includeBinders = false)
 
@@ -762,7 +775,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case Some(g) =>
         // guard might refer to binders
         val map  = mapForPattern(scrut, c.pattern)
-        and(patternC, replaceFromIDs(map, g))
+        patternC withCond replaceFromIDs(map, g)
 
       case None =>
         patternC
@@ -773,7 +786,7 @@ object ExprOps extends GenTreeOps[Expr] {
     *
     * Each case holds the conditions on other previous cases as negative.
     */
-  def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
+  def passesPathConditions(p: Passes, pathCond: Path) : Seq[Path] = {
     matchExprCaseConditions(MatchExpr(p.in, p.cases), pathCond)
   }
 
@@ -990,25 +1003,23 @@ object ExprOps extends GenTreeOps[Expr] {
   }
 
   object CollectorWithPaths {
-    def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Expr)] = new CollectorWithPaths[(T, Expr)] {
-      def collect(e: Expr, path: Seq[Expr]): Option[(T, Expr)] = if (!p.isDefinedAt(e)) None else {
-        Some(p(e) -> and(path: _*))
+    def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Path)] = new CollectorWithPaths[(T, Path)] {
+      def collect(e: Expr, path: Path): Option[(T, Path)] = if (!p.isDefinedAt(e)) None else {
+        Some(p(e) -> path)
       }
     }
   }
 
   trait CollectorWithPaths[T] extends TransformerWithPC with Traverser[Seq[T]] {
-    type C = Seq[Expr]
-    protected val initC : C = Nil
-    def register(e: Expr, path: C) = path :+ e
+    protected val initPath: Seq[Expr] = Nil
 
     private var results: Seq[T] = Nil
 
-    def collect(e: Expr, path: Seq[Expr]): Option[T]
+    def collect(e: Expr, path: Path): Option[T]
 
-    def walk(e: Expr, path: Seq[Expr]): Option[Expr] = None
+    def walk(e: Expr, path: Path): Option[Expr] = None
 
-    override def rec(e: Expr, path: Seq[Expr]) = {
+    override def rec(e: Expr, path: Path) = {
       collect(e, path).foreach { results :+= _ }
       walk(e, path) match {
         case Some(r) => r
@@ -1018,18 +1029,18 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def traverse(funDef: FunDef): Seq[T] = traverse(funDef.fullBody)
 
-    def traverse(e: Expr): Seq[T] = traverse(e, initC)
+    def traverse(e: Expr): Seq[T] = traverse(e, initPath)
 
     def traverse(e: Expr, init: Expr): Seq[T] = traverse(e, Seq(init))
 
     def traverse(e: Expr, init: Seq[Expr]): Seq[T] = {
       results = Nil
-      rec(e, init)
+      rec(e, Path(init))
       results
     }
   }
 
-  def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
+  def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Path)] = {
     CollectorWithPaths(f).traverse(expr)
   }
 
@@ -1193,7 +1204,7 @@ object ExprOps extends GenTreeOps[Expr] {
     *    foo(Nil, b) and
     *    foo(t, b) => foo(Cons(h,t), b)
     */
-  def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
+  def isInductiveOn(sf: SolverFactory[Solver])(path: Path, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
 
       val toCheck = cd.knownDescendants.collect {
@@ -1211,8 +1222,8 @@ object ExprOps extends GenTreeOps[Expr] {
           } else {
             val v = Variable(on)
 
-            recSelectors.map{ s =>
-              and(isType, expr, not(replace(Map(v -> caseClassSelector(cct, v, s)), expr)))
+            recSelectors.map { s =>
+              and(path and isType, not(replace(Map(v -> caseClassSelector(cct, v, s)), path.toClause)))
             }
           }
       }.flatten
@@ -1779,6 +1790,33 @@ object ExprOps extends GenTreeOps[Expr] {
    * =================
    */
 
+  /** Returns whether a particular [[Expressions.Expr]] contains specification
+    * constructs, namely [[Expressions.Require]] and [[Expressions.Ensuring]].
+    */
+  def hasSpec(e: Expr): Boolean = exists {
+    case Require(_, _) => true
+    case Ensuring(_, _) => true
+    case _ => false
+  } (e)
+
+  /** Merges the given [[Path]] into the provided [[Expressions.Expr]].
+    *
+    * This method expects to run on a [[Definitions.FunDef.fullBody]] and merges into
+    * existing pre- and postconditions.
+    *
+    * @param expr The current body
+    * @param path The path that should be wrapped around the given body
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
+  def withPath(expr: Expr, path: Path): Expr = expr match {
+    case Let(i, e, b) => Let(i, e, withPath(b, path))
+    case Require(pre, b) => path specs (b, pre)
+    case Ensuring(Require(pre, b), post) => path specs (b, pre, post)
+    case Ensuring(b, post) => path specs (b, post = post)
+    case b => path specs b
+  }
+
   /** Replaces the precondition of an existing [[Expressions.Expr]] with a new one.
     *
     * If no precondition is provided, removes any existing precondition.
@@ -1793,9 +1831,11 @@ object ExprOps extends GenTreeOps[Expr] {
     case (Some(newPre), Require(pre, b))              => req(newPre, b)
     case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(req(newPre, b), p)
     case (Some(newPre), Ensuring(b, p))               => Ensuring(req(newPre, b), p)
+    case (Some(newPre), Let(i, e, b)) if hasSpec(b)   => Let(i, e, withPrecondition(b, pred))
     case (Some(newPre), b)                            => req(newPre, b)
     case (None, Require(pre, b))                      => b
     case (None, Ensuring(Require(pre, b), p))         => Ensuring(b, p)
+    case (None, Let(i, e, b)) if hasSpec(b)           => Let(i, e, withPrecondition(b, pred))
     case (None, b)                                    => b
   }
 
@@ -1809,11 +1849,13 @@ object ExprOps extends GenTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
-    case (Some(npost), Ensuring(b, post)) => ensur(b, npost)
-    case (Some(npost), b)                 => ensur(b, npost)
-    case (None, Ensuring(b, p))           => b
-    case (None, b)                        => b
+  def withPostcondition(expr: Expr, oie: Option[Expr]): Expr = (oie, expr) match {
+    case (Some(npost), Ensuring(b, post))          => ensur(b, npost)
+    case (Some(npost), Let(i, e, b)) if hasSpec(b) => Let(i, e, withPostcondition(b, oie))
+    case (Some(npost), b)                          => ensur(b, npost)
+    case (None, Ensuring(b, p))                    => b
+    case (None, Let(i, e, b)) if hasSpec(b)        => Let(i, e, withPostcondition(b, oie))
+    case (None, b)                                 => b
   }
 
   /** Adds a body to a specification
@@ -1824,7 +1866,8 @@ object ExprOps extends GenTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withBody(expr: Expr, body: Option[Expr]) = expr match {
+  def withBody(expr: Expr, body: Option[Expr]): Expr = expr match {
+    case Let(i, e, b) if hasSpec(b)      => Let(i, e, withBody(b, body))
     case Require(pre, _)                 => Require(pre, body.getOrElse(NoTree(expr.getType)))
     case Ensuring(Require(pre, _), post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), post)
     case Ensuring(_, post)               => Ensuring(body.getOrElse(NoTree(expr.getType)), post)
@@ -1840,7 +1883,8 @@ object ExprOps extends GenTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withoutSpec(expr: Expr) = expr match {
+  def withoutSpec(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)                    => withoutSpec(b).map(Let(i, e, _))
     case Require(pre, b)                 => Option(b).filterNot(_.isInstanceOf[NoTree])
     case Ensuring(Require(pre, b), post) => Option(b).filterNot(_.isInstanceOf[NoTree])
     case Ensuring(b, post)               => Option(b).filterNot(_.isInstanceOf[NoTree])
@@ -1848,14 +1892,16 @@ object ExprOps extends GenTreeOps[Expr] {
   }
 
   /** Returns the precondition of an expression wrapped in Option */
-  def preconditionOf(expr: Expr) = expr match {
+  def preconditionOf(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)                 => preconditionOf(b).map(Let(i, e, _))
     case Require(pre, _)              => Some(pre)
     case Ensuring(Require(pre, _), _) => Some(pre)
     case b                            => None
   }
 
   /** Returns the postcondition of an expression wrapped in Option */
-  def postconditionOf(expr: Expr) = expr match {
+  def postconditionOf(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)      => postconditionOf(b).map(Let(i, e, _))
     case Ensuring(_, post) => Some(post)
     case _                 => None
   }
@@ -2047,7 +2093,7 @@ object ExprOps extends GenTreeOps[Expr] {
     val conds = collectWithPC {
 
       case m @ MatchExpr(scrut, cases) =>
-        (m, orJoin(cases map (matchCaseCondition(scrut, _))))
+        (m, orJoin(cases map (matchCaseCondition(scrut, _).toClause)))
 
       case e @ Error(_, _) =>
         (e, BooleanLiteral(false))
@@ -2067,7 +2113,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
     conds map {
       case ((e, cond), path) =>
-        (e, implies(path, cond))
+        (e, path implies cond)
     }
   }
 

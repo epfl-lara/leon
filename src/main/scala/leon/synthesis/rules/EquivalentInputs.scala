@@ -5,6 +5,8 @@ package synthesis
 package rules
 
 import leon.utils._
+import purescala.Path
+import purescala.Common._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
@@ -13,80 +15,95 @@ import purescala.Types.CaseClassType
 
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val TopLevelAnds(clauses) = p.pc
 
-    def discoverEquivalences(allClauses: Seq[Expr]): Seq[(Expr, Expr)] = {
-      val instanceOfs = allClauses.collect {
-        case ccio: IsInstanceOf => ccio
-      }
+    val simplifier = Simplifiers.bestEffort(hctx, hctx.program) _
 
-      val clauses = allClauses.filterNot(instanceOfs.toSet)
+    var subst = Map.empty[Identifier, Expr]
+    var reverseSubst = Map.empty[Identifier, Expr]
 
-      val ccSubsts = for (IsInstanceOf(s, cct: CaseClassType) <- instanceOfs) yield {
+    var obsolete = Set.empty[Identifier]
+    var free = Set.empty[Identifier]
 
-        val fieldsVals = (for (f <- cct.classDef.fields) yield {
-          val id = f.id
+    def discoverEquivalences(p: Path): Path = {
 
-          clauses.collectFirst {
-            case Equals(e, CaseClassSelector(`cct`, `s`, `id`)) => e
-            case Equals(e, CaseClassSelector(`cct`, AsInstanceOf(`s`, `cct`), `id`)) => e
+      val vars = p.variables
+      val clauses = p.conditions
+
+      val instanceOfs = clauses.collect { case IsInstanceOf(Variable(id), cct) if vars(id) => id -> cct }.toSet
+
+      val equivalences = (for ((sid, cct: CaseClassType) <- instanceOfs) yield {
+        val fieldVals = for (f <- cct.classDef.fields) yield {
+          val fid = f.id
+
+          p.bindings.collectFirst {
+            case (id, CaseClassSelector(`cct`, Variable(`sid`), `fid`)) => id
+            case (id, CaseClassSelector(`cct`, AsInstanceOf(Variable(`sid`), `cct`), `fid`)) => id
           }
+        }
 
-        }).flatten
-
-        if (fieldsVals.size == cct.fields.size) {
-          Some((s, CaseClass(cct, fieldsVals)))
+        if (fieldVals.forall(_.isDefined)) {
+          Some(sid -> CaseClass(cct, fieldVals.map(_.get.toVariable)))
+        } else if (fieldVals.exists(_.isDefined)) {
+          Some(sid -> CaseClass(cct, (cct.fields zip fieldVals).map {
+            case (_, Some(id)) => Variable(id)
+            case (vid, None) => Variable(vid.id.freshen)
+          }))
         } else {
           None
         }
+      }).flatten
+
+      val unbound = equivalences.flatMap(_._2.args.collect { case Variable(id) => id })
+      obsolete ++= equivalences.map(_._1)
+      free ++= unbound
+
+      def replace(e: Expr) = simplifier(replaceFromIDs(equivalences.toMap, e))
+      subst = subst.mapValues(replace) ++ equivalences
+
+      val reverse = equivalences.toMap.flatMap { case (id, CaseClass(cct, fields)) =>
+        (cct.classDef.fields zip fields).map { case (vid, Variable(fieldId)) =>
+          fieldId -> CaseClassSelector(cct, AsInstanceOf(Variable(id), cct), vid.id)
+        }
       }
 
-      // Direct equivalences:
-      val directEqs = allClauses.collect {
-        case Equals(v1 @ Variable(a1), v2 @ Variable(a2)) if a1 != a2 => (v2, v1)
-      }
+      reverseSubst ++= reverse.mapValues(replaceFromIDs(reverseSubst, _))
 
-      ccSubsts.flatten ++ directEqs
+      (p -- unbound) map replace
     }
-
 
     // We could discover one equivalence, which could allow us to discover
     // other equivalences: We do a fixpoint with limit 5.
-    val substs = fixpoint({ (substs: Set[(Expr, Expr)]) =>
-      val newClauses = substs.map{ case(e,v) => Equals(v, e) } // clauses are directed: foo = obj.f
-      substs ++ discoverEquivalences(clauses ++ newClauses)
-    }, 5)(Set()).toSeq
+    val simplifiedPath = fixpoint({ (path: Path) => discoverEquivalences(path) }, 5)(p.pc)
 
+    if (subst.nonEmpty) {
+      // XXX: must take place in this order!! obsolete & free is typically non-empty
+      val newAs = (p.as ++ free).distinct.filterNot(obsolete)
 
-    // We are replacing foo(a) with b. We inject postcondition(foo)(a, b).
-    val postsToInject = substs.collect {
-      case (FunctionInvocation(tfd, args), e) if tfd.hasPostcondition =>
-        val Some(post) = tfd.postcondition
-
-        application(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, post), Seq(e))
-    }
-
-    if (substs.nonEmpty) {
-      val simplifier = Simplifiers.bestEffort(hctx, hctx.program) _
-
-      val removedAs = substs.collect { case (Variable(from), _) => from }.toSet
+      val newBank = p.eb.map { ex =>
+        val mapping = (p.as zip ex.ins).toMap
+        val newIns = newAs.map(a => mapping.getOrElse(a, replaceFromIDs(mapping, reverseSubst(a))))
+        List(ex match {
+          case ioe @ InOutExample(ins, outs) => ioe.copy(ins = newIns)
+          case ie @ InExample(ins) => ie.copy(ins = newIns)
+        })
+      }
 
       val sub = p.copy(
-        as = p.as filterNot removedAs,
-        ws = replaceSeq(substs, p.ws),
-        pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
-        phi = simplifier(replaceSeq(substs, p.phi)),
-        eb = p.qeb.removeIns(removedAs)
+        as = newAs,
+        ws = replaceFromIDs(subst, p.ws),
+        pc = simplifiedPath,
+        phi = simplifier(replaceFromIDs(subst, p.phi)),
+        eb = newBank
       )
 
-      val subst = replace(
-        substs.map{_.swap}.filter{ case (x,y) => formulaSize(x) > formulaSize(y) }.toMap,
-        _:Expr
-      )
-      
-      val substString = substs.map { case (f, t) => f.asString+" -> "+t.asString }
+      val onSuccess = {
+        val reverse = subst.map(_.swap).mapValues(_.toVariable)
+        forwardMap(replace(reverse, _))
+      }
 
-      List(decomp(List(sub), forwardMap(subst), "Equivalent Inputs ("+substString.mkString(", ")+")"))
+      val substString = subst.map { case (f, t) => f.asString+" -> "+t.asString }
+
+      List(decomp(List(sub), onSuccess, "Equivalent Inputs ("+substString.mkString(", ")+")"))
     } else {
       Nil
     }

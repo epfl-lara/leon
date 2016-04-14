@@ -28,8 +28,6 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    val TopLevelAnds(as) = and(p.pc, p.phi)
-
     def getFacts(e: Expr): Set[Fact] = e match {
       case LessThan(a, b)           => Set(LT(b,a), EQ(a,b))
       case LessEquals(a, b)         => Set(LT(b,a))
@@ -44,23 +42,26 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
       case _ => Set()
     }
 
-    val facts = as flatMap getFacts
+    val facts: Set[Fact] = {
+      val TopLevelAnds(as) = andJoin(p.pc.conditions :+ p.phi)
+      as.toSet flatMap getFacts
+    }
 
     val candidates =
-      (p.as.map(_.toVariable).filter(_.getType == Int32Type) :+ IntLiteral(0)).combinations(2).toList ++
-      (p.as.map(_.toVariable).filter(_.getType == IntegerType) :+ InfiniteIntegerLiteral(0)).combinations(2).toList
+      (p.allAs.map(_.toVariable).filter(_.getType == Int32Type) :+ IntLiteral(0)).combinations(2).toList ++
+      (p.allAs.map(_.toVariable).filter(_.getType == IntegerType) :+ InfiniteIntegerLiteral(0)).combinations(2).toList
 
     candidates.flatMap {
       case List(v1, v2) =>
 
         val lt = if (!facts.contains(LT(v1, v2))) {
           val pc = LessThan(v1, v2)
-          Some(pc, p.copy(pc = and(p.pc, pc), eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc, eb = p.qeb.filterIns(pc)))
         } else None
 
         val gt = if (!facts.contains(LT(v2, v1))) {
           val pc = GreaterThan(v1, v2)
-          Some(pc, p.copy(pc = and(p.pc, pc), eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc, eb = p.qeb.filterIns(pc)))
         } else None
 
         val eq = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
@@ -72,7 +73,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
           }
           val newP = p.copy(
             as = p.as.diff(Seq(a1)),
-            pc = subst(a1 -> v2, p.pc),
+            pc = p.pc map (subst(a1 -> v2, _)),
             ws = subst(a1 -> v2, p.ws),
             phi = subst(a1 -> v2, p.phi),
             eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))
@@ -86,9 +87,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
         else {
 
           val onSuccess: List[Solution] => Option[Solution] = { sols =>
-            val pre = orJoin(pcs.zip(sols).map { case (pc, sol) =>
-              and(pc, sol.pre)
-            })
+            val pre = orJoin(pcs.zip(sols).map { case (pc, sol) => and(pc, sol.pre) })
 
             val term = pcs.zip(sols) match {
               case Seq((pc1, s1), (_, s2)) =>

@@ -10,15 +10,12 @@ import Extractors._
 import Constructors._
 import solvers._
 
-class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Expr] = Nil) extends TransformerWithPC {
-  type C = List[Expr]
+class SimplifierWithPaths(sf: SolverFactory[Solver], override val initPath: List[Expr] = Nil) extends TransformerWithPC {
 
   val solver = SimpleSolverAPI(sf)
 
-  protected def register(e: Expr, c: C) = e :: c
-
-  def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
-    solver.solveVALID(implies(andJoin(path), e)) match {
+  def impliedBy(e: Expr, path: Path) : Boolean = try {
+    solver.solveVALID(path implies e) match {
       case Some(true) => true
       case _ => false
     }
@@ -26,8 +23,8 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
     case _ : Exception => false
   }
 
-  def contradictedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
-    solver.solveVALID(implies(andJoin(path), Not(e))) match {
+  def contradictedBy(e: Expr, path: Path) : Boolean = try {
+    solver.solveVALID(path implies not(e)) match {
       case Some(true) => true
       case _ => false
     }
@@ -35,7 +32,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
     case _ : Exception => false
   }
 
-  def valid(e : Expr) : Boolean = try {
+  def valid(e: Expr) : Boolean = try {
     solver.solveVALID(e) match {
       case Some(true) => true
       case _ => false 
@@ -44,7 +41,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
     case _ : Exception => false
   }
 
-  def sat(e : Expr) : Boolean = try {
+  def sat(e: Expr) : Boolean = try {
     solver.solveSAT(e) match {
       case (Some(false),_) => false
       case _ => true
@@ -53,7 +50,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
     case _ : Exception => true
   }
 
-  protected override def rec(e: Expr, path: C) = e match {
+  protected override def rec(e: Expr, path: Path) = e match {
     case Require(pre, body) if impliedBy(pre, path) =>
       body
 
@@ -86,7 +83,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
     case Implies(lhs, rhs) if contradictedBy(lhs, path) =>
       BooleanLiteral(true).copiedFrom(e)
 
-    case me@MatchExpr(scrut, cases) =>
+    case me @ MatchExpr(scrut, cases) =>
       val rs = rec(scrut, path)
 
       var stillPossible = true
@@ -94,9 +91,9 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
       val conds = matchExprCaseConditions(me, path)
 
       val newCases = cases.zip(conds).flatMap { case (cs, cond) =>
-       if (stillPossible && sat(and(cond: _*))) {
+       if (stillPossible && sat(cond.toClause)) {
 
-          if (valid(and(cond: _*))) {
+          if (valid(cond.toClause)) {
             stillPossible = false
           }
 
@@ -107,7 +104,8 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
               // @mk: This is quite a dirty hack. We just know matchCasePathConditions
               // returns the current guard as the last element.
               // We don't include it in the path condition when we recurse into itself.
-              val condWithoutGuard = cond.dropRight(1)
+              // @nv: baaaaaaaad!!!
+              val condWithoutGuard = new Path(cond.elements.dropRight(1))
               val newGuard = rec(g, condWithoutGuard)
               if (valid(newGuard))
                 SimpleCase(p, rec(rhs,cond))
@@ -118,6 +116,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Ex
           Seq()
         }
       }
+
       newCases match {
         case List() =>
           Error(e.getType, "Unreachable code").copiedFrom(e)

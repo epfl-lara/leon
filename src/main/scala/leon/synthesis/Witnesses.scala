@@ -15,7 +15,7 @@ object Witnesses {
     override def isSimpleExpr = true
   }
   
-  case class Guide(e : Expr) extends Witness {
+  case class Guide(e: Expr) extends Witness {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((Seq(e), (es: Seq[Expr]) => Guide(es.head)))
 
     override def printWith(implicit pctx: PrinterContext): Unit = {

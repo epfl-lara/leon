@@ -454,7 +454,10 @@ object Definitions {
 
     def precondition = preconditionOf(fullBody)
     def precondition_=(oe: Option[Expr]) = {
-      fullBody = withPrecondition(fullBody, oe) 
+      fullBody = withPrecondition(fullBody, oe)
+    }
+    def precondition_=(p: Path) = {
+      fullBody = withPath(fullBody, p)
     }
     def precOrTrue = precondition getOrElse BooleanLiteral(true)
 

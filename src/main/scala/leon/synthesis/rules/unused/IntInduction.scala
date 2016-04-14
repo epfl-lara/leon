@@ -24,14 +24,14 @@ case object IntInduction extends Rule("Int Induction") {
         val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable)
 
         val newPhi     = subst(origId -> Variable(inductOn), p.phi)
-        val newPc      = subst(origId -> Variable(inductOn), p.pc)
+        val newPc      = p.pc map (subst(origId -> Variable(inductOn), _))
         val newWs      = subst(origId -> Variable(inductOn), p.ws)
         val postCondGT = substAll(postXsMap + (origId -> Minus(Variable(inductOn), InfiniteIntegerLiteral(1))), p.phi)
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), InfiniteIntegerLiteral(1))), p.phi)
 
-        val subBase = Problem(List(), subst(origId -> InfiniteIntegerLiteral(0), p.ws), subst(origId -> InfiniteIntegerLiteral(0), p.pc), subst(origId -> InfiniteIntegerLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, newWs, and(GreaterThan(Variable(inductOn), InfiniteIntegerLiteral(0)), postCondGT, newPc), newPhi, p.xs)
-        val subLT   = Problem(inductOn :: postXs, newWs, and(LessThan(Variable(inductOn), InfiniteIntegerLiteral(0)), postCondLT, newPc), newPhi, p.xs)
+        val subBase = Problem(List(), subst(origId -> InfiniteIntegerLiteral(0), p.ws), p.pc map (subst(origId -> InfiniteIntegerLiteral(0), _)), subst(origId -> InfiniteIntegerLiteral(0), p.phi), p.xs)
+        val subGT   = Problem(inductOn :: postXs, newWs, newPc withCond and(GreaterThan(Variable(inductOn), InfiniteIntegerLiteral(0)), postCondGT), newPhi, p.xs)
+        val subLT   = Problem(inductOn :: postXs, newWs, newPc withCond and(LessThan(Variable(inductOn), InfiniteIntegerLiteral(0)), postCondLT), newPhi, p.xs)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case List(base, gt, lt) =>

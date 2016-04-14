@@ -184,7 +184,11 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
               val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
               andJoin(domainMap.toSeq.map { case (id, dom) =>
-                orJoin(dom.toSeq.map { case (path, value) => and(path, Equals(Variable(id), value)) })
+                orJoin(dom.toSeq.map { case (path, value) =>
+                  // @nv: Note that equality is allowed here because of first-order quantifiers.
+                  //      See [[leon.codegen.runtime.Monitor]] for more details.
+                  path and Equals(Variable(id), value)
+                })
               })
             })
 
@@ -238,7 +242,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           case id => Equals(Variable(id), rctx.mappings(id))
         }
 
-        val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
+        val cnstr = p.pc withBindings p.as.map(id => id -> rctx.mappings(id)) and p.phi
         solver.assertCnstr(cnstr)
 
         def getSolution = try {

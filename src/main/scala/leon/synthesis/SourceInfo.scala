@@ -3,6 +3,7 @@
 package leon
 package synthesis
 
+import purescala.Path
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Expressions._
@@ -13,9 +14,9 @@ case class SourceInfo(fd: FunDef, source: Expr, problem: Problem)
 
 object SourceInfo {
 
-  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
-    def collect(e: Expr, path: Seq[Expr]) = e match {
-      case c: Choose => Some(c -> and(path: _*))
+  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Path)] {
+    def collect(e: Expr, path: Path) = e match {
+      case c: Choose => Some(c -> path)
       case _ => None
     }
   }
@@ -55,15 +56,15 @@ object SourceInfo {
     val functionEb = eFinder.extractFromFunDef(fd, partition = false)
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd)) yield {
-      val outerEb = if (path == BooleanLiteral(true)) {
+      val outerEb = if (path.isEmpty) {
         functionEb
       } else {
         ExamplesBank.empty
       }
 
-      val p = Problem.fromSpec(ch.pred, and(path, term), outerEb, Some(fd))
+      val p = Problem.fromSpec(ch.pred, path withCond term, outerEb, Some(fd))
 
-      val pcEb = eFinder.generateForPC(p.as, path, ctx, 20)
+      val pcEb = eFinder.generateForPC(p.as, path.toClause, ctx, 20)
       val chooseEb = eFinder.extractFromProblem(p)
       val eb = (outerEb union chooseEb) union pcEb
 

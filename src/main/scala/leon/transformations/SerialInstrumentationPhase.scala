@@ -308,11 +308,11 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
             val map = mapForPattern(scrut, cse.pattern)
             val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
             val realCond = cse.optGuard match {
-              case Some(g) => And(patCond, replaceFromIDs(map, g))
+              case Some(g) => patCond withCond replaceFromIDs(map, g)
               case None    => patCond
             }
             val newRhs = replaceFromIDs(map, cse.rhs)
-            (realCond, newRhs)
+            (realCond.toClause, newRhs)
           }
           val bigIte = condsAndRhs.foldRight[Expr](
             Error(me.getType, "Match is non-exhaustive").copiedFrom(me))((p1, ex) => {

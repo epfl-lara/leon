@@ -627,7 +627,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
                 val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
                 andJoin(domainMap.toSeq.map { case (id, dom) =>
-                  orJoin(dom.toSeq.map { case (path, value) => and(path, Equals(Variable(id), value)) })
+                  orJoin(dom.toSeq.map { case (path, value) =>
+                    // @nv: Equality with variable is ok, see [[leon.codegen.runtime.Monitor]]
+                    path and Equals(Variable(id), value)
+                  })
                 })
               })
 
@@ -735,12 +738,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         val solver  = solverf.getNewSolver()
 
         try {
-          val eqs = p.as.map {
-            case id =>
-              Equals(Variable(id), rctx.mappings(id))
-          }
-
-          val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
+          val cnstr = p.pc withBindings p.as.map(id => id -> rctx.mappings(id)) and p.phi
           solver.assertCnstr(cnstr)
 
           solver.check match {

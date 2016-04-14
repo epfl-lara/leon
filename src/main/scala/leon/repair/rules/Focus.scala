@@ -7,6 +7,7 @@ package rules
 import synthesis._
 import leon.evaluators._
 
+import purescala.Path
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
@@ -112,17 +113,17 @@ case object Focus extends PreprocessingRule("Focus") {
             // Try to focus on branches
             forAllTests(c, Map(), evaluator) match {
               case Some(true) =>
-                val np = Problem(p.as, ws(thn), and(p.pc, c), p.phi, p.xs, p.qeb.filterIns(c))
+                val np = Problem(p.as, ws(thn), p.pc withCond c, p.phi, p.xs, p.qeb.filterIns(c))
 
                 Some(decomp(List(np), termWrap(IfExpr(c, _, els), c), s"Focus on if-then")(p))
               case Some(false) =>
-                val np = Problem(p.as, ws(els), and(p.pc, not(c)), p.phi, p.xs, p.qeb.filterIns(not(c)))
+                val np = Problem(p.as, ws(els), p.pc withCond not(c), p.phi, p.xs, p.qeb.filterIns(not(c)))
 
                 Some(decomp(List(np), termWrap(IfExpr(c, thn, _), not(c)), s"Focus on if-else")(p))
               case None =>
                 // We split
-                val sub1 = p.copy(ws = ws(thn), pc = and(c,      replace(Map(g -> thn), p.pc)), eb = p.qeb.filterIns(c))
-                val sub2 = p.copy(ws = ws(els), pc = and(Not(c), replace(Map(g -> els), p.pc)), eb = p.qeb.filterIns(Not(c)))
+                val sub1 = p.copy(ws = ws(thn), pc = p.pc map (replace(Map(g -> thn), _)) withCond     c , eb = p.qeb.filterIns(c))
+                val sub2 = p.copy(ws = ws(els), pc = p.pc map (replace(Map(g -> thn), _)) withCond Not(c), eb = p.qeb.filterIns(Not(c)))
 
                 val onSuccess: List[Solution] => Option[Solution] = { 
                   case List(s1, s2) =>
@@ -136,21 +137,21 @@ case object Focus extends PreprocessingRule("Focus") {
         }
 
       case MatchExpr(scrut, cases) =>
-        var pcSoFar: Seq[Expr] = Nil
+        var pcSoFar = Path.empty
 
         // Generate subproblems for each match-case that fails at least one test.
         var casesInfos = for (c <- cases) yield {
           val map  = mapForPattern(scrut, c.pattern)
 
           val thisCond = matchCaseCondition(scrut, c)
-          val cond = andJoin(pcSoFar :+ thisCond)
-          pcSoFar = pcSoFar :+ not(thisCond)
+          val cond = pcSoFar merge thisCond
+          pcSoFar = pcSoFar merge thisCond.negate
 
-          val subP = if (existsFailing(cond, map, evaluator)) {
+          val subP = if (existsFailing(cond.toClause, map, evaluator)) {
             val vars = map.toSeq.map(_._1)
 
             // Filter tests by the path-condition
-            val eb2 = p.qeb.filterIns(cond)
+            val eb2 = p.qeb.filterIns(cond.toClause)
 
             // Augment test with the additional variables and their valuations
             val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
@@ -167,9 +168,9 @@ case object Focus extends PreprocessingRule("Focus") {
               eb2.eb
             }
 
-            val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })
+            val newPc = Path.empty withBindings vars.map(id => id -> map(id)).toSeq merge cond
 
-            Some(Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, eb3))
+            Some(Problem(p.as, ws(c.rhs), p.pc merge newPc, p.phi, p.xs, eb3))
           } else {
             None
           }
@@ -179,14 +180,14 @@ case object Focus extends PreprocessingRule("Focus") {
 
         // Check if the match might be missing a case? (we check if one test
         // goes to no defined cases)
-        val elsePc = andJoin(pcSoFar)
+        val elsePc = pcSoFar
 
-        if (existsFailing(elsePc, Map(), evaluator)) {
+        if (existsFailing(elsePc.toClause, Map(), evaluator)) {
           val newCase    = MatchCase(WildcardPattern(None), None, NoTree(scrut.getType))
 
-          val eb = p.qeb.filterIns(elsePc)
+          val eb = p.qeb.filterIns(elsePc.toClause)
 
-          val newProblem = Problem(p.as, andJoin(wss), and(p.pc, elsePc), p.phi, p.xs, eb)
+          val newProblem = Problem(p.as, andJoin(wss), p.pc merge elsePc, p.phi, p.xs, eb)
 
           casesInfos :+= (newCase -> (Some(newProblem), elsePc))
         }
@@ -210,7 +211,7 @@ case object Focus extends PreprocessingRule("Focus") {
                   if(s.pre == BooleanLiteral(true)) {
                     BooleanLiteral(true)
                   } else {
-                    and(p.pc, s.pre)
+                    p.pc and s.pre
                   }
               }
 
@@ -241,7 +242,7 @@ case object Focus extends PreprocessingRule("Focus") {
           }.toList
         }
 
-        val np = Problem(p.as :+ id, ws(body), and(p.pc, equality(id.toVariable, value)), p.phi, p.xs, p.eb.mapIns(ebF))
+        val np = Problem(p.as, ws(body), p.pc withBinding (id -> value), p.phi, p.xs, p.eb.mapIns(ebF))
 
         Some(decomp(List(np), termWrap(Let(id, value, _)), s"Focus on let-body")(p))
 
