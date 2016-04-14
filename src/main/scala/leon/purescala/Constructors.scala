@@ -61,7 +61,7 @@ object Constructors {
     else bd
   }
 
-  /** $encodingof ``val (id1, id2, ...) = e; bd``, and returns `bd` if the identifiers are not bound in `bd`.
+  /** $encodingof ``val (...binders...) = value; body`` which is translated to  ``value match { case (...binders...) => body }``, and returns `body` if the identifiers are not bound in `body`.
     * @see [[purescala.Expressions.Let]]
     */
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
@@ -72,7 +72,7 @@ object Constructors {
     case xs =>
       require(
         value.getType.isInstanceOf[TupleType],
-        s"The definition value in LetTuple must be of some tuple type; yet we got [${value.getType}]. In expr: \n$this"
+        s"The definition value in LetTuple must be of some tuple type; yet we got [${value.getType}]. In expr: \n$value"
       )
 
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)

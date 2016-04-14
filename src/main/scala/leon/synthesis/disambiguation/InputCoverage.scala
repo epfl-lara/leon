@@ -33,10 +33,10 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   /** If the sub-branches contain identifiers, it returns them unchanged.
       Else it creates a new boolean indicating this branch. */
   def wrapBranch(e: (Expr, Seq[Identifier])): (Expr, Seq[Identifier]) = {
-    if(e._2.isEmpty) { // No need to introduce a new boolean since if one of the child booleans is true, then this IfExpr has been called.
-      val b = FreshIdentifier("l" + e._1.getPos.line + "c" + e._1.getPos.col)
+    if(e._2.isEmpty) {
+      val b = FreshIdentifier("l" + e._1.getPos.line + "c" + e._1.getPos.col, BooleanType)
       (tupleWrap(Seq(e._1, Variable(b))), Seq(b))
-    } else e
+    } else e // No need to introduce a new boolean since if one of the child booleans is true, then this IfExpr has been called.
   }
   
   def hasConditionals(e: Expr) = {
@@ -53,8 +53,13 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       val (c1, cv1) = markBranches(cond)
       val (t1, tv1) = wrapBranch(markBranches(thenn))
       val (e1, ev1) = wrapBranch(markBranches(elze))
-      // TODO: Deal with the case when t1 and e1 is empty.
-      (IfExpr(c1, t1, e1).copiedFrom(e), cv1 ++ tv1 ++ ev1)
+      if(cv1.isEmpty) {
+        (IfExpr(c1, t1, e1).copiedFrom(e), tv1 ++ ev1)
+      } else {
+        val arg_id = FreshIdentifier("arg", BooleanType)
+        val arg_b = FreshIdentifier("b", BooleanType)
+        (letTuple(Seq(arg_id, arg_b), c1, IfExpr(Variable(arg_id), t1, e1).copiedFrom(e)), cv1 ++ tv1 ++ ev1)
+      }
     case MatchExpr(scrut, cases) =>
       val (c1, cv1) = markBranches(scrut)
       val (new_cases, variables) = (cases map { case MatchCase(pattern, opt, rhs) =>
@@ -77,15 +82,21 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           }
       }
       e match {
-        case FunctionInvocation(TypedFunDef(fd, targs), args) =>
-          // Should be different since functions will return a boolean as well.
+        case FunctionInvocation(TypedFunDef(fd, targs), args) if fds(fd) =>
+          val new_fd = wrapFunDef(fd)
+          // Is different since functions will return a boolean as well.
           val res_id = FreshIdentifier("res", fd.returnType)
           val res_b = FreshIdentifier("b", BooleanType)
-          val finalIds = (ids :+ res_b)
-          val finalExpr = 
-            tupleWrap(Seq(Variable(res_id), or(finalIds.map(Variable(_)): _*)))
-          val funCall = letTuple(Seq(res_id, res_b), builder(children).copiedFrom(e), finalExpr)
-          (exprBuilder(funCall), finalIds)
+          if(ids.isEmpty) {
+            val funCall = FunctionInvocation(TypedFunDef(new_fd, targs), children).copiedFrom(e)
+            (exprBuilder(funCall), Seq(res_b))
+          } else {
+            val finalIds = (ids :+ res_b)
+            val finalExpr = 
+              tupleWrap(Seq(Variable(res_id), or(finalIds.map(Variable(_)): _*)))
+            val funCall = letTuple(Seq(res_id, res_b), FunctionInvocation(TypedFunDef(new_fd, targs), children).copiedFrom(e), finalExpr)
+            (exprBuilder(funCall), finalIds)
+          }
         case _ =>
           if(ids.isEmpty) {
             (e, Seq.empty)
@@ -94,6 +105,17 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             (exprBuilder(finalExpr), ids)
           }
       }
+  }
+  
+  var cache = Map[FunDef, FunDef]()
+  
+  def wrapFunDef(fd: FunDef): FunDef = {
+    if(!(cache contains fd)) {
+      val new_fd = fd.duplicate(returnType = TupleType(Seq(fd.returnType, BooleanType)))
+      new_fd.body = None
+      cache += fd -> new_fd
+    }
+    cache(fd)
   }
   
   /** The number of expressions is the same as the number of arguments. */

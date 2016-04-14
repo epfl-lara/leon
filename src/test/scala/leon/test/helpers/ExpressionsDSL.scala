@@ -9,6 +9,10 @@ import leon.purescala.Common._
 import leon.purescala.Types._
 import leon.purescala.Expressions._
 
+trait ExpressionsDSLVariables_a {
+  val a = FreshIdentifier("a", Int32Type).toVariable
+}
+
 trait ExpressionsDSLVariables {
   val F = BooleanLiteral(false)
   val T = BooleanLiteral(true)
@@ -18,7 +22,6 @@ trait ExpressionsDSLVariables {
   def i(x: Int)     = IntLiteral(x)
   def r(n: BigInt, d: BigInt)  = FractionalLiteral(n, d)
 
-  val a = FreshIdentifier("a", Int32Type).toVariable
   val b = FreshIdentifier("b", Int32Type).toVariable
   val c = FreshIdentifier("c", Int32Type).toVariable
 
@@ -97,7 +100,7 @@ self: Assertions =>
   }
 }
 
-trait ExpressionsDSL extends ExpressionsDSLVariables with ExpressionsDSLProgram {
+trait ExpressionsDSL extends ExpressionsDSLVariables with ExpressionsDSLProgram with ExpressionsDSLVariables_a {
   self: Assertions =>
   
 }
