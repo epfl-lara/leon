@@ -248,4 +248,11 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
         }
     }
   }
+  
+  test("input coverage for booleans should find all of them") { ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val withIf = funDef("InputCoverageSuite.withIf")
+    val coverage = new InputCoverage(withIf, Set(withIf))
+    coverage.result().toSet should equal (Set(Seq(b(true)), Seq(b(false))))
+  }
 }

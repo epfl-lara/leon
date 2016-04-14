@@ -10,7 +10,7 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Types.{TypeTree, TupleType, BooleanType}
 import purescala.Common.{Identifier, FreshIdentifier}
-import purescala.Definitions.{FunDef, Program, TypedFunDef}
+import purescala.Definitions.{FunDef, Program, TypedFunDef, ValDef}
 import purescala.DefOps
 import grammars.ValueGrammar
 import bonsai.enumerators.MemoizedEnumerator
@@ -19,6 +19,12 @@ import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import leon.LeonContext
 import leon.purescala.Definitions.TypedFunDef
+import leon.verification.VerificationContext
+import leon.verification.VerificationPhase
+import leon.solvers._
+import scala.concurrent.duration._
+import leon.verification.VCStatus
+import leon.verification.VCResult
 
 /**
  * @author Mikael
@@ -32,7 +38,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   
   /** If the sub-branches contain identifiers, it returns them unchanged.
       Else it creates a new boolean indicating this branch. */
-  def wrapBranch(e: (Expr, Option[Seq[Identifier]])): (Expr, Option[Seq[Identifier]]) = e._2 match {
+  def wrapBranch(e: (Expr, Option[Seq[Identifier]])): (Expr, Some[Seq[Identifier]]) = e._2 match {
     case None =>
       val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType)
       (tupleWrap(Seq(e._1, Variable(b))), Some(Seq(b)))
@@ -48,9 +54,9 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
         
       }
       (putInLastBody(e._1), Some(Seq(b)))
-    case _ =>
+    case e_2: Some[_] =>
       // No need to introduce a new boolean since if one of the child booleans is true, then this IfExpr has been called.
-      e
+      (e._1, e_2)
   }
   
   def hasConditionals(e: Expr) = {
@@ -133,15 +139,24 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       }
   }
   
+  // The cache of transforming functions.
   var cache = Map[FunDef, FunDef]()
+  
+  // Records all boolean serving to identify which part of the code should be executed.
+  var booleanFlags = Seq[Identifier]()
   
   def wrapFunDef(fd: FunDef): FunDef = {
     if(!(cache contains fd)) {
-      cache += fd -> (if(fds(fd)) {
+      if(fds(fd)) {
         val new_fd = fd.duplicate(returnType = TupleType(Seq(fd.returnType, BooleanType)))
         new_fd.body = None
-        new_fd
-      } else fd)
+        cache += fd -> new_fd
+        val (new_body, bvars) = wrapBranch(markBranches(fd.body.get)) // Recursive call.
+        new_fd.body = Some(new_body) // TODO: Handle post-condition if they exist.
+        booleanFlags ++= bvars.get
+      } else {
+        cache += fd -> fd
+      }
     }
     cache(fd)
   }
@@ -200,30 +215,55 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
      */
     
     /* Change all return types to accommodate the new covering boolean */
-    val changeReturnTypes = { (p: Program) =>
-        val (program, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(p)({
-          (f: FunDef) =>
-            if((fds contains f) || f == fd) {
-              Some(f.duplicate(returnType = TupleType(Seq(f.returnType, BooleanType))))
-            } else
-              None
-        }, {
-          (fi: FunctionInvocation, newFd: FunDef) =>
-            Some(TupleSelect(FunctionInvocation(newFd.typed, fi.args), 1))
-        })
-        (program, fdMap(fd), fds.map(fdMap))
+    
+    val (program, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(p)({
+      (f: FunDef) =>
+        if((fds contains   f) || f == fd) {
+          val new_fd = wrapFunDef(f)
+          if(f == fd) {
+            val h = FreshIdentifier("h", TupleType(Seq(fd.returnType, BooleanType)), false)
+            new_fd.postcondition = Some(Lambda(Seq(ValDef(h)), Not(TupleSelect(Variable(h), 2))))
+          }
+          Some(new_fd)
+        } else
+          None
+    }, {
+      (fi: FunctionInvocation, newFd: FunDef) => //if(cache contains fi.tfd.fd) {
+        Some(TupleSelect(FunctionInvocation(newFd.typed, fi.args), 1))
+      //} else None
+    })
+    
+    val start_fd = fdMap.getOrElse(fd, fd)
+    
+    // For each boolean flag, set it to true,
+    val covering_examples = for(bvar <- booleanFlags.toStream) yield {
+      val (program2, idMap2, fdMap2, cdMap2) = DefOps.replaceFunDefs(program)({
+        (f: FunDef) =>
+          if(ExprOps.exists(e => e match { case Variable(id) => booleanFlags contains id case _ => false })(f.fullBody)) {
+            val new_f = f.duplicate()
+            new_f.fullBody = ExprOps.preMap(e => {
+              e match {
+                case Variable(id) if id == bvar => Some(BooleanLiteral(true))
+                case Variable(id) if booleanFlags contains id => Some(BooleanLiteral(false))
+                case _ => None
+              }
+            })(f.fullBody)
+            Some(new_f)
+          } else None
+      })
+      val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
+      
+      val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(5.seconds)
+      
+      val vctx = new VerificationContext(c, program2, tfactory)
+      val vcs = VerificationPhase.generateVCs(vctx, Seq(start_fd2))
+      VerificationPhase.checkVCs(vctx, vcs).results(vcs(0)) match {
+        case None => Seq()
+        case Some(VCResult(VCStatus.Invalid(model), _, _)) => 
+          fd.paramIds.map(model)
+      }
     }
-    val addNewReturnVariables = { (p: Program, fd: FunDef, fds: Set[FunDef]) => 
-      
-
-      
-      
-    }
     
-    (changeReturnTypes andThen
-     addNewReturnVariables.tupled)(p)
-    
-    
-    ???
+    covering_examples filter (_.nonEmpty)
   }
 }
