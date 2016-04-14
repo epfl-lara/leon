@@ -1,8 +1,15 @@
+import leon.annotation._
+import leon.lang._
+
 object SimpleAddition {
 
-  def plus4 (left: Int) : Int = left + 4
+  def superChooser(x: Int): Char = x match {
+    case x2 if x2 < 10 =>
+      x2 match {
+        case 1 => 'a'
+        case 2 => 'b'
+      }
+    case _ => 'z'
+  }
 
-  def aPlusB (left: Int, right: Int): Int = left + right
-
-  def yPlusX (x: Int, y: Int) = y + x
 }

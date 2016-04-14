@@ -1,7 +1,11 @@
+import leon.annotation._
+import leon.lang._
+
 object SimpleAdditionBase {
-  def plus4 (x: Int) : Int =
-    x + 4
 
 
-  def xPlusY (x: Int, y: Int) : Int = x + y
+  def chooser(x: Int): Char = x match {
+    case 1 => 'a'
+    case 2 => 'b'
+  }
 }
