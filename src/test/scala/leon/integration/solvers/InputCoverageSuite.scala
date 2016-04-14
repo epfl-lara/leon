@@ -75,7 +75,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     |  
     |  sealed abstract class A
     |  case class B() extends A
-    |  case class C(a: Int, tail: A) extends A
+    |  case class C(a: String, tail: A) extends A
     |  case class D(a: String, tail: A, b: String) extends A
     |  
     |  def withMatch(a: A): String = {
@@ -254,5 +254,65 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val withIf = funDef("InputCoverageSuite.withIf")
     val coverage = new InputCoverage(withIf, Set(withIf))
     coverage.result().toSet should equal (Set(Seq(b(true)), Seq(b(false))))
+  }
+  
+  test("input coverage for ADT should find all of them") { ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val withMatch = funDef("InputCoverageSuite.withMatch")
+    val coverage = new InputCoverage(withMatch, Set(withMatch))
+    coverage.minimizeExamples = false
+    val res = coverage.result().toSet
+    res should have size 4
+    
+    coverage.minimizeExamples = true
+    val res2 = coverage.result().toSet
+    res2 should have size 3
+  }
+  
+  test("input coverage for combined functions should find all of them") { ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val withCoveredFun1 = funDef("InputCoverageSuite.withCoveredFun1")
+    val withCoveredFun2 = funDef("InputCoverageSuite.withCoveredFun2")
+    val coverage = new InputCoverage(withCoveredFun1, Set(withCoveredFun1, withCoveredFun2))
+    val res = coverage.result().toSet.toSeq
+    if(res.size == 1) {
+      val Seq(IntLiteral(a)) = res(0)
+      withClue(s"a=$a") {
+        assert(a + 5 > 0 || a - 5 > 0, "At least one of the two examples should cover the positive case")
+        assert(a + 5 <= 0 || a - 5 <= 0, "At least one of the two examples should cover the negative case")
+      }
+    } else {
+      res should have size 2
+      val Seq(IntLiteral(a)) = res(0)
+      val Seq(IntLiteral(b)) = res(1)
+      withClue(s"a=$a, b=$b") {
+        assert(a + 5 > 0 || b + 5 > 0 || a - 5 > 0 || b - 5 > 0 , "At least one of the two examples should cover the positive case")
+        assert(a + 5 <= 0 || b + 5 <= 0 || a - 5 <= 0 || b - 5 <= 0 , "At least one of the two examples should cover the negative case")
+      }
+    }
+  }
+  
+  test("input coverage for composed functions should find all of them") { ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val withCoveredFun3 = funDef("InputCoverageSuite.withCoveredFun3")
+    val withCoveredFun2 = funDef("InputCoverageSuite.withCoveredFun2")
+    val coverage = new InputCoverage(withCoveredFun3, Set(withCoveredFun3, withCoveredFun2))
+    val res = coverage.result().toSet.toSeq
+    def withCoveredFun2Impl(i: Int) = if(i > 0) 2 else 0
+    if(res.size == 1) {
+      val Seq(IntLiteral(a)) = res(0)
+      withClue(s"a=$a") {
+        assert(a + 5 > 0 || withCoveredFun2Impl(a + 5) > 0, "At least one of the two examples should cover the positive case")
+        assert(a + 5 <= 0 || withCoveredFun2Impl(a + 5) <= 0, "At least one of the two examples should cover the negative case")
+      }
+    } else {
+      res should have size 2
+      val Seq(IntLiteral(a)) = res(0)
+      val Seq(IntLiteral(b)) = res(1)
+      withClue(s"a=$a, b=$b") {
+        assert(a + 5 > 0 || withCoveredFun2Impl(a + 5) > 0 || b + 5 > 0 || withCoveredFun2Impl(b + 5) > 0, "At least one of the two examples should cover the positive case")
+        assert(a + 5 <= 0 || withCoveredFun2Impl(a + 5) <= 0 || b + 5 <= 0 || withCoveredFun2Impl(b + 5) <= 0, "At least one of the two examples should cover the negative case")
+      }
+    }
   }
 }

@@ -25,6 +25,7 @@ import leon.solvers._
 import scala.concurrent.duration._
 import leon.verification.VCStatus
 import leon.verification.VCResult
+import leon.evaluators.AbstractEvaluator
 
 /**
  * @author Mikael
@@ -34,7 +35,9 @@ import leon.verification.VCResult
  * @param fd The calling function
  */
 class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Program) {
-  var numToCoverForEachExample: Int = 1
+
+  /** If set, performs a cleaning up step to cover the whole function */
+  var minimizeExamples: Boolean = true
   
   /** If the sub-branches contain identifiers, it returns them unchanged.
       Else it creates a new boolean indicating this branch. */
@@ -59,10 +62,14 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       (e._1, e_2)
   }
   
+  /** Returns true if there are some branching to monitor in the expression */
   def hasConditionals(e: Expr) = {
-    ExprOps.exists{ case i:IfExpr => true case m: MatchExpr => true case f: FunctionInvocation => true case _ => false}(e)
+    ExprOps.exists{ case i:IfExpr => true case m: MatchExpr => true case f: FunctionInvocation if fds(f.tfd.fd) || f.tfd.fd == fd => true case _ => false}(e)
   }
   
+  /** Merges two set of identifiers.
+   *  None means that the attached expression is the original one,
+   *  Some(ids) means that it has been augmented with booleans and ids are the "monitoring" boolean flags. */
   def merge(a: Option[Seq[Identifier]], b: Option[Seq[Identifier]]) = {
     (a, b) match {
       case (None, None) => None
@@ -75,7 +82,6 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   /** For each branch in the expression, adds a boolean variable such that the new type of the expression is (previousType, Boolean)
    *  If no variable is output, then the type of the expression is not changed.
     * If the expression is augmented with a boolean, returns the list of boolean variables which appear in the expression */
-  // All functions now return a boolean along with their original return type.
   def markBranches(e: Expr): (Expr, Option[Seq[Identifier]]) =
     if(!hasConditionals(e)) (e, None) else e match {
     case IfExpr(cond, thenn, elze) =>
@@ -126,7 +132,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
               val finalExpr = 
                 tupleWrap(Seq(Variable(res_id), or(finalIds.map(Variable(_)): _*))).copiedFrom(e)
               val funCall = letTuple(Seq(res_id, res_b), FunctionInvocation(TypedFunDef(new_fd, targs), children).copiedFrom(e), finalExpr).copiedFrom(e)
-              (exprBuilder(funCall), Some(finalIds))
+              (exprBuilder(funCall), merge(Some(Seq()), ids))
           }
         case _ =>
           tmpIds match {
@@ -139,12 +145,13 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       }
   }
   
-  // The cache of transforming functions.
-  var cache = Map[FunDef, FunDef]()
+  /** The cache of transforming functions.*/
+  private var cache = Map[FunDef, FunDef]()
   
-  // Records all boolean serving to identify which part of the code should be executed.
-  var booleanFlags = Seq[Identifier]()
+  /** Records all booleans serving to identify which part of the code should be executed.*/
+  private var booleanFlags = Seq[Identifier]()
   
+  /** Augment function definitions which should have boolean markers, leave others untouched. */
   def wrapFunDef(fd: FunDef): FunDef = {
     if(!(cache contains fd)) {
       if(fds(fd)) {
@@ -161,24 +168,22 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     cache(fd)
   }
   
+  /** Returns true if the expression is a function call with a new function already. */
   def isNewFunCall(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, targs), args) =>
       cache.values.exists { f => f == fd }
     case _ => false
   }
   
-  /** The number of expressions is the same as the number of arguments. */
+  /** Returns a stream of covering inputs for the function `f`,
+   *  such that if `f` is evaluated on each of these inputs, all parts of `{ f } U fds` will have been executed at least once.
+   *  
+   *  The number of expressions is the same as the number of arguments of `f` */
   def result(): Stream[Seq[Expr]] = {
-    /* Algorithm:
-     * def f(x: Int, z: Boolean): Int =
-     *   x match {
-     *     case 0 | 1 =>
-     *       if(z) f(if(z) x else -x, z) else 1
-     *     case _ =>
-     *       (if(z) x
-     *       else f(x-1,!z)+f(x-2,!z))*f(x-1,!z)
-     *   } 
-     * 2) In innermost branches, replace each result by (result, bi) where bi is a boolean described later.
+    cache = Map()
+    booleanFlags = Seq()
+    /* Approximative algorithm Algorithm:
+     * In innermost branches, replace each result by (result, bi) where bi is a boolean described later.
      * def f(x: Int, z: Boolean): (Int, Boolean) =
      *   x match {
      *     case 0 | 1 =>
@@ -191,23 +196,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
      *       else (f(x-1,!z)+f(x-2,!z), b3)
      *       (res*f(x-1,!z), b)
      *   } 
-     * 3) If the function is recursive, recover the previous values and left-OR them with the returning bi.
-     * def f(x: Int, z: Boolean): (Int, Boolean) =
-     *   x match {
-     *     case 0 | 1 => (1, b1)
-     *     case _ =>
-     *       if(z) {
-     *         val (r, bf) = f(x-1,!z)
-     *         (x*r, b2 || bf)}
-     *       else {
-     *         val (r, bf) = f(x-1,!z)
-     *         val (r2, bf2) = f(x-2,!z)
-     *         (r+r2, b3 || bf || bf2)
-     *       }
-     *   } 
-     * 4) Add the post-condition
-     *   ensuring { res => !res._2 }
-     * 5) Let B be the set of bi.
+     * Let B be the set of bi.
      *    For each b in B
      *      Set all b' in B to false except b to true
      *      Find a counter-example.
@@ -235,8 +224,11 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     
     val start_fd = fdMap.getOrElse(fd, fd)
     
-    // For each boolean flag, set it to true,
-    val covering_examples = for(bvar <- booleanFlags.toStream) yield {
+    var coveredBooleans = Set[Identifier]()
+    // For each boolean flag, set it to true, and find a counter-example which should reach this line.
+    // For each new counter-example, abstract evaluate the original function to remove booleans which have been reached.
+    val covering_examples =
+      for(bvar <- booleanFlags.toStream if !coveredBooleans(bvar)) yield {
       val (program2, idMap2, fdMap2, cdMap2) = DefOps.replaceFunDefs(program)({
         (f: FunDef) =>
           if(ExprOps.exists(e => e match { case Variable(id) => booleanFlags contains id case _ => false })(f.fullBody)) {
@@ -252,18 +244,41 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           } else None
       })
       val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
-      
       val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(5.seconds)
       
       val vctx = new VerificationContext(c, program2, tfactory)
       val vcs = VerificationPhase.generateVCs(vctx, Seq(start_fd2))
       VerificationPhase.checkVCs(vctx, vcs).results(vcs(0)) match {
-        case None => Seq()
         case Some(VCResult(VCStatus.Invalid(model), _, _)) => 
-          fd.paramIds.map(model)
+          val finalExprs = fd.paramIds.map(model)
+          val whoIsEvaluated = functionInvocation(start_fd, finalExprs)
+          val ae = new AbstractEvaluator(c, p)
+          val coveredBooleansForCE = ae.eval(whoIsEvaluated).result match {
+            case Some((Tuple(Seq(_, booleans)), _)) =>
+              val targettedIds = ExprOps.collect(e => e match { case Variable(id) => Set(id) case _ => Set[Identifier]() })(booleans)
+              coveredBooleans ++= targettedIds
+              targettedIds
+            case _ =>
+              Set(bvar)
+          }
+          finalExprs -> coveredBooleansForCE
+        case _ => Seq() -> Set(bvar)
       }
     }
     
-    covering_examples filter (_.nonEmpty)
+    val covering_examples2 = if(minimizeExamples) {
+      // Remove examples whose coverage set is included in some other example.
+      for((covering_example, flags_met) <- covering_examples
+          if !covering_examples.exists{
+            case (other_example, other_flags) =>
+              other_example != covering_example &&
+              flags_met.subsetOf(other_flags)
+          }
+      ) yield covering_example
+    } else {
+      covering_examples.map(_._1)
+    }
+    
+    covering_examples2 filter (_.nonEmpty)
   }
 }
