@@ -90,6 +90,16 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   private def convertToVar   (tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Var](tree)
 
   private def convertToProg(prog: Program): CAST.Prog = {
+    // Print some debug information about the program's units
+    debug(s"Input units are:")
+    prog.units foreach { u =>
+      debug(
+        "\t" + (if (u.isMainUnit) "*" else "") +
+        u.id.toString +
+        u.imports.mkString(" -> imports [", ", ", "]")
+      )
+    }
+
     // Only process the main unit
     val (mainUnits, _) = prog.units partition { _.isMainUnit }
 
@@ -170,6 +180,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   // Extract inner functions too
   private def convertToFun(fd: FunDef)(implicit funCtx: FunCtx) = {
     implicit val pos = fd.getPos
+
+    debug(s"Converting function ${fd.id.uniqueName}")
 
     // Forbid return of array as they are allocated on the stack
     if (containsArrayType(fd.returnType))
@@ -498,12 +510,16 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         else {
           // Transform while (cond) { body } into
           // while (true) { if (cond) { body } else { break } }
-          val condF = flatten(cond)
-          val ifelse  = condF.body ~~ buildIfElse(condF.value, CAST.NoStmt, CAST.Break)
+          val condF  = flatten(cond)
+          val ifelse = condF.body ~~ buildIfElse(condF.value, CAST.NoStmt, CAST.Break)
           CAST.While(CAST.True, ifelse ~ body)
         }
 
       case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
+        val funName = fd.id.uniqueName
+        if (!functions.find{ _.id.name == funName }.isDefined)
+          debug(s"\tWARNING $funName was not defined yet.")
+
         // In addition to regular function parameters, add the callee's extra parameters
         val id        = convertToId(fd.id)
         val types     = tfd.params map { p => convertToType(p.getType) }
