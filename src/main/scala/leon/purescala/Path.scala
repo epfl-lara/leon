@@ -81,7 +81,10 @@ class Path private[purescala](
     def wrap(e: Expr) = fold[Expr](e, let, (_, res) => res)(rest)
 
     val req = Require(Constructors.and(cond, wrap(pre)), wrap(body))
-    val full = if (post != NoTree(BooleanType)) Ensuring(req, wrap(post)) else req
+    val full = post match {
+      case l @ Lambda(args, body) => Ensuring(req, Lambda(args, wrap(body)).copiedFrom(l))
+      case _ => req
+    }
 
     fold[Expr](full, let, (_, _) => scala.sys.error("Should never happen!"))(outers)
   }
