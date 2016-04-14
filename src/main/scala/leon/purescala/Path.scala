@@ -53,6 +53,19 @@ class Path private[purescala](
     new Path(outers :+ Right(not(fold[Expr](BooleanLiteral(true), let, Constructors.and(_, _))(rest))))
   }
 
+  def filterByIds(ids: Set[Identifier]): Path = {
+    def containsIds(ids: Set[Identifier])(e: Expr): Boolean = exists{
+      case Variable(id) => ids.contains(id)
+      case _ => false
+    }(e)
+    
+    val newElements = elements.filter{
+      case Left((id, e)) => ids.contains(id) || containsIds(ids)(e)
+      case Right(e) => containsIds(ids)(e)
+    }
+    new Path(newElements)
+  }
+
   lazy val variables: Set[Identifier] = fold[Set[Identifier]](Set.empty,
     (id, e, res) => res - id ++ variablesOf(e), (e, res) => res ++ variablesOf(e)
   )(elements)
