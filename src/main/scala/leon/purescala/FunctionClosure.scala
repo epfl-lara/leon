@@ -180,6 +180,9 @@ object FunctionClosure extends TransformationPhase {
       case _ => None
     }(instBody)
 
+    //HACK to make sure substitution happened even in nested fundef
+    newFd.fullBody = replaceFromIDs(freeMap.map(p => (p._1, p._2.toVariable)), newFd.fullBody)
+
     FunSubst(newFd, freeMap, tparamsMap.map{ case (from, to) => from.tp -> to})
   }
 

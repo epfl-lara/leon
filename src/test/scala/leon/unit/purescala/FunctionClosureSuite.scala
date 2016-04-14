@@ -97,6 +97,38 @@ class FunctionClosureSuite extends FunSuite with helpers.ExpressionsDSL {
         fail("Unexpected fun def: " + cfd)
       }
     })
+
+
+    val deeplyNested2 = new FunDef(FreshIdentifier("deeplyNested"), Seq(), Seq(ValDef(z.id)), IntegerType)
+    deeplyNested2.body = Some(Require(GreaterEquals(x, bi(0)), z))
+
+    val nested2 = new FunDef(FreshIdentifier("nested"), Seq(), Seq(ValDef(y.id)), IntegerType)
+    nested2.body = Some(LetDef(Seq(deeplyNested2), FunctionInvocation(deeplyNested2.typed, Seq(y))))
+
+    val fd2 = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd2.body = Some(Require(GreaterEquals(x, bi(0)),
+                    LetDef(Seq(nested2), FunctionInvocation(nested2.typed, Seq(x)))))
+
+    val cfds2 = FunctionClosure.close(fd2)
+    assert(cfds2.size === 3)
+
+    cfds2.foreach(cfd => {
+      if(cfd.id.name == "f") {
+        assert(cfd.returnType === fd2.returnType)
+        assert(cfd.params.size === fd2.params.size)
+        assert(freeVars(cfd).isEmpty)
+      } else if(cfd.id.name == "nested") {
+        assert(cfd.returnType === nested2.returnType)
+        assert(cfd.params.size === 2)
+        assert(freeVars(cfd).isEmpty)
+      } else if(cfd.id.name == "deeplyNested") {
+        assert(cfd.returnType === deeplyNested2.returnType)
+        assert(cfd.params.size === 2)
+        assert(freeVars(cfd).isEmpty)
+      } else {
+        fail("Unexpected fun def: " + cfd)
+      }
+    })
   }
 
   private def freeVars(fd: FunDef): Set[Identifier] = variablesOf(fd.fullBody) -- fd.paramIds
