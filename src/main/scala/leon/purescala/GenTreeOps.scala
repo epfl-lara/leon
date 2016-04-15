@@ -133,23 +133,8 @@ trait GenTreeOps[SubTree <: Tree]  {
     * @note The mode with applyRec true can diverge if f is not well formed
     */
   def preMap(f: SubTree => Option[SubTree], applyRec : Boolean = false)(e: SubTree): SubTree = {
-    val rec = preMap(f, applyRec) _
-
-    val newV = if (applyRec) {
-      // Apply f as long as it returns Some()
-      fixpoint { e : SubTree => f(e) getOrElse e } (e)
-    } else {
-      f(e) getOrElse e
-    }
-
-    val Deconstructor(es, builder) = newV
-    val newEs = es.map(rec)
-
-    if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-      builder(newEs).copiedFrom(newV)
-    } else {
-      newV
-    }
+    def g(t: SubTree, u: Unit): (Option[SubTree], Unit) = (f(t), ())
+    preMapWithContext[Unit](g, applyRec)(e, ())
   }
   
   
