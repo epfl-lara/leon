@@ -149,12 +149,12 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
       case Operator(args, op) =>
         op(args.map(rec(_)(true)))
     }
-    val f1 = rec(ExpressionTransformer.simplify(simplifyArithmetic(
+    val f1 = simplifyByConstructors(rec(ExpressionTransformer.simplify(simplifyArithmetic(
         //TODO: this is a hack as of now. Fix this.
         //Note: it is necessary to convert real literals to integers since the linear constraint cannot handle real literals
         if(ctx.usereals) ExpressionTransformer.FractionalLiteralToInt(ine)
         else ine
-        )))(false)
+        )))(false))
     val rootvar = f1 match {
       case v: Variable if(conjuncts.contains(v)) => v
       case v: Variable if(disjuncts.contains(v)) => throw new IllegalStateException("f1 is a disjunct guard: "+v)
