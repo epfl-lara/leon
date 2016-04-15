@@ -85,6 +85,7 @@ object QuestionBuilder {
   /** Make all generic values uniquely identifiable among the final string (no value is a substring of another if possible)
     * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
   def makeGenericValuesUnique(a: Expr): Expr = {
+    println("Going to make this value unique:" + a)
     var genVals = Set[Expr with Terminal](StringLiteral(""))
     def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
       case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))

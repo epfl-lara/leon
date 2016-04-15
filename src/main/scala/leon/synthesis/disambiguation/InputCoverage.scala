@@ -95,6 +95,12 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
         recordMapping(id, expr)
       }
     }
+    expr match {
+      case i: IfExpr =>
+      case m: MatchExpr =>
+      case Operator(es, builder) =>
+        for(e <- es) recordMapping(flags, e)
+    }
   }
   
   private def recordExample(input: Seq[Expr], flags: Set[Identifier]): Unit = {
