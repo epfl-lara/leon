@@ -633,6 +633,7 @@ class PrettyPrinter(opts: PrinterOptions,
   protected def noBracesSub(e: Expr): Seq[Expr] = e match {
     case Assert(_, _, bd) => Seq(bd)
     case Let(_, _, bd) => Seq(bd)
+    case xlang.Expressions.LetVar(_, _, bd) => Seq(bd)
     case LetDef(_, bd) => Seq(bd)
     case LetPattern(_, _, bd) => Seq(bd)
     case Require(_, bd) => Seq(bd)
@@ -646,6 +647,10 @@ class PrettyPrinter(opts: PrinterOptions,
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
     case (_: Expr, Some(_: MatchCase)) => false
     case (_: LetDef, Some(_: LetDef)) => false
+    case (_: Expr, Some(_: xlang.Expressions.Block)) => false
+    case (_: xlang.Expressions.Block, Some(_: xlang.Expressions.While)) => false
+    case (_: xlang.Expressions.Block, Some(_: FunDef)) => false
+    case (_: xlang.Expressions.Block, Some(_: LetDef)) => false
     case (e: Expr, Some(_)) => true
     case _ => false
   }

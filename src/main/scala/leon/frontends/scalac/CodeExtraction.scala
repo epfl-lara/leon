@@ -25,6 +25,7 @@ import ExprOps._
 import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
+import xlang.Constructors.{block => leonBlock}
 
 import leon.utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition, Bijection, DefinedPosition}
 
@@ -1916,7 +1917,7 @@ trait CodeExtraction extends ASTExtractors {
 
       rest match {
         case Some(r) =>
-          LeonBlock(Seq(res), extractTree(r))
+          leonBlock(Seq(res, extractTree(r)))
         case None =>
           res
       }

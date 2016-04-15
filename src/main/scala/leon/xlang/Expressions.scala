@@ -50,7 +50,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"$varId = $expr;"
+      p"$varId = $expr"
     }
   }
 
@@ -62,7 +62,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"${obj}.${varId} = ${expr};"
+      p"${obj}.${varId} = ${expr}"
     }
   }
 
