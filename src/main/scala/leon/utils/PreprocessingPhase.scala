@@ -7,7 +7,7 @@ import leon.purescala._
 import leon.purescala.Definitions.Program
 import leon.solvers.isabelle.AdaptationPhase
 import leon.verification.InjectAsserts
-import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase}
+import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase, XLangCleanupPhase}
 
 class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Program] {
 
@@ -35,6 +35,7 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
     def pipeEnd = (
       InjectAsserts  andThen
       FunctionClosure andThen
+      XLangCleanupPhase andThen
       AdaptationPhase
     ) when (!genc)
 

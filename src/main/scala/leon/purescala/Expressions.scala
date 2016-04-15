@@ -791,7 +791,7 @@ object Expressions {
     *
     * @param exprs The expressions in the tuple
     */
-  case class Tuple (exprs: Seq[Expr]) extends Expr {
+  case class Tuple(exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
     val getType = TupleType(exprs.map(_.getType)).unveilUntyped
   }
