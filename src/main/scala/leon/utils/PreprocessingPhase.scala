@@ -35,7 +35,7 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
     def pipeEnd = (
       InjectAsserts  andThen
       FunctionClosure andThen
-      XLangCleanupPhase andThen
+      //XLangCleanupPhase andThen
       AdaptationPhase
     ) when (!genc)
 
