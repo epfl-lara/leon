@@ -249,4 +249,31 @@ object TypeOps extends GenTreeOps[TypeTree] {
       transformer.transform(e)(ids)
     }
   }
+
+  def typeCardinality(tp: TypeTree): Option[Int] = tp match {
+    case Untyped => Some(0)
+    case BooleanType => Some(2)
+    case UnitType => Some(1)
+    case SetType(base) =>
+      typeCardinality(base).map(b => Math.pow(2, b).toInt)
+    case FunctionType(from, to) =>
+      val t = typeCardinality(to).getOrElse(return None)
+      val f = from.map(typeCardinality).map(_.getOrElse(return None)).product
+      Some(Math.pow(t, f).toInt)
+    case MapType(from, to) =>
+      for {
+        t <- typeCardinality(to)
+        f <- typeCardinality(from)
+      } yield {
+        Math.pow(t + 1, f).toInt
+      }
+    case cct: CaseClassType =>
+      Some(cct.fields.map { field =>
+        typeCardinality(field.getType).getOrElse(return None)
+      }.product)
+    case act: AbstractClassType =>
+      Some(act.knownCCDescendants.map(typeCardinality).map(_.getOrElse(return None)).sum)
+    case _ => None
+  }
+
 }
