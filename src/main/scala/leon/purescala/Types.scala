@@ -72,7 +72,7 @@ object Types {
    * If you are not sure about the requirement, 
    * you should use tupleTypeWrap in purescala.Constructors
    */
-  case class TupleType (bases: Seq[TypeTree]) extends TypeTree {
+  case class TupleType(bases: Seq[TypeTree]) extends TypeTree {
     val dimension: Int = bases.length
     require(dimension >= 2)
   }
