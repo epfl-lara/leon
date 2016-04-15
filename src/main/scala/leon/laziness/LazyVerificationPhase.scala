@@ -176,7 +176,7 @@ object LazyVerificationPhase {
   def collectAntsPostTmpl(fd: FunDef) = {
     val Lambda(Seq(resdef), _) = fd.postcondition.get
     val (pbody, tmpl) = (fd.getPostWoTemplate, fd.template)
-    val (instPost, assumptions) = pbody match {
+    val (instPost, assumptions) = simplifyByConstructors(pbody) match {
       case And(args) =>
         val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
         (createAnd(instSpecs), createAnd(rest))
