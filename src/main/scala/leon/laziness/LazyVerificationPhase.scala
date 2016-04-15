@@ -36,7 +36,7 @@ object LazyVerificationPhase {
       case fd if fd.postcondition.exists { exists(hasInstVar) } =>
         // remove the conjuncts that use instrumentation vars
         val Lambda(resdef, pbody) = fd.postcondition.get
-        val npost = pbody match {
+        val npost = simplifyByConstructors(pbody) match {
           case And(args) =>
             createAnd(args.filterNot(hasInstVar))
           case l: Let => // checks if the body of the let can be deconstructed as And
