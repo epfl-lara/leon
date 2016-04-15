@@ -110,7 +110,7 @@ object FunctionUtils {
       if (fd.postcondition.isDefined) {
         val Lambda(_, postBody) = fd.postcondition.get
         // collect all terms with question marks and convert them to a template
-        val postWoQmarks = postBody match {
+        val postWoQmarks = simplifyByConstructors(postBody) match {
           case And(args) if args.exists(exists(isQMark)) =>
             val (tempExprs, otherPreds) = args.partition(exists(isQMark))
             //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(createAnd(tempExprs))}")
