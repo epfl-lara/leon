@@ -148,6 +148,14 @@ object Types {
       case t => Some(Nil, _ => t)
     }
   }
+
+  object FirstOrderFunctionType {
+    def unapply(tpe: TypeTree): Option[(Seq[TypeTree], TypeTree)] = tpe match {
+      case FunctionType(from, to) =>
+        unapply(to).map(p => (from ++ p._1) -> p._2) orElse Some(from -> to)
+      case _ => None
+    }
+  }
   
   def optionToType(tp: Option[TypeTree]) = tp getOrElse Untyped
 
