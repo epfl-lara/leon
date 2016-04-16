@@ -78,7 +78,13 @@ class Path private[purescala](
     val (outers, rest) = elements.span(_.isLeft)
     val cond = fold[Expr](BooleanLiteral(true), let, Constructors.and(_, _))(rest)
 
-    def wrap(e: Expr) = fold[Expr](e, let, (_, res) => res)(rest)
+    def wrap(e: Expr): Expr = {
+      val bindings = rest.collect { case Left((id, e)) => id -> e }
+      val idSubst = bindings.map(p => p._1 -> p._1.freshen).toMap
+      val substMap = idSubst.mapValues(_.toVariable)
+      val replace = replaceFromIDs(substMap, _: Expr)
+      bindings.foldRight(replace(e)) { case ((id, e), b) => let(idSubst(id), replace(e), b) }
+    }
 
     val req = Require(Constructors.and(cond, wrap(pre)), wrap(body))
     val full = post match {

@@ -1810,7 +1810,7 @@ object ExprOps extends GenTreeOps[Expr] {
     * @see [[Expressions.Require]]
     */
   def withPath(expr: Expr, path: Path): Expr = expr match {
-    case Let(i, e, b) => Let(i, e, withPath(b, path))
+    case Let(i, e, b) => withPath(b, path withBinding (i -> e))
     case Require(pre, b) => path specs (b, pre)
     case Ensuring(Require(pre, b), post) => path specs (b, pre, post)
     case Ensuring(b, post) => path specs (b, post = post)
