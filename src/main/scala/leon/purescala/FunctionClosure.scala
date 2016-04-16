@@ -36,8 +36,6 @@ object FunctionClosure extends TransformationPhase {
     val nestedWithPaths = (for((fds, path) <- nestedWithPathsFull; fd <- fds) yield (fd, path)).toMap
     val nestedFuns = nestedWithPaths.keys.toSeq
 
-    //println(nestedWithPaths)
-
     // Transitively called funcions from each function
     val callGraph: Map[FunDef, Set[FunDef]] = transitiveClosure(
       nestedFuns.map { f =>
@@ -56,14 +54,12 @@ object FunctionClosure extends TransformationPhase {
     //println("call graph: " + callGraph)
 
     def freeVars(fd: FunDef, pc: Path): Set[Identifier] =
-      variablesOf(fd.fullBody) ++ pc.variables -- fd.paramIds -- pc.bindings.map(_._1)
-    //def freeVars(fd: FunDef): Set[Identifier] =
-    //  variablesOf(fd.fullBody) -- fd.paramIds
+      variablesOf(fd.fullBody) ++ pc.variables ++ pc.bindings.map(_._1) -- fd.paramIds
 
     // All free variables one should include.
     // Contains free vars of the function itself plus of all transitively called functions.
     // also contains free vars from PC if the PC is relevant to the fundef
-    val transFree = {
+    val transFreeWithBindings = {
       def step(current: Map[FunDef, Set[Identifier]]): Map[FunDef, Set[Identifier]] = {
         nestedFuns.map(fd => {
           val transFreeVars = (callGraph(fd) + fd).flatMap((fd2:FunDef) => current(fd2))
@@ -73,14 +69,12 @@ object FunctionClosure extends TransformationPhase {
       }
 
       utils.fixpoint(step, -1)(nestedFuns.map(fd => (fd, variablesOf(fd.fullBody) -- fd.paramIds)).toMap)
-    }.map(p => (p._1, p._2.toSeq))
-    //println("free vars: " + transFree)
+    }
 
-    // All free variables one should include.
-    // Contains free vars of the function itself plus of all transitively called functions.
-    //val transFree = nestedFuns.map { fd =>
-    //  fd -> (callGraph(fd) + fd).flatMap( (fd2: FunDef) => freeVars(fd2, nestedWithPaths(fd2)) ).toSeq
-    //}.toMap
+    val transFree: Map[FunDef, Seq[Identifier]] = 
+      //transFreeWithBindings.map(p => (p._1, p._2 -- nestedWithPaths(p._1).bindings.map(_._1))).map(p => (p._1, p._2.toSeq))
+      transFreeWithBindings.map(p => (p._1, p._2.toSeq))
+
 
     // Closed functions along with a map (old var -> new var).
     val closed = nestedWithPaths.map {
@@ -151,37 +145,45 @@ object FunctionClosure extends TransformationPhase {
 
   // Takes one inner function and closes it. 
   private def closeFd(inner: FunDef, outer: FunDef, pc: Path, free: Seq[Identifier]): FunSubst = {
+    //println("inner: " + inner)
+    //println("pc: " + pc)
+    //println("free: " + free.map(_.uniqueName))
+
+    val reqPC = pc.filterByIds(free.toSet)
 
     val tpFresh = outer.tparams map { _.freshen }
     val tparamsMap = outer.tparams.zip(tpFresh map {_.tp}).toMap
     
     val freshVals = (inner.paramIds ++ free).map{_.freshen}.map(instantiateType(_, tparamsMap))
     val freeMap   = (inner.paramIds ++ free).zip(freshVals).toMap
+    val freshParams = (inner.paramIds ++ free).filterNot(v => reqPC.isBound(v)).map(v => freeMap(v))
 
     val newFd = inner.duplicate(
       inner.id.freshen,
       inner.tparams ++ tpFresh,
-      freshVals.map(ValDef(_)),
+      freshParams.map(ValDef(_)),
       instantiateType(inner.returnType, tparamsMap)
     )
 
     val instBody = instantiateType(
-      withPath(newFd.fullBody, pc.filterByIds(free.toSet)),
+      withPath(newFd.fullBody, reqPC),
       tparamsMap,
       freeMap
     )
 
     newFd.fullBody = preMap {
+      case Let(id, v, r) if freeMap.isDefinedAt(id) => Some(Let(freeMap(id), v, r))
       case fi @ FunctionInvocation(tfd, args) if tfd.fd == inner =>
         Some(FunctionInvocation(
           newFd.typed(tfd.tps ++ tpFresh.map{ _.tp }),
-          args ++ freshVals.drop(args.length).map(Variable)
+          args ++ freshParams.drop(args.length).map(Variable)
         ).setPos(fi))
       case _ => None
     }(instBody)
 
     //HACK to make sure substitution happened even in nested fundef
     newFd.fullBody = replaceFromIDs(freeMap.map(p => (p._1, p._2.toVariable)), newFd.fullBody)
+
 
     FunSubst(newFd, freeMap, tparamsMap.map{ case (from, to) => from.tp -> to})
   }

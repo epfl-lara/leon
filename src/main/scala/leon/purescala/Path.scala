@@ -73,6 +73,8 @@ class Path private[purescala](
   lazy val bindings: Seq[(Identifier, Expr)] = elements.collect { case Left(p) => p }
   lazy val conditions: Seq[Expr] = elements.collect { case Right(e) => e }
 
+  def isBound(id: Identifier): Boolean = bindings.exists(p => p._1 == id)
+
   private def fold[T](base: T, combineLet: (Identifier, Expr, T) => T, combineCond: (Expr, T) => T)
                      (elems: Seq[Either[(Identifier, Expr), Expr]]): T = elems.foldRight(base) {
     case (Left((id, e)), res) => combineLet(id, e, res)
