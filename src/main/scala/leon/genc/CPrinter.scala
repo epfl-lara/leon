@@ -20,7 +20,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case '\\' => "\\\\"
     case '\'' => "\\'"
     case '\"' => "\\\""
-    case c => c.toString
+    case c    => c.toString
   }
 
   private def escape(s: String): String = {
@@ -30,8 +30,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   private[genc] def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
     /* ---------------------------------------------------------- Types ----- */
-    case TypeDef(Id(orig), Id(alias)) => c"typedef $alias $orig;"
-    case typ: Type                    => c"${typ.toString}"
+    case typ: Type => c"${typ.rep}"
 
 
     /* ------------------------------------------------------- Literals ----- */
@@ -55,7 +54,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |
           |/* -------------------------------- type aliases ----- */
           |
-          |${nary(typedefs, sep = "\n")}
+          |${nary(typedefs map TypeDefDecl, sep = "\n")}
           |
           |/* ----------------------- data type definitions ----- */
           |
@@ -189,6 +188,9 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
 
   private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
+    case TypeDefDecl(TypeDef(Id(orig), Id(alias))) =>
+      c"typedef $alias $orig;"
+
     case FunDecl(f) =>
       c"${FunSign(f)};$NewLine"
 
@@ -225,6 +227,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
+  private case class TypeDefDecl(td: TypeDef) extends WrapperTree
   private case class FunDecl(f: Fun) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
   private case class DeclParam(x: Var) extends WrapperTree
