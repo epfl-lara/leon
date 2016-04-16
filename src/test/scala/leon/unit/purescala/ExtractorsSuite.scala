@@ -25,6 +25,27 @@ class ExtractorsSuite extends FunSuite with ExpressionsDSL {
     assert(e3 === e4)
   }
 
+  test("Extractors do not magically change the syntax") {
+    val e1 = Equals(bi(1), bi(1))
+    val e2 = e1 match {
+      case Operator(es, builder) => builder(es)
+    }
+    assert(e1 === e2)
+
+    val e3 = Equals(BooleanLiteral(true), BooleanLiteral(false))
+    val e4 = e3 match {
+      case Operator(es, builder) => builder(es)
+    }
+    assert(e3 === e4)
+
+    val e5 = TupleSelect(Tuple(Seq(bi(1), bi(2))), 2)
+    val e6 = e5 match {
+      case Operator(es, builder) => builder(es)
+    }
+    assert(e5 === e6)
+  }
+
+
   test("Extractors of NonemptyArray with sparse elements") {
     val a1 = NonemptyArray(Map(0 -> x, 3 -> y, 5 -> z), Some((BigInt(0), BigInt(10))))
     val a2 = a1 match {
