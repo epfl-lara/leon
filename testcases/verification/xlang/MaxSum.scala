@@ -4,8 +4,10 @@ import leon.lang._
 
 object MaxSum {
 
-  def maxSum(a: Array[Int]): (Int, Int) = ({
-    require(a.length >= 0 && isPositive(a))
+  //not valid because of Int, unfortunately conversion between big int and
+  //int does not work and we cannot compute a.length * Max (Int * BigInt)
+  def maxSum(a: Array[Int]): (Int, Int) = {
+    require(a.length >= 0)
     var sum = 0
     var max = 0
     var i = 0
@@ -16,46 +18,6 @@ object MaxSum {
       i = i + 1
     }) invariant (sum <= i * max && i >= 0 && i <= a.length)
     (sum, max)
-  }) ensuring(res => res._1 <= a.length * res._2)
-
-
-  def isPositive(a: Array[Int]): Boolean = {
-    require(a.length >= 0)
-    def rec(i: Int): Boolean = {
-      require(i >= 0)
-      if(i >= a.length) 
-        true 
-      else {
-        if(a(i) < 0) 
-          false 
-        else 
-          rec(i+1)
-      }
-    }
-    rec(0)
-  }
-
-  def summ(to : Int): Int = ({
-    require(to >= 0)
-    var i = 0
-    var s = 0
-    (while (i < to) {
-      s = s + i
-      i = i + 1
-    }) invariant (s >= 0 && i >= 0 && s == i*(i-1)/2 && i <= to)
-    s
-  }) ensuring(res => res >= 0 && res == to*(to-1)/2)
-
-
-  def sumsq(to : Int): Int = ({
-    require(to >= 0)
-    var i = 0
-    var s = 0
-    (while (i < to) {
-      s = s + i*i
-      i = i + 1
-    }) invariant (s >= 0 && i >= 0 && s == (i-1)*i*(2*i-1)/6 && i <= to)
-    s
-  }) ensuring(res => res >= 0 && res == (to-1)*to*(2*to-1)/6)
+  } ensuring(res => res._1 <= a.length * res._2)
 
 }
