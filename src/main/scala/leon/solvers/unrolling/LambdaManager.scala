@@ -256,7 +256,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends DatatypeManager(enco
       (Seq(encoder.mkImplies(blocker, typeBlocker)), Map.empty, Map.empty)
 
     case None =>
-      val App(caller, tpe @ FunctionType(_, to), args, value) = app
+      val App(caller, tpe @ FirstOrderFunctionType(_, to), args, value) = app
       val typeBlocker = encoder.encodeId(FreshIdentifier("t", BooleanType))
       typeBlockers += value -> typeBlocker
       implies(blocker, typeBlocker)
