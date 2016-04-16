@@ -90,9 +90,14 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   // Currently simple aliases in case we need later to have special treatment instead
   private def convertToType  (tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Type](tree)
   private def convertToStruct(tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Struct](tree)
-  private def convertToId    (tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Id](tree)
   private def convertToStmt  (tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Stmt](tree)
   private def convertToVar   (tree: Tree)(implicit funCtx: FunCtx) = convertTo[CAST.Var](tree)
+
+  // No need of FunCtx for identifiers
+  private def convertToId(tree: Tree) = {
+    implicit val ctx = emptyFunCtx
+    convertTo[CAST.Id](tree)
+  }
 
   private def convertToProg(prog: Program): CAST.Prog = {
     // Print some debug information about the program's units
@@ -156,7 +161,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       case x =>
         val prefix = s"[unit = ${unit.id}]"
-        internalError(s"Unexpected definition $x: ${x.getClass}")
+        internalError(s"$prefix Unexpected definition $x: ${x.getClass}")
     }
   }
 
@@ -234,12 +239,13 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       if (!funCtx.isEmpty)
         CAST.unsupported(s"External code cannot be specified for nested functions")
 
-      val Seq(Some(code0), Some(includes0)) = fd.extAnnotations(manual)
+      val Seq(Some(code0), includesOpt0) = fd.extAnnotations(manual)
       val code     = code0.asInstanceOf[String]
-      val includes = includes0.asInstanceOf[String]
+      val includes = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
 
       // Register all the necessary includes
-      includes split ':' foreach { i => registerInclude(CAST.Include(i)) }
+      if (!includes.isEmpty)
+        includes split ':' foreach { i => registerInclude(CAST.Include(i)) }
 
       val body = code.replaceAllLiterally("__FUNCTION__", id.name)
 
@@ -269,6 +275,25 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     fun
   }
 
+  // Return the manual C typedef contained in the class annotation, if any.
+  private def getTypedef(cd: CaseClassDef): Option[CAST.TypeDef] = {
+    val manual = "cCode.typedef"
+    if (cd.annotations contains manual) {
+      val Seq(Some(alias0), includesOpt0) = cd.extAnnotations(manual)
+      val alias   = alias0.asInstanceOf[String]
+      val include = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
+
+      val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(alias))
+
+      if (!include.isEmpty)
+        registerInclude(CAST.Include(include))
+
+      registerTypedef(typedef)
+
+      Some(typedef)
+    } else None
+  }
+
   private def convert(tree: Tree)(implicit funCtx: FunCtx): CAST.Tree = {
     implicit val pos = tree.getPos
 
@@ -294,18 +319,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case cd: CaseClassDef =>
         debug(s"Processing ${cd.id} with annotations: ${cd.annotations}")
 
-        val manual = "cCode.typedef"
-        if (cd.annotations contains manual) {
-          val Seq(Some(alias0), Some(include0)) = cd.extAnnotations(manual)
-          val alias   = alias0.asInstanceOf[String]
-          val include = include0.asInstanceOf[String]
-
-          val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(alias))
-
-          if (!include.isEmpty) registerInclude(CAST.Include(include))
-          registerTypedef(typedef)
-          typedef
-        } else {
+        getTypedef(cd) getOrElse {
           if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
           if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
           if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
@@ -331,6 +345,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       /* ------------------------------------ Definitions and Statements  ----- */
       case id: Identifier =>
+        // TODO Check for main overload and reject the program is such case
         if (id.name == "main") CAST.Id("main") // and not `main0`
         else                   CAST.Id(id.uniqueName)
 
@@ -546,7 +561,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         val funName = fd.id.uniqueName
         if (!functions.find{ _.id.name == funName }.isDefined) {
           val uOpt = prog.units find { _ containsDef fd }
-          val u = uOpt getOrElse { internalError(s"Function $funName was defined nowere!") }
+          val u = uOpt getOrElse { internalError(s"Function $funName was defined nowhere!") }
 
           debug(s"\t$funName is define in unit ${u.id}")
 
@@ -821,13 +836,25 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     FlattenedSeq(values, bodies)
   }
 
+  // TODO This might need to be generalised...
+  //  - One problem is with typedefs: should the type be returnable or not? The user might
+  //    need to specify it manually.
+  //  - Another issue is with case class with mutable members; references will get broken
+  //    (not supported at all ATM).
   private def containsArrayType(typ: TypeTree): Boolean = typ match {
     case Int32Type            => false
     case BooleanType          => false
     case UnitType             => false
     case ArrayType(_)         => true
     case TupleType(bases)     => bases exists containsArrayType
-    case CaseClassType(cd, _) => cd.fields map { _.getType } exists containsArrayType
+
+    case CaseClassType(cd, _) =>
+      // If a case class is manually typdef'd, consider it to be a "returnable" type
+      if (getTypedef(cd).isDefined) false
+      else cd.fields map { _.getType } exists containsArrayType
+
+    case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")(typ.getPos)
+    case _                    => internalError(s"Unexpected TypeTree '$typ': ${typ.getClass}")
   }
 
   private def internalError(msg: String) = ctx.reporter.internalError(msg)
