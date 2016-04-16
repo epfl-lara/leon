@@ -70,6 +70,8 @@ object cCode {
    *    @cCode.typedef(alias = "FILE*", include = "stdio.h")
    *    case class FileStream(<some Scala properties>)
    *
+   * FIXME Due to type renaming for uniqueness, we cannot use the original name
+   *       in C code through cCode.function annotation.
    */
   @ignore
   class typedef(alias: String, include: String = "") extends StaticAnnotation

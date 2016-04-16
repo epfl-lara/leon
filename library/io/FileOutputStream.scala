@@ -30,8 +30,8 @@ object FileOutputStream {
   @extern
   @cCode.function(code =
     """
-    |FileOutputStream __FUNCTION__(char* filename) {
-    |  FileOutputStream stream = fopen(filename, "w");
+    |FILE* __FUNCTION__(char* filename) {
+    |  FILE* stream = fopen(filename, "w");
     |  // stream == NULL on failure
     |  return stream;
     |}
@@ -57,7 +57,7 @@ object FileOutputStream {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FileOutputStream stream) {
+    |bool __FUNCTION__(FILE* stream) {
     |  if (stream != NULL)
     |    return fclose(stream) == 0;
     |  else
@@ -77,7 +77,7 @@ object FileOutputStream {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FileOutputStream stream) {
+    |bool __FUNCTION__(FILE* stream) {
     |  return stream != NULL;
     |}
     """
@@ -94,7 +94,7 @@ object FileOutputStream {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FileOutputStream stream, int32_t x) {
+    |bool __FUNCTION__(FILE* stream, int32_t x) {
     |  return fprintf(stream, "%"PRIi32, x) >= 0;
     |}
     """,
