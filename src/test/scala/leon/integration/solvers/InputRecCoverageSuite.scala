@@ -68,6 +68,7 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     |  def g(l: List[String]): String    = l match { case Nil() => "[]" case Cons(a, b) => "[" + a + grec(b) }
     |  def grec(l: List[String]): String = l match { case Nil() => ""   case Cons(a, b) => "," + grec(b) + a }
     |  
+    |  // Testing  buildMarkableValue
     |  abstract class A
     |  case class B() extends A
     |  case class C(i: String) extends A
@@ -77,8 +78,12 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     |  case class F(a: A) extends AA
     |  
     |  abstract class L
-    |  case class Co(i: Boolean, l: L) extends L
+    |  case class Co(b: Boolean, l: L) extends L
     |  case class Ni() extends L
+    |  
+    |  def h(a: A, l: L): String = hA(a) + hL(l)
+    |  def hA(a: A): String = a match { case B() => "b" case C(i) => i }
+    |  def hL(l: L): String=  l match { case Co(b, tail) => b.toString + "," + hL(tail) case Ni() => "]" }
     |}""".stripMargin)
     
   
@@ -126,5 +131,14 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     reccoverage invokePrivate buildMarkableValue(classType("InputRecCoverageSuite.E")) should be('empty)
     
     reccoverage invokePrivate buildMarkableValue(classType("InputRecCoverageSuite.L")) should be('empty)
+  }
+  
+  test("InputRecCoverage on multiple arguments should work"){ ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val h = funDef("InputRecCoverageSuite.h")
+    val hA = funDef("InputRecCoverageSuite.hA")
+    val hL = funDef("InputRecCoverageSuite.hL")
+    val reccoverage = new InputRecCoverage(h, Set(h, hA, hL))
+    reccoverage.result() should equal(2)
   }
 }
