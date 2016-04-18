@@ -12,6 +12,11 @@ object Map {
   def apply[A,B](elems: (A,B)*) = {
     new Map[A,B](scala.collection.immutable.Map[A,B](elems : _*))
   }
+  
+  @extern @library
+  def mkString[A, B](map: Map[A, B], pre: String, inkv: String, betweenkv: String, post: String, fA : A => String, fB: B => String) = {
+    pre + map.theMap.map{ case (k, v) => fA(k) + inkv + fB(v)}.mkString(betweenkv) + post
+  }
 }
 
 @ignore

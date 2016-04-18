@@ -552,7 +552,6 @@ sealed abstract class List[T] {
   def toSet: Set[T] = foldLeft(Set[T]()){ 
     case (current, next) => current ++ Set(next)
   }
-
 }
 
 @isabelle.constructor(name = "List.list.Cons")
@@ -577,6 +576,18 @@ object List {
     else Cons[T](x, fill[T](n-1)(x))
   } ensuring(res => (res.content == (if (n <= BigInt(0)) Set.empty[T] else Set(x))) &&
                     res.size == (if (n <= BigInt(0)) BigInt(0) else n))
+  
+  @library
+  def mkString[A](l: List[A], pre: String, mid: String, post: String, f : A => String) = {
+    def rec(l: List[A]): String = l match {
+      case Nil() => ""
+      case Cons(a, b) => mid + f(a) + rec(b)
+    }
+    pre + (l match {
+      case Nil() => ""
+      case Cons(a, b) => f(a) + rec(b)
+    }) + post
+  }
 }
 
 @library

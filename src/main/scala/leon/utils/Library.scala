@@ -26,6 +26,8 @@ case class Library(pgm: Program) {
   
   lazy val escape = lookup("leon.lang.StrOps.escape").collectFirst { case fd : FunDef => fd }
 
+  lazy val mapMkString = lookup("leon.lang.Map.mkString").collectFirst { case fd : FunDef => fd }
+
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)
   }
