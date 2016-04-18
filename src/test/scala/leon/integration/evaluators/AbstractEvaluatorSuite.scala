@@ -69,21 +69,26 @@ object AbstractTests {
     val testFd = funDef("AbstractTests.test2")
     val Leaf = cc("AbstractTests.Leaf")()
     def Node(left: Expr, n: Expr, right: Expr) = cc("AbstractTests.Node")(left, n, right)
+    val NodeDef = classDef("AbstractTests.Node")
+    val NodeType = classType("AbstractTests.Node", Seq()).asInstanceOf[CaseClassType]
     
     val ae = new AbstractEvaluator(fix._1, fix._2)
     
-    val res = ae.eval(FunctionInvocation(testFd.typed, Seq(BooleanLiteral(true), Node(Leaf, IntLiteral(5), Leaf)))).result match {
+    val input = Node(Leaf, IntLiteral(5), Leaf)
+    
+    val res = ae.eval(FunctionInvocation(testFd.typed, Seq(BooleanLiteral(true), input))).result match {
       case Some((e, expr)) =>
         e should equal (IntLiteral(5))
-        expr should equal (IntLiteral(5))
+        expr should equal (CaseClassSelector(NodeType, input, NodeDef.fieldsIds(1)))
       case None =>
         fail("No result!")
     }
     val a = id("a", Int32Type)
-    ae.eval(FunctionInvocation(testFd.typed, Seq(BooleanLiteral(true), Node(Leaf, Variable(a), Leaf)))).result match {
+    val input2 = Node(Leaf, Variable(a), Leaf)
+    ae.eval(FunctionInvocation(testFd.typed, Seq(BooleanLiteral(true), input2))).result match {
       case Some((e, expr)) =>
         e should equal (Variable(a))
-        expr should equal (Variable(a))
+        expr should equal (CaseClassSelector(NodeType, input2, NodeDef.fieldsIds(1)))
       case None =>
         fail("No result!")
     }
