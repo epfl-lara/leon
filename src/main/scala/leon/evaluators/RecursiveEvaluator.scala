@@ -107,6 +107,20 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
          case _ => throw EvalError(typeErrorMsg(input, StringType))
        }
 
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta, tb)), Seq(mp, pre, inkv, betweenkv, post, fk, fv)) if fd == program.library.mapMkString.get =>
+      val pre_str = e(pre) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(pre, StringType)) }
+      val inkv_str = e(inkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inkv, StringType)) }
+      val post_str = e(post) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(post, StringType)) }
+      val betweenkv_str = e(betweenkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(betweenkv, StringType)) }
+      val (mp_map, keyType, valueType) = e(mp) match { case FiniteMap(theMap, keyType, valueType) => (theMap, keyType, valueType) case _ => throw EvalError(typeErrorMsg(mp, MapType(ta, tb))) }
+      
+      val res = pre_str + mp_map.map{ case (k, v) =>
+        (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
+        inkv_str +
+        (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })}.mkString(betweenkv_str) + post_str
+      
+      StringLiteral(res)
+
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
         throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")

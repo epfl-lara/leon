@@ -111,7 +111,7 @@ sourceGenerators in Compile <+= Def.task {
                       |object Build {
                       |  val baseDirectory = \"\"\"${baseDirectory.value.toString}\"\"\"
                       |  val libFiles = List(
-                      |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
+                      |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"").replaceAll("\\\\"+"u","\\\\\"\"\"+\"\"\"u")}
                       |  )
                       |}""".stripMargin)
   Seq(build)
