@@ -67,6 +67,18 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     |  // Slightly different version of f with one inversion not caught by just covering examples.
     |  def g(l: List[String]): String    = l match { case Nil() => "[]" case Cons(a, b) => "[" + a + grec(b) }
     |  def grec(l: List[String]): String = l match { case Nil() => ""   case Cons(a, b) => "," + grec(b) + a }
+    |  
+    |  abstract class A
+    |  case class B() extends A
+    |  case class C(i: String) extends A
+    |  
+    |  abstract class AA
+    |  case class E(i: Boolean) extends AA
+    |  case class F(a: A) extends AA
+    |  
+    |  abstract class L
+    |  case class Co(i: Boolean, l: L) extends L
+    |  case class Ni() extends L
     |}""".stripMargin)
     
   
@@ -91,5 +103,28 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     reccoverage.result().map(x => x(0)) should haveOneWhich({(input: Expr) =>
       eval(f)(Seq(input)) != eval(g)(Seq(input))
     }, "make f and g differ")
+  }
+  
+  val buildMarkableValue = PrivateMethod[Option[Expr]]('buildMarkableValue)
+  
+  test("buildMarkableValue should build markable values if possible") { ctxprogram =>
+    implicit val (ctx, program) = ctxprogram
+    val dummy = funDef("InputRecCoverageSuite.dummy")
+    val reccoverage = new InputRecCoverage(dummy, Set(dummy))
+    reccoverage invokePrivate buildMarkableValue(classType("InputRecCoverageSuite.AA")) match {
+      case None => fail("Could not find a markable value of type AA but F(C(\"\")) is one !")
+      case Some(v) => v match {
+        case CaseClass(cct, Seq(c)) => cct should equal (classType("InputRecCoverageSuite.F"))
+          c match {
+            case CaseClass(cct, Seq(s)) => cct should equal (classType("InputRecCoverageSuite.C"))
+            case _ => fail(s"$c is not of the type C")
+          }
+        case _ => fail(s"$v is not of the type F")
+      }
+    }
+    
+    reccoverage invokePrivate buildMarkableValue(classType("InputRecCoverageSuite.E")) should be('empty)
+    
+    reccoverage invokePrivate buildMarkableValue(classType("InputRecCoverageSuite.L")) should be('empty)
   }
 }
