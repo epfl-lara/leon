@@ -126,7 +126,10 @@ object PackratParsing {
   } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 28
 
   //@inline
-  def depsEval(i: BigInt) = i == 0 || (i > 0 && allEval(i - 1))
+  def depsEval(i: BigInt) =
+    if (i == 0) true
+    else if (i > 0) allEval(i - 1)
+    else false
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
@@ -203,7 +206,7 @@ object PackratParsing {
     val out = outState[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      time <= ? // 189
+      time <= ? // 128
   }
 
   /**
@@ -222,7 +225,7 @@ object PackratParsing {
       }
     }
   } ensuring (_ => allEval(n) &&
-    time <= ? * n + ?) // 198 * n + 192
+    time <= ? * n + ?) // 137 * n + 131
 
   @ignore
   def main(args: Array[String]) {
