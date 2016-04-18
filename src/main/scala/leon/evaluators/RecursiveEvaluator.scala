@@ -117,7 +117,11 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val res = pre_str + mp_map.map{ case (k, v) =>
         (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
         inkv_str +
-        (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })}.mkString(betweenkv_str) + post_str
+        (v match {
+          case CaseClass(some, Seq(v)) if some == program.library.Some.get.typed(Seq(tb)) =>
+            (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
+          case _ => throw EvalError(typeErrorMsg(v, program.library.Some.get.typed(Seq(tb))))
+        })}.mkString(betweenkv_str) + post_str
       
       StringLiteral(res)
 
