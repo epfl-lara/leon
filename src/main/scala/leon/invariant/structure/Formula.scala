@@ -315,6 +315,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
         sharedVars ++= newShared
         uniqueVars = (uniqueVars ++ candUniques) -- newShared
     }
+    // TODO: here there are more opportunities to reduce freevars that are not created during flattenning
     // unflatten rest
     var flatIdMap = blockMap
     val unflatRest = (flatRest collect {

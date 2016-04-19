@@ -15,9 +15,9 @@ import invariant.engine.InferenceReport
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  */
-object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
+object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
   val dumpInputProg = false
-  val dumpLiftProg = false
+  val dumpLiftProg = true
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
   val dumpProgWithPreAsserts = false
@@ -51,7 +51,7 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     val resourceVeri =
       if (!skipResourceVerification)
         Some(checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false)))
+          checkCtx.findOption(optUseOrb).getOrElse(false)))
       else None
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
@@ -75,9 +75,11 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     assert(pass, msg)
 
     // refEq is by default false
-    val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
+    val nprog = ExpressionLifter.liftLambdaBody(prog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
+
+    System.exit(0)
 
     val funsManager = new LazyFunctionsManager(nprog)
     val closureFactory = new LazyClosureFactory(nprog)

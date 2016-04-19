@@ -15,7 +15,10 @@ import LazinessUtil._
 import invariant.util.ProgramUtil._
 import FreeVariableFactory._
 
-object LazyExpressionLifter {
+/**
+ * Makes sure that the bodies of all the lambdas are function applications
+ */
+object ExpressionLifter {
 
   /**
    * convert the argument of every lazy constructors to a procedure
@@ -32,7 +35,7 @@ object LazyExpressionLifter {
    * (c) converts memoization to lazy evaluation
    * (d) Adds unique references to programs that create lazy closures.
    */
-  def liftLazyExpressions(prog: Program, createUniqueIds: Boolean = false): Program = {
+  def liftLambdaBody(prog: Program, createUniqueIds: Boolean = false): Program = {
 
     lazy val funsMan = new LazyFunctionsManager(prog)
     lazy val needsId = funsMan.callersnTargetOfLazyCons
@@ -51,38 +54,34 @@ object LazyExpressionLifter {
         (fd -> nfd)
     }.toMap
 
-    lazy val lazyFun = ProgramUtil.functionByFullName("leon.lazyeval.$", prog).get
-    lazy val valueFun = ProgramUtil.functionByFullName("leon.lazyeval.Lazy.value", prog).get
-
     var anchorDef: Option[FunDef] = None // a hack to find anchors
     prog.modules.foreach { md =>
       def exprLifter(inmem: Boolean)(fl: Option[FreeVarListIterator])(expr: Expr) = expr match {
-        case finv @ FunctionInvocation(lazytfd, Seq(callByNameArg)) if isLazyInvocation(finv)(prog) =>
-          val Lambda(Seq(), arg) = callByNameArg // extract the call-by-name parameter
-          arg match {
-            case _: FunctionInvocation =>
-              finv
+        case lmb @ Lambda(args, body) => // seen a lambda
+          body match {
+            case _: FunctionInvocation => lmb
             case _ =>
-              val freevars = variablesOf(arg).toList
+              val argvars = args.map(_.id)
+              val capturedvars = (variablesOf(body) -- argvars).toList
+              val freevars = argvars ++ capturedvars
               val tparams = freevars.map(_.getType).flatMap(getTypeParameters).distinct
-              val argstruc = new ExprStructure(arg)
-              val argfun =
+              val argstruc = new ExprStructure(body)
+              val bodyfun =
                 if (newfuns.contains(argstruc)) {
                   newfuns(argstruc)._1
                 } else {
                   //construct type parameters for the function
-                  // note: we should make the base type of arg as the return type
                   val nname = FreshIdentifier(freshFunctionNameForArg, Untyped, true)
                   val tparamDefs = tparams map TypeParameterDef.apply
                   val params = freevars.map(ValDef(_))
-                  val retType = bestRealType(arg.getType)
+                  val retType = bestRealType(body.getType)
                   val nfun =
                     if (createUniqueIds) {
                       val idparam = ValDef(FreshIdentifier("id@", fvType))
                       new FunDef(nname, tparamDefs, params :+ idparam, retType)
                     } else
                       new FunDef(nname, tparamDefs, params, retType)
-                  nfun.body = Some(arg)
+                  nfun.body = Some(body)
                   newfuns += (argstruc -> (nfun, md))
                   nfun
                 }
@@ -91,12 +90,10 @@ object LazyExpressionLifter {
                 if (createUniqueIds)
                   fvVars :+ fl.get.nextExpr
                 else fvVars
-              FunctionInvocation(lazytfd, Seq(Lambda(Seq(),
-                FunctionInvocation(TypedFunDef(argfun, tparams), params))))
+              Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), params))
           }
-
         // is the argument of eager invocation not a variable ?
-        case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn @ Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
+        /*case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn @ Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
           val rootType = bestRealType(tp)
           val ntps = Seq(rootType)
           arg match {
@@ -106,16 +103,13 @@ object LazyExpressionLifter {
               val freshid = FreshIdentifier("t", rootType)
               Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps),
                 Seq(Lambda(Seq(), freshid.toVariable))))
-          }
+          }*/
 
         // is this an invocation of a memoized  function ?
         case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
-          // calling a memoized function is modeled as creating a lazy closure and forcing it
+          // calling a memoized function is modeled as creating a parameterless closure and invoking it
           val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
-          val finv = FunctionInvocation(tfd, args)
-          // enclose the call within the $ and force it
-          val susp = FunctionInvocation(TypedFunDef(lazyFun, Seq(tfd.returnType)), Seq(Lambda(Seq(), finv)))
-          FunctionInvocation(TypedFunDef(valueFun, Seq(tfd.returnType)), Seq(susp))
+          Application(Lambda(Seq(), FunctionInvocation(tfd, args)), Seq())
 
         // every other function calls ?
         case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>

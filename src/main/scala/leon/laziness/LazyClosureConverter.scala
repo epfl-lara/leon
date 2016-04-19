@@ -28,7 +28,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   val debug = false
   // flags
   //val removeRecursionViaEval = false
-  val refEq = ctx.findOptionOrDefault(LazinessEliminationPhase.optRefEquality)
+  val refEq = ctx.findOptionOrDefault(HOInferencePhase.optRefEquality)
 
   val funsNeedStates = funsManager.funsNeedStates
   val funsRetStates = funsManager.funsRetStates
