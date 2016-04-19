@@ -14,9 +14,10 @@ object SynthesisPhase extends UnitPhase[Program] {
   val name        = "Synthesis"
   val description = "Partial synthesis of \"choose\" constructs. Also used by repair during the synthesis stage."
 
-  val optManual      = LeonStringOptionDef("manual", "Manual search", default = "", "[cmd]")
-  val optCostModel   = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
-  val optDerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
+  val optManual       = LeonStringOptionDef("manual", "Manual search", default = "", "[cmd]")
+  val optCostModel    = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
+  val optDerivTrees   = LeonFlagOptionDef("derivtrees", "Generate derivation trees", false)
+  val optAllowPartial = LeonFlagOptionDef("partial", "Allow partial solutions", true)
 
   // CEGIS options
   val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
@@ -27,8 +28,10 @@ object SynthesisPhase extends UnitPhase[Program] {
   // Other rule options
   val optSpecifyRecCalls = LeonFlagOptionDef("reccalls", "Use full value as spec for introduced recursive calls", true)
 
-  override val definedOptions : Set[LeonOptionDef[Any]] =
-    Set(optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize, optSpecifyRecCalls)
+  override val definedOptions : Set[LeonOptionDef[Any]] = Set(
+    optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo,
+    optCEGISNaiveGrammar, optCEGISMaxSize, optSpecifyRecCalls, optAllowPartial
+  )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)
@@ -80,7 +83,9 @@ object SynthesisPhase extends UnitPhase[Program] {
       val to = new TimeoutFor(ctx.interruptManager)
 
       to.interruptAfter(options.timeoutMs) {
-        val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), allowPartial = true)
+        val allowPartial = ctx.findOptionOrDefault(optAllowPartial)
+
+        val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), allowPartial)
 
         try {
           if (options.generateDerivationTrees) {
