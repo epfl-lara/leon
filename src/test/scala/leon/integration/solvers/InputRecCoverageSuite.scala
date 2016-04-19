@@ -53,6 +53,10 @@ import org.scalatest.matchers.Matcher
 import org.scalatest.matchers.MatchResult
 
 class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures with ExpressionsDSLProgram with ExpressionsDSLVariables with PrivateMethodTester  {
+  override val a = null
+  
+  override val leonOpts = List[String]("--solvers=smt-cvc4")
+  
   val sources = List("""
     |import leon.lang._
     |import leon.collection._
@@ -84,6 +88,24 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     |  def h(a: A, l: L): String = hA(a) + hL(l)
     |  def hA(a: A): String = a match { case B() => "b" case C(i) => i }
     |  def hL(l: L): String=  l match { case Co(b, tail) => b.toString + "," + hL(tail) case Ni() => "]" }
+    |}
+    |object CornerExamples {
+    |  abstract class A
+    |  case class R(a: A) extends A
+    |  case class L(a: A) extends A
+    |  case class C(a: A) extends A
+    |  case class E() extends A
+    |  
+    |  def f(a: A): String = a match {
+    |    case R(a) => f(a) + "."
+    |    case L(a) => "." + f(a)
+    |    case C(a) => f(a)
+    |    case E() => "A"
+    |  }
+    |  def h(a: List[A]): String = a match{
+    |    case Nil() => ""
+    |    case Cons(a, t) => f(a) + h(t)
+    |  }
     |}""".stripMargin)
     
   
@@ -139,6 +161,16 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     val hA = funDef("InputRecCoverageSuite.hA")
     val hL = funDef("InputRecCoverageSuite.hL")
     val reccoverage = new InputRecCoverage(h, Set(h, hA, hL))
-    reccoverage.result() should equal(2)
+    //reccoverage.result() should equal(2)
+  }
+  
+  test("InputRecCoverage should exhaustively find arguments"){ ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    
+    val f = funDef("CornerExamples.f")
+    val h = funDef("CornerExamples.h")
+    
+    val reccoverage = new InputRecCoverage(h, Set(h, f))
+    reccoverage.result() should equal (2)
   }
 }

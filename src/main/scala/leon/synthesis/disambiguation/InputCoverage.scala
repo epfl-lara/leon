@@ -74,6 +74,15 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
         case LetTuple(binders, value, body) => letTuple(binders, value, putInLastBody(body)).copiedFrom(expr)
         case MatchExpr(scrut, Seq(MatchCase(TuplePattern(optId, binders), None, rhs))) => 
           MatchExpr(scrut, Seq(MatchCase(TuplePattern(optId, binders), None, putInLastBody(rhs)))).copiedFrom(expr)
+        case FunctionInvocation(tfd, args) => 
+          val default_type = tfd.returnType match {
+            case TupleType(Seq(t, BooleanType)) =>
+              t
+            case t => throw new Exception(s"Did not expect function $tfd to return something else than a tuple of a type and a boolean. Got $t")
+          }
+          val arg_id = FreshIdentifier("arg", default_type)
+          val arg_b = FreshIdentifier("bd", BooleanType)
+          letTuple(Seq(arg_id, arg_b), expr, Tuple(Seq(arg_id.toVariable, or(arg_b.toVariable, lineColumnId.toVariable))))
         case _ => throw new Exception(s"Unexpected branching case: $expr")
       }
       (putInLastBody(e._1), Some(Seq(lineColumnId)))

@@ -171,14 +171,14 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
                     val mainArg = fd.paramIds(0)
                     markWithStringOrInt(mainArg.getType, tupleWrap(input)) match { // TODO: Enumerate all possible values if not markable.
                       case Some(expr_marked) =>
-                        //println(s"Expr unisized: $expr_marked")
+                        println(s"Expr unisized: $expr_marked")
                         if(!input.exists(i => ExprOps.exists{ case e if e eq expr => true case _ => false}(i))) {
                           throw new Exception(s"Did not find $expr (${expr.##}) in $input")
                         }
                         toReplace.put(expr, List(expr_marked))
                       case None =>
-                        // If there is a finite number of values, replace with each of them.
-                        
+                        // TODO If there is a finite number of values at some place, replace with each of them.
+                        // TODO Else try to find other values.
                     }
                   } // Else nothing to do, there is already a unique identifier to expr.
                   
@@ -193,15 +193,19 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
             case e => throw new Exception(s"Rec-coverage is not supported when concatenating something else than fun(id) and constants; got $m")
           }
         }
-        val new_inputs: Seq[Seq[Expr]] =
-          leon.utils.SeqUtils.cartesianProduct(input.map(i => ExprOps.postFlatmap{ case e if toReplace.containsKey(e) => Some(toReplace.get(e)) case _ => None}(i)))
-        println(s"Added new input: $new_inputs")
-        for(new_input <- new_inputs) {
-          originalOutputs += new_input -> originalEvaluator.eval(functionInvocation(fd, new_input)).result.get
-          newInput = newInput :+ new_input
+        if(!toReplace.isEmpty()) {
+          val new_inputs: Seq[Seq[Expr]] =
+            leon.utils.SeqUtils.cartesianProduct(input.map(i => ExprOps.postFlatmap{ case e if toReplace.containsKey(e) => Some(toReplace.get(e)) case _ => None}(i)))
+          println(s"Added new input: $new_inputs")
+          for(new_input <- new_inputs) {
+            originalOutputs += new_input -> originalEvaluator.eval(functionInvocation(fd, new_input)).result.get
+            newInput = newInput :+ new_input
+          }
+          inputs = inputs.flatMap{ i => if(i == input) new_inputs else Some(input) }
+          println(s"inputs: ${inputs.toList}")
+        } else {
+          println(s"Did not find anything to identify the expr $stringConcat")
         }
-        inputs = inputs.flatMap{ i => if(i == input) new_inputs else Some(input) }
-        println(s"inputs: ${inputs.toList}")
         // Now we find which arguments are given to the function 
         
       } // Else that's fine, the example covers the case.
