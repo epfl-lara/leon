@@ -144,7 +144,7 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
+    val solverf = SolverFactory.getFromSettings(context, npr).withTimeout(timeout)
 
     try {
       val vctx = new VerificationContext(context, npr, solverf)
