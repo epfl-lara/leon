@@ -96,19 +96,6 @@ object LazyVerificationPhase {
     }
     val rep =
       if (useOrb) {
-        /*// create an inference context
-        val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds", "--solvers=smt-cvc4"))
-        val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
-          inferOpts.options ++ checkCtx.options)
-        val inferctx = new InferenceContext(p, ctxForInf)
-        val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
-        if (debugInferProgram){
-          prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
-        }
-
-        val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram,
-            funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)
-        new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)*/
         val inferctx = getInferenceContext(checkCtx, p)
         checkUsingOrb(new InferenceEngine(inferctx), inferctx)
       } else {

@@ -142,28 +142,19 @@ object TypeChecker {
             }
           } else (id.getType, v)
 
-        case FunctionInvocation(TypedFunDef(fd, tparams), args) =>
+        case FunctionInvocation(TypedFunDef(fd, oldTparams), args) =>
           //println(s"Consider expr: $e initial type: ${e.getType}")
           val nargs = args.map(arg => rec(arg)._2)
-          var tpmap = Map[TypeParameter, TypeTree]()
-          (fd.params zip nargs).foreach { x =>
-              (x._1.getType, x._2.getType) match {
-                case (t1, t2) =>
-                  getTypeArguments(t1) zip getTypeArguments(t2) foreach {
-                    case (tf : TypeParameter, ta) =>
-                      tpmap += (tf -> ta)
-                    case _ => ;
-                  }
-                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
-                    + s"do not match for call: $call")*/
-              }
-            }
+          val tpmap = (fd.params zip nargs).flatMap { case (ref, arg) =>
+             //println(s"Computing inst. for ${ref.getType} ${arg.getType}")
+             typeInstMap(arg.getType, ref.getType).get
+          }.toMap              
           // for uninterpreted functions, we could have a type parameter used only in the return type
           val dummyTParam = TypeParameter.fresh("R@")
-          val ntparams = fd.tparams.map(_.tp).zipAll(tparams, dummyTParam, dummyTParam).map{
-            case (paramt, argt) =>
-              tpmap.getOrElse(paramt /* in this case we inferred the type parameter */,
-                  argt /* in this case we reuse the argument type parameter */ )
+          val ntparams = fd.tparams.map(_.tp).zipAll(oldTparams, dummyTParam, dummyTParam).map{
+            case (tparam, targ) =>
+              tpmap.getOrElse(tparam /* in this case we inferred the type parameter */,
+                  targ /* in this case we reuse the argument type parameter */ )
           }
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
           if (nexpr.getType == Untyped) {

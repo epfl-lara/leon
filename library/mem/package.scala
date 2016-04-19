@@ -49,6 +49,15 @@ package object mem {
   implicit def toWithState[T](x: T) = new memWithState(x)
 
   @library
+  @inline
+  implicit def toStar[T](f: T) = new Star(f)
+
+  @library
+  case class Star[T](f: T) {
+    def * = f
+  }
+
+  @library
   case class Mem[T](v: T) {
     @extern
     def isCached: Boolean = sys.error("not implemented!")

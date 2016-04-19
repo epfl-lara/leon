@@ -8,7 +8,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import LazinessUtil._
 
-class LazyFunctionsManager(p: Program) {
+class FunctionsManager(p: Program) {
 
   // includes calls made through the specs
   val cg = CallGraphUtil.constructCallGraph(p, false, true,
@@ -16,12 +16,12 @@ class LazyFunctionsManager(p: Program) {
     (inexpr: Expr) => {
       var callees = Set[FunDef]()
       def rec(e: Expr): Unit = e match {
-        case cc @ CaseClass(_, args) if LazinessUtil.isWithStateCons(cc)(p) =>
+        case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
           ; //nothing to be done
-        case f : FunctionInvocation if LazinessUtil.isSuspInvocation(f)(p) =>
+        case f : FunctionInvocation if isSuspInvocation(f)(p) =>
           // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
           ;
-        case cc : CaseClass if LazinessUtil.isMemCons(cc)(p) =>
+        case cc : CaseClass if isMemCons(cc)(p) =>
           ; // we can ignore the arguments to mem
         //note: do not consider field invocations
         case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
@@ -33,25 +33,29 @@ class LazyFunctionsManager(p: Program) {
       callees
     })
 
+  // note: we do not have to enforce that lambdas do not belong to the state, because lambdas are anyway not a part of the state
   val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
     var starRoots = Set[FunDef]()
     var readRoots = Set[FunDef]()
     var valRoots = Set[FunDef]()
     p.definedFunctions.foreach {
       case fd if fd.hasBody =>
-        postTraversal {
-          case finv: FunctionInvocation if isStarInvocation(finv)(p) =>
+        def rec(e: Expr): Unit = e match {
+          case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(Application(l, args))))) if isStarInvocation(finv)(p) =>
             starRoots += fd
-          case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
-            // the lazy invocation constructor will need the state
+            (l +: args) foreach rec
+//          case lam: Lambda  =>
+//            readRoots += fd
+          case finv@FunctionInvocation(_, args) if isCachedInv(finv)(p) =>
             readRoots += fd
-          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) || isCachedInv(finv)(p) =>
-            readRoots += fd
-          case finv: FunctionInvocation if isValueInvocation(finv)(p) =>
+            args foreach rec
+          case Application(l, args) =>
             valRoots += fd
-          case _ =>
-            ;
-        }(fd.body.get)
+            (l +: args) foreach rec
+          case Operator(args, _) =>
+            args foreach rec
+        }
+        rec(fd.body.get)
       case _ => ;
     }
     val valCallers = cg.transitiveCallers(valRoots.toSeq)
@@ -61,21 +65,20 @@ class LazyFunctionsManager(p: Program) {
     (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
   }
 
-  lazy val callersnTargetOfLazyCons = {
+  lazy val callersnTargetOfLambdas = {
     var consRoots = Set[FunDef]()
-    var targets = Set[FunDef]()
+    //var targets = Set[F]()
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
-          case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
+          case l: Lambda =>
             consRoots += fd
-            targets += finv.tfd.fd
+            //targets += l
           case _ =>
-            ;
         }(fd.body.get)
       case _ => ;
     }
-    cg.transitiveCallers(consRoots.toSeq) ++ targets
+    cg.transitiveCallers(consRoots.toSeq) //++ targets
   }
 
   lazy val cgWithoutSpecs = CallGraphUtil.constructCallGraph(p, true, false)
@@ -84,8 +87,7 @@ class LazyFunctionsManager(p: Program) {
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
-          case finv: FunctionInvocation if
-            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) || isCachedInv(finv)(p) => // call to isEvaluated || isSusp ?
+          case finv: FunctionInvocation if isSuspInvocation(finv)(p) || isCachedInv(finv)(p) => // call to isEvaluated || isSusp ?
             roots += fd
           case _ =>
             ;

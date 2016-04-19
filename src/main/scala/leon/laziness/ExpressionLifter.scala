@@ -24,9 +24,9 @@ object ExpressionLifter {
    * convert the argument of every lazy constructors to a procedure
    */
   var globalId = 0
-  def freshFunctionNameForArg = {
+  def freshFunctionNameForClosure = {
     globalId += 1
-    "lazyarg" + globalId
+    "closureBody" + globalId
   }
 
   /**
@@ -37,8 +37,8 @@ object ExpressionLifter {
    */
   def liftLambdaBody(prog: Program, createUniqueIds: Boolean = false): Program = {
 
-    lazy val funsMan = new LazyFunctionsManager(prog)
-    lazy val needsId = funsMan.callersnTargetOfLazyCons
+    lazy val funsMan = new FunctionsManager(prog)
+    lazy val needsId = funsMan.callersnTargetOfLambdas
 
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
     val fdmap = ProgramUtil.userLevelFunctions(prog).collect {
@@ -59,7 +59,7 @@ object ExpressionLifter {
       def exprLifter(inmem: Boolean)(fl: Option[FreeVarListIterator])(expr: Expr) = expr match {
         case lmb @ Lambda(args, body) => // seen a lambda
           body match {
-            case _: FunctionInvocation => lmb
+            case FunctionInvocation(_, args) if args.forall(_.isInstanceOf[Variable]) => lmb // here make sure the arguments are all variables
             case _ =>
               val argvars = args.map(_.id)
               val capturedvars = (variablesOf(body) -- argvars).toList
@@ -71,7 +71,7 @@ object ExpressionLifter {
                   newfuns(argstruc)._1
                 } else {
                   //construct type parameters for the function
-                  val nname = FreshIdentifier(freshFunctionNameForArg, Untyped, true)
+                  val nname = FreshIdentifier(freshFunctionNameForClosure, Untyped, true)
                   val tparamDefs = tparams map TypeParameterDef.apply
                   val params = freevars.map(ValDef(_))
                   val retType = bestRealType(body.getType)
@@ -92,24 +92,23 @@ object ExpressionLifter {
                 else fvVars
               Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), params))
           }
-        // is the argument of eager invocation not a variable ?
-        /*case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), cbn @ Seq(Lambda(Seq(), arg))) if isEagerInvocation(finv)(prog) =>
+        // is the argument an implicit conversion from values to closures
+        case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), ea@Seq(arg)) if isEagerInvocation(finv)(prog) =>
           val rootType = bestRealType(tp)
           val ntps = Seq(rootType)
           arg match {
             case _: Variable =>
-              FunctionInvocation(TypedFunDef(fd, ntps), cbn)
+              FunctionInvocation(TypedFunDef(fd, ntps), ea)
             case _ =>
               val freshid = FreshIdentifier("t", rootType)
-              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps),
-                Seq(Lambda(Seq(), freshid.toVariable))))
-          }*/
+              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps), Seq(freshid.toVariable)))
+          }
 
         // is this an invocation of a memoized  function ?
-        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
-          // calling a memoized function is modeled as creating a parameterless closure and invoking it
-          val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
-          Application(Lambda(Seq(), FunctionInvocation(tfd, args)), Seq())
+//        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
+//          // calling a memoized function is modeled as creating a parameterless closure and invoking it
+//          val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
+//          Application(Lambda(Seq(), FunctionInvocation(tfd, args)), Seq())
 
         // every other function calls ?
         case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
@@ -141,8 +140,10 @@ object ExpressionLifter {
           }
           if(fd.hasPrecondition)
             nfd.precondition = Some(rec(true)(fd.precondition.get))
-          if (fd.hasPostcondition)
-            nfd.postcondition = Some(rec(true)(fd.postcondition.get))
+          if (fd.hasPostcondition){
+            val Lambda(arg, pbody) = fd.postcondition.get // ignore the lambda of ensuring
+            nfd.postcondition = Some(Lambda(arg, rec(true)(pbody)))
+          }
           nfd.body = Some(rec(false)(fd.body.get))
         case fd =>
       }
@@ -167,7 +168,6 @@ object ExpressionLifter {
    * case classes.
    * Ideally we should class invariants here, but it is not currently supported
    * so we create a functions that can be assume in the pre and post of functions.
-   * TODO: can this be optimized
    */
   /*  def liftSpecsToClosures(opToAdt: Map[FunDef, CaseClassDef]) = {
     val invariants = opToAdt.collect {

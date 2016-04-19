@@ -31,15 +31,36 @@ class DisjointSets[T] {
 
   def find(x: T) = findInternal(x)._1
 
-  def union(x: T, y: T) {
+  /**
+   * Returns true if two sets that not already merged got merged 
+   */
+  def union(x: T, y: T): Boolean = {
     val (rep1, rank1) = findOrCreateInternal(x)
-    val (rep2, rank2) = findOrCreateInternal(y)    
-    if (rank1 < rank2) {
-      disjTree(rep1) = (rep2, rank2)
-    } else if (rank2 < rank1) {
-      disjTree(rep2) = (rep1, rank1)
-    } else
-      disjTree(rep1) = (rep2, rank2 + 1)
+    val (rep2, rank2) = findOrCreateInternal(y)
+    if (rep1 == rep2) false
+    else {
+      if (rank1 < rank2) {
+        disjTree(rep1) = (rep2, rank2)
+      } else if (rank2 < rank1) {
+        disjTree(rep2) = (rep1, rank1)
+      } else
+        disjTree(rep1) = (rep2, rank2 + 1)
+      true
+    }
+  }
+
+  /**
+   * Returns true if two sets that not already merged got merged
+   */
+  def union(xs: Seq[T]): Boolean = {
+    if (!xs.isEmpty) {
+      val (_, r) = xs.tail.foldLeft((xs.head, false)) {
+        case ((prev, merged), curr) =>
+          val r = union(prev, curr)
+          (curr, merged || r)
+      }
+      r
+    } else false
   }
 
   def toMap = {

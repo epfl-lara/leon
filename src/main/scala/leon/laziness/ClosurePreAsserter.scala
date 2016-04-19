@@ -19,7 +19,7 @@ import LazinessUtil._
  * Note: here we cannot use `ClosureFactory` for anything other than state,
  * since we work with the translated, type correct program here.
  */
-class ClosurePreAsserter(p: Program) {
+class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
 
   /**
    * A mapping from `closures` that are *created* in the program
@@ -39,50 +39,78 @@ class ClosurePreAsserter(p: Program) {
     lookupOp(cc.ct.classDef).hasPrecondition
   }
 
-  // TODO: A nasty way of finding anchor functions
-  // Fix this soon !!
-  var anchorfd: Option[FunDef] = None
-  val lemmas = p.definedFunctions.flatMap {
-    case fd if (fd.hasBody && !fd.isLibrary) =>
+  def closureToLambda(cct: CaseClassType) = {
+    val newTarget = lookupOp(cct.classDef) //find the target corresponding to the closure
+    clFactory.lambdaOfClosure(cct.classDef) match {
+      case Lambda(args, FunctionInvocation(_, allargs)) =>
+        val argIndices = args.map(_.id).zipWithIndex.toMap
+        // mapping from argIndex to the index at which it is used
+        val useToArg = allargs.zipWithIndex.collect {
+          case (Variable(id), i) if argIndices.contains(id) => (i -> argIndices(id))
+        }.toMap
+        // construct a new lambda
+        val newparams = newTarget.params.map(_.id).zipWithIndex
+        val argTypes = Array.fill[TypeTree](args.size)(Untyped)
+        newparams.foreach {
+          case (p, i) if useToArg.contains(i) => argTypes(useToArg(i)) = p.getType
+          case _                              =>
+        }
+        val newargs = argTypes.map { FreshIdentifier("arg", _) }
+        val newAllArgs = newparams.map {
+          case (p, i) if useToArg.contains(i) => newargs(useToArg(i)).toVariable
+          case (p, _)                         => p.toVariable
+        }
+        Lambda(newargs.map(ValDef), FunctionInvocation(TypedFunDef(newTarget, cct.tps), newAllArgs))
+    }
+  }
+
+  val closuresToPrePath = p.definedFunctions.flatMap {
+    case fd if (fd.hasBody && !fd.isLibrary && !fd.isInvariant) =>
       //println("collection closure creation preconditions for: "+fd)
       val closures = CollectorWithPaths {
         case FunctionInvocation(TypedFunDef(fund, _),
           Seq(cc: CaseClass, st)) if isClosureCons(fund) && hasClassInvariants(cc) =>
           (cc, st)
       } traverse (fd.body.get) // Note: closures cannot be created in specs
-      // Note: once we have separated normal preconditions from state preconditions
-      // it suffices to just consider state preconditions here
       closures.map {
-        case ((CaseClass(CaseClassType(ccd, _), argsRet), st), path) =>
+        case ((cc@CaseClass(cct: CaseClassType, ccArgs), st), path) =>
           anchorfd = Some(fd)
-          val target = lookupOp(ccd) //find the target corresponding to the closure
-
-          val pre = target.precondition.get
-          val args =
-            if (!isMemoized(target))
-              argsRet.dropRight(1) // drop the return value which is the right-most field
-            else argsRet
+          val l@Lambda(largs, FunctionInvocation(TypedFunDef(target, _), allargs)) = closureToLambda(cct)
+          val args = ccArgs  // TODO: return value handling: argsRet.dropRight(1) // drop the return value which is the right-most field
           val nargs =
             if (target.params.size > args.size) // target takes state ?
               args :+ st
             else args
-          val pre2 = replaceFromIDs((target.params.map(_.id) zip nargs).toMap, pre)
-          val vc = Implies(And(precOrTrue(fd), path), pre2)
-          // create a function for each vc
-          val lemmaid = FreshIdentifier(ccd.id.name + fd.id.name + "Lem", Untyped, true)
-          val params = variablesOf(vc).toSeq.map(v => ValDef(v))
-          val tparams = params.flatMap(p => getTypeParameters(p.getType)).distinct map TypeParameterDef
-          val lemmafd = new FunDef(lemmaid, tparams, params, BooleanType)
-          // reset the types of locals
-          val initGamma = params.map(vd => vd.id -> vd.getType).toMap
-          lemmafd.body = Some(TypeChecker.inferTypesOfLocals(vc, initGamma))
-          // assert the lemma is true
-          val resid = FreshIdentifier("holds", BooleanType)
-          lemmafd.postcondition = Some(Lambda(Seq(ValDef(resid)), resid.toVariable))
-          //println("Created lemma function: "+lemmafd)
-          lemmafd
+          val stparams =
+            if (target.params.size > args.size) // target takes state ?
+              Seq(target.paramIds.last)
+            else Seq()
+          // here, we rely on the order of the captured variables
+          val capturedPre = replaceFromIDs(((capturedVars(l) ++ stparams) zip nargs).toMap, capturedPreconditions(l))
+          cc -> (capturedPre, path, fd)
       }
     case _ => Seq()
+  }.toMap
+
+  // TODO: A nasty way of finding anchor functions
+  // Fix this soon !!
+  var anchorfd: Option[FunDef] = None
+  val lemmas = closuresToPrePath map {
+    case (cc, (capturedPre, path, fd)) =>
+      anchorfd = Some(fd)
+      val vc = Implies(And(precOrTrue(fd), path), capturedPre)
+      // create a function for each vc
+      val lemmaid = FreshIdentifier(cc.ct.classDef.id.name + fd.id.name + "Pre", Untyped, true)
+      val params = variablesOf(vc).toSeq.map(v => ValDef(v))
+      val tparams = params.flatMap(p => getTypeParameters(p.getType)).distinct map TypeParameterDef
+      val lemmafd = new FunDef(lemmaid, tparams, params, BooleanType)
+      // reset the types of locals
+      val initGamma = params.map(vd => vd.id -> vd.getType).toMap
+      lemmafd.body = Some(TypeChecker.inferTypesOfLocals(vc, initGamma))
+      val resid = FreshIdentifier("holds", BooleanType)
+      lemmafd.postcondition = Some(Lambda(Seq(ValDef(resid)), resid.toVariable))
+      //println("Created lemma function: "+lemmafd)
+      lemmafd
   }
 
   /**
@@ -91,52 +119,42 @@ class ClosurePreAsserter(p: Program) {
    */
   val monoLemmas = {
     var exprsProcessed = Set[ExprStructure]()
-    ccToOp.values.flatMap {
-      case op if op.hasPrecondition && !isMemoized(op) => // ignore memoized functions which are always evaluated at the time of creation
+    closuresToPrePath.flatMap {
+      case (cc, (capturedPre, _, fd)) =>
         // get the state param
-        op.paramIds.find(isStateParam) match {
+        variablesOf(capturedPre).find(isStateParam) match {
           case Some(stparam) =>
-            // remove disjuncts that do not depend on the state
-            val preDisjs = op.precondition.get match {
+            // remove conjuncts that do not depend on the state
+            val preConjs = capturedPre match {
               case And(args) =>
                 args.filter(a => variablesOf(a).contains(stparam))
               case l: Let => // checks if the body of the let can be deconstructed as And
                 val (letsCons, letsBody) = letStarUnapply(l)
                 letsBody match {
                   case And(args) =>
-                    args.filter(a => variablesOf(a).contains(stparam)).map {
-                      e => simplifyLets(letsCons(e))
-                    }
+                    args.filter(a => variablesOf(a).contains(stparam)).map { e => simplifyLets(letsCons(e)) }
                   case _ => Seq()
                 }
               case e => Seq()
             }
-            if (preDisjs.nonEmpty) {
-              // create a new state parameter
+            if (preConjs.nonEmpty) {
               val superSt = FreshIdentifier("st2@", stparam.getType)
-              val stType = stparam.getType.asInstanceOf[CaseClassType]
-              // assert that every component of `st` is a subset of `stparam`
-              val subsetExpr = createAnd(
-                stType.classDef.fields.map { fld =>
-                  val fieldSelect = (id: Identifier) => CaseClassSelector(stType, id.toVariable, fld.id)
-                  SubsetOf(fieldSelect(stparam), fieldSelect(superSt))
-                })
-              // create a function for each pre-disjunct that is not processed
-              preDisjs.map(new ExprStructure(_)).collect {
+              val subsetExpr = SubsetOf(stparam.toVariable, superSt.toVariable)
+              // create a function for each pre-conjunct that is not processed
+              preConjs.map(new ExprStructure(_)).collect {
                 case preStruct if !exprsProcessed(preStruct) =>
                   exprsProcessed += preStruct
                   val pred = preStruct.e
                   val vc = Implies(And(subsetExpr, pred),
                     replaceFromIDs(Map(stparam -> superSt.toVariable), pred))
-                  val lemmaid = FreshIdentifier(op.id.name + "PreMonotone", Untyped, true)
+                  val lemmaid = FreshIdentifier(cc.ct.id.name + "PreMonotone", Untyped, true)
                   val params = variablesOf(vc).toSeq.map(v => ValDef(v))
-                  val lemmafd = new FunDef(lemmaid, op.tparams, params, BooleanType)
+                  val tparams = params.flatMap(p => getTypeParameters(p.getType)).distinct map TypeParameterDef
+                  val lemmafd = new FunDef(lemmaid, tparams, params, BooleanType)
                   lemmafd.body = Some(vc)
-                  // assert that the lemma is true
                   val resid = FreshIdentifier("holds", BooleanType)
                   lemmafd.postcondition = Some(Lambda(Seq(ValDef(resid)), resid.toVariable))
-                  // add the trace induct annotation
-                  lemmafd.addFlag(new Annotation("traceInduct", Seq()))
+                  lemmafd.addFlag(new Annotation("traceInduct", Seq())) // add the trace induct annotation
                   //println("Created lemma function: "+lemmafd)
                   lemmafd
               }
@@ -144,8 +162,6 @@ class ClosurePreAsserter(p: Program) {
           case None =>
             Seq.empty[FunDef] // nothing to be done
         }
-      case _ =>
-        Seq.empty[FunDef] // nothing to be done
     }
   }
 

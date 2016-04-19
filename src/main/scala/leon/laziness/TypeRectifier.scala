@@ -13,6 +13,7 @@ import leon.invariant.util.LetTupleSimplification._
 import LazinessUtil._
 import leon.invariant.datastructure.DisjointSets
 import invariant.util.ProgramUtil._
+import leon.utils.Bijection
 
 /**
  * This performs type parameter inference based on few known facts.
@@ -20,79 +21,89 @@ import invariant.util.ProgramUtil._
  * Result is a program in which all type paramters of functions, types of
  * parameters of functions are correct.
  * The subsequent phase performs a local type inference.
+ *
+ *  We unify the type arguments of `tfd` with type arguments of actual arguments.
+ *  Note: we have a cyclic problem here, since we do not know the
+ *  type of the variables in the programs, we cannot use them
+ *  to infer type parameters, on the other hand we need to know the
+ *  type parameters (at least of fundefs) to infer types of variables.
+ *  The idea to start from few variables whose types we know are correct
+ *  except for type parameters.
+ *  Eg. the state parameters, parameters that have closure ADT type (not the '$' type),
+ *  some parameters that are not of lazy type ('$') type may also have
+ *  correct types, but it is hard to rely on them
  */
-class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
+class TypeRectifier(p: Program, clFactory: ClosureFactory) {
 
+  val memoClasses = clFactory.memoClasses.values.toSet
   val typeClasses = {
     val tc = new DisjointSets[TypeTree]()
-    p.definedFunctions.foreach {
-      case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
-        postTraversal {
-          case call @ FunctionInvocation(TypedFunDef(fd, tparams), args) =>
-            // unify formal type parameters with actual type arguments
-            (fd.tparams zip tparams).foreach(x => tc.union(x._1.tp, x._2))
-            /**
-             *  Unify the type parameters of types of formal parameters with
-             *  type arguments of actual arguments.
-             *  Note: we have a cyclic problem here, since we do not know the
-             *  type of the variables in the programs, we cannot use them
-             *  to infer type parameters, on the other hand we need to know the
-             *  type parameters (at least of fundefs) to infer types of variables.
-             *  The idea to start from few variables whose types we know are correct
-             *  except for type paramters.
-             *  Eg. the state parameters, parameters that have closure ADT type (not the '$' type),
-             *  some parameters that are not of lazy type ('$') type may also have
-             *  correct types, but it is hard to rely on them
-             */
-            (fd.params zip args).foreach { x =>
-              (x._1.getType, x._2.getType) match {
-                case (CaseClassType(cd1, targs1), CaseClassType(cd2, targs2)) if cd1 == cd2 && cd1 == clFactory.state =>
-                  (targs1 zip targs2).foreach {
-                    case (t1: TypeParameter, t2: TypeParameter) =>
-                      tc.union(t1, t2)
-                    case _ =>
-                  }
-                case (ct1: ClassType, ct2: ClassType)
-                  if clFactory.isClosureType(ct1.classDef) && clFactory.isClosureType(ct1.classDef) =>
-                  // both types are newly created closures, so their types can be trusted
-                  (ct1.tps zip ct2.tps).foreach {
-                    case (t1: TypeParameter, t2: TypeParameter) =>
-                      tc.union(t1, t2)
-                    case _ =>
-                  }
-                case (t1, t2) =>
-                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
-                    + s"do not match for call: $call")*/
-              }
-            }
-          // consider also set contains methods
-          case ElementOfSet(arg, set) =>
-            // merge the type parameters of `arg` and `set`
-            set.getType match {
-              case SetType(baseT) =>
-                // TODO: this may break easily. Fix this.
-                // Important: here 'arg' may have type lazy type $[ltype]
-                // we need to get the type argument of ltype
-                getTypeParameters(arg.getType) zip getTypeArguments(baseT) foreach {
-                  case (tf, ta) =>
-                    tc.union(tf, ta)
+    var funInvs = Seq[FunctionInvocation]()
+    val relfuns = p.definedFunctions.filter(fd => !fd.isLibrary && !fd.isInvariant && fd.hasBody)
+    // go over the body of all relfuns and compute mappings for place-holder `tparams`
+    relfuns.foreach { fd =>
+      postTraversal {
+        case fi@FunctionInvocation(TypedFunDef(_, targs), _) 
+          if targs.exists{ case tp: TypeParameter => isPlaceHolderTParam(tp) case _ => false } => 
+            funInvs +:= fi 
+        case CaseClass(ct: CaseClassType, args) =>
+          if (memoClasses(ct.classDef)) { //here, we can trust the types of arguments
+            (args zip ct.fieldsTypes) foreach {
+              case (arg, ft) =>                
+                typeInstMap(arg.getType, ft).get.foreach {                  
+                  case (t1, t2) => tc.union(t1, t2)
                 }
-              case _ =>
             }
-          case _ =>
-        }(fd.fullBody)
-      case _ => ;
+          }
+        case ElementOfSet(arg, set) =>
+          // merge the type parameters of `arg` and `set`
+          set.getType match {
+            case SetType(baseT: ClassType) if baseT.classDef == clFactory.memoAbsClass =>
+              typeInstMap(arg.getType, baseT).get.foreach {
+                case (t1, t2) => tc.union(t1, t2)
+              }
+            case _ =>
+          }
+        // need to handle closure match statements
+        case _ =>
+      }(fd.fullBody)
     }
+    var merged = false
+    do {
+      merged = false
+      funInvs.foreach {
+        case fi@FunctionInvocation(TypedFunDef(fd, targs), args) =>
+          //println("Considering call: "+ fi+" tparams: "+fd.tparams.mkString(",")+" targs: "+targs)
+          // if two fd.tparams are merged, merge the corresponding targs
+          val tparams = fd.tparams.map(_.tp)
+          val paramToArg = (tparams zip targs).toMap
+          //val argToParam = (targs zip tparams).toMap
+          tparams.groupBy(tp => tc.findOrCreate(tp)) foreach {
+            case (_, eqtparams) => merged ||= tc.union(eqtparams.map(paramToArg))
+          }
+        //val tparamsToArgs = (fd.tparams.map(_.tp) zip tfd.tps).toMap
+        //            (tfd.params zip args).foreach { x =>
+        //              (x._1.getType, x._2.getType) match {
+        //                case (SetType(ct1: ClassType), SetType(ct2: ClassType)) if ct1 == ct2 && ct1.classDef == clFactory.memoAbsClass =>
+        //                  (ct1.tps zip ct2.tps).foreach { case (t1, t2) => tc.union(t1, t2) }
+        //                case (ct1: ClassType, ct2: ClassType) if clFactory.isClosureType(ct1.classDef) && clFactory.isClosureType(ct1.classDef) =>
+        //                  // both types are newly created closures, so their types can be trusted
+        //                  (ct1.tps zip ct2.tps).foreach { case (t1, t2) => tc.union(t1, t2) }
+        //                case (t1, t2) =>
+        //                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
+        //                    + s"do not match for call: $call")*/
+        //              }
+        //            }          
+      }
+    } while (merged)
     tc
   }
-
   val equivTypeParams = typeClasses.toMap
-
   val fdMap = p.definedFunctions.collect {
     case fd if !fd.isLibrary && !fd.isInvariant =>
       val (tempTPs, otherTPs) = fd.tparams.map(_.tp).partition {
         case tp if isPlaceHolderTParam(tp) => true
-        case _ => false
+        case _                             => false
       }
       val others = otherTPs.toSet[TypeTree]
       // for each of the type parameter pick one representative from its equivalence class
@@ -106,8 +117,10 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
               concRep.get
             else if (!candReps.isEmpty)
               candReps.head
-            else
-              throw new IllegalStateException(s"Cannot find a non-placeholder in equivalence class $tpclass for fundef: \n $fd")
+            else{
+              println(s"Warning: Cannot find a non-placeholder in equivalence class $tpclass for fundef: \n $fd")
+              tpclass.head
+            }
           tp -> rep
       }.toMap
       val instf = instantiateTypeParameters(tpMap) _
@@ -133,10 +146,10 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
     // the tupleExpr if it is not TupleTyped.
     // cannot use simplePostTransform because of this
     def rec(e: Expr): Expr = e match {
-      case FunctionInvocation(TypedFunDef(callee, targsOld), args) => // this is already done by the type checker
+      case FunctionInvocation(TypedFunDef(callee, targsOld), args) => 
         val targs = targsOld.map {
           case tp: TypeParameter => tpMap.getOrElse(tp, tp)
-          case t => t
+          case t                 => t
         }.distinct
         val ncallee =
           if (fdMap.contains(callee))
@@ -147,7 +160,7 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
       case CaseClass(cct, args) =>
         val targs = cct.tps.map {
           case tp: TypeParameter => tpMap.getOrElse(tp, tp)
-          case t => t
+          case t                 => t
         }.distinct
         CaseClass(CaseClassType(cct.classDef, targs), args map rec)
 
@@ -158,11 +171,10 @@ class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
       case Ensuring(NoTree(_), post) =>
         Ensuring(nfd.fullBody, rec(post)) // the newfd body would already be type correct
       case Operator(args, op) => op(args map rec)
-      case t: Terminal => t
+      case t: Terminal        => t
     }
     val nbody = rec(ifd.fullBody)
     val initGamma = nfd.params.map(vd => vd.id -> vd.getType).toMap
-
     //println(s"Inferring types for ${ifd.id}: "+nbody)
     val typedBody = TypeChecker.inferTypesOfLocals(nbody, initGamma)
     /*if(ifd.id.name.contains("pushLeftWrapper")) {

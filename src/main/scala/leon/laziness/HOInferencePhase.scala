@@ -14,15 +14,16 @@ import java.io._
 import invariant.engine.InferenceReport
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
+ * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
 object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
   val dumpInputProg = false
   val dumpLiftProg = true
-  val dumpProgramWithClosures = false
-  val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = false
-  val dumpProgWOInstSpecs = false
-  val dumpInstrumentedProgram = false
+  val dumpProgramWithClosures = true
+  val dumpTypeCorrectProg = true
+  val dumpProgWithPreAsserts = true
+  val dumpProgWOInstSpecs = true
+  val dumpInstrumentedProgram = true
   val debugSolvers = false
   val skipStateVerification = false
   val skipResourceVerification = false
@@ -79,11 +80,9 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
-    System.exit(0)
-
-    val funsManager = new LazyFunctionsManager(nprog)
-    val closureFactory = new LazyClosureFactory(nprog)
-    val progWithClosures = (new LazyClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
+    val funsManager = new FunctionsManager(nprog)
+    val closureFactory = new ClosureFactory(nprog)
+    val progWithClosures = (new ClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
     if (dumpProgramWithClosures)
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
 
@@ -92,7 +91,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
     if (dumpTypeCorrectProg)
       prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, closureFactory)).apply
     if (dumpProgWithPreAsserts)
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
 
