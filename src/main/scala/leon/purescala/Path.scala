@@ -7,7 +7,6 @@ import Common._
 import Definitions._
 import Expressions._
 import Constructors._
-import Extractors._
 import ExprOps._
 import Types._
 
@@ -31,7 +30,7 @@ object Path {
   * could introduce non-sensical equations.
   */
 class Path private[purescala](
-  private[purescala] val elements: Seq[Either[(Identifier, Expr), Expr]]) {
+  private[purescala] val elements: Seq[Either[(Identifier, Expr), Expr]]) extends Printable {
 
   def withBinding(p: (Identifier, Expr)) = new Path(elements :+ Left(p))
   def withBindings(ps: Iterable[(Identifier, Expr)]) = new Path(elements ++ ps.map(Left(_)))
@@ -69,10 +68,10 @@ class Path private[purescala](
     *
     * A path is empty iff it contains no let-bindings and its path condition is trivial.
     */
-  def isEmpty = elements.filter {
-    case Right(BooleanLiteral(true)) => false
-    case _ => true
-  }.isEmpty
+  def isEmpty = elements.forall {
+    case Right(BooleanLiteral(true)) => true
+    case _ => false
+  }
 
   /** Returns the negation of a path
     *
@@ -116,6 +115,8 @@ class Path private[purescala](
   )(elements)
 
   lazy val bindings: Seq[(Identifier, Expr)] = elements.collect { case Left(p) => p }
+  lazy val boundIds = bindings map (_._1)
+  lazy val bindingsAsEqs = bindings map { case (id,e) => Equals(id.toVariable, e) }
   lazy val conditions: Seq[Expr] = elements.collect { case Right(e) => e }
 
   def isBound(id: Identifier): Boolean = bindings.exists(p => p._1 == id)
@@ -149,7 +150,7 @@ class Path private[purescala](
   def and(base: Expr) = distributiveClause(base, Constructors.and(_, _))
 
   /** Fold the path into an implication of `base`, namely `path ==> base` */
-  def implies(base: Expr) = distributiveClause(base, Constructors.implies(_, _))
+  def implies(base: Expr) = distributiveClause(base, Constructors.implies)
 
   /** Folds the path into a `require` wrapping the expression `body`
     *
@@ -184,7 +185,7 @@ class Path private[purescala](
 
   /** Like [[toClause]] but doesn't simplify final path through constructors
     * from [[leon.purescala.Constructors]] */
-  lazy val fullClause: Expr = fold[Expr](BooleanLiteral(true), Let(_, _, _), And(_, _))(elements)
+  lazy val fullClause: Expr = fold[Expr](BooleanLiteral(true), Let, And(_, _))(elements)
 
   /** Folds the path into a boolean proposition where let-bindings are
     * replaced by equations.
