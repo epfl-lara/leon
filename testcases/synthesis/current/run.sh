@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=60 --synthesis --solvers=smt-z3 $1"
+    cmd="./leon --debug=report --timeout=60 --synthesis --partial=off --solvers=smt-z3 $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
