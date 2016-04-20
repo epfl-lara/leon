@@ -161,7 +161,7 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     val hA = funDef("InputRecCoverageSuite.hA")
     val hL = funDef("InputRecCoverageSuite.hL")
     val reccoverage = new InputRecCoverage(h, Set(h, hA, hL))
-    //reccoverage.result() should equal(2)
+    reccoverage.assertIsRecCovering(reccoverage.result())
   }
   
   test("InputRecCoverage should exhaustively find arguments"){ ctxprogram =>
@@ -171,6 +171,6 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     val h = funDef("CornerExamples.h")
     
     val reccoverage = new InputRecCoverage(h, Set(h, f))
-    reccoverage.result() should equal (2)
+    reccoverage.assertIsRecCovering(reccoverage.result())
   }
 }

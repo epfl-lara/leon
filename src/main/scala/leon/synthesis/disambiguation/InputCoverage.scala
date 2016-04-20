@@ -41,11 +41,15 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   def recordMapping() = { doRecordMapping = true; this }
   
   /** Returns a mapping from the expressions in the source code to the set of inputs that cover thems
-   *  Call `.recordMapping()` before calling `.result()` to have it filled.*/
+   *  Call `.recordMapping()` before calling `.result()` to have it filled. */
   def getRecordMapping(): IdentityHashMap[Expr, Set[Seq[Expr]]] = {
     var res = new IdentityHashMap[Expr, Set[Seq[Expr]]]()
     for((expr, setFlags) <- flagMapping) {
-      res.put(expr, setFlags.flatMap(flag => recordedMapping.get(flag)))
+      res.put(expr, setFlags.flatMap(flag =>
+        if(!recordedMapping.containsKey(flag)) {
+          throw new Exception(s"No expression associated to $flag")
+        } else
+        recordedMapping.get(flag)))
     }
     res
   }
@@ -313,6 +317,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     // For each new counter-example, abstract evaluate the original function to remove booleans which have been reached.
     val covering_examples =
       for(bvar <- booleanFlags.toStream if !coveredBooleans(bvar)) yield {
+        println(s"finding input for $bvar")
       val (program2, idMap2, fdMap2, cdMap2) = DefOps.replaceFunDefs(program)({
         (f: FunDef) =>
           if(ExprOps.exists(e => e match { case Variable(id) => booleanFlags contains id case _ => false })(f.fullBody)) {
@@ -327,6 +332,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             Some(new_f)
           } else None
       })
+      println("program: " + program2)
       val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
       val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(10.seconds)
       
@@ -345,6 +351,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             case _ =>
               Set(bvar)
           }
+          println(s"Recording the example $finalExprs covering $coveredFlagsByCounterExample")
           recordExample(finalExprs, coveredFlagsByCounterExample)
           finalExprs -> coveredFlagsByCounterExample
         case e =>

@@ -64,24 +64,10 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
   
   /** Flattens a string concatenation into a list of expressions */
   def permutations(s: StringConcat): Stream[StringConcat] = {
-    
     flatten(s).permutations.toStream.tail.map(x => rebuild(x).copiedFrom(s))
   }
   
-  /** Returns a stream of rec-covering inputs for the function `f` to cover all functions in `{ f } U fds`.
-    *  
-    *  This means that for each concatenation operation, there is an input example which can differentiate between this concatenation and the inverse concatenation.
-    **/
-  def result(): Stream[Seq[Expr]] = {
-    var identifiableInputs = Map[Seq[Expr], Seq[Expr]]()
-    var inputs = inputCoverage.recordMapping().result().map{input => 
-      val res = input.map(QuestionBuilder.makeGenericValuesUnique)
-      identifiableInputs += input -> res
-      res
-    }
-    println(s"inputs: ${inputs.toList}")
-    
-    // Contains the set of top-level concatenations in all programs.
+  def allConcatenations(): Set[W[StringConcat]] = {
     var concatenations = Set[W[StringConcat]]()
     
     def collectConcatenations(e: Expr, keepConcatenations: Boolean = true): Unit = e match {
@@ -96,6 +82,13 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
     for(fd <- fds) {
       collectConcatenations(fd.body.get)
     }
+    concatenations
+  }
+  
+  /** Assert function for testing if .result() is rec-covering. */
+  def assertIsRecCovering(inputs: Stream[Seq[Expr]]): Unit = {
+    // Contains the set of top-level concatenations in all programs.
+    val concatenations = allConcatenations()
     
     // For each of these concatenations, we check that there is at least one input which if evaluated while it is reverse, the result would be different.
     // If not, we expand the covering example.
@@ -105,13 +98,50 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
     for(stringConcatW <- concatenations; stringConcat = stringConcatW.e; stringConcatReversed <- permutations(stringConcat)) {
       val (permuttedProgram, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(program)({
         (f: FunDef) =>
-          if(ExprOps.exists(stringConcat == _)(fd.body.get)) {
+          if(f.body.exists(body => ExprOps.exists(stringConcat eq _)(body))) {
             val new_f = f.duplicate()
-            new_f.body = f.body.map(body => ExprOps.preMap(e => if(stringConcat eq e) Some(stringConcatReversed) else None)(body))
+            new_f.body = f.body.map(body => ExprOps.preMap(e => if(stringConcat eq e) { Some(stringConcatReversed)} else None)(body))
             Some(new_f)
           } else None
-      }) // TOOD: The modified part does not work !?
+      })
+      val modifiedEvaluator = new DefaultEvaluator(ctx, permuttedProgram)
       
+      val oneInputMakesItDifferent = inputs.exists(input => 
+        modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get != originalOutputs(input))
+      
+      assert(oneInputMakesItDifferent, "No input made the change " + stringConcat + " -> " + stringConcatReversed + " produce a different result")
+    }
+  }
+  
+  /** Returns a stream of rec-covering inputs for the function `f` to cover all functions in `{ f } U fds`.
+    *  
+    * This means that for each concatenation operation, there is an input example which can differentiate between this concatenation and any of its permutations if possible.
+    **/
+  def result(): Stream[Seq[Expr]] = {
+    var identifiableInputs = Map[Seq[Expr], Seq[Expr]]()
+    var inputs = inputCoverage.recordMapping().result().map{input => 
+      val res = input.map(QuestionBuilder.makeGenericValuesUnique)
+      identifiableInputs += input -> res
+      res
+    }
+    
+    // Contains the set of top-level concatenations in all programs.
+    val concatenations = allConcatenations()
+    
+    // For each of these concatenations, we check that there is at least one input which if evaluated while it is reverse, the result would be different.
+    // If not, we expand the covering example.
+    
+    val originalEvaluator = new DefaultEvaluator(ctx, program)
+    var originalOutputs: Map[Seq[Expr], Expr] = inputs.map(input => input -> originalEvaluator.eval(functionInvocation(fd, input)).result.get).toMap
+    for(stringConcatW <- concatenations; stringConcat = stringConcatW.e; stringConcatReversed <- permutations(stringConcat)) {
+      val (permuttedProgram, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(program)({
+        (f: FunDef) =>
+          if(f.body.exists(body => ExprOps.exists(stringConcat eq _)(body))) {
+            val new_f = f.duplicate()
+            new_f.body = f.body.map(body => ExprOps.preMap(e => if(stringConcat eq e) { Some(stringConcatReversed)} else None)(body))
+            Some(new_f)
+          } else None
+      })
       val modifiedEvaluator = new DefaultEvaluator(ctx, permuttedProgram)
       
       val oneInputMakesItDifferent = inputs.exists(input => 
@@ -120,8 +150,8 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
       if(!oneInputMakesItDifferent) {
         // Now we need to find an input which makes a difference if possible, when modified.
         println("No input make this concatenation differ in output when permutted: " + stringConcat + " -> " + stringConcatReversed)
-        println("    mappings:\n" + inputs.map(input => input -> originalEvaluator.eval(functionInvocation(fd, input)).result.get).mkString("\n"))
-        println("New mappings:\n" + inputs.map(input => input -> modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get).mkString("\n"))
+        println("    mappings:\n" + inputs.map(input => input + "->" + originalEvaluator.eval(functionInvocation(fd, input)).result.get).mkString("\n"))
+        println("New mappings:\n" + inputs.map(input => input + "->" + modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get).mkString("\n"))
         // First, make all its terminals (strings and numbers) unique.
         val covering = inputCoverage.getRecordMapping()
         val coveringInputs = covering.getOrDefault(stringConcat, Set()).map(x => identifiableInputs.getOrElse(x, x))
@@ -177,8 +207,18 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
                         }
                         toReplace.put(expr, List(expr_marked))
                       case None =>
-                        // TODO If there is a finite number of values at some place, replace with each of them.
-                        // TODO Else try to find other values.
+                        println("Not possible to mark the string, reverting to enumeration strategies")
+                        // If there is a finite number of values at some place, replace with each of them.
+                        val exprs = if(TypeOps.typeCardinality(mainArg.getType).nonEmpty) {
+                          println("Finite enumeration")
+                          all(mainArg.getType).toList
+                        } else {
+                          println("Infinite enumeration. Taking 5 values")
+                          // Else try to find other values which make them identifiable at some point.
+                          all(mainArg.getType).take(5).toList
+                        }
+                        println(s"$expr -> $exprs")
+                        toReplace.put(expr, exprs)
                     }
                   } // Else nothing to do, there is already a unique identifier to expr.
                   
@@ -196,13 +236,13 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
         if(!toReplace.isEmpty()) {
           val new_inputs: Seq[Seq[Expr]] =
             leon.utils.SeqUtils.cartesianProduct(input.map(i => ExprOps.postFlatmap{ case e if toReplace.containsKey(e) => Some(toReplace.get(e)) case _ => None}(i)))
-          println(s"Added new input: $new_inputs")
+          println(s"Added new input: ${new_inputs.mkString("\n")}")
           for(new_input <- new_inputs) {
             originalOutputs += new_input -> originalEvaluator.eval(functionInvocation(fd, new_input)).result.get
             newInput = newInput :+ new_input
           }
-          inputs = inputs.flatMap{ i => if(i == input) new_inputs else Some(input) }
-          println(s"inputs: ${inputs.toList}")
+          inputs = inputs.flatMap{ i => if(i == input) new_inputs else Some(input) }.distinct
+          println(s"inputs: ${inputs.mkString("\n")}")
         } else {
           println(s"Did not find anything to identify the expr $stringConcat")
         }
@@ -217,10 +257,15 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
 
   /** Returns an instance of the given type */
   private def a(t: TypeTree): Expr = {
+    all(t).head
+  }
+  
+  /** Returns all instance of the given type */
+  private def all(t: TypeTree): Stream[Expr] = {
     val i = FreshIdentifier("i", t)
     val datagen = new GrammarDataGen(new DefaultEvaluator(ctx, program), ValueGrammar)
-    val enumerated_inputs = datagen.generateMapping(Seq(i), BooleanLiteral(true), 1, 1).next()
-    enumerated_inputs.head._2
+    val enumerated_inputs = datagen.generateMapping(Seq(i), BooleanLiteral(true), 10, 10).toStream
+    enumerated_inputs.toStream.map(_.head._2)
   }
   
   /** Returns an expression of the given type that contains at least a String, an Integer or an Int32 if possible. If not, returns None. */  
