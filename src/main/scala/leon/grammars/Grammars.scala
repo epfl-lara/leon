@@ -30,7 +30,5 @@ object Grammars {
     default(sctx.program, p.allAs.map(_.toVariable) ++ hints ++ extraHints, sctx.functionContext, sctx.settings.functionsToIgnore)
   }
 
-  def similarTo(e: Expr, base: ExpressionGrammar) = {
-  }
 }
 

@@ -7,7 +7,7 @@ package aspects
 import purescala.TypeOps.depth
 
 case class TypeDepthBound(bound: Int) extends PersistentAspect {
-  override def asString(implicit ctx: LeonContext): String = s"TD$bound"
+  override def asString(implicit ctx: LeonContext): String = "" // This is just debug pollution to print
 
   override def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     if (depth(lab.getType) > bound) Nil
