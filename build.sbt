@@ -42,7 +42,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
   "info.hupel" %% "libisabelle" % libisabelleVer,
   "info.hupel" %% "libisabelle-setup" % libisabelleVer,
-  "info.hupel" %% "slf4j-impl-helper" % "0.1",
+  "info.hupel" %% "slf4j-impl-helper" % "0.1" % "optional",
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"//,
   //"com.regblanc" %% "scala-smtlib" % "0.2"
