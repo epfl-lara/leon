@@ -451,13 +451,22 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         cTreeFd.fullBody = innerSol
 
         timers.testForProgram.start()
+
+        def withBindings(e: Expr) = p.pc.bindings.foldRight(e){
+          case ((id, v), bd) => let(id, outerExprToInnerExpr(v), bd)
+        }
+
+        val boundCnstr = withBindings(cnstr)
+
         val res = ex match {
           case InExample(ins) =>
-            evaluator.eval(cnstr, p.as.zip(ins).toMap ++ p.pc.bindings)
+            evaluator.eval(boundCnstr, p.as.zip(ex.ins).toMap)
 
           case InOutExample(ins, outs) =>
-            val eq = equality(innerSol, tupleWrap(outs))
-            evaluator.eval(eq, p.as.zip(ins).toMap ++ p.pc.bindings)
+            evaluator.eval(
+              withBindings(equality(innerSol, tupleWrap(outs))),
+              p.as.zip(ex.ins).toMap
+            )
         }
         timers.testForProgram.stop()
 
@@ -468,15 +477,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             Some(res == BooleanLiteral(true))
 
           case EvaluationResults.RuntimeError(err) =>
-            /*if (err.contains("Empty production rule")) {
-              println(programCTree.asString)
-              println(bValues)
-              println(ex)
-              println(this.getExpr(bValues))
-              (new Throwable).printStackTrace()
-              println(err)
-              println()
-            }*/
             debug("RE testing CE: "+err)
             Some(false)
 
@@ -783,7 +783,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         /**
          * We (lazily) generate additional tests for discarding potential programs with a data generator
          */
-        val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
+        val nTests = if (p.pc.isEmpty) 50 else 20
 
         val inputGenerator: Iterator[Example] = {
           val complicated = exists{
@@ -850,10 +850,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     
             debug(s"#Tests: >= ${gi.bufferedCount}")
             ifDebug{ printer =>
-              for (e <- baseExampleInputs.take(10)) {
+              val es = allInputExamples()
+              for (e <- es.take(Math.min(gi.bufferedCount, 10))) {
                 printer(" - "+e.asString)
               }
-              if(baseExampleInputs.size > 10) {
+              if(es.hasNext) {
                 printer(" - ...")
               }
             }

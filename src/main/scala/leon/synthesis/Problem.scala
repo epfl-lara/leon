@@ -24,10 +24,15 @@ import Witnesses._
   */
 case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
 
+  // Activate this for debugging...
+  // assert(eb.examples.forall(_.ins.size == as.size))
+
+  val TopLevelAnds(wsList) = ws
+
   def inType  = tupleTypeWrap(as.map(_.getType))
   def outType = tupleTypeWrap(xs.map(_.getType))
 
-  def allAs = as ++ pc.bindings.map(_._1)
+  def allAs = as ++ (pc.bindings.map(_._1) diff wsList.collect{ case Inactive(i) => i })
 
   def asString(implicit ctx: LeonContext): String = {
     val pcws = pc withCond ws
@@ -41,9 +46,8 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
         |⟧  $ebInfo""".stripMargin
   }
 
-  def withWs(es: Seq[Expr]) = {
-    val TopLevelAnds(prev) = ws
-    copy(ws = andJoin(prev ++ es))
+  def withWs(es: Traversable[Expr]) = {
+    copy(ws = andJoin(wsList ++ es))
   }
 
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions

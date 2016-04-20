@@ -186,7 +186,6 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
           }
           manualGetNext()
 
-
         case Best =>
           strat.bestNext(c) match {
             case Some(n) =>

@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import leon.synthesis.Witnesses.Inactive
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Constructors._
@@ -43,8 +44,8 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
     }
 
     val facts: Set[Fact] = {
-      val TopLevelAnds(as) = andJoin(p.pc.conditions :+ p.phi)
-      as.toSet flatMap getFacts
+      val TopLevelAnds(fromPhi) = p.phi
+      (fromPhi.toSet ++ p.pc.conditions ++ p.pc.bindingsAsEqs) flatMap getFacts
     }
 
     val candidates =
@@ -66,18 +67,24 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
         val eq = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
           val pc = Equals(v1, v2)
-          // One of v1, v2 will be an input variable
-          val a1 = (v1, v2) match {
-            case (Variable(a), _) => a
-            case (_, Variable(a)) => a
+          // Let's see if an input variable is involved
+          val (f, t, isInput) = (v1, v2) match {
+            case (Variable(a1), _) if p.as.contains(a1) => (a1, v2, true)
+            case (_, Variable(a2)) if p.as.contains(a2) => (a2, v1, true)
+            case (Variable(a1), _)                      => (a1, v2, false)
           }
-          val newP = p.copy(
-            as = p.as.diff(Seq(a1)),
-            pc = p.pc map (subst(a1 -> v2, _)),
-            ws = subst(a1 -> v2, p.ws),
-            phi = subst(a1 -> v2, p.phi),
-            eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))
-          )
+          val newP = if (isInput) {
+            p.copy(
+              as = p.as.diff(Seq(f)),
+              pc = p.pc map (subst(f -> t, _)),
+              ws = subst(f -> t, p.ws),
+              phi = subst(f -> t, p.phi),
+              eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(f))
+            )
+          } else {
+            p.copy(pc = p.pc withCond pc).withWs(Seq(Inactive(f))) // equality in pc is fine for numeric types
+          }
+
           Some(pc, newP)
         } else None
 

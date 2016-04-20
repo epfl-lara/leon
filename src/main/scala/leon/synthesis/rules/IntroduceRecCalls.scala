@@ -39,16 +39,16 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
       val rec = FreshIdentifier("rec", newCall.getType, alwaysShowUniqueID = true)
 
       // Assume the postcondition of recursive call
-      val (bound, path) = if (specifyCalls) {
-        (true, Path.empty withBinding (rec -> newCall))
+      val path = if (specifyCalls) {
+        Path.empty withBinding (rec -> newCall)
       } else {
-        (false, Path(application(
+        Path(application(
           newCall.tfd.withParamSubst(newCall.args, newCall.tfd.postOrTrue),
           Seq(rec.toVariable)
-        )))
+        ))
       }
 
-      (rec, bound, path)
+      (rec, path)
     }
 
     val onSuccess = forwardMap(letTuple(recs.map(_._1), tupleWrap(calls), _))
@@ -65,28 +65,16 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
         val origImpl = hctx.functionContext.fullBody
         hctx.functionContext.fullBody = psol
 
-        val evaluator = new NoChooseEvaluator(hctx, hctx.program)
-        def mapExample(ex: Example): List[Example] = {
-          val results = calls map (evaluator.eval(_, p.as.zip(ex.ins).toMap).result)
-          if (results forall (_.isDefined)) List({
-            val extra = results map (_.get)
-            ex match {
-              case InExample(ins) =>
-                InExample(ins ++ extra)
-              case InOutExample(ins, outs) =>
-                InOutExample(ins ++ extra, outs)
-            }
-          }) else Nil
-        }
+        //val evaluator = new NoChooseEvaluator(hctx, hctx.program)
 
         val newWs = calls map Terminating
         val TopLevelAnds(ws) = p.ws
         try {
           val newProblem = p.copy(
-            as = p.as ++ recs.collect { case (r, false, _) => r },
-            pc = recs.map(_._3).foldLeft(p.pc)(_ merge _),
+            as = p.as ++ (if (specifyCalls) Nil else recs.map(_._1)),
+            pc = recs.map(_._2).foldLeft(p.pc)(_ merge _),
             ws = andJoin(ws ++ newWs),
-            eb = p.eb.map(mapExample)
+            eb = p.qeb//.filterIns(filter _)
           )
 
           RuleExpanded(List(newProblem))

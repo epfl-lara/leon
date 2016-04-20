@@ -4,11 +4,12 @@ package leon
 package synthesis
 package rules
 
-import leon.purescala.Common.Identifier
+import purescala.Common.Identifier
 import purescala.Constructors._
 import purescala.Expressions._
-import leon.purescala.Extractors.{IsTyped, TopLevelAnds}
+import purescala.Extractors.{IsTyped, TopLevelAnds}
 import purescala.Types._
+import Witnesses._
 
 /** For every pair of input variables of the same generic type,
   * checks equality and output an If-Then-Else statement with the two new branches.
@@ -41,16 +42,26 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
       case (a1, a2) =>
         val v1 = Variable(a1)
         val v2 = Variable(a2)
-        val subProblems = List(
-          p.copy(as  = p.as.diff(Seq(a1)),
-                 pc  = p.pc map (subst(a1 -> v2, _)),
-                 ws  = subst(a1 -> v2, p.ws),
-                 phi = subst(a1 -> v2, p.phi),
-                 eb  = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))),
 
-          p.copy(pc = p.pc withCond not(Equals(v1, v2)),
-                 eb = p.qeb.filterIns(not(Equals(v1, v2))))
+        val (f, t, isInput) = if (p.as contains a1) (a1, v2, true) else (a2, v1, p.as contains a2)
+        val eq = if (isInput) {
+          p.copy(
+            as = p.as.diff(Seq(f)),
+            pc = p.pc map (subst(f -> t, _)),
+            ws = subst(f -> t, p.ws),
+            phi = subst(f -> t, p.phi),
+            eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(f))
+          )
+        } else {
+          p.copy(pc = p.pc withCond Equals(v1,v2)).withWs(Seq(Inactive(f))) // FIXME!
+        }
+
+        val neq = p.copy(
+          pc = p.pc withCond not(Equals(v1, v2)),
+          eb = p.qeb.filterIns(not(Equals(v1, v2))) // FIXME!
         )
+
+        val subProblems = List(eq, neq)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols @ List(sEQ, sNE) =>

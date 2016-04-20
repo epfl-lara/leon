@@ -4,7 +4,8 @@ package leon
 package synthesis
 package rules
 
-import Witnesses.Hint
+import Witnesses._
+
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
@@ -12,10 +13,21 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Definitions._
+import evaluators.DefaultEvaluator
 
 /** Abstract data type split. If a variable is typed as an abstract data type, then
   * it will create a match case statement on all known subtypes. */
 case object ADTSplit extends Rule("ADT Split.") {
+
+  protected class NoChooseEvaluator(ctx: LeonContext, prog: Program) extends DefaultEvaluator(ctx, prog) {
+    override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+      case ch: Choose =>
+        throw new EvalError("Choose!")
+      case _ =>
+        super.e(expr)
+    }
+  }
+
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     // We approximate knowledge of types based on facts found at the top-level
     // we don't care if the variables are known to be equal or not, we just
@@ -32,7 +44,7 @@ case object ADTSplit extends Rule("ADT Split.") {
       instChecks.toMap ++ boundCcs
     }
 
-    val candidates = p.as.collect {
+    val candidates = p.allAs.collect {
       case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>
 
         val optCases = cd.knownDescendants.sortBy(_.id.name).collect {
@@ -63,27 +75,50 @@ case object ADTSplit extends Rule("ADT Split.") {
       case Some((id, act, cases)) =>
         val oas = p.as.filter(_ != id)
 
+        val evaluator = new NoChooseEvaluator(hctx, hctx.program)
+
         val subInfo0 = for(ccd <- cases) yield {
-          val cct    = CaseClassType(ccd, act.tps)
+          val isInputVar = p.as.contains(id)
+          val cct = CaseClassType(ccd, act.tps)
 
-          val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
+          val args = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
 
-          val whole =  CaseClass(cct, args.map(Variable))
+          val whole = CaseClass(cct, args.map(Variable))
 
           val subPhi = subst(id -> whole, p.phi)
-          val subPC  = p.pc map (subst(id -> whole, _))
-          val subWS  = subst(id -> whole, p.ws)
-
-          val eb2 = p.qeb.mapIns { inInfo =>
-             inInfo.toMap.apply(id) match {
-               case CaseClass(`cct`, vs) =>
-                 List(vs ++ inInfo.filter(_._1 != id).map(_._2))
-               case _ =>
-                 Nil
-             }
+          val subPC = {
+            val withSubst = p.pc map (subst(id -> whole, _))
+            if (isInputVar) withSubst
+            else {
+              val mapping = cct.classDef.fields.zip(args).map {
+                case (f, a) => a -> caseClassSelector(cct, Variable(id), f.id)
+              }
+              withSubst.withBindings(mapping).withCond(isInstOf(id.toVariable, cct))
+            }
           }
+          val subWS = subst(id -> whole, p.ws)
 
-          val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs, eb2).withWs(Seq(Hint(whole)))
+          val eb2 = {
+            if (isInputVar) {
+              // Filter out examples where id has the wrong type, and fix input variables
+              p.qeb.mapIns { inInfo =>
+                inInfo.toMap.apply(id) match {
+                  case CaseClass(`cct`, vs) =>
+                    List(vs ++ inInfo.filter(_._1 != id).map(_._2))
+                  case _ =>
+                    Nil
+                }
+              }
+            } else {
+              // Filter out examples where id has the wrong type
+              p.qeb.filterIns { inValues =>
+                evaluator.eval(id.toVariable, inValues ++ p.pc.bindings).result.exists(_.getType == cct)
+              }.eb
+            }
+          }
+          val newAs = if (isInputVar) args ::: oas else p.as
+          val inactive = (!isInputVar).option(Inactive(id))
+          val subProblem = Problem(newAs, subWS, subPC, subPhi, p.xs, eb2).withWs(Seq(Hint(whole)) ++ inactive)
           val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
           (cct, subProblem, subPattern)
