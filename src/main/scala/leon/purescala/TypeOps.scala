@@ -268,10 +268,20 @@ object TypeOps extends GenTreeOps[TypeTree] {
         Math.pow(t + 1, f).toInt
       }
     case cct: CaseClassType =>
-      Some(cct.fields.map { field =>
-        typeCardinality(field.getType).getOrElse(return None)
+      Some(cct.fieldsTypes.map { tpe =>
+        typeCardinality(tpe).getOrElse(return None)
       }.product)
     case act: AbstractClassType =>
+      val possibleChildTypes = leon.utils.fixpoint((tpes: Set[TypeTree]) => {
+        tpes.flatMap(tpe => 
+          Set(tpe) ++ (tpe match {
+            case cct: CaseClassType => cct.fieldsTypes
+            case act: AbstractClassType => Set(act) ++ act.knownCCDescendants
+            case _ => Set.empty
+          })
+        )
+      })(act.knownCCDescendants.toSet)
+      if(possibleChildTypes(act)) return None
       Some(act.knownCCDescendants.map(typeCardinality).map(_.getOrElse(return None)).sum)
     case _ => None
   }
