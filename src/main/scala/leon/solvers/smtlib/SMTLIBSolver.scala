@@ -10,7 +10,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => SMTFunDef, _}
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
+import _root_.smtlib.parser.Terms.{Identifier => _, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 
 import theories._
@@ -74,32 +74,26 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program, theo
       Model.empty
     } else {
       try {
-        val cmd = GetModel()
-
-        emit(cmd) match {
+        emit(GetModel()) match {
           case GetModelResponseSuccess(smodel) =>
-            var modelFunDefs = Map[SSymbol, DefineFun]()
-
             // first-pass to gather functions
-            for (me <- smodel) me match {
+            val modelFunDefs = smodel.collect {
               case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
-                modelFunDefs += a -> me
-              case _ =>
-            }
+                a -> me
+            }.toMap
 
-            var model = Map[Identifier, Expr]()
-
-            for (me <- smodel) me match {
-              case DefineFun(SMTFunDef(s, args, kind, e)) if syms(s) =>
+            val model = smodel.flatMap {
+              case DefineFun(SMTFunDef(s, _, _, e)) if syms(s) =>
                 try {
                   val id = variables.toA(s)
                   val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
-                  model += ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap)
+                  Some(ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap))
                 } catch {
                   case _: Unsupported =>
+                    None
                 }
-              case _ =>
-            }
+              case _ => None
+            }.toMap
 
             new Model(model)
 
