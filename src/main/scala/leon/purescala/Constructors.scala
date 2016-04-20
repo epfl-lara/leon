@@ -289,7 +289,7 @@ object Constructors {
     * @see [[purescala.Expressions.Equals Equals]]
     */
   // @mk I simplified that because it seemed dangerous and unnessecary
-  def equality(a: Expr, b: Expr) = {
+  def equality(a: Expr, b: Expr): Expr = {
     if (a.isInstanceOf[Terminal] && isPurelyFunctional(a) && a == b ) {
       BooleanLiteral(true)
     } else  {
