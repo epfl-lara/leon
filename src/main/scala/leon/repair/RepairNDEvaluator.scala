@@ -8,7 +8,9 @@ import purescala.Expressions._
 import purescala.ExprOps.valuesOf
 import evaluators.StreamEvaluator
 
-/** This evaluator treats the expression [[nd]] (reference equality) as a non-deterministic value */
+/** A [[leon.evaluators.StreamEvaluator StreamEvaluator]] that treats a specified expression [[nd]] as a non-deterministic value
+  * @note Expressions are compared against [[nd]] with reference equality.
+  */
 class RepairNDEvaluator(ctx: LeonContext, prog: Program, nd: Expr) extends StreamEvaluator(ctx, prog) {
 
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Stream[Expr] = expr match {

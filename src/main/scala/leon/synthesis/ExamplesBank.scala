@@ -3,12 +3,11 @@
 package leon
 package synthesis
 
-import evaluators.DefaultEvaluator
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.Common._
-import repair._
+import evaluators.{TrackingEvaluator, DefaultEvaluator}
 import leon.utils.ASCIIHelpers._
 
 /** Sets of valid and invalid examples */
@@ -18,7 +17,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   // Minimize tests of a function so that tests that are invalid because of a
   // recursive call are eliminated
   def minimizeInvalids(fd: FunDef, ctx: LeonContext, program: Program): ExamplesBank = {
-    val evaluator = new RepairTrackingEvaluator(ctx, program)
+    val evaluator = new TrackingEvaluator(ctx, program)
 
     invalids foreach { ts =>
       evaluator.eval(functionInvocation(fd, ts.ins))

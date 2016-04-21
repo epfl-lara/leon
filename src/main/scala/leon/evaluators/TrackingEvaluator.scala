@@ -1,22 +1,20 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
-package leon.repair
+package leon
+package evaluators
 
-import scala.collection.immutable.Map
+import purescala.Common._
+import purescala.Definitions._
+import purescala.Expressions._
+import purescala.Types._
+
 import scala.collection.mutable.{Map => MMap}
-import leon.purescala.Common._
-import leon.purescala.Expressions._
-import leon.purescala.Types._
-import leon.purescala.Definitions._
-import leon.LeonContext
-import leon.evaluators._
 
-/** 
- *  This evaluator tracks all dependencies between function calls (.fullCallGraph)
-  * as well as if each invocation was successful or erroneous (led to an error)
-  * (.fiStatus) 
+/** An [[Evaluator]] that tracks information about the runtime call tree.
+  * Transitive dependencies between function calls are stored in [[fullCallGraph]].
+  * Additionally, [[fiStatus]] tracks if each function invocation was successful or erroneous (led to an error).
   */
-class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext {
+class TrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext {
   type RC = CollectingRecContext
 
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
