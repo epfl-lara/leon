@@ -51,7 +51,7 @@ trait DeterministicEvaluator extends Evaluator {
   final def evalEnvExpr(expr: Expr, mapping: Iterable[(Identifier, Expr)]) : EvaluationResult = {
     if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
       eval(expr, mapping.toMap)
-    } else (evalEnv(mapping) match {
+    } else (_evalEnv(mapping) match {
       case Left(m) => eval(expr, m)
       case Right(errorMessage) => 
         val m = mapping.filter{ case (k, v) => purescala.ExprOps.isValue(v) }.toMap
@@ -62,9 +62,19 @@ trait DeterministicEvaluator extends Evaluator {
     })
   }
   
+  /** Returns an evaluated environment. If it fails, removes all non-values from the environment. */
+  def evalEnv(mapping: Iterable[(Identifier, Expr)]): Map[Identifier, Value] = {
+    if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
+      mapping.toMap
+    } else (_evalEnv(mapping) match {
+      case Left(m) => m
+      case Right(msg) => mapping.filter(x => purescala.ExprOps.isValue(x._2)).toMap
+    })
+  }
+  
   /** From a not yet well evaluated context with dependencies between variables, returns a head where all exprs are values (as a Left())
    *  If this does not succeed, it provides an error message as Right()*/
-  private def evalEnv(mapping: Iterable[(Identifier, Expr)]): Either[Map[Identifier, Value], String] = {
+  private def _evalEnv(mapping: Iterable[(Identifier, Expr)]): Either[Map[Identifier, Value], String] = {
     var f= mapping.toSet
     var mBuilder = collection.mutable.ListBuffer[(Identifier, Value)]()
     var changed = true
