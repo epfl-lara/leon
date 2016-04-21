@@ -17,12 +17,12 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
   val isCVC4Available = SolverFactory.hasCVC4
 
   val opts: List[List[String]] = {
-    List(
+    (List(
       List("--feelinglucky"),
       List("--codegen", /*"--evalground",*/ "--feelinglucky"),
       List("--solvers=fairz3,enum", "--codegen", /*"--evalground",*/ "--feelinglucky")) ++
       isZ3Available.option(List("--solvers=smt-z3", "--feelinglucky")) ++
-      isCVC4Available.option(List("--solvers=smt-cvc4", "--feelinglucky"))
+      isCVC4Available.option(List("--solvers=smt-cvc4", "--feelinglucky")))
         .map( _ :+ "--timeout=120")
   }
 
