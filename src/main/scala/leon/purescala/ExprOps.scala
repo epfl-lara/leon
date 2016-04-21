@@ -2136,9 +2136,17 @@ object ExprOps extends GenTreeOps[Expr] {
     case _ =>
       fun
   }
+  var msgs: String = ""
+  implicit class BooleanAdder(b: Boolean) {
+    def <(msg: String) = {if(!b) msgs += msg; b}
+  }
 
   /** Returns true if expr is a value of type t */
   def isValueOfType(e: Expr, t: TypeTree): Boolean = {
+    def unWrapSome(s: Expr) = s match {
+      case CaseClass(_, Seq(a)) => a
+      case _ => s
+    }
     (e, t) match {
       case (StringLiteral(_), StringType) => true
       case (IntLiteral(_), Int32Type) => true
@@ -2154,25 +2162,29 @@ object ExprOps extends GenTreeOps[Expr] {
         tbase == base &&
         (elems forall isValue)
       case (FiniteMap(elems, tk, tv), MapType(from, to)) =>
-        tk == from && tv == to &&
-        (elems forall (kv => isValueOfType(kv._1, from) && isValueOfType(kv._2, to) ))
+        (tk == from) < s"$tk not equal to $from" && (tv == to) < s"$tv not equal to $to" &&
+        (elems forall (kv => isValueOfType(kv._1, from) < s"${kv._1} not a value of type ${from}" && isValueOfType(unWrapSome(kv._2), to) < s"${unWrapSome(kv._2)} not a value of type ${to}" ))
       case (NonemptyArray(elems, defaultValues), ArrayType(base)) =>
         elems.values forall (x => isValueOfType(x, base))
       case (EmptyArray(tpe), ArrayType(base)) =>
         tpe == base
       case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
-        TypeOps.isSubtypeOf(ct, ct2) &&
-        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+        TypeOps.isSubtypeOf(ct, ct2) < s"$ct not a subtype of $ct2" &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2) < s"${argstyped._1} not a value of type ${argstyped._2}" ))
       case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
-        ct == ct2 &&
+        (ct == ct2) <  s"$ct not equal to $ct2" &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (FiniteLambda(mapping, default, tpe), exTpe@FunctionType(ins, out)) =>
+        tpe == exTpe
       case (Lambda(valdefs, body), FunctionType(ins, out)) =>
-        (valdefs zip ins forall (vdin => vdin._1.getType == vdin._2)) &&
-        body.getType == out
+        (valdefs zip ins forall (vdin => (vdin._1.getType == vdin._2) < s"${vdin._1.getType} is not equal to ${vdin._2}")) &&
+        (body.getType == out) < s"${body.getType} is not equal to ${out}"
+      case (FiniteBag(elements, fbtpe), BagType(tpe)) =>
+        fbtpe == tpe && elements.forall{ case (key, value) => isValueOfType(key, tpe) && isValueOfType(value, IntegerType) }
       case _ => false
     }
   }
-  
+    
   /** Returns true if expr is a value. Stronger than isGround */
   val isValue = (e: Expr) => isValueOfType(e, e.getType)
 }

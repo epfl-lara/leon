@@ -45,9 +45,8 @@ trait WithLikelyEq {
 
       cartesianProduct(allValues).foreach { vs =>
         val m = (freeVars zip vs).toMap
-
         val doTest = pre.map { p =>
-          evaluator.eval(p, m).result match {
+          evaluator.evalEnvExpr(p, m).result match {
             case Some(BooleanLiteral(b)) => b
             case _ => fail("Precondition is not a boolean expression")
           }
