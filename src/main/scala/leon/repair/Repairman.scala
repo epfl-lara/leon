@@ -3,7 +3,6 @@
 package leon
 package repair
 
-import leon.datagen.GrammarDataGen
 import purescala.Path
 import purescala.Definitions._
 import purescala.Expressions._
@@ -17,6 +16,7 @@ import solvers._
 import utils._
 import codegen._
 import verification._
+import datagen.GrammarDataGen
 
 import synthesis._
 import synthesis.rules._
@@ -25,17 +25,14 @@ import synthesis.graph.{dotGenIds, DotGenerator}
 
 import rules._
 
-class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
-  implicit val ctx = ctx0
+class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
+  implicit val ctx0 = ctx
 
   val reporter = ctx.reporter
 
   val doBenchmark = ctx.findOptionOrDefault(GlobalOptions.optBenchmark)
 
-  var program = initProgram
-
   implicit val debugSection = DebugSectionRepair
-
 
   def repair(): Unit = {
     val to = new TimeoutFor(ctx.interruptManager)
@@ -147,7 +144,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             try {
               fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
             } finally {
-              fw.close
+              fw.close()
             }
           }(DebugSectionReport)
 
