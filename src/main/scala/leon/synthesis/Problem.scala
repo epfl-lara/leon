@@ -26,8 +26,7 @@ import Witnesses._
   */
 case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
 
-  // Activate this for debugging...
-  // assert(eb.examples.forall(_.ins.size == as.size))
+  // require(eb.examples.forall(_.ins.size == as.size))
 
   val TopLevelAnds(wsList) = ws
 
@@ -37,15 +36,16 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
   def allAs = as ++ (pc.bindings.map(_._1) diff wsList.collect{ case Inactive(i) => i })
 
   def asString(implicit ctx: LeonContext): String = {
+    def pad(padding: String, text: String) = text.lines.mkString(s"\n|$padding")
     val pcws = pc withCond ws
 
     val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
 
-    s"""|⟦  ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
-        |   ${pcws.toClause.asString} ≺
-        |   ⟨ ${phi.asString} ⟩ 
-        |   ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
-        |⟧  $ebInfo""".stripMargin
+    s"""|⟦ \u0305α ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
+        |  Π ${pad("    ", pcws.fullClause.asString)}
+        |  φ ${pad("    ", phi.asString)}
+        |  \u0305x ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
+        |⟧ $ebInfo""".stripMargin
   }
 
   def withWs(es: Traversable[Expr]) = {

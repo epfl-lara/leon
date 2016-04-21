@@ -82,7 +82,7 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
 
     import hctx.reporter.info
 
-    val prefix = f"[${Option(ri.rule.asString).getOrElse("?")}%-20s]"
+    val prefix = f"[${Option(ri).map(_.asString).getOrElse("?")}%-20s]"
 
     info(pad(prefix, ri.problem.asString))
 

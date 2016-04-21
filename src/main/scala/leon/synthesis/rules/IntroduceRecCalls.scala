@@ -53,7 +53,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
 
     val onSuccess = forwardMap(letTuple(recs.map(_._1), tupleWrap(calls), _))
 
-    List(new RuleInstantiation(s"Introduce recursive calls ${calls mkString ", "}", SolutionBuilderDecomp(List(p.outType), onSuccess)) {
+    List(new RuleInstantiation(s"Introduce calls ${calls mkString ", "}", SolutionBuilderDecomp(List(p.outType), onSuccess)) {
 
       def apply(nohctx: SearchContext): RuleApplication = {
 

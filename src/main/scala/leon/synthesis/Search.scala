@@ -8,7 +8,6 @@ import graph._
 
 import scala.annotation.tailrec
 
-import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
