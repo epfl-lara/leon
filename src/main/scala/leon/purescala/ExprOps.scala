@@ -416,6 +416,9 @@ object ExprOps extends GenTreeOps[Expr] {
           None
         }
 
+      case LetTuple(ids, Tuple(elems), body) =>
+        Some(ids.zip(elems).foldRight(body) { case ((id, elem), bd) => Let(id, elem, body) })
+
       /*case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
         // Will turn the match-expression with a single case into a list of lets.
         // @mk it is not clear at all that we want this
