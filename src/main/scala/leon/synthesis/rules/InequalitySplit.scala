@@ -45,7 +45,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
     val facts: Set[Fact] = {
       val TopLevelAnds(fromPhi) = p.phi
-      (fromPhi.toSet ++ p.pc.conditions ++ p.pc.bindingsAsEqs) flatMap getFacts
+      (fromPhi.toSet ++ p.pc.conditions ++ p.pc.bindings.map { case (id,e) => Equals(id.toVariable, e) }) flatMap getFacts
     }
 
     val candidates =

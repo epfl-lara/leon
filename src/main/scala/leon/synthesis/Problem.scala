@@ -10,7 +10,7 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._
-import leon.purescala.Definitions.FunDef
+import purescala.Definitions.FunDef
 import Witnesses._
 
 /** Defines a synthesis triple of the form:

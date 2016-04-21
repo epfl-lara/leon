@@ -32,11 +32,16 @@ object Path {
 class Path private[purescala](
   private[purescala] val elements: Seq[Either[(Identifier, Expr), Expr]]) extends Printable {
 
+  /** Add a binding to this [[Path]] */
   def withBinding(p: (Identifier, Expr)) = new Path(elements :+ Left(p))
   def withBindings(ps: Iterable[(Identifier, Expr)]) = new Path(elements ++ ps.map(Left(_)))
+  /** Add a condition to this [[Path]] */
   def withCond(e: Expr) = new Path(elements :+ Right(e))
   def withConds(es: Iterable[Expr]) = new Path(elements ++ es.map(Right(_)))
 
+  /** Remove bound variables from this [[Path]]
+    * @param ids the bound variables to remove
+    */
   def --(ids: Set[Identifier]) = new Path(elements.filterNot(_.left.exists(p => ids(p._1))))
 
   /** Appends `that` path at the end of `this` */
@@ -116,7 +121,6 @@ class Path private[purescala](
 
   lazy val bindings: Seq[(Identifier, Expr)] = elements.collect { case Left(p) => p }
   lazy val boundIds = bindings map (_._1)
-  lazy val bindingsAsEqs = bindings map { case (id,e) => Equals(id.toVariable, e) }
   lazy val conditions: Seq[Expr] = elements.collect { case Right(e) => e }
 
   def isBound(id: Identifier): Boolean = bindings.exists(p => p._1 == id)
