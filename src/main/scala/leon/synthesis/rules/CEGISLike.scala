@@ -695,7 +695,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         timers.cex.start()
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
-        val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
+        val cnstr   = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
         try {
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
@@ -772,7 +772,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           }
         }
 
-        val baseExampleInputs = p.eb.examples ++ solverExample
+        val baseExampleInputs = p.qeb.filterIns(p.pc.fullClause).eb.examples ++ solverExample
 
         ifDebug { debug =>
           baseExampleInputs.foreach { in =>
