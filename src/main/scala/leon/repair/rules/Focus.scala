@@ -165,7 +165,7 @@ case object Focus extends PreprocessingRule("Focus") {
             }
 
             val eb3 = if (vars.nonEmpty) {
-              eb2.mapIns(ebF)
+              eb2.flatMapIns(ebF)
             } else {
               eb2.eb
             }
@@ -243,7 +243,7 @@ case object Focus extends PreprocessingRule("Focus") {
           }.toList
         }
 
-        val np = Problem(p.as, ws(body), p.pc withBinding (id -> value), p.phi, p.xs, qeb.mapIns(ebF))
+        val np = Problem(p.as, ws(body), p.pc withBinding (id -> value), p.phi, p.xs, qeb.flatMapIns(ebF))
 
         Some(decomp(List(np), termWrap(Let(id, value, _)), s"Focus on let-body")(p))
 

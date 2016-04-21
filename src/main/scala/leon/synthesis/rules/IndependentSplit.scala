@@ -53,7 +53,7 @@ case object IndependentSplit extends NormalizingRule("IndependentSplit") {
 
       val newOuts = subOuts.flatten
 
-      val newEb = p.qeb.eb.mapOuts{ xs => List( (xs zip p.xs) flatMap {
+      val newEb = p.qeb.eb.flatMapOuts{ xs => List( (xs zip p.xs) flatMap {
         case (CaseClass(_, args), id) if isDecomposable(id) => args.toList
         case (Tuple(args), _) => args.toList
         case (other, _) => List(other)

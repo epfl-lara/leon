@@ -76,7 +76,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   }
 
   /** Expands each input example through the function f */
-  def mapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
+  def flatMapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
     map {
       case InExample(in) =>
         f(in).map(InExample)
@@ -87,7 +87,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   }
 
    /** Expands each output example through the function f */
-  def mapOuts(f: Seq[Expr] => List[Seq[Expr]]) = {
+  def flatMapOuts(f: Seq[Expr] => List[Seq[Expr]]) = {
     map {
       case InOutExample(in, out) =>
         f(out).map(InOutExample(in, _))
@@ -174,14 +174,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     val nxs    = xs.filterNot(toRemove)
     val toKeep = xs.zipWithIndex.filterNot(x => toRemove(x._1)).map(_._2)
 
-    QualifiedExamplesBank(as, nxs, eb mapOuts { out => List(toKeep.map(out)) })
+    QualifiedExamplesBank(as, nxs, eb flatMapOuts { out => List(toKeep.map(out)) })
   }
 
   def removeIns(toRemove: Set[Identifier]) = {
     val nas = as.filterNot(toRemove)
     val toKeep: List[Int] = as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
 
-    QualifiedExamplesBank(nas, xs, eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
+    QualifiedExamplesBank(nas, xs, eb flatMapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
   }
 
   /** Filter inputs through expr which is an expression evaluating to a boolean */
@@ -192,7 +192,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
   def filterIns(pred: Map[Identifier, Expr] => Boolean): QualifiedExamplesBank = {
     QualifiedExamplesBank(as, xs,
-      eb mapIns { in =>
+      eb flatMapIns { in =>
         val m = (as zip in).toMap
         if(pred(m)) {
           List(in)
