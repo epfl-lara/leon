@@ -453,11 +453,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         timers.testForProgram.start()
         val res = ex match {
           case InExample(ins) =>
-            evaluator.eval(cnstr, p.as.zip(ins).toMap ++ p.pc.bindings)
+            evaluator.evalEnvExpr(cnstr, p.as.zip(ins).toMap ++ p.pc.bindings)
 
           case InOutExample(ins, outs) =>
             val eq = equality(innerSol, tupleWrap(outs))
-            evaluator.eval(eq, p.as.zip(ins).toMap ++ p.pc.bindings)
+            evaluator.evalEnvExpr(eq, p.as.zip(ins).toMap ++ p.pc.bindings)
         }
         timers.testForProgram.stop()
 

@@ -46,6 +46,48 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
 
 trait DeterministicEvaluator extends Evaluator {
   type Value = Expr
+  
+  /**Evaluates the environment first, resolving non-cyclic dependencies, and then evaluate the expression */
+  final def evalEnvExpr(expr: Expr, mapping: Iterable[(Identifier, Expr)]) : EvaluationResult = {
+    if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
+      eval(expr, mapping.toMap)
+    } else (evalEnv(mapping) match {
+      case Left(m) => eval(expr, m)
+      case Right(errorMessage) => 
+        val m = mapping.filter{ case (k, v) => purescala.ExprOps.isValue(v) }.toMap
+        eval(expr, m) match {
+          case res @ evaluators.EvaluationResults.Successful(result) => res
+          case _ => evaluators.EvaluationResults.EvaluatorError(errorMessage)
+        }
+    })
+  }
+  
+  /** From a not yet well evaluated context with dependencies between variables, returns a head where all exprs are values (as a Left())
+   *  If this does not succeed, it provides an error message as Right()*/
+  private def evalEnv(mapping: Iterable[(Identifier, Expr)]): Either[Map[Identifier, Value], String] = {
+    var f= mapping.toSet
+    var mBuilder = collection.mutable.ListBuffer[(Identifier, Value)]()
+    var changed = true
+    while(f.nonEmpty && changed) {
+      changed = false
+      for((i, v) <- f) {
+        eval(v, mBuilder.toMap).result match {
+          case None =>
+          case Some(e) =>
+            changed = true
+            mBuilder += ((i -> e))
+            f -= ((i, v))
+        }
+      }
+    }
+    if(!changed) {
+      val str = "In the context " + mapping + ",\n" +
+      (for((i, v) <- f) yield {
+        s"eval(${v}) returned the error: " + eval(v, mBuilder.toMap)
+      }).mkString("\n")
+      Right(str)
+    } else Left(mBuilder.toMap)
+  }
 }
 
 trait NDEvaluator extends Evaluator {

@@ -67,7 +67,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
 
         val evaluator = new NoChooseEvaluator(hctx, hctx.program)
         def mapExample(ex: Example): List[Example] = {
-          val results = calls map (evaluator.eval(_, p.as.zip(ex.ins).toMap).result)
+          val results = calls map (evaluator.evalEnvExpr(_, p.as.zip(ex.ins)).result)
           if (results forall (_.isDefined)) List({
             val extra = results map (_.get)
             ex match {

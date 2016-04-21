@@ -107,7 +107,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           ((p.as zip i.ins).toMap, p.pc.toClause)
       }
 
-      evaluator.eval(cond, mapping) match {
+      evaluator.evalEnvExpr(cond, mapping) match {
         case EvaluationResults.Successful(BooleanLiteral(true)) => true
         case _ => false
       }
@@ -143,8 +143,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           val ids  = variablesOf(test)
 
           // Test could contain expressions, we evaluate
-          evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
-            case EvaluationResults.Successful(res) => res
+          abstractEvaluator.eval(test, Model.empty) match {
+            case EvaluationResults.Successful((res, _)) => res
             case _                                 => test
           }
         }
