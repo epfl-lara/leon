@@ -19,15 +19,6 @@ import evaluators.DefaultEvaluator
   * it will create a match case statement on all known subtypes. */
 case object ADTSplit extends Rule("ADT Split.") {
 
-  protected class NoChooseEvaluator(ctx: LeonContext, prog: Program) extends DefaultEvaluator(ctx, prog) {
-    override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
-      case ch: Choose =>
-        throw new EvalError("Choose!")
-      case _ =>
-        super.e(expr)
-    }
-  }
-
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     // We approximate knowledge of types based on facts found at the top-level
     // we don't care if the variables are known to be equal or not, we just
@@ -75,8 +66,6 @@ case object ADTSplit extends Rule("ADT Split.") {
       case Some((id, act, cases)) =>
         val oas = p.as.filter(_ != id)
 
-        val evaluator = new NoChooseEvaluator(hctx, hctx.program)
-
         val subInfo0 = for(ccd <- cases) yield {
           val isInputVar = p.as.contains(id)
           val cct = CaseClassType(ccd, act.tps)
@@ -101,6 +90,7 @@ case object ADTSplit extends Rule("ADT Split.") {
           val eb2 = {
             if (isInputVar) {
               // Filter out examples where id has the wrong type, and fix input variables
+              // Note: It is fine to filter here as no evaluation is required
               p.qeb.mapIns { inInfo =>
                 inInfo.toMap.apply(id) match {
                   case CaseClass(`cct`, vs) =>
@@ -110,10 +100,7 @@ case object ADTSplit extends Rule("ADT Split.") {
                 }
               }
             } else {
-              // Filter out examples where id has the wrong type
-              p.qeb.filterIns { inValues =>
-                evaluator.eval(id.toVariable, inValues ++ p.pc.bindings).result.exists(_.getType == cct)
-              }.eb
+              p.eb
             }
           }
           val newAs = if (isInputVar) args ::: oas else p.as
@@ -127,7 +114,6 @@ case object ADTSplit extends Rule("ADT Split.") {
         val subInfo = subInfo0.sortBy{ case (cct, _, _) =>
           cct.fieldsTypes.count { t => t == act }
         }
-
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols =>

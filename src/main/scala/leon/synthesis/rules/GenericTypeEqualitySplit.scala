@@ -50,16 +50,13 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
             pc = p.pc map (subst(f -> t, _)),
             ws = subst(f -> t, p.ws),
             phi = subst(f -> t, p.phi),
-            eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(f))
+            eb = p.qeb.removeIns(Set(f))
           )
         } else {
           p.copy(pc = p.pc withCond Equals(v1,v2)).withWs(Seq(Inactive(f))) // FIXME!
         }
 
-        val neq = p.copy(
-          pc = p.pc withCond not(Equals(v1, v2)),
-          eb = p.qeb.filterIns(not(Equals(v1, v2))) // FIXME!
-        )
+        val neq = p.copy(pc = p.pc withCond not(Equals(v1, v2)))
 
         val subProblems = List(eq, neq)
 

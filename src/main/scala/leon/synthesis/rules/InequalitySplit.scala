@@ -57,12 +57,12 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
         val lt = if (!facts.contains(LT(v1, v2))) {
           val pc = LessThan(v1, v2)
-          Some(pc, p.copy(pc = p.pc withCond pc, eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc))
         } else None
 
         val gt = if (!facts.contains(LT(v2, v1))) {
           val pc = GreaterThan(v1, v2)
-          Some(pc, p.copy(pc = p.pc withCond pc, eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc))
         } else None
 
         val eq = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
@@ -79,7 +79,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
               pc = p.pc map (subst(f -> t, _)),
               ws = subst(f -> t, p.ws),
               phi = subst(f -> t, p.phi),
-              eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(f))
+              eb = p.qeb.removeIns(Set(f))
             )
           } else {
             p.copy(pc = p.pc withCond pc).withWs(Seq(Inactive(f))) // equality in pc is fine for numeric types

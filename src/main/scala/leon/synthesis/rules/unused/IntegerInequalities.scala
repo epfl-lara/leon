@@ -173,7 +173,6 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         val subProblemxs: List[Identifier] = quotientIds ++ otherVars
         val subProblem = Problem(problem.as ++ remainderIds, problem.ws, problem.pc, subProblemFormula, subProblemxs)
 
-
         def onSuccess(sols: List[Solution]): Option[Solution] = sols match {
           case List(s @ Solution(pre, defs, term, isTrusted)) =>
             if(remainderIds.isEmpty) {

@@ -772,7 +772,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           }
         }
 
-        val baseExampleInputs = p.qeb.filterIns(p.pc.fullClause).eb.examples ++ solverExample
+        val baseExampleInputs = p.qebFiltered.examples ++ solverExample
 
         ifDebug { debug =>
           baseExampleInputs.foreach { in =>

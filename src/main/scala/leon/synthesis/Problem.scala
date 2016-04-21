@@ -10,7 +10,7 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._
-import purescala.Definitions.FunDef
+import leon.purescala.Definitions.FunDef
 import Witnesses._
 
 /** Defines a synthesis triple of the form:
@@ -21,6 +21,8 @@ import Witnesses._
   * @param pc The path condition so far
   * @param phi The formula on `as` and `xs` to satisfy
   * @param xs The list of output identifiers for which we want to compute a function
+  * @note Since the examples are not eagerly filtered by [[Rule]]s, some may not
+  *       pass the path condition. Use [[qebFiltered]] to get the legal ones.
   */
 case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) extends Printable {
 
@@ -50,12 +52,15 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
     copy(ws = andJoin(wsList ++ es))
   }
 
+  def qebFiltered(implicit sctx: SearchContext) = qeb.filterIns(pc.fullClause)
+
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
   def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)
 
 }
 
 object Problem {
+
   def fromSpec(
     spec: Expr,
     pc: Path = Path.empty,

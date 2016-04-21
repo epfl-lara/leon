@@ -13,8 +13,8 @@ case object IfSplit extends Rule("If-Split") {
 
     def split(i: IfExpr, description: String): RuleInstantiation = {
       val subs = List(
-        Problem(p.as, p.ws, p.pc withCond i.cond, replace(Map(i -> i.thenn), p.phi), p.xs, p.qeb.filterIns(i.cond)),
-        Problem(p.as, p.ws, p.pc withCond not(i.cond), replace(Map(i -> i.elze), p.phi), p.xs, p.qeb.filterIns(not(i.cond)))
+        Problem(p.as, p.ws, p.pc withCond i.cond, replace(Map(i -> i.thenn), p.phi), p.xs),
+        Problem(p.as, p.ws, p.pc withCond not(i.cond), replace(Map(i -> i.elze), p.phi), p.xs)
       )
 
       val onSuccess: List[Solution] => Option[Solution] = {

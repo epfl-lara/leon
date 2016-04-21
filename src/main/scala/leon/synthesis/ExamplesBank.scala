@@ -3,6 +3,7 @@
 package leon
 package synthesis
 
+import evaluators.DefaultEvaluator
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
@@ -167,6 +168,8 @@ object ExamplesBank {
   * allows us to evaluate expressions. */
 case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SearchContext) {
 
+  lazy val evaluator = new DefaultEvaluator(hctx, hctx.program).setEvaluationFailOnChoose(true)
+
   def removeOuts(toRemove: Set[Identifier]): QualifiedExamplesBank = {
     val nxs    = xs.filterNot(toRemove)
     val toKeep = xs.zipWithIndex.filterNot(x => toRemove(x._1)).map(_._2)
@@ -183,9 +186,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
 
   /** Filter inputs through expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): QualifiedExamplesBank = {
-    filterIns(m =>
-      hctx.defaultEvaluator.eval(expr, m)
-      .result == Some(BooleanLiteral(true)))
+    filterIns(m => evaluator.eval(expr, m).result.contains(BooleanLiteral(true)))
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
@@ -203,6 +204,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   }
 
   /** Maps inputs through the function f
+    *
     * @return A new ExampleBank */
   def mapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]) = {
     eb map {

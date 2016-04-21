@@ -74,7 +74,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
             as = p.as ++ (if (specifyCalls) Nil else recs.map(_._1)),
             pc = recs.map(_._2).foldLeft(p.pc)(_ merge _),
             ws = andJoin(ws ++ newWs),
-            eb = p.qeb//.filterIns(filter _)
+            eb = p.eb
           )
 
           RuleExpanded(List(newProblem))
