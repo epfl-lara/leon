@@ -3,13 +3,7 @@
 package leon.solvers.string
 
 import leon.purescala.Common._
-import leon.purescala.Definitions._
-import leon.purescala.Expressions._
-import leon.solvers.Solver
-import leon.utils.Interruptible
-import leon.LeonContext
 import scala.collection.mutable.ListBuffer
-import vanuatoo.Pattern
 import scala.annotation.tailrec
 
 /**
@@ -287,7 +281,7 @@ object StringSolver {
             (constants match {
               case Some(_) => None
               case None => // Ok now let's assign all variables to empty string.
-                val newMap = (ids.collect{ case Right(id) => id -> ""})
+                val newMap = ids.collect { case Right(id) => id -> "" }
                 val newAssignments = (Option(assignments) /: newMap) {
                   case (None, (id, rhs)) => None 
                   case (Some(a), (id, rhs)) => 
@@ -310,7 +304,7 @@ object StringSolver {
             }
             // Check if constants form a partition in the string, i.e. getting the .indexOf() the first time is the only way to split the string.
             
-            if(constants.length > 0) {
+            if(constants.nonEmpty) {
               
               var pos = -2
               var lastPos = -2
@@ -327,7 +321,7 @@ object StringSolver {
               if(invalid) None else {
                 val i = rhs.indexOfSlice(lastConst, lastPos + 1)
                 if(i == -1) { // OK it's the smallest position possible, hence we can split at the last position.
-                  val (before, constant, after) = splitAtLastConstant(ids)
+                  val (before, _, after) = splitAtLastConstant(ids)
                   val firstConst = rhs.substring(0, lastPos)
                   val secondConst = rhs.substring(lastPos + lastConst.length)
                   constantPropagate((before, firstConst)::(after, secondConst)::q, assignments, newProblem)
@@ -415,12 +409,12 @@ object StringSolver {
       case List(x) => 
         Stream(Map(x -> rhs))
       case x :: ys => 
-        val (bestVar, bestScore, worstScore) = (((None:Option[(Identifier, Int, Int)]) /: ids) {
+        val (bestVar, bestScore, worstScore) = ((None: Option[(Identifier, Int, Int)]) /: ids) {
           case (None, x) => val sx = statistics(x)
             Some((x, sx, sx))
           case (s@Some((x, i, ws)), y) => val yi = statistics(y)
-            if(i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
-        }).get
+            if (i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
+        }.get
         val pos = prioritizedPositions(rhs)
         val numBestVars = ids.count { x => x == bestVar }
 
@@ -462,11 +456,11 @@ object StringSolver {
           }
           //println("Best variable:" + bestVar + " going to test " + strings.toList)
           
-          (for(str <- strings.distinct
+          for (str <- strings.distinct
                if java.util.regex.Pattern.quote(str).r.findAllMatchIn(rhs).length >= numBestVars
           ) yield {
             Map(bestVar -> str)
-          })
+          }
         }
     }
   }
@@ -496,7 +490,7 @@ object StringSolver {
     for((lhs, rhs) <- p) {
       val constants = lhs.collect{ case Left(constant) => constant }
       val identifiers_grouped = ListBuffer[List[Identifier]]()
-      var current_buffer = ListBuffer[Identifier]()
+      val current_buffer = ListBuffer[Identifier]()
       for(e <- lhs) e match {
         case Left(constant) => // At this point, there is only one constant here.
           identifiers_grouped.append(current_buffer.toList)
@@ -523,7 +517,7 @@ object StringSolver {
         minIdentifiersGrouped = identifiers_grouped.toList
       }
     }
-    val (lhs, rhs) = minStatement
+    val (_, rhs) = minStatement
     val constants = minConstants
     val identifiers_grouped = minIdentifiersGrouped
     val statistics = stats(p)
@@ -585,7 +579,7 @@ object StringSolver {
   /** Supposes that all variables are transitively bounded by length*/
   type GeneralProblem = List[GeneralEquation]
   
-  def variablesStringForm(sf: StringForm): Set[Identifier] = (sf.collect{ case Right(id) => id }).toSet
+  def variablesStringForm(sf: StringForm): Set[Identifier] = sf.collect { case Right(id) => id }.toSet
   def variables(gf: GeneralEquation): Set[Identifier] = variablesStringForm(gf._1) ++ variablesStringForm(gf._2)
   
   /** Returns true if the problem is transitively bounded */
@@ -593,7 +587,7 @@ object StringSolver {
     def isBounded(sf: GeneralEquation) = {
       variablesStringForm(sf._1).forall(transitivelyBounded) || variablesStringForm(sf._2).forall(transitivelyBounded)
     }
-    val (bounded, notbounded) = b.partition(isBounded _)
+    val (bounded, notbounded) = b.partition(isBounded)
     
     if(notbounded == Nil) true
     else if(notbounded == b) false

@@ -32,7 +32,8 @@ case object Assert extends NormalizingRule("Assert") {
             val sub = p.copy(pc = p.pc withConds exprsA, phi = andJoin(others), eb = p.qeb.filterIns(andJoin(exprsA)))
 
             Some(decomp(List(sub), {
-              case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(pre=andJoin(exprsA :+ pre), defs, term, s.isTrusted))
+              case List(s @ Solution(pre, defs, term, isTrusted)) =>
+                Some(Solution(andJoin(exprsA :+ pre), defs, term, isTrusted))
               case _ => None
             }, "Assert "+andJoin(exprsA).asString))
           }

@@ -70,14 +70,14 @@ object Solution {
     new Solution(BooleanLiteral(true), Set(), simplify(term), isTrusted)
   }
 
-  def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr)] = if (s eq null) None else Some((s.pre, s.defs, s.term))
+  def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr, Boolean)] = if (s eq null) None else Some((s.pre, s.defs, s.term, s.isTrusted))
 
   def choose(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef(_)), p.phi)))
+    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.phi)))
   }
 
   def chooseComplete(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef(_)), p.pc and p.phi)))
+    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.pc and p.phi)))
   }
 
   // Generate the simplest, wrongest solution, used for complexity lowerbound
