@@ -20,33 +20,30 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
   }
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
+    val ctx = createLeonContext("--synthesis")
 
-    var chooses = List[SourceInfo]()
-    var program: Program = null 
-    var ctx: LeonContext = null 
-    var opts: SynthesisSettings = null
+    val pipeline = leon.frontends.scalac.ExtractionPhase andThen new leon.utils.PreprocessingPhase
 
-    test(cat+": "+f.getName+" Compilation") {
-      ctx = createLeonContext("--synthesis")
-
-      opts = SynthesisSettings(searchBound = Some(bound))
-
-      val pipeline = leon.frontends.scalac.ExtractionPhase andThen new leon.utils.PreprocessingPhase
-
-      val (ctx2, pgm2) = pipeline.run(ctx, f.getAbsolutePath :: Nil)
-
-      program = pgm2
-
-      chooses = SourceInfo.extractFromProgram(ctx2, program)
+    val (ctx2, program) = try {
+      pipeline.run(ctx, f.getAbsolutePath :: Nil)
+    } catch {
+      case LeonFatalError(msg) =>
+        test(s"$cat: ${f.getName}") {
+          fail(s"Compilation failed: ${msg.getOrElse("")}")
+        }
+        return
     }
 
+    val chooses = SourceInfo.extractFromProgram(ctx2, program)
+    val settings = SynthesisSettings(searchBound = Some(bound))
+
     for (ci <- chooses) {
-      test(cat+": "+f.getName+" - "+ci.fd.id.name) {
-        val synthesizer = new Synthesizer(ctx, program, ci, opts)
+      test(s"$cat: ${f.getName} - ${ci.fd.id.name}") {
+        val synthesizer = new Synthesizer(ctx, program, ci, settings)
         try {
           val (_, sols) = synthesizer.synthesize()
           if (sols.isEmpty) {
-            fail("Solution was not found. (Search bound: "+bound+")")
+            fail(s"Solution was not found. (Search bound: $bound)")
           }
         } finally {
           synthesizer.shutdown()
