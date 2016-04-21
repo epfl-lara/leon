@@ -14,7 +14,7 @@ class XLangDesugaringSuite extends LeonRegressionSuite {
 
   def testFrontend(f: File, forError: Boolean) = {
     test ("Testing " + f.getName) {
-      val ctx = createLeonContext()
+      val ctx = createLeonContext("--timeout=40")
       if (forError) {
         intercept[LeonFatalError]{
           pipeline.run(ctx, List(f.getAbsolutePath))

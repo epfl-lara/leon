@@ -12,14 +12,14 @@ class XLangVerificationSuite extends VerificationSuite {
   val optionVariants: List[List[String]] = {
     val isZ3Available = SolverFactory.hasZ3
 
-    List(
+    (List(
       List(),
       List("--feelinglucky")
     ) ++ (
       if (isZ3Available)
         List(List("--solvers=smt-z3", "--feelinglucky"))
       else Nil
-    )
+    )).map ("--timeout=120" :: _)
   }
 
   val testDir: String = "regression/verification/xlang/"
