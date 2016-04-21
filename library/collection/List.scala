@@ -229,27 +229,25 @@ sealed abstract class List[T] {
       res.content == this.content ++ Set(e)
   }
 
-  def find(e: T): Option[BigInt] = { this match {
-    case Nil() => None[BigInt]()
+  def indexOf(elem: T): BigInt = { this match {
+    case Nil() => BigInt(-1)
+    case Cons(h, t) if h == elem => BigInt(0)
     case Cons(h, t) =>
-      if (h == e) {
-        Some[BigInt](0)
-      } else {
-        t.find(e) match {
-          case None()  => None[BigInt]()
-          case Some(i) => Some(i+1)
-        }
-      }
-    }} ensuring { res => !res.isDefined || (this.content contains e) }
+      val rec = t.indexOf(elem)
+      if (rec == BigInt(-1)) BigInt(-1)
+      else rec + 1
+  }} ensuring { res =>
+    (res >= 0) == content.contains(elem)
+  }
 
   def init: List[T] = {
     require(!isEmpty)
-    ((this : @unchecked) match {
+    (this : @unchecked) match {
       case Cons(h, Nil()) =>
         Nil[T]()
       case Cons(h, t) =>
         Cons[T](h, t.init)
-    })
+    }
   } ensuring ( (r: List[T]) =>
     r.size == this.size - 1 &&
     r.content.subsetOf(this.content)
@@ -283,7 +281,6 @@ sealed abstract class List[T] {
     case Nil() =>
       None[List[T]]()
   }} ensuring { _.isDefined != this.isEmpty }
-
 
   def unique: List[T] = this match {
     case Nil() => Nil()
