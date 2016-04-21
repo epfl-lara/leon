@@ -141,7 +141,7 @@ object Expressions {
     * @param binder The identifier used in body, defined just after '''val'''
     * @param value The value assigned to the identifier, after the '''=''' sign
     * @param body The expression following the ``val ... = ... ;`` construct
-    * @see [[purescala.Constructors#let purescala's constructor let]]
+    * @see [[leon.purescala.Constructors#let purescala's constructor let]]
     */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val getType = {

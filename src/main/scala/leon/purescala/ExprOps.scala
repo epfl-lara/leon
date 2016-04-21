@@ -311,6 +311,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => None
     } (expr)
 
+    if (print) println("normalized: ", normalized)
+
     (normalized, subst)
   }
 
