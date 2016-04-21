@@ -628,4 +628,32 @@ object StringSolver {
       solveGeneralProblem(unbounded.map(reduceGeneralEquation(assignment)(_))).map(assignment ++ _)
     })
   }
+  
+  
+  ////////////////////////////////////////////////
+  ////      Incremental problem extension     ////
+  ////////////////////////////////////////////////
+  
+  /** Returns all subsets of i elements of a sequence. */
+  def take[A](i: Int, of: Seq[A]): Stream[Seq[A]] = {
+    if(i > of.size || i < 0) Stream.empty
+    if(i == of.size) Stream(of)
+    else if(i == 0) Stream(Seq.empty)
+    else {
+      take(i - 1, of.tail).map(of.head +: _) #::: take(i, of.tail)
+    }
+  }
+  
+  /** Solves the problem while supposing that a minimal number of variables have been changed.*/
+  def solveMinChange(p: Problem, initialMapping: Assignment): Stream[Assignment] = {
+    // First try to see if the problem is solved. If yes, returns the initial mapping
+    val initKeys = initialMapping.keys.toSeq
+    for{
+      i <- (initialMapping.size to 0 by -1).toStream
+      kept <- take(i, initKeys)
+      ifKept = kept.toSet
+      newProblem = reduceProblem(initialMapping filterKeys ifKept)(p)
+      solution <- solve(newProblem)
+    } yield solution
+  }
 }
