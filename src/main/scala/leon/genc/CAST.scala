@@ -43,7 +43,9 @@ object CAST { // C Abstract Syntax Tree
   case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
 
   /* (Basic) String Type */
-  // NOTE it might be better to have data+length structure
+  // NOTE It might be better to have data+length structure
+  // NOTE Currently, only string literals are supported, hence they can legally
+  //      be returned from functions.
   case object String extends Type("char*")
 
   /* Typedef */

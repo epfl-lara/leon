@@ -842,9 +842,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   //  - Another issue is with case class with mutable members; references will get broken
   //    (not supported at all ATM).
   private def containsArrayType(typ: TypeTree): Boolean = typ match {
+    case CharType             => false
     case Int32Type            => false
     case BooleanType          => false
     case UnitType             => false
+    case StringType           => false // NOTE this might change in the future
     case ArrayType(_)         => true
     case TupleType(bases)     => bases exists containsArrayType
 
