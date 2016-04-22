@@ -224,11 +224,7 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
     def storeGuarded(guardVar: Identifier, expr: Expr) : Unit = {
-      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean. " + (
-        purescala.ExprOps.fold[String]{ (e, se) => 
-          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
-        }(expr)
-      ))
+      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean. " + purescala.ExprOps.explainTyping(expr))
 
       val prev = guardedExprs.getOrElse(guardVar, Nil)
       guardedExprs += guardVar -> (expr +: prev)

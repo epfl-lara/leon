@@ -2175,4 +2175,16 @@ object ExprOps extends GenTreeOps[Expr] {
   
   /** Returns true if expr is a value. Stronger than isGround */
   val isValue = (e: Expr) => isValueOfType(e, e.getType)
+  
+  /** Returns a nested string explaining why this expression is typed the way it is.*/
+  def explainTyping(e: Expr): String = {
+    leon.purescala.ExprOps.fold[String]{ (e, se) => 
+      e match {
+        case FunctionInvocation(tfd, args) =>
+          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString + s" because ${tfd.fd.id.name} was instantiated with ${tfd.fd.tparams.zip(args).map(k => k._1 +":="+k._2).mkString(",")} with type ${tfd.fd.params.map(_.getType).mkString(",")} => ${tfd.fd.returnType}"
+        case e =>
+          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
+      }
+    }(e)
+  }
 }
