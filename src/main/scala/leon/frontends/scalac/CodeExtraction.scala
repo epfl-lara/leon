@@ -941,11 +941,14 @@ trait CodeExtraction extends ASTExtractors {
           NoTree(funDef.returnType)
       }
 
-      if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
-        reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
-      }
+      //if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
+      //  reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
+      //}
 
       funDef.fullBody = finalBody
+      if(fctx.isExtern) { //extern never keeps the body, but we keep pre and post
+        funDef.body = None
+      }
 
       // Post-extraction sanity checks
 
