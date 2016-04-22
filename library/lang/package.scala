@@ -87,8 +87,5 @@ package object lang {
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
-  @extern
-  def println(x: String): Unit = {
-    scala.Predef.println(x)
-  }
+
 }
