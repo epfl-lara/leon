@@ -68,7 +68,7 @@ class TerminationSuite extends LeonRegressionSuite {
 
   private def forEachFileIn(files: Iterable[File], forError: Boolean = false)(block : Output=>Unit) {
     for(f <- files) {
-      mkTest(f, Seq("--solvers=smt-z3", "--timeout=120"), forError)(block)
+      mkTest(f, Seq("--solvers=smt-z3", "--timeout=150"), forError)(block)
     }
   }
 
