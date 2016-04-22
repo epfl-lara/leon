@@ -88,11 +88,9 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       
     case MatchExpr(scrut, cases) =>
       val (escrut, tscrut) = e(scrut)
-      cases.toStream.map(c => matchesCaseAbstract(escrut, c)).find(_.nonEmpty) match {
-        case Some(Some((c, mappings))) =>
-          e(c.rhs)(rctx.withNewVars2(mappings), gctx)
-        case _ =>
-          throw RuntimeError("MatchError(Abstract evaluation): "+escrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
+      cases.toStream.map(c => matchesCaseAbstract(escrut, tscrut, c)).find(_.nonEmpty) match {
+        case Some(Some((c, mappings))) => e(c.rhs)(rctx.withNewVars2(mappings), gctx)
+        case _ => throw RuntimeError("MatchError(Abstract evaluation): "+escrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
       }
 
     case FunctionInvocation(tfd, args) =>
@@ -105,7 +103,7 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       val evArgsOrigin = evArgs.map(_._2)
       
       // build a mapping for the function...
-      val frame = rctx.withNewVars(tfd.paramSubst(evArgsValues))
+      val frame = rctx.withNewVars2((tfd.paramIds zip evArgs).toMap)
   
       val callResult = if ((evArgsValues forall ExprOps.isValue) && tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
         (scalaEv.call(tfd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
@@ -125,17 +123,32 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
     case Let(i, ex, b) =>
       val (first, second) = e(ex)
       e(b)(rctx.withNewVar(i, (first, second)), gctx)
+    case Application(caller, args) =>
+      underlying.e(caller) match {
+        case l @ Lambda(params, body) =>
+          val newArgs = args.map(e)
+          val mapping = (params map { _.id } zip newArgs).toMap
+          e(body)(rctx.withNewVars2(mapping), gctx)
+        case FiniteLambda(mapping, dflt, _) =>
+          mapping.find { case (pargs, res) =>
+            (args zip pargs).forall(p => underlying.e(Equals(p._1, p._2)) == BooleanLiteral(true))
+          }.map{ case (key, value) => (value, value)}.getOrElse((dflt, dflt))
+        case f =>
+          throw EvalError("Cannot apply non-lambda function " + f.asString)
+      }
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
       if(ees forall ExprOps.isValue) {
-        (underlying.e(builder(ees)), builder(ts))
+        val conc_value = underlying.e(builder(ees))
+        val abs_value = builder(ts)
+        (conc_value, abs_value)
       } else {
         (builder(ees), builder(ts))
       }
     }
   }
 
-  def matchesCaseAbstract(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, (Expr, Expr)])] = {
+  def matchesCaseAbstract(scrut: Expr, abstractScrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, (Expr, Expr)])] = {
     import purescala.TypeOps.isSubtypeOf
     import purescala.Extractors._
 
@@ -151,7 +164,9 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
 
       case (CaseClassPattern(ob, pct, subs), CaseClass(ct, args)) =>
         if (pct == ct) {
-          val res = (subs zip args zip ct.classDef.fieldsIds).map{ case ((s, a), id) => matchesPattern(s, a, CaseClassSelector(ct, exprFromScrut, id)) }
+          val res = (subs zip args zip ct.classDef.fieldsIds).map{
+            case ((s, a), id) => matchesPattern(s, a, CaseClassSelector(ct, exprFromScrut, id))
+          }
           if (res.forall(_.isDefined)) {
             Some(obind(ob, expr, exprFromScrut) ++ res.flatten.flatten)
           } else {
@@ -198,13 +213,13 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
 
     caze match {
       case SimpleCase(p, rhs) =>
-        matchesPattern(p, scrut, scrut).map(r =>
+        matchesPattern(p, scrut, abstractScrut).map(r =>
           (caze, r)
         )
 
       case GuardedCase(p, g, rhs) =>
         for {
-          r <- matchesPattern(p, scrut, scrut)
+          r <- matchesPattern(p, scrut, abstractScrut)
           if e(g)(rctx.withNewVars2(r), gctx)._1 == BooleanLiteral(true)
         } yield (caze, r)
     }
