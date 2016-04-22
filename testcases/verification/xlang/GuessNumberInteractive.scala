@@ -5,35 +5,31 @@ import leon.io.StdIn
 import leon.annotation._
 
 object GuessNumberInteractive {
-  
-  //def pickRandomly(min: BigInt, max: BigInt): BigInt = {
-  //  require(min >= 0 && max >= min)
-  //  StdIn.readBigInt
-  //}
 
+  @extern
   def pickBetween(bot: BigInt, top: BigInt): BigInt = {
     require(bot <= top)
-    bot + (top - bot)/2
+    bot + (top - bot)/2  //works for execution
   } ensuring(res => res >= bot && res <= top)
 
   def guessNumber(choice: Option[BigInt])(implicit state: StdIn.State): BigInt = {
     require(choice match { case Some(c) => c >= 0 && c <= 10 case None() => true })
-    var top: BigInt = 10
     var bot: BigInt = 0
-    var guess: BigInt = pickBetween(bot, top)
+    var top: BigInt = 10
 
     (while(bot < top) {
-      if(isGreater(guess, choice)) {
-        top = guess-1
-        if(bot <= top)
-          guess = pickBetween(bot, top)
+      val prevDec = top - bot
+
+      val guess = pickBetween(bot, top-1) //never pick top, wouldn't learn anyting if pick top and if guess >= choice
+      if(isSmaller(guess, choice)) {
+        bot = guess+1
       } else {
-        bot = guess
-        if(bot <= top)
-          guess = pickBetween(bot, top)
+        top = guess
       }
+      val dec = top - bot
+      assert(dec >= 0 && dec < prevDec)
     }) invariant(choice match {
-      case Some(c) => guess >= bot && guess <= top && bot >= 0 && top <= 10 && bot <= top && c >= bot && c <= top
+      case Some(c) => bot >= 0 && top <= 10 && bot <= top && c >= bot && c <= top
       case None() => true
     })
     bot
