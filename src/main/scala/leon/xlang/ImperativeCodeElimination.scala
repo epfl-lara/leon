@@ -129,7 +129,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
  
       case wh@While(cond, body) =>
-        val whileFunDef = new FunDef(parent.id.freshen, Nil, Nil, UnitType).setPos(wh)
+        val whileFunDef = new FunDef(parent.id.duplicate(name = (parent.id.name + "While")), Nil, Nil, UnitType).setPos(wh)
         whileFunDef.addFlag(IsLoop(parent))
         whileFunDef.body = Some(
           IfExpr(cond, 
