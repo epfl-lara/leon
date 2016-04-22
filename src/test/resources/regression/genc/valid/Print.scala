@@ -1,8 +1,7 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
-package test
-
 import leon.annotation._
+import leon.io.{ FileOutputStream => FOS }
 
 object Print {
 
@@ -47,15 +46,21 @@ object Print {
     print(s)
   }
 
-  def printX(x: Int): Unit = {
-    val out: leon.io.FileOutputStream = leon.io.FileOutputStream.open("test.txt")
-    if (leon.io.FileOutputStream.isOpen(out)) {
-      leon.io.FileOutputStream.write(out, x)
-      leon.io.FileOutputStream.close(out)
+  def getFileName() = "test.txt"
+
+  def printX(x: Int, c: Char, sep: String): Unit = {
+    val filename = getFileName
+    val out = FOS.open(filename)
+    if (out.isOpen) {
+      out.write(x)
+      out.write(sep)
+      out.write(c)
+      out.close()
     } else {
       myprint("CANNOT PRINT ")
       myprint(x)
-      myprint(" TO FILE test.txt")
+      myprint(" TO FILE ")
+      myprint(filename)
     }
   }
 
@@ -71,7 +76,7 @@ object Print {
     myprint("\"ab'&\n\t\\\\")
     myprint('\n')
 
-    printX(42)
+    printX(42, '*', " <--> ")
 
     0
   }
