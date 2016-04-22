@@ -19,66 +19,67 @@ import purescala.Expressions._
 case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends SimpleExpressionGrammar {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
 
-     def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
-       // Prevents recursive calls
-       val cfd = currentFunction
+    def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
+      // Prevents recursive calls
+      val cfd = currentFunction
 
-       val isRecursiveCall = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
+      val isRecursiveCall = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
-       val isDet = fd.body.exists(isDeterministic)
+      val isDet = fd.body.exists(isDeterministic)
 
-       if (!isRecursiveCall && isDet) {
-         val free = fd.tparams.map(_.tp)
+      if (!isRecursiveCall && isDet) {
+        val free = fd.tparams.map(_.tp)
 
-         canBeSubtypeOf(fd.returnType, free, t, rhsFixed = true) match {
-           case Some(tpsMap) =>
-             val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
+        canBeSubtypeOf(fd.returnType, free, t, rhsFixed = true) match {
+          case Some(tpsMap) =>
+            val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
 
-             if (tpsMap.size < free.size) {
-               /* Some type params remain free, we want to assign them:
-                *
-                * List[T] => Int, for instance, will be found when
-                * requesting Int, but we need to assign T to viable
-                * types. For that we use list of input types as heuristic,
-                * and look for instantiations of T such that input <?:
-                * List[T].
-                */
-               types.distinct.flatMap { (atpe: TypeTree) =>
-                 var finalFree = free.toSet -- tpsMap.keySet
-                 var finalMap = tpsMap
+            if (tpsMap.size < free.size) {
+              /* Some type params remain free, we want to assign them:
+               *
+               * List[T] => Int, for instance, will be found when
+               * requesting Int, but we need to assign T to viable
+               * types. For that we use list of input types as heuristic,
+               * and look for instantiations of T such that input <?:
+               * List[T].
+               */
+              types.distinct.flatMap { (atpe: TypeTree) =>
+                var finalFree = free.toSet -- tpsMap.keySet
+                var finalMap = tpsMap
 
-                 for (ptpe <- tfd.params.map(_.getType).distinct) {
-                   canBeSubtypeOf(atpe, finalFree.toSeq, ptpe) match {
-                     case Some(ntpsMap) =>
-                       finalFree --= ntpsMap.keySet
-                       finalMap  ++= ntpsMap
-                     case _ =>
-                   }
-                 }
+                for (ptpe <- tfd.params.map(_.getType).distinct) {
+                  canBeSubtypeOf(atpe, finalFree.toSeq, ptpe) match {
+                    case Some(ntpsMap) =>
+                      finalFree --= ntpsMap.keySet
+                      finalMap  ++= ntpsMap
+                    case _ =>
+                  }
+                }
 
-                 if (finalFree.isEmpty) {
-                   List(fd.typed(free.map(tp => finalMap.getOrElse(tp, tp))))
-                 } else {
-                   Nil
-                 }
-               }
-             } else {
-               // All type parameters that used to be free are assigned
-               List(tfd)
-             }
-           case None =>
-             Nil
-         }
-       } else {
-         Nil
-       }
-     }
+                if (finalFree.isEmpty) {
+                  List(fd.typed(free.map(tp => finalMap.getOrElse(tp, tp))))
+                } else {
+                  Nil
+                }
+              }
+            } else {
+              // All type parameters that used to be free are assigned
+              List(tfd)
+            }
+          case None =>
+            Nil
+        }
+      } else {
+        Nil
+      }
+    }
 
-     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || tfd.fd.isInner || (exclude contains tfd.fd)
-     val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
+    val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || tfd.fd.isInner || (exclude contains tfd.fd)
 
-     funcs.map{ tfd =>
-       nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
-     }
-   }
+    val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
+
+    funcs.map{ tfd =>
+      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
+    }
   }
+}

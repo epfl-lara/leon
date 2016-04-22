@@ -441,7 +441,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         // This program contains a simplifiable expression,
         // which means it is equivalent to a simpler one
-        // Deactivated for now, since it doesnot seem to help
+        // Deactivated for now, since it does not seem to help
         if (redundancyCheck && params.optimizations && exists(redundant)(outerSol)) {
           excludeProgram(bs, true)
           return Some(false)

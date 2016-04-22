@@ -167,7 +167,9 @@ object ExamplesBank {
   * allows us to evaluate expressions. */
 case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SearchContext) {
 
-  lazy val evaluator = new DefaultEvaluator(hctx, hctx.program).setEvaluationFailOnChoose(true)
+  // TODO: This might be slightly conservative. We might want something closer to a partial evaluator,
+  //       to conserve things like (e: A).isInstanceOf[A] even when evaluation of e leads to choose
+  private lazy val evaluator = new DefaultEvaluator(hctx, hctx.program).setEvaluationFailOnChoose(true)
 
   def removeOuts(toRemove: Set[Identifier]): QualifiedExamplesBank = {
     val nxs    = xs.filterNot(toRemove)
