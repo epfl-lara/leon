@@ -13,8 +13,8 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
-import purescala.DefOps
-import solvers.{PartialModel, Model, SolverFactory}
+import solvers.TimeoutableSolverFactory
+import solvers.{PartialModel, SolverFactory}
 import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
@@ -746,7 +746,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       clpCache.getOrElse((choose, ins), {
         val tStart = System.currentTimeMillis
 
-        val solverf = SolverFactory.getFromSettings(ctx, program)
+        val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(1.seconds)
         val solver  = solverf.getNewSolver()
 
         try {
