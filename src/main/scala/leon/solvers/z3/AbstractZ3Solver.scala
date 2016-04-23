@@ -47,14 +47,6 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  // FIXME: (dirty?) hack to bypass z3lib bug.
-  // Uses the unique AbstractZ3Solver to ensure synchronization (no assumption on context).
-  protected[leon] val z3cfg : Z3Config =
-    AbstractZ3Solver.synchronized(new Z3Config(
-      "MODEL"             -> true,
-      "TYPE_CHECK"        -> true,
-      "WELL_SORTED_CHECK" -> true
-    ))
   toggleWarningMessages(true)
 
   protected[leon] var z3 : Z3Context = null
@@ -105,7 +97,11 @@ trait AbstractZ3Solver extends Solver {
     if (!isInitialized) {
       val timer = context.timers.solvers.z3.init.start()
 
-      z3 = new Z3Context(z3cfg)
+      z3 = new Z3Context(
+        "MODEL"             -> true,
+        "TYPE_CHECK"        -> true,
+        "WELL_SORTED_CHECK" -> true
+      )
 
       functions.clear()
       lambdas.clear()
@@ -657,7 +653,7 @@ trait AbstractZ3Solver extends Solver {
 
               case ft @ FunctionType(fts, tt) => lambdas.getB(ft) match {
                 case None => simplestValue(ft)
-                case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
+                case Some(decl) => model.getFuncInterpretations.find(_._1 == decl) match {
                   case None => simplestValue(ft)
                   case Some((_, mapping, elseValue)) =>
                     val leonElseValue = rec(elseValue, tt)
@@ -692,7 +688,8 @@ trait AbstractZ3Solver extends Solver {
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
                   case None => unsound(t, "invalid set AST")
-                  case Some(set) =>
+                  case Some((_, false)) => unsound(t, "co-finite set AST")
+                  case Some((set, true)) =>
                     val elems = set.map(e => rec(e, dt))
                     FiniteSet(elems, dt)
                 }
