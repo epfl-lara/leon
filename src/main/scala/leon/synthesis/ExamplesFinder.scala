@@ -99,7 +99,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
 
     def isValidExample(ex: Example): Boolean = {
-      if(this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
+      if (this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
       val (mapping, cond) = ex match {
         case io: InOutExample =>
           (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), p.pc and p.phi)

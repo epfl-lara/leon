@@ -171,7 +171,7 @@ object SolverFactory {
   }
 
   lazy val hasNativeZ3 = try {
-    new _root_.z3.scala.Z3Config
+    _root_.z3.Z3Wrapper.withinJar()
     true
   } catch {
     case _: java.lang.UnsatisfiedLinkError =>
