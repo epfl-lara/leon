@@ -15,6 +15,16 @@ case class ComparisonReport(base: ComparisonBase, program : Program, listFD: Lis
 
     var t = Table("Comparison Summary")
 
+    t += Row(
+      Seq(
+        Cell("argument program"),
+        Cell("base"),
+        Cell("similarity")
+      )
+    )
+
+    t += Separator
+
     t ++= listFD.map(
       fd => Row(
         Seq(
@@ -26,7 +36,6 @@ case class ComparisonReport(base: ComparisonBase, program : Program, listFD: Lis
     )
 
 
-    t += Separator
 
     t.render
   }
