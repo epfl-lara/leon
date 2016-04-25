@@ -145,9 +145,26 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       encodeName(fd.id.name) -> fd
     }).toMap
 
-    fds.groupBy { case (n, fd) =>
+    val mainCases = fds.groupBy { case (n, fd) =>
       compiledName(fd.methodOwner.getOrElse(moduleOf(fd).get))
     }
+
+    // For every class, if a parent class is in `mainCases`, we must instrument it as well
+    // Not doing this result in type incompatibility such as:
+    //   java.lang.VerifyError: Bad type on operand stack
+    //   Reason:
+    //      Type 'leon/lang/Some' (current frame, stack[0]) is not assignable to 'leon/lang/Option'
+    val additionalCases = for {
+      cdParent <- pgm.definedClasses
+      nameParent = compiledName(cdParent)
+      if mainCases contains nameParent
+      cdChild <- cdParent.knownDescendants
+      nameChild = compiledName(cdChild)
+    } yield {
+      nameChild -> mainCases(nameParent) // an alias of some sort
+    }
+
+    mainCases ++ additionalCases
   }
 
   val compiledClassLoader = {
