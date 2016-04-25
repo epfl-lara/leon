@@ -41,10 +41,10 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
 
     val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
 
-    s"""|⟦ \u0305α ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
+    s"""|⟦ α ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
         |  Π ${pad("    ", pcws.fullClause.asString)}
         |  φ ${pad("    ", phi.asString)}
-        |  \u0305x ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
+        |  x ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
         |⟧ $ebInfo""".stripMargin
   }
 
