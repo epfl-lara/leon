@@ -10,7 +10,7 @@ import Extractors._
 import Constructors._
 import solvers._
 
-class SimplifierWithPaths(sf: SolverFactory[Solver], override val initPath: List[Expr] = Nil) extends TransformerWithPC {
+class SimplifierWithPaths(sf: SolverFactory[Solver], val initPath: Path = Path.empty) extends TransformerWithPC {
 
   val solver = SimpleSolverAPI(sf)
 

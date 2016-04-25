@@ -3,12 +3,10 @@
 package leon
 package purescala
 
-import Common._
 import Expressions._
 import Constructors._
 import Extractors._
 import ExprOps._
-import Types._
 
 /** Traverses/ transforms expressions with path condition awareness.
   *
@@ -19,7 +17,7 @@ import Types._
 abstract class TransformerWithPC extends Transformer {
 
   /** The initial path condition */
-  protected val initPath: Seq[Expr]
+  protected val initPath: Path
 
   protected def rec(e: Expr, path: Path): Expr = e match {
     case Let(i, v, b) =>
@@ -108,7 +106,7 @@ abstract class TransformerWithPC extends Transformer {
   }
 
   def transform(e: Expr): Expr = {
-    rec(e, Path(initPath))
+    rec(e, initPath)
   }
 }
 

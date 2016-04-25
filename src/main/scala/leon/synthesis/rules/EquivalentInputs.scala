@@ -16,7 +16,7 @@ import purescala.Types.CaseClassType
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    val simplifier = Simplifiers.bestEffort(hctx, hctx.program) _
+    val simplifier = Simplifiers.bestEffort(hctx, hctx.program)(_:Expr, p.pc)
 
     var subst = Map.empty[Identifier, Expr]
     var reverseSubst = Map.empty[Identifier, Expr]

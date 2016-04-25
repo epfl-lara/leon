@@ -9,6 +9,7 @@ import purescala.Types.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Constructors._
+import purescala.Path
 
 import leon.utils.Simplifiers
 
@@ -55,7 +56,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
 
 
   def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
-    withoutSpec(Simplifiers.bestEffort(ctx, p)(req(within.precOrTrue, toExpr))).get
+    Simplifiers.bestEffort(ctx, p)(toExpr, Path(within.precOrTrue))
   }
 }
 

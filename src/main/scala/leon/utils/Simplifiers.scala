@@ -7,16 +7,17 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.ScopeSimplifier
+import purescala.Path
 import solvers._
 
 object Simplifiers {
   
-  def bestEffort(ctx: LeonContext, p: Program)(e: Expr): Expr = {
+  def bestEffort(ctx: LeonContext, p: Program)(e: Expr, pc: Path = Path.empty): Expr = {
     val solverf = SolverFactory.uninterpreted(ctx, p)
 
     try {
       val simplifiers = (simplifyLets _).
-        andThen(simplifyPaths(solverf)).
+        andThen(simplifyPaths(solverf, pc)).
         andThen(simplifyArithmetic).
         andThen(evalGround(ctx, p)).
         andThen(normalizeExpression)
