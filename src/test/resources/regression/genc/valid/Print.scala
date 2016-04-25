@@ -59,6 +59,8 @@ object Print {
     } else {
       myprint("CANNOT PRINT ")
       myprint(x)
+      myprint(sep)
+      myprint(c)
       myprint(" TO FILE ")
       myprint(filename)
     }

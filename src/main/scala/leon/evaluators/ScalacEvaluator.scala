@@ -56,11 +56,14 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     case UnitType =>
       "scala/runtime/BoxedUnit"
 
+    case StringType =>
+      "java/lang/String"
+
     case ct: ClassType =>
       jvmName(ct.classDef)
 
     case _ =>
-      ctx.reporter.internalError(s"$tpe is not a jvm class type ?!?")
+      ctx.reporter.internalError(s"$tpe [${tpe.getClass}] is not a jvm class type ?!?")
   }
 
   private def compiledName(d: Definition): String = {
@@ -90,7 +93,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     val fd = tfd.fd
 
     val methodName = encodeName(fd.id.name)
-    
+
     val jvmArgs = args.map(leonToScalac)
 
     val (clazz, jvmRec, jvmCallArgs) = fd.methodOwner match {
@@ -128,7 +131,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
         unsupported(s"Unable to lookup method")
 
       case ms =>
-        unsupported(s"Ambiguous reference to method: ${ms.size} methods found with a matching name")
+        unsupported(s"Ambiguous reference to method $methodName: ${ms.size} methods found with a matching name \n\t${ms mkString "\n\t"}\nArgs = $args")
 
     }
   }
@@ -160,6 +163,9 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
   def leonToScalac(e: Expr): AnyRef = e match {
     case CharLiteral(v) =>
       new java.lang.Character(v)
+
+    case StringLiteral(s) =>
+      new java.lang.String(s)
 
     case IntLiteral(v) =>
       new java.lang.Integer(v)
@@ -212,7 +218,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       unsupported("It is not yet possible to pass a closure to an @extern function")
 
     case t: Terminal =>
-      unsupported("Unhandled conversion to scala runtime: "+t)
+      unsupported(s"Unhandled conversion to scala runtime: $t [${t.getClass}]")
 
     case _ =>
       unsupported("Trying to convert non-terminal: "+e)
@@ -231,6 +237,8 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       IntLiteral(o.asInstanceOf[Integer].intValue)
     case CharType =>
       CharLiteral(o.asInstanceOf[Character].charValue)
+    case StringType =>
+      StringLiteral(o.asInstanceOf[String])
     case IntegerType =>
       InfiniteIntegerLiteral(o.asInstanceOf[BigInt])
     case UnitType =>
@@ -272,7 +280,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       unsupported("It is not possible to pass a closure from @extern back to leon")
 
     case _ =>
-      unsupported("Unhandled conversion from scala runtime: "+t)
+      unsupported(s"Unhandled conversion from scala runtime: $t [${t.getClass}]")
   }
 
   def jvmCallBack(cName: String, fName: String, args: Array[AnyRef]): AnyRef = {
