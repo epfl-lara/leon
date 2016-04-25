@@ -9,7 +9,7 @@ package utils
   * This could be defined anywhere, it's just that the
   * termination checker is the only place where it is used. */
 object SCC {
-  def scc[T](graph : Map[T,Set[T]]) : List[Set[T]] = {
+  def scc[T](graph: Map[T,Set[T]]) : List[Set[T]] = {
     // The first part is a shameless adaptation from Wikipedia
     val allVertices : Set[T] = graph.keySet ++ graph.values.flatten
 
@@ -19,22 +19,22 @@ object SCC {
     var components : List[Set[T]] = Nil
     var s : List[T] = Nil
 
-    def strongConnect(v : T) {
+    def strongConnect(v: T) {
       indices  = indices.updated(v, index)
       lowLinks = lowLinks.updated(v, index)
       index += 1
       s = v :: s
 
-      for(w <- graph.getOrElse(v, Set.empty)) {
-        if(!indices.isDefinedAt(w)) {
+      for (w <- graph.getOrElse(v, Set.empty)) {
+        if (!indices.isDefinedAt(w)) {
           strongConnect(w)
           lowLinks = lowLinks.updated(v, lowLinks(v) min lowLinks(w))
-        } else if(s.contains(w)) {
+        } else if (s.contains(w)) {
           lowLinks = lowLinks.updated(v, lowLinks(v) min indices(w))
         }
       }
 
-      if(lowLinks(v) == indices(v)) {
+      if (lowLinks(v) == indices(v)) {
         var c : Set[T] = Set.empty
         var stop = false
         do {
@@ -42,13 +42,14 @@ object SCC {
           c = c + x
           s = xs
           stop = x == v
-        } while(!stop)
+        } while (!stop)
+
         components = c :: components
       }
     }
 
-    for(v <- allVertices) {
-      if(!indices.isDefinedAt(v)) {
+    for (v <- allVertices) {
+      if (!indices.isDefinedAt(v)) {
         strongConnect(v)
       }
     }
