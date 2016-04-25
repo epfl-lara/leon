@@ -57,6 +57,8 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
   override val description: String = "Evaluates string programs but keeps the formula which generated the value"
   override val name: String = "Abstract evaluator"
  
+  /** True if CaseClassSelector(...CaseClass(...))  have to be simplified. */
+  var evaluateCaseClassSelector = true
   
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): (Expr, Expr) = {
     implicit def aToC: AbstractEvaluator.this.underlying.RC = DefaultRecContext(rctx.mappings.filter{ case (k, v) => ExprOps.isValue(v) })
@@ -165,7 +167,13 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       case (CaseClassPattern(ob, pct, subs), CaseClass(ct, args)) =>
         if (pct == ct) {
           val res = (subs zip args zip ct.classDef.fieldsIds).map{
-            case ((s, a), id) => matchesPattern(s, a, CaseClassSelector(ct, exprFromScrut, id))
+            case ((s, a), id) =>
+              exprFromScrut match {
+                case CaseClass(ct, args) if evaluateCaseClassSelector =>
+                  matchesPattern(s, a, args(ct.classDef.selectorID2Index(id)))
+                case _ =>
+                  matchesPattern(s, a, CaseClassSelector(ct, exprFromScrut, id))
+              }
           }
           if (res.forall(_.isDefined)) {
             Some(obind(ob, expr, exprFromScrut) ++ res.flatten.flatten)
@@ -193,7 +201,15 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
         }
       case (TuplePattern(ob, subs), Tuple(args)) =>
         if (subs.size == args.size) {
-          val res = (subs zip args).zipWithIndex.map{ case ((s, a), i) => matchesPattern(s, a, TupleSelect(exprFromScrut, i + 1)) }
+          val res = (subs zip args).zipWithIndex.map{
+            case ((s, a), i) =>
+              exprFromScrut match {
+                case TupleSelect(Tuple(args), i) if evaluateCaseClassSelector=>
+                  matchesPattern(s, a, args(i - 1))
+                case _ =>
+                  matchesPattern(s, a, TupleSelect(exprFromScrut, i + 1))
+              }
+          }
           if (res.forall(_.isDefined)) {
             Some(obind(ob, expr, exprFromScrut) ++ res.flatten.flatten)
           } else {
