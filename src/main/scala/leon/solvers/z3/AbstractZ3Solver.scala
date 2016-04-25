@@ -160,7 +160,7 @@ trait AbstractZ3Solver extends Solver {
     val defs = for ((_, DataType(sym, cases)) <- adts) yield {(
       sym.uniqueName,
       cases.map(c => c.sym.uniqueName),
-      cases.map(c => c.fields.map{ case(id, tpe) => (id.uniqueName, typeToSortRef(tpe))})
+      cases.map(c => c.fields.map { case(id, tpe) => (id.uniqueName, typeToSortRef(tpe))})
     )}
 
     val resultingZ3Info = z3.mkADTSorts(defs)
