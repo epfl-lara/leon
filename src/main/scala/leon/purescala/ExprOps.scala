@@ -2177,6 +2177,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case (FiniteLambda(mapping, default, tpe), exTpe@FunctionType(ins, out)) =>
         tpe == exTpe
       case (Lambda(valdefs, body), FunctionType(ins, out)) =>
+        variablesOf(e).isEmpty &&
         (valdefs zip ins forall (vdin => (vdin._1.getType == vdin._2) < s"${vdin._1.getType} is not equal to ${vdin._2}")) &&
         (body.getType == out) < s"${body.getType} is not equal to ${out}"
       case (FiniteBag(elements, fbtpe), BagType(tpe)) =>

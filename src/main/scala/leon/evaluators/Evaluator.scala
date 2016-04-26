@@ -75,8 +75,9 @@ trait DeterministicEvaluator extends Evaluator {
   /** From a not yet well evaluated context with dependencies between variables, returns a head where all exprs are values (as a Left())
    *  If this does not succeed, it provides an error message as Right()*/
   private def _evalEnv(mapping: Iterable[(Identifier, Expr)]): Either[Map[Identifier, Value], String] = {
-    var f= mapping.toSet
-    var mBuilder = collection.mutable.ListBuffer[(Identifier, Value)]()
+    val (evaled, nonevaled) = mapping.partition{ case (id, expr) => purescala.ExprOps.isValue(expr)}
+    var f= nonevaled.toSet
+    var mBuilder = collection.mutable.ListBuffer[(Identifier, Value)]() ++= evaled
     var changed = true
     while(f.nonEmpty && changed) {
       changed = false
