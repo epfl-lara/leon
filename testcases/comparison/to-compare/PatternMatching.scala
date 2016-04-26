@@ -9,6 +9,9 @@ object PatternMatching {
   abstract class A
   case class B(x: Int) extends A
 
+
+  def class_B(x: Int): B = B(x)
+
   def match_value(x: Int): Char = x match {
     case 1 => 'a'
     case 2 => 'b'

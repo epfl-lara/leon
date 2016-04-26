@@ -5,9 +5,14 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
 
 /**
   * Created by joachimmuth on 25.04.16.
+  *
+  * A first attempt and easy to understand comparator.
+  * Flat both function into list of argument and compare each of them one-by-one, the similarity result beeing the
+  * number of equals-expression divided by its total
+  *
   */
 object ComparatorByList {
-  val print = true
+  val print = false
 
   /**
     * Compare two functions using different method
@@ -16,24 +21,26 @@ object ComparatorByList {
     * @param expr
     * @return
     */
-  def recursiveSearch(expr_base: Expr, expr: Expr): Double = {
-    if (print)
+  def compare(expr_base: Expr, expr: Expr): Double = {
+    if (print){
       println("--------------")
-    println("COMPARE EXPR")
-    println("--------------")
-    println("original base expression : ")
-    println(expr_base)
-    println("original expression : ")
-    println(expr)
+      println("COMPARE EXPR")
+      println("--------------")
+      println("original base expression : ")
+      println(expr_base)
+      println("original expression : ")
+      println(expr)
+    }
 
     val listExpr_base = treeToList(expr_base)
     val listExpr = treeToList(expr)
 
-    if (print)
+    if (print){
       println("list base expr")
-    println(listExpr_base.size, listExpr_base)
-    println("list expr")
-    println(listExpr.size, listExpr)
+      println(listExpr_base.size, listExpr_base)
+      println("list expr")
+      println(listExpr.size, listExpr)
+    }
 
     val similarExprList = for{
       expr_base <- listExpr_base
@@ -44,12 +51,15 @@ object ComparatorByList {
     }
 
 
-    if (print)
+    if (print)  {
       println("similar Expr List")
-    println(similarExprList)
+      println(similarExprList)
+    }
 
     val percentageSimilarity =
-      similarExprList.size.toDouble / listExpr_base.size.toDouble
+      math.min((similarExprList.size.toDouble / listExpr_base.size.toDouble),
+        (similarExprList.size.toDouble / listExpr.size.toDouble)
+      )
 
     percentageSimilarity
   }
@@ -100,10 +110,13 @@ object ComparatorByList {
     * @return
     */
   def extractPatternMatchMap(cases_base: Seq[MatchCase]) = {
-    println("it is a patternMatchCase")
     cases_base.map(a => a.pattern match {
       case InstanceOfPattern(_, ct) => (ct.classDef -> a.rhs)
-      case CaseClassPattern(_, ct, _) => (ct.classDef -> a.rhs)
+      case CaseClassPattern(_, ct, _) => {
+        println(a)
+        Utils.compareClass(ct.classDef, ct.classDef)
+        (ct.classDef -> a.rhs)
+      }
       case _ => (a.pattern -> a.rhs)
     }).toMap
   }

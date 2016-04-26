@@ -5,6 +5,7 @@ import leon.{LeonContext, OptionsHelpers, SharedOptions, SimpleLeonPhase}
 import leon.purescala.Definitions.{FunDef, Program}
 import leon.purescala.{ExprOps, Expressions}
 import leon.purescala.Expressions.{Let, MatchExpr, Passes, Variable, _}
+import leon.purescala.Types.TypeParameter
 
 /**
   * Created by joachimmuth on 23.03.16.
@@ -18,10 +19,36 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
     val comparisonBase = ComparisonBase(ctx, "testcases/comparison/base")
-    val listFunDef_base = comparisonBase.listFunDef
-    val listFunDef = getFunDef(ctx, program)
+    val listFunDef_base = comparisonBase.listFunDef.tail
+    val listFunDef = getFunDef(ctx, program).tail
 
-    val compared = compare(listFunDef_base, listFunDef)
+    println("---------")
+    println("PROGRAM AND FUNDEF")
+    println(program)
+    println(listFunDef)
+    println("----------")
+
+    println("---------")
+    println("compare the type tree of program")
+    println("---------")
+    println("base")
+    println(program.classHierarchyRoots)
+    println(program.classHierarchyRoots.last.knownCCDescendants)
+    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp)
+    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.isInstanceOf[TypeParameter])
+    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.getType)
+
+    println("tocompare")
+    println(comparisonBase.program.classHierarchyRoots)
+    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants)
+    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp)
+    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.isInstanceOf[TypeParameter])
+    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.getType)
+
+    println("---------")
+
+
+    val compared = combinationOfFunDef(listFunDef_base, listFunDef)
 
     ComparisonReport(comparisonBase, program, compared)
   }
@@ -33,23 +60,16 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     * @param FunDefs
     * @return
     */
-  def compare(FunDefs_base: List[FunDef], FunDefs: List[FunDef]): List[(FunDef, FunDef, Double)] = {
-
-    if (print)
-      println("--------------")
-      println("COMPARISON")
-      println("--------------")
-
-    // store all the similar function we find, between base and to-compare programs
-    // later we will add some extra information (which part or which percentage is equal)
+  def combinationOfFunDef(FunDefs_base: List[FunDef], FunDefs: List[FunDef]) = {
     val pairEqualFunDef =
       for{
         funDef <- FunDefs
         funDef_base <- FunDefs_base
-        percentageSimilarity = ComparatorByList.recursiveSearch(funDef_base.body.get, funDef.body.get)
-        if(percentageSimilarity > 0.0)
+        percentageSimilarityList = ComparatorByList.compare(funDef_base.body.get, funDef.body.get)
+        percentageSimilarityTree = ComparatorByTree.compare(funDef_base.body.get, funDef.body.get)
+        //if(percentageSimilarityList > 0.0 || percentageSimilarityTree > 0.0)
       } yield {
-        (funDef, funDef_base, percentageSimilarity)
+        (funDef, funDef_base, percentageSimilarityList, percentageSimilarityTree)
       }
 
     pairEqualFunDef
