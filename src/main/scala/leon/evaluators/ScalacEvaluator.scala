@@ -62,6 +62,9 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     case ct: ClassType =>
       jvmName(ct.classDef)
 
+    case tp: TypeParameter =>
+      unsupported(s"Generic types cannot be shared between the JVM and Leon.")
+
     case _ =>
       ctx.reporter.internalError(s"$tpe [${tpe.getClass}] is not a jvm class type ?!?")
   }
@@ -295,6 +298,9 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
 
     case FunctionType(_, _) =>
       unsupported("It is not possible to pass a closure from @extern back to leon")
+
+    case tp: TypeParameter =>
+      unsupported(s"Generic types cannot be shared between the JVM and Leon.")
 
     case _ =>
       unsupported(s"Unhandled conversion from scala runtime: $t [${t.getClass}]")
