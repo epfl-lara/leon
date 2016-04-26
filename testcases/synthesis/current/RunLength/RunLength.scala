@@ -18,12 +18,10 @@ object RunLength {
   }
 
   def legal[A](l: List[(BigInt, A)]): Boolean = l match {
-    case Cons((i, x), tl) =>
-      i > 0 && (tl match {
-        case Cons((_, y), _) => x != y
-        case _ => true
-      }) && legal(tl)
-    case _ => true
+    case Nil() => true
+    case Cons((i, _), Nil()) => i > 0
+    case Cons((i, x), tl@Cons((_, y), _)) =>
+      i > 0 && x != y && legal(tl)
   }
 
   def encode[A](l: List[A]): List[(BigInt, A)] = {
