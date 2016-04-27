@@ -116,10 +116,7 @@ class ADTManager(ctx: LeonContext) {
 
     case UnitType =>
       if (!(discovered contains t) && !(defined contains t)) {
-
-        val sym = freshId("Unit")
-
-        discovered += (t -> DataType(sym, Seq(Constructor(freshId(sym.name), t, Nil))))
+        discovered += (t -> DataType(freshId("Unit"), Seq(Constructor(freshId("Unit"), t, Nil))))
       }
 
     case at @ ArrayType(base) =>
