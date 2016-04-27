@@ -57,11 +57,11 @@ class QuantificationTemplate[T](
   val applications: Map[T, Set[App[T]]],
   val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Seq[LambdaTemplate[T]],
+  val structure: Forall,
   val dependencies: Map[Identifier, T],
-  val struct: (Forall, Map[Identifier, Identifier]),
+  val forall: Forall,
   stringRepr: () => String) extends KeyedTemplate[T, Forall] {
 
-  val structure = struct._1
   lazy val start = pathVar._2
 
   def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): QuantificationTemplate[T] = {
@@ -92,8 +92,9 @@ class QuantificationTemplate[T](
         substituter(b) -> ms.map(_.substitute(substituter, matcherSubst))
       },
       lambdas.map(_.substitute(substituter, matcherSubst)),
+      structure,
       dependencies.map { case (id, value) => id -> substituter(value) },
-      struct,
+      forall,
       stringRepr
     )
   }
@@ -130,13 +131,12 @@ object QuantificationTemplate {
       Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas, Seq.empty,
         substMap = baseSubstMap + q2s + insts + guards + qs)
 
-    val (structuralQuant, structSubst) = normalizeStructure(proposition)
-    val keyDeps = dependencies.map { case (id, idT) => structSubst(id) -> idT }
-    val key = structuralQuant.asInstanceOf[Forall]
+    val (structuralQuant, deps) = normalizeStructure(proposition)
+    val keyDeps = deps.map { case (id, dep) => id -> encoder.encodeExpr(dependencies)(dep) }
 
     new QuantificationTemplate[T](quantificationManager,
       pathVar, qs, q2s, insts, guards._2, quantifiers, condVars, exprVars, condTree,
-      clauses, blockers, applications, matchers, lambdas, keyDeps, key -> structSubst,
+      clauses, blockers, applications, matchers, lambdas, structuralQuant, keyDeps, proposition,
       () => "Template for " + proposition + " is :\n" + templateString())
   }
 }
@@ -551,11 +551,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     private var _currentQ2Var: T = qs._2
     def currentQ2Var = _currentQ2Var
     val holds = qs._2
-    val body = {
-      val quantified = quantifiers.map(_._1).toSet
-      val mapping = template.struct._2.map(p => p._2 -> p._1.toVariable)
-      replaceFromIDs(mapping, template.structure.body)
-    }
+    val body = template.forall.body
 
     private var _currentInsts: Map[T, Set[T]] = Map.empty
     def currentInsts = _currentInsts
@@ -618,12 +614,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     val template: LambdaTemplate[T]) extends MatcherQuantification {
 
     val holds = start
-
-    val body = {
-      val quantified = quantifiers.map(_._1).toSet
-      val mapping = template.structSubst.map(p => p._2 -> p._1.toVariable)
-      replaceFromIDs(mapping, template.structure)
-    }
+    val body = template.lambda.body
 
     protected def instanceSubst(enabler: T): Map[T, T] = {
       Map(guardVar -> start, blocker -> enabler)

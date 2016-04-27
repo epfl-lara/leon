@@ -60,9 +60,8 @@ object LambdaTemplate {
       "Template for lambda " + ids._1 + ": " + lambda + " is :\n" + templateString()
     }
 
-    val (structuralLambda, structSubst) = normalizeStructure(lambda)
-    val keyDeps = dependencies.map { case (id, idT) => structSubst(id) -> idT }
-    val key = structuralLambda.asInstanceOf[Lambda]
+    val (structuralLambda, deps) = normalizeStructure(lambda)
+    val keyDeps = deps.map { case (id, dep) => id -> encoder.encodeExpr(dependencies)(dep) }
 
     new LambdaTemplate[T](
       ids,
@@ -79,8 +78,9 @@ object LambdaTemplate {
       lambdas,
       matchers,
       quantifications,
+      structuralLambda,
       keyDeps,
-      key -> structSubst,
+      lambda,
       lambdaString
     )
   }
@@ -123,14 +123,14 @@ class LambdaTemplate[T] private (
   val lambdas: Seq[LambdaTemplate[T]],
   val matchers: Map[T, Set[Matcher[T]]],
   val quantifications: Seq[QuantificationTemplate[T]],
+  val structure: Lambda,
   val dependencies: Map[Identifier, T],
-  val struct: (Lambda, Map[Identifier, Identifier]),
+  val lambda: Lambda,
   stringRepr: () => String) extends Template[T] with KeyedTemplate[T, Lambda] {
 
   val args = arguments.map(_._2)
   val tpe = bestRealType(ids._1.getType).asInstanceOf[FunctionType]
   val functions: Set[(T, FunctionType, T)] = Set.empty
-  val (structure, structSubst) = struct
 
   def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): LambdaTemplate[T] = {
     val newStart = substituter(start)
@@ -176,8 +176,9 @@ class LambdaTemplate[T] private (
       newLambdas,
       newMatchers,
       newQuantifications,
+      structure,
       newDependencies,
-      struct,
+      lambda,
       stringRepr
     )
   }
@@ -188,7 +189,7 @@ class LambdaTemplate[T] private (
       ids._1 -> idT, encoder, manager, pathVar, arguments, condVars, exprVars, condTree,
       clauses map substituter, // make sure the body-defining clause is inlined!
       blockers, applications, lambdas, matchers, quantifications,
-      dependencies, struct, stringRepr
+      structure, dependencies, lambda, stringRepr
     )
   }
 

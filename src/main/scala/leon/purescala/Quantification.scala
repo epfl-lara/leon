@@ -79,11 +79,18 @@ object Quantification {
     def empty = new Domains(Map.empty, Map.empty)
   }
 
-  class Domains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+  class Domains (_lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+    val lambdas = _lambdas.map { case (lambda, domain) =>
+      val (nl, _) = normalizeStructure(lambda)
+      nl -> domain
+    }
+
     def get(e: Expr): Set[Seq[Expr]] = {
       val specialized: Set[Seq[Expr]] = e match {
         case FiniteLambda(mapping, _, _) => mapping.map(_._1).toSet
-        case l: Lambda => lambdas.getOrElse(l, Set.empty)
+        case l: Lambda =>
+          val (nl, _) = normalizeStructure(l)
+          lambdas.getOrElse(nl, Set.empty)
         case _ => Set.empty
       }
       specialized ++ tpes.getOrElse(e.getType, Set.empty)

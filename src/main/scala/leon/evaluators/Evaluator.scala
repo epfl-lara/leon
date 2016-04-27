@@ -9,6 +9,8 @@ import purescala.Expressions._
 
 import solvers.Model
 
+import scala.collection.mutable.{Map => MutableMap}
+
 abstract class Evaluator(val context: LeonContext, val program: Program) extends LeonComponent {
 
   /** The type of value that this [[Evaluator]] calculates
@@ -103,4 +105,48 @@ trait DeterministicEvaluator extends Evaluator {
 
 trait NDEvaluator extends Evaluator {
   type Value = Stream[Expr]
+}
+
+object Evaluator {
+
+  /* Global set that tracks checked case-class invariants
+   *
+   * Checking case-class invariants can require invoking a solver
+   * on a ground formula that contains a reference to `this` (the
+   * current case class). If we then wish to check the model
+   * returned by the solver, the expression given to the evaluator
+   * will again contain the constructor for the current case-class.
+   * This will create an invariant-checking loop.
+   *
+   * To avoid this problem, we introduce a global set of invariants
+   * that have already been checked. This set is used by all
+   * evaluators to determine whether the invariant of a given case
+   * class should be checked.
+   */
+  private val checkCache: MutableMap[CaseClass, CheckStatus] = MutableMap.empty
+
+  sealed abstract class CheckStatus {
+    def isFailure: Boolean = this match {
+      case Complete(status) => !status
+      case _ => false
+    }
+
+    def isRequired: Boolean = this == NoCheck
+  }
+
+  case class Complete(success: Boolean) extends CheckStatus
+  case object Pending extends CheckStatus
+  case object NoCheck extends CheckStatus
+
+  def invariantCheck(cc: CaseClass): CheckStatus =
+    if (!cc.ct.classDef.hasInvariant) Complete(true)
+    else checkCache.get(cc).getOrElse {
+      checkCache(cc) = Pending
+      NoCheck
+    }
+
+  def invariantResult(cc: CaseClass, success: Boolean): Unit = {
+    checkCache(cc) = Complete(success)
+  }
+
 }

@@ -101,6 +101,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
     case And(args) if args.isEmpty =>
       Stream(BooleanLiteral(true))
+
     case And(args) =>
       e(args.head).distinct.flatMap {
         case BooleanLiteral(false) => Stream(BooleanLiteral(false))

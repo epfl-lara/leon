@@ -53,7 +53,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   }
 
   def solverGetModel: ModelWrapper = new ModelWrapper {
-    val model = solver.getModel
+    val model: Z3Model = solver.getModel
 
     /*
     val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
@@ -84,16 +84,21 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
     */
 
-    def modelEval(elem: Z3AST, tpe: TypeTree): Option[Expr] = tpe match {
-      case BooleanType => model.evalAs[Boolean](elem).map(BooleanLiteral)
-      case Int32Type => model.evalAs[Int](elem).map(IntLiteral).orElse {
-        model.eval(elem).flatMap(t => softFromZ3Formula(model, t, Int32Type))
+    def modelEval(elem: Z3AST, tpe: TypeTree): Option[Expr] = {
+      val timer = context.timers.solvers.z3.eval.start()
+      val res = tpe match {
+        case BooleanType => model.evalAs[Boolean](elem).map(BooleanLiteral)
+        case Int32Type => model.evalAs[Int](elem).map(IntLiteral).orElse {
+          model.eval(elem).flatMap(t => softFromZ3Formula(model, t, Int32Type))
+        }
+        case IntegerType => model.evalAs[Int](elem).map(InfiniteIntegerLiteral(_))
+        case other => model.eval(elem) match {
+          case None => None
+          case Some(t) => softFromZ3Formula(model, t, other)
+        }
       }
-      case IntegerType => model.evalAs[Int](elem).map(InfiniteIntegerLiteral(_))
-      case other => model.eval(elem) match {
-        case None => None
-        case Some(t) => softFromZ3Formula(model, t, other)
-      }
+      timer.stop()
+      res
     }
 
     override def toString = model.toString
@@ -179,7 +184,9 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   }
 
   def solverAssert(cnstr: Z3AST): Unit = {
+    val timer = context.timers.solvers.z3.assert.start()
     solver.assertCnstr(cnstr)
+    timer.stop()
   }
 
   def solverUnsatCore = Some(solver.getUnsatCore)

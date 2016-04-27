@@ -304,6 +304,7 @@ object Template {
     pathVar: Identifier,
     aVar: T
   ): (Map[T, Arg[T]], Instantiation[T]) = {
+
     val freshSubst = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
                      manager.freshConds(pathVar -> aVar, condVars, condTree)
     val matcherSubst = baseSubst.collect { case (c, Right(m)) => c -> m }
@@ -322,7 +323,7 @@ object Template {
         // We have to be wary while computing the lambda subst map since lambdas can
         // depend on each other. However, these dependencies cannot be cyclic so it
         // suffices to make sure the traversal order is correct.
-        var seen          : Set[LambdaTemplate[T]] = Set.empty
+        var seen : Set[LambdaTemplate[T]] = Set.empty
 
         val lambdaKeys = lambdas.map(lambda => lambda.ids._1 -> lambda).toMap
         def extractSubst(lambda: LambdaTemplate[T]): Unit = {
