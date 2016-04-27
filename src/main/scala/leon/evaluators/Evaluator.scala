@@ -25,7 +25,7 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
   /** Evaluates an expression given a simple model (assumes expr is quantifier-free).
     * Mainly useful for compatibility reasons.
     */
-  final def eval(expr: Expr, mapping: Map[Identifier, Expr]) : EvaluationResult = eval(expr, new Model(mapping))
+  def eval(expr: Expr, mapping: Map[Identifier, Expr]) : EvaluationResult = eval(expr, new Model(mapping))
 
   /** Evaluates a ground expression. */
   final def eval(expr: Expr) : EvaluationResult = eval(expr, Model.empty)
@@ -48,14 +48,14 @@ trait DeterministicEvaluator extends Evaluator {
   type Value = Expr
   
   /**Evaluates the environment first, resolving non-cyclic dependencies, and then evaluate the expression */
-  final def evalEnvExpr(expr: Expr, mapping: Iterable[(Identifier, Expr)]) : EvaluationResult = {
+  override def eval(expr: Expr, mapping: Map[Identifier, Expr]) : EvaluationResult = {
     if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
-      eval(expr, mapping.toMap)
+      super.eval(expr, mapping.toMap)
     } else (_evalEnv(mapping) match {
-      case Left(m) => eval(expr, m)
+      case Left(m) => super.eval(expr, m)
       case Right(errorMessage) => 
         val m = mapping.filter{ case (k, v) => purescala.ExprOps.isValue(v) }.toMap
-        eval(expr, m) match {
+        super.eval(expr, m) match {
           case res @ evaluators.EvaluationResults.Successful(result) => res
           case _ => evaluators.EvaluationResults.EvaluatorError(errorMessage)
         }
