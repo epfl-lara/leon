@@ -49,12 +49,14 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
     emit(account(Message(FATAL, pos, msg)))
     onFatal()
   }
+
   final def internalError(pos: Position, msg : Any) : Nothing = {
     emit(account(Message(INTERNAL, pos, msg.toString + 
       "\nPlease inform the authors of Leon about this message"
     ))) 
     onFatal()
   }
+
   final def internalAssertion(cond : Boolean, pos: Position, msg : Any) : Unit = {
     if (!cond) internalError(pos,msg)
   }
@@ -86,13 +88,11 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
     }
   }
 
-
   def debug(pos: Position, msg: => Any)(implicit section: DebugSection): Unit = {
     ifDebug(pos, debug =>
       debug(msg)
     )(section)
   }
-
 
   // No-position alternatives
   final def info(msg: Any): Unit          = info(NoPosition, msg)

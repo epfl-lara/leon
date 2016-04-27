@@ -47,11 +47,16 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
+  protected var z3 : Z3Context = new Z3Context(
+    "MODEL"             -> true,
+    "TYPE_CHECK"        -> true,
+    "WELL_SORTED_CHECK" -> true
+  )
+
+  // @nv: This MUST take place AFTER Z3Context was created!!
   toggleWarningMessages(true)
 
-  protected[leon] var z3 : Z3Context = null
-
-  lazy protected val solver = z3.mkSolver()
+  protected var solver : Z3Solver  = null
 
   override def free(): Unit = {
     freed = true
@@ -95,13 +100,7 @@ trait AbstractZ3Solver extends Solver {
   var isInitialized = false
   protected[leon] def initZ3(): Unit = {
     if (!isInitialized) {
-      val timer = context.timers.solvers.z3.init.start()
-
-      z3 = new Z3Context(
-        "MODEL"             -> true,
-        "TYPE_CHECK"        -> true,
-        "WELL_SORTED_CHECK" -> true
-      )
+      solver = z3.mkSolver()
 
       functions.clear()
       lambdas.clear()
@@ -114,8 +113,6 @@ trait AbstractZ3Solver extends Solver {
       prepareSorts()
 
       isInitialized = true
-
-      timer.stop()
     }
   }
 

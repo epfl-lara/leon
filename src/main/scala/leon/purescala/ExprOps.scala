@@ -287,51 +287,57 @@ object ExprOps extends GenTreeOps[Expr] {
     * This function relies on the static map `typedIds` to ensure identical
     * structures and must therefore be synchronized.
     */
-  def normalizeStructure(expr: Expr): (Expr, Map[Identifier, Identifier]) = synchronized {
-    val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
-      (expr, idSeqs) => idSeqs.foldLeft(expr match {
-        case Lambda(args, _) => args.map(_.id)
-        case Forall(args, _) => args.map(_.id)
-        case LetDef(fds, _) => fds.flatMap(_.paramIds)
-        case Let(i, _, _) => Seq(i)
-        case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
-        case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
-        case Variable(id) => Seq(id)
-        case _ => Seq.empty[Identifier]
-      })((acc, seq) => acc ++ seq)
-    } (expr).distinct
+  def normalizeStructure(args: Seq[Identifier], expr: Expr): (Seq[Identifier], Expr, Map[Identifier, Expr]) = synchronized {
+    val vars = args.toSet
 
-    val grouped : Map[TypeTree, Seq[Identifier]] = allVars.groupBy(_.getType)
-    val subst = grouped.foldLeft(Map.empty[Identifier, Identifier]) { case (subst, (tpe, ids)) =>
-      val currentVars = typedIds(tpe)
+    class Normalizer extends TreeTransformer {
+      var subst: Map[Identifier, Expr] = Map.empty
+      var remainingIds: Map[TypeTree, List[Identifier]] = typedIds.toMap
 
-      val freshCount = ids.size - currentVars.size
-      val typedVars = if (freshCount > 0) {
-        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", tpe, true))
-        typedIds += tpe -> allIds
-        allIds
-      } else {
-        currentVars
+      def getId(e: Expr): Identifier = {
+        val newId = remainingIds.get(e.getType) match {
+          case Some(x :: xs) =>
+            remainingIds += e.getType -> xs
+            x
+          case _ =>
+            val x = FreshIdentifier("x", e.getType, true)
+            typedIds(e.getType) = typedIds(e.getType) :+ x
+            x
+        }
+        subst += newId -> e
+        newId
       }
 
-      subst ++ (ids zip typedVars)
+      override def transform(id: Identifier): Identifier = subst.get(id) match {
+        case Some(Variable(newId)) => newId
+        case Some(_) => scala.sys.error("Should never happen!")
+        case None => getId(id.toVariable)
+      }
+
+      override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
+        case expr if isSimple(expr) && (variablesOf(expr) & vars).isEmpty => getId(expr).toVariable
+        case _ => super.transform(e)
+      }
     }
 
-    val normalized = postMap {
-      case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
-      case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
-      case Let(i, e, b)       => Some(Let(subst(i), e, b))
-      case m@MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
-        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
-      }).copiedFrom(m))
-      case Passes(in, out, cses) => Some(Passes(in, out, cses.map { cse =>
-        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
-      }))
-      case Variable(id) => Some(Variable(subst(id)))
-      case _ => None
-    } (expr)
+    val n = new Normalizer
+    val bindings = args.map(id => id -> n.getId(id.toVariable)).toMap
+    val normalized = n.transform(matchToIfThenElse(expr))(bindings)
 
-    (normalized, subst)
+    val argsImgSet = bindings.map(_._2).toSet
+    val bodySubst = n.subst.filter(p => !argsImgSet(p._1))
+
+    (args.map(bindings), normalized, bodySubst)
+  }
+
+  def normalizeStructure(lambda: Lambda): (Lambda, Map[Identifier, Expr]) = {
+    val (args, body, subst) = normalizeStructure(lambda.args.map(_.id), lambda.body)
+    (Lambda(args.map(ValDef(_)), body), subst)
+  }
+
+  def normalizeStructure(forall: Forall): (Forall, Map[Identifier, Expr]) = {
+    val (args, body, subst) = normalizeStructure(forall.args.map(_.id), forall.body)
+    (Forall(args.map(ValDef(_)), body), subst)
   }
 
   /** Returns '''true''' if the formula is Ground,
