@@ -107,7 +107,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           ((p.as zip i.ins).toMap, p.pc.toClause)
       }
 
-      evaluator.evalEnvExpr(cond, mapping) match {
+      evaluator.eval(cond, mapping) match {
         case EvaluationResults.Successful(BooleanLiteral(true)) => true
         case _ => false
       }

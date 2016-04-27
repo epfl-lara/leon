@@ -184,7 +184,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   /** Filter inputs through expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): QualifiedExamplesBank = {
     filterIns(m =>
-      hctx.defaultEvaluator.evalEnvExpr(expr, m)
+      hctx.defaultEvaluator.eval(expr, m)
       .result == Some(BooleanLiteral(true)))
   }
 
