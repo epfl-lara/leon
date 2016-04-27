@@ -65,7 +65,7 @@ object AbstractTests {
     }
   }
   
-  ignore("Abstract evaluator should correctly handle boolean and recursive") { implicit fix =>
+  test("Abstract evaluator should correctly handle boolean and recursive") { implicit fix =>
     val testFd = funDef("AbstractTests.test2")
     val Leaf = cc("AbstractTests.Leaf")()
     def Node(left: Expr, n: Expr, right: Expr) = cc("AbstractTests.Node")(left, n, right)
