@@ -469,16 +469,52 @@ trait CodeExtraction extends ASTExtractors {
           }
       }
     }
+    
+    /** For every argument that is lazy, transforms it to a lambda. */
+    def defaultArgConvert(tfd: TypedFunDef, args: Seq[LeonExpr]): Seq[LeonExpr] = {
+      val argsByName = (tfd.fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+      argsByName
+    }
 
-    def getFunDef(sym: Symbol, pos: Position): FunDef = {
+    /** Returns the function associated to the symbol.
+     *  In the case of varargs, if the function is not found
+     *  and there are others with the same name in the same scope,
+     *  finds an equivalent function and converts the argument.*/
+    def getFunDef(sym: Symbol, pos: Position, allowFreeArgs: Boolean = true): (FunDef, (TypedFunDef, Seq[LeonExpr]) => Seq[LeonExpr]) = {
       defsToDefs.get(sym) match {
-        case Some(fd) => fd
+        case Some(fd) => (fd, defaultArgConvert)
         case None =>
-          outOfSubsetError(pos, "Function "+sym.name+" not properly defined?")
+           // Look for other functions accepting lists if they exist.
+          val similarFunction =
+            if(!allowFreeArgs) None
+            else (defsToDefs.find{ case (s, fd) => fd.id.name == sym.nameString &&
+              sym.owner == s.owner &&
+              fd.params.length == 1 && (fd.paramIds(0).getType match {
+                case AbstractClassType(ccd, tps) => ccd.id.name == "List"
+                case _ => false
+              })
+            })
+          similarFunction match {
+            case Some((sym, fd)) =>
+              val convertArgs = (tfd: TypedFunDef, elems: Seq[LeonExpr]) => {
+                val allowedType = fd.paramIds.head.getType match {
+                  case AbstractClassType(_, Seq(tpe)) => tfd.translated(tpe)
+                }
+                val cons = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Cons"), Seq(allowedType))
+                val nil  = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Nil"),  Seq(allowedType))
+                List(elems.foldRight(CaseClass(nil, Seq())) {
+                  case (e, ls) => CaseClass(cons, Seq(e, ls))
+                })
+              }
+              (fd, convertArgs)
+            case None =>
+              outOfSubsetError(pos, "Function "+sym.name+" not properly defined?")
+          }
       }
     }
 
     private var isMethod = Set[Symbol]()
+    private var ignoredMethods = Set[Symbol]()
     private var isMutator = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
     private var classToInvariants = Map[Symbol, Set[Tree]]()
@@ -642,6 +678,12 @@ trait CodeExtraction extends ASTExtractors {
 
         case t if isIgnored(t.symbol) =>
           // ignore
+          d match {
+            // Special case so that we can find methods with varargs.
+            case ExFunctionDef(fsym, _, _, _, _) =>
+              ignoredMethods += fsym
+            case _ =>
+          }
 
         // Normal methods
         case t @ ExFunctionDef(fsym, _, _, _, _) =>
@@ -1033,7 +1075,7 @@ trait CodeExtraction extends ASTExtractors {
 
       case up@ExUnapplyPattern(s, args) =>
         implicit val p: Position = NoPosition
-        val fd = getFunDef(s, up.pos)
+        val (fd, _) = getFunDef(s, up.pos, allowFreeArgs=false)
         val (sub, ctx) = args.map (extractPattern(_)).unzip
         val unapplyMethod = defsToDefs(s)
         val formalTypes = tupleTypeWrap(
@@ -1618,7 +1660,7 @@ trait CodeExtraction extends ASTExtractors {
           elems.foldRight(CaseClass(nil, Seq())) {
             case (e, ls) => CaseClass(cons, Seq(extractTree(e), ls))
           }
-
+          
         case chr @ ExCharLiteral(c) =>
           CharLiteral(c)
 
@@ -1644,21 +1686,20 @@ trait CodeExtraction extends ASTExtractors {
 
           (rrec, sym.name.decoded, rargs) match {
             case (null, _, args) =>
-              val fd = getFunDef(sym, c.pos)
-
+              val (fd, convertArgs) = getFunDef(sym, c.pos, allowFreeArgs=true)
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+              val tfd = fd.typed(newTps)
+ 
+              FunctionInvocation(tfd, convertArgs(tfd, args))
 
-              FunctionInvocation(fd.typed(newTps), argsByName)
-
-            case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
-              val fd = getFunDef(sym, c.pos)
+            case (IsTyped(rec, ct: ClassType), methodName, args) if isMethod(sym) || ignoredMethods(sym) =>
+              val (fd, convertArgs) = getFunDef(sym, c.pos)
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+              val tfd = fd.typed(newTps)
 
-              MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
+              MethodInvocation(rec, cd, tfd, convertArgs(tfd, args))
 
             case (IsTyped(rec, ft: FunctionType), _, args) =>
               application(rec, args)
