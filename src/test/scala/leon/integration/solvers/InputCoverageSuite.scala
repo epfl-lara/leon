@@ -106,6 +106,21 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     |  def withCoveredFun3(input: Int) = {
     |    withCoveredFun2(withCoveredFun2(input + 5))
     |  }
+    |  
+    |  def coveredCond(a: Boolean, b: Boolean, c: Boolean, d: Boolean) = {
+    |    if(a || b) {
+    |      if(c && d) {
+    |        1
+    |      } else if(c) {
+    |        2
+    |      } else {
+    |        3
+    |      }
+    |    } else if(!a && c) {
+    |      4
+    |    } else 5
+    |  }
+    |  
     |}""".stripMargin)
     
   test("wrapBranch should wrap expressions if they are not already containing wrapped calls"){ ctxprogram =>
@@ -174,25 +189,6 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
       case (res, Some(ids)) =>
         withClue(res.toString) {
           ids should have size 4
-          res match {
-            case MatchExpr(scrut,
-                   Seq(
-                       MatchCase(CaseClassPattern(_, _, Seq()), None, rhs1),
-                       MatchCase(CaseClassPattern(_, _, _), None, rhs2),
-                       MatchCase(CaseClassPattern(_, _, _), None, rhs3),
-                       MatchCase(CaseClassPattern(_, _, _), None, rhs4))
-            ) =>
-              rhs1 match {
-                case Tuple(Seq(_, Variable(b))) => b shouldEqual ids(0)
-                case _ => fail(s"$rhs1 should be a Tuple")
-              }
-              rhs2 match {
-                case LetTuple(_, _, Tuple(Seq(_, Or(Seq(_, Variable(b)))))) => b shouldEqual ids(1)
-                case _ => fail(s"$rhs2 should be a val + tuple like val ... = ... ; (..., ... || ${ids(1)})")
-              }
-              
-            case _ => fail(s"$res does not have the format a match { case B() => .... x 4 }")
-          }
         }
     }
   }
@@ -210,22 +206,6 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
           fail(s"Should have not added any ids, but got $ids")
         }
       case (res, _) =>
-        res match {
-          case MatchExpr(funCall, Seq(
-                MatchCase(TuplePattern(None, Seq(WildcardPattern(Some(a1)), WildcardPattern(Some(b1)))), None,
-                  MatchExpr(funCall2, Seq(
-                    MatchCase(TuplePattern(None, Seq(WildcardPattern(Some(a2)), WildcardPattern(Some(b2)))), None,
-                      Tuple(Seq(BVPlus(Variable(ida1), Variable(ida2)), Or(Seq(Variable(idb1), Variable(idb2)))))
-                )
-              ))))) =>
-            withClue(res.toString) {
-              ida1.uniqueName shouldEqual a2.uniqueName
-              ida2.uniqueName shouldEqual a1.uniqueName
-              Set(idb1.uniqueName, idb2.uniqueName) shouldEqual Set(b1.uniqueName, b2.uniqueName)
-            }
-          case _ =>
-            fail(s"$res is not of type funCall() match { case (a1, b1) => funCall() match { case (a2, b2) => (a1 + a2, b1 || b2) } }")
-        }
     }
   }
   
@@ -239,17 +219,6 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     coverage.markBranches(expr) match {
       case (res, None) => fail("No ids added")
       case (res, Some(ids)) =>
-        res match {
-          case MatchExpr(funCall, Seq(
-                MatchCase(TuplePattern(None, Seq(WildcardPattern(Some(a)), WildcardPattern(Some(b1)))), None,
-                  MatchExpr(FunctionInvocation(_, Seq(Variable(ida))), Seq(
-                    MatchCase(TuplePattern(None, Seq(WildcardPattern(_), WildcardPattern(Some(b2)))), None,
-                      Tuple(Seq(p, Or(Seq(Variable(id1), Variable(id2)))))
-                )
-              ))))) if ida == a && id1 == b1 && id2 == b2 =>
-          case _ =>
-            fail(s"$res is not of type funCall() match { case (a, b1) => funCall(a) match { case (c, b2) => (c, b1 || b2) } }")
-        }
     }
   }
   
@@ -273,6 +242,15 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     res2 should have size 3
   }
   
+  test("input coverage for boolean, disjunctions and conjunctions should find all of them") { ctxprogram =>
+    implicit val (c, p) = ctxprogram
+    val coveredCond = funDef("InputCoverageSuite.coveredCond")
+    val coverage = new InputCoverage(coveredCond, Set(coveredCond))
+    coverage.minimizeExamples = true
+    val res2 = coverage.result().toSet
+    res2 should have size 5
+  }
+
   test("input coverage for combined functions should find all of them") { ctxprogram =>
     implicit val (c, p) = ctxprogram
     val withCoveredFun1 = funDef("InputCoverageSuite.withCoveredFun1")
