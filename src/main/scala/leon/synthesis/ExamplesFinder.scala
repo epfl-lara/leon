@@ -143,8 +143,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           val ids  = variablesOf(test)
 
           // Test could contain expressions, we evaluate
-          evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
-            case EvaluationResults.Successful(res) => res
+          abstractEvaluator.eval(test, Model.empty) match {
+            case EvaluationResults.Successful((res, _)) => res
             case _                                 => test
           }
         }

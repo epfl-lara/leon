@@ -210,7 +210,11 @@ trait AbstractUnrollingSolver[T]
   private def validateModel(model: Model, assumptions: Seq[Expr], silenceErrors: Boolean): Boolean = {
     val expr = andJoin(assumptions ++ constraints)
 
-    evaluator.eval(expr, model) match {
+    val newExpr = model.toSeq.foldLeft(expr){
+      case (e, (k, v)) => let(k, v, e)
+    }
+    
+    evaluator.eval(newExpr) match {
       case EvaluationResults.Successful(BooleanLiteral(true)) =>
         reporter.debug("- Model validated.")
         true

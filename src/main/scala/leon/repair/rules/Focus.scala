@@ -64,7 +64,7 @@ case object Focus extends PreprocessingRule("Focus") {
       soFar
     }
 
-    def existsFailing(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Boolean = {
+    def existsFailing(e: Expr, env: Map[Identifier, Expr], evaluator: DeterministicEvaluator): Boolean = {
       p.eb.invalids.exists { ex =>
         evaluator.eval(e, (p.as zip ex.ins).toMap ++ env).result match {
           case Some(BooleanLiteral(b)) => b

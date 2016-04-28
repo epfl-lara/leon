@@ -61,7 +61,7 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
   var evaluateCaseClassSelector = true
   
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): (Expr, Expr) = {
-    implicit def aToC: AbstractEvaluator.this.underlying.RC = DefaultRecContext(rctx.mappings)
+    implicit def aToC: AbstractEvaluator.this.underlying.RC = DefaultRecContext(rctx.mappings.filter{ case (k, v) => ExprOps.isValue(v) })
     expr match {
     case Variable(id) =>
       (rctx.mappings.get(id), rctx.mappingsAbstract.get(id)) match {

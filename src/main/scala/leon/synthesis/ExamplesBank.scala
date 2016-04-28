@@ -181,9 +181,11 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     QualifiedExamplesBank(nas, xs, eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
   }
 
-  /** Filter inputs throught expr which is an expression evaluating to a boolean */
+  /** Filter inputs through expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): QualifiedExamplesBank = {
-    filterIns(m => hctx.defaultEvaluator.eval(expr, m).result == Some(BooleanLiteral(true)))
+    filterIns(m =>
+      hctx.defaultEvaluator.eval(expr, m)
+      .result == Some(BooleanLiteral(true)))
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */

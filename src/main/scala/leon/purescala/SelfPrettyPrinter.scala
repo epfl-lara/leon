@@ -8,8 +8,7 @@ import leon.LeonContext
 import leon.evaluators
 import leon.utils.StreamUtils
 import leon.purescala.Quantification._
-import leon.utils.DebugSectionSynthesis
-import leon.utils.DebugSectionVerification
+import leon.utils.DebugSectionEvaluation
 import purescala.Definitions.Program
 import purescala.Expressions._
 import purescala.Types.StringType
@@ -121,7 +120,7 @@ class SelfPrettyPrinter {
             case Some(StringLiteral(res)) if res != "" =>
               res
             case res =>
-              ctx.reporter.debug("not a string literal "  + res)
+              ctx.reporter.debug("not a string literal "  + result)
               orElse
           }
         } catch {
