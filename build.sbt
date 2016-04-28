@@ -22,11 +22,17 @@ site.settings
 
 site.sphinxSupport()
 
-if(System.getProperty("sun.arch.data.model") == "64") {
-  unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "64" }
+val osName = Option(System.getProperty("os.name")).getOrElse("").toLowerCase()
+
+val osArch = System.getProperty("sun.arch.data.model")
+
+if(osName.indexOf("win") != -1) {
+  (unmanagedJars in Compile) += baseDirectory.value / "unmanaged" / s"scalaz3-win-$osArch.jar"
 } else {
-  unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "32" }
+  (unmanagedJars in Compile) += baseDirectory.value / "unmanaged" / s"scalaz3-unix-$osArch.jar"
 }
+
+unmanagedBase <<= baseDirectory { base => base / "unmanaged" / osArch }
 
 resolvers ++= Seq(
   "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
