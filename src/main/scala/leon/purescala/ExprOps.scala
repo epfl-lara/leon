@@ -724,14 +724,14 @@ object ExprOps extends GenTreeOps[Expr] {
             case None => patCond
           }
           val newRhs = replaceFromIDs(map, cse.rhs)
-          (realCond.toClause, newRhs)
+          (realCond.toClause, newRhs, cse)
         }
 
         val bigIte = condsAndRhs.foldRight[Expr](Error(m.getType, "Match is non-exhaustive").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
-            IfExpr(p1._1, p1._2, ex)
+            IfExpr(p1._1, p1._2, ex).copiedFrom(p1._3)
           }
         })
 
