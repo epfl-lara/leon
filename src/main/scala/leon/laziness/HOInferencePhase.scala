@@ -34,13 +34,9 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
-  val optUseOrb = LeonFlagOptionDef("useOrb", "Use Orb to infer constants", false)
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optUseOrb, optRefEquality)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality)
 
-  /**
-   * TODO: add inlining annotations for optimization.
-   */
   def apply(ctx: LeonContext, prog: Program): LazyVerificationReport = {
     val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
     val checkCtx = contextForChecks(ctx)
@@ -51,8 +47,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
 
     val resourceVeri =
       if (!skipResourceVerification)
-        Some(checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(optUseOrb).getOrElse(false)))
+        Some(checkInstrumentationSpecs(instProg, checkCtx))
       else None
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {

@@ -89,17 +89,18 @@ object LazyVerificationPhase {
     report
   }
 
-  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext, useOrb: Boolean): VerificationReport = {
+  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext): VerificationReport = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
+    val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
+    val useOrb = funsToCheck.exists(_.template.isDefined)
     val rep =
       if (useOrb) {
         val inferctx = getInferenceContext(checkCtx, p)
         checkUsingOrb(new InferenceEngine(inferctx), inferctx)
       } else {
-        val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
         val rep = checkVCs(funsToCheck.map(vcForFun), checkCtx, p)
         // record some stats
         collectCumulativeStats(rep)
