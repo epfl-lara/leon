@@ -53,6 +53,8 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
   //override a because it comes from both Matchers and ExpressionsDSLVariables
   override val a = null
 
+  override val leonOpts = List("--solvers=smt-cvc4")
+
   val sources = List("""
     |import leon.lang._
     |import leon.collection._
