@@ -125,12 +125,29 @@ object Evaluator {
    */
   private val checkCache: MutableMap[CaseClass, CheckStatus] = MutableMap.empty
 
+  /* Status of invariant checking
+   *
+   * For a given invariant, its checking status can be either
+   * - Complete(success) : checking has been performed previously and
+   *                       resulted in a value of `success`.
+   * - Pending           : invariant is currently being checked somewhere
+   *                       in the program. If it fails, the failure is
+   *                       assumed to be bubbled up to all relevant failure
+   *                       points.
+   * - NoCheck           : invariant has never been seen before. Discovering
+   *                       NoCheck for an invariant will automatically update
+   *                       the status to `Pending` as this creates a checking
+   *                       obligation.
+   */
   sealed abstract class CheckStatus {
+    /* The invariant was invalid and this particular case class can't exist */
     def isFailure: Boolean = this match {
       case Complete(status) => !status
       case _ => false
     }
 
+    /* The invariant has never been checked before and the checking obligation
+     * therefore falls onto the first caller of this method. */
     def isRequired: Boolean = this == NoCheck
   }
 
@@ -138,6 +155,7 @@ object Evaluator {
   case object Pending extends CheckStatus
   case object NoCheck extends CheckStatus
 
+  /* Status of the invariant checking for `cc` */
   def invariantCheck(cc: CaseClass): CheckStatus = synchronized {
     if (!cc.ct.classDef.hasInvariant) Complete(true)
     else checkCache.get(cc).getOrElse {
@@ -146,6 +164,7 @@ object Evaluator {
     }
   }
 
+  /* Update the cache with the invariant check result for `cc` */
   def invariantResult(cc: CaseClass, success: Boolean): Unit = synchronized {
     checkCache(cc) = Complete(success)
   }

@@ -20,7 +20,16 @@ object Path {
   def apply(path: Seq[Expr]): Path = new Path(path.map(Right(_)))
 }
 
-/** Encodes path conditions */
+/** Encodes path conditions
+  * 
+  * Paths are encoded as an (ordered) series of let-bindings and boolean
+  * propositions. A path is satisfiable iff all propositions are true
+  * in the context of the provided let-bindings.
+  *
+  * This encoding enables let-bindings over types for which equality is
+  * not defined, whereas previous encoding of let-bindings into equals
+  * could introduce non-sensical equations.
+  */
 class Path private[purescala](
   private[purescala] val elements: Seq[Either[(Identifier, Expr), Expr]]) {
 
@@ -31,9 +40,22 @@ class Path private[purescala](
 
   def --(ids: Set[Identifier]) = new Path(elements.filterNot(_.left.exists(p => ids(p._1))))
 
+  /** Appends `that` path at the end of `this` */
   def merge(that: Path) = new Path(elements ++ that.elements)
 
+  /** Transforms all expressions inside the path
+    *
+    * Expressions in a path appear both on the right-hand side of let binders
+    * and in boolean path conditions.
+    */
   def map(f: Expr => Expr) = new Path(elements.map(_.left.map { case (id, e) => id -> f(e) }.right.map(f)))
+
+  /** Splits the path on predicate `p`
+    *
+    * The path is split into
+    * 1. the sub-path containing all conditions that pass `p` (and all let-bindings), and
+    * 2. the sequence of conditions that didn't pass `p`.
+    */
   def partition(p: Expr => Boolean): (Path, Seq[Expr]) = {
     val (passed, failed) = elements.partition {
       case Right(e) => p(e)
@@ -43,16 +65,38 @@ class Path private[purescala](
     (new Path(passed), failed.flatMap(_.right.toOption))
   }
 
+  /** Check if the path is empty
+    *
+    * A path is empty iff it contains no let-bindings and its path condition is trivial.
+    */
   def isEmpty = elements.filter {
     case Right(BooleanLiteral(true)) => false
     case _ => true
   }.isEmpty
 
+  /** Returns the negation of a path
+    *
+    * Path negation requires folding the path into a proposition and negating it.
+    * However, all external let-binders can be preserved in the resulting path, thus
+    * avoiding let-binding dupplication in future path foldings.
+    */
   def negate: Path = {
     val (outers, rest) = elements.span(_.isLeft)
     new Path(outers :+ Right(not(fold[Expr](BooleanLiteral(true), let, Constructors.and(_, _))(rest))))
   }
 
+  /** Returns a new path which depends ONLY on provided ids.
+    *
+    * Let-bindings obviously depend on some `id` if it corresponds to the bound
+    * identifier. An expression depends on an `id` iff the identifier is
+    * contained within the expression.
+    *
+    * This method makes little sense on its own and will typically be used from
+    * within a fixpoint computation where the `ids` set is iteratively computed
+    * by performing [[filterByIds]] calls on some (unchaning) base [[Path]].
+    *
+    * @see [[leon.purescala.FunctionClosure.close]] for an example usecase.
+    */
   def filterByIds(ids: Set[Identifier]): Path = {
     def containsIds(ids: Set[Identifier])(e: Expr): Boolean = exists{
       case Variable(id) => ids.contains(id)
@@ -66,6 +110,7 @@ class Path private[purescala](
     new Path(newElements)
   }
 
+  /** Free variables within the path */
   lazy val variables: Set[Identifier] = fold[Set[Identifier]](Set.empty,
     (id, e, res) => res - id ++ variablesOf(e), (e, res) => res ++ variablesOf(e)
   )(elements)
@@ -75,20 +120,44 @@ class Path private[purescala](
 
   def isBound(id: Identifier): Boolean = bindings.exists(p => p._1 == id)
 
+  /** Fold the path elements
+    *
+    * This function takes two combiner functions, one for let bindings and one
+    * for proposition expressions.
+    */
   private def fold[T](base: T, combineLet: (Identifier, Expr, T) => T, combineCond: (Expr, T) => T)
                      (elems: Seq[Either[(Identifier, Expr), Expr]]): T = elems.foldRight(base) {
     case (Left((id, e)), res) => combineLet(id, e, res)
     case (Right(e), res) => combineCond(e, res)
   }
 
+  /** Folds the path elements over a distributive proposition combinator [[combine]]
+    * 
+    * Certain combiners can be distributive over let-binding folds. Namely, one
+    * requires that `combine(let a = b in e1, e2)` be equivalent to
+    * `let a = b in combine(e1, e2)` (where a \not\in FV(e2)). This is the case for
+    * - conjunction [[and]]
+    * - implication [[implies]]
+    */
   private def distributiveClause(base: Expr, combine: (Expr, Expr) => Expr): Expr = {
     val (outers, rest) = elements.span(_.isLeft)
     val inner = fold[Expr](base, let, combine)(rest)
     fold[Expr](inner, let, (_,_) => scala.sys.error("Should never happen!"))(outers)
   }
 
+  /** Folds the path into a conjunct with the expression `base` */
   def and(base: Expr) = distributiveClause(base, Constructors.and(_, _))
+
+  /** Fold the path into an implication of `base`, namely `path ==> base` */
   def implies(base: Expr) = distributiveClause(base, Constructors.implies(_, _))
+
+  /** Folds the path into a `require` wrapping the expression `body`
+    *
+    * The function takes additional optional parameters
+    * - [[pre]] if one wishes to mix a pre-existing precondition into the final
+    *   [[leon.purescala.Expressions.Require]], and
+    * - [[post]] for mixing a postcondition ([[leon.purescala.Expressions.Ensuring]]) in.
+    */
   def specs(body: Expr, pre: Expr = BooleanLiteral(true), post: Expr = NoTree(BooleanType)) = {
     val (outers, rest) = elements.span(_.isLeft)
     val cond = fold[Expr](BooleanLiteral(true), let, Constructors.and(_, _))(rest)
@@ -110,9 +179,18 @@ class Path private[purescala](
     fold[Expr](full, let, (_, _) => scala.sys.error("Should never happen!"))(outers)
   }
 
+  /** Folds the path into the associated boolean proposition */
   lazy val toClause: Expr = and(BooleanLiteral(true))
+
+  /** Like [[toClause]] but doesn't simplify final path through constructors
+    * from [[leon.purescala.Constructors]] */
   lazy val fullClause: Expr = fold[Expr](BooleanLiteral(true), Let(_, _, _), And(_, _))(elements)
 
+  /** Folds the path into a boolean proposition where let-bindings are
+    * replaced by equations.
+    *
+    * CAUTION: Should only be used once INSIDE the solver!!
+    */
   lazy val toPath: Expr = andJoin(elements.map {
     case Left((id, e)) => Equals(id.toVariable, e)
     case Right(e) => e
