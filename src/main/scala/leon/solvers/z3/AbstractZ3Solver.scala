@@ -54,6 +54,7 @@ trait AbstractZ3Solver extends Solver {
   )
 
   // @nv: This MUST take place AFTER Z3Context was created!!
+  // Well... actually maybe not, but let's just leave it here to be sure
   toggleWarningMessages(true)
 
   protected var solver : Z3Solver  = null
