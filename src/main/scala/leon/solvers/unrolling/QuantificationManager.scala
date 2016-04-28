@@ -1199,8 +1199,12 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
               }
             }.toMap
 
-            if (conditionals.isEmpty) {
-              value
+            if (conditionals.isEmpty) f match {
+              case FiniteLambda(mapping, dflt, tpe) =>
+                Lambda(params.map(ValDef(_)), mapping.foldRight(dflt) { case ((es, v), elze) =>
+                  IfExpr(andJoin((params zip es).map(p => Equals(p._1.toVariable, p._2))), v, elze)
+                })
+              case _ => f
             } else {
               val ((_, dflt)) +: rest = conditionals.toSeq.sortBy { case (conds, _) =>
                 (conds.flatMap(variablesOf).toSet.size, conds.size)
