@@ -115,24 +115,19 @@ case object ADTSplit extends Rule("ADT Split.") {
           cct.fieldsTypes.count { t => t == act }
         }
 
-        val onSuccess: List[Solution] => Option[Solution] = {
-          case sols =>
-            var globalPre = List[Expr]()
+        val onSuccess: List[Solution] => Option[Solution] = { sols =>
+          val (cases, globalPres) = (for ((sol, (cct, problem, pattern)) <- sols zip subInfo) yield {
+            val retrievedArgs = pattern.subPatterns.collect{ case WildcardPattern(Some(id)) => id }
+            val substs = (for ((field,arg) <- cct.classDef.fields zip retrievedArgs ) yield {
+              (arg, caseClassSelector(cct, id.toVariable, field.id))
+            }).toMap
+            (
+              SimpleCase(pattern, sol.term),
+              and(IsInstanceOf(Variable(id), cct), replaceFromIDs(substs, sol.pre))
+            )
+          }).unzip
 
-            val cases = for ((sol, (cct, problem, pattern)) <- sols zip subInfo) yield {
-              if (sol.pre != BooleanLiteral(true)) {
-                val substs = (for ((field,arg) <- cct.classDef.fields zip problem.as ) yield {
-                  (arg, caseClassSelector(cct, id.toVariable, field.id))
-                }).toMap
-                globalPre ::= and(IsInstanceOf(Variable(id), cct), replaceFromIDs(substs, sol.pre))
-              } else {
-                globalPre ::= BooleanLiteral(true)
-              }
-
-              SimpleCase(pattern, sol.term)
-            }
-
-            Some(Solution(orJoin(globalPre), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
+          Some(Solution(orJoin(globalPres), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
         }
 
         decomp(subInfo.map(_._2).toList, onSuccess, s"ADT Split on '${id.asString}'")
