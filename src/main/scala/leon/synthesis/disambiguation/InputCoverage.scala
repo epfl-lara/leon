@@ -244,7 +244,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           } else None
       })
       val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
-      val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(5.seconds)
+      val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(10.seconds)
       
       val vctx = new VerificationContext(c, program2, tfactory)
       val vcs = VerificationPhase.generateVCs(vctx, Seq(start_fd2))
