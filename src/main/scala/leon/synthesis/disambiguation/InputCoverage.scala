@@ -27,6 +27,8 @@ import leon.verification.VCStatus
 import leon.verification.VCResult
 import leon.evaluators.AbstractEvaluator
 
+case class InputNotCoveredException(msg: String, lineExpr: Identifier) extends Exception(msg)
+
 /**
  * @author Mikael
  * If possible, synthesizes a set of inputs for the function so that they cover all parts of the function.
@@ -43,10 +45,10 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       Else it creates a new boolean indicating this branch. */
   def wrapBranch(e: (Expr, Option[Seq[Identifier]])): (Expr, Some[Seq[Identifier]]) = e._2 match {
     case None =>
-      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType)
+      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
       (tupleWrap(Seq(e._1, Variable(b))), Some(Seq(b)))
     case Some(Seq()) =>
-      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType)
+      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
       
       def putInLastBody(e: Expr): Expr = e match {
         case Tuple(Seq(v, prev_b)) => Tuple(Seq(v, or(prev_b, b.toVariable))).copiedFrom(e)
@@ -262,7 +264,8 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
               Set(bvar)
           }
           finalExprs -> coveredBooleansForCE
-        case _ => Seq() -> Set(bvar)
+        case e =>
+          throw InputNotCoveredException("Could not find an input to cover the line: " + bvar.getPos.line + " (at col " + bvar.getPos.col + ")\n" + e.getOrElse(""), bvar)
       }
     }
     
