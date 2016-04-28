@@ -1,15 +1,13 @@
-import leon.annotation._
-import leon.lang._
-import leon.collection._
-
-
 object PatternMatchingBase {
   abstract class A
   case class B(x: Int) extends A
 
+  val foo = List(1)
+
   def class_B(x: Int): B = B(x)
 
 
+/*
   def match_value(x: Int): Char = x match {
     case 1 => 'a'
     case 2 => 'b'
@@ -37,6 +35,7 @@ object PatternMatchingBase {
     case Cons(x, xs) => 'a'
     case Nil() => 'b'
   }
+*/
 
 
 

@@ -23,7 +23,15 @@ object ComparatorByTree {
   def compareExpr(expr_base: Expr, expr: Expr): Double = (expr_base, expr) match{
     case (_,_) if (expr_base == expr) => 1.0
     case (MatchExpr(scrutinee_b, cases_b), MatchExpr(scrutinee, cases)) => compareMatchExpr(cases_b, cases)
-    case (_,_) => 0.0
+    case (Let(binderA, valueA, bodyA), Let(binder, value, body)) => 10.0
+    case (_,_) => {
+      println("TYPE OF EXPRESSION")
+      println(expr)
+      println("type", expr.getType)
+      println("class", expr.getClass)
+      println("class.type", expr.getType.getClass)
+      0.0
+    }
 
   }
 

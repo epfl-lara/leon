@@ -18,7 +18,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   val print = true
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
-    val comparisonBase = ComparisonBase(ctx, "testcases/comparison/base")
+    val comparisonBase = ComparisonBase(ctx, "testcases/comparison/base/")
     val listFunDef_base = comparisonBase.listFunDef.tail
     val listFunDef = getFunDef(ctx, program).tail
 
@@ -29,16 +29,24 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     println("----------")
 
     println("---------")
-    println("compare the type tree of program")
+    println("CLASS")
     println("---------")
-    println("base")
+    println("TO COMPARE")
     println(program.classHierarchyRoots)
+    println(program.classHierarchyRoots.last)
+    println(program.classHierarchyRoots.last.isAbstract)
+    println(program.classHierarchyRoots.last.isCaseObject)
+    println(program.classHierarchyRoots.last.tparams)
+    println(program.classHierarchyRoots.last.fields)
     println(program.classHierarchyRoots.last.knownCCDescendants)
-    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp)
-    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.isInstanceOf[TypeParameter])
-    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.getType)
+    println(program.classHierarchyRoots.last.knownCCDescendants.head)
+    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams)
+    println(program.classHierarchyRoots.last.knownCCDescendants.head.fields)
+    println(program.classHierarchyRoots.last.knownCCDescendants.last)
+    println(program.classHierarchyRoots.last.knownCCDescendants.last.tparams)
+    println(program.classHierarchyRoots.last.knownCCDescendants.last.fields)
 
-    println("tocompare")
+    println("BASE")
     println(comparisonBase.program.classHierarchyRoots)
     println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants)
     println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp)
@@ -46,6 +54,22 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.getType)
 
     println("---------")
+
+
+    println("---------")
+    println("LETS COMPARE CLASS !!!")
+    println("---------")
+
+    val listB = comparisonBase.program.classHierarchyRoots.last
+    val list = program.classHierarchyRoots.last
+
+    println("similarity value")
+    println("list et list", Utils.compareClassDef(listB, list))
+    println("list et cons", Utils.compareClassDef(listB, list.knownChildren.head))
+    println("cons et cons", Utils.compareClassDef(listB.knownChildren.head, list.knownChildren.head))
+    println("cons et nil", Utils.compareClassDef(listB.knownChildren.last, list.knownChildren.head))
+    println("nil et nil", Utils.compareClassDef(listB.knownChildren.last, list.knownChildren.last))
+
 
 
     val compared = combinationOfFunDef(listFunDef_base, listFunDef)

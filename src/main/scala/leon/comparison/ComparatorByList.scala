@@ -22,25 +22,8 @@ object ComparatorByList {
     * @return
     */
   def compare(expr_base: Expr, expr: Expr): Double = {
-    if (print){
-      println("--------------")
-      println("COMPARE EXPR")
-      println("--------------")
-      println("original base expression : ")
-      println(expr_base)
-      println("original expression : ")
-      println(expr)
-    }
-
     val listExpr_base = treeToList(expr_base)
     val listExpr = treeToList(expr)
-
-    if (print){
-      println("list base expr")
-      println(listExpr_base.size, listExpr_base)
-      println("list expr")
-      println(listExpr.size, listExpr)
-    }
 
     val similarExprList = for{
       expr_base <- listExpr_base
@@ -48,12 +31,6 @@ object ComparatorByList {
       if (compareExpr(expr_base, expr))
     } yield {
       (expr_base, expr)
-    }
-
-
-    if (print)  {
-      println("similar Expr List")
-      println(similarExprList)
     }
 
     val percentageSimilarity =
@@ -114,7 +91,6 @@ object ComparatorByList {
       case InstanceOfPattern(_, ct) => (ct.classDef -> a.rhs)
       case CaseClassPattern(_, ct, _) => {
         println(a)
-        Utils.compareClass(ct.classDef, ct.classDef)
         (ct.classDef -> a.rhs)
       }
       case _ => (a.pattern -> a.rhs)
