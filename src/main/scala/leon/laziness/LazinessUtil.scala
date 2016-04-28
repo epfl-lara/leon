@@ -112,6 +112,18 @@ object LazinessUtil {
     case _ => false
   }
 
+  def isFunMatch(e: Expr)(implicit p: Program): Boolean = e match {
+   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
+      fullName(fd)(p) == "leon.higherorder.Fmatch.fmatch"
+    case _ => false
+  }
+
+  def isIsFun(e: Expr)(implicit p: Program): Boolean = e match {
+   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
+      fullName(fd)(p) == "leon.higherorder.Is.is"
+    case _ => false
+  }
+
   /**
    * There are many overloads of withState functions with different number
    * of arguments. All of them should pass this check.

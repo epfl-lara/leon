@@ -10,6 +10,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import LazinessUtil._
+import purescala.Extractors._
 
 /**
  * TODO: Support type instantiations. Note that currently we cannot have functions in the program,
@@ -25,9 +26,14 @@ class ClosureFactory(p: Program) {
    */
   val lambdasList = p.definedFunctions.flatMap {
     case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
-      filter(_.isInstanceOf[Lambda])(fd.body.get) collect {
-        case l: Lambda => l
+      def rec(e: Expr): Seq[Lambda] = e match {
+        case finv: FunctionInvocation if isIsFun(finv)(prog) =>
+          //skip this
+          Seq()
+        case l: Lambda => Seq(l)
+        case Operator(args, _) => args flatMap rec
       }
+      rec(fd.body.get)
     case _ => Seq[Lambda]()
   }.distinct
 

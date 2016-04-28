@@ -7,6 +7,7 @@ import annotation._
 import instrumentation._
 import collection._
 import invariant._
+import higherorder._
 
 object ConcatHO {
   sealed abstract class LList[T] {
@@ -28,6 +29,13 @@ object ConcatHO {
       case Nil()       => SNil[T]()
     }
   } ensuring { _ => time <= 6 }
+
+  def evaluated[T](l: () => LList[T]): Boolean = {
+    l fmatch {
+      case (l1: List[T], l2: List[T]) if l.is(() => concat(l1, l2)) => true
+      case _ => true
+    }
+  }
 
   /*def kthElem[T](l: Lazy[LList[T]], k: BigInt): Option[T] = {
     require(k >= 0)

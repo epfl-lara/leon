@@ -33,7 +33,10 @@ class FunctionsManager(p: Program) {
       callees
     })
 
-  // note: we do not have to enforce that lambdas do not belong to the state, because lambdas are anyway not a part of the state
+  /*
+   * Lambdas need not be a part of read roots, because its body needs state, the function creating lambda will be
+   * marked as needing state.
+   */
   val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
     var starRoots = Set[FunDef]()
     var readRoots = Set[FunDef]()
@@ -44,8 +47,6 @@ class FunctionsManager(p: Program) {
           case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(Application(l, args))))) if isStarInvocation(finv)(p) =>
             starRoots += fd
             (l +: args) foreach rec
-//          case lam: Lambda  =>
-//            readRoots += fd
           case finv@FunctionInvocation(_, args) if isCachedInv(finv)(p) =>
             readRoots += fd
             args foreach rec
@@ -87,7 +88,7 @@ class FunctionsManager(p: Program) {
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
-          case finv: FunctionInvocation if isSuspInvocation(finv)(p) || isCachedInv(finv)(p) => // call to isEvaluated || isSusp ?
+          case finv: FunctionInvocation if isSuspInvocation(finv)(p) || isCachedInv(finv)(p) =>
             roots += fd
           case _ =>
             ;
@@ -105,20 +106,4 @@ class FunctionsManager(p: Program) {
     // every function that does not call isEvaluated or is Susp has a state independent behavior
     !callersOfIsEvalandIsSusp.contains(fd)
   }
-
-//  lazy val targetsOfLazyCons = {
-//    var callees = Set[FunDef]()
-//    funsNeedStates.foreach {
-//      case fd if fd.hasBody =>
-//        postTraversal {
-//          case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
-//            callees += finv.tfd.fd
-//          case _ =>
-//            ;
-//        }(fd.body.get)
-//      case _ => ;
-//    }
-//    callees
-//  }
-
 }
