@@ -138,14 +138,15 @@ object Evaluator {
   case object Pending extends CheckStatus
   case object NoCheck extends CheckStatus
 
-  def invariantCheck(cc: CaseClass): CheckStatus =
+  def invariantCheck(cc: CaseClass): CheckStatus = synchronized {
     if (!cc.ct.classDef.hasInvariant) Complete(true)
     else checkCache.get(cc).getOrElse {
       checkCache(cc) = Pending
       NoCheck
     }
+  }
 
-  def invariantResult(cc: CaseClass, success: Boolean): Unit = {
+  def invariantResult(cc: CaseClass, success: Boolean): Unit = synchronized {
     checkCache(cc) = Complete(success)
   }
 
