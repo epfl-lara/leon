@@ -25,7 +25,7 @@ class SimplifyPathsSuite extends LeonTestSuite {
   val l2 = InfiniteIntegerLiteral(2)
 
   def simplifyPaths(ctx: LeonContext, expr: Expr): Expr = {
-    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, Program.empty))
+    val uninterpretedZ3 = SolverFactory.getFromName(ctx, Program.empty)("nativez3-u")
     try {
       ExprOps.simplifyPaths(uninterpretedZ3)(expr)
     } finally {

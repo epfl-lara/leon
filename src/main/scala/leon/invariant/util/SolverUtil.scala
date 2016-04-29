@@ -72,7 +72,7 @@ object SolverUtil {
     if (idmap.keys.nonEmpty) {
       val newpathcond = replace(idmap, expr)
       //check if this is solvable
-      val solver = SimpleSolverAPI(SolverFactory(() => new ExtendedUFSolver(ctx, prog)))
+      val solver = SimpleSolverAPI(SolverFactory("extendedUF", () => new ExtendedUFSolver(ctx, prog)))
       solver.solveSAT(newpathcond)._1 match {
         case Some(true) => {
           println("Path satisfiable for a?,c? -->6,2 ")

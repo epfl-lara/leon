@@ -45,7 +45,7 @@ class TimeoutSolverSuite extends LeonTestSuite {
   }
 
   private def getTOSolver(ctx: LeonContext): SolverFactory[Solver] = {
-    SolverFactory(() => (new IdioticSolver(ctx, Program.empty) with TimeoutSolver).setTimeout(200L))
+    SolverFactory("idiotic", () => (new IdioticSolver(ctx, Program.empty) with TimeoutSolver).setTimeout(200L))
   }
 
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {

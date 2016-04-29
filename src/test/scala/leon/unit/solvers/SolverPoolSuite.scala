@@ -28,7 +28,7 @@ class SolverPoolSuite extends LeonTestSuite {
   }
 
   def sfactory(implicit ctx: LeonContext): SolverFactory[Solver] = {
-    SolverFactory(() => new DummySolver(ctx, Program.empty))
+    SolverFactory("dummy", () => new DummySolver(ctx, Program.empty))
   }
 
   val poolSize = 5;

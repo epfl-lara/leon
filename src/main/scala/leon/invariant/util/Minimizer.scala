@@ -54,8 +54,9 @@ class Minimizer(ctx: InferenceContext, program: Program) {
    */
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
-      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.vcTimeout * 1000))
+    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
+      SolverFactory.getFromName(leonctx,program)("smt-z3-u"),
+      ctx.vcTimeout * 1000))
 
     reporter.info("minimizing...")
     var currentModel = initModel

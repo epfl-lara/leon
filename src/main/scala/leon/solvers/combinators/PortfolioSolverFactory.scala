@@ -6,7 +6,7 @@ package combinators
 
 import scala.reflect.runtime.universe._
 
-class PortfolioSolverFactory[S <: Solver](ctx: LeonContext, sfs: Seq[SolverFactory[S]])(implicit tag: TypeTag[S]) extends SolverFactory[PortfolioSolver[S] with TimeoutSolver] {
+class PortfolioSolverFactory[S <: Solver](ctx: LeonContext, sfs: Seq[SolverFactory[S]]) extends SolverFactory[PortfolioSolver[S] with TimeoutSolver] {
 
   def getNewSolver(): PortfolioSolver[S] with TimeoutSolver = {
     new PortfolioSolver[S](ctx, sfs.map(_.getNewSolver())) with TimeoutSolver
@@ -21,5 +21,7 @@ class PortfolioSolverFactory[S <: Solver](ctx: LeonContext, sfs: Seq[SolverFacto
     case _ =>
       ctx.reporter.error("Failed to reclaim a non-portfolio solver.")
   }
+
+  val name = sfs.map(_.name).mkString("Pfolio(", ",", ")")
 }
 

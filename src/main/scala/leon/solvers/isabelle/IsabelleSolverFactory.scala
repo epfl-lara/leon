@@ -12,6 +12,8 @@ import leon.solvers._
 
 final class IsabelleSolverFactory(context: LeonContext, program: Program) extends SolverFactory[TimeoutSolver] {
 
+  val name = "isabelle"
+
   private val env = IsabelleEnvironment(context, program)
 
   override def shutdown() =

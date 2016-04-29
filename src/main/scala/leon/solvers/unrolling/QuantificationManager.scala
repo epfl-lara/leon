@@ -446,7 +446,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         (qarg, arg) <- (qargs zip args)
         _ = strictnessCnstr(qarg, arg)
       } qarg match {
-        case Left(quant) if subst.isDefinedAt(quant) =>
+        case Left(quant) if !quantified(quant) || subst.isDefinedAt(quant) =>
           eqConstraints += (quant -> arg.encoded)
         case Left(quant) if quantified(quant) =>
           subst += quant -> arg
