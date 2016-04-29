@@ -27,9 +27,8 @@ class ClosureFactory(p: Program) {
   val lambdasList = p.definedFunctions.flatMap {
     case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
       def rec(e: Expr): Seq[Lambda] = e match {
-        case finv: FunctionInvocation if isIsFun(finv)(prog) =>
-          //skip this
-          Seq()
+        case finv: FunctionInvocation if isIsFun(finv)(prog) =>  Seq() //skip
+        case finv: FunctionInvocation if isFunMatch(finv)(prog) => Seq() //skip
         case l: Lambda => Seq(l)
         case Operator(args, _) => args flatMap rec
       }
@@ -111,11 +110,14 @@ class ClosureFactory(p: Program) {
       argts.size
     }.foreach {
       case (_, lambs) =>
-        val fta = lambs.map(_.getType).toArray
+        val reps = lambs.groupBy(l => canonTypeName(l.getType)).map{
+          case (_, ls) => ls.head
+        }.toArray
+        val fta = reps.map(_.getType)
         for (i <- 0 until fta.length)
           for (j <- i + 1 until fta.length) {
             if (isTypeInstance(fta(i), fta(j)))
-              throw new IllegalStateException(s"${lambs(i)} and ${lambs(j)} have insantiatiable types, which is not supported as of now!")
+              throw new IllegalStateException(s"${reps(i)} and ${reps(j)} have insantiatiable types: ${reps(i).getType}, ${reps(j).getType}, which is not supported as of now!")
           }
     }
     val tpeToLambda = lambdasList.groupBy(lop => canonTypeName(lop.getType)) // using tpe name below to avoid mismatches due to type parameters

@@ -110,7 +110,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => Set()
     }(expr)
   }
-  
+
   def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
     collect[FunDef] {
       case LetDef(fds, _) => fds.toSet
@@ -830,7 +830,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
   }
 
-
   /** Rewrites all map accesses with additional error conditions. */
   def mapGetWithChecks(expr: Expr): Expr = {
     postMap({
@@ -933,7 +932,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     }
   }
 
-
   /** Hoists all IfExpr at top level.
     *
     * Guarantees that all IfExpr will be at the top level and as soon as you
@@ -999,7 +997,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           solver.solveVALID(pre) match {
             case Some(true)  =>
               fd.precondition = None
-  
+
             case Some(false) => solver.solveSAT(pre) match {
               case (Some(false), _) =>
                 fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
@@ -1078,7 +1076,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     }
   }
 
-
   def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
   }
@@ -1126,7 +1123,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
-  
+
   /** Simple, local optimization on string */
   def simplifyString(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = (expr match {
@@ -1254,7 +1251,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect {
             case (vd, tpe) if tpe == on.getType => vd.id
           }
 
@@ -1285,14 +1282,14 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case _ =>
       false
   }
-  
+
   type Apriori = Map[Identifier, Identifier]
-  
+
   /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
   def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
     val freeT1Variables = ExprOps.variablesOf(t1)
     val freeT2Variables = ExprOps.variablesOf(t2)
-    
+
     def mergeContexts(
         a: Option[Apriori],
         b: Apriori => Option[Apriori]):
@@ -1329,7 +1326,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     implicit def noneToContextTaker(c: None.type) = {
       (m: Apriori) => None
     }
-
 
     def idHomo(i1: Identifier, i2: Identifier)(apriori: Apriori): Option[Apriori] = {
       if(!(freeT1Variables(i1) || freeT2Variables(i2)) || i1 == i2 || apriori.get(i1) == Some(i2)) Some(Map(i1 -> i2)) else None
@@ -1402,10 +1398,10 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           idHomo(i1, i2)(apriori)
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
-          
+
           isHomo(v1, v2)(apriori + (id1 -> id2)) &&
           isHomo(e1, e2)
-          
+
         case (Hole(_, _), Hole(_, _)) =>
           None
 
@@ -1443,7 +1439,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
               Some(m + (a1 -> a2)) }(apriori)
            && isHomo(body, body2)
           ) -- (defs.map(_.id))
-          
+
         case (v1, v2) if isValue(v1) && isValue(v2) =>
           v1 == v2 && Some(apriori)
 
@@ -1705,7 +1701,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         case UnitType =>
           // Anything matches ()
           ps.nonEmpty
-        
+
         case StringType =>
           // Can't possibly pattern match against all Strings one by one
           ps exists (_.isInstanceOf[WildcardPattern])
@@ -2086,7 +2082,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       None
   }
 
-
   /** Collects from within an expression all conditions under which the evaluation of the expression
     * will not fail (e.g. by violating a function precondition or evaluating to an error).
     *
@@ -2124,7 +2119,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         (e, implies(path, cond))
     }
   }
-
 
   def simpleCorrectnessCond(e: Expr, path: List[Expr], sf: SolverFactory[Solver]): Expr = {
     simplifyPaths(sf, path)(
@@ -2168,10 +2162,10 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         elems.values forall (x => isValueOfType(x, base))
       case (EmptyArray(tpe), ArrayType(base)) =>
         tpe == base
-      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
+      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) =>
         TypeOps.isSubtypeOf(ct, ct2) &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
-      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
+      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) =>
         ct == ct2 &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
       case (Lambda(valdefs, body), FunctionType(ins, out)) =>
@@ -2180,7 +2174,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => false
     }
   }
-  
+
   /** Returns true if expr is a value. Stronger than isGround */
   val isValue = (e: Expr) => isValueOfType(e, e.getType)
 }

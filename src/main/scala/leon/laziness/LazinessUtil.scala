@@ -93,11 +93,11 @@ object LazinessUtil {
     case _ => false
   }
 
-  def isSuspInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  /*def isSuspInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
       fullName(fd)(p) == "leon.lazyeval.Lazy.isSuspension"
     case _ => false
-  }
+  }*/
 
   def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
@@ -133,12 +133,6 @@ object LazinessUtil {
       val fn = fullName(fd)(p)
       (fn == "leon.lazyeval.WithState.withState" ||
           fn == "leon.mem.memWithState.withState")
-    case _ => false
-  }
-
-  def isCachedInv(e: Expr)(implicit p: Program): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.Mem.isCached"
     case _ => false
   }
 

@@ -7,6 +7,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import LazinessUtil._
+import ProgramUtil._
 
 class FunctionsManager(p: Program) {
 
@@ -18,7 +19,7 @@ class FunctionsManager(p: Program) {
       def rec(e: Expr): Unit = e match {
         case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
           ; //nothing to be done
-        case f : FunctionInvocation if isSuspInvocation(f)(p) =>
+        case f : FunctionInvocation if isIsFun(f)(p) =>
           // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
           ;
         case cc : CaseClass if isMemCons(cc)(p) =>
@@ -41,13 +42,13 @@ class FunctionsManager(p: Program) {
     var starRoots = Set[FunDef]()
     var readRoots = Set[FunDef]()
     var valRoots = Set[FunDef]()
-    p.definedFunctions.foreach {
+    userLevelFunctions(p).foreach {
       case fd if fd.hasBody =>
         def rec(e: Expr): Unit = e match {
           case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(Application(l, args))))) if isStarInvocation(finv)(p) =>
             starRoots += fd
             (l +: args) foreach rec
-          case finv@FunctionInvocation(_, args) if isCachedInv(finv)(p) =>
+          case finv@FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
             readRoots += fd
             args foreach rec
           case Application(l, args) =>
@@ -62,7 +63,8 @@ class FunctionsManager(p: Program) {
     val valCallers = cg.transitiveCallers(valRoots.toSeq)
     val readfuns = cg.transitiveCallers(readRoots.toSeq)
     val starCallers = cg.transitiveCallers(starRoots.toSeq)
-    //println("Ret roots: "+retRoots.map(_.id)+" ret funs: "+retfuns.map(_.id))
+    /*println("Ret roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))
+    println("Read roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))*/
     (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
   }
 
@@ -83,12 +85,12 @@ class FunctionsManager(p: Program) {
   }
 
   lazy val cgWithoutSpecs = CallGraphUtil.constructCallGraph(p, true, false)
-  lazy val callersOfIsEvalandIsSusp = {
+  lazy val callersOfCached = {
     var roots = Set[FunDef]()
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
-          case finv: FunctionInvocation if isSuspInvocation(finv)(p) || isCachedInv(finv)(p) =>
+          case finv: FunctionInvocation if cachedInvocation(finv)(p) =>
             roots += fd
           case _ =>
             ;
@@ -104,6 +106,6 @@ class FunctionsManager(p: Program) {
 
   def hasStateIndependentBehavior(fd: FunDef) : Boolean = {
     // every function that does not call isEvaluated or is Susp has a state independent behavior
-    !callersOfIsEvalandIsSusp.contains(fd)
+    !callersOfCached.contains(fd)
   }
 }

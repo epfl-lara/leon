@@ -43,28 +43,28 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
     // go over the body of all relfuns and compute mappings for place-holder `tparams`
     relfuns.foreach { fd =>
       postTraversal {
-        case fi@FunctionInvocation(TypedFunDef(_, targs), _) 
-          if targs.exists{ case tp: TypeParameter => isPlaceHolderTParam(tp) case _ => false } => 
-            funInvs +:= fi 
+        case fi@FunctionInvocation(TypedFunDef(_, targs), _)
+          if targs.exists{ case tp: TypeParameter => isPlaceHolderTParam(tp) case _ => false } =>
+            funInvs +:= fi
         case CaseClass(ct: CaseClassType, args) =>
           if (memoClasses(ct.classDef)) { //here, we can trust the types of arguments
             (args zip ct.fieldsTypes) foreach {
-              case (arg, ft) =>                
-                typeInstMap(arg.getType, ft).get.foreach {                  
+              case (arg, ft) =>
+                typeInstMap(arg.getType, ft).get.foreach {
                   case (t1, t2) => tc.union(t1, t2)
                 }
             }
           }
-        case ElementOfSet(arg, set) =>
+        /*case ElementOfSet(arg, set) =>
           // merge the type parameters of `arg` and `set`
           set.getType match {
             case SetType(baseT: ClassType) if baseT.classDef == clFactory.memoAbsClass =>
+              println(s"Arg: $arg Arg type: ${arg.getType}")
               typeInstMap(arg.getType, baseT).get.foreach {
                 case (t1, t2) => tc.union(t1, t2)
               }
             case _ =>
-          }
-        // need to handle closure match statements
+          }*/
         case _ =>
       }(fd.fullBody)
     }
@@ -93,7 +93,7 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
         //                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
         //                    + s"do not match for call: $call")*/
         //              }
-        //            }          
+        //            }
       }
     } while (merged)
     tc
@@ -146,7 +146,7 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
     // the tupleExpr if it is not TupleTyped.
     // cannot use simplePostTransform because of this
     def rec(e: Expr): Expr = e match {
-      case FunctionInvocation(TypedFunDef(callee, targsOld), args) => 
+      case FunctionInvocation(TypedFunDef(callee, targsOld), args) =>
         val targs = targsOld.map {
           case tp: TypeParameter => tpMap.getOrElse(tp, tp)
           case t                 => t

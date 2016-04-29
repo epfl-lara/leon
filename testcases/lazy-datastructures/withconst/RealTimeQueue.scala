@@ -36,9 +36,9 @@ object RealTimeQueue {
   def ssize[T](l: () => Stream[T]): BigInt = (l()*).size
 
   def evaluated[T](l: () => Stream[T]): Boolean = {
-    l fmatch {
-      case (f: (() => Stream[T]), r: List[T], a: (() => Stream[T])) if l.is(() => rotate(f,r,a)) =>
-        rotate(f,r,a).isCached
+    l fmatch[() => Stream[T], List[T], () => Stream[T], Boolean] {
+      case (f, r, a) if l.is(() => rotate(f,r,a)) =>
+        rotate(f,r,a).cached
       case _ => true
     }
   }
@@ -52,14 +52,15 @@ object RealTimeQueue {
   }
 
   @invstate
-  @memoized
+  @memoize
   def rotate[T](f: () => Stream[T], r: List[T], a: () => Stream[T]): Stream[T] = { // doesn't change state
     require(r.size == ssize(f) + 1 && isConcrete(f))
     (f(), r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, a)
       case (SCons(x, tail), Cons(y, r1)) =>
-        val rot = () => rotate(tail, r1, () => SCons[T](y, a))
+        val newa = () => SCons[T](y, a)
+        val rot = () => rotate(tail, r1, newa)
         SCons[T](x, rot)
     }
   } ensuring (res => res.size == ssize(f) + r.size + ssize(a) && res.isCons &&
@@ -97,21 +98,27 @@ object RealTimeQueue {
     s() match {
       case SCons(_, tail) => Queue(f, r, tail)
       case SNil() =>
-        val rotres = () => rotate(f, r, () => SNil[T]())
+        val news = () => SNil[T]()
+        val rotres = () => rotate(f, r, news)
         Queue(rotres, Nil(), rotres)
     }
   }
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
-    createQ(q.f, Cons(x, q.r), q.s)
+    val f = q.f
+    val r = Cons(x, q.r)
+    val s = q.f
+    createQ(f, r, s)
   } ensuring (res => res.valid && time <= 60)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f() match {
       case SCons(x, nf) =>
-        createQ(nf, q.r, q.s)
+        val r = q.r
+        val s = q.s
+        createQ(nf, r, s)
     }
   } ensuring (res => res.valid && time <= 120)
 }

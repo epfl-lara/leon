@@ -60,6 +60,6 @@ package object mem {
   @library
   case class Mem[T](v: T) {
     @extern
-    def isCached: Boolean = sys.error("not implemented!")
+    def cached: Boolean = sys.error("not implemented!")
   }
 }

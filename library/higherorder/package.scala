@@ -50,6 +50,15 @@ package object higherorder {
   case class Fmatch[T](f: T) {
     @extern
     @library
-    def fmatch[V](pf: Any =>  V) = sys.error("Can't execute the construct")
+    def fmatch[A, R](pf: A  =>  R) = sys.error("Can't execute the construct")
+    @extern
+    @library
+    def fmatch[A, B, R](pf: (A, B)  =>  R) = sys.error("Can't execute the construct")
+    @extern
+    @library
+    def fmatch[A, B, C, R](pf: (A, B, C)  =>  R) = sys.error("Can't execute the construct")
+    @extern
+    @library
+    def fmatch[A, B, C, D, R](pf: (A, B, C, D)  =>  R) = sys.error("Can't execute the construct")
   }
 }

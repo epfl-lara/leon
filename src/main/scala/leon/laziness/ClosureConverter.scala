@@ -238,15 +238,15 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   val computeFunctions = evalFunctions.map {
     case (tname, evalfd) =>
       val TupleType(Seq(rettpe, _)) = evalfd.returnType
-      val recv = evalfd.params.head
+      val params = evalfd.params.dropRight(1) // drop the last argument
       val fun = new FunDef(FreshIdentifier(evalfd.id.name + "S", Untyped),
-        evalfd.tparams, Seq(recv), rettpe)
+        evalfd.tparams, params, rettpe)
       val stTparams = evalfd.tparams.collect {
         case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
       }
       val uiState = getUninterpretedState(tname, stTparams)
       val invoke = FunctionInvocation(TypedFunDef(evalfd, evalfd.tparams.map(_.tp)),
-        Seq(recv.id.toVariable, uiState))
+        params.map(_.id.toVariable) :+ uiState)
       fun.body = Some(TupleSelect(invoke, 1))
       fun.addFlag(IsInlined)
       (tname -> fun)
@@ -293,6 +293,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       // in this case target should be a memoized function
       if (!isMemoized(target))
         throw new IllegalStateException("Argument of `Mem` should be a memoized function: " + memc)
+      //println("cc: "+closureFactory.memoClasses(target)+" stparams: "+stTparams)
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
         CaseClass(CaseClassType(closureFactory.memoClasses(target), stTparams), nargs)
       }, false)
@@ -307,34 +308,42 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     // (d) Pattern matching on lambdas
-    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), MatchExpr(_, mcases))) if isFunMatch(finv)(p) =>
+    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), Lambda(_, MatchExpr(_, mcases)))) if isFunMatch(finv)(p) =>
       val ncases = mcases.map {
-        case MatchCase(pat, Some(guard), body) =>
+        case mc @ MatchCase(pat, Some(guard), body) =>
           val freevars = pat match {
             case TuplePattern(_, subpats) => subpats.collect {
               case InstanceOfPattern(Some(bin), _) => bin
+              case WildcardPattern(Some(bin))      => bin
             }.toSet
             case InstanceOfPattern(Some(bin), _) => Set(bin)
+            case WildcardPattern(Some(bin))      => Set(bin)
             case _                               => Set()
           }
-          val realPattern = guard match {
-            case finv @ FunctionInvocation(_, Seq(`cl`, l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
+          guard match {
+            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(`cl`)), l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
               val envVarsInGuard = (variablesOf(lbody) -- (args.map(_.id).toSet ++ freevars))
               if (!envVarsInGuard.isEmpty) {
-                throw new IllegalStateException(s"Guard of $finv uses variables from the environment!")
+                throw new IllegalStateException(s"Guard of $finv uses variables from the environment: $envVarsInGuard")
               }
               try {
                 val tname = closureFactory.uninstantiatedFunctionTypeName(l.getType).get
                 val uninstType = closureFactory.functionType(tname)
                 val targs = getTypeArguments(l.getType, uninstType).get
-                CaseClassPattern(None, CaseClassType(closureFactory.closureOfLambda(l), targs),
-                  capturedVars(l).map(id => WildcardPattern(Some(id))))
+                // here, try to create new types for the binders, they may be needed in type rectification of local variables
+                val capvars = capturedVars(l)
+                val ncapvars = capvars.map { id => makeIdOfType(id, closureFactory.replaceClosureTypes(id.getType)) }
+                val realpat = CaseClassPattern(None, CaseClassType(closureFactory.closureOfLambda(l), targs),
+                  ncapvars.map(id => WildcardPattern(Some(id))))
+                MatchCase(realpat, None,
+                  replaceFromIDs((capvars zip ncapvars.map(_.toVariable)).toMap, body))
               } catch {
                 case _: NoSuchElementException =>
-                  throw new IllegalStateException(s"Error: no Lambda in the program could match $finv!")
+                  throw new IllegalStateException(s"Error: no Lambda in the program could match $l!")
               }
           }
-          MatchCase(realPattern, None, body)
+        case MatchCase(pat @ WildcardPattern(None), None, body) =>
+          MatchCase(pat, None, body)
       }
       mapExpr(MatchExpr(cl, ncases))
 
@@ -374,6 +383,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         FunctionInvocation(TypedFunDef(dispFun, targs), nargs)
       }, false)
       mapNAryOperator(lambdaExpr +: args, op)
+
     // Rest: usual language constructs
     case FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
       mapNAryOperator(args,
@@ -466,6 +476,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         }
         nscrCons(ncases)
       }, scrUpdatesState || casesUpdatesState)
+
     // need to reset types in the case of case class constructor calls
     case CaseClass(cct, args) =>
       val ntype = closureFactory.replaceClosureTypes(cct).asInstanceOf[CaseClassType]
@@ -538,10 +549,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
         //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
 
-        // Important: specifications use lazy semantics but
-        // their state changes are ignored after their execution.
-        // This guarantees their observational purity/transparency
-        // collect class invariants that need to be added
+        // Important: specifications use memoized semantics but their state changes are ignored after their execution.
+        // This guarantees their observational purity/transparency collect class invariants that need to be added.
         if (fd.hasPrecondition) {
           val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams)
           val npre = replace(paramMap, npreFun(stateParam))

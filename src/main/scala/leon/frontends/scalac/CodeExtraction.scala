@@ -1079,7 +1079,7 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    private def extractTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {      
+    private def extractTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       val (current, tmpRest) = tr match {
         case Block(Block(e :: es1, l1) :: es2, l2) =>
           (e, Some(Block(es1 ++ Seq(l1) ++ es2, l2)))
@@ -1932,7 +1932,6 @@ trait CodeExtraction extends ASTExtractors {
       case TypeRef(_, sym, btt :: Nil) if isArrayClassSym(sym) =>
         ArrayType(extractType(btt))
 
-      // TODO: What about Function0?
       case TypeRef(_, sym, subs) if subs.size >= 1 && isFunction(sym, subs.size - 1) =>
         val from = subs.init
         val to   = subs.last
@@ -1999,8 +1998,6 @@ trait CodeExtraction extends ASTExtractors {
       if (seenClasses contains sym) {
         getClassDef(sym, NoPosition).typed(tps)
       } else {
-        if(sym.toString == "class Any")
-          throw new IllegalStateException("Found uknown class: "+sym)
         outOfSubsetError(NoPosition, "Unknown class "+sym.fullName)
       }
     }
