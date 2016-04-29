@@ -52,7 +52,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
     copy(ws = andJoin(wsList ++ es))
   }
 
-  def qebFiltered(implicit sctx: SearchContext) = qeb.filterIns(pc.fullClause)
+  def qebFiltered(implicit sctx: SearchContext) = qeb.evalIns.filterIns(pc.fullClause)
 
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
   def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)

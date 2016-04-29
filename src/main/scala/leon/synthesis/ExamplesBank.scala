@@ -70,13 +70,13 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
     }
   }
 
-  def map(f: Example => List[Example]) = {
+  def flatMap(f: Example => List[Example]) = {
     ExamplesBank(valids.flatMap(f), invalids.flatMap(f))
   }
 
   /** Expands each input example through the function f */
   def flatMapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
-    map {
+    flatMap {
       case InExample(in) =>
         f(in).map(InExample)
 
@@ -87,7 +87,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
 
    /** Expands each output example through the function f */
   def flatMapOuts(f: Seq[Expr] => List[Seq[Expr]]) = {
-    map {
+     flatMap {
       case InOutExample(in, out) =>
         f(out).map(InOutExample(in, _))
 
@@ -97,7 +97,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   }
 
   def stripOuts = {
-    map {
+    flatMap {
       case InOutExample(in, out) =>
         List(InExample(in))
       case e =>
@@ -190,6 +190,11 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     filterIns(m => evaluator.eval(expr, m).result.contains(BooleanLiteral(true)))
   }
 
+  def evalIns: QualifiedExamplesBank = flatMapIns { mapping =>
+    val evalAs = evaluator.evalEnv(mapping)
+    List(as map evalAs)
+  }
+
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
   def filterIns(pred: Map[Identifier, Expr] => Boolean): QualifiedExamplesBank = {
     QualifiedExamplesBank(as, xs,
@@ -207,14 +212,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   /** Maps inputs through the function f
     *
     * @return A new ExampleBank */
-  def mapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]) = {
-    eb map {
+  def flatMapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]): QualifiedExamplesBank = {
+    copy(eb = eb flatMap {
       case InExample(in) =>
         f(as zip in).map(InExample)
 
       case InOutExample(in, out) =>
         f(as zip in).map(InOutExample(_, out))
-    }
+    })
   }
 }
 

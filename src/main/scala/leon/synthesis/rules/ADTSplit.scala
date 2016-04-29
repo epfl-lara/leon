@@ -91,7 +91,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             if (isInputVar) {
               // Filter out examples where id has the wrong type, and fix input variables
               // Note: It is fine to filter here as no evaluation is required
-              p.qeb.mapIns { inInfo =>
+              p.qeb.flatMapIns { inInfo =>
                 inInfo.toMap.apply(id) match {
                   case CaseClass(`cct`, vs) =>
                     List(vs ++ inInfo.filter(_._1 != id).map(_._2))
@@ -100,7 +100,7 @@ case object ADTSplit extends Rule("ADT Split.") {
                 }
               }
             } else {
-              p.eb
+              p.qeb
             }
           }
           val newAs = if (isInputVar) args ::: oas else p.as

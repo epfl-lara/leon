@@ -103,7 +103,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         }
       }.toMap
 
-      val eb = p.qeb.mapIns { info =>
+      val eb = p.qeb.flatMapIns { info =>
         List(info.flatMap { case (id, v) =>
           ebMapInfo.get(id) match {
             case Some(m) =>

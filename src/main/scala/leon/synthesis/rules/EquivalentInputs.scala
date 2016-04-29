@@ -79,7 +79,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
       // XXX: must take place in this order!! obsolete & free is typically non-empty
       val newAs = (p.as ++ free).distinct.filterNot(obsolete)
 
-      val newBank = p.eb.map { ex =>
+      val newBank = p.eb.flatMap { ex =>
         val mapping = (p.as zip ex.ins).toMap
         val newIns = newAs.map(a => mapping.getOrElse(a, replaceFromIDs(mapping, reverseSubst(a))))
         List(ex match {
