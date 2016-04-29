@@ -15,7 +15,7 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver]) e
   implicit val ctx0 = ctx
 
   def generate(tpe: TypeTree): FreeableIterator[Expr] = {
-    generateFor(Seq(FreshIdentifier("tmp", tpe)), BooleanLiteral(true), 20, 20).map(_.head)
+    generateFor(Seq(FreshIdentifier("tmp", tpe)), BooleanLiteral(true), 20, 20).map(_.head).takeWhile(_ => !interrupted.get)
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): FreeableIterator[Seq[Expr]] = {
@@ -76,7 +76,7 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver]) e
 
       val enum = modelEnum.enumVarying(ins, satisfying, sizeOf, 5)
 
-      enum.take(maxValid).map(model => ins.map(model))
+      enum.take(maxValid).map(model => ins.map(model)).takeWhile(_ => !interrupted.get)
     }
   }
 

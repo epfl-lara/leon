@@ -2,7 +2,6 @@
 
 package leon.regression.verification
 
-import smtlib.interpreters.Z3Interpreter
 import leon.solvers.SolverFactory
 
 // If you add another regression test, make sure it contains exactly one object, whose name matches the file name.

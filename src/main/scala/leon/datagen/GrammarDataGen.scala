@@ -55,7 +55,7 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar = ValueGra
 
   def generate(tpe: TypeTree): Iterator[Expr] = {
     val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
-    enum.iterator(Label(tpe)).flatMap(expandGenerics)
+    enum.iterator(Label(tpe)).flatMap(expandGenerics).takeWhile(_ => !interrupted.get)
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
@@ -82,6 +82,7 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar = ValueGra
       detupled.take(maxEnumerated)
               .filter(filterCond)
               .take(maxValid)
+              .takeWhile(_ => !interrupted.get)
     }
   }
 
