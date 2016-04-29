@@ -90,6 +90,7 @@ object ExpressionLifter {
                     } else
                       new FunDef(nname, tparamDefs, params, retType)
                   nfun.body = Some(body)
+                  nfun.addFlag(IsInlined) // add inline annotation to these functions
                   newfuns += (argstruc -> (nfun, md))
                   nfun
                 }

@@ -696,13 +696,14 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   }
 
   def apply: Program = {
-    // TODO: for now pick a arbitrary point to add new defs. But ideally the lazy closure will be added to a separate module
-    // and imported every where
-    val anchor = funMap.values.last
     transformCaseClasses
     assignBodiesToFunctions
     assignContractsForEvals
-    ProgramUtil.addDefs(
+
+    // Ideally, the lazy closure will be added to a separate module
+    // and imported every where
+    val mainModule = p.units.find(_.isMainUnit).get.modules.head
+    ProgramUtil.appendDefsToModules(
       copyProgram(p,
         (defs: Seq[Definition]) => defs.flatMap {
           case fd: FunDef if funMap.contains(fd) =>
@@ -715,10 +716,9 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             }
           case d => Seq(d)
         }),
-      closureFactory.allClosuresAndParents ++
+      Map(mainModule -> (closureFactory.allClosuresAndParents ++
         (closureFactory.memoAbsClass +: closureFactory.memoClosures.toSeq) ++
         closureCons.values ++ evalFunctions.values ++
-        computeFunctions.values ++ uiStateFuns.values //++ closureFactory.stateUpdateFuns.values
-        , anchor)
+        computeFunctions.values ++ uiStateFuns.values)))
   }
 }

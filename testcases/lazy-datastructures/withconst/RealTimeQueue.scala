@@ -35,6 +35,7 @@ object RealTimeQueue {
 
   def ssize[T](l: () => Stream[T]): BigInt = (l()*).size
 
+  @inline
   def evaluated[T](l: () => Stream[T]): Boolean = {
     l fmatch[() => Stream[T], List[T], () => Stream[T], Boolean] {
       case (f, r, a) if l.is(() => rotate(f,r,a)) =>
@@ -51,6 +52,10 @@ object RealTimeQueue {
     })
   }
 
+  def eager[T](x: Stream[T]): () => Stream[T] = {
+    () => x
+  }
+
   @invstate
   @memoize
   def rotate[T](f: () => Stream[T], r: List[T], a: () => Stream[T]): Stream[T] = { // doesn't change state
@@ -59,7 +64,7 @@ object RealTimeQueue {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, a)
       case (SCons(x, tail), Cons(y, r1)) =>
-        val newa = () => SCons[T](y, a)
+        val newa = eager(SCons[T](y, a))
         val rot = () => rotate(tail, r1, newa)
         SCons[T](x, rot)
     }
@@ -98,7 +103,7 @@ object RealTimeQueue {
     s() match {
       case SCons(_, tail) => Queue(f, r, tail)
       case SNil() =>
-        val news = () => SNil[T]()
+        val news = eager(SNil[T]())
         val rotres = () => rotate(f, r, news)
         Queue(rotres, Nil(), rotres)
     }

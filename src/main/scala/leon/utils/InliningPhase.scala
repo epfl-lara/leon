@@ -18,18 +18,29 @@ object InliningPhase extends TransformationPhase {
 
   def apply(ctx: LeonContext, p: Program): Program = {
 
+    def trivialPost(fd: FunDef) = fd.postcondition match {
+      case None                                  => true
+      case Some(Lambda(_, BooleanLiteral(true))) => true
+      case _                                     => false
+    }
     // Detect inlined functions that are recursive
-    val doNotInline = (for (fd <- p.definedFunctions.filter(_.flags(IsInlined)) if p.callGraph.isRecursive(fd)) yield {
-      ctx.reporter.warning("Refusing to inline recursive function '"+fd.id.asString(ctx)+"'!")
-      fd
-    }).toSet
+    val doNotInline = p.definedFunctions.filter(fd => fd.flags(IsInlined)).collect {
+      case fd if p.callGraph.isRecursive(fd) =>
+        ctx.reporter.warning("Refusing to inline recursive function '" + fd.id.asString(ctx) + "'!")
+        fd
+      case fd if !trivialPost(fd) || fd.precOrTrue != BooleanLiteral(true) =>
+        ctx.reporter.warning("Refusing to inline function with non-trivial contracts '" + fd.id.asString(ctx) + "'!")
+        fd
+      case fd if !fd.hasBody =>
+        ctx.reporter.warning("Refusing to inline function bodyless function '" + fd.id.asString(ctx) + "'!")
+    }.toSet
 
     def doInline(fd: FunDef) = fd.flags(IsInlined) && !doNotInline(fd)
 
     for (fd <- p.definedFunctions) {
       fd.fullBody = preMap ({
         case FunctionInvocation(tfd, args) if doInline(tfd.fd) =>
-          Some(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, tfd.fullBody))
+          Some(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, tfd.body.get))
 
         case CaseClassSelector(cct, cc: CaseClass, id) =>
           Some(caseClassSelector(cct, cc, id))
@@ -41,7 +52,6 @@ object InliningPhase extends TransformationPhase {
           None
       }, applyRec = true)(fd.fullBody)
     }
-
     filterFunDefs(p, fd => !doInline(fd))
   }
 
