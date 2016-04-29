@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 /* VSTTE 2010 challenge 1 */
@@ -60,7 +61,7 @@ object MaxSum {
     s
   }) ensuring(res => res >= 0 && res == (to-1)*to*(2*to-1)/6)
 
-  def main = {
+  def _main() = {
     val a = Array(1, 4, 6, 0, 234, 999)
     val sm = maxSum(a)
     val sum = sm._1
@@ -69,5 +70,7 @@ object MaxSum {
     else -1
   } ensuring { _ == 0 }
 
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 

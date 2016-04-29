@@ -66,7 +66,7 @@ object Print {
     }
   }
 
-  def main() = {
+  def _main() = {
     myprint(42)
 
     // Testing escaped characters support
@@ -82,5 +82,8 @@ object Print {
 
     0
   }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 

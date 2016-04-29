@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object CaseClass {
@@ -13,7 +14,7 @@ object CaseClass {
 
   def sub(c: Color, d: Color) = Color(c.r - d.r, c.g - d.g, c.b - d.b)
 
-  def main = {
+  def _main() = {
     val c = green
     val d = cyan
     val z = sub(c, d).g
@@ -21,6 +22,9 @@ object CaseClass {
     if (c.getR == 0) z
     else -1
   } ensuring { _ == 0 }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 
 }
 

@@ -1,9 +1,10 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object AbsArray {
-  def main = {
+  def _main() = {
     val a = Array(0, -1, 2, -3)
 
     def abs() {
@@ -20,6 +21,9 @@ object AbsArray {
 
     a(0) + a(1) - 1 + a(2) - 2 + a(3) - 3 // == 0
   } ensuring { _ == 0 }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 
 

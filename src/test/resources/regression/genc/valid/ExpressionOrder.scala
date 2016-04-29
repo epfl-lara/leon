@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object ExpressionOrder {
@@ -38,7 +39,7 @@ object ExpressionOrder {
     def f4 = (if (i < 0) d else c)._2 // expression result unused
   }
 
-  def main = {
+  def _main() = {
       bool2int(test0(false), 1)  +
       bool2int(test1(42),    2)  +
       bool2int(test2(58),    4)  +
@@ -150,6 +151,9 @@ object ExpressionOrder {
   }.holds
 
   def bool2int(b: Boolean, f: Int) = if (b) 0 else f;
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 
 

@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object BinarySearchFun {
@@ -61,12 +62,15 @@ object BinarySearchFun {
     } else (isSorted, k)
   }
 
-  def main = {
+  def _main() = {
     val a = Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
     val i = binarySearch(a, 2, 0, a.length - 1) // should be 2
     val j = binarySearch(a, 11, 0, a.length - 1) // should be -1
 
     (i - 2) + (j + 1) // == 0
   }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 
