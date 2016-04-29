@@ -170,7 +170,7 @@ case object Focus extends PreprocessingRule("Focus") {
               eb2.eb
             }
 
-            val newPc = Path.empty withBindings vars.map(id => id -> map(id)).toSeq merge cond
+            val newPc = cond withBindings vars.map(id => id -> map(id))
 
             Some(Problem(p.as, ws(c.rhs), p.pc merge newPc, p.phi, p.xs, eb3))
           } else {
@@ -187,9 +187,9 @@ case object Focus extends PreprocessingRule("Focus") {
         if (existsFailing(elsePc.toClause, Map(), evaluator)) {
           val newCase    = MatchCase(WildcardPattern(None), None, NoTree(scrut.getType))
 
-          val eb = qeb.filterIns(elsePc.toClause)
+          val qeb2 = qeb.filterIns(elsePc.toClause)
 
-          val newProblem = Problem(p.as, andJoin(wss), p.pc merge elsePc, p.phi, p.xs, eb)
+          val newProblem = Problem(p.as, andJoin(wss), p.pc merge elsePc, p.phi, p.xs, qeb2)
 
           casesInfos :+= (newCase -> (Some(newProblem), elsePc))
         }
