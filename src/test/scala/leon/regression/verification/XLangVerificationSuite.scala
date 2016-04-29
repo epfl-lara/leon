@@ -18,7 +18,7 @@ class XLangVerificationSuite extends VerificationSuite {
       if (isZ3Available)
         List(List("--solvers=smt-z3", "--feelinglucky"))
       else Nil
-    )).map ("--timeout=150" :: _)
+    )).map ("--timeout=300" :: _)
   }
 
   val testDir: String = "regression/verification/xlang/"
