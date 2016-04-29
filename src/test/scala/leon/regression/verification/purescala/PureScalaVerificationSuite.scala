@@ -32,13 +32,13 @@ trait PureScalaValidSuite extends PureScalaVerificationSuite {
   override def testAll() = testValid()
 }
 
-class PureScalaValidSuite1 extends PureScalaValidSuite {
+class PureScalaValidSuiteLuckyNativeZ3 extends PureScalaValidSuite {
   val optionVariants = List(opts(0))
 }
-class PureScalaValidSuite2 extends PureScalaValidSuite {
+class PureScalaValidSuiteCodeGenNativeZ3 extends PureScalaValidSuite {
   val optionVariants = List(opts(1))
 }
-class PureScalaValidSuite3 extends PureScalaValidSuite { // tests verification with --codegen parameter
+class PureScalaValidSuiteEnumNativeZ3 extends PureScalaValidSuite {
   val optionVariants = List(opts(2))
   override val ignored = Seq("valid/Predicate.scala","valid/TraceInductTacticTest.scala")
 }
@@ -53,8 +53,12 @@ trait PureScalaInvalidSuite extends PureScalaVerificationSuite {
   override def testAll() = testInvalid()
 }
 
-class PureScalaInvalidSuiteFairZ3 extends PureScalaInvalidSuite {
+class PureScalaInvalidSuiteNativeZ3 extends PureScalaInvalidSuite {
   val optionVariants = opts.take(3)
+}
+
+class PureScalaInvalidSuiteZ3 extends PureScalaInvalidSuite {
+  val optionVariants = isZ3Available.option(opts(3)).toList
 }
 
 class PureScalaInvalidSuiteCVC4 extends PureScalaInvalidSuite {
@@ -66,6 +70,3 @@ class PureScalaInvalidSuiteCVC4 extends PureScalaInvalidSuite {
   )
 }
 
-class PureScalaInvalidSuiteZ3 extends PureScalaInvalidSuite {
-  val optionVariants = isZ3Available.option(opts(3)).toList
-}
