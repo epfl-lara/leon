@@ -364,6 +364,22 @@ object CAST { // C Abstract Syntax Tree
     def apply(typ: Type, prefix: String = "") = Val(FreshId(prefix), typ)
   }
 
+  def generateMain(_mainId: Id, return_mainResult: Boolean): Fun = {
+      val id = Id("main")
+      val retType = Int32
+      val argc = Var(Id("argc"), Int32)
+      val argv = Var(Id("argv"), Pointer(Pointer(Char)))
+      val params = argc :: argv :: Nil
+
+      val body =
+        if (return_mainResult) Return(Call(_mainId, Nil))
+        else Call(_mainId, Nil) ~ Return(IntLiteral(0))
+
+      val main = Fun(id, retType, params, Left(body))
+
+      main
+  }
+
 
   /* ---------------------------------------------------------- Details ----- */
   // String & char limitations, see NOTE above

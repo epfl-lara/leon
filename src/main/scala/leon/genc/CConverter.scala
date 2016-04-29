@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Types._
 import xlang.Expressions._
+import utils.Position
 
 import scala.reflect.ClassTag
 
@@ -216,6 +217,38 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     debug(s"Converting function ${fd.id.uniqueName} with annotations: ${fd.annotations}")
 
+    // Special case: the `main(args)` function is actually just a proxy for `_main()`
+    val fun = if (fd.id.name == "main") {
+      val isExtern = fd.annotations contains "extern"
+      if (!isExtern)
+        CAST.unsupported("It is expected for `main(args)` to be extern")
+
+      // Make sure there is a `_main()` function and has the proper signature
+      val uOpt = prog.units find { _ containsDef fd }
+      val u = uOpt getOrElse { internalError(s"FunDef comes from an unexpected place") }
+      val _mainFdOpt = u.definedFunctions find { _.id.name == "_main" }
+      if (_mainFdOpt.isEmpty)
+        CAST.unsupported("Please provide a _main() function")
+
+      val _mainFd = _mainFdOpt.get
+      if (_mainFd.params.size > 0)
+        CAST.unsupported("_main() should not have parameters")
+
+      // TODO Check for main overload and reject the program is such case
+
+      // Artificially create the function (since it is tagged @extern)
+      val is_mainIntegral = _mainFd.returnType == Int32Type
+      CAST.generateMain(convertToId(_mainFd.id), is_mainIntegral)
+    } else {
+      convertToFun_(fd) // normal case
+    }
+
+    registerFun(fun)
+
+    fun
+  }
+
+  private def convertToFun_(fd: FunDef)(implicit funCtx: FunCtx, pos: Position) = {
     // Forbid return of array as they are allocated on the stack
     if (containsArrayType(fd.returnType))
       CAST.unsupported("Returning arrays is currently not allowed")
@@ -269,10 +302,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       Left(body)
     }
 
-    val fun = CAST.Fun(id, retType, params, body)
-    registerFun(fun)
-
-    fun
+    CAST.Fun(id, retType, params, body)
   }
 
   // Return the manual C typedef contained in the class annotation, if any.
@@ -344,10 +374,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case StringLiteral(s)  => CAST.Literal(s)
 
       /* ------------------------------------ Definitions and Statements  ----- */
-      case id: Identifier =>
-        // TODO Check for main overload and reject the program is such case
-        if (id.name == "main") CAST.Id("main") // and not `main0`
-        else                   CAST.Id(id.uniqueName)
+      case id: Identifier => CAST.Id(id.uniqueName)
 
       // Function parameter
       case vd: ValDef  => buildVal(vd.id, vd.getType)
