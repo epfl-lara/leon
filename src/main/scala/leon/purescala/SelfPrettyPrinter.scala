@@ -109,12 +109,11 @@ class SelfPrettyPrinter {
       case _ => false
     } match {
       case None => orElse
-      case Some(l) =>
-        ctx.reporter.debug("Executing pretty printer for type " + v.getType + " : " + l + " on " + v)
+      case Some(Lambda(Seq(ValDef(id)), body)) =>
+        ctx.reporter.debug("Executing pretty printer for type " + v.getType + " : " + v + " on " + v)
         val ste = new DefaultEvaluator(ctx, program)
         try {
-          val toEvaluate = application(l, Seq(v))
-          val result = ste.eval(toEvaluate)
+          val result = ste.eval(body, Map(id -> v))
           
           result.result match {
             case Some(StringLiteral(res)) if res != "" =>

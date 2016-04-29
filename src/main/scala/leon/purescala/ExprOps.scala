@@ -2142,9 +2142,10 @@ object ExprOps extends GenTreeOps[Expr] {
     case _ =>
       fun
   }
-  var msgs: String = ""
-  implicit class BooleanAdder(b: Boolean) {
-    def <(msg: String) = {if(!b) msgs += msg; b}
+  
+  // Use this only to debug isValueOfType
+  private implicit class BooleanAdder(b: Boolean) {
+    @inline def <(msg: String) = {/*if(!b) println(msg); */b}
   }
 
   /** Returns true if expr is a value of type t */
@@ -2181,11 +2182,12 @@ object ExprOps extends GenTreeOps[Expr] {
         (ct == ct2) <  s"$ct not equal to $ct2" &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
       case (FiniteLambda(mapping, default, tpe), exTpe@FunctionType(ins, out)) =>
+        variablesOf(e).isEmpty &&
         tpe == exTpe
       case (Lambda(valdefs, body), FunctionType(ins, out)) =>
         variablesOf(e).isEmpty &&
-        (valdefs zip ins forall (vdin => (vdin._1.getType == vdin._2) < s"${vdin._1.getType} is not equal to ${vdin._2}")) &&
-        (body.getType == out) < s"${body.getType} is not equal to ${out}"
+        (valdefs zip ins forall (vdin => TypeOps.isSubtypeOf(vdin._2, vdin._1.getType) < s"${vdin._2} is not a subtype of ${vdin._1.getType}")) &&
+        (TypeOps.isSubtypeOf(body.getType, out)) < s"${body.getType} is not a subtype of ${out}"
       case (FiniteBag(elements, fbtpe), BagType(tpe)) =>
         fbtpe == tpe && elements.forall{ case (key, value) => isValueOfType(key, tpe) && isValueOfType(value, IntegerType) }
       case _ => false
