@@ -13,7 +13,7 @@ assume a Pure Scala only AST.
 
   - [[leon.codegen]] provides bytecode generator for Leon programs. Enable the conversion of a [[leon.purescala.Definitions.Program]] to JVM bytecode.
 
-  - [[leon.datagen]] provides a generator of expressions (trees), based on vanuatoo.
+  - [[leon.datagen]] provides generators of expressions (trees).
 
   - [[leon.evaluators]] implements different evaluators for Leon programs in Pure Scala. 
 

@@ -333,7 +333,7 @@ class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram with helpers.Expres
       val eval = new CodeGenEvaluator(fix._1, fix._2, CodeGenParams(
         maxFunctionInvocations = if (requireMonitor) 1000 else -1, // Monitor calls and abort execution if more than X calls
         checkContracts = true,      // Generate calls that checks pre/postconditions
-        doInstrument = doInstrument // Instrument reads to case classes (mainly for vanuatoo)
+        doInstrument = doInstrument // Instrument reads to case classes
       ))
 
       (eval.eval(fcall(name + ".test")()).result, exp) match {
