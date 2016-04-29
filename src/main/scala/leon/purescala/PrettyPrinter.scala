@@ -189,8 +189,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case RealToString(expr)     => p"$expr.toString"
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
-      case SubString(expr, start, end) => p"leon.lang.StrOps.substring($expr, $start, $end)"
-      case StringLength(expr)          => p"leon.lang.StrOps.length($expr)"
+      case SubString(expr, start, end) => p"$expr.substring($start, $end)"
+      case StringLength(expr)          => p"$expr.length"
 
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"

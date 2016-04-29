@@ -9,19 +9,6 @@ public class StrOps {
 		return a + b;
 	}
 
-	public static BigInt length(String a) {
-		return new BigInt(String.valueOf(a.length()));
-	}
-
-	public static String substring(String a, BigInt start, BigInt end) {
-		if (start.greaterEquals(end) || start.greaterEquals(length(a))
-				|| end.lessEquals(new BigInt("0")))
-			throw new RuntimeException("Invalid substring indices : " + start + ", " + end + " for string \""+a+"\"");
-		else
-			return a.substring(start.underlying().intValue(), end.underlying()
-					.intValue());
-	}
-
 	public static String bigIntToString(BigInt a) {
 		return a.toString();
 	}

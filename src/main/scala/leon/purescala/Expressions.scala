@@ -595,7 +595,7 @@ object Expressions {
       val ext = expr.getType
       val st = start.getType
       val et = end.getType
-      if (ext == StringType && (st == IntegerType || st == Int32Type) && (et == IntegerType || et == Int32Type)) StringType
+      if (ext == StringType && st == Int32Type && et == Int32Type) StringType
       else Untyped
     }
   }
