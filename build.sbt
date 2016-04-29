@@ -148,12 +148,19 @@ lazy val IntegrTest = config("integration") extend(Test)
 testOptions in IntegrTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.integration."))
 
 
+def regressionFilter(name: String, native: Boolean = false): Boolean = name.startsWith("leon.regression") && (name.endsWith("NativeZ3") == native)
 
 // Regression Tests
 lazy val RegressionTest = config("regression") extend(Test)
 
-testOptions in RegressionTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.regression."))
+testOptions in RegressionTest := Seq(Tests.Argument("-oDF"), Tests.Filter(regressionFilter(_)))
 
+// Regression Tests that heavily depend on native Z3
+lazy val NativeZ3RegressionTest = config("native") extend(Test)
+
+testOptions in NativeZ3RegressionTest := Seq(Tests.Argument("-oDF"), Tests.Filter(regressionFilter(_, native = true)))
+
+parallelExecution in NativeZ3RegressionTest := false
 
 
 // Isabelle Tests
@@ -179,9 +186,10 @@ lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10ea
 lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "57834acfe2e3bc36862be52e4d99829bb8ff0ca7")
 
 lazy val root = (project in file(".")).
-  configs(RegressionTest, IsabelleTest, GenCTest, IntegrTest).
+  configs(RegressionTest, NativeZ3RegressionTest, IsabelleTest, GenCTest, IntegrTest).
   dependsOn(bonsai).
   dependsOn(scalaSmtlib).
+  settings(inConfig(NativeZ3RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IsabelleTest)(Defaults.testTasks ++ testSettings): _*).
