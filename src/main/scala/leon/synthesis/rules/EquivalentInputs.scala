@@ -15,6 +15,8 @@ import purescala.Types.CaseClassType
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
+    val simplifier = Simplifiers.bestEffort(hctx, hctx.program)(_:Expr)
+
     var subst = Map.empty[Identifier, Expr]
     var reverseSubst = Map.empty[Identifier, Expr]
 
@@ -54,7 +56,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
       obsolete ++= equivalences.map(_._1)
       free ++= unbound
 
-      def replace(e: Expr) = replaceFromIDs(equivalences.toMap, e)
+      def replace(e: Expr) = simplifier(replaceFromIDs(equivalences.toMap, e))
       subst = subst.mapValues(replace) ++ equivalences
 
       val reverse = equivalences.toMap.flatMap { case (id, CaseClass(cct, fields)) =>
@@ -85,13 +87,13 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         })
       }
 
-      val simplifier = Simplifiers.bestEffort(hctx, hctx.program)(_:Expr, newPC)
+      val simplifierWithNewPC = Simplifiers.bestEffort(hctx, hctx.program)(_:Expr, newPC)
 
       val sub = p.copy(
         as = newAs,
         ws = replaceFromIDs(subst, p.ws),
         pc = newPC,
-        phi = simplifier(replaceFromIDs(subst, p.phi)),
+        phi = simplifierWithNewPC(replaceFromIDs(subst, p.phi)),
         eb = newBank
       )
 
