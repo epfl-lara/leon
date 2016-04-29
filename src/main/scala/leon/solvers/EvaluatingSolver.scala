@@ -12,10 +12,23 @@ trait EvaluatingSolver extends Solver {
 
   val useCodeGen: Boolean
 
-  lazy val evaluator: DeterministicEvaluator =
-    if (useCodeGen) {
-      new CodeGenEvaluator(context, program)
+  private var _bank: EvaluationBank = new EvaluationBank
+  private var _evaluator: DeterministicEvaluator = _
+
+  def evaluator: DeterministicEvaluator = {
+    if (_evaluator eq null) _evaluator = if (useCodeGen) {
+      new CodeGenEvaluator(context, program, bank)
     } else {
-      new DefaultEvaluator(context, program)
+      new DefaultEvaluator(context, program, bank)
     }
+    _evaluator
+  }
+
+  def bank: EvaluationBank = _bank
+  def setBank(bank: EvaluationBank): this.type = {
+    _bank = bank
+    _evaluator = null
+    this
+  }
 }
+

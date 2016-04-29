@@ -75,6 +75,14 @@ object SolverFactory {
     }
   }
 
+  def getEvalSolver(ctx: LeonContext, program: Program, bank: evaluators.EvaluationBank): SolverFactory[EvaluatingSolver with TimeoutSolver] = {
+    val factory = getFromSettings(ctx, program)
+    SolverFactory(factory.name, () => factory.getNewSolver() match {
+      case ev: EvaluatingSolver => ev.setBank(bank)
+      case s => ctx.reporter.fatalError("Cannot use non-evaluating solver " + s + " for evaluation")
+    })
+  }
+
   private def showSolvers(ctx: LeonContext) = {
     ctx.reporter.error(availableSolversPretty)
     ctx.reporter.fatalError("Aborting Leon...")

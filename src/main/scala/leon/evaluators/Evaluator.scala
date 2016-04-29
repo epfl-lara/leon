@@ -48,6 +48,8 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
 
 trait DeterministicEvaluator extends Evaluator {
   type Value = Expr
+
+  val bank: EvaluationBank
   
   /**Evaluates the environment first, resolving non-cyclic dependencies, and then evaluate the expression */
   override def eval(expr: Expr, mapping: Map[Identifier, Expr]) : EvaluationResult = {
@@ -63,7 +65,7 @@ trait DeterministicEvaluator extends Evaluator {
         }
     })
   }
-  
+
   /** Returns an evaluated environment. If it fails, removes all non-values from the environment. */
   def evalEnv(mapping: Iterable[(Identifier, Expr)]): Map[Identifier, Value] = {
     if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
@@ -107,9 +109,9 @@ trait NDEvaluator extends Evaluator {
   type Value = Stream[Expr]
 }
 
-object Evaluator {
+class EvaluationBank {
 
-  /* Global set that tracks checked case-class invariants
+  /* Shared set that tracks checked case-class invariants
    *
    * Checking case-class invariants can require invoking a solver
    * on a ground formula that contains a reference to `this` (the
@@ -118,9 +120,10 @@ object Evaluator {
    * will again contain the constructor for the current case-class.
    * This will create an invariant-checking loop.
    *
-   * To avoid this problem, we introduce a global set of invariants
-   * that have already been checked. This set is used by all
-   * evaluators to determine whether the invariant of a given case
+   * To avoid this problem, we introduce a set of invariants
+   * that have already been checked that is shared between related
+   * solvers and evaluators. This set is used by the evaluators to
+   * determine whether the invariant of a given case
    * class should be checked.
    */
   private val checkCache: MutableMap[CaseClass, CheckStatus] = MutableMap.empty
@@ -168,5 +171,4 @@ object Evaluator {
   def invariantResult(cc: CaseClass, success: Boolean): Unit = synchronized {
     checkCache(cc) = Complete(success)
   }
-
 }

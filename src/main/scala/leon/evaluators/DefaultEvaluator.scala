@@ -5,7 +5,7 @@ package evaluators
 
 import purescala.Definitions.Program
 
-class DefaultEvaluator(ctx: LeonContext, prog: Program)
-  extends RecursiveEvaluator(ctx, prog, 50000)
-  with HasDefaultGlobalContext
-  with HasDefaultRecContext
+class DefaultEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new EvaluationBank)
+  extends RecursiveEvaluator(ctx, prog, bank, 50000)
+     with HasDefaultGlobalContext
+     with HasDefaultRecContext

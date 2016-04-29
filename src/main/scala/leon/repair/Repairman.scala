@@ -227,7 +227,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val maxEnumerated = 1000
     val maxValid      = 400
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
 
     val inputsToExample: Seq[Expr] => Example = { ins =>
       evaluator.eval(functionInvocation(fd, ins)) match {

@@ -14,14 +14,16 @@ import codegen.CodeGenParams
 import leon.codegen.runtime.LeonCodeGenRuntimeException
 import leon.codegen.runtime.LeonCodeGenEvaluationException
 
-class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
+class CodeGenEvaluator(ctx: LeonContext, val unit: CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
 
   val name = "codegen-eval"
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 
+  val bank = unit.bank
+
   /** Another constructor to make it look more like other `Evaluator`s. */
-  def this(ctx : LeonContext, prog : Program, params: CodeGenParams = CodeGenParams.default) {
-    this(ctx, new CompilationUnit(ctx, prog, params))
+  def this(ctx: LeonContext, prog: Program, bank: EvaluationBank = new EvaluationBank, params: CodeGenParams = CodeGenParams.default) {
+    this(ctx, new CompilationUnit(ctx, prog, bank, params))
   }
 
   private def compileExpr(expression: Expr, args: Seq[Identifier]): Option[CompiledExpression] = {

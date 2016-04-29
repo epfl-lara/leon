@@ -215,7 +215,7 @@ trait AbstractUnrollingSolver[T]
     val newExpr = model.toSeq.foldLeft(expr){
       case (e, (k, v)) => let(k, v, e)
     }
-    
+
     evaluator.eval(newExpr) match {
       case EvaluationResults.Successful(BooleanLiteral(true)) =>
         reporter.debug("- Model validated.")

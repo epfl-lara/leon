@@ -119,7 +119,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   def generateForPC(ids: List[Identifier], pc: Expr, ctx: LeonContext, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
     //println(program.definedClasses)
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
     val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
     val solverF   = SolverFactory.getFromSettings(ctx, program)
     val solverDataGen = new SolverDataGen(ctx, program, solverF)
