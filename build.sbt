@@ -162,6 +162,8 @@ testOptions in NativeZ3RegressionTest := Seq(Tests.Argument("-oDF"), Tests.Filte
 
 parallelExecution in NativeZ3RegressionTest := false
 
+logBuffered in NativeZ3RegressionTest := false
+
 
 // Isabelle Tests
 lazy val IsabelleTest = config("isabelle") extend(Test)
