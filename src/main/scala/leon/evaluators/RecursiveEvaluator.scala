@@ -69,6 +69,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case Let(i,ex,b) =>
       val first = e(ex)
+      //println(s"Eval $i to $first")
       e(b)(rctx.withNewVar(i, first), gctx)
 
     case Assert(cond, oerr, body) =>
@@ -131,6 +132,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       val evArgs = args map e
 
+      //println(s"calling ${tfd.id} with $evArgs")
+
       // build a mapping for the function...
       val frame = rctx.withNewVars(tfd.paramSubst(evArgs))
 
@@ -154,6 +157,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
         e(body)(frame, gctx)
       }
+
+      //println(s"Gave $callResult")
 
       tfd.postcondition match  {
         case Some(post) =>

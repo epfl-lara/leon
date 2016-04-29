@@ -59,8 +59,8 @@ trait DeterministicEvaluator extends Evaluator {
         case Right(errorMessage) =>
           val m = mapping.filter { case (k, v) => purescala.ExprOps.isValue(v) }
           super.eval(expr, m) match {
-            case res@evaluators.EvaluationResults.Successful(result) => res
-            case _ => evaluators.EvaluationResults.EvaluatorError(errorMessage)
+            case res@EvaluationResults.Successful(result) => res
+            case _ => EvaluationResults.EvaluatorError(errorMessage)
           }
       }
     }
@@ -73,7 +73,8 @@ trait DeterministicEvaluator extends Evaluator {
     } else {
       _evalEnv(mapping) match {
         case Left(m) => m
-        case Right(msg) => mapping.filter(x => purescala.ExprOps.isValue(x._2)).toMap
+        case Right(msg) =>
+          mapping.filter(x => purescala.ExprOps.isValue(x._2)).toMap
       }
     }
   }
@@ -83,7 +84,7 @@ trait DeterministicEvaluator extends Evaluator {
   private def _evalEnv(mapping: Iterable[(Identifier, Expr)]): Either[Map[Identifier, Value], String] = {
     val (evaled, nonevaled) = mapping.partition{ case (id, expr) => purescala.ExprOps.isValue(expr)}
     var f= nonevaled.toSet
-    var mBuilder = collection.mutable.ListBuffer[(Identifier, Value)]() ++= evaled
+    var mBuilder = scala.collection.mutable.ListBuffer[(Identifier, Value)]() ++= evaled
     var changed = true
     while(f.nonEmpty && changed) {
       changed = false
@@ -100,7 +101,7 @@ trait DeterministicEvaluator extends Evaluator {
     if(!changed) {
       val str = "In the context " + mapping + ",\n" +
       (for((i, v) <- f) yield {
-        s"eval(${v}) returned the error: " + eval(v, mBuilder.toMap)
+        s"eval($v) returned the error: " + eval(v, mBuilder.toMap)
       }).mkString("\n")
       Right(str)
     } else Left(mBuilder.toMap)
