@@ -38,7 +38,6 @@ import _root_.smtlib.interpreters.ProcessInterpreter
 trait SMTLIBTarget extends Interruptible {
   val context: LeonContext
   val program: Program
-  protected def reporter = context.reporter
 
   def targetName: String
 
@@ -73,7 +72,7 @@ trait SMTLIBTarget extends Interruptible {
 
   /* Printing VCs */
   protected lazy val debugOut: Option[java.io.FileWriter] = {
-    if (reporter.isDebugEnabled) {
+    if (context.reporter.isDebugEnabled) {
       val file = context.files.headOption.map(_.getName).getOrElse("NA")
       val n = DebugFileNumbers.next(targetName + file)
 
@@ -82,7 +81,7 @@ trait SMTLIBTarget extends Interruptible {
       val javaFile = new java.io.File(fileName)
       javaFile.getParentFile.mkdirs()
 
-      reporter.debug(s"Outputting smt session into $fileName")
+      context.reporter.debug(s"Outputting smt session into $fileName")
 
       val fw = new java.io.FileWriter(javaFile, false)
 
@@ -103,7 +102,7 @@ trait SMTLIBTarget extends Interruptible {
     }
     interpreter.eval(cmd) match {
       case err @ ErrorResponse(msg) if !hasError && !interrupted && !rawOut =>
-        reporter.warning(s"Unexpected error from $targetName solver: $msg")
+        context.reporter.warning(s"Unexpected error from $targetName solver: $msg")
         //println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
         // Store that there was an error. Now all following check()
         // invocations will return None
@@ -117,7 +116,7 @@ trait SMTLIBTarget extends Interruptible {
   def parseSuccess() = {
     val res = interpreter.parser.parseGenResponse
     if (res != Success) {
-      reporter.warning("Unnexpected result from " + targetName + ": " + res + " expected success")
+      context.reporter.warning("Unnexpected result from " + targetName + ": " + res + " expected success")
     }
   }
 
@@ -895,7 +894,7 @@ trait SMTLIBTarget extends Interruptible {
             Equals(ra, fromSMT(b, ra.getType))
 
           case _ =>
-            reporter.fatalError("Function " + app + " not handled in fromSMT: " + s)
+            context.reporter.fatalError("Function " + app + " not handled in fromSMT: " + s)
         }
 
       case (Core.True(), Some(BooleanType))  => BooleanLiteral(true)
@@ -910,7 +909,7 @@ trait SMTLIBTarget extends Interruptible {
         }
 
       case _ =>
-        reporter.fatalError(s"Unhandled case in fromSMT: $t : ${otpe.map(_.asString(context)).getOrElse("?")} (${t.getClass})")
+        context.reporter.fatalError(s"Unhandled case in fromSMT: $t : ${otpe.map(_.asString(context)).getOrElse("?")} (${t.getClass})")
 
     }
   }

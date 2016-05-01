@@ -22,7 +22,7 @@ import purescala.Types._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
+class UninterpretedZ3Solver(val sctx: SolverContext, val program: Program)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
 

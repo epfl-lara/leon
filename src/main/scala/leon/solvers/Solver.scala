@@ -7,12 +7,19 @@ import leon.utils.{DebugSectionSolver, Interruptible}
 import purescala.Expressions._
 import purescala.Common.Tree
 import verification.VC
+import evaluators._
+
+case class SolverContext(context: LeonContext, bank: EvaluationBank) {
+  lazy val reporter = context.reporter
+  override def clone = SolverContext(context, bank.clone)
+}
 
 trait Solver extends Interruptible {
   def name: String
-  val context: LeonContext
+  val sctx: SolverContext
 
-  implicit lazy val leonContext = context
+  implicit lazy val context = sctx.context
+  lazy val reporter = sctx.reporter
 
   // This is ugly, but helpful for smtlib solvers
   def dbg(msg: => Any) {}
@@ -41,7 +48,7 @@ trait Solver extends Interruptible {
 
   protected def unsupported(t: Tree): Nothing = {
     val err = SolverUnsupportedError(t, this, None)
-    leonContext.reporter.warning(err.getMessage)
+    context.reporter.warning(err.getMessage)
     throw err
   }
 

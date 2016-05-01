@@ -1,16 +1,18 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
-package solvers.smtlib
+package solvers
+package smtlib
 
 import OptionParsers._
 
 import solvers.theories._
 import purescala.Definitions.Program
 
-class SMTLIBCVC4Solver(context: LeonContext, program: Program)
-  extends SMTLIBSolver(context, program, new BagEncoder(context, program))
-     with SMTLIBCVC4Target {
+class SMTLIBCVC4Solver(context: SolverContext, program: Program)
+  extends SMTLIBSolver(context, program, new BagEncoder(context.context, program))
+     with SMTLIBCVC4Target
+     with cvc4.CVC4Solver {
 
   def targetName = "cvc4"
 

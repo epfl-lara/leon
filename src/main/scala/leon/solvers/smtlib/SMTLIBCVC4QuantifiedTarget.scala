@@ -22,7 +22,7 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target with SMTLIBQuantifiedT
     val (funs, exploredAll) = typedTransitiveCallees(Set(tfd), Some(typedFunDefExplorationLimit))
 
     if (!exploredAll) {
-      reporter.warning(
+      context.reporter.warning(
         "Did not manage to explore the space of typed functions " +
           s"transitively called from ${tfd.id}. The solver may fail"
       )

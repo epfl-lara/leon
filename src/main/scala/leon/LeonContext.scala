@@ -27,6 +27,8 @@ case class LeonContext(
 
   def findOptionOrDefault[A: ClassTag](optDef: LeonOptionDef[A]): A =
     findOption(optDef).getOrElse(optDef.default)
+
+  def toSctx = solvers.SolverContext(this, new evaluators.EvaluationBank)
 }
 
 object LeonContext {

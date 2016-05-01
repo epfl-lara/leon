@@ -29,7 +29,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
   def getNewInterpreter(ctx: LeonContext) = {
     val opts = interpreterOps(ctx)
-    reporter.debug("Invoking solver "+targetName+" with "+opts.mkString(" "))
+    context.reporter.debug("Invoking solver "+targetName+" with "+opts.mkString(" "))
 
     new Z3Interpreter("z3", opts.toArray)
   }

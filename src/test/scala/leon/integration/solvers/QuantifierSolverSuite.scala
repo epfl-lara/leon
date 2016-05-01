@@ -22,16 +22,10 @@ class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
 
   override val leonOpts = List("--checkmodels")
 
-  val getFactories: Seq[(String, (LeonContext, Program) => Solver)] = {
-    (if (SolverFactory.hasNativeZ3) Seq(
-      ("fairz3",   (ctx: LeonContext, pgm: Program) => new FairZ3Solver(ctx, pgm))
-    ) else Nil) ++
-    (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
-    ) else Nil) ++
-    (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new CVC4UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
-    ) else Nil)
+  val solverNames: Seq[String] = {
+    (if (SolverFactory.hasNativeZ3) Seq("fairz3") else Nil) ++
+    (if (SolverFactory.hasZ3)       Seq("smt-z3") else Nil) ++
+    (if (SolverFactory.hasCVC4)     Seq("smt-cvc4") else Nil)
   }
 
   val f1: Identifier = FreshIdentifier("f1", FunctionType(Seq(IntegerType, IntegerType), IntegerType))
@@ -119,10 +113,10 @@ class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
     }
   }
 
-  for ((sname, sf) <- getFactories; (ename, expr) <- satisfiable) {
+  for (sname <- solverNames; (ename, expr) <- satisfiable) {
     test(s"Satisfiable quantified formula $ename in $sname") { implicit fix =>
       val (ctx, pgm) = fix
-      val solver = sf(ctx, pgm)
+      val solver = SolverFactory.getFromName(ctx, pgm)(sname).getNewSolver()
       checkSolver(solver, expr, true)
     }
 
@@ -137,10 +131,10 @@ class QuantifierSolverSuite extends LeonTestSuiteWithProgram {
     */
   }
 
-  for ((sname, sf) <- getFactories; (ename, expr) <- unsatisfiable) {
+  for (sname <- solverNames; (ename, expr) <- unsatisfiable) {
     test(s"Unsatisfiable quantified formula $ename in $sname") { implicit fix =>
       val (ctx, pgm) = fix
-      val solver = sf(ctx, pgm)
+      val solver = SolverFactory.getFromName(ctx, pgm)(sname).getNewSolver()
       checkSolver(solver, expr, false)
     }
   }

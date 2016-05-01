@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, val solvers: Seq[S])
+class PortfolioSolver[S <: Solver with Interruptible](val sctx: SolverContext, val solvers: Seq[S])
         extends Solver with NaiveAssumptionSolver {
 
   val name = "Pfolio"
@@ -36,7 +36,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   def check: Option[Boolean] = {
     model = Model.empty
 
-    context.reporter.debug("Running portfolio check")
+    reporter.debug("Running portfolio check")
     // solving
     val fs = solvers.map { s =>
       Future {
@@ -50,7 +50,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
           (s, result, model)
         } catch {
           case _: StackOverflowError =>
-            context.reporter.warning("Stack Overflow while running solver.check()!")
+            reporter.warning("Stack Overflow while running solver.check()!")
             (s, None, Model.empty)
         }
       }
@@ -63,12 +63,12 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         model = m
         resultSolver = s.getResultSolver
         resultSolver.foreach { solv =>
-          context.reporter.debug("Solved with "+solv)
+          reporter.debug("Solved with "+solv)
         }
         solvers.foreach(_.interrupt())
         r
       case None =>
-        context.reporter.debug("No solver succeeded")
+        reporter.debug("No solver succeeded")
         //fs.foreach(f => println(f.value))
         None
     }

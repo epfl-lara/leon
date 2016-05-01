@@ -63,7 +63,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
     if (usePortfolio) {
       if (useIncrementalSolvingForVCs)
         throw new IllegalArgumentException("Cannot perform incremental solving with portfolio solvers!")
-      new PortfolioSolverFactory(leonctx, Seq(
+      new PortfolioSolverFactory(leonctx.toSctx, Seq(
         SolverFactory.getFromName(leonctx, program)("smt-cvc4-u"),
         SolverFactory.getFromName(leonctx, program)("smt-z3-u")))
     } else

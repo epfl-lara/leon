@@ -51,8 +51,11 @@ object SolverFactory {
       case (name, desc) =>  f"\n  $name%-14s : $desc"
     }.mkString("")
 
-  def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    val names = ctx.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
+  def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] =
+    getFromSettings(SolverContext(ctx, new evaluators.EvaluationBank), program)
+
+  def getFromSettings(implicit ctx: SolverContext, program: Program): SolverFactory[TimeoutSolver] = {
+    val names = ctx.context.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
 
     if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
       if (hasZ3) {
@@ -75,20 +78,15 @@ object SolverFactory {
     }
   }
 
-  def getEvalSolver(ctx: LeonContext, program: Program, bank: evaluators.EvaluationBank): SolverFactory[EvaluatingSolver with TimeoutSolver] = {
-    val factory = getFromSettings(ctx, program)
-    SolverFactory(factory.name, () => factory.getNewSolver() match {
-      case ev: EvaluatingSolver => ev.setBank(bank)
-      case s => ctx.reporter.fatalError("Cannot use non-evaluating solver " + s + " for evaluation")
-    })
-  }
-
-  private def showSolvers(ctx: LeonContext) = {
+  private def showSolvers(ctx: SolverContext) = {
     ctx.reporter.error(availableSolversPretty)
     ctx.reporter.fatalError("Aborting Leon...")
   }
 
-  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
+  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] =
+    getFromName(SolverContext(ctx, new evaluators.EvaluationBank), program)(name)
+
+  def getFromName(ctx: SolverContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "enum"           => SolverFactory(name, () => new EnumerationSolver(ctx, program) with TimeoutSolver)
     case "ground"         => SolverFactory(name, () => new GroundSolver(ctx, program) with TimeoutSolver)
     case "fairz3"         => SolverFactory(name, () => new FairZ3Solver(ctx, program) with TimeoutSolver)
@@ -101,13 +99,13 @@ object SolverFactory {
     case "smt-z3-u"       => SolverFactory(name, () => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
     case "smt-cvc4-u"     => SolverFactory(name, () => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case "nativez3-u"     => SolverFactory(name, () => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
-    case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx, program)
+    case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx.context, program)
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")
       showSolvers(ctx)
   }
 
-  def getFromNames(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
+  def getFromNames(ctx: SolverContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
 
     val selectedSolvers = names.map(getFromName(ctx, program))
 

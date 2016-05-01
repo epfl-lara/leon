@@ -5,7 +5,7 @@ package solvers.z3
 
 import leon.utils._
 
-import z3.scala._
+import z3.scala.{Z3Solver => ScalaZ3Solver, _}
 import solvers._
 import purescala.Common._
 import purescala.Definitions._
@@ -19,17 +19,13 @@ import purescala.Types._
 case class UnsoundExtractionException(ast: Z3AST, msg: String)
   extends Exception("Can't extract " + ast + " : " + msg)
 
-object AbstractZ3Solver
-
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver extends Solver {
+trait AbstractZ3Solver extends Z3Solver {
 
   val program : Program
 
   val library = program.library
-
-  protected val reporter : Reporter = context.reporter
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -57,7 +53,7 @@ trait AbstractZ3Solver extends Solver {
   // Well... actually maybe not, but let's just leave it here to be sure
   toggleWarningMessages(true)
 
-  protected var solver : Z3Solver  = null
+  protected var solver : ScalaZ3Solver = null
 
   override def free(): Unit = {
     freed = true

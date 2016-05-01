@@ -14,7 +14,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.DefOps
-import solvers.{PartialModel, Model, SolverFactory}
+import solvers.{PartialModel, Model, SolverFactory, SolverContext}
 import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
@@ -618,7 +618,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
           newOptions.exists(no => opt.optionDef == no.optionDef)
         } ++ newOptions)
 
-        val solverf = SolverFactory.getEvalSolver(newCtx, program, bank).withTimeout(1.second)
+        val sctx    = SolverContext(newCtx, bank)
+        val solverf = SolverFactory.getFromSettings(sctx, program).withTimeout(1.second)
         val solver  = solverf.getNewSolver()
 
         try {
@@ -749,7 +750,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       clpCache.getOrElse((choose, ins), {
         val tStart = System.currentTimeMillis
 
-        val solverf = SolverFactory.getFromSettings(ctx, program)
+        val sctx    = SolverContext(ctx, bank)
+        val solverf = SolverFactory.getFromSettings(sctx, program)
         val solver  = solverf.getNewSolver()
 
         try {

@@ -12,4 +12,4 @@ object SolverUnsupportedError {
 }
 
 case class SolverUnsupportedError(t: Tree, s: Solver, reason: Option[String] = None)
-  extends Unsupported(t, SolverUnsupportedError.msg(t,s,reason))(s.leonContext)
+  extends Unsupported(t, SolverUnsupportedError.msg(t,s,reason))(s.context)

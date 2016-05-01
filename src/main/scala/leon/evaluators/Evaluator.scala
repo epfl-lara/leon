@@ -109,8 +109,37 @@ trait NDEvaluator extends Evaluator {
   type Value = Stream[Expr]
 }
 
-class EvaluationBank {
+/* Status of invariant checking
+ *
+ * For a given invariant, its checking status can be either
+ * - Complete(success) : checking has been performed previously and
+ *                       resulted in a value of `success`.
+ * - Pending           : invariant is currently being checked somewhere
+ *                       in the program. If it fails, the failure is
+ *                       assumed to be bubbled up to all relevant failure
+ *                       points.
+ * - NoCheck           : invariant has never been seen before. Discovering
+ *                       NoCheck for an invariant will automatically update
+ *                       the status to `Pending` as this creates a checking
+ *                       obligation.
+ */
+sealed abstract class CheckStatus {
+  /* The invariant was invalid and this particular case class can't exist */
+  def isFailure: Boolean = this match {
+    case Complete(status) => !status
+    case _ => false
+  }
 
+  /* The invariant has never been checked before and the checking obligation
+   * therefore falls onto the first caller of this method. */
+  def isRequired: Boolean = this == NoCheck
+}
+
+case class Complete(success: Boolean) extends CheckStatus
+case object Pending extends CheckStatus
+case object NoCheck extends CheckStatus
+
+class EvaluationBank private(
   /* Shared set that tracks checked case-class invariants
    *
    * Checking case-class invariants can require invoking a solver
@@ -126,37 +155,9 @@ class EvaluationBank {
    * determine whether the invariant of a given case
    * class should be checked.
    */
-  private val checkCache: MutableMap[CaseClass, CheckStatus] = MutableMap.empty
+  checkCache: MutableMap[CaseClass, CheckStatus]) {
 
-  /* Status of invariant checking
-   *
-   * For a given invariant, its checking status can be either
-   * - Complete(success) : checking has been performed previously and
-   *                       resulted in a value of `success`.
-   * - Pending           : invariant is currently being checked somewhere
-   *                       in the program. If it fails, the failure is
-   *                       assumed to be bubbled up to all relevant failure
-   *                       points.
-   * - NoCheck           : invariant has never been seen before. Discovering
-   *                       NoCheck for an invariant will automatically update
-   *                       the status to `Pending` as this creates a checking
-   *                       obligation.
-   */
-  sealed abstract class CheckStatus {
-    /* The invariant was invalid and this particular case class can't exist */
-    def isFailure: Boolean = this match {
-      case Complete(status) => !status
-      case _ => false
-    }
-
-    /* The invariant has never been checked before and the checking obligation
-     * therefore falls onto the first caller of this method. */
-    def isRequired: Boolean = this == NoCheck
-  }
-
-  case class Complete(success: Boolean) extends CheckStatus
-  case object Pending extends CheckStatus
-  case object NoCheck extends CheckStatus
+  def this() = this(MutableMap.empty)
 
   /* Status of the invariant checking for `cc` */
   def invariantCheck(cc: CaseClass): CheckStatus = synchronized {
@@ -171,4 +172,6 @@ class EvaluationBank {
   def invariantResult(cc: CaseClass, success: Boolean): Unit = synchronized {
     checkCache(cc) = Complete(success)
   }
+
+  override def clone: EvaluationBank = new EvaluationBank(checkCache.clone)
 }

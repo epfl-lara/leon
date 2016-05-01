@@ -76,8 +76,6 @@ trait AbstractUnrollingSolver[T]
 
   protected var interrupted : Boolean = false
 
-  protected val reporter = context.reporter
-
   lazy val templateGenerator = new TemplateGenerator(theoryEncoder, templateEncoder, assumePreHolds)
   lazy val unrollingBank = new UnrollingBank(context, templateGenerator)
 
@@ -463,7 +461,7 @@ trait AbstractUnrollingSolver[T]
 }
 
 class UnrollingSolver(
-  val context: LeonContext,
+  val sctx: SolverContext,
   val program: Program,
   underlying: Solver,
   theories: TheoryEncoder = new NoEncoder

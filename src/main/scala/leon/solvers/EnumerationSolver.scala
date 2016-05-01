@@ -12,7 +12,7 @@ import purescala.ExprOps._
 
 import datagen._
 
-class EnumerationSolver(val context: LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
+class EnumerationSolver(val sctx: SolverContext, val program: Program) extends Solver with NaiveAssumptionSolver {
   def name = "Enum"
 
   val maxTried = 10000
@@ -52,7 +52,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   def check: Option[Boolean] = {
     val timer = context.timers.solvers.enum.check.start()
     val res = try {
-      datagen = Some(new VanuatooDataGen(context, program))
+      datagen = Some(new VanuatooDataGen(context, program, sctx.bank))
       if (interrupted) {
         None
       } else {
