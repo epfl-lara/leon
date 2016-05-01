@@ -33,6 +33,7 @@ object RealTimeQueue {
   case class SCons[T](x: T, tail: () => Stream[T]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
+  @inline
   def ssize[T](l: () => Stream[T]): BigInt = (l()*).size
 
   @inline
@@ -113,7 +114,7 @@ object RealTimeQueue {
     require(q.valid)
     val f = q.f
     val r = Cons(x, q.r)
-    val s = q.f
+    val s = q.s
     createQ(f, r, s)
   } ensuring (res => res.valid && time <= 60)
 
