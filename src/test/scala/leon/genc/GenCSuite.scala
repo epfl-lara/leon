@@ -16,8 +16,8 @@ import scala.sys.process._
 
 import org.scalatest.{ Args, Status }
 
-import java.io.ByteArrayInputStream
-import java.nio.file.{ Files, Path }
+import java.io.{ ByteArrayInputStream, File }
+import java.nio.file.{ Files, Path, Paths }
 
 class GenCSuite extends LeonRegressionSuite {
 
@@ -29,7 +29,13 @@ class GenCSuite extends LeonRegressionSuite {
   private val counter = new UniqueCounter[Unit]
   counter.nextGlobal // Start with 1
 
-  private case class ExtendedContext(leon: LeonContext, tmpDir: Path, progName: String)
+  private case class ExtendedContext(
+    leon: LeonContext,
+    tmpDir: Path,
+    progName: String,
+    inputFileOpt: Option[String], // optional path to an file to be used as stdin at runtime
+    outputFileOpt: Option[String] // optional path to a file containing the expected output
+  )
 
   // Tests are run as follows:
   // - before mkTest is run, all valid test are verified using XLangVerificationSuite
@@ -61,9 +67,19 @@ class GenCSuite extends LeonRegressionSuite {
       }
 
       for { prog <- programs } {
-        val name = prog.units.head.id.name
+        // Retrieve the unit name and the optional input/output files
+        val name       = prog.units.head.id.name
+        val fileOpt    = files find { _ endsWith s"$name.scala" }
+        val filePrefix = fileOpt.get dropRight ".scala".length
+
+        val inputName  = filePrefix + ".input"
+        val inputOpt   = if (Files.isReadable(Paths.get(inputName))) Some(inputName) else None
+
+        val outputName = filePrefix + ".output"
+        val outputOpt  = if (Files.isReadable(Paths.get(outputName))) Some(outputName) else None
+
         val ctx  = createLeonContext(s"--o=$tmpDir/$name.c")
-        val xCtx = ExtendedContext(ctx, tmpDir, name)
+        val xCtx = ExtendedContext(ctx, tmpDir, name, inputOpt, outputOpt)
 
         val displayName = s"$cat/$name.scala"
         val index       = counter.nextGlobal
@@ -143,11 +159,21 @@ class GenCSuite extends LeonRegressionSuite {
   private def evaluate(xCtx: ExtendedContext)(unused: Unit) = {
     val compiledProg = s"${xCtx.tmpDir}/${xCtx.progName}"
 
-    // TODO memory limit
-    val process = Process(compiledProg)
+    // If available, use the given input file
+    val cmd =
+      if (xCtx.inputFileOpt.isDefined) compiledProg #< new File(xCtx.inputFileOpt.get)
+      else Process(compiledProg)
 
-    val status = runProcess(process)
+    // TODO redirect output to a tmp file
+
+    println(s"Using input file for ${xCtx.progName}: ${xCtx.inputFileOpt.isDefined}")
+
+    // TODO add a memory limit
+
+    val status = runProcess(cmd)
     assert(status == 0, s"Evaluation of converted program failed with status [$status]")
+
+    // TODO compare outputs
   }
 
   private def forEachFileIn(cat: String)(block: (ExtendedContext, Program) => Unit) {
