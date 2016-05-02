@@ -866,7 +866,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                 val examples = allInputExamples()
                 var badExamples = List[Example]()
                 var stop = false
-                for (e <- examples if !stop) {
+                for (e <- examples if !stop && !badExamples.contains(e)) {
                   ndProgram.testForProgram(bs)(e) match {
                     case Some(true) => // ok, passes
                     case Some(false) =>
@@ -936,8 +936,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                         failedTestsStats(ce) += 1
                         ndProgram.excludeProgram(bs, false)
 
+                        var bad = false
                         // Retest whether the newly found C-E invalidates some programs
-                        ndProgram.prunedPrograms.foreach { p =>
+                        for (p <- ndProgram.prunedPrograms if !bad) {
                           ndProgram.testForProgram(p)(ce) match {
                             case Some(true) =>
                             case Some(false) =>
@@ -947,6 +948,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                             case None =>
                               debug(s" Test $ce failed, removing...")
                               gi -= ce
+                              bad = true
                           }
                         }
 
