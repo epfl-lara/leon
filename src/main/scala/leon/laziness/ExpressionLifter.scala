@@ -26,7 +26,7 @@ object ExpressionLifter {
   var globalId = 0
   def freshFunctionNameForClosure = {
     globalId += 1
-    "closureBody" + globalId
+    "anonFun" + globalId
   }
 
   /**
@@ -35,7 +35,9 @@ object ExpressionLifter {
    * (c) converts memoization to lazy evaluation
    * (d) Adds unique references to programs that create lazy closures.
    */
-  def liftLambdaBody(prog: Program, createUniqueIds: Boolean = false): Program = {
+  def liftLambdaBody(ctx: LeonContext, prog: Program, createUniqueIds: Boolean = false): Program = {
+
+    val reporter = ctx.reporter
 
     lazy val funsMan = new FunctionsManager(prog)
     lazy val needsId = funsMan.callersnTargetOfLambdas
@@ -62,7 +64,15 @@ object ExpressionLifter {
           expr
         case lmb @ Lambda(args, body) => // seen a lambda
           body match {
-            case FunctionInvocation(_, args) if args.forall(_.isInstanceOf[Variable]) => lmb // here make sure the arguments are all variables
+            case FunctionInvocation(_, fargs) if fargs.forall(_.isInstanceOf[Variable]) =>
+              lmb.getType match { case FunctionType(argts, rett) =>
+                  (rett +: argts).foreach {
+                    case t: ClassType if t.parent.isDefined =>
+                      reporter.warning(s"Argument or return type of lambda $lmb uses non-root types! This may result in unexpected craches!")
+                    case _ =>
+                  }
+              }
+              lmb
             case _ =>
               val argvars = args.map(_.id)
               val capturedvars = (variablesOf(body) -- argvars).toList
@@ -81,7 +91,10 @@ object ExpressionLifter {
                   //construct type parameters for the function
                   val nname = FreshIdentifier(freshFunctionNameForClosure, Untyped, true)
                   val tparamDefs = tparams map TypeParameterDef.apply
-                  val params = freevars.map(ValDef(_))
+                  val params = freevars.map{ fv =>
+                    val freshid = FreshIdentifier(fv.name, TypeOps.bestRealType(body.getType), true)
+                    ValDef(freshid)
+                  }
                   val retType = TypeOps.bestRealType(body.getType)
                   val nfun =
                     if (createUniqueIds) {
@@ -89,17 +102,17 @@ object ExpressionLifter {
                       new FunDef(nname, tparamDefs, params :+ idparam, retType)
                     } else
                       new FunDef(nname, tparamDefs, params, retType)
-                  nfun.body = Some(body)
+                  nfun.body = Some(replaceFromIDs((freevars zip params.map(_.id.toVariable)).toMap, body))
                   nfun.addFlag(IsInlined) // add inline annotation to these functions
                   newfuns += (argstruc -> (nfun, md))
                   nfun
                 }
               val fvVars = freevars.map(_.toVariable)
-              val params =
+              val fargs =
                 if (createUniqueIds)
                   fvVars :+ fl.get.nextExpr
                 else fvVars
-              Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), params))
+              Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), fargs))
           }
         // is the argument an implicit conversion from values to closures
         /*case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), ea@Seq(arg)) if isEagerInvocation(finv)(prog) =>

@@ -9,11 +9,9 @@ import instrumentation._
 object RealTimeQueue {
 
   sealed abstract class Stream[T] {
+    @inline
     def isEmpty: Boolean = {
-      this match {
-        case SNil() => true
-        case _      => false
-      }
+      this == SNil[T]()
     }
 
     def isCons: Boolean = {
@@ -53,10 +51,6 @@ object RealTimeQueue {
     })
   }
 
-  def eager[T](x: Stream[T]): () => Stream[T] = {
-    () => x
-  }
-
   @invstate
   @memoize
   def rotate[T](f: () => Stream[T], r: List[T], a: () => Stream[T]): Stream[T] = { // doesn't change state
@@ -65,7 +59,7 @@ object RealTimeQueue {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, a)
       case (SCons(x, tail), Cons(y, r1)) =>
-        val newa = eager(SCons[T](y, a))
+        val newa = lift[Stream[T]](SCons[T](y, a))
         val rot = () => rotate(tail, r1, newa)
         SCons[T](x, rot)
     }
@@ -104,7 +98,7 @@ object RealTimeQueue {
     s() match {
       case SCons(_, tail) => Queue(f, r, tail)
       case SNil() =>
-        val news = eager(SNil[T]())
+        val news = lift[Stream[T]](SNil[T]())
         val rotres = () => rotate(f, r, news)
         Queue(rotres, Nil(), rotres)
     }
@@ -112,19 +106,14 @@ object RealTimeQueue {
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
-    val f = q.f
-    val r = Cons(x, q.r)
-    val s = q.s
-    createQ(f, r, s)
+    createQ(q.f, Cons(x, q.r), q.s)
   } ensuring (res => res.valid && time <= 60)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f() match {
       case SCons(x, nf) =>
-        val r = q.r
-        val s = q.s
-        createQ(nf, r, s)
+        createQ(nf, q.r, q.s)
     }
   } ensuring (res => res.valid && time <= 120)
 }

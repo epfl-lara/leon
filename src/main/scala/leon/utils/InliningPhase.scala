@@ -11,6 +11,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.DefOps._
 import purescala.Constructors.{ caseClassSelector, application }
+import invariant.util.LetTupleSimplification._
 
 /**
  * Recursive functions are inlined once. A function with contracts is inlined only if
@@ -56,8 +57,19 @@ object InliningPhase extends TransformationPhase {
               // here, we have inlined a recursive function once, so do nothing
               e
             }
-          } else
-            rec(topLevel, inlinedFuns)(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, body))
+          } else {
+            // create lets to bind the args to variables
+            val (flatArgs, letCons) = args.foldRight((Seq[Variable](), (e: Expr) => e)) {
+              case (arg: Variable, (fargs, lcons)) =>
+                (arg +: fargs, lcons)
+              case (arg, (fargs, lcons)) =>
+                val id = FreshIdentifier("a", arg.getType, true)
+                (id.toVariable +: fargs, e => Let(id, arg, lcons(e)))
+            }
+            val formalToActual = (tfd.params.map(_.id) zip flatArgs).toMap
+            val nexpr = simplerLet(letCons(replaceFromIDs(formalToActual, body)))
+            rec(topLevel, inlinedFuns)(nexpr)
+          }
         }
 
       case CaseClassSelector(cct, cc: CaseClass, id) =>

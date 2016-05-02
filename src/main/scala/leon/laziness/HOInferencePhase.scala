@@ -71,7 +71,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
     assert(pass, msg)
 
     // refEq is by default false
-    val nprog = ExpressionLifter.liftLambdaBody(prog, ctx.findOption(optRefEquality).getOrElse(false))
+    val nprog = ExpressionLifter.liftLambdaBody(ctx, prog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 

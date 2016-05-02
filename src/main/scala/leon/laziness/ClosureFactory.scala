@@ -3,6 +3,7 @@ package laziness
 
 import invariant.util._
 import invariant.structure.FunctionUtils._
+import purescala.TypeOps
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -141,7 +142,10 @@ class ClosureFactory(p: Program) {
     }.toMap
 
     def createFields(args: Seq[Identifier]) = {
-      args.map { v => ValDef(FreshIdentifier(v.name, replaceClosureTypes(v.getType, tpeToAbsClass.values.toSeq))) }
+      args.map { v =>
+        val realType = TypeOps.bestRealType(v.getType)
+        ValDef(FreshIdentifier(v.name, replaceClosureTypes(realType, tpeToAbsClass.values.toSeq)))
+      }
     }
 
     var opToAdt = Map[CanonLambda, CaseClassDef]()

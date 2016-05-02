@@ -9,22 +9,6 @@ import scala.annotation.StaticAnnotation
 
 package object higherorder {
 
-  @library
-  @extern
-  def exists[A](p: A => Boolean): Boolean = sys.error("Can't execute quantified proposition")
-  @library
-  @extern
-  def exists[A,B](p: (A,B) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
-  @library
-  @extern
-  def exists[A,B,C](p: (A,B,C) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
-  @library
-  @extern
-  def exists[A,B,C,D](p: (A,B,C,D) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
-  @library
-  @extern
-  def exists[A,B,C,D,E](p: (A,B,C,D,E) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
-
   /**
    * For comparing closures
    */
@@ -60,5 +44,11 @@ package object higherorder {
     @extern
     @library
     def fmatch[A, B, C, D, R](pf: (A, B, C, D)  =>  R) = sys.error("Can't execute the construct")
+  }
+
+  // Note: this need not be a library function, as it will be inlined anyways
+  @inline
+  def lift[T](x: T): () => T = {
+    () => x
   }
 }
