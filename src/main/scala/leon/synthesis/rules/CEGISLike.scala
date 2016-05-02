@@ -49,6 +49,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
     // CEGIS Flags to activate or deactivate features
     val useOptTimeout = hctx.settings.cegisUseOptTimeout
+    val useVanuatoo   = hctx.settings.cegisUseVanuatoo
 
     // The factor by which programs need to be reduced by testing before we validate them individually
     val testReductionRatio = 10
@@ -794,8 +795,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           if (complicated) {
             Iterator()
           } else {
-            val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
-            new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
+            if (useVanuatoo) {
+              new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
+            } else {
+              val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
+              new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
+            }
           }
         }
 

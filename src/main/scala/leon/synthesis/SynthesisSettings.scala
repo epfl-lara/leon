@@ -17,5 +17,7 @@ case class SynthesisSettings(
   
   // Cegis related options
   cegisUseOptTimeout: Boolean = true,
+  cegisUseVanuatoo  : Boolean = false,
   cegisMaxSize: Int           = 7
+
 )

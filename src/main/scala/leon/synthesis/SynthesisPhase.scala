@@ -21,6 +21,7 @@ object SynthesisPhase extends UnitPhase[Program] {
 
   // CEGIS options
   val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
+  val optCEGISVanuatoo     = LeonFlagOptionDef("cegis:vanuatoo",   "Generate inputs using new korat-style generator",        false)
   val optCEGISNaiveGrammar = LeonFlagOptionDef("cegis:naive",      "Use the old naive grammar for CEGIS",                    false)
   val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 7L, "N")
 
@@ -28,7 +29,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optSpecifyRecCalls = LeonFlagOptionDef("reccalls", "Use full value as spec for introduced recursive calls", true)
 
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
-    optManual, optCostModel, optDerivTrees, optCEGISOptTimeout,
+    optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo,
     optCEGISNaiveGrammar, optCEGISMaxSize, optSpecifyRecCalls, optAllowPartial
   )
 
@@ -62,6 +63,7 @@ object SynthesisPhase extends UnitPhase[Program] {
       manualSearch = ms,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),
+      cegisUseVanuatoo = ctx.findOptionOrDefault(optCEGISVanuatoo),
       cegisMaxSize = ctx.findOptionOrDefault(optCEGISMaxSize).toInt
     )
   }

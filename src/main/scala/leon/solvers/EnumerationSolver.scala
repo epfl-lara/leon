@@ -3,7 +3,6 @@
 package leon
 package solvers
 
-import leon.evaluators.DefaultEvaluator
 import utils._
 import purescala.Common._
 import purescala.Definitions._
@@ -53,7 +52,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   def check: Option[Boolean] = {
     val timer = context.timers.solvers.enum.check.start()
     val res = try {
-      datagen = Some(new GrammarDataGen(new DefaultEvaluator(context, program)))
+      datagen = Some(new VanuatooDataGen(context, program))
       if (interrupted) {
         None
       } else {
