@@ -41,7 +41,8 @@ object ComparatorByList {
   }
 
   /**
-    * Flat an Expression tree into a list using different method according with type of expression
+    * Flat an Expression tree into a list
+    * Put the current Expr into a list and recursively call the function over all its arguments of type Expr.
     *
     * @param expr
     * @return
@@ -69,17 +70,72 @@ object ComparatorByList {
     case CaseClass(_, args) => List(expr) ++ args.flatMap(treeToList(_))
     case CaseClassSelector(_, caseClass, _) => List(expr) ++ treeToList(caseClass)
     case Equals(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+
+    /* Propositional logic */
     case And(exprs) => List(expr) ++ exprs.flatMap(treeToList(_))
     case Or(exprs) => List(expr) ++ exprs.flatMap(treeToList(_))
     case Implies(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
-    case Not(internalExpr) => List(expr) ++ treeToList(internalExpr)
-    case IsInstanceOf(internExpr, _) => List(expr) ++ treeToList(internExpr)
-    case AsInstanceOf(internExpr, _) => List(expr) ++ treeToList(internExpr)
+    case Not(argExpr) => List(expr) ++ treeToList(argExpr)
 
-    // Petite pause au string, je vais reprendre demain
+    case IsInstanceOf(argExpr, _) => List(expr) ++ treeToList(argExpr)
+    case AsInstanceOf(argExpr, _) => List(expr) ++ treeToList(argExpr)
+
+    /* Integer arithmetic */
+    case Plus(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case Minus(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case UMinus(argExpr) => List(expr) ++ treeToList(argExpr)
+    case Times(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case Division(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case Remainder(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case Modulo(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case GreaterThan(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case GreaterEquals(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case LessThan(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case LessEquals(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+
+    /* Real arithmetic */
+    case RealPlus(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case RealMinus(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case RealDivision(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case RealTimes(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case RealUMinus(argExpr) => List(expr) ++ treeToList(argExpr)
+
+    /* Tuple operations */
+    case Tuple(exprs) => List(expr) ++ exprs.flatMap(treeToList(_))
+    case TupleSelect(tuple, _) => List(expr) ++ treeToList(tuple)
+
+    /* Set operations */
+    case FiniteSet(elements, _ ) => List(expr) ++ elements.flatMap(treeToList(_))
+    case ElementOfSet(element, set) => List(expr) ++ treeToList(element) ++ treeToList(set)
+    case SetCardinality(set) => List(expr) ++ treeToList(set)
+    case SubsetOf(set1, set2) => List(expr) ++ treeToList(set1) ++ treeToList(set2)
+    case SetIntersection(set1, set2) => List(expr) ++ treeToList(set1) ++ treeToList(set2)
+    case SetUnion(set1, set2) => List(expr) ++ treeToList(set1) ++ treeToList(set2)
+    case SetDifference(set1, set2) => List(expr) ++ treeToList(set1) ++ treeToList(set2)
+
+    /* Map operations */
+    case FiniteMap(pairs, _, _) => List(expr) ++ pairs.toList.flatMap(t => treeToList(t._1) ++ treeToList(t._2))
+    case MapApply(map, key) => List(expr) ++ treeToList(map) ++ treeToList(key)
+    case MapUnion(map1, map2) => List(expr) ++ treeToList(map1) ++ treeToList(map2)
+    case MapDifference(map, keys) => List(expr) ++ treeToList(map) ++ treeToList(keys)
+    case MapIsDefinedAt(map, key) => List(expr) ++ treeToList(map) ++ treeToList(key)
+
+    /* Array operations */
+    case ArraySelect(array, index) => List(expr) ++ treeToList(array) ++ treeToList(index)
+    case ArrayUpdated(array, index, newValue) => List(expr) ++ treeToList(array) ++ treeToList(index) ++ treeToList(newValue)
+    case ArrayLength(array) => List(expr) ++ treeToList(array)
+    case NonemptyArray(elems, defaultLength) => List(expr) ++ elems.flatMap(t => treeToList(t._2))
+    case EmptyArray(_) => List(expr)
+
+
+
+
+
+
 
     // default value for any easy-to-handled or Terminal expression
     // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
+    // leave aside (at least for the moment): String Theory, BitVector Operation, Special trees for synthesis (holes, ...)
     case x if x.isInstanceOf[Expr] => List(x)
 
     //default value for error handling, should never reach that
