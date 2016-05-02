@@ -218,7 +218,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     debug(s"Converting function ${fd.id.uniqueName} with annotations: ${fd.annotations}")
 
-    if (fd.isExtern && !fd.isManuallyDefined && !fd.isDropped)
+    if (!fd.isMain && fd.isExtern && !fd.isManuallyDefined && !fd.isDropped)
       CAST.unsupported("Extern function need to be either manually defined or dropped")
 
     if (fd.isManuallyDefined && fd.isDropped)
@@ -228,8 +228,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     else {
       // Special case: the `main(args)` function is actually just a proxy for `_main()`
       val fun =
-        if (fd.id.name == "main") convertToFun_main(fd)
-        else                      convertToFun_normal(fd)
+        if (fd.isMain) convertToFun_main(fd)
+        else           convertToFun_normal(fd)
 
       registerFun(fun)
 
@@ -378,6 +378,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         }
 
       case CaseClassType(cd, _) => convertToType(cd) // reuse `case CaseClassDef`
+
+      case act: AbstractClassType => CAST.unsupported(s"Abstract type ${act.id}")
 
 
       /* ------------------------------------------------------- Literals ----- */
@@ -625,6 +627,10 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         val args      = extraArgs ++ fs.values
 
         fs.bodies ~~ CAST.Call(id, args)
+
+
+      case _: StringConcat  => CAST.unsupported("String manipulations")
+      case _: MatchExpr     => CAST.unsupported("Pattern matching")
 
       case unsupported =>
         CAST.unsupported(s"$unsupported (of type ${unsupported.getClass})")
@@ -892,13 +898,13 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   //    need to specify it manually.
   //  - Another issue is with case class with mutable members; references will get broken
   //    (not supported at all ATM).
-  private def containsArrayType(typ: TypeTree): Boolean = typ match {
+  private def containsArrayType(typ: TypeTree)(implicit pos: Position): Boolean = typ match {
     case CharType             => false
     case Int32Type            => false
     case BooleanType          => false
     case UnitType             => false
     case StringType           => false // NOTE this might change in the future
-    case IntegerType          => CAST.unsupported(s"BigInt")(typ.getPos)
+    case IntegerType          => CAST.unsupported(s"BigInt")
     case ArrayType(_)         => true
     case TupleType(bases)     => bases exists containsArrayType
 
@@ -910,13 +916,15 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       if (getTypedef(cd).isDefined) false
       else cd.fields map { _.getType } exists containsArrayType
 
-    case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")(typ.getPos)
+    case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")
     case _                    => internalError(s"Unexpected TypeTree '$typ': ${typ.getClass}")
   }
 
 
   // Extra tools on FunDef, especially for annotations
   private implicit class FunDefOps(val fd: FunDef) {
+    def isMain = fd.id.name == "main"
+
     def isExtern          = hasAnnotation("extern")
     def isDropped         = hasAnnotation("cCode.drop")
     def isManuallyDefined = hasAnnotation(manualDefAnnotation)
