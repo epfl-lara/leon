@@ -3,6 +3,8 @@
 package leon
 package grammars
 
+import leon.purescala.Common.FreshIdentifier
+import leon.purescala.Definitions.ValDef
 import purescala.Types._
 import purescala.Expressions._
 
@@ -25,6 +27,19 @@ case object ValueGrammar extends SimpleExpressionGrammar {
         terminal(InfiniteIntegerLiteral(0), Tags.Zero),
         terminal(InfiniteIntegerLiteral(1), Tags.One),
         terminal(InfiniteIntegerLiteral(5), Tags.Constant)
+      )
+    case CharType =>
+      List(
+        terminal(CharLiteral('a'), Tags.Constant),
+        terminal(CharLiteral('b'), Tags.Constant),
+        terminal(CharLiteral('0'), Tags.Constant)
+      )
+    case RealType =>
+      List(
+        terminal(FractionalLiteral(0, 1), Tags.Zero),
+        terminal(FractionalLiteral(1, 1), Tags.One),
+        terminal(FractionalLiteral(-1, 2), Tags.Constant),
+        terminal(FractionalLiteral(555, 42), Tags.Constant)
       )
     case StringType =>
       List(
@@ -64,6 +79,12 @@ case object ValueGrammar extends SimpleExpressionGrammar {
     case UnitType =>
       List(
         terminal(UnitLiteral(), Tags.Constant)
+      )
+
+    case FunctionType(from, to) =>
+      val args = from map (tp => ValDef(FreshIdentifier("x", tp, true)))
+      List(
+        nonTerminal(Seq(to), { case Seq(e) => Lambda(args, e) })
       )
 
     case _ =>
