@@ -82,7 +82,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   private def getFunExtraArgs(id: CAST.Id) = funExtraArgss.getOrElse(id, Seq())
 
   // Apply the conversion function and make sure the resulting AST matches our expectation
-  private def convertTo[T](tree: Tree)(implicit funCtx: FunCtx, ct: ClassTag[T]): T = convert(tree) match {
+  private def convertTo[T](tree: Tree)
+                          (implicit funCtx: FunCtx, ct: ClassTag[T]): T = convert(tree) match {
     case t: T => t
     case x    => internalError(s"Expected an instance of $ct when converting $tree but got $x")
   }
@@ -254,10 +255,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     CAST.generateMain(convertToId(_mainFd.id), is_mainIntegral)
   }
 
-  private def convertToFun_(fd: FunDef)(implicit funCtx: FunCtx, pos: Position) = {
+  private def convertToFun_normal(fd: FunDef)
+                                 (implicit funCtx: FunCtx, pos: Position): CAST.Fun = {
     // Forbid return of array as they are allocated on the stack
     if (containsArrayType(fd.returnType))
-      CAST.unsupported("Returning arrays is currently not allowed")
+      CAST.unsupported("Returning arrays")
 
     // Extract basic information
     val id        = convertToId(fd.id)
@@ -276,7 +278,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     val manual = "cCode.function"
     val body = if (fd.annotations contains manual) {
       if (!funCtx.isEmpty)
-        CAST.unsupported(s"External code cannot be specified for nested functions")
+        CAST.unsupported(s"Manual implementation cannot be specified for nested functions")
 
       val Seq(Some(code0), includesOpt0) = fd.extAnnotations(manual)
       val code     = code0.asInstanceOf[String]
@@ -356,11 +358,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         debug(s"Processing ${cd.id} with annotations: ${cd.annotations}")
 
         getTypedef(cd) getOrElse {
-          if (cd.isAbstract)         CAST.unsupported("Abstract types are not supported")
-          if (cd.hasParent)          CAST.unsupported("Inheritance is not supported")
-          if (cd.isCaseObject)       CAST.unsupported("Case Objects are not supported")
-          if (cd.tparams.length > 0) CAST.unsupported("Type Parameters are not supported")
-          if (cd.methods.length > 0) CAST.unsupported("Methods are not yet supported")
+          if (cd.isAbstract)         CAST.unsupported("Abstract types")
+          if (cd.hasParent)          CAST.unsupported("Inheritance")
+          if (cd.isCaseObject)       CAST.unsupported("Case Objects")
+          if (cd.tparams.length > 0) CAST.unsupported("Type Parameters")
+          if (cd.methods.length > 0) CAST.unsupported("Methods") // TODO is it?
 
           val id     = convertToId(cd.id)
           val fields = cd.fields map convertToVar
@@ -371,6 +373,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         }
 
       case CaseClassType(cd, _) => convertToType(cd) // reuse `case CaseClassDef`
+
 
       /* ------------------------------------------------------- Literals ----- */
       case CharLiteral(c)    => CAST.Literal(c)
@@ -464,7 +467,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         fs.bodies ~~ CAST.ArrayInit(length, valueType, value)
 
       case NonemptyArray(elems, Some(_)) =>
-        CAST.unsupported("NonemptyArray with non empty elements is not supported")
+        CAST.unsupported("NonemptyArray with non empty elements")
 
       case NonemptyArray(elems, None) => // Here elems is non-empty
         // Sort values according the the key (aka index)
@@ -475,7 +478,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         val types   = values map { e => convertToType(e.getType) }
         val typ     = types(0)
         val allSame = types forall { _ == typ }
-        if (!allSame) CAST.unsupported("Heterogenous arrays are not supported")
+        if (!allSame) CAST.unsupported("Heterogenous arrays")
 
         val fs = convertAndNormaliseExecution(values, types)
 
@@ -562,7 +565,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",  rhs)
       case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, "<<", rhs)
       case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>", rhs)
-      case BVLShiftRight(lhs, rhs)  => CAST.unsupported("operator >>> not supported")
+      case BVLShiftRight(lhs, rhs)  => CAST.unsupported("Operator >>>")
 
       // Ignore assertions for now
       case Ensuring(body, _)  => convert(body)
@@ -592,7 +595,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
         // Make sure fd is not annotated with cCode.drop
         if (fd.annotations contains "cCode.drop") {
-          CAST.unsupported(s"Cannot call a function annoted with @cCode.drop")
+          CAST.unsupported(s"Calling a function annoted with @cCode.drop")
         }
 
         // Make sure the called function will be defined at some point
@@ -616,7 +619,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         fs.bodies ~~ CAST.Call(id, args)
 
       case unsupported =>
-        CAST.unsupported(s"$unsupported (of type ${unsupported.getClass}) is currently not supported by GenC")
+        CAST.unsupported(s"$unsupported (of type ${unsupported.getClass})")
     }
   }
 
@@ -690,7 +693,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     buildMultiOp(op, stmts, types)
   }
 
-  private def buildMultiOp(op: String, stmts: Seq[CAST.Stmt], types: Seq[CAST.Type]): CAST.Stmt = {
+  private def buildMultiOp(op: String, stmts: Seq[CAST.Stmt],
+                           types: Seq[CAST.Type]): CAST.Stmt = {
       // Default operator constuction when either pure statements are involved
       // or no shortcut can happen
       def defaultBuild = {
@@ -823,7 +827,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case stmt                                  => Flattened(stmt, Seq())
   }
 
-  private def convertAndFlatten(expr: Expr)(implicit funCtx: FunCtx) = flatten(convertToStmt(expr))
+  private def convertAndFlatten(expr: Expr)
+                               (implicit funCtx: FunCtx) = flatten(convertToStmt(expr))
 
   // Normalise execution order of, for example, function parameters;
   // `types` represents the expected type of the corresponding values
