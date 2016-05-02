@@ -218,7 +218,13 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     debug(s"Converting function ${fd.id.uniqueName} with annotations: ${fd.annotations}")
 
-    if (fd.annotations contains "cCode.drop") None
+    if (fd.isExtern && !fd.isManuallyDefined && !fd.isDropped)
+      CAST.unsupported("Extern function need to be either manually defined or dropped")
+
+    if (fd.isManuallyDefined && fd.isDropped)
+      CAST.unsupported("Function cannot be dropped and manually implemented at the same time")
+
+    if (fd.isDropped) None
     else {
       // Special case: the `main(args)` function is actually just a proxy for `_main()`
       val fun =
@@ -233,8 +239,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   private def convertToFun_main(fd: FunDef)
                                (implicit funCtx: FunCtx, pos: Position): CAST.Fun = {
-    val isExtern = fd.annotations contains "extern"
-    if (!isExtern)
+    if (!fd.isExtern)
       CAST.unsupported("It is expected for `main(args)` to be extern")
 
     // Make sure there is a `_main()` function and has the proper signature
@@ -275,20 +280,16 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     //  - either the function is defined in Scala, or
     //  - the user provided a C code to use instead
 
-    val manual = "cCode.function"
-    val body = if (fd.annotations contains manual) {
+    val body = if (fd.isManuallyDefined) {
       if (!funCtx.isEmpty)
         CAST.unsupported(s"Manual implementation cannot be specified for nested functions")
 
-      val Seq(Some(code0), includesOpt0) = fd.extAnnotations(manual)
-      val code     = code0.asInstanceOf[String]
-      val includes = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
+      val manualDef = fd.getManualDefinition
 
       // Register all the necessary includes
-      if (!includes.isEmpty)
-        includes split ':' foreach { i => registerInclude(CAST.Include(i)) }
+      manualDef.includes foreach { i => registerInclude(CAST.Include(i)) }
 
-      val body = code.replaceAllLiterally("__FUNCTION__", id.name)
+      val body = manualDef.code.replaceAllLiterally("__FUNCTION__", id.name)
 
       Right(body.stripMargin)
     } else {
@@ -315,16 +316,12 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
   // Return the manual C typedef contained in the class annotation, if any.
   private def getTypedef(cd: CaseClassDef): Option[CAST.TypeDef] = {
-    val manual = "cCode.typedef"
-    if (cd.annotations contains manual) {
-      val Seq(Some(alias0), includesOpt0) = cd.extAnnotations(manual)
-      val alias   = alias0.asInstanceOf[String]
-      val include = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
+    if (cd.isManuallyTyped) {
+      val manualType = cd.getManualType
+      val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(manualType.alias))
 
-      val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(alias))
-
-      if (!include.isEmpty)
-        registerInclude(CAST.Include(include))
+      if (!manualType.include.isEmpty)
+        registerInclude(CAST.Include(manualType.include))
 
       registerTypedef(typedef)
 
@@ -906,6 +903,53 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
     case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")(typ.getPos)
     case _                    => internalError(s"Unexpected TypeTree '$typ': ${typ.getClass}")
+  }
+
+
+  // Extra tools on FunDef, especially for annotations
+  private implicit class FunDefOps(val fd: FunDef) {
+    def isExtern          = hasAnnotation("extern")
+    def isDropped         = hasAnnotation("cCode.drop")
+    def isManuallyDefined = hasAnnotation(manualDefAnnotation)
+
+    def getManualDefinition = {
+      assert(isManuallyDefined)
+
+      val Seq(Some(code0), includesOpt0) = fd.extAnnotations(manualDefAnnotation)
+      val code      = code0.asInstanceOf[String]
+      val includes0 = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
+
+      val includes =
+        if (includes0.isEmpty) Nil
+        else { includes0 split ':' }.toSeq
+
+      ManualDef(code, includes)
+    }
+
+    case class ManualDef(code: String, includes: Seq[String])
+
+    private def hasAnnotation(annot: String) = fd.annotations contains annot
+    private val manualDefAnnotation = "cCode.function"
+  }
+
+  // Extra tools on ClassDef, especially for annotations
+  private implicit class ClassDefOps(val cd: ClassDef) {
+    def isManuallyTyped = hasAnnotation(manualTypeAnnotation)
+
+    def getManualType = {
+      assert(isManuallyTyped)
+
+      val Seq(Some(alias0), includesOpt0) = cd.extAnnotations(manualTypeAnnotation)
+      val alias   = alias0.asInstanceOf[String]
+      val include = includesOpt0 map { _.asInstanceOf[String] } getOrElse ""
+
+      ManualType(alias, include)
+    }
+
+    case class ManualType(alias: String, include: String)
+
+    private def hasAnnotation(annot: String) = cd.annotations contains annot
+    private val manualTypeAnnotation = "cCode.typedef"
   }
 
   private def internalError(msg: String) = ctx.reporter.internalError(msg)
