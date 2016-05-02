@@ -59,24 +59,25 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar = ValueGra
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
+
+    def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
+      case BooleanLiteral(true) =>
+        true
+      case e =>
+        // in -> e should be enough. We shouldn't find any subexpressions of in.
+        evaluator.eval(e, (ins zip vs).toMap) match {
+          case EvaluationResults.Successful(BooleanLiteral(true)) => true
+          case _ => false
+        }
+    }
+
     if (ins.isEmpty) {
-      Iterator.empty
+      Iterator(Seq[Expr]()).filter(filterCond)
     } else {
       val values = generate(tupleTypeWrap(ins.map{ _.getType }))
 
       val detupled = values.map {
         v => unwrapTuple(v, ins.size)
-      }
-
-      def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
-        case BooleanLiteral(true) =>
-          true 
-        case e => 
-          // in -> e should be enough. We shouldn't find any subexpressions of in.
-          evaluator.eval(e, (ins zip vs).toMap) match {
-            case EvaluationResults.Successful(BooleanLiteral(true)) => true
-            case _ => false
-          }
       }
 
       detupled.take(maxEnumerated)
