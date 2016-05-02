@@ -2,6 +2,7 @@
 
 import leon.annotation._
 import leon.io.{ FileOutputStream => FOS }
+import leon.io.StdIn
 
 object Print {
 
@@ -66,6 +67,13 @@ object Print {
     }
   }
 
+  def echo(): Unit = {
+    implicit val state = StdIn.newState
+    myprint("ECHOING...")
+    val x = StdIn.readInt
+    myprint(x)
+  }
+
   def _main() = {
     myprint(42)
 
@@ -79,6 +87,8 @@ object Print {
     myprint('\n')
 
     printX(42, '*', " <--> ")
+
+    echo()
 
     0
   }
