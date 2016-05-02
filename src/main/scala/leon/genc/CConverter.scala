@@ -344,6 +344,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       case StringType  => CAST.String
 
+      case IntegerType => CAST.unsupported(s"BigInt")
+
       case ArrayType(base) =>
         val typ = CAST.Array(convertToType(base))
         registerStruct(typ)
@@ -381,6 +383,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case BooleanLiteral(b) => CAST.Literal(b)
       case UnitLiteral()     => CAST.Literal(())
       case StringLiteral(s)  => CAST.Literal(s)
+
+      case InfiniteIntegerLiteral(_) => CAST.unsupported("BigInt")
+
 
       /* ------------------------------------ Definitions and Statements  ----- */
       case id: Identifier => CAST.Id(id.uniqueName)
@@ -890,6 +895,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case BooleanType          => false
     case UnitType             => false
     case StringType           => false // NOTE this might change in the future
+    case IntegerType          => CAST.unsupported(s"BigInt")(typ.getPos)
     case ArrayType(_)         => true
     case TupleType(bases)     => bases exists containsArrayType
 
