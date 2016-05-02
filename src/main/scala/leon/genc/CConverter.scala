@@ -212,40 +212,46 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   }
 
   // Extract inner functions too
-  private def convertToFun(fd: FunDef)(implicit funCtx: FunCtx) = {
+  private def convertToFun(fd: FunDef)(implicit funCtx: FunCtx): Option[CAST.Fun] = {
     implicit val pos = fd.getPos
 
     debug(s"Converting function ${fd.id.uniqueName} with annotations: ${fd.annotations}")
 
-    // Special case: the `main(args)` function is actually just a proxy for `_main()`
-    val fun = if (fd.id.name == "main") {
-      val isExtern = fd.annotations contains "extern"
-      if (!isExtern)
-        CAST.unsupported("It is expected for `main(args)` to be extern")
+    if (fd.annotations contains "cCode.drop") None
+    else {
+      // Special case: the `main(args)` function is actually just a proxy for `_main()`
+      val fun =
+        if (fd.id.name == "main") convertToFun_main(fd)
+        else                      convertToFun_normal(fd)
 
-      // Make sure there is a `_main()` function and has the proper signature
-      val uOpt = prog.units find { _ containsDef fd }
-      val u = uOpt getOrElse { internalError(s"FunDef comes from an unexpected place") }
-      val _mainFdOpt = u.definedFunctions find { _.id.name == "_main" }
-      if (_mainFdOpt.isEmpty)
-        CAST.unsupported("Please provide a _main() function")
+      registerFun(fun)
 
-      val _mainFd = _mainFdOpt.get
-      if (_mainFd.params.size > 0)
-        CAST.unsupported("_main() should not have parameters")
-
-      // TODO Check for main overload and reject the program is such case
-
-      // Artificially create the function (since it is tagged @extern)
-      val is_mainIntegral = _mainFd.returnType == Int32Type
-      CAST.generateMain(convertToId(_mainFd.id), is_mainIntegral)
-    } else {
-      convertToFun_(fd) // normal case
+      Some(fun)
     }
+  }
 
-    registerFun(fun)
+  private def convertToFun_main(fd: FunDef)
+                               (implicit funCtx: FunCtx, pos: Position): CAST.Fun = {
+    val isExtern = fd.annotations contains "extern"
+    if (!isExtern)
+      CAST.unsupported("It is expected for `main(args)` to be extern")
 
-    fun
+    // Make sure there is a `_main()` function and has the proper signature
+    val uOpt = prog.units find { _ containsDef fd }
+    val u = uOpt getOrElse { internalError(s"FunDef comes from an unexpected place") }
+    val _mainFdOpt = u.definedFunctions find { _.id.name == "_main" }
+    if (_mainFdOpt.isEmpty)
+      CAST.unsupported("Please provide a _main() function")
+
+    val _mainFd = _mainFdOpt.get
+    if (_mainFd.params.size > 0)
+      CAST.unsupported("_main() should not have parameters")
+
+    // TODO Check for main overload and reject the program is such case
+
+    // Artificially create the function (since it is tagged @extern)
+    val is_mainIntegral = _mainFd.returnType == Int32Type
+    CAST.generateMain(convertToId(_mainFd.id), is_mainIntegral)
   }
 
   private def convertToFun_(fd: FunDef)(implicit funCtx: FunCtx, pos: Position) = {
@@ -584,6 +590,11 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         }
 
       case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
+        // Make sure fd is not annotated with cCode.drop
+        if (fd.annotations contains "cCode.drop") {
+          CAST.unsupported(s"Cannot call a function annoted with @cCode.drop")
+        }
+
         // Make sure the called function will be defined at some point
         val funName = fd.id.uniqueName
         if (!functions.find{ _.id.name == funName }.isDefined) {

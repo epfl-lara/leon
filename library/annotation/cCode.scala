@@ -76,4 +76,14 @@ object cCode {
   @ignore
   class typedef(alias: String, include: String = "") extends StaticAnnotation
 
+
+  /*
+   * Functions annotated with @cCode.ignore will not be considered by GenC.
+   *
+   * It is therefore illegal to call such function from within the code that
+   * is considered for C code conversion.
+   */
+  @ignore
+  class drop() extends StaticAnnotation
+
 }
