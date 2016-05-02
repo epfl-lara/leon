@@ -798,7 +798,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             if (useVanuatoo) {
               new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
             } else {
-              val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
+              val evaluator = new DualEvaluator(hctx, hctx.program)
               new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
             }
           }

@@ -15,14 +15,19 @@ import purescala.Expressions._
 import purescala.Definitions._
 import solvers.TimeoutableSolverFactory
 import solvers.{PartialModel, SolverFactory}
+import purescala.DefOps
+import solvers.{PartialModel, Model, SolverFactory, SolverContext}
 import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
 
-abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
+abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: EvaluationBank, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
      with DeterministicEvaluator {
+
+  def this(ctx: LeonContext, prog: Program, maxSteps: Int) =
+    this(ctx, prog, new EvaluationBank, maxSteps)
 
   val name = "evaluator"
   val description = "Recursive interpreter for PureScala expressions"
@@ -215,13 +220,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case CaseClass(cct, args) =>
       val cc = CaseClass(cct, args.map(e))
-      val check = Evaluator.invariantCheck(cc)
+      val check = bank.invariantCheck(cc)
       if (check.isFailure) {
         throw RuntimeError("ADT invariant violation for " + cct.classDef.id.asString + " reached in evaluation.: " + cct.invariant.get.asString)
       } else if (check.isRequired) {
         e(FunctionInvocation(cct.invariant.get, Seq(cc))) match {
           case BooleanLiteral(success) =>
-            Evaluator.invariantResult(cc, success)
+            bank.invariantResult(cc, success)
             if (!success)
               throw RuntimeError("ADT invariant violation for " + cct.classDef.id.asString + " reached in evaluation.: " + cct.invariant.get.asString)
           case other =>
@@ -620,7 +625,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           newOptions.exists(no => opt.optionDef == no.optionDef)
         } ++ newOptions)
 
-        val solverf = SolverFactory.getFromSettings(newCtx, program).withTimeout(1.second)
+        val sctx    = SolverContext(newCtx, bank)
+        val solverf = SolverFactory.getFromSettings(sctx, program).withTimeout(1.second)
         val solver  = solverf.getNewSolver()
 
         try {
@@ -751,7 +757,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       clpCache.getOrElse((choose, ins), {
         val tStart = System.currentTimeMillis
 
-        val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(1.seconds)
+        val sctx    = SolverContext(ctx, bank)
+        val solverf = SolverFactory.getFromSettings(sctx, program).withTimeout(1.seconds)
         val solver  = solverf.getNewSolver()
 
         try {

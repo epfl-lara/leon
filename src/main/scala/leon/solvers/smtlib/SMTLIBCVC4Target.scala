@@ -20,7 +20,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
   override def getNewInterpreter(ctx: LeonContext) = {
     val opts = interpreterOps(ctx)
-    reporter.debug("Invoking solver with "+opts.mkString(" "))
+    context.reporter.debug("Invoking solver with "+opts.mkString(" "))
 
     new CVC4Interpreter("cvc4", opts.toArray)
   }

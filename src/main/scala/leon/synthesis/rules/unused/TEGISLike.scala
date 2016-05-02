@@ -43,7 +43,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
         val inputGenerator: Iterator[Seq[Expr]] = if (useVanuatoo) {
           new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000)
         } else {
-          val evaluator = new DualEvaluator(hctx, hctx.program, CodeGenParams.default)
+          val evaluator = new DualEvaluator(hctx, hctx.program)
           new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000)
         }
 
@@ -63,7 +63,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
         if (gi.nonEmpty) {
 
           val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
-          val evaluator  = new DualEvaluator(hctx, hctx.program, evalParams)
+          val evaluator  = new DualEvaluator(hctx, hctx.program, params = evalParams)
 
           val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
 

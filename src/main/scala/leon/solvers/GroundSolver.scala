@@ -14,7 +14,7 @@ import utils.Interruptible
 import utils.IncrementalSeq
 
 // This solver only "solves" ground terms by evaluating them
-class GroundSolver(val context: LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
+class GroundSolver(val sctx: SolverContext, val program: Program) extends Solver with NaiveAssumptionSolver {
 
   context.interruptManager.registerForInterrupts(this)
 

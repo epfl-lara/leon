@@ -17,7 +17,9 @@ import scala.reflect.runtime.universe._
  * growing/shrinking pool size...
  */
 
-class SolverPoolFactory[+S <: Solver](ctx: LeonContext, sf: SolverFactory[S])(implicit tag: TypeTag[S]) extends SolverFactory[S] {
+class SolverPoolFactory[+S <: Solver](ctx: LeonContext, sf: SolverFactory[S]) extends SolverFactory[S] {
+
+  val name = "Pool(" + sf.name + ")"
 
   var poolSize    = 0
   val poolMaxSize = 5

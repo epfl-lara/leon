@@ -152,5 +152,5 @@ final class IsabelleEnvironment private(
     val selectedFunDefs: List[FunDef]
 ) {
   def solver: IsabelleSolver with TimeoutSolver =
-    new IsabelleSolver(context, program, types, functions, system) with TimeoutSolver
+    new IsabelleSolver(context.toSctx, program, types, functions, system) with TimeoutSolver
 }

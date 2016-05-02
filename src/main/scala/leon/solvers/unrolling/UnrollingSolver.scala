@@ -76,8 +76,6 @@ trait AbstractUnrollingSolver[T]
 
   protected var interrupted : Boolean = false
 
-  protected val reporter = context.reporter
-
   lazy val templateGenerator = new TemplateGenerator(theoryEncoder, templateEncoder, assumePreHolds)
   lazy val unrollingBank = new UnrollingBank(context, templateGenerator)
 
@@ -215,7 +213,7 @@ trait AbstractUnrollingSolver[T]
     val newExpr = model.toSeq.foldLeft(expr){
       case (e, (k, v)) => let(k, v, e)
     }
-    
+
     evaluator.eval(newExpr) match {
       case EvaluationResults.Successful(BooleanLiteral(true)) =>
         reporter.debug("- Model validated.")
@@ -463,7 +461,7 @@ trait AbstractUnrollingSolver[T]
 }
 
 class UnrollingSolver(
-  val context: LeonContext,
+  val sctx: SolverContext,
   val program: Program,
   underlying: Solver,
   theories: TheoryEncoder = new NoEncoder

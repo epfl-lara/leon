@@ -399,7 +399,7 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
   }
 
   test("Infinite Recursion") { implicit fix =>
-    val e = new CodeGenEvaluator(fix._1, fix._2, CodeGenParams.default.copy(maxFunctionInvocations = 32))
+    val e = new CodeGenEvaluator(fix._1, fix._2, params = CodeGenParams.default.copy(maxFunctionInvocations = 32))
 
     eval(e, fcall("Recursion.c")(i(42))).failed
   }

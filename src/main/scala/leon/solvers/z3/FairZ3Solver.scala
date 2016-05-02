@@ -16,7 +16,7 @@ import unrolling._
 import theories._
 import utils._
 
-class FairZ3Solver(val context: LeonContext, val program: Program)
+class FairZ3Solver(val sctx: SolverContext, val program: Program)
   extends AbstractZ3Solver
      with AbstractUnrollingSolver[Z3AST] {
 
@@ -29,7 +29,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   override val name = "Z3-f"
   override val description = "Fair Z3 Solver"
 
-  override protected val reporter = context.reporter
   override def reset(): Unit = super[AbstractZ3Solver].reset()
 
   def declareVariable(id: Identifier): Z3AST = variables.cachedB(Variable(id)) {

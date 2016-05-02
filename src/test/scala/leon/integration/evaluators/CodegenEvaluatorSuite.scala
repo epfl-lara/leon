@@ -330,7 +330,7 @@ class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram with helpers.Expres
     val testName = f"$name%-20s $opts%-18s"
 
     test("Evaluation of "+testName) { implicit fix =>
-      val eval = new CodeGenEvaluator(fix._1, fix._2, CodeGenParams(
+      val eval = new CodeGenEvaluator(fix._1, fix._2, params = CodeGenParams(
         maxFunctionInvocations = if (requireMonitor) 1000 else -1, // Monitor calls and abort execution if more than X calls
         checkContracts = true,      // Generate calls that checks pre/postconditions
         doInstrument = doInstrument // Instrument reads to case classes (mainly for vanuatoo)

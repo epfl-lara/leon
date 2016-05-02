@@ -18,7 +18,7 @@ import leon.verification.VC
 import edu.tum.cs.isabelle._
 import edu.tum.cs.isabelle.pure.{Expr => _, _}
 
-class IsabelleSolver(val context: LeonContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
+class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
 
   context.interruptManager.registerForInterrupts(this)
 

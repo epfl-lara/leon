@@ -4,7 +4,7 @@ import leon.io.StdIn
 
 import leon.annotation._
 
-object GuessNumberInteractive {
+object GuessNumber {
 
   @extern
   def pickBetween(bot: BigInt, top: BigInt): BigInt = {

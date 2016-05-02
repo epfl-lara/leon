@@ -11,7 +11,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 
 class TimeoutSolverSuite extends LeonTestSuite {
-  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
+  private class IdioticSolver(val sctx: SolverContext, val program: Program) extends Solver with NaiveAssumptionSolver {
     val name = "Idiotic"
     val description = "Loops"
 
@@ -45,7 +45,7 @@ class TimeoutSolverSuite extends LeonTestSuite {
   }
 
   private def getTOSolver(ctx: LeonContext): SolverFactory[Solver] = {
-    SolverFactory(() => (new IdioticSolver(ctx, Program.empty) with TimeoutSolver).setTimeout(200L))
+    SolverFactory("idiotic", () => (new IdioticSolver(ctx.toSctx, Program.empty) with TimeoutSolver).setTimeout(200L))
   }
 
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {

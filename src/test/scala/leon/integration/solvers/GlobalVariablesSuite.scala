@@ -31,20 +31,14 @@ class GlobalVariablesSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
        |} """.stripMargin
   )
 
-  val getFactories: Seq[(String, (LeonContext, Program) => Solver)] = {
-    (if (SolverFactory.hasNativeZ3) Seq(
-      ("fairz3",   (ctx: LeonContext, pgm: Program) => new FairZ3Solver(ctx, pgm))
-    ) else Nil) ++
-    (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBZ3Solver(ctx, pgm)))
-    ) else Nil) ++
-    (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new UnrollingSolver(ctx, pgm, new SMTLIBCVC4Solver(ctx, pgm)))
-    ) else Nil)
+  val solverNames: Seq[String] = {
+    (if (SolverFactory.hasNativeZ3) Seq("fairz3") else Nil) ++
+    (if (SolverFactory.hasZ3)       Seq("smt-z3") else Nil) ++
+    (if (SolverFactory.hasCVC4)     Seq("smt-cvc4") else Nil)
   }
 
   // Check that we correctly extract several types from solver models
-  for ((sname, sf) <- getFactories) {
+  for (sname <- solverNames) {
     test(s"Global Variables in $sname") { implicit fix =>
       val ctx = fix._1
       val pgm = fix._2
@@ -55,7 +49,7 @@ class GlobalVariablesSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
           fd.body = Some(IfExpr(b0.toVariable, bi(1), bi(-1)))
 
           val cnstr = LessThan(FunctionInvocation(fd.typed, Seq(bi(42))), bi(0))
-          val solver = sf(ctx, pgm)
+          val solver = SolverFactory.getFromName(ctx, pgm)(sname).getNewSolver()
           solver.assertCnstr(And(b0.toVariable, cnstr))
 
           try { 

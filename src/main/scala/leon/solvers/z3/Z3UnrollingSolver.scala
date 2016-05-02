@@ -9,5 +9,8 @@ import purescala.Definitions._
 import unrolling._
 import theories._
 
-class Z3UnrollingSolver(context: LeonContext, program: Program, underlying: Solver)
-  extends UnrollingSolver(context, program, underlying, new StringEncoder(context, program) >> new BagEncoder(context, program))
+class Z3UnrollingSolver(context: SolverContext, program: Program, underlying: Z3Solver)
+  extends UnrollingSolver(context, program, underlying,
+                          new StringEncoder(context.context, program) >>
+                          new BagEncoder(context.context, program))
+     with Z3Solver

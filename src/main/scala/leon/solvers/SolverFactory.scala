@@ -13,7 +13,7 @@ import purescala.Definitions._
 import scala.reflect.runtime.universe._
 import _root_.smtlib.interpreters._
 
-abstract class SolverFactory[+S <: Solver : TypeTag] {
+abstract class SolverFactory[+S <: Solver] {
   def getNewSolver(): S
 
   def shutdown(): Unit = {}
@@ -22,12 +22,13 @@ abstract class SolverFactory[+S <: Solver : TypeTag] {
     s.free()
   }
 
-  val name = typeOf[S].toString.split("\\.").last.replaceAll("Solver", "")+"*"
+  val name: String
 }
 
 object SolverFactory {
-  def apply[S <: Solver : TypeTag](builder: () => S): SolverFactory[S] = {
+  def apply[S <: Solver : TypeTag](nme: String, builder: () => S): SolverFactory[S] = {
     new SolverFactory[S] {
+      val name = nme
       def getNewSolver() = builder()
     }
   }
@@ -50,8 +51,11 @@ object SolverFactory {
       case (name, desc) =>  f"\n  $name%-14s : $desc"
     }.mkString("")
 
-  def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    val names = ctx.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
+  def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] =
+    getFromSettings(SolverContext(ctx, new evaluators.EvaluationBank), program)
+
+  def getFromSettings(implicit ctx: SolverContext, program: Program): SolverFactory[TimeoutSolver] = {
+    val names = ctx.context.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
 
     if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
       if (hasZ3) {
@@ -74,48 +78,34 @@ object SolverFactory {
     }
   }
 
-  private def showSolvers(ctx: LeonContext) = {
+  private def showSolvers(ctx: SolverContext) = {
     ctx.reporter.error(availableSolversPretty)
     ctx.reporter.fatalError("Aborting Leon...")
   }
 
-  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
-    case "fairz3" =>
-      SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
+  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] =
+    getFromName(SolverContext(ctx, new evaluators.EvaluationBank), program)(name)
 
-    case "unrollz3" =>
-      SolverFactory(() => new Z3UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
-
-    case "enum"   =>
-      SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
-
-    case "ground" =>
-      SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
-
-    case "smt-z3" =>
-      SolverFactory(() => new Z3UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
-
-    case "smt-z3-q" =>
-      SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
-
-    case "smt-cvc4" =>
-      SolverFactory(() => new CVC4UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
-
-    case "smt-cvc4-proof" =>
-      SolverFactory(() => new SMTLIBCVC4ProofSolver(ctx, program) with TimeoutSolver)
-
-    case "smt-cvc4-cex" =>
-      SolverFactory(() => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
-
-    case "isabelle" =>
-      new isabelle.IsabelleSolverFactory(ctx, program)
-
+  def getFromName(ctx: SolverContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
+    case "enum"           => SolverFactory(name, () => new EnumerationSolver(ctx, program) with TimeoutSolver)
+    case "ground"         => SolverFactory(name, () => new GroundSolver(ctx, program) with TimeoutSolver)
+    case "fairz3"         => SolverFactory(name, () => new FairZ3Solver(ctx, program) with TimeoutSolver)
+    case "unrollz3"       => SolverFactory(name, () => new Z3UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
+    case "smt-z3"         => SolverFactory(name, () => new Z3UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+    case "smt-z3-q"       => SolverFactory(name, () => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
+    case "smt-cvc4"       => SolverFactory(name, () => new CVC4UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
+    case "smt-cvc4-proof" => SolverFactory(name, () => new SMTLIBCVC4ProofSolver(ctx, program) with TimeoutSolver)
+    case "smt-cvc4-cex"   => SolverFactory(name, () => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
+    case "smt-z3-u"       => SolverFactory(name, () => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+    case "smt-cvc4-u"     => SolverFactory(name, () => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
+    case "nativez3-u"     => SolverFactory(name, () => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
+    case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx.context, program)
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")
       showSolvers(ctx)
   }
 
-  def getFromNames(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
+  def getFromNames(ctx: SolverContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
 
     val selectedSolvers = names.map(getFromName(ctx, program))
 
@@ -137,29 +127,30 @@ object SolverFactory {
   // Fast solver used by simplifications, to discharge simple tautologies
   def uninterpreted(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     val names = ctx.findOptionOrDefault(GlobalOptions.optSelectedSolvers)
-    
+    val fromName = getFromName(ctx, program) _
+
     if ((names contains "fairz3") && !hasNativeZ3) {
       if (hasZ3) {
         if (!reported) {
           ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-z3.")
           reported = true
         }
-        SolverFactory(() => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+        fromName("smt-z3-u")
       } else if (hasCVC4) {
         if (!reported) {
           ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-cvc4.")
           reported = true
         }
-        SolverFactory(() => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
+        fromName("smt-cvc4-u")
       } else {
         ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
       }
     } else if(names contains "smt-cvc4") {
-      SolverFactory(() => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
+      fromName("smt-cvc4-u")
     } else if(names contains "smt-z3") {
-      SolverFactory(() => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+      fromName("smt-z3-u")
     } else if ((names contains "fairz3") && hasNativeZ3) {
-      SolverFactory(() => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
+      fromName("nativez3-u")
     } else {
       ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
     }

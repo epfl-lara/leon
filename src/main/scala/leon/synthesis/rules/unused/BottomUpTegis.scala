@@ -41,7 +41,7 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
           val evalParams            = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
           //val evaluator             = new DefaultEvaluator(sctx.context, sctx.program)
-          val evaluator             = new DualEvaluator(hctx, hctx.program, evalParams)
+          val evaluator             = new DualEvaluator(hctx, hctx.program, params = evalParams)
 
           val grammar               = getGrammar(hctx, p)
 

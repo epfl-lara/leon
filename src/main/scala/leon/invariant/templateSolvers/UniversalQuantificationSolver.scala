@@ -63,8 +63,9 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
     if (usePortfolio) {
       if (useIncrementalSolvingForVCs)
         throw new IllegalArgumentException("Cannot perform incremental solving with portfolio solvers!")
-      SolverFactory(() => new PortfolioSolver(leonctx, Seq(new SMTLIBCVC4Solver(leonctx, program),
-        new SMTLIBZ3Solver(leonctx, program))) with TimeoutSolver)
+      new PortfolioSolverFactory(leonctx.toSctx, Seq(
+        SolverFactory.getFromName(leonctx, program)("smt-cvc4-u"),
+        SolverFactory.getFromName(leonctx, program)("smt-z3-u")))
     } else
       SolverFactory.uninterpreted(leonctx, program)
 
@@ -360,7 +361,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
             solver.pop()
           solRes
         } else
-          SimpleSolverAPI(SolverFactory(() => solver)).solveSAT(instExpr)
+          SimpleSolverAPI(SolverFactory(solver.name, () => solver)).solveSAT(instExpr)
       } { vccTime =>
         if (verbose) reporter.info("checked VC inst... in " + vccTime / 1000.0 + "s")
         updateCounterTime(vccTime, "VC-check-time", "disjuncts")
@@ -370,7 +371,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       /*ctrTracker.getVC(fd).checkUnflattening(tempVarMap,
         SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())),
         defaultEval)*/
-      verifyModel(funData.simpleParts, packedModel, SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())))
+      verifyModel(funData.simpleParts, packedModel, SimpleSolverAPI(solverFactory))
       //val unflatPath = ctrTracker.getVC(fd).pickSatFromUnflatFormula(funData.simpleParts, packedModel, defaultEval)
     }
     //for statistics
@@ -379,7 +380,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
         unflatten(simplifyArithmetic(instantiateTemplate(ctrTracker.getVC(fd).eliminateBlockers, tempVarMap)))
       Stats.updateCounterStats(atomNum(compressedVC), "Compressed-VC-size", "disjuncts")
       time {
-        SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())).solveSAT(compressedVC)
+        SimpleSolverAPI(solverFactory).solveSAT(compressedVC)
       } { compTime =>
         Stats.updateCumTime(compTime, "TotalCompressVCCTime")
         reporter.info("checked compressed VC... in " + compTime / 1000.0 + "s")
