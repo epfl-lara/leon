@@ -54,14 +54,11 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], val initPath: Path = Path.e
     case Require(pre, body) if impliedBy(pre, path) =>
       body
 
-    case IfExpr(cond, thenn, elze) =>
-      if (impliedBy(cond, path)) {
-        rec(thenn, path)
-      } else if (contradictedBy(cond, path)) {
-        rec(elze, path)
-      } else {
-        super.rec(e, path)
-      }
+    case IfExpr(cond, thenn, _) if impliedBy(cond, path) =>
+      rec(thenn, path)
+
+    case IfExpr(cond, _, elze ) if contradictedBy(cond, path) =>
+      rec(elze, path)
 
     case And(e +: _) if contradictedBy(e, path) =>
       BooleanLiteral(false).copiedFrom(e)
@@ -126,6 +123,9 @@ class SimplifierWithPaths(sf: SolverFactory[Solver], val initPath: Path = Path.e
 
     case a @ Assert(pred, _, body) if impliedBy(pred, path) =>
       body
+
+    case a @ Assert(pred, msg, body) if contradictedBy(pred, path) =>
+      Error(body.getType, s"Assertion failed: $msg").copiedFrom(a)
 
     case b if b.getType == BooleanType && impliedBy(b, path) =>
       BooleanLiteral(true).copiedFrom(b)
