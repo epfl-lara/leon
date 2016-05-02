@@ -51,38 +51,22 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
       (rec, path)
     }
 
-    val onSuccess = forwardMap(letTuple(recs.map(_._1), tupleWrap(calls), _))
+    val newWs = calls map Terminating
+    val TopLevelAnds(ws) = p.ws
+    val newProblem = p.copy(
+      as = p.as ++ (if (specifyCalls) Nil else recs.map(_._1)),
+      pc = recs.map(_._2).foldLeft(p.pc)(_ merge _),
+      ws = andJoin(ws ++ newWs),
+      eb = p.eb
+    )
 
-    List(new RuleInstantiation(s"Introduce calls ${calls mkString ", "}", SolutionBuilderDecomp(List(p.outType), onSuccess)) {
-
-      def apply(nohctx: SearchContext): RuleApplication = {
-
-        val psol = new PartialSolution(hctx.search.strat, true)
-          .solutionAround(hctx.currentNode)(Error(p.outType, "Encountered choose!"))
-          .getOrElse(hctx.reporter.fatalError("Unable to get outer solution"))
-          .term
-
-        val origImpl = hctx.functionContext.fullBody
-        hctx.functionContext.fullBody = psol
-
-        //val evaluator = new NoChooseEvaluator(hctx, hctx.program)
-
-        val newWs = calls map Terminating
-        val TopLevelAnds(ws) = p.ws
-        try {
-          val newProblem = p.copy(
-            as = p.as ++ (if (specifyCalls) Nil else recs.map(_._1)),
-            pc = recs.map(_._2).foldLeft(p.pc)(_ merge _),
-            ws = andJoin(ws ++ newWs),
-            eb = p.eb
-          )
-
-          RuleExpanded(List(newProblem))
-        } finally {
-          hctx.functionContext.fullBody = origImpl
-        }
+    val onSuccess = forwardMap { e =>
+      recs.map(_._1).zip(calls).foldRight(e) {
+        case ( (id, call), e) =>
+          Let(id, call, e)
       }
-    })
+    }
 
+    List(decomp(List(newProblem), onSuccess, s"Introduce calls ${calls mkString ", "}"))
   }
 }
