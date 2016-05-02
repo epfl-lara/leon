@@ -78,10 +78,11 @@ object cCode {
 
 
   /*
-   * Functions annotated with @cCode.ignore will not be considered by GenC.
+   * Functions or types annotated with @cCode.drop will not be considered by
+   * GenC.
    *
-   * It is therefore illegal to call such function from within the code that
-   * is considered for C code conversion.
+   * It is therefore illegal to call such functions or use such types from
+   * within the code that is considered for C code conversion.
    */
   @ignore
   class drop() extends StaticAnnotation

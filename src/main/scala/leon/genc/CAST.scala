@@ -28,6 +28,7 @@ object CAST { // C Abstract Syntax Tree
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
   }
+  case object NoType extends Type("???") // Used in place of a dropped type
 
   /* Type Modifiers */
   case class Const(typ: Type) extends Type(s"$typ const")

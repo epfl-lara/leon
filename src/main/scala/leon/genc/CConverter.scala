@@ -356,7 +356,13 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
       case cd: CaseClassDef =>
         debug(s"Processing ${cd.id} with annotations: ${cd.annotations}")
 
-        getTypedef(cd) getOrElse {
+        if (cd.isManuallyTyped && cd.isDropped)
+          CAST.unsupported(s"${cd.id} cannot be both dropped and manually defined")
+
+        if (cd.isDropped) {
+          debug(s"${cd.id} is dropped")
+          CAST.NoType
+        } else getTypedef(cd) getOrElse {
           if (cd.isAbstract)         CAST.unsupported("Abstract types")
           if (cd.hasParent)          CAST.unsupported("Inheritance")
           if (cd.isCaseObject)       CAST.unsupported("Case Objects")
@@ -897,6 +903,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case TupleType(bases)     => bases exists containsArrayType
 
     case CaseClassType(cd, _) =>
+      if (cd.isDropped)
+        CAST.unsupported(s"Using a dropped type")
+
       // If a case class is manually typdef'd, consider it to be a "returnable" type
       if (getTypedef(cd).isDefined) false
       else cd.fields map { _.getType } exists containsArrayType
@@ -935,6 +944,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
   // Extra tools on ClassDef, especially for annotations
   private implicit class ClassDefOps(val cd: ClassDef) {
     def isManuallyTyped = hasAnnotation(manualTypeAnnotation)
+    def isDropped       = hasAnnotation("cCode.drop")
 
     def getManualType = {
       assert(isManuallyTyped)
