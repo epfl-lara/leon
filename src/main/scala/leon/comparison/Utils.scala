@@ -1,7 +1,8 @@
 package leon.comparison
 
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
-import leon.purescala.Expressions.Expr
+import leon.purescala.Expressions.{CaseClass, Expr}
+import leon.purescala.Types.{ClassType, TypeTree}
 
 /**
   * Created by joachimmuth on 25.04.16.
@@ -31,6 +32,11 @@ object Utils {
       case _ =>   0.0
 
     }
+  }
+
+  def compareTypeTree(typeA: TypeTree, typeB: TypeTree): Double = (typeA, typeB) match {
+    case (a: ClassType, b: ClassType) => compareClassDef(a.classDef, b.classDef)
+    case _ => 0.0
   }
 
 
@@ -80,4 +86,10 @@ object Utils {
     else Math.min(a.toDouble/b.toDouble, b.toDouble/a.toDouble)
   }
 
+
+  def mean(a: Double): Double = a
+  def mean(a: Double, b: Double): Double = (a + b) / 2
+  def mean(a: Double, b: Double, c: Double): Double = (a + b + c) / 3
+  def mean(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 3
+  def mean(list : List[Double]): Double = list.foldLeft(0.0)(_+_) / list.size.toDouble
 }

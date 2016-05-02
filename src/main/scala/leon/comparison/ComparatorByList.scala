@@ -6,10 +6,9 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
 /**
   * Created by joachimmuth on 25.04.16.
   *
-  * A first attempt and easy to understand comparator.
-  * Flat both function into list of argument and compare each of them one-by-one, the similarity result beeing the
-  * number of equals-expression divided by its total
+  * This way of basic comparison flat both functional tree into lists and compare them in every possible combination.
   *
+  * The easy-to-understand way of working provide a point of comparison for further advanced method.
   */
 object ComparatorByList {
   val print = false
@@ -42,28 +41,49 @@ object ComparatorByList {
   }
 
   /**
-    * Flat an Expression tree into a list in order to provide simple comparison
+    * Flat an Expression tree into a list using different method according with type of expression
     *
     * @param expr
     * @return
     */
-  def treeToList(expr: Expr): List[Expr] = {
-    val list: List[Expr] = expr match {
-      case Let(binder, value, body) => List(expr) ++ treeToList(body)
+  def treeToList(expr: Expr): List[Expr] = expr match {
+    case Require(pred, body) => List(expr) ++ treeToList(pred) ++ treeToList(body)
+    case Ensuring(body, pred) => List(expr) ++ treeToList(body) ++ treeToList(pred)
+    case Assert(pred, _, body) => List(expr) ++ treeToList(pred) ++ treeToList(body)
+    case Let(binder, value, body) => List(expr) ++ treeToList(value) ++ treeToList(body)
 
-      // we don't list the scrutinee. Why? Because as it will be normalized later, a unique identifier
-      // will ALWAYS be the same.
-      case MatchExpr(scrutinee, cases) =>
-        List (expr)  ++ cases.flatMap(m => m.expressions.flatMap(e => treeToList(e)))
+    // how to handle fds (function definition) ??
+    case LetDef(fds, body) => List(expr) ++ treeToList(body)
 
-      //default value for any non-handled expression
-      case x if x.isInstanceOf[Expr] => List(x)
+    case Application(callee, args) => List(expr) ++ treeToList(callee) ++ args.flatMap(treeToList(_))
+    case Lambda(_, body) => List(expr) ++ treeToList(expr)
+    case Forall(_, body) => List(expr) ++ treeToList(body)
+    case FunctionInvocation(_ ,args) => List(expr) ++ args.flatMap(treeToList(_))
+    case IfExpr(cond, thenn, elze) => List(expr) ++ treeToList(cond) ++ treeToList(thenn) ++ treeToList(elze)
 
-      //default value for error handling, should never reach that
-      case _ => Nil
-    }
+    // we don't list the scrutinee
+    // method cases.expression return both optGuard and rhs
+    case MatchExpr(scrutinee, cases) =>
+      List (expr)  ++ cases.flatMap(m => m.expressions.flatMap(e => treeToList(e)))
 
-    list
+    case CaseClass(_, args) => List(expr) ++ args.flatMap(treeToList(_))
+    case CaseClassSelector(_, caseClass, _) => List(expr) ++ treeToList(caseClass)
+    case Equals(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case And(exprs) => List(expr) ++ exprs.flatMap(treeToList(_))
+    case Or(exprs) => List(expr) ++ exprs.flatMap(treeToList(_))
+    case Implies(lhs, rhs) => List(expr) ++ treeToList(lhs) ++ treeToList(rhs)
+    case Not(internalExpr) => List(expr) ++ treeToList(internalExpr)
+    case IsInstanceOf(internExpr, _) => List(expr) ++ treeToList(internExpr)
+    case AsInstanceOf(internExpr, _) => List(expr) ++ treeToList(internExpr)
+
+    // Petite pause au string, je vais reprendre demain
+
+    // default value for any easy-to-handled or Terminal expression
+    // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
+    case x if x.isInstanceOf[Expr] => List(x)
+
+    //default value for error handling, should never reach that
+    case _ => Nil
   }
 
   /**
