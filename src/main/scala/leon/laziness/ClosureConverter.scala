@@ -16,12 +16,11 @@ import PredicateUtil._
 import purescala.TypeOps.bestRealType
 
 /**
- * TODO: need to handle direct calls to memoized functions
  * TODO: check argument preconditions of closure (they can be made preconditions of the eval function w.r.t appropriate match conditions)
  * (a) add state to every function in the program
  * (b) thread state through every expression in the program sequentially
  * (c) replace lambda constructions with case class creations
- * (d) replace isCached with currentState.contains()
+ * (d) replace cached with currentState.contains()
  * (e) replace indirect calls to dispatch with current state
  */
 class ClosureConverter(p: Program, ctx: LeonContext,
@@ -374,15 +373,43 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(lambdaExpr +: args, op)
 
     // (g) `*` invocation ?
-    case star @ FunctionInvocation(_, Seq(CaseClass(_, Seq(Application(lambdaExpr, args))))) if isStarInvocation(star)(p) =>
-      val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
-      val uninstType = closureFactory.functionType(tname)
-      val dispFun = computeFunctions(tname)
-      val targs = getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams
+    case star @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invokeExpr)))) if isStarInvocation(star)(p) =>
+      val (target, targs, args) = invokeExpr match {
+        case Application(lambdaExpr, args) =>
+          val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
+          val uninstType = closureFactory.functionType(tname)
+          (computeFunctions(tname),
+              getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
+              lambdaExpr +: args)
+
+        case FunctionInvocation(TypedFunDef(tar, tps), args) =>
+          (tar, tps, args)
+      }
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
-        FunctionInvocation(TypedFunDef(dispFun, targs), nargs)
+        FunctionInvocation(TypedFunDef(target, targs), nargs)
       }, false)
-      mapNAryOperator(lambdaExpr +: args, op)
+      mapNAryOperator(args, op)
+
+    // (h) direct call to a memoized function ?
+    case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
+      mapNAryOperator(args,
+        (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
+          val stArgs = if (funsNeedStates(fd)) st.toSeq else Seq()
+          val stparams = if (funsNeedStates(fd) || starCallers(fd)) stTparams else Seq()
+          val invoke = FunctionInvocation(TypedFunDef(funMap(fd), targs ++ stparams), nargs ++ stArgs)
+          val invokeRes = FreshIdentifier("dres", invoke.getType)
+          //println(s"invoking function $targetFun with args $args")
+          val (valPart, currState) =
+            if (funsRetStates(fd)) {
+              (TupleSelect(invokeRes.toVariable, 1), TupleSelect(invokeRes.toVariable, 2))
+            } else {
+              (invokeRes.toVariable, st.get) // st should be defined here
+            }
+          // create a memo closure to mark that the function invocation has been memoized
+          val cc = CaseClass(CaseClassType(closureFactory.memoClasses(fd), stTparams), nargs)
+          val stPart = closureFactory.stateUpdate(cc, currState)
+          Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
+        }, true))
 
     // Rest: usual language constructs
     case FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>

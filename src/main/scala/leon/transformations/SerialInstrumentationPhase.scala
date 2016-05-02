@@ -241,35 +241,7 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
           finalRes
 
         // TODO: We are ignoring the construction cost of fields. Fix this.
-        case f @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-          if (!fd.hasLazyFieldFlag) {
-            val newfd = TypedFunDef(funMap(fd), tps)
-            val newFunInv = FunctionInvocation(newfd, subeVals)
-            //create a variables to store the result of function invocation
-            if (serialInst.instFuncs(fd)) {
-              //this function is also instrumented
-              val resvar = Variable(FreshIdentifier("e", newfd.returnType, true))
-              val valexpr = TupleSelect(resvar, 1)
-              val instexprs = instrumenters.map { m =>
-                val calleeInst =
-                  if (serialInst.funcInsts(fd).contains(m.inst) && fd.isUserFunction) {
-                    List(serialInst.selectInst(fd)(resvar, m.inst))
-                  } else List() // ignoring fields here
-                //Note we need to ensure that the last element of list is the instval of the finv
-                m.instrument(e, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar))
-              }
-              Let(resvar.id, newFunInv, Tuple(valexpr +: instexprs))
-            } else {
-              val resvar = Variable(FreshIdentifier("e", newFunInv.getType, true))
-              val instexprs = instrumenters.map { m =>
-                m.instrument(e, subeInsts.getOrElse(m.inst, List()))
-              }
-              Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
-            }
-
-          } else
-            throw new UnsupportedOperationException("Lazy fields are not handled in instrumentation." +
-              " Consider using the --lazy option and rewrite your program using lazy constructor `$`")
+        case f: FunctionInvocation => tupleifyCall(f, subeVals, subeInsts)
 
         case _ =>
           val exprPart = recons(subeVals)
@@ -291,6 +263,37 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
       val newCurrExpr = transform(currExp)
       Let(resvar.id, newCurrExpr, recRes)
     }
+  }
+
+  def tupleifyCall(f: FunctionInvocation, subeVals: List[Expr], subeInsts: Map[Instrumentation, List[Expr]])(implicit letIdMap: Map[Identifier, Identifier]): Expr = {
+    val FunctionInvocation(TypedFunDef(fd, tps), args) = f
+    if (!fd.hasLazyFieldFlag) {
+      val newfd = TypedFunDef(funMap(fd), tps)
+      val newFunInv = FunctionInvocation(newfd, subeVals)
+      //create a variables to store the result of function invocation
+      if (serialInst.instFuncs(fd)) {
+        //this function is also instrumented
+        val resvar = Variable(FreshIdentifier("e", newfd.returnType, true))
+        val valexpr = TupleSelect(resvar, 1)
+        val instexprs = instrumenters.map { m =>
+          val calleeInst =
+            if (serialInst.funcInsts(fd).contains(m.inst) && fd.isUserFunction) {
+              List(serialInst.selectInst(fd)(resvar, m.inst))
+            } else List() // ignoring fields here
+          //Note we need to ensure that the last element of list is the instval of the finv
+          m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar))
+        }
+        Let(resvar.id, newFunInv, Tuple(valexpr +: instexprs))
+      } else {
+        val resvar = Variable(FreshIdentifier("e", newFunInv.getType, true))
+        val instexprs = instrumenters.map { m =>
+          m.instrument(f, subeInsts.getOrElse(m.inst, List()))
+        }
+        Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
+      }
+    } else
+      throw new UnsupportedOperationException("Lazy fields are not handled directly by instrumentation." +
+        " Consider using the --mem option")
   }
 
   /**

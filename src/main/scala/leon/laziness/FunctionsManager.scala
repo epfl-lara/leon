@@ -37,6 +37,8 @@ class FunctionsManager(p: Program) {
   /*
    * Lambdas need not be a part of read roots, because its body needs state, the function creating lambda will be
    * marked as needing state.
+   * TODO: why are all applications ValRoots ? Only those applications that may call a memoized function  should be
+   * valroots ?
    */
   val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
     var starRoots = Set[FunDef]()
@@ -45,15 +47,23 @@ class FunctionsManager(p: Program) {
     userLevelFunctions(p).foreach {
       case fd if fd.hasBody =>
         def rec(e: Expr): Unit = e match {
-          case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(Application(l, args))))) if isStarInvocation(finv)(p) =>
+          case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
             starRoots += fd
-            (l +: args) foreach rec
+            invExpr match {
+              case Application(l, args) => // we need to prevent the application here from being treated as a `val` root
+                (l +: args) foreach rec
+              case FunctionInvocation(_, args) =>
+                args foreach rec
+            }
           case finv@FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
             readRoots += fd
             args foreach rec
           case Application(l, args) =>
             valRoots += fd
             (l +: args) foreach rec
+          case FunctionInvocation(tfd, args) if isMemoized(tfd.fd) =>
+            valRoots += fd
+            args foreach rec
           case Operator(args, _) =>
             args foreach rec
         }
@@ -63,8 +73,8 @@ class FunctionsManager(p: Program) {
     val valCallers = cg.transitiveCallers(valRoots.toSeq)
     val readfuns = cg.transitiveCallers(readRoots.toSeq)
     val starCallers = cg.transitiveCallers(starRoots.toSeq)
-    /*println("Ret roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))
-    println("Read roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))*/
+    println("Ret roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))
+    println("Read roots: "+readRoots.map(_.id)+" read funs: "+readfuns.map(_.id))
     (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
   }
 

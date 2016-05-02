@@ -96,7 +96,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory)
+    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory, funsManager)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)

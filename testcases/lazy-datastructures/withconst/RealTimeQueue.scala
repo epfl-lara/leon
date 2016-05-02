@@ -64,7 +64,7 @@ object RealTimeQueue {
         SCons[T](x, rot)
     }
   } ensuring (res => res.size == ssize(f) + r.size + ssize(a) && res.isCons &&
-      time <= 30)
+      time <= 40)
 
   /**
    * Returns the first element of the stream that is not evaluated.
@@ -107,7 +107,7 @@ object RealTimeQueue {
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
-  } ensuring (res => res.valid && time <= 60)
+  } ensuring (res => res.valid && time <= 70)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -115,5 +115,5 @@ object RealTimeQueue {
       case SCons(x, nf) =>
         createQ(nf, q.r, q.s)
     }
-  } ensuring (res => res.valid && time <= 120)
+  } ensuring (res => res.valid && time <= 130)
 }
