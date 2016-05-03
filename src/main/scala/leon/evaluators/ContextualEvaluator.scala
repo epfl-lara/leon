@@ -35,10 +35,10 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
       ctx.timers.evaluators.recursive.runtime.start()
       EvaluationResults.Successful(e(ex)(initRC(model.toMap), lastGC.get))
     } catch {
-      case so: StackOverflowError =>
-        EvaluationResults.EvaluatorError("Stack overflow")
       case EvalError(msg) =>
         EvaluationResults.EvaluatorError(msg)
+      case so: StackOverflowError =>
+        EvaluationResults.RuntimeError("Stack overflow")
       case e @ RuntimeError(msg) =>
         EvaluationResults.RuntimeError(msg)
       case jre: java.lang.RuntimeException =>
