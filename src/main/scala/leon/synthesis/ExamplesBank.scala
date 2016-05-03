@@ -221,6 +221,19 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
         f(as zip in).map(InOutExample(_, out))
     }
   }
+
+  def asConstraint: Expr = {
+    andJoin(eb.valids.map {
+      case InOutExample(ins, outs) =>
+        val in  = andJoin(as.map(_.toVariable).zip(ins) .map { case (a,b) => equality(a,b) })
+        val out = andJoin(xs.map(_.toVariable).zip(outs).map { case (a,b) => equality(a,b) })
+
+        implies(in, out)
+
+      case _ =>
+        BooleanLiteral(true)
+    })
+  }
 }
 
 import scala.language.implicitConversions
