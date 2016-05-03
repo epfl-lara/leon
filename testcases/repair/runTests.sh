@@ -47,7 +47,7 @@ echo "=====================================================================" >> 
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=count    testcases/repair/List/List6.scala           | tee -a $fullLog
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=find     testcases/repair/List/List7.scala           | tee -a $fullLog
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=find     testcases/repair/List/List8.scala           | tee -a $fullLog
-./leon --debug=report --repair --timeout=30                       --functions=find     testcases/repair/List/List9.scala           | tee -a $fullLog
+./leon --debug=report --repair --timeout=60                       --functions=find     testcases/repair/List/List9.scala           | tee -a $fullLog
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=size     testcases/repair/List/List10.scala          | tee -a $fullLog
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=sum      testcases/repair/List/List11.scala          | tee -a $fullLog
 ./leon --debug=report --repair --timeout=30 --solvers=fairz3,enum --functions=-        testcases/repair/List/List12.scala          | tee -a $fullLog
