@@ -141,13 +141,32 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
             (Application(ecaller, eargs), abs_value)
           }
       }
+      
+    case l @ Lambda(_, _) =>
+      import ExprOps._
+      val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
+      (
+      replaceFromIDs(mapping.mapValues(_._1), l).asInstanceOf[Lambda],
+      replaceFromIDs(mapping.mapValues(_._2), l).asInstanceOf[Lambda])
 
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
       if(ees forall ExprOps.isValue) {
         val conc_value = underlying.e(builder(ees))
         val abs_value = builder(ts)
-        (conc_value, abs_value)
+        val final_abs_value = if( evaluateCaseClassSelector) {
+          abs_value match {
+            case CaseClassSelector(cct, CaseClass(ct, args), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case CaseClassSelector(cct, AsInstanceOf(CaseClass(ct, args), ccct), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case TupleSelect(Tuple(args), i) =>
+              args(i-1)
+            case e => e
+          }
+        } else abs_value
+        
+        (conc_value, final_abs_value)
       } else {
         (builder(ees), builder(ts))
       }
@@ -174,6 +193,8 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
             case ((s, a), id) =>
               exprFromScrut match {
                 case CaseClass(ct, args) if evaluateCaseClassSelector =>
+                  matchesPattern(s, a, args(ct.classDef.selectorID2Index(id)))
+                case AsInstanceOf(CaseClass(ct, args), _) if evaluateCaseClassSelector =>
                   matchesPattern(s, a, args(ct.classDef.selectorID2Index(id)))
                 case _ =>
                   matchesPattern(s, a, CaseClassSelector(ct, exprFromScrut, id))
@@ -208,10 +229,10 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
           val res = (subs zip args).zipWithIndex.map{
             case ((s, a), i) =>
               exprFromScrut match {
-                case TupleSelect(Tuple(args), i) if evaluateCaseClassSelector=>
-                  matchesPattern(s, a, args(i - 1))
+                case Tuple(args) if evaluateCaseClassSelector=>
+                  matchesPattern(s, a, args(i))
                 case _ =>
-                  matchesPattern(s, a, TupleSelect(exprFromScrut, i + 1))
+                  matchesPattern(s, a, TupleSelect(exprFromScrut, i+1))
               }
           }
           if (res.forall(_.isDefined)) {

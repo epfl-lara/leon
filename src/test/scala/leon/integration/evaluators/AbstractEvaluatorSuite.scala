@@ -26,8 +26,8 @@ object AbstractTests {
   def test() = {
     val x = "19"
     val w = 9
-    val y = w*w+5
-    val z = y.toString
+    val y = () => w*w+5
+    val z = y().toString
     val res = param(x) + z
     res
   }
@@ -65,6 +65,22 @@ object AbstractTests {
     }
   }
   
+  
+  test("AbstractOnly evaluator should keep track of variables") { implicit fix =>
+    val testFd = funDef("AbstractTests.test")
+
+    val aeOnly = new AbstractOnlyEvaluator(fix._1, fix._2)
+    
+    val res2 = aeOnly.eval(FunctionInvocation(testFd.typed, Seq()))
+    
+    res2.result match {
+      case Some(expr) =>
+        expr should equal (StringConcat(StringConcat(StringLiteral("19"), StringLiteral("19")), Int32ToString(BVPlus(BVTimes(IntLiteral(9), IntLiteral(9)), IntLiteral(5)))))
+      case None =>
+        fail("No result!")
+    }
+  }
+  
   test("Abstract evaluator should correctly handle boolean and recursive") { implicit fix =>
     val testFd = funDef("AbstractTests.test2")
     val Leaf = cc("AbstractTests.Leaf")()
@@ -94,5 +110,4 @@ object AbstractTests {
         fail("No result!")
     }
   }
-    
 }
