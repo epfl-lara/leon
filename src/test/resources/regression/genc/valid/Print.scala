@@ -2,50 +2,9 @@
 
 import leon.annotation._
 import leon.io.{ FileOutputStream => FOS }
-import leon.io.StdIn
+import leon.io.{ StdIn, StdOut }
 
 object Print {
-
-  // Print a 32-bit integer using the *correct*
-  // format for printf in C99
-  @extern
-  @cCode.function(
-   code = """
-     |void __FUNCTION__(int32_t x) {
-     |  printf("%"PRIi32, x);
-     |}
-     """,
-    includes = "inttypes.h:stdio.h"
-  )
-  def myprint(x: Int): Unit = {
-    print(x)
-  }
-
-  @extern
-  @cCode.function(
-    code = """
-      |void __FUNCTION__(char c) {
-      |  printf("%c", c);
-      |}
-      """,
-    includes = "stdio.h"
-  )
-  def myprint(c: Char): Unit = {
-    print(c)
-  }
-
-  @extern
-  @cCode.function(
-    code = """
-      |void __FUNCTION__(char* s) {
-      |  printf("%s", s);
-      |}
-      """,
-    includes = "stdio.h"
-  )
-  def myprint(s: String): Unit = {
-    print(s)
-  }
 
   def getFileName() = "test.txt"
 
@@ -58,33 +17,33 @@ object Print {
       out.write(c)
       out.close()
     } else {
-      myprint("CANNOT PRINT ")
-      myprint(x)
-      myprint(sep)
-      myprint(c)
-      myprint(" TO FILE ")
-      myprint(filename)
+      StdOut.print("CANNOT PRINT ")
+      StdOut.print(x)
+      StdOut.print(sep)
+      StdOut.print(c)
+      StdOut.print(" TO FILE ")
+      StdOut.print(filename)
     }
   }
 
   def echo(): Unit = {
     implicit val state = StdIn.newState
-    myprint("ECHOING...")
+    StdOut.print("ECHOING...")
     val x = StdIn.readInt
-    myprint(x)
+    StdOut.print(x)
   }
 
   def _main() = {
-    myprint(42)
+    StdOut.print(42)
 
     // Testing escaped characters support
-    myprint('\n')
-    myprint('\t')
-    myprint('\"')
-    myprint('\\')
-    myprint('\'')
-    myprint("\"ab'&\n\t\\\\")
-    myprint('\n')
+    StdOut.print('\n')
+    StdOut.print('\t')
+    StdOut.print('\"')
+    StdOut.print('\\')
+    StdOut.print('\'')
+    StdOut.print("\"ab'&\n\t\\\\")
+    StdOut.print('\n')
 
     printX(42, '*', " <--> ")
 

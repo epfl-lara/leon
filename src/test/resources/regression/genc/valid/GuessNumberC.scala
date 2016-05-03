@@ -1,6 +1,6 @@
 import leon.lang._
 import leon.lang.xlang._
-import leon.io.StdIn
+import leon.io.{ StdIn, StdOut }
 
 import leon.annotation._
 
@@ -51,27 +51,27 @@ object GuessNumberC {
   def isSmallerImpl(guess: Int)(implicit state: StdIn.State): Int = {
     // NOTE: scanning boolean is not yet supported by GenC
     // NOTE: string manipulation is not yet supported by GenC
-    // print("Is it (strictly) greater than " + guess + " [0 = false, 1 = true]: ")
-    print("Is is (strictly) greater than ")
-    print(guess)
-    print(" [0 == false, 1 == true]: ")
+    // StdOut.print("Is it (strictly) greater than " + guess + " [0 = false, 1 = true]: ")
+    StdOut.print("Is is (strictly) greater than ")
+    StdOut.print(guess)
+    StdOut.print(" [0 == false, 1 == true]: ")
 
     val input = StdIn.readInt
 
-    println()
+    StdOut.println()
 
     if (input == 0 || input == 1) input
     else isSmallerImpl(guess)
   } ensuring { res => res == 0 || res == 1 }
 
   def _main() = {
-    println("Think of a number between 0 and 10...")
-    println("Leon will try to guess it...")
+    StdOut.println("Think of a number between 0 and 10...")
+    StdOut.println("Leon will try to guess it...")
     implicit val ioState = StdIn.newState
     val answer = guessNumber()
-    print("Found: ")
-    println(answer)
-    println("Goodbye")
+    StdOut.print("Found: ")
+    StdOut.println(answer)
+    StdOut.println("Goodbye")
   }
 
   @extern

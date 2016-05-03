@@ -1,6 +1,6 @@
 import leon.lang._
 import leon.lang.xlang._
-import leon.io.StdIn
+import leon.io.{ StdIn, StdOut }
 
 import leon.annotation._
 
@@ -41,7 +41,7 @@ object GuessNumber {
   @extern
   def isGreater(guess: BigInt, choice: Option[BigInt])(implicit state: StdIn.State): Boolean = (choice match {
     case None() =>
-      print("Is it (strictly) smaller than " + guess + ": ")
+      StdOut.print("Is it (strictly) smaller than " + guess + ": ")
       StdIn.readBoolean
     case Some(c) => guess > c
   }) ensuring(res => choice match { case Some(c) => res == guess > c case None() => true })
@@ -49,7 +49,7 @@ object GuessNumber {
   @extern
   def isSmaller(guess: BigInt, choice: Option[BigInt])(implicit state: StdIn.State): Boolean = (choice match {
     case None() =>
-      print("Is it (strictly) greater than " + guess + ": ")
+      StdOut.print("Is it (strictly) greater than " + guess + ": ")
       StdIn.readBoolean
     case Some(c) => guess < c
   }) ensuring(res => choice match { case Some(c) => res == guess < c case None() => true })
@@ -63,11 +63,11 @@ object GuessNumber {
   @extern
   def main(args: Array[String]): Unit = {
     implicit val ioState = StdIn.newState
-    println("Think of a number between 0 and 10...")
-    println("Leon will try to guess it...")
+    StdOut.println("Think of a number between 0 and 10...")
+    StdOut.println("Leon will try to guess it...")
     val answer = guessNumber(None())
-    println("Found: " + answer)
-    println("Goodbye")
+    StdOut.println("Found: " + answer)
+    StdOut.println("Goodbye")
   }
 
 }
