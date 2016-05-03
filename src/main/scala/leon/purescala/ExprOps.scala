@@ -295,13 +295,14 @@ object ExprOps extends GenTreeOps[Expr] {
       var remainingIds: Map[TypeTree, List[Identifier]] = typedIds.toMap
 
       def getId(e: Expr): Identifier = {
-        val newId = remainingIds.get(e.getType) match {
+        val tpe = TypeOps.bestRealType(e.getType)
+        val newId = remainingIds.get(tpe) match {
           case Some(x :: xs) =>
-            remainingIds += e.getType -> xs
+            remainingIds += tpe -> xs
             x
           case _ =>
-            val x = FreshIdentifier("x", e.getType, true)
-            typedIds(e.getType) = typedIds(e.getType) :+ x
+            val x = FreshIdentifier("x", tpe, true)
+            typedIds(tpe) = typedIds(tpe) :+ x
             x
         }
         subst += newId -> e
