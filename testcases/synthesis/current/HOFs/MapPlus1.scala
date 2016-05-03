@@ -33,7 +33,7 @@ object MapPlus1 {
 
 
   def test(l: List): List = {
-      ???[List]
+    ???[List]
   } ensuring { res =>
     (sum(res) == sum(l) + size(l)) &&
     (size(res) == size(l))
