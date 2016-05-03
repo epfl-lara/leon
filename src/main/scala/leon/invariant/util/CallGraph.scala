@@ -13,31 +13,30 @@ import invariant.datastructure._
 /**
  * This represents a call graph of the functions in the program
  */
-class CallGraph {
-  val graph = new DirectedGraph[FunDef]()
-  lazy val reverseCG = graph.reverse
+trait CallGraph extends Graph[FunDef] {
+  lazy val reverseCG = reverse
 
-  def addFunction(fd: FunDef) = graph.addNode(fd)
+  /*def addFunction(fd: FunDef) = graph.addNode(fd)
 
   def addEdgeIfNotPresent(src: FunDef, callee: FunDef): Unit = {
     if (!graph.containsEdge(src, callee))
       graph.addEdge(src, callee)
-  }
+  }*/
 
   def callees(src: FunDef): Set[FunDef] = {
-    graph.getSuccessors(src)
+    successors(src)
   }
 
   def transitiveCallees(src: FunDef): Set[FunDef] = {
-    graph.BFSReachables(Seq(src))
+    BFSReachables(Seq(src))
   }
 
   def transitiveCallers(dest: FunDef) : Set[FunDef] = {
-    reverseCG.BFSReachables(Seq(dest))
+    BFSReachables(Seq(dest))
   }
 
   def transitiveCallees(srcs: Seq[FunDef]): Set[FunDef] = {
-    graph.BFSReachables(srcs)
+    BFSReachables(srcs)
   }
 
   def transitiveCallers(dests: Seq[FunDef]) : Set[FunDef] = {
@@ -53,11 +52,11 @@ class CallGraph {
    * Note: We cannot say that src calls itself even though source is reachable from itself in the callgraph
    */
   def transitivelyCalls(src: FunDef, proc: FunDef): Boolean = {
-    graph.BFSReach(src, proc, excludeSrc = true)
+    BFSReach(src, proc, excludeSrc = true)
   }
 
   def calls(src: FunDef, proc: FunDef): Boolean = {
-    graph.containsEdge(src, proc)
+    containsEdge(src, proc)
   }
 
   /**
@@ -67,21 +66,21 @@ class CallGraph {
    */
   def reverseTopologicalOrder(initOrder: Seq[FunDef]): Seq[FunDef] = {
     val orderMap = initOrder.zipWithIndex.toMap
-    graph.sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }
+    sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }
   }
 
   override def toString: String = {
-    val procs = graph.getNodes
+    val procs = nodes
     procs.foldLeft("")((acc, proc) => {
       acc + proc.id + " --calls--> " +
-        graph.getSuccessors(proc).foldLeft("")((acc, succ) => acc + "," + succ.id) + "\n"
+        successors(proc).foldLeft("")((acc, succ) => acc + "," + succ.id) + "\n"
     })
   }
 }
 
 object CallGraphUtil {
 
-  def constructCallGraph(prog: Program,
+  /*def constructCallGraph(prog: Program,
       onlyBody: Boolean = false,
       withTemplates: Boolean = false,
       calleesFun: Expr => Set[FunDef] = getCallees): CallGraph = {
@@ -104,6 +103,28 @@ object CallGraphUtil {
       }
     }
     cg
+  }*/
+
+  def constructCallGraph(prog: Program, onlyBody: Boolean = false, withTemplates: Boolean = false): CallGraph = {
+    val cg = new DirectedGraph[FunDef] with CallGraph { }
+    functionsWOFields(prog.definedFunctions).foreach{fd =>
+      cg.addNode(fd)
+      if (fd.hasBody) {
+        var funExpr = fd.body.get
+        if (!onlyBody) {
+          if (fd.hasPrecondition)
+            funExpr = Tuple(Seq(funExpr, fd.precondition.get))
+          if (fd.hasPostcondition)
+            funExpr = Tuple(Seq(funExpr, fd.postcondition.get))
+        }
+        if (withTemplates && fd.hasTemplate) {
+          funExpr = Tuple(Seq(funExpr, fd.getTemplate))
+        }
+        //introduce a new edge for every callee
+        getCallees(funExpr).foreach(cg.addEdge(fd, _))
+      }
+    }
+    cg
   }
 
   def getCallees(expr: Expr): Set[FunDef] = collect {
@@ -112,5 +133,4 @@ object CallGraphUtil {
     case _ =>
       Set[FunDef]()
   }(expr)
-
 }

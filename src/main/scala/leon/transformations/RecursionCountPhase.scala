@@ -16,7 +16,7 @@ class RecursionCountInstrumenter(p: Program, si: SerialInstrumenter) extends Ins
 
   def inst = Rec
 
-  val sccs = cg.graph.sccs.flatMap { scc =>
+  val sccs = cg.sccs.flatMap { scc =>
     scc.map(fd => (fd -> scc.toSet))
   }.toMap
 

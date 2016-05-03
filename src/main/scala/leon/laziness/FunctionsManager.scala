@@ -8,74 +8,110 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import LazinessUtil._
 import ProgramUtil._
+import invariant.datastructure._
 
 class FunctionsManager(p: Program) {
 
-  // includes calls made through the specs
-  val cg = CallGraphUtil.constructCallGraph(p, false, true,
-    // a specialized callee function that ignores functions called inside `withState` calls, because they would have state as an argument
-    (inexpr: Expr) => {
-      var callees = Set[FunDef]()
-      def rec(e: Expr): Unit = e match {
-        case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
-          ; //nothing to be done
-        case f : FunctionInvocation if isIsFun(f)(p) =>
-          // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
-          ;
-        case cc : CaseClass if isMemCons(cc)(p) =>
-          ; // we can ignore the arguments to mem
-        //note: do not consider field invocations
-        case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
-          callees += callee
-          args map rec
-        case Operator(args, _) => args map rec
+  /**
+   * The call-graph includes only static calls. Indirect calls are anyway treated conservatively based on their types.
+   * The graph includes calls made through the specs.
+   * TODO: for now call-graphs do not contain field invocations. We need to update this!
+   */
+  sealed abstract class Label // these are labels of the call-graph edges
+  case class Specs() extends Label
+  case class Star() extends Label
+  case class WithState() extends Label
+  case class None() extends Label
+
+  val cg = {
+    val dg = new DirectedLabeledGraph[FunDef, Label] with CallGraph {} // the labels denote whether a call is made through `star` or not
+    p.definedFunctions.foreach { fd =>
+      dg.addNode(fd)
+      fd.fullBody match {
+        case NoTree(_) =>
+        case body =>
+          def rec(l: Label)(e: Expr): Unit = e match {
+            // ignore non-real calls. It following cases, calls are used as a way to refer to closures.
+            case f: FunctionInvocation if isIsFun(f)(p) =>
+            case cc: CaseClass if isMemCons(cc)(p)      =>
+            // other calls may be tagged by labels
+            case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
+              args map rec(WithState())
+            case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f)(p) =>
+              rec(Star())(invExpr)
+            case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
+              dg.addEdge(fd, callee, l)
+              args map rec(l)
+            case Ensuring(e, post) =>
+              rec(l)(e)
+              rec(Specs())(post)
+            case Require(pre, e) =>
+              rec(Specs())(pre)
+              rec(l)(e)
+            case Operator(args, _) => args map rec(l)
+          }
+          rec(None())(body)
       }
-      rec(inexpr)
-      callees
-    })
+    }
+    dg
+  }
 
   /*
    * Lambdas need not be a part of read roots, because its body needs state, the function creating lambda will be
    * marked as needing state.
-   * TODO: why are all applications ValRoots ? Only those applications that may call a memoized function  should be
-   * valroots ?
+   * TODO: Only those applications that may call a memoized function  should be valroots
    */
   val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
     var starRoots = Set[FunDef]()
     var readRoots = Set[FunDef]()
-    var valRoots = Set[FunDef]()
-    userLevelFunctions(p).foreach {
-      case fd if fd.hasBody =>
-        def rec(e: Expr): Unit = e match {
-          case finv@FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
-            starRoots += fd
-            invExpr match {
-              case Application(l, args) => // we need to prevent the application here from being treated as a `val` root
-                (l +: args) foreach rec
-              case FunctionInvocation(_, args) =>
-                args foreach rec
-            }
-          case finv@FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
-            readRoots += fd
-            args foreach rec
-          case Application(l, args) =>
-            valRoots += fd
-            (l +: args) foreach rec
-          case FunctionInvocation(tfd, args) if isMemoized(tfd.fd) =>
-            valRoots += fd
-            args foreach rec
-          case Operator(args, _) =>
-            args foreach rec
-        }
-        rec(fd.body.get)
-      case _ => ;
+    var updateRoots = Set[FunDef]()
+    userLevelFunctions(p).foreach { fd =>
+      fd.fullBody match {
+        case NoTree(_) =>
+        case _ =>
+          def rec(e: Expr)(implicit inspec: Boolean): Unit = e match {
+            // skip recursing into the following functions
+            case f: FunctionInvocation if isIsFun(f)(p)            =>
+            case cc: CaseClass if isMemCons(cc)(p)                 =>
+            case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
+            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
+              starRoots += fd
+              invExpr match {
+                case Application(l, args) => // we need to prevent the application here from being treated as a `val` root
+                  (l +: args) foreach rec
+                case FunctionInvocation(_, args) =>
+                  args foreach rec
+              }
+            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
+              readRoots += fd
+              args foreach rec
+            case Application(l, args) if !inspec => // note: not all applications need to update state. This info can be obtained from closureFactory (but is based on types)
+              updateRoots += fd
+              (l +: args) foreach rec
+            case FunctionInvocation(tfd, args) if !inspec && isMemoized(tfd.fd) =>
+              updateRoots += fd
+              args foreach rec
+            case Operator(args, _) =>
+              args foreach rec
+          }
+          if (fd.hasBody)
+            rec(fd.body.get)(false)
+          else if (fd.hasPrecondition)
+            rec(fd.precondition.get)(true)
+          else if (fd.hasPostcondition)
+            rec(fd.postcondition.get)(true)
+      }
     }
-    val valCallers = cg.transitiveCallers(valRoots.toSeq)
-    val readfuns = cg.transitiveCallers(readRoots.toSeq)
+    // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
+    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
+    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState`
+    val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
+    // all functions that call `star` no matter what
     val starCallers = cg.transitiveCallers(starRoots.toSeq)
-    println("Ret roots: "+valRoots.map(_.id)+" ret funs: "+valCallers.map(_.id))
-    println("Read roots: "+readRoots.map(_.id)+" read funs: "+readfuns.map(_.id))
-    (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
+    //println("Ret roots: " + updateRoots.map(_.id) + " ret funs: " + updatefuns.map(_.id))
+    //println("Read roots: " + readRoots.map(_.id) + " read funs: " + readfuns.map(_.id))
+    //println("Star funs: " + starRoots.map(_.id) + " star funs: " + starCallers.map(_.id))
+    (readfuns ++ updatefuns, updatefuns, starCallers ++ readfuns ++ updatefuns)
   }
 
   lazy val callersnTargetOfLambdas = {
@@ -86,7 +122,7 @@ class FunctionsManager(p: Program) {
         postTraversal {
           case l: Lambda =>
             consRoots += fd
-            //targets += l
+          //targets += l
           case _ =>
         }(fd.body.get)
       case _ => ;
@@ -110,11 +146,7 @@ class FunctionsManager(p: Program) {
     cgWithoutSpecs.transitiveCallers(roots.toSeq)
   }
 
-  def isRecursive(fd: FunDef) : Boolean = {
-    cg.isRecursive(fd)
-  }
-
-  def hasStateIndependentBehavior(fd: FunDef) : Boolean = {
+  def hasStateIndependentBehavior(fd: FunDef): Boolean = {
     // every function that does not call isEvaluated or is Susp has a state independent behavior
     !callersOfCached.contains(fd)
   }

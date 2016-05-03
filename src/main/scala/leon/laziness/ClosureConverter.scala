@@ -57,9 +57,10 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       }
       val nretType = closureFactory.replaceClosureTypes(fd.returnType)
       val stparams =
-        if (funsNeedStates(fd) || starCallers(fd))
+        if (funsNeedStates(fd) || starCallers(fd)) {
           // create fresh type parameters for the state
           closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
+        }
         else Seq()
 
       val nfd = if (funsNeedStates(fd)) { // this also includes closure constructors
@@ -74,6 +75,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef),
           nparams :+ stParam, retTypeWithState)
         // body of these functions are defined later
+      } else if(starCallers(fd)){
+        new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef), nparams, nretType)
       } else {
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams, nparams, nretType)
       }
@@ -128,19 +131,13 @@ class ClosureConverter(p: Program, ctx: LeonContext,
    * Note: here I am using mutation on purpose to create uninterpreted states on
    * demand.
    */
-  var uiStateFuns = Map[String, FunDef]()
-  def getUninterpretedState(typename: String, tparams: Seq[TypeParameter]) = {
-    val uiStateFun = if (uiStateFuns.contains(typename)) {
-      uiStateFuns(typename)
-    } else {
-      // create a body-less fundef that will return a state
-      val stType = closureFactory.stateType()
-      val fd = new FunDef(FreshIdentifier("ui" + typename), closureFactory.stateTParams.map(TypeParameterDef), Seq(), stType)
-      uiStateFuns += (typename -> fd)
-      fd
-    }
-    FunctionInvocation(TypedFunDef(uiStateFun, tparams), Seq())
+  val uninterpretedState = {
+    // create a body-less fundef that will return a state
+    val stType = closureFactory.stateType()
+    new FunDef(FreshIdentifier("uiState"), closureFactory.stateTParams.map(TypeParameterDef), Seq(), stType)
   }
+
+  def uninterpretedStateFor(tparams: Seq[TypeParameter]) = FunctionInvocation(TypedFunDef(uninterpretedState, tparams), Seq())
 
   /**
    * Create dispatch functions for each closure type.
@@ -172,7 +169,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         //println("Creating eval function: "+dfun)
         // assign body of the eval fucntion
         // create a match case to switch over the possible class defs and invoke the corresponding functions
-        var callsMemFunc = false
+        var evalUpdatesState = false
         val bodyMatchCases = cdefs map { cdef =>
           val ctype = CaseClassType(cdef, recvTparams) // we know that the type parameters of cdefs are same as absdefs
           val binder = FreshIdentifier("t", ctype)
@@ -197,6 +194,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
                 case Variable(id) => argMap(id)
               }
           }
+          // update a state (we can move this to closureFactory)
+          evalUpdatesState = funsRetStates(srcTarget)
           // invoke the target fun with appropriate values
           val invoke =
             if (funsNeedStates(srcTarget)) {
@@ -213,7 +212,6 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             }
           val stPart =
             if (isMemoized(srcTarget)) {
-              callsMemFunc = true
               // create a memo closure to mark that the function invocation has been memoized
               val cc = CaseClass(CaseClassType(closureFactory.memoClasses(srcTarget), stTparams), targetArgs)
               closureFactory.stateUpdate(cc, currState)
@@ -226,7 +224,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val cases = bodyMatchCases
         dfun.body = Some(MatchExpr(recv.toVariable, cases))
         dfun.addFlag(Annotation("axiom", Seq()))
-        if (callsMemFunc) evalsUpdatingState += dfun
+        if (evalUpdatesState) evalsUpdatingState += dfun
         (tname -> dfun)
     }
   }.toMap
@@ -243,7 +241,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       val stTparams = evalfd.tparams.collect {
         case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
       }
-      val uiState = getUninterpretedState(tname, stTparams)
+      val uiState = uninterpretedStateFor(stTparams)
       val invoke = FunctionInvocation(TypedFunDef(evalfd, evalfd.tparams.map(_.tp)),
         params.map(_.id.toVariable) :+ uiState)
       fun.body = Some(TupleSelect(invoke, 1))
@@ -374,19 +372,30 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
     // (g) `*` invocation ?
     case star @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invokeExpr)))) if isStarInvocation(star)(p) =>
-      val (target, targs, args) = invokeExpr match {
+      val id = (e: Expr) => e
+      val (target, targs, args, retCons) = invokeExpr match {
         case Application(lambdaExpr, args) =>
           val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
           val uninstType = closureFactory.functionType(tname)
           (computeFunctions(tname),
               getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
-              lambdaExpr +: args)
-
+              lambdaExpr +: args, id)
         case FunctionInvocation(TypedFunDef(tar, tps), args) =>
-          (tar, tps, args)
+          // quite a few cases to consider here!
+          if (funsNeedStates(tar) || starCallers(tar)) {
+            val allargs = args :+ uninterpretedStateFor(stTparams)
+            val alltargs = tps ++ stTparams
+            if (funsRetStates(tar)) {
+              (funMap(tar), alltargs, allargs, (e: Expr) => TupleSelect(e, 1))
+            } else if (funsNeedStates(tar))
+              (funMap(tar), alltargs, allargs, id)
+            else
+              (funMap(tar), alltargs, args, id)
+          } else
+            (funMap(tar), tps, args, id)
       }
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
-        FunctionInvocation(TypedFunDef(target, targs), nargs)
+        retCons(FunctionInvocation(TypedFunDef(target, targs), nargs))
       }, false)
       mapNAryOperator(args, op)
 
@@ -746,6 +755,6 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       Map(mainModule -> (closureFactory.allClosuresAndParents ++
         (closureFactory.memoAbsClass +: closureFactory.memoClosures.toSeq) ++
         closureCons.values ++ evalFunctions.values ++
-        computeFunctions.values ++ uiStateFuns.values)))
+        computeFunctions.values :+ uninterpretedState)))
   }
 }

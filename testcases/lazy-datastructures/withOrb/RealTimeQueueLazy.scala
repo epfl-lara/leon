@@ -127,8 +127,23 @@ object RealTimeQueue {
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
-    createQ(q.f, Cons(x, q.r), q.s)
-  } ensuring (res => res.valid) // && time <= ?)
+    val r = Cons(x, q.r)
+    q.s match {
+      case c @ SCons(_, _) => Queue(q.f, r, c.tail) // force the schedule once
+      case SNil() =>
+        val rotres = rotate(q.f, r, SNil[T]())
+        Queue(rotres, Nil(), rotres)
+    }
+  } ensuring { res =>
+    /*val in = inState[Stream[T]]
+    val out = outState[Stream[T]]
+    funeMonotone(q.f, q.s, in, out)*/
+    q.s match {
+      case SCons(_, _) => firstUnevaluated(q.s) == firstUnevaluated(res.s)
+      case _           => true
+    }
+  }
+    //res.s.size == res.f.size - res.r.size) // && time <= ?)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -138,8 +153,33 @@ object RealTimeQueue {
     }
   } ensuring (res => res.valid) // && time <= ?)
 
-  @ignore
-  def main(args: Array[String]) {
+   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
+  /**
+   * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
+   */
+  /*@traceInduct
+  def funeCompose[T](l1: Stream[T], st1: Set[Mem[Stream[T]]], st2: Set[Mem[Stream[T]]]): Boolean = {
+    require(st1.subsetOf(st2))
+    // property
+    (firstUnevaluated(l1) withState st2) == (firstUnevaluated(firstUnevaluated(l1) withState st1) withState st2)
+  } holds*/
+
+  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Mem[Stream[T]]], st2: Set[Mem[Stream[T]]]): Boolean = {
+    require((firstUnevaluated(l1) withState st1) == (firstUnevaluated(l2) withState st1) &&
+        st1.subsetOf(st2))
+     //funeCompose(l1, st1, st2) && // lemma instantiations
+     //funeCompose(l2, st1, st2) &&
+     // induction scheme
+    (l1 match {
+      case c @ SCons(_, _) =>
+          funeMonotone(c.tail* , l2, st1, st2)
+      case _           => true
+    }) &&
+      (firstUnevaluated(l1) withState st2) == (firstUnevaluated(l2) withState st2) // property
+  } holds
+
+  //@ignore
+  /*def main(args: Array[String]) {
     //import eagerEval.AmortizedQueue
     import scala.util.Random
     import scala.math.BigInt
@@ -189,5 +229,5 @@ object RealTimeQueue {
     //dequeue 1 element from both queues
     //timed { amq.dequeue } { t => println(s"Time to dequeue one element from Amortized Queue in the worst case: ${t / 1000.0}s") }
     timed { dequeue(rtq) } { t => println(s"Time to dequeue one element from RTQ in the worst case: ${t / 1000.0}s") }
-  }
+  }*/
 }

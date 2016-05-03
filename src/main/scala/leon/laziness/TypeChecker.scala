@@ -143,10 +143,10 @@ object TypeChecker {
           } else (id.getType, v)
 
         case FunctionInvocation(TypedFunDef(fd, oldTparams), args) =>
-          //println(s"Consider expr: $e initial type: ${e.getType}")
+         // println(s"Consider expr: $e initial type: ${e.getType}")
           val nargs = args.map(arg => rec(arg)._2)
           val tpmap = (fd.params zip nargs).flatMap { case (ref, arg) =>
-            // println(s"Computing inst. for ${ref.getType} ${arg.getType}")
+             //println(s"Computing inst. for $ref: ${ref.getType} $arg: ${arg.getType}")
              typeInstMap(arg.getType, ref.getType).get
           }.toMap
           // for uninterpreted functions, we could have a type parameter used only in the return type
