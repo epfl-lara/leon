@@ -100,7 +100,7 @@ case object ADTSplit extends Rule("ADT Split.") {
                 }
               }
             } else {
-              p.qeb
+              p.eb
             }
           }
           val newAs = if (isInputVar) args ::: oas else p.as

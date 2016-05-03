@@ -185,14 +185,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     QualifiedExamplesBank(nas, xs, eb flatMapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
   }
 
+  def evalIns: QualifiedExamplesBank = copy( eb = flatMapIns { mapping =>
+    val evalAs = evaluator.evalEnv(mapping)
+    List(as map evalAs)
+  })
+
   /** Filter inputs through expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): QualifiedExamplesBank = {
     filterIns(m => evaluator.eval(expr, m).result.contains(BooleanLiteral(true)))
-  }
-
-  def evalIns: QualifiedExamplesBank = flatMapIns { mapping =>
-    val evalAs = evaluator.evalEnv(mapping)
-    List(as map evalAs)
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
@@ -212,14 +212,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   /** Maps inputs through the function f
     *
     * @return A new ExampleBank */
-  def flatMapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]): QualifiedExamplesBank = {
-    copy(eb = eb flatMap {
+  def flatMapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]): ExamplesBank = {
+    eb flatMap {
       case InExample(in) =>
         f(as zip in).map(InExample)
 
       case InOutExample(in, out) =>
         f(as zip in).map(InOutExample(_, out))
-    })
+    }
   }
 }
 
