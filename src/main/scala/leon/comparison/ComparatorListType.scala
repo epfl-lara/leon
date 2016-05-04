@@ -1,21 +1,35 @@
 package leon.comparison
 
 import leon.purescala.ExprOps
-import leon.purescala.Expressions.{CaseClassPattern, _}
+import leon.purescala.Expressions._
 
 /**
-  * Created by joachimmuth on 25.04.16.
+  * Created by joachimmuth on 02.05.16.
   *
-  * This way of basic comparison flat both functional tree into lists and compare them in every possible combination.
+  * This method shares similarities with the ComparatorByList.
+  * We kkep the idea of comparing a list of expressions (disregarding their order), but now, instead of comparing
+  * two expressions (i.e. tree) we will extract the type of each expression.
   *
-  * The easy-to-understand way of working provide a point of comparison for further advanced method.
+  * x match {
+  *   case 1 => 'a'
+  *   case 2 => 'b'
+  * }
   *
-  * "foo_base" always represent the item extracted from the base of exemple and is always put in first, in order
-  * to avoid confusion
+  * ComparatorByList -> {complete match, leaf(a), leaf(b)}
+  * ComparatorByListType -> {node(match), leaf(a), leaf(b)}
+  *
+  * x match {
+  *   case 1 => 'a'
+  *   case 2 => 'c'
+  * }
+  *
+  * ComparatorByList -> similarity 33%
+  * ComparatorByListType -> similarity 66%
+  *
+  *
   */
-object ComparatorByList extends Comparator {
-  val name = "byList"
-
+object ComparatorListType extends Comparator {
+  val name = "byListType"
 
   /**
     * Compare two functions using different method
@@ -28,12 +42,19 @@ object ComparatorByList extends Comparator {
     val listExpr_base = treeToList(expr_base)
     val listExpr = treeToList(expr)
 
+    println("COMPARE")
+    listExpr map (println(_))
+    listExpr map (p => println(p.getType))
+    listExpr map (p => println(p.getClass))
+
+
+
     val similarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
 
     val percentageSimilarity =
       math.min(
-      (similarExpr.toDouble / listExpr_base.size.toDouble),
-      (similarExpr.toDouble / listExpr.size.toDouble)
+        (similarExpr.toDouble / listExpr_base.size.toDouble),
+        (similarExpr.toDouble / listExpr.size.toDouble)
       )
 
     percentageSimilarity
@@ -148,61 +169,6 @@ object ComparatorByList extends Comparator {
 
     //default value for error handling, should never reach that
     case _ => Nil
-  }
-
-
-  /**
-    * Extract a map from a PatternMatch function (match...case) in order to be comparable without caring about the
-    * order
-    * (waring: this comparison make sense only if the MatchCases are exclusives)
-    *
-    * e.g : list match {
-    *   case x::y::xs => foo(x, y) ++ recursion(xs)
-    *   case x::xs => Nil
-    *   }
-    *
-    * is not equal to:
-    *
-    *   list match {
-    *   case x::xs => Nil
-    *   case x::y::xs => foo(x, y) ++ recursion(xs)
-    *   }
-    *
-    * @param cases_base
-    * @return
-    */
-  def extractPatternMatchMap(cases_base: Seq[MatchCase]) = {
-    cases_base.map(a => a.pattern match {
-      case InstanceOfPattern(_, ct) => (ct.classDef -> a.rhs)
-      case CaseClassPattern(_, ct, _) => {
-        println(a)
-        (ct.classDef -> a.rhs)
-      }
-      case _ => (a.pattern -> a.rhs)
-    }).toMap
-  }
-
-
-  def extractValueMatchMap(cases_base: Seq[MatchCase]) = {
-    cases_base.map(a => a.pattern -> a.rhs).toMap
-  }
-
-  // IDEE: comparer les types plutôt que les pattern complet des match case, et éventuellement oublié les optGuard
-  def compareExpr(expr_base: Expr, expr: Expr): Boolean = {
-    val expr_base_norm = ExprOps.normalizeStructure(expr_base)._1
-    val expr_norm = ExprOps.normalizeStructure(expr)._1
-
-//    (expr_base_norm, expr_norm) match {
-//      case (MatchExpr(_, cases_base), MatchExpr(_, cases)) =>
-//        val map_case_base = extractPatternMatchMap(cases_base)
-//        val map_case = extractPatternMatchMap(cases)
-//        map_case_base == map_case
-//
-//      case _ =>
-//        expr_base_norm == expr_norm
-//
-//    }
-  expr_base_norm == expr_norm
   }
 
 }

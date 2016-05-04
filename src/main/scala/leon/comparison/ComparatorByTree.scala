@@ -2,7 +2,6 @@ package leon.comparison
 
 import leon.purescala.ExprOps
 import leon.purescala.Expressions.{CaseClassPattern, _}
-import leon.purescala.Types.ClassType
 import leon.comparison.Utils._
 import leon.purescala.Common.Tree
 /**
@@ -11,7 +10,8 @@ import leon.purescala.Common.Tree
   * The idea here is a little more elaborated, and is based of recursive search crawling the expression tree and
   * comparing two expression. Each type of expression have its own method.
   */
-object ComparatorByTree {
+object ComparatorByTree extends Comparator {
+  val name = "byTree"
 
 
   def compare(expr_base: Expr, expr: Expr): Double = {

@@ -8,7 +8,8 @@ import leon.utils.ASCIIHelpers._
   * Created by joachimmuth on 23.03.16.
   *
   */
-case class ComparisonReport(base: ComparisonBase, program : Program, listFD: List[(FunDef, FunDef, Double, Double)]) {
+case class ComparisonReport(base: ComparisonBase, program : Program, comparatorsName: List[String],
+listFD: List[(FunDef, FunDef, List[Double])]) {
 
   def summaryString : String = {
     import utils.ASCIIHelpers._
@@ -18,10 +19,9 @@ case class ComparisonReport(base: ComparisonBase, program : Program, listFD: Lis
     t += Row(
       Seq(
         Cell("argument program"),
-        Cell("base"),
-        Cell("similarity List"),
-        Cell("similarity Tree")
-      )
+        Cell("base")
+      ) ++
+      comparatorsName map (Cell(_))
     )
 
     t += Separator
@@ -30,10 +30,9 @@ case class ComparisonReport(base: ComparisonBase, program : Program, listFD: Lis
       fd => Row(
         Seq(
           Cell(fd._1.qualifiedName(program)),
-          Cell(fd._2.qualifiedName(base.program)),
-          Cell(percentage(fd._3)),
-          Cell(percentage(fd._4))
-        )
+          Cell(fd._2.qualifiedName(base.program))
+        ) ++
+        fd._3.map(p => Cell(percentage(p)))
       )
     )
 

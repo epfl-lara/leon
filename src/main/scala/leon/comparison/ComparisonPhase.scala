@@ -15,6 +15,13 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   override val description: String = "Comparison phase between input program and Leon example suite"
   override val name: String = "Comparison"
 
+  val comparators: List[Comparator] = List(
+    ComparatorByList,
+    ComparatorListType,
+    ComparatorByTree)
+
+  val comparatorsNames = comparators map (_.name)
+
   val print = true
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
@@ -22,81 +29,32 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     val listFunDef_base = comparisonBase.listFunDef.tail
     val listFunDef = getFunDef(ctx, program).tail
 
-    println("---------")
-    println("PROGRAM AND FUNDEF")
-    println(program)
-    println(listFunDef)
-    println("----------")
-
-    println("---------")
-    println("CLASS")
-    println("---------")
-    println("TO COMPARE")
-    println(program.classHierarchyRoots)
-    println(program.classHierarchyRoots.last)
-    println(program.classHierarchyRoots.last.isAbstract)
-    println(program.classHierarchyRoots.last.isCaseObject)
-    println(program.classHierarchyRoots.last.tparams)
-    println(program.classHierarchyRoots.last.fields)
-    println(program.classHierarchyRoots.last.knownCCDescendants)
-    println(program.classHierarchyRoots.last.knownCCDescendants.head)
-    println(program.classHierarchyRoots.last.knownCCDescendants.head.tparams)
-    println(program.classHierarchyRoots.last.knownCCDescendants.head.fields)
-    println(program.classHierarchyRoots.last.knownCCDescendants.last)
-    println(program.classHierarchyRoots.last.knownCCDescendants.last.tparams)
-    println(program.classHierarchyRoots.last.knownCCDescendants.last.fields)
-
-    println("BASE")
-    println(comparisonBase.program.classHierarchyRoots)
-    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants)
-    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp)
-    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.isInstanceOf[TypeParameter])
-    println(comparisonBase.program.classHierarchyRoots.last.knownCCDescendants.head.tparams.head.tp.getType)
-
-    println("---------")
-
-
-    println("---------")
-    println("LETS COMPARE CLASS !!!")
-    println("---------")
-
-    val listB = comparisonBase.program.classHierarchyRoots.last
-    val list = program.classHierarchyRoots.last
-
-    println("similarity value")
-    println("list et list", Utils.compareClassDef(listB, list))
-    println("list et cons", Utils.compareClassDef(listB, list.knownChildren.head))
-    println("cons et cons", Utils.compareClassDef(listB.knownChildren.head, list.knownChildren.head))
-    println("cons et nil", Utils.compareClassDef(listB.knownChildren.last, list.knownChildren.head))
-    println("nil et nil", Utils.compareClassDef(listB.knownChildren.last, list.knownChildren.last))
-
-
 
     val compared = combinationOfFunDef(listFunDef_base, listFunDef)
 
-    ComparisonReport(comparisonBase, program, compared)
+    ComparisonReport(comparisonBase, program, comparatorsNames, compared)
   }
+
+
 
 
   /**
     * Compare each function from "base program" with "to-compare" program (the one given in argument)
-    * @param FunDefs_base
-    * @param FunDefs
+ *
+    * @param funDefs_base
+    * @param funDefs
     * @return
     */
-  def combinationOfFunDef(FunDefs_base: List[FunDef], FunDefs: List[FunDef]) = {
-    val pairEqualFunDef =
-      for{
-        funDef <- FunDefs
-        funDef_base <- FunDefs_base
-        percentageSimilarityList = ComparatorByList.compare(funDef_base.body.get, funDef.body.get)
-        percentageSimilarityTree = ComparatorByTree.compare(funDef_base.body.get, funDef.body.get)
-        //if(percentageSimilarityList > 0.0 || percentageSimilarityTree > 0.0)
-      } yield {
-        (funDef, funDef_base, percentageSimilarityList, percentageSimilarityTree)
-      }
+  def combinationOfFunDef(funDefs_base: List[FunDef], funDefs: List[FunDef]) = {
 
-    pairEqualFunDef
+    for{
+      funDef_base <- funDefs_base
+      funDef <- funDefs
+      listPercentage = comparators map (_.compare(funDef_base.body.get, funDef.body.get))
+      if listPercentage exists (_ > 0.0)
+    } yield {
+      (funDef, funDef_base, listPercentage)
+    }
   }
 
 

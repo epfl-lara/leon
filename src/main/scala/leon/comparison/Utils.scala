@@ -17,12 +17,6 @@ object Utils {
     */
 
   def compareClassDef(classA: ClassDef, classB: ClassDef): Double = {
-    println("COMPARE CASE CLASS")
-    println(classA)
-    println(classA.tparams)
-    println(classA.tparams.map(_.tp.getType))
-    println(classA.parent)
-
     (classA, classB) match {
       case (a,b) if (a.isAbstract && b.isAbstract) =>
         if (a.knownCCDescendants.size == b.knownCCDescendants.size) 1.0
