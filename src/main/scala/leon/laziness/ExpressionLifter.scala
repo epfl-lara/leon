@@ -52,7 +52,11 @@ object ExpressionLifter {
             new FunDef(nname, fd.tparams, fd.params :+ idparam, fd.returnType)
           } else
             new FunDef(nname, fd.tparams, fd.params, fd.returnType)
-        fd.flags.foreach(nfd.addFlag(_))
+        // treat lazy vals as memoized functions
+        if(fd.flags.contains(IsField(true))){
+          nfd.addFlag(Annotation("memoize", Seq()))
+        }
+        fd.flags.filterNot(_ == IsField(true)).foreach(nfd.addFlag(_))
         (fd -> nfd)
     }.toMap
 
@@ -114,25 +118,8 @@ object ExpressionLifter {
                 else fvVars
               Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), fargs))
           }
-        // is the argument an implicit conversion from values to closures
-        /*case finv @ FunctionInvocation(TypedFunDef(fd, Seq(tp)), ea@Seq(arg)) if isEagerInvocation(finv)(prog) =>
-          val rootType = bestRealType(tp)
-          val ntps = Seq(rootType)
-          arg match {
-            case _: Variable =>
-              FunctionInvocation(TypedFunDef(fd, ntps), ea)
-            case _ =>
-              val freshid = FreshIdentifier("t", rootType)
-              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, ntps), Seq(freshid.toVariable)))
-          }*/
 
-        // is this an invocation of a memoized  function ?
-//        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
-//          // calling a memoized function is modeled as creating a parameterless closure and invoking it
-//          val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
-//          Application(Lambda(Seq(), FunctionInvocation(tfd, args)), Seq())
-
-        // every other function calls ?
+        // every other function calls
         case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
           val nargs =
             if (createUniqueIds && needsId(fd))

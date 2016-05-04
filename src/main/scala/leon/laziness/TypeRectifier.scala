@@ -35,13 +35,13 @@ import leon.utils.Bijection
  */
 class TypeRectifier(p: Program, clFactory: ClosureFactory) {
 
+  val relfuns = userLevelFunctions(p)
   val memoClasses = clFactory.memoClasses.values.toSet
   val typeClasses = {
     val tc = new DisjointSets[TypeTree]()
     var funInvs = Seq[FunctionInvocation]()
-    val relfuns = p.definedFunctions.filter(fd => !fd.isLibrary && !fd.isInvariant && fd.hasBody)
-    // go over the body of all relfuns and compute mappings for place-holder `tparams`
-    relfuns.foreach { fd =>
+    // go over the body of all funs and compute mappings for place-holder `tparams`
+    relfuns.filter(_.hasBody).foreach { fd =>
       postTraversal {
         case fi@FunctionInvocation(TypedFunDef(_, targs), _)
           if targs.exists{ case tp: TypeParameter => isPlaceHolderTParam(tp) case _ => false } =>
@@ -99,7 +99,7 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
     tc
   }
   val equivTypeParams = typeClasses.toMap
-  val fdMap = p.definedFunctions.collect {
+  val fdMap = relfuns.collect {
     case fd if !fd.isLibrary && !fd.isInvariant =>
       val (tempTPs, otherTPs) = fd.tparams.map(_.tp).partition {
         case tp if isPlaceHolderTParam(tp) => true

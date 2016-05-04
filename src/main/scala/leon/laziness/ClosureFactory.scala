@@ -25,8 +25,8 @@ class ClosureFactory(p: Program) {
   /**
    * all lambdas in the program
    */
-  val lambdasList = p.definedFunctions.flatMap {
-    case fd if fd.hasBody && !fd.isLibrary && !fd.isInvariant =>
+  val lambdasList = ProgramUtil.userLevelFunctions(p).flatMap {
+    case fd if fd.hasBody =>
       def rec(e: Expr): Seq[Lambda] = e match {
         case finv: FunctionInvocation if isIsFun(finv)(prog) =>  Seq() //skip
         case finv: FunctionInvocation if isFunMatch(finv)(prog) => Seq() //skip

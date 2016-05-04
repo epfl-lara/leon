@@ -64,8 +64,8 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
     }
   }
 
-  val closuresToPrePath = p.definedFunctions.flatMap {
-    case fd if (fd.hasBody && !fd.isLibrary && !fd.isInvariant) =>
+  val closuresToPrePath = ProgramUtil.userLevelFunctions(p).flatMap {
+    case fd if fd.hasBody =>
       //println("collection closure creation preconditions for: "+fd)
       val closures = CollectorWithPaths {
         case FunctionInvocation(TypedFunDef(fund, _),

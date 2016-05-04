@@ -9,11 +9,6 @@ import invariant._
 import stats._
 
 /**
- * TODO Multiple instantiations of type parameters is not supported yet,
- * since it require creation of multiple states one for each instantiation
- */
-
-/**
  * A version of merge sort that operates bottom-up. That allows
  * accessing the first element in the sorted list in constant time.
  */
@@ -22,7 +17,7 @@ object BottomUpMergeSort {
   /**
    * A list of integers that have to be sorted
    */
-  sealed abstract class IList {
+  /*sealed abstract class IList {
     def size: BigInt = {
       this match {
         case ICons(_, xs) => 1 + xs.size
@@ -31,21 +26,25 @@ object BottomUpMergeSort {
     } ensuring (_ >= 0)
   }
   case class ICons(x: BigInt, tail: IList) extends IList
-  case class INil() extends IList
+  case class INil() extends IList*/
 
-  /**
-   * A stream of integers (the tail is lazy)
-   */
-  sealed abstract class IStream {
+  sealed abstract class Stream {
     def size: BigInt = {
       this match {
         case SCons(_, xs) => 1 + ssize(xs)
         case _            => BigInt(0)
       }
     } ensuring (_ >= 0)
+
+    lazy val tail: Stream = {
+      require(this != SNil())
+      this match {
+        case SCons(x, tailFun) => tailFun()
+      }
+    }
   }
-  case class SCons(x: BigInt, tail: Lazy[IStream]) extends IStream
-  case class SNil() extends IStream
+  case class SCons(x: BigInt, tailFun: () => Stream) extends Stream
+  case class SNil() extends Stream
   @inline
   def ssize(l: Lazy[IStream]): BigInt = (l*).size
 
