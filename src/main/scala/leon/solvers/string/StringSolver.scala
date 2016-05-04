@@ -71,6 +71,26 @@ object StringSolver {
     case ((sf, rhs)::q) => reduceProblem(s, acc += ((reduceStringForm(s)(sf): StringForm, rhs)))(q)
   }
   
+  /** Computes a foldable property on the problem */
+  def fold[T](init: T, s: StringFormToken => T, f: (T, T) => T)(p: Problem) = {
+    p.view.foldLeft(init) {
+      case (t, (lhs, rhs)) =>
+        lhs.view.foldLeft(t) {
+          case (t, sft) => f(t, s(sft))
+        }
+    }
+  }
+  
+  /** Returns true if there is a StringFormToken which satisfies the given property */
+  def exists(s: StringFormToken => Boolean)(p: Problem) = fold[Boolean](false, s, _ || _)(p)
+  /** Counts the number of StringFormToken which satisfy the given property */
+  def count(s: StringFormToken => Boolean)(p: Problem) = fold[Int](0, s andThen (if(_) 1 else 0), _ + _)(p)
+  
+  /** Maps every StringFormToken of the problem to create a new one */
+  def map(s: StringFormToken => StringFormToken)(p: Problem): Problem = {
+    p.map { case (lhs, rhs) => (lhs map s, rhs) }
+  }
+  
   /** Returns true if the assignment is a solution to the problem */
   def errorcheck(p: Problem, s: Assignment): Option[String] = {
     val res = p flatMap {eq =>
@@ -638,16 +658,58 @@ object StringSolver {
     }
   }
   
-  /** Solves the problem while supposing that a minimal number of variables have been changed.*/
+  /** For each variable from `ifVariable`, if it occurs only once, it will do nothing.
+   *  If it occurs at least twice, it will first duplicate the problem with every but 1 occurrence of this variable set to its initialMapping.*/
+  def keepEachOccurenceSeparatlyAndThenAllOfThem(p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Problem] = {
+    ifVariable.foldLeft(Stream(p)){
+      case (problems, v) =>
+        val c = count(s => s == Right(v))(p)
+        if(c == 1) {
+          problems
+        } else {
+          val originalValue = initialMapping(v)
+          for{p <- problems
+              i <- (1 to c).toStream} yield {
+            var index = 0
+            map{ case r@Right(`v`) =>
+              index += 1
+              if(index != i) Left(originalValue) else r
+            case e => e}(p)
+          }
+        }
+    }
+  }
+  
+  /** If the stream is not empty and there are more than two variables,
+   *  it will try to assign values to variables which minimize changes.
+   *  It will try deletions from the end and from the start of one variable.
+   * */
+  def minimizeChanges(s: Stream[Assignment], p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Assignment] = {
+    if(s.isEmpty || ifVariable.size <= 1) s else {
+      ((for{v <- ifVariable.toStream
+          originalValue = initialMapping(v)
+          i <- originalValue.length to 0 by -1
+          prefix <- (if(i == 0 || i == originalValue.length) List(true) else List(true, false))
+          possibleValue = (if(prefix) originalValue.substring(0, i) else originalValue.substring(originalValue.length - i))
+          s <- solve(reduceProblem(Map(v -> possibleValue))(p))
+         } yield s + (v -> possibleValue)) ++ s).distinct
+    }
+  }
+  
+  /** Solves the problem while supposing that a minimal number of variables have been changed.
+   *  Will try to replace variables from the left first.
+   *  If a variable occurs multiple times, will try to replace each of its occurrence first.
+   *  */
   def solveMinChange(p: Problem, initialMapping: Assignment): Stream[Assignment] = {
     // First try to see if the problem is solved. If yes, returns the initial mapping
     val initKeys = initialMapping.keys.toSeq
     for{
-      i <- (initialMapping.size to 0 by -1).toStream
-      kept <- take(i, initKeys)
-      ifKept = kept.toSet
-      newProblem = reduceProblem(initialMapping filterKeys ifKept)(p)
-      solution <- solve(newProblem)
+      i <- (0 to initialMapping.size).toStream
+      toReplace <- take(i, initKeys)
+      ifVariable = toReplace.toSet
+      newProblems = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
+      newProblem <- keepEachOccurenceSeparatlyAndThenAllOfThem(newProblems, ifVariable, initialMapping)
+      solution <- minimizeChanges(solve(newProblem), newProblem, ifVariable, initialMapping: Assignment)
     } yield solution
   }
 }
