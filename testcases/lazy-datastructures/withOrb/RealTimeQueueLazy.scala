@@ -135,13 +135,10 @@ object RealTimeQueue {
         Queue(rotres, Nil(), rotres)
     }
   } ensuring { res =>
-    /*val in = inState[Stream[T]]
-    val out = outState[Stream[T]]
-    funeMonotone(q.f, q.s, in, out)*/
-    q.s match {
-      case SCons(_, _) => firstUnevaluated(q.s) == firstUnevaluated(res.s)
-      case _           => true
-    }
+    val in = inState[T]
+    val out = outState[T]
+    funeMonotone(q.f, q.s, in, out) &&
+    res.valid
   }
     //res.s.size == res.f.size - res.r.size) // && time <= ?)
 
@@ -157,18 +154,18 @@ object RealTimeQueue {
   /**
    * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
    */
-  /*@traceInduct
-  def funeCompose[T](l1: Stream[T], st1: Set[Mem[Stream[T]]], st2: Set[Mem[Stream[T]]]): Boolean = {
+  @traceInduct
+  def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require(st1.subsetOf(st2))
     // property
     (firstUnevaluated(l1) withState st2) == (firstUnevaluated(firstUnevaluated(l1) withState st1) withState st2)
-  } holds*/
+  } holds
 
-  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Mem[Stream[T]]], st2: Set[Mem[Stream[T]]]): Boolean = {
+  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require((firstUnevaluated(l1) withState st1) == (firstUnevaluated(l2) withState st1) &&
         st1.subsetOf(st2))
-     //funeCompose(l1, st1, st2) && // lemma instantiations
-     //funeCompose(l2, st1, st2) &&
+     funeCompose(l1, st1, st2) && // lemma instantiations
+     funeCompose(l2, st1, st2) &&
      // induction scheme
     (l1 match {
       case c @ SCons(_, _) =>

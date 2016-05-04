@@ -33,7 +33,7 @@ class FunctionsManager(p: Program) {
           def rec(l: Label)(e: Expr): Unit = e match {
             // ignore non-real calls. It following cases, calls are used as a way to refer to closures.
             case f: FunctionInvocation if isIsFun(f)(p) =>
-            case cc: CaseClass if isMemCons(cc)(p)      =>
+            case cc: CaseClass if isFunCons(cc)(p)      =>
             // other calls may be tagged by labels
             case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
               args map rec(WithState())
@@ -62,20 +62,23 @@ class FunctionsManager(p: Program) {
    * TODO: Only those applications that may call a memoized function  should be valroots
    */
   val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
-    var starRoots = Set[FunDef]()
+    var needTargsRoots = Set[FunDef]()
     var readRoots = Set[FunDef]()
     var updateRoots = Set[FunDef]()
     userLevelFunctions(p).foreach { fd =>
+      if(fd.params.exists(vd => isFunSetType(vd.getType)(p))) // functions that use `stateType` args need `stateParams`
+        needTargsRoots += fd
+
       fd.fullBody match {
         case NoTree(_) =>
         case _ =>
           def rec(e: Expr)(implicit inspec: Boolean): Unit = e match {
             // skip recursing into the following functions
             case f: FunctionInvocation if isIsFun(f)(p)            =>
-            case cc: CaseClass if isMemCons(cc)(p)                 =>
+            case cc: CaseClass if isFunCons(cc)(p)                 =>
             case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
             case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
-              starRoots += fd
+              needTargsRoots += fd
               invExpr match {
                 case Application(l, args) => // we need to prevent the application here from being treated as a `val` root
                   (l +: args) foreach rec
@@ -107,11 +110,11 @@ class FunctionsManager(p: Program) {
     // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState`
     val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what
-    val starCallers = cg.transitiveCallers(starRoots.toSeq)
+    val needTargsCallers = cg.transitiveCallers(needTargsRoots.toSeq)
     //println("Ret roots: " + updateRoots.map(_.id) + " ret funs: " + updatefuns.map(_.id))
     //println("Read roots: " + readRoots.map(_.id) + " read funs: " + readfuns.map(_.id))
-    //println("Star funs: " + starRoots.map(_.id) + " star funs: " + starCallers.map(_.id))
-    (readfuns ++ updatefuns, updatefuns, starCallers ++ readfuns ++ updatefuns)
+    //println("NeedTArgs roots: " + needTargsRoots.map(_.id) + " NeedTArgs funs: " + needTargsCallers.map(_.id))
+    (readfuns ++ updatefuns, updatefuns, needTargsCallers ++ readfuns ++ updatefuns)
   }
 
   lazy val callersnTargetOfLambdas = {

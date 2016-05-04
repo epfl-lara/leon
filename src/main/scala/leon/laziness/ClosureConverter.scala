@@ -33,7 +33,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
   val funsNeedStates = funsManager.funsNeedStates
   val funsRetStates = funsManager.funsRetStates
-  val starCallers = funsManager.funsNeedStateTps
+  val funsNeedStateTps = funsManager.funsNeedStateTps
   val closureTnames = closureFactory.closureTypeNames
 
   /**
@@ -51,19 +51,22 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
   val funMap = p.definedFunctions.collect {
     case fd if (fd.hasBody && !fd.isLibrary && !fd.isInvariant) => // skipping class invariants for now.
-      // (a) replace closure types in parameters and return values
-      val nparams = fd.params map { vd =>
-        ValDef(makeIdOfType(vd.id, closureFactory.replaceClosureTypes(vd.getType)))
-      }
-      val nretType = closureFactory.replaceClosureTypes(fd.returnType)
       val stparams =
-        if (funsNeedStates(fd) || starCallers(fd)) {
+        if (funsNeedStateTps(fd)) {
           // create fresh type parameters for the state
           closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
         }
         else Seq()
+      // (a) replace closure types, memoFunTypes in parameters and return values
+      val nparams = fd.params map {
+        case ValDef(id) if isFunSetType(id.getType)(p) => // replace this with set of memoAbs
+          ValDef(makeIdOfType(id, closureFactory.stateType(stparams)))
+        case vd =>
+          ValDef(makeIdOfType(vd.id, closureFactory.replaceClosureTypes(vd.getType)))
+      }
+      val nretType = closureFactory.replaceClosureTypes(fd.returnType)
 
-      val nfd = if (funsNeedStates(fd)) { // this also includes closure constructors
+      val nfd = if (funsNeedStates(fd)) {
         val stType = closureFactory.stateType(stparams)
         val stParam = ValDef(FreshIdentifier("st@", stType))
         val retTypeWithState =
@@ -75,7 +78,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef),
           nparams :+ stParam, retTypeWithState)
         // body of these functions are defined later
-      } else if(starCallers(fd)){
+      } else if(funsNeedStateTps(fd)){
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef), nparams, nretType)
       } else {
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams, nparams, nretType)
@@ -286,7 +289,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       }, false)
 
     // (b) Mem(..) construct ?
-    case memc @ CaseClass(_, Seq(FunctionInvocation(TypedFunDef(target, _), args))) if isMemCons(memc)(p) =>
+    case memc @ CaseClass(_, Seq(FunctionInvocation(TypedFunDef(target, _), args))) if isFunCons(memc)(p) =>
       // in this case target should be a memoized function
       if (!isMemoized(target))
         throw new IllegalStateException("Argument of `Mem` should be a memoized function: " + memc)
@@ -382,7 +385,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               lambdaExpr +: args, id)
         case FunctionInvocation(TypedFunDef(tar, tps), args) =>
           // quite a few cases to consider here!
-          if (funsNeedStates(tar) || starCallers(tar)) {
+          if (funsNeedStateTps(tar)) {
             val allargs = args :+ uninterpretedStateFor(stTparams)
             val alltargs = tps ++ stTparams
             if (funsRetStates(tar)) {
@@ -400,11 +403,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     // (h) direct call to a memoized function ?
-    case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
+    case finv@FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
+          //println("handling function call: "+finv+" new args: "+nargs)
           val stArgs = if (funsNeedStates(fd)) st.toSeq else Seq()
-          val stparams = if (funsNeedStates(fd) || starCallers(fd)) stTparams else Seq()
+          val stparams = if (funsNeedStateTps(fd)) stTparams else Seq()
           val invoke = FunctionInvocation(TypedFunDef(funMap(fd), targs ++ stparams), nargs ++ stArgs)
           val invokeRes = FreshIdentifier("dres", invoke.getType)
           //println(s"invoking function $targetFun with args $args")
@@ -429,7 +433,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               st.toSeq
             } else Seq()
           val stparams =
-            if (funsNeedStates(fd) || starCallers(fd)) {
+            if (funsNeedStateTps(fd)) {
               stTparams
             } else Seq()
           FunctionInvocation(TypedFunDef(funMap(fd), targs ++ stparams), nargs ++ stArgs)
@@ -565,7 +569,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     val paramMap: Map[Expr, Expr] = idmap.map(e => (e._1.toVariable -> e._2.toVariable))
     funMap foreach {
       case (fd, nfd) =>
-        //println("Considering function: "+fd)
+        //println("Considering function: "+fd+" New fd: "+nfd)
         // Here, using name to identify 'state' parameter
         val stateParam = nfd.params.collectFirst {
           case vd if isStateParam(vd.id) => vd.id.toVariable
@@ -665,7 +669,6 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
   def assignContractsForEvals = evalFunctions.foreach {
     case (tname, evalfd) =>
-      //val ismem = closureFactory.isMemType(tname)
       val cdefs = closureFactory.concreteClosures(tname)
       val relTparams = evalfd.tparams.collect {
         case tdef if !isPlaceHolderTParam(tdef.tp) => tdef.tp

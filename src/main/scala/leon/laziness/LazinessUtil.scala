@@ -89,7 +89,7 @@ object LazinessUtil {
 
   def cachedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.Mem.cached"
+      fullName(fd)(p) == "leon.mem.Fun.cached"
     case _ => false
   }
 
@@ -106,9 +106,19 @@ object LazinessUtil {
     case _ => false
   }
 
-  def isMemCons(e: Expr)(implicit p: Program): Boolean = e match {
+  def isFunType(t: TypeTree)(implicit p: Program) = t match {
+    case cct: CaseClassType => fullName(cct.classDef)(p) == "leon.mem.Fun"
+    case _ => false
+  }
+
+  def isFunSetType(t: TypeTree)(implicit p: Program) = t match {
+    case SetType(baseType) => isFunType(baseType)
+    case _ => false
+  }
+
+  def isFunCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.mem.Mem"
+      fullName(cct.classDef)(p) == "leon.mem.Fun"
     case _ => false
   }
 
@@ -152,21 +162,6 @@ object LazinessUtil {
     case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
       cid.name == "Lazy"
     case _ => false
-  }
-
-  def isMemType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
-      cid.name == "Mem"
-    case _ => false
-  }
-
-  /**
-   * Lazy types cannot not nested
-   */
-  def unwrapMemType(tpe: TypeTree) = tpe match {
-    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
-      Some(innerType)
-    case _ => None
   }
 
   def capturedVars(l: Lambda) = l match {
