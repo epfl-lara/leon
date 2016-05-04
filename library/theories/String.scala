@@ -9,6 +9,11 @@ sealed abstract class String {
     case StringCons(_, tail) => 1 + tail.size
     case StringNil() => BigInt(0)
   }) ensuring (_ >= 0)
+  
+  def sizeI: Int = this match {
+    case StringCons(_, tail) => 1 + tail.length
+    case StringNil() => 0
+  }
 
   def concat(that: String): String = this match {
     case StringCons(head, tail) => StringCons(head, tail concat that)
@@ -24,8 +29,19 @@ sealed abstract class String {
     case StringCons(head, tail) if i > 0 => tail drop (i - 1)
     case _ => this
   }
+  
+  def takeI(i: Int): String = this match {
+    case StringCons(head, tail) if i > 0 => StringCons(head, tail takeI (i - 1))
+    case _ => StringNil()
+  }
+
+  def dropI(i: Int): String = this match {
+    case StringCons(head, tail) if i > 0 => tail dropI (i - 1)
+    case _ => this
+  }
 
   def slice(from: BigInt, to: BigInt): String = drop(from).take(to - from)
+  def sliceI(from: Int, to: Int): String = dropI(from).takeI(to - from)
 }
 
 case class StringCons(head: Char, tail: String) extends String

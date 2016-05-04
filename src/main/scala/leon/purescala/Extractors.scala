@@ -40,6 +40,8 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => BVNot(es.head)))
       case StringLength(t) =>
         Some((Seq(t), (es: Seq[Expr]) => StringLength(es.head)))
+      case StringBigLength(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => StringBigLength(es.head)))
       case Int32ToString(t) =>
         Some((Seq(t), (es: Seq[Expr]) => Int32ToString(es.head)))
       case BooleanToString(t) =>
@@ -196,6 +198,7 @@ object Extractors {
       case And(args) => Some((args, es => And(es)))
       case Or(args) => Some((args, es => Or(es)))
       case SubString(t1, a, b) => Some((t1::a::b::Nil, es => SubString(es(0), es(1), es(2))))
+      case BigSubString(t1, a, b) => Some((t1::a::b::Nil, es => BigSubString(es(0), es(1), es(2))))
       case FiniteSet(els, base) =>
         Some((els.toSeq, els => FiniteSet(els.toSet, base)))
       case FiniteBag(els, base) =>
