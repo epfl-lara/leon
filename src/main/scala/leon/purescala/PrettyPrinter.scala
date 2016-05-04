@@ -190,7 +190,9 @@ class PrettyPrinter(opts: PrinterOptions,
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
       case SubString(expr, start, end) => p"$expr.substring($start, $end)"
+      case BigSubString(expr, start, end) => p"$expr.bigSubstring($start, $end)"
       case StringLength(expr)          => p"$expr.length"
+      case StringBigLength(expr)       => p"$expr.bigLength"
 
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"

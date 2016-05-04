@@ -109,9 +109,13 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       case (SString(v), Some(StringType)) =>
         StringLiteral(v)
         
-      case (Strings.Length(a), _) =>
+      case (Strings.Length(a), Some(Int32Type)) =>
         val aa = fromSMT(a)
         StringLength(aa)
+        
+      case (Strings.Length(a), Some(IntegerType)) =>
+        val aa = fromSMT(a)
+        StringBigLength(aa)
 
       case (Strings.Concat(a, b, c @ _*), _) =>
         val aa = fromSMT(a)
@@ -125,8 +129,14 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         val tt = fromSMT(start)
         val oo = fromSMT(offset)
         oo match {
-          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
-          case _ => SubString(ss, tt, Plus(tt, oo))
+          case BVMinus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
+          case Minus(otherEnd, `tt`) => BigSubString(ss, tt, otherEnd)
+          case _ => 
+            if(tt.getType == IntegerType) {
+              BigSubString(ss, tt, Plus(tt, oo))
+            } else {
+              SubString(ss, tt, BVPlus(tt, oo))
+            }
         }
         
       case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
@@ -164,10 +174,14 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         declareSort(StringType)
         Strings.StringLit(v)
     case StringLength(a)           => Strings.Length(toSMT(a))
+    case StringBigLength(a)        => Strings.Length(toSMT(a))
     case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
-    case SubString(a, start, Plus(start2, length)) if start == start2  =>
+    case SubString(a, start, BVPlus(start2, length)) if start == start2  =>
                                       Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
     case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
+    case BigSubString(a, start, Plus(start2, length)) if start == start2  =>
+                                      Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
+    case BigSubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
     case _ =>
       super.toSMT(e)
   }

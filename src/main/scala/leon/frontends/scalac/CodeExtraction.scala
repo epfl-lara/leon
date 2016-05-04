@@ -1728,10 +1728,16 @@ trait CodeExtraction extends ASTExtractors {
               StringConcat(converter(a1), a2)
             case (IsTyped(a1, StringType), "length", List()) =>
               StringLength(a1)
+            case (IsTyped(a1, StringType), "bigLength", List()) =>
+              StringBigLength(a1)
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type))) =>
               SubString(a1, start, StringLength(a1))
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type), IsTyped(end, Int32Type))) =>
               SubString(a1, start, end)
+            case (IsTyped(a1, StringType), "bigSubstring", List(IsTyped(start, IntegerType))) =>
+              BigSubString(a1, start, StringBigLength(a1))
+            case (IsTyped(a1, StringType), "bigSubstring", List(IsTyped(start, IntegerType), IsTyped(end, IntegerType))) =>
+              BigSubString(a1, start, end)
 
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>

@@ -8,6 +8,14 @@ public class StrOps {
 	public static String concat(String a, String b) {
 		return a + b;
 	}
+	
+	public static BigInt bigLength(String a) {
+		return new BigInt(a.length() + "");
+	}
+	
+	public static String bigSubstring(String s, BigInt start, BigInt end) {
+		return s.substring(Integer.parseInt(start.toString()), Integer.parseInt(end.toString()));
+	}
 
 	public static String bigIntToString(BigInt a) {
 		return a.toString();

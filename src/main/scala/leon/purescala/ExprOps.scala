@@ -1102,8 +1102,10 @@ object ExprOps extends GenTreeOps[Expr] {
       case StringConcat(StringLiteral(""), b) => b
       case StringConcat(b, StringLiteral("")) => b
       case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a + b)
-      case StringLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
-      case SubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case StringLength(StringLiteral(a)) => IntLiteral(a.length)
+      case StringBigLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
+      case SubString(StringLiteral(a), IntLiteral(start), IntLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case BigSubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
       case _ => expr
     }).copiedFrom(expr)
     simplify0(expr)

@@ -22,6 +22,11 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   val Drop   = p.library.lookupUnique[FunDef]("leon.theories.String.drop").typed
   val Slice  = p.library.lookupUnique[FunDef]("leon.theories.String.slice").typed
   val Concat = p.library.lookupUnique[FunDef]("leon.theories.String.concat").typed
+
+  val SizeI   = p.library.lookupUnique[FunDef]("leon.theories.String.sizeI").typed
+  val TakeI   = p.library.lookupUnique[FunDef]("leon.theories.String.takeI").typed
+  val DropI   = p.library.lookupUnique[FunDef]("leon.theories.String.dropI").typed
+  val SliceI  = p.library.lookupUnique[FunDef]("leon.theories.String.sliceI").typed
   
   val FromInt      = p.library.lookupUnique[FunDef]("leon.theories.String.fromInt").typed
   val FromChar     = p.library.lookupUnique[FunDef]("leon.theories.String.fromChar").typed
@@ -46,13 +51,19 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
     override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case StringLiteral(v)          =>
         Some(convertFromString(v))
-      case StringLength(a)           =>
+      case StringBigLength(a)           =>
         Some(FunctionInvocation(Size, Seq(transform(a))).copiedFrom(e))
+      case StringLength(a)           =>
+        Some(FunctionInvocation(SizeI, Seq(transform(a))).copiedFrom(e))
       case StringConcat(a, b)        =>
         Some(FunctionInvocation(Concat, Seq(transform(a), transform(b))).copiedFrom(e))
       case SubString(a, start, Plus(start2, length)) if start == start2  =>
-        Some(FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e))
+        Some(FunctionInvocation(TakeI, Seq(FunctionInvocation(DropI, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e))
       case SubString(a, start, end)  => 
+        Some(FunctionInvocation(SliceI, Seq(transform(a), transform(start), transform(end))).copiedFrom(e))
+      case BigSubString(a, start, Plus(start2, length)) if start == start2  =>
+        Some(FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(transform(a), transform(start))), transform(length))).copiedFrom(e))
+      case BigSubString(a, start, end)  => 
         Some(FunctionInvocation(Slice, Seq(transform(a), transform(start), transform(end))).copiedFrom(e))
       case Int32ToString(a) => 
         Some(FunctionInvocation(FromInt, Seq(transform(a))).copiedFrom(e))
@@ -85,20 +96,32 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
     override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case cc @ CaseClass(cct, args) if TypeOps.isSubtypeOf(cct, String)=>
         Some(StringLiteral(convertToString(cc)).copiedFrom(cc))
-      case FunctionInvocation(Size, Seq(a)) =>
+      case FunctionInvocation(SizeI, Seq(a)) =>
         Some(StringLength(transform(a)).copiedFrom(e))
+      case FunctionInvocation(Size, Seq(a)) =>
+        Some(StringBigLength(transform(a)).copiedFrom(e))
       case FunctionInvocation(Concat, Seq(a, b)) =>
         Some(StringConcat(transform(a), transform(b)).copiedFrom(e))
-      case FunctionInvocation(Slice, Seq(a, from, to)) =>
+      case FunctionInvocation(SliceI, Seq(a, from, to)) =>
         Some(SubString(transform(a), transform(from), transform(to)).copiedFrom(e))
-      case FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(a, start)), length)) =>
+      case FunctionInvocation(Slice, Seq(a, from, to)) =>
+        Some(BigSubString(transform(a), transform(from), transform(to)).copiedFrom(e))
+      case FunctionInvocation(TakeI, Seq(FunctionInvocation(DropI, Seq(a, start)), length)) =>
         val rstart = transform(start)
         Some(SubString(transform(a), rstart, plus(rstart, transform(length))).copiedFrom(e))
+      case FunctionInvocation(Take, Seq(FunctionInvocation(Drop, Seq(a, start)), length)) =>
+        val rstart = transform(start)
+        Some(BigSubString(transform(a), rstart, plus(rstart, transform(length))).copiedFrom(e))
+      case FunctionInvocation(TakeI, Seq(a, length)) =>
+        Some(SubString(transform(a), IntLiteral(0), transform(length)).copiedFrom(e))
       case FunctionInvocation(Take, Seq(a, length)) =>
-        Some(SubString(transform(a), InfiniteIntegerLiteral(0), transform(length)).copiedFrom(e))
-      case FunctionInvocation(Drop, Seq(a, count)) =>
+        Some(BigSubString(transform(a), InfiniteIntegerLiteral(0), transform(length)).copiedFrom(e))
+      case FunctionInvocation(DropI, Seq(a, count)) =>
         val ra = transform(a)
         Some(SubString(ra, transform(count), StringLength(ra)).copiedFrom(e))
+      case FunctionInvocation(Drop, Seq(a, count)) =>
+        val ra = transform(a)
+        Some(BigSubString(ra, transform(count), StringBigLength(ra)).copiedFrom(e))
       case FunctionInvocation(FromInt, Seq(a)) =>
         Some(Int32ToString(transform(a)).copiedFrom(e))
       case FunctionInvocation(FromBigInt, Seq(a)) =>

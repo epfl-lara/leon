@@ -599,10 +599,27 @@ object Expressions {
       else Untyped
     }
   }
+  /** $encodingof `lhs.subString(start, end)` for strings */
+  case class BigSubString(expr: Expr, start: Expr, end: Expr) extends Expr {
+    val getType = {
+      val ext = expr.getType
+      val st = start.getType
+      val et = end.getType
+      if (ext == StringType && st == IntegerType && et == IntegerType) StringType
+      else Untyped
+    }
+  }
   /** $encodingof `lhs.length` for strings */
   case class StringLength(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == StringType) Int32Type
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.length` for strings */
+  case class StringBigLength(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType) IntegerType
       else Untyped
     }
   }
