@@ -197,7 +197,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               }
           }
           // update a state (we can move this to closureFactory)
-          evalUpdatesState = funsRetStates(srcTarget)
+          evalUpdatesState ||= funsRetStates(srcTarget)
           // invoke the target fun with appropriate values
           val invoke =
             if (funsNeedStates(srcTarget)) {
@@ -218,7 +218,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               val cc = CaseClass(CaseClassType(closureFactory.memoClasses(srcTarget), stTparams), targetArgs)
               closureFactory.stateUpdate(cc, currState)
             } else {
-              stParam.toVariable
+              currState
             }
           val rhs = Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
           MatchCase(pattern, None, rhs)

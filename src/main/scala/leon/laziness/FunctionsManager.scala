@@ -21,6 +21,7 @@ class FunctionsManager(p: Program) {
   case class Specs() extends Label
   case class Star() extends Label
   case class WithState() extends Label
+  case class Lamb() extends Label
   case class None() extends Label
 
   val cg = {
@@ -42,12 +43,14 @@ class FunctionsManager(p: Program) {
             case f @ FunctionInvocation(TypedFunDef(callee, _), args) if !callee.canBeStrictField => // ignoring vals. Note: lazy vals will become memoized functions
               dg.addEdge(fd, callee, l)
               args map rec(l)
-            case Ensuring(e, post) =>
+            case Ensuring(e, Lambda(_, post)) =>
               rec(l)(e)
               rec(Specs())(post)
             case Require(pre, e) =>
               rec(Specs())(pre)
               rec(l)(e)
+            case Lambda(_, body) => 
+              rec(Lamb())(body)
             case Operator(args, _) => args map rec(l)
           }
           rec(None())(body)
@@ -68,7 +71,6 @@ class FunctionsManager(p: Program) {
     userLevelFunctions(p).foreach { fd =>
       if(fd.params.exists(vd => isFunSetType(vd.getType)(p))) // functions that use `stateType` args need `stateParams`
         needTargsRoots += fd
-
       fd.fullBody match {
         case NoTree(_) =>
         case _ =>
@@ -85,7 +87,7 @@ class FunctionsManager(p: Program) {
                 case FunctionInvocation(_, args) =>
                   args foreach rec
               }
-            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
+            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>              
               readRoots += fd
               args foreach rec
             case Application(l, args) if !inspec => // note: not all applications need to update state. This info can be obtained from closureFactory (but is based on types)
@@ -93,21 +95,21 @@ class FunctionsManager(p: Program) {
               (l +: args) foreach rec
             case FunctionInvocation(tfd, args) if !inspec && isMemoized(tfd.fd) =>
               updateRoots += fd
-              args foreach rec
+              args foreach rec            
             case Operator(args, _) =>
               args foreach rec
           }
           if (fd.hasBody)
             rec(fd.body.get)(false)
-          else if (fd.hasPrecondition)
-            rec(fd.precondition.get)(true)
-          else if (fd.hasPostcondition)
+          if (fd.hasPrecondition)             
+            rec(fd.precondition.get)(true)         
+          if (fd.hasPostcondition)
             rec(fd.postcondition.get)(true)
       }
     }
     // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
     val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
-    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState`
+    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState` 
     val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what
     val needTargsCallers = cg.transitiveCallers(needTargsRoots.toSeq)
@@ -119,13 +121,11 @@ class FunctionsManager(p: Program) {
 
   lazy val callersnTargetOfLambdas = {
     var consRoots = Set[FunDef]()
-    //var targets = Set[F]()
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
           case l: Lambda =>
             consRoots += fd
-          //targets += l
           case _ =>
         }(fd.body.get)
       case _ => ;
