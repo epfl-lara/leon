@@ -13,8 +13,8 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
   * "foo_base" always represent the item extracted from the base of exemple and is always put in first, in order
   * to avoid confusion
   */
-object ComparatorByList extends Comparator {
-  val name = "byList"
+object ComparatorByListExpr extends Comparator {
+  val name = "byListExpr"
 
 
   /**
@@ -28,15 +28,9 @@ object ComparatorByList extends Comparator {
     val listExpr_base = treeToList(expr_base)
     val listExpr = treeToList(expr)
 
-    val similarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
+    val numberOfSimilarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
 
-    val percentageSimilarity =
-      math.min(
-      (similarExpr.toDouble / listExpr_base.size.toDouble),
-      (similarExpr.toDouble / listExpr.size.toDouble)
-      )
-
-    percentageSimilarity
+    Utils.percentBetweenTwo(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
   }
 
 

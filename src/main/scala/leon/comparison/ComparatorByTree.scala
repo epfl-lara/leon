@@ -23,7 +23,7 @@ object ComparatorByTree extends Comparator {
 
 
   def compareExpr(expr_base: Expr, expr: Expr): Double = (expr_base, expr) match{
-    case (_,_) if (expr_base == expr) => 1.0
+    case (_,_) if expr_base == expr => 1.0
     case (MatchExpr(scrutinee_b, cases_b), MatchExpr(scrutinee, cases)) => compareMatchExpr(cases_b, cases)
     case (Let(binderB, valueB, bodyB), Let(binder, value, body)) =>
       mean(compareExpr(valueB, value), compareExpr(bodyB, body))
@@ -65,9 +65,9 @@ object ComparatorByTree extends Comparator {
 
   def toMap(cases: Seq[MatchCase]) = {
     cases.map(a => a.pattern match {
-      case InstanceOfPattern(_, ct) => (ct -> a.rhs)
-      case CaseClassPattern(_, ct, _) => (ct -> a.rhs)
-      case _ => (a.pattern -> a.rhs)
+      case InstanceOfPattern(_, ct) => ct -> a.rhs
+      case CaseClassPattern(_, ct, _) => ct -> a.rhs
+      case _ => a.pattern -> a.rhs
     }).toMap
   }
 }

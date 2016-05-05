@@ -20,8 +20,8 @@ listFD: List[(FunDef, FunDef, List[Double])]) {
       Seq(
         Cell("argument program"),
         Cell("base")
-      ) ++
-      comparatorsName map (Cell(_))
+        ) ++
+        comparatorsName.map(p => Cell(p))
     )
 
     t += Separator
@@ -41,6 +41,6 @@ listFD: List[(FunDef, FunDef, List[Double])]) {
     t.render
   }
 
-  def percentage(d: Double) = new java.text.DecimalFormat("#.##").format(d*100) ++ "%"
+  private def percentage(d: Double): String = new java.text.DecimalFormat("#.##").format(d*100) ++ "%"
 
 }

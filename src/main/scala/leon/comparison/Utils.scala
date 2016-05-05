@@ -37,6 +37,7 @@ object Utils {
   /**
     * Combine number of parameter, of parameter of its own type and of the type of its parent
     * (to be improved for CaseClass without argument, for example match with parent)
+ *
     * @param a
     * @param b
     * @return
@@ -47,8 +48,8 @@ object Utils {
     val parentTypeA : Int = argumentsOfParentType(a)
     val parentTypeB: Int = argumentsOfParentType(b)
 
-    val percentageMatch: Double = percentMatch(a.fields.size, b.fields.size) *
-    percentMatch(ownTypeA, ownTypeB) * percentMatch(parentTypeA, parentTypeB)
+    val percentageMatch: Double = percent(a.fields.size, b.fields.size) *
+      percent(ownTypeA, ownTypeB) * percent(parentTypeA, parentTypeB)
 
     percentageMatch
   }
@@ -57,6 +58,7 @@ object Utils {
   /**
     * Count how many occurrences of its own type appear in its arguments
     * (to be improved if multiples types)
+ *
     * @param a the case class
     * @return
     */
@@ -66,6 +68,7 @@ object Utils {
 
   /**
     * Count how many occurrences of its parent type appear in its arguments
+ *
     * @param a
     * @return
     */
@@ -74,16 +77,18 @@ object Utils {
     case _ => 0
   }
 
-  def percentMatch(a: Int, b: Int): Double = {
+  def percent(a: Int, b: Int): Double = {
     if(a == 0 && b == 0) 1.0
     else if (a == 0 || b == 0) 0.0
     else Math.min(a.toDouble/b.toDouble, b.toDouble/a.toDouble)
   }
 
+  def percentBetweenTwo(a: Int, option1: Int, option2: Int): Double =
+    Math.min(percent(a, option1), percent(a, option2))
 
   def mean(a: Double): Double = a
   def mean(a: Double, b: Double): Double = (a + b) / 2
   def mean(a: Double, b: Double, c: Double): Double = (a + b + c) / 3
-  def mean(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 3
+  def mean(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 4
   def mean(list : List[Double]): Double = list.foldLeft(0.0)(_+_) / list.size.toDouble
 }
