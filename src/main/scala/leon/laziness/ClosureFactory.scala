@@ -106,8 +106,7 @@ class ClosureFactory(p: Program) {
      * Checks if the types of lambdas are not instantiations of one another.
      * This is currently not supported.
      */
-    lambdasList.groupBy { lop =>
-      println("Processing lambda: "+lop)
+    lambdasList.groupBy { lop =>      
       val FunctionType(argts, _) = lop.getType
       argts.size
     }.foreach {
