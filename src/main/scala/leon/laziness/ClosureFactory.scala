@@ -107,6 +107,7 @@ class ClosureFactory(p: Program) {
      * This is currently not supported.
      */
     lambdasList.groupBy { lop =>
+      println("Processing lambda: "+lop)
       val FunctionType(argts, _) = lop.getType
       argts.size
     }.foreach {
