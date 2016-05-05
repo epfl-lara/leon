@@ -121,7 +121,7 @@ object CallGraphUtil {
           funExpr = Tuple(Seq(funExpr, fd.getTemplate))
         }
         //introduce a new edge for every callee
-        getCallees(funExpr).foreach(cg.addEdge(fd, _))
+        getCallees(funExpr).foreach{ce => cg.addEdge(fd, ce)}
       }
     }
     cg

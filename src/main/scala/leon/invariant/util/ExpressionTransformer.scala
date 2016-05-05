@@ -71,8 +71,8 @@ object ExpressionTransformer {
   }
 
   /**
-   * Assumed that that given expression has boolean type
-   * converting if-then-else and let into a logical formula
+   * Assumed that the given expression has boolean type
+   * converting let into a logical formula. If-then-else's are preserved.
    */
   def reduceLangBlocks(inexpr: Expr, multop: (Expr, Expr) => Expr) = {
 
@@ -126,7 +126,7 @@ object ExpressionTransformer {
           val (ncond, condConjs) = transform(cond, true)
           val (nthen, thenConjs) = transform(Equals(freshvar, thn), false)
           val (nelze, elzeConjs) = transform(Equals(freshvar, elze), false)
-          val conjs = condConjs + IfExpr(cond,
+          val conjs = condConjs + IfExpr(ncond,
               createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq))
           (freshvar, conjs)
 
@@ -134,7 +134,7 @@ object ExpressionTransformer {
           val (ncond, condConjs) = transform(cond, true)
           val (nthen, thenConjs) = transform(thn, false)
           val (nelze, elzeConjs) = transform(elze, false)
-          (IfExpr(cond,
+          (IfExpr(ncond,
               createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq)), condConjs)
 
         case Let(binder, value, body) =>

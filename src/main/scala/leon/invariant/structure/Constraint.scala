@@ -71,7 +71,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
 
   val template = oper(Seq(lhsExpr, zero))
 
-  def templateVars: Set[Variable] = getTemplateVars(template)  
+  def templateVars: Set[Variable] = getTemplateVars(template)
 
   /**
    * Picks a sat disjunct of the negation of the template w.r.t to the
@@ -87,7 +87,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
     }
     args map LinearConstraintUtil.exprToTemplate
   }
-  
+
   def pickSatDisjunctOfNegation(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
     val err = new IllegalStateException(s"Cannot pick a sat disjunct of negation: ${toString} is sat!")
     template match {
@@ -228,7 +228,7 @@ case class ExtendedLinearTemplate(v: Variable, tmpl: LinearTemplate, diseq: Bool
 object BoolConstraint {
   def isBoolConstraint(e: Expr): Boolean = e match {
     case _: Variable | _: BooleanLiteral if e.getType == BooleanType => true
-    case Equals(l, r) => isBoolConstraint(l) && isBoolConstraint(r) //enabling makes the system slower!! surprising
+    case Equals(l, r) => isBoolConstraint(l) && isBoolConstraint(r)
     case Not(arg) => isBoolConstraint(arg)
     case And(args) => args forall isBoolConstraint
     case Or(args) => args forall isBoolConstraint
@@ -261,7 +261,7 @@ object ADTConstraint {
     case Not(Equals(lhs: Variable, _: Variable)) if adtType(lhs) =>
       new ADTConstraint(e, comp = true)
     case _ =>
-      throw new IllegalStateException(s"Expression not an ADT constraint: $e")
+      throw new IllegalStateException(s"Expression not an ADT constraint: $e Argument types: ${variablesOf(e).map(fv => fv -> fv.getType).mkString(",")} ")
   }
 }
 
@@ -327,7 +327,7 @@ object SetConstraint {
 case class SetConstraint(expr: Expr) extends Constraint {
   var union = false
   var newset = false
-  var equal = false
+  var comp = false
   var elemof = false
   var subset = false
   // TODO: add more operations here
@@ -338,8 +338,9 @@ case class SetConstraint(expr: Expr) extends Constraint {
         case FiniteSet(_, _) => newset = true
         case ElementOfSet(_, _) => elemof = true
         case SubsetOf(_, _) => subset = true
-        case Variable(_) => equal = true
+        case Variable(_) => comp = true
       }
+    case Not(Equals(Variable(_), Variable(_))) => comp = true
   }
   override def toString(): String = {
     expr.toString
@@ -379,6 +380,7 @@ object ConstraintUtil {
       case Not(Equals(v: Variable, rhs)) if (isArithmeticRelation(rhs) != Some(false)) => toExtendedTemplate(v, rhs, true)
       case _ if (isArithmeticRelation(ie) != Some(false))                              => toLinearTemplate(ie)
       case Equals(v: Variable, rhs@Equals(l, _)) if adtType(l) => ExtendedADTConstraint(v, ADTConstraint(rhs), false)
+      case Equals(v: Variable, rhs@Not(Equals(l, _))) if adtType(l) => ExtendedADTConstraint(v, ADTConstraint(rhs), false)
 
       // every other equality will be considered an ADT constraint (including TypeParameter equalities)
       case Equals(lhs, rhs) if !isNumericType(lhs.getType)                             => ADTConstraint(ie)

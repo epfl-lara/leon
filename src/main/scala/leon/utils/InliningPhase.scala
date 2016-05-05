@@ -65,9 +65,10 @@ object InliningPhase extends TransformationPhase {
               case (arg, (fargs, lcons)) =>
                 val id = FreshIdentifier("a", arg.getType, true)
                 (id.toVariable +: fargs, e => Let(id, arg, lcons(e)))
-            }
+            }            
             val formalToActual = (tfd.params.map(_.id) zip flatArgs).toMap
-            val nexpr = simplerLet(letCons(replaceFromIDs(formalToActual, body)))
+            val substExpr = letCons(replaceFromIDs(formalToActual, body))            
+            val nexpr = simplerLet(substExpr)            
             rec(topLevel, inlinedFuns)(nexpr)
           }
         }
@@ -83,7 +84,7 @@ object InliningPhase extends TransformationPhase {
     for (fd <- p.definedFunctions) {
       fd.fullBody = rec(true, Set())(fd.fullBody)
     }
-    filterFunDefs(p, fd => !doInline(fd) || inlineOnce(fd))
+    filterFunDefs(p, fd => !doInline(fd) || inlineOnce(fd))    
   }
 
 }

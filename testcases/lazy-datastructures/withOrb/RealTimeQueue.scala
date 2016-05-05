@@ -22,7 +22,7 @@ object RealTimeQueue {
         case SNil()      => BigInt(0)
         case c@SCons(_, _) => 1 + (c.tail*).size
       }
-    } ensuring (_ >= 0)
+    } ensuring (_ >= 0)                
 
     lazy val tail: Stream[T] = {
       require(isCons)
@@ -31,6 +31,7 @@ object RealTimeQueue {
       }
     }
   }
+  // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
   case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
@@ -45,15 +46,15 @@ object RealTimeQueue {
   @invisibleBody
   @invstate // says that the function doesn't change state
   def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
-    require(r.size == f.size + 1 && isConcrete(f))
+    require(r.size == f.size + 1 && isConcrete(f))  
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, lift(a))
+        SCons[T](y, lift(a)) //  rank: a.rank + 1
       case (c@SCons(x, _), Cons(y, r1)) =>
-        val newa = SCons[T](y, lift(a))
+        val newa = SCons[T](y, lift(a)) // rank : a.rank + 1
         val ftail = c.tail
         val rot = () => rotate(ftail, r1, newa)
-        SCons[T](x, rot)
+        SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
     }
   } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && time <= ?) // Orb results: time <= 31
 

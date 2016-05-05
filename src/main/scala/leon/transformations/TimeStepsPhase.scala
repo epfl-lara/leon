@@ -31,6 +31,7 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody) // ignore uninterpreted functions
+    //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
     instFunSet.map(x => (x, List(Time))).toMap
   }
 

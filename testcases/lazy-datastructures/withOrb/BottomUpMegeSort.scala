@@ -15,21 +15,6 @@ import stats._
  * accessing the first element in the sorted list in constant time.
  */
 object BottomUpMergeSort {
-
-  /**
-   * A list of integers that have to be sorted
-   */
-  /*sealed abstract class IList {
-    def size: BigInt = {
-      this match {
-        case ICons(_, xs) => 1 + xs.size
-        case _            => BigInt(0)
-      }
-    } ensuring (_ >= 0)
-  }
-  case class ICons(x: BigInt, tail: IList) extends IList
-  case class INil() extends IList*/
-
   sealed abstract class LList {
     def size: BigInt = {
       this match {
@@ -59,31 +44,6 @@ object BottomUpMergeSort {
       case Cons(l, t) => l.size + fullSize(t)
     }
   } ensuring (_ >= 0)
-    
-//  sealed abstract class LList {
-//    def size: BigInt = {
-//      this match {
-//        case LNil()      => BigInt(0)
-//        case LCons(_, t) => 1 + t.size
-//      }
-//    } ensuring (_ >= 0)
-//
-//    def valid: Boolean = {
-//      this match {
-//        case LNil()      => true
-//        case LCons(l, t) => ssize(l) > 0 && t.valid
-//      }
-//    }
-//
-//    def fullSize: BigInt = {
-//      this match {
-//        case LNil()      => BigInt(0)
-//        case LCons(l, t) => ssize(l) + t.fullSize
-//      }
-//    } ensuring (_ >= 0)
-//  }
-//  case class LCons(x: Lazy[IStream], tail: LList) extends LList
-//  case class LNil() extends LList
 
   /**
    * A function that given a list of (lazy) sorted lists,
@@ -152,8 +112,8 @@ object BottomUpMergeSort {
               SCons(x, Stream(() => merge(a, xs)))
         }
     }
-  } ensuring (res => a.size + b.size == res.size) // &&
-       //time <= ? * res.size + ?) // note: res.size >= 1 // here stack is max of a and b
+  } ensuring (res => a.size + b.size == res.size &&
+       time <= ? * res.size + ?) // note: res.size >= 1 // here stack is max of a and b
      // time <= 67 * res.size - 47) // Orb cannot infer this due to issues with CVC4 set solving !
 
   /**

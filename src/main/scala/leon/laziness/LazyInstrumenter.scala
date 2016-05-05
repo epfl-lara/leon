@@ -21,6 +21,7 @@ class LazyInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, 
   class MemExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrumenter)(implicit currFun: FunDef)
       extends ExprInstrumenter(funMap, serialInst)(currFun) {
 
+        //println("Instrumenting function: "+currFun)
     val costOfMemoization: Map[Instrumentation, Int] =
       Map(Time -> 1, Stack -> 1, Rec -> 1, TPR -> 1, Depth -> 1)
 
@@ -66,22 +67,23 @@ class LazyInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, 
       }.get
     }
 
+    def stateTps(st: Expr) = st.getType.asInstanceOf[SetType].base.asInstanceOf[ClassType].tps
+
     override def tupleifyCall(f: FunctionInvocation, subeVals: List[Expr], subeInsts: Map[Instrumentation, List[Expr]])(implicit letIdMap: Map[Identifier, Identifier]): Expr = {
       val target = f.tfd.fd
       val instExpr = super.tupleifyCall(f, subeVals, subeInsts)
       if(isMemoized(target)) {
         val (oldTarget, ccdef) = memoClosureByName(InstUtil.userFunctionName(target))
-        val targs = stateParam.getType.asInstanceOf[SetType].base.asInstanceOf[ClassType].tps
-        val args =
+        val (args, stExpr) =
           if(funManager.funsNeedStates(oldTarget)) {
             //remove the state argument
-            f.args.dropRight(1)
+            (f.args.dropRight(1), f.args.last)
           } else
-            f.args
-        val cc = CaseClass(CaseClassType(ccdef, targs), args)
+            (f.args, stateParam)
+        val cc = CaseClass(CaseClassType(ccdef, stateTps(stExpr)), args)
         val instId = FreshIdentifier("instd", instExpr.getType, true)
         val instExprs = instrumenters map { m =>
-          IfExpr(ElementOfSet(cc, stateParam),
+          IfExpr(ElementOfSet(cc, stExpr),
             InfiniteIntegerLiteral(costOfMemoization(m.inst)),
             selectInst(instId.toVariable, m.inst))
         }

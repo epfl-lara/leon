@@ -21,8 +21,8 @@ object FibMem {
     else
       fibRec(n - 1) + fibRec(n - 2) // postcondition implies that the second call would be cached
   } ensuring (_ =>
-    (n <= 2 || (fibRec(n - 1).isCached &&
-      fibRec(n - 2).isCached)) && time <= ? * n + ?)
+    (n <= 2 || (fibRec(n - 1).cached &&
+      fibRec(n - 2).cached)) && time <= ? * n + ?)
 
   @ignore
   def main(args: Array[String]) {

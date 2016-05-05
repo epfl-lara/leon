@@ -37,4 +37,6 @@ package object annotation {
   class usePost extends StaticAnnotation // assume the post-condition while proving time bounds
   @ignore
   class unfoldFactor(f: Int=0) extends StaticAnnotation // 0 implies no bound on unfolding
+  @ignore
+  class finite() extends StaticAnnotation // an annotation that says the stream is finite
 }

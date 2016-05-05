@@ -31,7 +31,7 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
   val cg = CallGraphUtil.constructCallGraph(prog)
 
   //this count indicates the number of times we unroll a recursive call
-  private val MAX_UNROLLS = 2
+  private val MAX_UNROLLS = 3
 
   //debugging flags
   private val dumpInlinedSummary = false
