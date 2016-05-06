@@ -1,6 +1,7 @@
 package leon.comparison
 
 import leon.purescala.Expressions._
+import leon.comparison.Utils._
 
 /**
   * Created by joachimmuth on 02.05.16.
@@ -36,8 +37,13 @@ object ComparatorByListType extends Comparator {
     * @return
     */
   def compare(expr_base: Expr, expr: Expr): Double = {
-    val listClassesB = treeToList(expr_base)
-    val listClasses = treeToList(expr)
+    val listClassesB = collectClass(expr_base)
+    val listClasses = collectClass(expr)
+
+    val test = treeToList(expr_base)
+    println("are my function correct ? ", listClassesB == test)
+    println(listClassesB)
+    println(test)
 
     val similarExpr: Int = pairsOfSimilarExp(listClassesB, listClasses)
 
@@ -56,13 +62,6 @@ object ComparatorByListType extends Comparator {
     helper(listExpr_base, listExpr, 0)
   }
 
-  /**
-    * Flat an Expression tree into a list
-    * Put the current Expr into a list and recursively call the function over all its arguments of type Expr.
-    *
-    * @param expr
-    * @return
-    */
   def treeToList(expr: Expr): List[Class[_ <: Expr]] = expr match {
     case Require(pred, body) => List(expr.getClass) ++ treeToList(pred) ++ treeToList(body)
     case Ensuring(body, pred) => List(expr.getClass) ++ treeToList(body) ++ treeToList(pred)
