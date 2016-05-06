@@ -234,7 +234,7 @@ object Utils {
     * will be stored
     *
     * collectExpr and collectClass collect respectively the Expr and the Class of each element of the tree.
-    * 
+    *
     * BEWARE: Expr are complete trees even if we call it "parent". When we compare two Expr, we compare two entire tree.
     * At the contrary, when we compare to Class, we lose this information and only compare the Class of two parent.
     * @param expr
