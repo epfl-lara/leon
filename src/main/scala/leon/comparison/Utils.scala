@@ -256,7 +256,7 @@ object Utils {
     * @param expr
     * @return
     */
-  def getChild(expr: Expr): List[Expr] =
+  def getChildren(expr: Expr): List[Expr] =
     traverse(expr) (expr => Nil) (expr => List(expr))
 
 
