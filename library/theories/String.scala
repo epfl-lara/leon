@@ -30,11 +30,13 @@ sealed abstract class String {
     case _ => this
   }
   
+  @isabelle.noBody()
   def takeI(i: Int): String = this match {
     case StringCons(head, tail) if i > 0 => StringCons(head, tail takeI (i - 1))
     case _ => StringNil()
   }
 
+  @isabelle.noBody()
   def dropI(i: Int): String = this match {
     case StringCons(head, tail) if i > 0 => tail dropI (i - 1)
     case _ => this
