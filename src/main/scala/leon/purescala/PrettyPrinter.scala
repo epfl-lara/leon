@@ -86,6 +86,12 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Variable(id) =>
         p"$id"
+        
+      case Let(id, expr, SubString(Variable(id2), start, StringLength(Variable(id3)))) if id == id2 && id2 == id3 =>
+        p"$expr.substring($start)"
+        
+      case Let(id, expr, BigSubString(Variable(id2), start, StringLength(Variable(id3)))) if id == id2 && id2 == id3 =>
+        p"$expr.bigSubstring($start)"
 
       case Let(b,d,e) =>
         p"""|val $b = $d
