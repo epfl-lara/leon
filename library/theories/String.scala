@@ -11,7 +11,7 @@ sealed abstract class String {
   }) ensuring (_ >= 0)
   
   def sizeI: Int = this match {
-    case StringCons(_, tail) => 1 + tail.length
+    case StringCons(_, tail) => 1 + tail.sizeI
     case StringNil() => 0
   }
 

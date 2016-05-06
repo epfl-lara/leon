@@ -185,6 +185,39 @@ trait ASTExtractors {
         case _ => None
        }
     }
+    
+    /** Matches the `bigLength` expression at the end of any string expression, and returns the expression.*/
+    object ExBigLengthExpression {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigLength")), Nil)
+          => Some(stringExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `bigSubstring` method at the end of any string expression, and returns the expression and the start index expression.*/
+    object ExBigSubstringExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigSubstring")), startExpr :: Nil)
+           => Some(stringExpr, startExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `bigSubstring` expression at the end of any string expression, and returns the expression, the start and end index expressions.*/
+    object ExBigSubstring2Expression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigSubstring")), startExpr :: endExpr :: Nil)
+           => Some(stringExpr, startExpr, endExpr)
+        case _ => None
+       }
+    }
 
     /** Matches an implication `lhs ==> rhs` and returns (lhs, rhs)*/
     object ExImplies {

@@ -70,10 +70,12 @@ package object lang {
   }
   
   implicit class StringDecorations(val underlying: String) {
-    @ignore
-    def bigLength = BigInt(underlying.length)
-    @ignore
-    def bigsubstring(start: BigInt, end: BigInt): String = underlying.substring(start.toInt, end.toInt)
+    @ignore @inline
+    def bigLength() = BigInt(underlying.length)
+    @ignore @inline
+    def bigSubstring(start: BigInt): String = underlying.substring(start.toInt)
+    @ignore @inline
+    def bigSubstring(start: BigInt, end: BigInt): String = underlying.substring(start.toInt, end.toInt)
   }
 
   @ignore

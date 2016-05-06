@@ -1195,6 +1195,23 @@ trait CodeExtraction extends ASTExtractors {
 
           Ensuring(output_expr, post)
 
+        case t @ ExBigLengthExpression(input) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          StringBigLength(input_expr)
+        case t @ ExBigSubstringExpression(input, start) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val start_expr = extractTreeOrNoTree(start).setPos(start.pos)
+          val s = FreshIdentifier("s", StringType)
+          let(s, input_expr, 
+            BigSubString(Variable(s), start_expr, StringBigLength(Variable(s)))
+          )
+          
+        case t @ ExBigSubstring2Expression(input, start, end) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val start_expr = extractTreeOrNoTree(start).setPos(start.pos)
+          val end_expr = extractTreeOrNoTree(end).setPos(end.pos)
+          BigSubString(input_expr, start_expr, end_expr)
+
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
           val b     = rest.map(extractTreeOrNoTree).getOrElse(UnitLiteral())
@@ -1728,17 +1745,14 @@ trait CodeExtraction extends ASTExtractors {
               StringConcat(converter(a1), a2)
             case (IsTyped(a1, StringType), "length", List()) =>
               StringLength(a1)
-            case (IsTyped(a1, StringType), "bigLength", List()) =>
-              StringBigLength(a1)
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type))) =>
-              SubString(a1, start, StringLength(a1))
+              val s = FreshIdentifier("s", StringType)
+              let(s, a1,
+              SubString(Variable(s), start, StringLength(Variable(s)))
+              )
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type), IsTyped(end, Int32Type))) =>
               SubString(a1, start, end)
-            case (IsTyped(a1, StringType), "bigSubstring", List(IsTyped(start, IntegerType))) =>
-              BigSubString(a1, start, StringBigLength(a1))
-            case (IsTyped(a1, StringType), "bigSubstring", List(IsTyped(start, IntegerType), IsTyped(end, IntegerType))) =>
-              BigSubString(a1, start, end)
-
+            
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>
               Plus(a1, a2)
