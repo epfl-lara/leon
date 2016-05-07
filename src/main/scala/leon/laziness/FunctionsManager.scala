@@ -40,7 +40,7 @@ class FunctionsManager(p: Program) {
               args map rec(WithState())
             case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f)(p) =>
               rec(Star())(invExpr)
-            case f @ FunctionInvocation(TypedFunDef(callee, _), args) if !callee.canBeStrictField => // ignoring vals. Note: lazy vals will become memoized functions
+            case f @ FunctionInvocation(TypedFunDef(callee, _), args) if !callee.canBeStrictField => // ignoring vals. Note: lazy vals will become memoized functions              
               dg.addEdge(fd, callee, l)
               args map rec(l)
             case Ensuring(e, Lambda(_, post)) =>
@@ -107,8 +107,9 @@ class FunctionsManager(p: Program) {
             rec(fd.postcondition.get)(true)
       }
     }
+    //println("Original sucessors of concrete: "+cg.succsWithLabels(node).map{ case (fd, lbs) => fd.id +" label: "+lbs.mkString(",")}.mkString("\n"))
     // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
-    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
+    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)    
     // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState` 
     val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what

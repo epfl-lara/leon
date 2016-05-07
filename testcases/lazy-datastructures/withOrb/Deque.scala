@@ -21,79 +21,92 @@ import invariant._
 object RealTimeDeque {
   sealed abstract class Stream[T] {
     @inline
-    def isEmpty: Boolean = this == SNil[T]()        
+    def isEmpty: Boolean = this == SNil[T]()
     @inline
     def isCons: Boolean = !isEmpty
 
     def size: BigInt = {
       this match {
-        case SNil()      => BigInt(0)
-        case t@SCons(_, _) => 1 + (t.stail*).size
+        case SNil()          => BigInt(0)
+        case t @ SCons(_, _) => 1 + t.stailVal.size
       }
     } ensuring (_ >= 0)
-    
-    lazy val stail: Stream[T] = {
-      require(isCons)
+
+    @inline
+    def stail: Stream[T] = {
       this match {
-        case SCons(_, tailFun) => tailFun()
+        case SCons(_, Val(x))     => x
+        case SCons(_, f @ Fun(_)) => f.get
       }
     }
-    
+
+    @inline
+    def stailVal: Stream[T] = {
+      this match {
+        case SCons(_, Val(x))     => x
+        case SCons(_, f @ Fun(_)) => f.get*
+      }
+    }
+
+    @inline
     def tailCached: Boolean = {
       this match {
-        case SCons(_, tailFun) => tailFun fmatch[Stream[T],Boolean] {
-          case x if tailFun.is(() => id(x)) => true
-          case _ => this.stail.cached          
-        }
-        case _ => true
+        case SCons(_, f: Fun[T]) => f.get.cached
+        case _                   => true
       }
     }
-  }   
-  
-  case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
+  }
+
+  case class SCons[T](x: T, next: ValOrFun[T]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
-  def id[A](x: A) = x
-  
-  @inline
-  def lifts[T](x: Stream[T]) = () => id(x)  
-    
+  sealed abstract class ValOrFun[T] {
+    lazy val get: Stream[T] = {
+      this match {
+        case Fun(f) => f()
+        case Val(x) => x
+      }
+    }
+  }
+  case class Val[T](x: Stream[T]) extends ValOrFun[T]
+  case class Fun[T](fun: () => Stream[T]) extends ValOrFun[T]
+
   def isConcrete[T](l: Stream[T]): Boolean = {
     l match {
-      case c@SCons(_, _) =>
-        c.stail.tailCached && isConcrete(c.stail*)
+      case c @ SCons(_, _) =>
+        c.tailCached && isConcrete(c.stailVal)
       case _ => true
     }
-  } 
+  }
 
   @invstate
   def takeLazy[T](n: BigInt, l: Stream[T]): Stream[T] = {
     require(isConcrete(l) && n >= 1 && l.size >= n)
     l match {
-      case c@SCons(x, _) =>
+      case c @ SCons(x, _) =>
         if (n == 1)
-          SCons[T](x, lifts(SNil[T]()))
+          SCons[T](x, Val[T](SNil[T]()))
         else {
           val newn = n - 1
           val t = c.stail
-          SCons[T](x, () => takeLazy(newn, t))
+          SCons[T](x, Fun[T](() => takeLazy(newn, t)))
         }
     }
-  } ensuring(res => res.size == n && res.isCons &&
-      time <= ?)
+  } ensuring (res => res.size == n && res.isCons &&
+    time <= ?)
 
   @invstate
   def revAppend[T](l1: Stream[T], l2: Stream[T]): Stream[T] = {
     require(isConcrete(l1) && isConcrete(l2))
     l1 match {
       case SNil() => l2
-      case c@SCons(x, _) =>        
-        revAppend(c.stail, SCons[T](x, lifts(l2)))
+      case c @ SCons(x, _) =>
+        revAppend(c.stail, SCons[T](x, Val(l2)))
     }
-  } ensuring(res => res.size == l1.size + l2.size &&
-      isConcrete(res) &&
-      (l1.size >= 1 ==> res.isCons) &&
-      time <= ? * l1.size + ?)
+  } ensuring (res => res.size == l1.size + l2.size &&
+    isConcrete(res) &&
+    (l1.size >= 1 ==> res.isCons) &&
+    time <= ? * l1.size + ?)
 
   @invstate
   def drop[T](n: BigInt, l: Stream[T]): Stream[T] = {
@@ -101,13 +114,13 @@ object RealTimeDeque {
     if (n == 0) l
     else {
       l match {
-        case SNil()         => l
-        case c@SCons(x, _) => drop(n - 1, c.stail)
+        case SNil()          => l
+        case c @ SCons(x, _) => drop(n - 1, c.stail)
       }
     }
-  } ensuring(res => isConcrete(res) &&
-      res.size == l.size - n &&
-      time <= ? * n + ?)
+  } ensuring (res => isConcrete(res) &&
+    res.size == l.size - n &&
+    time <= ? * n + ?)
 
   @invstate
   def take[T](n: BigInt, l: Stream[T]): Stream[T] = {
@@ -117,7 +130,7 @@ object RealTimeDeque {
       l match {
         case SNil() => l
         case c @ SCons(x, _) =>
-          SCons[T](x, lifts(take(n - 1, c.stail)))
+          SCons[T](x, Val(take(n - 1, c.stail)))
       }
     }
   } ensuring (res => isConcrete(res) &&
@@ -134,15 +147,15 @@ object RealTimeDeque {
       })
     r match {
       case SNil() => revAppend(f, a) // |f| <= 3
-      case c@SCons(x, _) =>        
+      case c @ SCons(x, _) =>
         val nr = c.stail
         val nf = drop(2, f)
         val na = revAppend(take(2, f), a)
-        SCons(x, () => rotateRev(nr, nf, na))
-    }  // here, it doesn't matter whether 'f' has i elements or not, what we want is |drop(2,f)| + |take(2,f)| == |f|
+        SCons(x, Fun(() => rotateRev(nr, nf, na)))
+    } // here, it doesn't matter whether 'f' has i elements or not, what we want is |drop(2,f)| + |take(2,f)| == |f|
   } ensuring (res => res.size == r.size + f.size + a.size &&
-      res.isCons &&
-      time <= ?)
+    res.isCons &&
+    time <= ?)
 
   @invstate
   def rotateDrop[T](r: Stream[T], i: BigInt, f: Stream[T]): Stream[T] = {
@@ -150,48 +163,48 @@ object RealTimeDeque {
       val lenf = f.size
       val lenr = r.size
       (lenf >= 2 * lenr + 2 && lenf <= 2 * lenr + 3) && // size invariant between 'f' and 'r'
-      lenf > i
-    })    
-    if(i < 2 || r == SNil[T]()) { // A bug in Okasaki implementation: we must check for: 'rval = SNil()'      
+        lenf > i
+    })
+    if (i < 2 || r == SNil[T]()) { // A bug in Okasaki implementation: we must check for: 'rval = SNil()'      
       rotateRev(r, drop(i, f), SNil[T]())
     } else {
       r match {
-        case c@SCons(x, _) =>
+        case c @ SCons(x, _) =>
           val nr = c.stail
           val ni = i - 2
           val nf = drop(2, f)
-          SCons(x, () => rotateDrop(nr, ni, nf))
+          SCons(x, Fun(() => rotateDrop(nr, ni, nf)))
       }
     }
-  } ensuring(res => res.size == r.size + f.size - i &&
-      res.isCons && time <= ?)
- 
+  } ensuring (res => res.size == r.size + f.size - i &&
+    res.isCons && time <= ?)
+
   def firstUneval[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
         if (c.tailCached)
-          firstUneval(c.stail*)
+          firstUneval(c.stailVal)
         else l
       case _ => l
     }
   } ensuring (res => (!res.isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-      (res.isEmpty || !res.tailCached) && // if the return value is not a Nil closure then it would not have been evaluated
+    (res.isEmpty || !res.tailCached) && // if the return value is not a Nil closure then it would not have been evaluated
     (res match {
       case c @ SCons(_, _) =>
         firstUneval(l) == firstUneval(c.stail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
       case _ => true
-    }))  
+    }))
 
   case class Queue[T](f: Stream[T], lenf: BigInt, sf: Stream[T],
-      r: Stream[T], lenr: BigInt, sr: Stream[T]) {
+                      r: Stream[T], lenr: BigInt, sr: Stream[T]) {
     def isEmpty = lenf + lenr == 0
     def valid = {
       (firstUneval(f) == firstUneval(sf)) &&
         (firstUneval(r) == firstUneval(sr)) &&
         (lenf == f.size && lenr == r.size) &&
-        (lenf <= 2*lenr + 1 && lenr <= 2*lenf + 1) &&
+        (lenf <= 2 * lenr + 1 && lenr <= 2 * lenf + 1) &&
         {
-          val mind = min(2*lenr-lenf+2, 2*lenf-lenr+2)
+          val mind = min(2 * lenr - lenf + 2, 2 * lenf - lenr + 2)
           sf.size <= mind && sr.size <= mind
         }
     }
@@ -203,32 +216,32 @@ object RealTimeDeque {
    */
   @invisibleBody
   def createQueue[T](f: Stream[T], lenf: BigInt, sf: Stream[T],
-      r: Stream[T], lenr: BigInt, sr: Stream[T]): Queue[T] = {
+                     r: Stream[T], lenr: BigInt, sr: Stream[T]): Queue[T] = {
     require(firstUneval(f) == firstUneval(sf) &&
-        firstUneval(r) == firstUneval(sr) &&
-        (lenf == f.size && lenr == r.size) &&
-        ((lenf - 1 <= 2*lenr + 1 && lenr <= 2*lenf + 1) ||
-          (lenf <= 2*lenr + 1 && lenr - 2 <= 2*lenf + 1)) &&
+      firstUneval(r) == firstUneval(sr) &&
+      (lenf == f.size && lenr == r.size) &&
+      ((lenf - 1 <= 2 * lenr + 1 && lenr <= 2 * lenf + 1) ||
+        (lenf <= 2 * lenr + 1 && lenr - 2 <= 2 * lenf + 1)) &&
         {
-          val mind = max(min(2*lenr-lenf+2, 2*lenf-lenr+2), 0)
+          val mind = max(min(2 * lenr - lenf + 2, 2 * lenf - lenr + 2), 0)
           sf.size <= mind && sr.size <= mind
         })
-    if(lenf > 2*lenr + 1) {
+    if (lenf > 2 * lenr + 1) {
       val i = (lenf + lenr) / 2
       val j = lenf + lenr - i
       val nr = rotateDrop(r, i, f)
       val nf = takeLazy(i, f)
       Queue(nf, i, nf, nr, j, nr)
-    } else if(lenr > 2*lenf + 1) {
+    } else if (lenr > 2 * lenf + 1) {
       val i = (lenf + lenr) / 2
       val j = lenf + lenr - i
-      val nf =  rotateDrop(f, j, r) // here, both 'r' and 'f' are concretized
+      val nf = rotateDrop(f, j, r) // here, both 'r' and 'f' are concretized
       val nr = takeLazy(j, r)
       Queue(nf, i, nf, nr, j, nr)
     } else
       Queue(f, lenf, sf, r, lenr, sr)
-  } ensuring(res => res.valid &&
-      time <= ?)
+  } ensuring (res => res.valid &&
+    time <= ?)
 
   @invisibleBody
   def funeEqual[T](s1: Stream[T], s2: Stream[T]) = firstUneval(s1) == firstUneval(s2)
@@ -240,8 +253,8 @@ object RealTimeDeque {
   def force[T](tar: Stream[T], htar: Stream[T], other: Stream[T], hother: Stream[T]): Stream[T] = {
     require(funeEqual(tar, htar) && funeEqual(other, hother))
     tar match {
-      case c@SCons(_, _) => c.stail
-      case _              => tar
+      case c @ SCons(_, _) => c.stail
+      case _               => tar
     }
   } ensuring (res => {
     //lemma instantiations
@@ -266,7 +279,7 @@ object RealTimeDeque {
     val nsf = force(force(q.sf, q.f, q.r, q.sr), q.f, q.r, q.sr) // forces q.sf twice
     val nsr = force(force(q.sr, q.r, q.f, nsf), q.r, q.f, nsf) // forces q.sr twice
     (nsf, nsr)
-  } ensuring(_ => time <= ?)
+  } ensuring (_ => time <= ?)
   // the following properties are ensured, but need not be stated
   /*ensuring (res => {
     val nsf = res._1
@@ -295,11 +308,11 @@ object RealTimeDeque {
    * Adding an element to the front of the list
    */
   def cons[T](x: T, q: Queue[T]): Queue[T] = {
-    require(q.valid) 
+    require(q.valid)
     // force the front and rear scheds once
     val nsf = force(q.sf, q.f, q.r, q.sr)
     val nsr = force(q.sr, q.r, q.f, nsf)
-    createQueue(SCons[T](x, lifts(q.f)), q.lenf + 1, nsf, q.r, q.lenr, nsr)
+    createQueue(SCons[T](x, Val(q.f)), q.lenf + 1, nsf, q.r, q.lenr, nsr)
   } ensuring (res => res.valid && time <= ?)
 
   /**
@@ -311,20 +324,20 @@ object RealTimeDeque {
       case _ =>
         tailSub(q)
     }
-  } ensuring(res => res.valid && time <= ?)
+  } ensuring (res => res.valid && time <= ?)
 
   def tailSub[T](q: Queue[T]): Queue[T] = {
-    require(!q.isEmpty && q.valid && q.f.tailCached)                
+    require(!q.isEmpty && q.valid && q.f.tailCached)
     q.f match {
-      case c@SCons(x, _) =>
+      case c @ SCons(x, _) =>
         val (nsf, nsr) = forceTwice(q)
         // here, sf and sr got smaller by 2 holds, the schedule invariant still holds
         createQueue(c.stail, q.lenf - 1, nsf, q.r, q.lenr, nsr)
       case SNil() =>
-         // in this case 'r' will have only one element by invariant
+        // in this case 'r' will have only one element by invariant
         empty[T]
     }
-  } ensuring(res => res.valid && time <= ?)
+  } ensuring (res => res.valid && time <= ?)
 
   /**
    * Reversing a list. Takes constant time.
@@ -333,19 +346,19 @@ object RealTimeDeque {
   def reverse[T](q: Queue[T]): Queue[T] = {
     require(q.valid)
     Queue(q.r, q.lenr, q.sr, q.f, q.lenf, q.sf)
-  } ensuring(_ => q.valid && time <= ?)
+  } ensuring (_ => q.valid && time <= ?)
 
   def snoc[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     reverse(cons(x, reverse(q)))
   }
 
-   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
+  // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
   /**
    * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
    */
   @traceInduct
-  def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
+  def funeCompose[T](l1: Stream[T], st1: Set[mem.Fun[T]], st2: Set[mem.Fun[T]]): Boolean = {
     require(st1.subsetOf(st2))
     // property
     (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
@@ -357,19 +370,11 @@ object RealTimeDeque {
    * This is a kind of frame axiom for `fune` but is slightly different in that
    * it doesn't require (st2 \ st1) to be disjoint from la and lb.
    */
-  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
+  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[mem.Fun[T]], st2: Set[mem.Fun[T]]): Boolean = {
     require((firstUneval(l1) withState st1) == (firstUneval(l2) withState st1) &&
-        st1.subsetOf(st2))
-     funeCompose(l1, st1, st2) && // lemma instantiations
-     funeCompose(l2, st1, st2) &&
-     // induction scheme
-//    (if (l1.isEvaluated withState st1) {
-//      l1* match {
-//        case SCons(_, tail) =>
-//          funeMonotone(tail, l2, st1, st2)
-//        case _ => true
-//      }
-//    } else true) &&
+      st1.subsetOf(st2))
+    funeCompose(l1, st1, st2) && // lemma instantiations
+      funeCompose(l2, st1, st2) &&
       (firstUneval(l1) withState st2) == (firstUneval(l2) withState st2) // property
   } holds
 
@@ -400,7 +405,7 @@ object RealTimeDeque {
         case x if x == 0 => //add to rear
           //println("Enqueue..")
           rtd = timed { snoc(BigInt(i), rtd) } { totalTime1 += _ }
-          //amq = timed { amq.enqueue(BigInt(i)) } { totalTime2 += _ }
+        //amq = timed { amq.enqueue(BigInt(i)) } { totalTime2 += _ }
         case x if x == 1 => // remove from front
           if (!rtd.isEmpty) {
             //if(i%100000 == 0)
@@ -412,9 +417,9 @@ object RealTimeDeque {
           //if(i%100000 == 0)
           //println("reverse..")
           rtd = timed { reverse(rtd) } { totalTime1 += _ }
-          //amq = timed { amq.reverse } { totalTime2 += _ }
+        //amq = timed { amq.reverse } { totalTime2 += _ }
       }
     }
-    println(s"Ephemeral Amortized Time - Eager: ${totalTime2/1000.0}s Lazy: ${totalTime1/1000.0}s")
+    println(s"Ephemeral Amortized Time - Eager: ${totalTime2 / 1000.0}s Lazy: ${totalTime1 / 1000.0}s")
   }
 }

@@ -270,4 +270,10 @@ class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new Dire
   def edgeCount: Int = dgraph.edgeCount
 
   def nodes: Set[T] = dgraph.nodes
+  
+  def succsWithLabels(src: T): Map[T, Set[L]] = {
+    successors(src).map{ dst => 
+      dst -> labels.getOrElse((src, dst), Set[L]())
+    }.toMap
+  }
 }

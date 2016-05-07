@@ -20,6 +20,7 @@ object ConcatHO {
   }
   case class SCons[T](x: T, tail: () => LList[T]) extends LList[T]
   case class SNil[T]() extends LList[T]
+  
   def ssize[T](l: () => LList[T]): BigInt = (l()*).size
 
   @memoize
@@ -30,21 +31,26 @@ object ConcatHO {
     }
   } ensuring { _ => time <= 6 }
 
-  /*def kthElem[T](l: Lazy[LList[T]], k: BigInt): Option[T] = {
+  def kthElem[T](l: LList[T], k: BigInt): Option[T] = {
     require(k >= 0)
-    l.value match {
+    l match {
       case SCons(x, xs) =>
         if (k == 0) Some(x)
         else
-          kthElem(xs, k - 1)
+          kthElem(xs(), k - 1)
       case SNil() => None[T]
     }
   } ensuring (_ => time <= 27 * k + 27)
 
   def concatnSelect[T](l1: List[T], l2: List[T], k: BigInt): Option[T] = {
     require(k >= 0)
-    kthElem($(concat(l1, l2)), k)
-  } ensuring (_ => time <= 27 * k + 30)*/
+    l1 match {
+      case Cons(x, tail) =>
+        kthElem(SCons(x, () => concat(tail, l2)), k)
+      case Nil() => 
+        None[T]()
+    }    
+  } ensuring (_ => time <= 27 * k + 30)
 
   /*@ignore
   def main(args: Array[String]) = {
