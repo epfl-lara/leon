@@ -40,7 +40,7 @@ class PureScalaValidSuiteCodeGenNativeZ3 extends PureScalaValidSuite {
 }
 class PureScalaValidSuiteEnumNativeZ3 extends PureScalaValidSuite {
   val optionVariants = List(opts(2))
-  override val ignored = Seq("valid/Predicate.scala","valid/TraceInductTacticTest.scala")
+  //override val ignored = Seq("valid/Predicate.scala","valid/TraceInductTacticTest.scala")
 }
 class PureScalaValidSuiteZ3 extends PureScalaValidSuite {
   val optionVariants = isZ3Available.option(opts(3)).toList
