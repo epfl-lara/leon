@@ -286,8 +286,14 @@ object ExprOps extends GenTreeOps[Expr] {
     *
     * This function relies on the static map `typedIds` to ensure identical
     * structures and must therefore be synchronized.
+    *
+    * The optional argument [[onlySimple]] determines whether non-simple expressions
+    * (see [[isSimple]]) should be normalized into a dependency or recursed into
+    * (when they don't depend on [[args]]). This distinction is used in the
+    * unrolling solver to provide geenral equality checks between functions even when
+    * they have complex closures.
     */
-  def normalizeStructure(args: Seq[Identifier], expr: Expr): (Seq[Identifier], Expr, Map[Identifier, Expr]) = synchronized {
+  def normalizeStructure(args: Seq[Identifier], expr: Expr, onlySimple: Boolean = true): (Seq[Identifier], Expr, Map[Identifier, Expr]) = synchronized {
     val vars = args.toSet
 
     class Normalizer extends TreeTransformer {
@@ -316,7 +322,7 @@ object ExprOps extends GenTreeOps[Expr] {
       }
 
       override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
-        case expr if isSimple(expr) && (variablesOf(expr) & vars).isEmpty => getId(expr).toVariable
+        case expr if (isSimple(expr) || !onlySimple) && (variablesOf(expr) & vars).isEmpty => getId(expr).toVariable
         case _ => super.transform(e)
       }
     }
@@ -332,7 +338,7 @@ object ExprOps extends GenTreeOps[Expr] {
   }
 
   def normalizeStructure(lambda: Lambda): (Lambda, Map[Identifier, Expr]) = {
-    val (args, body, subst) = normalizeStructure(lambda.args.map(_.id), lambda.body)
+    val (args, body, subst) = normalizeStructure(lambda.args.map(_.id), lambda.body, onlySimple = false)
     (Lambda(args.map(ValDef(_)), body), subst)
   }
 

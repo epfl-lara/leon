@@ -18,6 +18,19 @@ import utils._
 
 import scala.collection.generic.CanBuildFrom
 
+/** A template instatiation
+  *
+  * [[Template]] instances, when provided with concrete arguments and a
+  * blocker, will generate three outputs used for program unfolding:
+  * - clauses: clauses that will be added to the underlying solver
+  * - call blockers: bookkeeping information necessary for named
+  *                  function unfolding
+  * - app blockers: bookkeeping information necessary for first-class
+  *                 function unfolding
+  *
+  * This object provides helper methods to deal with the triplets
+  * generated during unfolding.
+  */
 object Instantiation {
   type Clauses[T]       = Seq[T]
   type CallBlockers[T]  = Map[T, Set[TemplateCallInfo[T]]]
@@ -61,6 +74,11 @@ object Instantiation {
 import Instantiation.{empty => _, _}
 import Template.{Apps, Calls, Functions, Arg}
 
+/** Pre-compiled sets of clauses with extra bookkeeping information that enables
+ *  efficient unfolding of function calls and applications.
+  * [[Template]] is a super-type for all such clause sets that can be instantiated
+  * given a concrete argument list and a blocker in the decision-tree.
+  */
 trait Template[T] { self =>
   val encoder : TemplateEncoder[T]
   val manager : TemplateManager[T]
@@ -75,7 +93,7 @@ trait Template[T] { self =>
   val clauses      : Clauses[T]
   val blockers     : Calls[T]
   val applications : Apps[T]
-  val functions    : Set[(T, FunctionType, T)]
+  val functions    : Functions[T]
   val lambdas      : Seq[LambdaTemplate[T]]
 
   val quantifications : Seq[QuantificationTemplate[T]]
@@ -325,10 +343,10 @@ object Template {
         // suffices to make sure the traversal order is correct.
         var seen : Set[LambdaTemplate[T]] = Set.empty
 
-        val lambdaKeys = lambdas.map(lambda => lambda.ids._1 -> lambda).toMap
+        val lambdaKeys = lambdas.map(lambda => lambda.ids._2 -> lambda).toMap
         def extractSubst(lambda: LambdaTemplate[T]): Unit = {
           for {
-            dep <- lambda.dependencies.flatMap(p => lambdaKeys.get(p._1))
+            dep <- lambda.structure.closures flatMap lambdaKeys.get 
             if !seen(dep)
           } extractSubst(dep)
 

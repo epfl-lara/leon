@@ -413,9 +413,43 @@ class TemplateGenerator[T](val theories: TheoryEncoder,
             clauses.foldLeft(emptyClauses)((clsSet, cls) => clsSet ++ mkClauses(pathVar, cls, clauseSubst))
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
-          val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
+
+          val (struct, deps) = normalizeStructure(l)
+
+          import Template._
+          import Instantiation.MapSetWrapper
+
+          val (dependencies, (depConds, depExprs, depTree, depGuarded, depLambdas, depQuants)) =
+            deps.foldLeft[(Seq[T], Clauses)](Seq.empty -> emptyClauses) {
+              case ((dependencies, clsSet), (id, expr)) =>
+                if (!isSimple(expr)) {
+                  val encoded = encoder.encodeId(id)
+                  val (e, cls @ (_, _, _, _, lmbds, quants)) = mkExprClauses(pathVar, expr, localSubst)
+                  val clauseSubst = localSubst ++ lmbds.map(_.ids) ++ quants.map(_.qs)
+                  (dependencies :+ encoder.encodeExpr(clauseSubst)(e), clsSet ++ cls)
+                } else {
+                  (dependencies :+ encoder.encodeExpr(localSubst)(expr), clsSet)
+                }
+            }
+
+          val (depClauses, depCalls, depApps, _, depMatchers, _) = Template.encode(
+            encoder, pathVar -> encodedCond(pathVar), Seq.empty,
+            depConds, depExprs, depGuarded, depLambdas, depQuants, localSubst)
+
+          val depClosures: Seq[T] = {
+            val vars = variablesOf(l)
+            var cls: Seq[Identifier] = Seq.empty
+            preTraversal { case Variable(id) if vars(id) => cls :+= id case _ => } (l)
+            cls.distinct.map(localSubst)
+          }
+
+          val structure = new LambdaStructure[T]( encoder, manager,
+            struct, dependencies, pathVar -> encodedCond(pathVar), depClosures,
+            depConds, depExprs, depTree, depClauses, depCalls, depApps, depLambdas, depMatchers, depQuants)
+
           val template = LambdaTemplate(ids, encoder, manager, pathVar -> encodedCond(pathVar),
-            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaTree, lambdaGuarded, lambdaQuants, lambdaTemplates, localSubst, dependencies, l)
+            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaTree,
+            lambdaGuarded, lambdaQuants, lambdaTemplates, structure, localSubst, l)
           registerLambda(template)
 
           Variable(lid)

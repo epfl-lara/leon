@@ -60,9 +60,17 @@ class QuantificationTemplate[T](
   val structure: Forall,
   val dependencies: Map[Identifier, T],
   val forall: Forall,
-  stringRepr: () => String) extends KeyedTemplate[T, Forall] {
+  stringRepr: () => String) {
 
   lazy val start = pathVar._2
+  lazy val key: (Forall, Seq[T]) = (structure, {
+    var cls: Seq[T] = Seq.empty
+    purescala.ExprOps.preTraversal {
+      case Variable(id) => cls ++= dependencies.get(id)
+      case _ =>
+    } (structure)
+    cls
+  })
 
   def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): QuantificationTemplate[T] = {
     new QuantificationTemplate[T](
@@ -150,7 +158,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   private val ignoredSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Int, Set[T], Map[T,Arg[T]])]]
   private val handledSubsts   = new IncrementalMap[MatcherQuantification, MutableSet[(Set[T], Map[T,Arg[T]])]]
 
-  private val lambdaAxioms    = new IncrementalSet[((Expr, Seq[T]), Seq[(Identifier, T)])]
+  private val lambdaAxioms    = new IncrementalSet[(LambdaStructure[T], Seq[(Identifier, T)])]
   private val templates       = new IncrementalMap[(Expr, Seq[T]), T]
 
   override protected def incrementals: List[IncrementalState] =
@@ -166,7 +174,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   private def matcherKey(caller: T, tpe: TypeTree): MatcherKey = tpe match {
     case ft: FunctionType if knownFree(ft)(caller) => CallerKey(caller, tpe)
-    case _: FunctionType if byID.isDefinedAt(caller) => LambdaKey(byID(caller).structure, tpe)
+    case _: FunctionType if byID.isDefinedAt(caller) => LambdaKey(byID(caller).structure.lambda, tpe)
     case _ => TypeKey(tpe)
   }
 
@@ -668,7 +676,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
 
     val quantifiers = quantified zip abstractNormalizer.normalize(quantified)
-    val key = template.key -> quantifiers
+    val key = template.structure -> quantifiers
 
     if (quantifiers.isEmpty || lambdaAxioms(key)) {
       Instantiation.empty[T]
