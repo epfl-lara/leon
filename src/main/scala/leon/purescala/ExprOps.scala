@@ -323,6 +323,14 @@ object ExprOps extends GenTreeOps[Expr] {
 
       override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
         case expr if (isSimple(expr) || !onlySimple) && (variablesOf(expr) & vars).isEmpty => getId(expr).toVariable
+        case f: Forall =>
+          val (args, body, newSubst) = normalizeStructure(f.args.map(_.id), f.body, onlySimple)
+          subst ++= newSubst
+          Forall(args.map(ValDef(_)), body)
+        case l: Lambda =>
+          val (args, body, newSubst) = normalizeStructure(l.args.map(_.id), l.body, onlySimple)
+          subst ++= newSubst
+          Lambda(args.map(ValDef(_)), body)
         case _ => super.transform(e)
       }
     }
