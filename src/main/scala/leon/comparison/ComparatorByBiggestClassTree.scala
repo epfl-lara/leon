@@ -12,7 +12,7 @@ import leon.comparison.Utils._
   * This is a variation of ComparatorByListType where we check what is the longest sequence of same type.
   *
   */
-object ComparatorByBiggestClassTree {
+object ComparatorByBiggestClassTree extends Comparator {
   val name: String = "BiggestClassTree"
 
   def compare(expr_base: Expr, expr: Expr): Double = {
@@ -30,6 +30,126 @@ object ComparatorByBiggestClassTree {
     0
   }
 
+
+
+  def similarClassTree(exprB: Expr, expr: Expr) = {
+    val pathes = similarPathesInClassTree(exprB, expr)
+
+    println("expressions")
+    println(exprB)
+    println(expr)
+    println("lists")
+    pathes map (println(_))
+
+    val trees = possibleTrees(pathes)
+
+    //val cleanPathes = removeDuplicates(pathes)
+    0
+  }
+
+
+  def possibleTrees(pathes: List[List[(Expr, Expr)]]) = {
+    println("possibleTrees")
+    /**
+      *
+      * @param pathes
+      * @param acc is List(listOfParents, listOfChidren)
+      */
+    def helper(pathes: List[List[(Expr, Expr)]]) ={
+      val grouped = pathes.groupBy(p => p.head)
+      val groupedChildren = grouped.mapValues(p => p.map(_.tail))
+      println("grouped")
+      println(grouped)
+      println("groupedChildren")
+      println(groupedChildren)
+      val nCombination =
+      groupedChildren.mapValues(p => Math.min(p.map(_.head._1).distinct.size, p.map(_.head._2).distinct.size))
+      println(nCombination)
+      val combinations = groupedChildren.mapValues(p => p.toSet.subsets(nCombinations(p)).map(_.toList).toList)
+      println("combinations")
+      println(combinations)
+
+      val filtered = combinations.mapValues(p => p.filter(q => isDistinct(q.map(l => l.head._1))))
+      println("filtered")
+      println(filtered)
+      val filtered2 = filtered.mapValues(p => p.filter(q => isDistinct(q.map(l => l.head._2))))
+      println("filtered2")
+      println(filtered2)
+
+      println(" group ??")
+      println(filtered2(pathes.head.head).head)
+      println(filtered2(pathes.head.head).head.groupBy(_.head))
+      println(filtered2(pathes.head.head).head.groupBy(_.head).mapValues(p => p.map(_.tail)))
+      println(filtered2(pathes.head.head).head.groupBy(_.head).mapValues(p => p.map(_.tail).isEmpty))
+    }
+    helper(pathes)
+    0
+  }
+
+  def isDistinct(exprs: List[Expr]): Boolean = exprs.size == exprs.distinct.size
+
+  def nCombinations(p: List[List[(Expr, Expr)]]): Int ={
+    println(Math.min(p.map(_.head._1).distinct.size, p.map(_.head._2).distinct.size))
+    Math.min(p.map(_.head._1).distinct.size, p.map(_.head._2).distinct.size)
+  }
+
+
+
+
+
+  /**
+    * We define a "duplicate" as two path wo take the same way, but in one moment an Expression match two. In this case
+    * we must chose the one we want to match with, and delete the other(s).
+    *
+    * @param pathes
+    * @return
+    */
+  def removeDuplicates(pathes: List[List[(Expr, Expr)]]) = {
+    def helper(pathes: List[List[(Expr, Expr)]]) = {
+      val grouped = pathes.groupBy(p => (p.dropRight(1), p.last._1))
+
+      val (duplicates, nonduplicate) = grouped.partition(p => p._2.size > 1)
+
+      println("remove duplicate")
+      grouped.map(println(_))
+      println("duplcates")
+      duplicates.map(println(_))
+      println("nonduplicates")
+      nonduplicate.map(println(_))
+
+      val fixedDuplicates = removeOneByOne(duplicates.toList, Nil)
+
+      println("fixed")
+      fixedDuplicates.map(println(_))
+    }
+
+    helper(pathes)
+  }
+
+  /**
+    * Take the first duplicate problem, choose the "best option" (largest path)
+    *
+    * @param list
+    * @param acc
+    * @return
+    */
+  def removeOneByOne(list: List[((List[(Expr, Expr)], Expr), List[List[(Expr, Expr)]])],
+                     acc: List[List[(Expr, Expr)]]): List[List[(Expr, Expr)]] = list match {
+    case Nil => acc
+    case x :: xs if x._2.isEmpty =>
+      removeOneByOne(xs, acc)
+    case x :: xs =>
+      val temp = biggestList(x._2)
+      val usedValue = temp.head.last._2
+      val restOption = xs.map(p => (p._1, p._2 filter(q => (p._1._1 != x._1._1 || q.last._2 != usedValue))))
+      removeOneByOne(restOption, acc ++ temp)
+  }
+
+  def biggestList(list : List[List[(Expr, Expr)]]): List[List[(Expr, Expr)]] = list match {
+    case Nil => Nil
+    case x :: y :: xs => biggestList( (if (x.size > y.size) x else y) :: xs )
+    case x :: xs => List(x)
+  }
 
   /**
     * This function traverse in parallel two tree, in order to find similarities between their structure. It only
@@ -58,7 +178,7 @@ object ComparatorByBiggestClassTree {
     * @param expr
     * @return
     */
-  def similarClassTree(exprB: Expr, expr: Expr): List[List[(Expr, Expr)]] = {
+  def similarPathesInClassTree(exprB: Expr, expr: Expr): List[List[(Expr, Expr)]] = {
     def helper(exprB: Expr, expr: Expr, ancestors: List[(Expr, Expr)]): List[List[(Expr, Expr)]] = {
       val childrenBase = getChildren(exprB)
       val children = getChildren(expr)
