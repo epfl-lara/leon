@@ -75,8 +75,8 @@ object InsertionSort {
       val ls: List = {
         (1 to i).foldLeft[List](Nil()) {
           case (acc, curr) =>
-            val x = rand.nextInt(10)
-            Cons(x, acc)
+//            val x = rand.nextInt(10)
+            Cons(curr, acc)
         }
       }
 
