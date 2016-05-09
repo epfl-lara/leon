@@ -1,11 +1,12 @@
 package withOrb
 
 import leon._
-import lazyeval._
+import mem._
 import lang._
 import annotation._
 import instrumentation._
 import invariant._
+import leon.collection._
 
 object DigitObject {
   sealed abstract class Digit
@@ -22,45 +23,79 @@ object DigitObject {
 import DigitObject._
 object LazyNumericalRep {
 
+  @finite
   sealed abstract class NumStream {
-    val isSpine: Boolean = this match {
-      case Spine(_, _, _) => true
-      case _              => false
+    @inline
+    val isTip = this == Tip()
+
+    @inline
+    val isSpine: Boolean = !isTip
+
+    @inline
+    def rear = {
+      this match {
+        case Spine(_, Val(x))     => x
+        case Spine(_, f @ Fun(_)) => f.get
+      }
     }
-    val isTip = !isSpine
+
+    @inline
+    def rearVal = {
+      this match {
+        case Spine(_, Val(x))     => x
+        case Spine(_, f @ Fun(_)) => f.get*
+      }
+    }
+
+    @inline
+    def rearCached: Boolean = {
+      this match {
+        case Spine(_, f: Fun) => f.get.cached
+        case _                   => true
+      }
+    }
   }
 
-  case class Tip() extends NumStream
-  case class Spine(head: Digit, createdWithSuspension: Bool, rear: Lazy[NumStream]) extends NumStream
-
-  sealed abstract class Bool
+/*  sealed abstract class Bool
   case class True() extends Bool
   case class False() extends Bool
+*/
+  case class Tip() extends NumStream
+  case class Spine(head: Digit, rearValorFun: ValOrFun) extends NumStream
+
+  sealed abstract class ValOrFun {
+    lazy val get: NumStream = {
+      this match {
+        case Fun(f) => f()
+        case Val(x) => x
+      }
+    }
+  }
+  case class Val(x: NumStream) extends ValOrFun
+  case class Fun(fun: () => NumStream) extends ValOrFun
 
   /**
    * Checks whether there is a zero before an unevaluated closure
    */
-  def zeroPrecedeLazy[T](q: Lazy[NumStream]): Boolean = {
-    if (q.isEvaluated) {
-      q* match {
-        case Spine(Zero(), _, rear) =>
-          true // here we have seen a zero
-        case Spine(_, _, rear) =>
-          zeroPrecedeLazy(rear) //here we have not seen a zero
-        case Tip() => true
-      }
-    } else false
+  def zeroPrecedeLazy(q: NumStream): Boolean = {
+    //if (q.isEvaluated) {
+    q match {
+      case Spine(Zero(), _) => true // here we have seen a zero
+      case s @ Spine(_, _) =>
+        s.rearCached && zeroPrecedeLazy(s.rearVal) //here we have not seen a zero
+      case Tip() => true
+    }
+//    /} else false
   }
 
   /**
    * Checks whether there is a zero before a given suffix
    */
-  def zeroPrecedeSuf[T](q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def zeroPrecedeSuf(q: NumStream, suf: NumStream): Boolean = {
     if (q != suf) {
-      q* match {
-        case Spine(Zero(), _, rear) => true
-        case Spine(_, _, rear) =>
-          zeroPrecedeSuf(rear, suf)
+      q match {
+        case Spine(Zero(), _) => true
+        case s@Spine(_, _) => zeroPrecedeSuf(s.rearVal, suf)
         case Tip() => false
       }
     } else false
@@ -70,127 +105,121 @@ object LazyNumericalRep {
    * Everything until suf is evaluated. This
    * also asserts that suf should be a suffix of the list
    */
-  def concreteUntil[T](l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def concreteUntil(l: NumStream, suf: NumStream): Boolean = {
     if (l != suf) {
-      l.isEvaluated && (l* match {
-        case Spine(_, cws, tail) =>
-          concreteUntil(tail, suf)
+     l match {
+        case s@Spine(_, _) =>
+          s.rearCached && concreteUntil(s.rearVal, suf)
         case _ =>
           false
-      })
+      }
     } else true
   }
 
-  def isConcrete[T](l: Lazy[NumStream]): Boolean = {
-    l.isEvaluated && (l* match {
-      case Spine(_, _, tail) =>
-        isConcrete(tail)
+  def isConcrete(l: NumStream): Boolean = {
+    l match {
+      case s @ Spine(_, _) =>
+        s.rearCached && isConcrete(s.rearVal)
       case _ => true
-    })
+    }
   }
 
-  sealed abstract class Scheds
-  case class Cons(h: Lazy[NumStream], tail: Scheds) extends Scheds
-  case class Nil() extends Scheds
+  /*sealed abstract class Scheds
+  case class Cons(h: NumStream, tail: Scheds) extends Scheds
+  case class Nil() extends Scheds*/
 
-  def schedulesProperty[T](q: Lazy[NumStream], schs: Scheds): Boolean = {
+  def schedulesProperty(q: NumStream, schs: List[NumStream]): Boolean = {
     schs match {
       case Cons(head, tail) =>
-        head* match {
-          case Spine(Zero(), _, _) => // head starts with zero
-            head.isSuspension(incLazy _) &&
-              concreteUntil(q, head) &&
-              schedulesProperty(pushUntilCarry(head), tail)
-          case _ =>
-            false
+        head match {
+          case Spine(Zero(), f: Fun) => // head starts with zero and has a suspension
+            //head.isSuspension(incLazy _) &&
+            concreteUntil(q, head) &&
+              schedulesProperty(pushUntilCarry(f), tail)
+          case _ => false
         }
-      case Nil() =>
-        isConcrete(q)
+      case Nil() => isConcrete(q)
     }
   }
 
   @invisibleBody
-  def strongSchedsProp[T](q: Lazy[NumStream], schs: Scheds) = {
-    q.isEvaluated && {
-      schs match {
-        case Cons(head, tail) =>
-          zeroPrecedeSuf(q, head) // zeroPrecedeSuf holds initially
-        case Nil() => true
-      }
-    } &&
+  def strongSchedsProp(q: NumStream, schs: List[NumStream]) = {
+    (schs match {
+      case Cons(head, tail) => zeroPrecedeSuf(q, head) // zeroPrecedeSuf holds initially
+      case Nil()            => true
+    }) &&
       schedulesProperty(q, schs)
   }
 
   /**
-   * Note: if 'q' has a suspension then it would have a carry.
+   * (a) If we push a carry and get back 0 then there is a new carry
+   * (b) If we push a carry and get back 1 then there the carry has been fully pushed
+   * Note that if 'q' has a suspension then it would have a carry.
    */
   @invisibleBody
-  def pushUntilCarry[T](q: Lazy[NumStream]): Lazy[NumStream] = {
-    q* match {
-      case Spine(Zero(), _, rear) => // if we push a carry and get back 0 then there is a new carry
-        pushUntilCarry(rear)
-      case Spine(_, _, rear) => // if we push a carry and get back 1 then there the carry has been fully pushed
-        rear
-      case Tip() =>
-        q
+  def pushUntilCarry(q: NumStream): NumStream = {
+    q match {
+      case Spine(_, rear: Fun) =>
+        rear.get* match {
+          case s@Spine(Zero(), _) => pushUntilCarry(s)
+          case s => s
+        }
+      case s => s
     }
   }
 
-  case class Number(digs: Lazy[NumStream], schedule: Scheds) {
-    def isEmpty = digs.value.isTip
-
+  case class Number(digs: NumStream, schedule: List[NumStream]) {
+    def isEmpty = digs.isTip
     def valid = strongSchedsProp(digs, schedule)
   }
 
   def emptyNum = Number(Tip(), Nil())
 
   @invisibleBody
-  def inc(xs: Lazy[NumStream]): NumStream = {
+  def inc(xs: NumStream): NumStream = {
     require(zeroPrecedeLazy(xs))
-    xs.value match {
+    xs match {
       case Tip() =>
-        Spine(One(), False(), xs)
-      case s @ Spine(Zero(), _, rear) =>
-        Spine(One(), False(), rear)
-      case s @ Spine(_, _, _) =>
+        Spine(One(), Val(xs))
+      case s @ Spine(Zero(), rearfun) =>
+        Spine(One(), rearfun)
+      case _  =>
         incLazy(xs)
     }
   } ensuring (_ => time <= ?)
 
   @invisibleBody
   @invstate
-  def incLazy(xs: Lazy[NumStream]): NumStream = {
+  def incLazy(xs: NumStream): NumStream = {
     require(zeroPrecedeLazy(xs) &&
-      (xs* match {
-        case Spine(h, _, _) => h != Zero() // xs doesn't start with a zero
+      (xs match {
+        case Spine(h, _) => h != Zero() // xs is a spine and it doesn't start with a zero
         case _              => false
       }))
-    xs.value match {
-      case Spine(head, _, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
+    xs match {
+      case s@Spine(head, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
         val carry = One()
-        rear.value match {
-          case s @ Spine(Zero(), _, srear) =>
-            val tail: NumStream = Spine(carry, False(), srear)
-            Spine(Zero(), False(), tail)
+        rear.get match {
+          case Tip() =>
+            Spine(Zero(), Val(Spine(carry, rear)))
 
-          case s @ Spine(_, _, _) =>
-            Spine(Zero(), True(), $(incLazy(rear)))
+          case s @ Spine(Zero(), srearfun) =>
+            Spine(Zero(), Val(Spine(carry, srearfun)))
 
-          case t @ Tip() =>
-            val y: NumStream = Spine(carry, False(), rear)
-            Spine(Zero(), False(), y)
+          case s =>
+            Spine(Zero(), Fun(() => incLazy(s)))
         }
     }
   } ensuring { res =>
     (res match {
-      case Spine(Zero(), _, rear) =>
-        (!isConcrete(xs) || isConcrete(pushUntilCarry(rear))) &&
+      case Spine(Zero(), f: Fun) =>
+        (!isConcrete(xs) || isConcrete(pushUntilCarry(f))) &&
           {
-            val _ = rear.value // this is necessary to assert properties on the state in the recursive invocation (and note this cannot go first)
-            rear.isEvaluated // this is a tautology
+            val _ = f.get // this is necessary to assert properties on the state in the recursive invocation (and note this cannot go first)
+            f.get.cached // this is a tautology
           }
-      case _ =>
-        false
+      case s: Spine => true
+      case _ => false
     }) &&
       time <= ?
   }
@@ -201,40 +230,37 @@ object LazyNumericalRep {
    */
   @invisibleBody
   @invstate
-  def incLazyLemma[T](xs: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def incLazyLemma(xs: NumStream, suf: NumStream): Boolean = {
     require(zeroPrecedeSuf(xs, suf) &&
-      (xs* match {
-        case Spine(h, _, _) => h != Zero()
+      (xs match {
+        case Spine(h, _) => h != Zero()
         case _              => false
       }) &&
-      (suf* match {
-        case Spine(Zero(), _, _) =>
-          concreteUntil(xs, suf)
+      (suf match {
+        case Spine(Zero(), _) => concreteUntil(xs, suf)
         case _ => false
       }))
     // induction scheme
-    (xs* match {
-      case Spine(head, _, rear) =>
-        rear* match {
-          case s @ Spine(h, _, _) =>
-            if (h != Zero())
-              incLazyLemma(rear, suf)
-            else true
-          case _ => true
-        }
+    (xs.rear match {
+      case s @ Spine(h, _) =>
+        if (h != Zero())
+          incLazyLemma(s, suf)
+        else true
+      case _ => true
     }) &&
       // instantiate the lemma that implies zeroPrecedeLazy
       (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
         // property
         (incLazy(xs) match {
-          case Spine(Zero(), _, rear) =>
+          case Spine(Zero(), rear: Fun) =>
             concreteUntil(pushUntilCarry(rear), suf)
+          case _ => true
         })
       } else false)
   } holds
 
   @invisibleBody
-  def incNum[T](w: Number) = {
+  def incNum(w: Number) = {
     require(w.valid &&
       // instantiate the lemma that implies zeroPrecedeLazy
       (w.schedule match {
@@ -245,22 +271,16 @@ object LazyNumericalRep {
       }))
     val nq = inc(w.digs)
     val nsched = nq match {
-      case Spine(Zero(), createdWithSusp, rear) =>
-        if (createdWithSusp == True())
-          Cons(rear, w.schedule) // this is the only case where we create a new lazy closure
-        else
-          w.schedule
-      case _ =>
-        w.schedule
+      case s@Spine(Zero(), rfun: Fun) => Cons(s, w.schedule) // this is the only case where we create a new lazy closure
+      case _ => w.schedule
     }
-    val lq: Lazy[NumStream] = nq
-    (lq, nsched)
+    (nq, nsched)
   } ensuring { res =>
     // lemma instantiations
     (w.schedule match {
       case Cons(head, tail) =>
-        w.digs* match {
-          case Spine(h, _, _) =>
+        w.digs match {
+          case Spine(h, _) =>
             if (h != Zero())
               incLazyLemma(w.digs, head)
             else true
@@ -273,16 +293,13 @@ object LazyNumericalRep {
   }
 
   @invisibleBody
-  def Pay[T](q: Lazy[NumStream], scheds: Scheds): Scheds = {
-    require(schedulesProperty(q, scheds) && q.isEvaluated)
+  def Pay(q: NumStream, scheds: List[NumStream]): List[NumStream] = {
+    require(schedulesProperty(q, scheds))
     scheds match {
       case c @ Cons(head, rest) =>
-        head.value match {
-          case Spine(Zero(), createdWithSusp, rear) =>
-            if (createdWithSusp == True())
-              Cons(rear, rest)
-            else
-              rest
+        head match {
+          case Spine(Zero(), rear: Fun) => Cons(rear.get, rest) // evaluate rear one step
+          case _ => rest
         }
       case Nil() => scheds
     }
@@ -294,8 +311,9 @@ object LazyNumericalRep {
       (scheds match {
         case Cons(head, rest) =>
           concUntilExtenLemma(q, head, in, out) &&
-            (head* match {
-              case Spine(Zero(), _, rear) =>
+            (head match {
+              case s@Spine(Zero(), _) =>
+                val rval = s.rearVal
                 res match {
                   case Cons(rhead, rtail) =>
                     schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
@@ -332,7 +350,7 @@ object LazyNumericalRep {
    * Pushing an element to the left of the queue preserves the data-structure invariants
    */
   @invisibleBody
-  def incAndPay[T](w: Number) = {
+  def incAndPay(w: Number) = {
     require(w.valid)
 
     val (q, scheds) = incNum(w)
@@ -349,7 +367,7 @@ object LazyNumericalRep {
   }
 
   // monotonicity lemmas
-  def schedMonotone[T](st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]], scheds: Scheds, l: Lazy[NumStream]): Boolean = {
+  def schedMonotone(st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]], scheds: Scheds, l: Lazy[NumStream]): Boolean = {
     require(st1.subsetOf(st2) &&
       (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'
     //induction scheme
@@ -367,18 +385,18 @@ object LazyNumericalRep {
   } holds
 
   @traceInduct
-  def concreteMonotone[T](st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]], l: Lazy[NumStream]): Boolean = {
+  def concreteMonotone(st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]], l: Lazy[NumStream]): Boolean = {
     ((isConcrete(l) withState st1) && st1.subsetOf(st2)) ==> (isConcrete(l) withState st2)
   } holds
 
   @traceInduct
-  def concUntilMonotone[T](q: Lazy[NumStream], suf: Lazy[NumStream], st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]]): Boolean = {
+  def concUntilMonotone(q: Lazy[NumStream], suf: Lazy[NumStream], st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]]): Boolean = {
     ((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2)) ==> (concreteUntil(q, suf) withState st2)
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
 
-  def suffix[T](q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def suffix(q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     if (q == suf) true
     else {
       q* match {
@@ -389,7 +407,7 @@ object LazyNumericalRep {
     }
   }
 
-  def properSuffix[T](l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def properSuffix(l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     l* match {
       case Spine(_, _, rear) =>
         suffix(rear, suf)
@@ -401,7 +419,7 @@ object LazyNumericalRep {
    * suf(q, suf) ==> suf(q.rear, suf.rear)
    */
   @traceInduct
-  def suffixTrans[T](q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def suffixTrans(q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     suffix(q, suf) ==> ((q*, suf*) match {
       case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
         // 'sufRear' should be a suffix of 'rear1'
@@ -413,7 +431,7 @@ object LazyNumericalRep {
   /**
    * properSuf(l, suf) ==> l != suf
    */
-  def suffixDisequality[T](l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def suffixDisequality(l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     require(properSuffix(l, suf))
     suffixTrans(l, suf) && // lemma instantiation
       ((l*, suf*) match { // induction scheme
@@ -425,21 +443,21 @@ object LazyNumericalRep {
   }.holds
 
   @traceInduct
-  def suffixCompose[T](q: Lazy[NumStream], suf1: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
+  def suffixCompose(q: Lazy[NumStream], suf1: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
     (suffix(q, suf1) && properSuffix(suf1, suf2)) ==> properSuffix(q, suf2)
   } holds
 
   // properties of 'concUntil'
 
   @traceInduct
-  def concreteUntilIsSuffix[T](l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def concreteUntilIsSuffix(l: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     concreteUntil(l, suf) ==> suffix(l, suf)
   }.holds
 
   // properties that extend `concUntil` to larger portions of the queue
 
   @traceInduct
-  def concUntilExtenLemma[T](q: Lazy[NumStream], suf: Lazy[NumStream], st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]]): Boolean = {
+  def concUntilExtenLemma(q: Lazy[NumStream], suf: Lazy[NumStream], st1: Set[Lazy[NumStream]], st2: Set[Lazy[NumStream]]): Boolean = {
     ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==>
       (suf* match {
         case Spine(_, _, rear) =>
@@ -449,12 +467,12 @@ object LazyNumericalRep {
   } holds
 
   @traceInduct
-  def concUntilConcreteExten[T](q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def concUntilConcreteExten(q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     (concreteUntil(q, suf) && isConcrete(suf)) ==> isConcrete(q)
   } holds
 
   @traceInduct
-  def concUntilCompose[T](q: Lazy[NumStream], suf1: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
+  def concUntilCompose(q: Lazy[NumStream], suf1: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
     (concreteUntil(q, suf1) && concreteUntil(suf1, suf2)) ==> concreteUntil(q, suf2)
   } holds
 
@@ -463,19 +481,19 @@ object LazyNumericalRep {
 
   @invisibleBody
   @traceInduct
-  def zeroPredSufConcreteUntilLemma[T](q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
+  def zeroPredSufConcreteUntilLemma(q: Lazy[NumStream], suf: Lazy[NumStream]): Boolean = {
     (zeroPrecedeSuf(q, suf) && concreteUntil(q, suf)) ==> zeroPrecedeLazy(q)
   } holds
 
   @invisibleBody
   @traceInduct
-  def concreteZeroPredLemma[T](q: Lazy[NumStream]): Boolean = {
+  def concreteZeroPredLemma(q: Lazy[NumStream]): Boolean = {
     isConcrete(q) ==> zeroPrecedeLazy(q)
   } holds
 
   // properties relating `suffix` an `zeroPrecedeSuf`
 
-  def suffixZeroLemma[T](q: Lazy[NumStream], suf: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
+  def suffixZeroLemma(q: Lazy[NumStream], suf: Lazy[NumStream], suf2: Lazy[NumStream]): Boolean = {
     require(suf* match {
       case Spine(Zero(), _, _) =>
         suffix(q, suf) && properSuffix(suf, suf2)
