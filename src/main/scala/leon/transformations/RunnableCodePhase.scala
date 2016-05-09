@@ -40,6 +40,17 @@ object RunnableCodePhase extends TransformationPhase {
           FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
         case Ensuring(body, pred) => removeContracts(body, fd)
         case Require(pred, body) => removeContracts(body, fd)
+        case Tuple(args) => {
+          args.head match {
+            case TupleSelect(v, j) if j == 1 =>
+              val success =  args.zipWithIndex.forall {
+                case (TupleSelect(u, i), index) if v == u && i == index + 1 => true
+                case _ => false
+              }
+              if(success) v else Tuple(args)
+            case e => e
+          }
+        }
         case e => e
       }(ine)
 
