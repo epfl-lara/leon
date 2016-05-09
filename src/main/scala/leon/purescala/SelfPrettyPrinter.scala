@@ -64,7 +64,6 @@ trait PrettyPrinterFinder[T, U >: T] {
   def buildLambda(inputType: TypeTree, fd: FunDef, slu: Stream[List[U]]): Stream[T]
   
   def prettyPrinterFromCandidate(fd: FunDef, inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[T] = {
-    println("Considering pretty printer " + fd.id.name + " with arg " + fd.params.head.getType + " for type " + inputType)
     TypeOps.canBeSubtypeOf(inputType, fd.tparams.map(_.tp), fd.params.head.getType) match {
       case Some(genericTypeMap) =>
         println("Found a mapping")

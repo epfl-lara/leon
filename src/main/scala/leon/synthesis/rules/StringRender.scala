@@ -416,8 +416,8 @@ case object StringRender extends Rule("StringRender") {
           val exprs1s = (new SelfPrettyPrinter)
             .allowFunction(hctx.functionContext)
             .excludeFunction(hctx.functionContext)
-            .prettyPrintersForType(input.getType)(hctx, hctx.program)
-            .map(l => (application(l, Seq(input)), List[Identifier]())) // Use already pre-defined pretty printers.
+            .withPossibleParameters.prettyPrintersForType(input.getType)(hctx, hctx.program)
+            .map{ case (l, identifiers) => (application(l, Seq(input)), identifiers) } // Use already pre-defined pretty printers.
           val exprs1 = exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}
           val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), List[Identifier]()))
           val defaultConverters: Stream[WithIds[Expr]] = exprs1.toStream #::: exprs2.toStream
@@ -493,6 +493,13 @@ case object StringRender extends Rule("StringRender") {
               } else {
                 gatherInputs(ctx, q, result += mergeResults(Stream.empty))
               }
+              
+            case t: SetType =>
+              gatherInputs(ctx, q, result += defaultConverters)
+            case t: BagType =>
+              gatherInputs(ctx, q, result += defaultConverters)
+            case t: MapType =>
+              gatherInputs(ctx, q, result += defaultConverters)
             case tpe => 
               hctx.reporter.fatalError("Could not handle class type for string rendering " + tpe)
           }
