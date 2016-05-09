@@ -575,15 +575,15 @@ object List {
                     res.size == (if (n <= BigInt(0)) BigInt(0) else n))
   
   @library
-  def mkString[A](l: List[A], pre: String, mid: String, post: String, f : A => String) = {
+  def mkString[A](l: List[A], mid: String, f : A => String) = {
     def rec(l: List[A]): String = l match {
       case Nil() => ""
       case Cons(a, b) => mid + f(a) + rec(b)
     }
-    pre + (l match {
+    l match {
       case Nil() => ""
       case Cons(a, b) => f(a) + rec(b)
-    }) + post
+    }
   }
 }
 

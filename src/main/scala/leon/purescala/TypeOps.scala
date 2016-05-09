@@ -80,6 +80,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
         case (_: TupleType, _: TupleType) |
              (_: SetType, _: SetType) |
              (_: MapType, _: MapType) |
+             (_: BagType, _: BagType) |
              (_: FunctionType, _: FunctionType) =>
 
           val NAryType(ts1, _) = tpe

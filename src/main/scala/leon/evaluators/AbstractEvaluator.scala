@@ -62,6 +62,28 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
   /** True if Application(Lambda(), ...)  have to be simplified. */
   var evaluateApplications = true
   
+  // Used to make the final mkString for maps, sets, and bags. First column is the key to sort the expression on, second are the values and third are the trees.
+  protected def mkString(elements: List[(String, Expr, Expr)], infix: (Expr, Expr)): (Expr, Expr) = {
+    val (infix_value, infix_tree) = infix
+    val (sorting_key, elements_value, elements_tree) = elements.sortBy(f => f._1).unzip3
+    
+    val fst = infix_value match {
+      case StringLiteral(v) if elements_value.forall(_.isInstanceOf[StringLiteral]) =>
+        StringLiteral(elements_value.map(_.asInstanceOf[StringLiteral].value).mkString(v))
+      case infix_value =>
+        elements_value match {
+          case Nil => StringLiteral("")
+          case a::q => q.foldLeft(a: Expr){ case (a, s) => StringConcat(StringConcat(a, infix_value), s) }
+        }
+    }
+    
+    val snd = elements_tree match {
+      case Nil => StringLiteral("")
+      case a::q => q.foldLeft(a){ case (a, s) => StringConcat(StringConcat(a, infix_tree), s) }
+    }
+    (fst, snd)
+  }
+  
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): (Expr, Expr) = {
     implicit def aToC: AbstractEvaluator.this.underlying.RC = DefaultRecContext(rctx.mappings.filter{ case (k, v) => ExprOps.isValue(v) })
     expr match {
@@ -92,6 +114,59 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
         case Some(Some((c, mappings))) => e(c.rhs)(rctx.withNewVars2(mappings), gctx)
         case _ => throw RuntimeError("MatchError(Abstract evaluation): "+escrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
       }
+    
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta, tb)), Seq(mp, inkv, betweenkv, fk, fv)) if fd == program.library.mapMkString.get =>
+      val (inkv_str, inkv_tree) = e(inkv)
+      val infix = e(betweenkv)
+      val (mp_map, mp_tree) = e(mp) match {
+        case (FiniteMap(theMap, keyType, valueType), t) => (theMap, t)
+        case (e, f) => 
+          println("First argument is not a finite map: " + e)
+          throw EvalError(typeErrorMsg(mp, MapType(ta, tb)))
+      }
+      
+      val res1 = mp_map.toList.map{ case (k, v) =>
+        val (kvalue, ktree) = e(application(fk, Seq(k)))
+        val (vvalue, vtree) = e(application(fv, Seq(v)))
+        val abs_value = StringConcat(StringConcat(ktree, inkv_tree), vtree)
+        kvalue match {
+          case StringLiteral(k) =>
+            if(ExprOps.isValue(vvalue) && ExprOps.isValue(inkv_str)) {
+              underlying.e(StringConcat(StringConcat(kvalue, inkv_str), vvalue)) match {
+                case sl@StringLiteral(s) => (s, sl, abs_value)
+                case e => throw RuntimeError("Not a string literal: " + e)
+              }
+            } else {
+              (k, StringConcat(StringConcat(kvalue, inkv_str), vvalue), abs_value)
+            }
+          case _ =>
+            throw RuntimeError("cannot infer the order on which to print the map " + mp_map)
+        }
+      }
+      
+      mkString(res1, infix)
+        
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.setMkString.get =>
+      val infix = e(inf)
+      val (mp_set, mp_tree) = e(mp) match { case (FiniteSet(elems, valueType), t) => (elems, t) case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
+      
+      val res = mp_set.toList.map{ case v =>
+        e(application(f, Seq(v))) match { case (sl@StringLiteral(s), t) => (s, sl, t)
+          case _ => throw EvalError(typeErrorMsg(v, StringType)) } }
+      
+      mkString(res, infix)
+        
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.bagMkString.get =>
+      val infix = e(inf)
+      val (mp_bag, mp_tree) = e(mp) match { case (FiniteBag(elems, valueType), t) => (elems, t) case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
+      
+      val res = mp_bag.toList.flatMap{ case (k, v) =>
+        val fk = (e(application(f, Seq(k))) match { case (sl@StringLiteral(s), t) => (s, sl, t) case _ => throw EvalError(typeErrorMsg(k, StringType)) })
+        val times = (e(v)) match { case (InfiniteIntegerLiteral(i), t) => i case _ => throw EvalError(typeErrorMsg(k, IntegerType)) }
+        List.fill(times.toString.toInt)(fk)
+      }
+
+      mkString(res, infix)
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {

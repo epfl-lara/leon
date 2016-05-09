@@ -219,7 +219,12 @@ class PrettyPrinter(opts: PrinterOptions,
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
       case NoTree(tpe)          => p"<empty tree>[$tpe]"
-      case Choose(pred)         => p"choose($pred)"
+      case Choose(pred)         =>
+        val choose = (for{scope <- getScope
+                        program <- opgm }
+            yield simplifyPath("leon" :: "lang" :: "synthesis" :: "choose" :: Nil, scope, false)(program))
+            .getOrElse("leon.lang.synthesis.choose")
+        p"$choose($pred)"
       case e @ Error(tpe, err)  => p"""error[$tpe]("$err")"""
       case AsInstanceOf(e, ct)  => p"""$e.asInstanceOf[$ct]"""
       case IsInstanceOf(e, cct) =>
@@ -330,7 +335,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case RealDivision(l,r)         => optP { p"$l / $r" }
       case fs @ FiniteSet(rs, _)     => p"{${rs.toSeq}}"
       case fs @ FiniteBag(rs, _)     => p"{$rs}"
-      case fm @ FiniteMap(rs, _, _)  => p"{$rs}"
+      case fm @ FiniteMap(rs, _, _)  => p"{${rs.toSeq}}"
       case Not(ElementOfSet(e,s))    => p"$e \u2209 $s"
       case ElementOfSet(e,s)         => p"$e \u2208 $s"
       case SubsetOf(l,r)             => p"$l \u2286 $r"

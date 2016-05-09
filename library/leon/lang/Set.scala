@@ -11,6 +11,11 @@ object Set {
   def apply[T](elems: T*) = {
     new Set[T](scala.collection.immutable.Set[T](elems : _*))
   }
+  
+  @extern @library
+  def mkString[A](map: Set[A], infix: String, fA : A => String) = {
+    map.theSet.map(fA).toList.sorted.mkString(infix)
+  }
 }
 
 @ignore

@@ -14,8 +14,8 @@ object Map {
   }
   
   @extern @library
-  def mkString[A, B](map: Map[A, B], pre: String, inkv: String, betweenkv: String, post: String, fA : A => String, fB: B => String) = {
-    pre + map.theMap.map{ case (k, v) => fA(k) + inkv + fB(v)}.mkString(betweenkv) + post
+  def mkString[A, B](map: Map[A, B], inkv: String, betweenkv: String, fA : A => String, fB: B => String) = {
+    map.theMap.map{ case (k, v) => fA(k) + inkv + fB(v)}.toList.sorted.mkString(betweenkv)
   }
 }
 
