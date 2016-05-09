@@ -163,6 +163,7 @@ object Main {
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
+    import transformations.RunnableCodePhase
     import laziness._
 
     val helpF = ctx.findOptionOrDefault(optHelp)

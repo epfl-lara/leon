@@ -3,6 +3,22 @@
 package leon
 package transformations
 
+import purescala.Common._
+import purescala.Definitions._
+import purescala.Extractors._
+import purescala.Expressions._
+import purescala.ExprOps._
+import purescala.Types._
+import leon.purescala.ScalaPrinter
+import leon.utils._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import PredicateUtil._
+import invariant.util.ExpressionTransformer._
+import invariant.structure.FunctionUtils._
+import invariant.util.LetTupleSimplification._
+
 object RunnableCodePhase extends TransformationPhase {
 
   val name = "Runnable Code"
@@ -13,20 +29,16 @@ object RunnableCodePhase extends TransformationPhase {
 
     val funMap = (pgm.definedFunctions.distinct).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) => {
-        val freshId = FreshIdentifier(remHyphen(fd.id.name), fd.returnType)
+        val freshId = FreshIdentifier((fd.id.name).replaceAll("-",""), fd.returnType)
         val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
         accMap + (fd -> newfd)
       }
     }
 
-    def remHyphen(x: String): String = {
-      x.replaceAll("-", "")
-    }
-
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform({
         case Ensuring(body, pred) => removeContracts(body, fd)
         case Require(pred, body) => removeContracts(body, fd)
-        case _ => e
+        case e => e
     })(ine)
 
     for ((from, to) <- funMap) {
