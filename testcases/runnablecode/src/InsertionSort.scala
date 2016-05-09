@@ -54,4 +54,11 @@ object InsertionSort {
     }
     (bd1._1, bd1._2, bd1._3)
   }
+
+  def main(args: Array[String]): Unit = {
+    val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
+
+    println(ls)
+    println(sorttimerec(ls))
+  }
 }
