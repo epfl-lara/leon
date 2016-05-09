@@ -28,18 +28,20 @@ object RunnableCodePhase extends TransformationPhase {
     val debugRunnable = false
 
     val funMap = (pgm.definedFunctions.distinct).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) => {
+      case (accMap, fd) if fd.id.name.contains("-") => {
         val freshId = FreshIdentifier((fd.id.name).replaceAll("-",""), fd.returnType)
         val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
         accMap + (fd -> newfd)
       }
     }
 
-    def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform({
+    def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
+        case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
+          FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
         case Ensuring(body, pred) => removeContracts(body, fd)
         case Require(pred, body) => removeContracts(body, fd)
         case e => e
-    })(ine)
+      }(ine)
 
     for ((from, to) <- funMap) {
       to.fullBody = removeContracts(from.fullBody, from)
