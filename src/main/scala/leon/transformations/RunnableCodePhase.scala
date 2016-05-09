@@ -27,13 +27,13 @@ object RunnableCodePhase extends TransformationPhase {
   def apply(ctx: LeonContext, pgm: Program): Program = {
     val debugRunnable = false
 
-    val funMap = (pgm.definedFunctions.distinct).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) if fd.id.name.contains("-") => {
+    val funMap = pgm.definedFunctions.collect {
+      case fd if fd.id.name.contains("-") =>
         val freshId = FreshIdentifier((fd.id.name).replaceAll("-",""), fd.returnType)
         val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-        accMap + (fd -> newfd)
-      }
-    }
+        (fd -> newfd)
+      case fd => (fd -> fd)
+    }.toMap
 
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
         case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
