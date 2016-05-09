@@ -1,20 +1,101 @@
-[info] 10 (Cons(1,Cons(2,Cons(2,Cons(6,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(9,Nil())))))))))),337,10)
-[info] 20 (Cons(0,Cons(0,Cons(1,Cons(1,Cons(2,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(5,Cons(5,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Nil())))))))))))))))))))),1177,20)
-[info] 30 (Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Nil())))))))))))))))))))))))))))))),2063,30)
-[info] 40 (Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))),4259,40)
-[info] 50 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))),5954,50)
-[info] 60 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),8487,60)
-[info] 70 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),10453,70)
-[info] 80 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),13739,80)
-[info] 90 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),18962,90)
-[info] 100 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),24013,100)
-[info] 110 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),27908,110)
-[info] 120 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),31745,120)
-[info] 130 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),40439,130)
-[info] 140 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),47549,140)
-[info] 150 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),51083,150)
-[info] 160 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),54861,160)
-[info] 170 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),65878,170)
-[info] 180 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),71108,180)
-[info] 190 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),82917,190)
-[info] 200 (Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(0,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(1,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(2,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(3,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(4,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(5,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(6,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(7,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(8,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Cons(9,Nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))),87144,200)
+[info] Sort 10 382 1104 463
+[info] SortedIns 10 84 84 84
+[info] Sort 20 1373 4404 1723
+[info] SortedIns 20 164 164 164
+[info] Sort 30 2088 9904 3783
+[info] SortedIns 30 244 244 244
+[info] Sort 40 3447 17604 6643
+[info] SortedIns 40 324 324 324
+[info] Sort 50 6421 27504 10303
+[info] SortedIns 50 404 404 404
+[info] Sort 60 7328 39604 14763
+[info] SortedIns 60 484 484 484
+[info] Sort 70 11364 53904 20023
+[info] SortedIns 70 564 564 564
+[info] Sort 80 14712 70404 26083
+[info] SortedIns 80 644 644 644
+[info] Sort 90 16893 89104 32943
+[info] SortedIns 90 724 724 724
+[info] Sort 100 21847 110004 40603
+[info] SortedIns 100 804 804 804
+[info] Sort 110 27015 133104 49063
+[info] SortedIns 110 884 884 884
+[info] Sort 120 31424 158404 58323
+[info] SortedIns 120 964 964 964
+[info] Sort 130 36821 185904 68383
+[info] SortedIns 130 1044 1044 1044
+[info] Sort 140 43460 215604 79243
+[info] SortedIns 140 1124 1124 1124
+[info] Sort 150 56195 247504 90903
+[info] SortedIns 150 1204 1204 1204
+[info] Sort 160 60375 281604 103363
+[info] SortedIns 160 1284 1284 1284
+[info] Sort 170 65229 317904 116623
+[info] SortedIns 170 1364 1364 1364
+[info] Sort 180 75687 356404 130683
+[info] SortedIns 180 1444 1444 1444
+[info] Sort 190 80966 397104 145543
+[info] SortedIns 190 1524 1524 1524
+[info] Sort 200 92798 440004 161203
+[info] SortedIns 200 1604 1604 1604
+[info] Sort 100 25275 110004 40603
+[info] SortedIns 100 804 804 804
+[info] Sort 200 90872 440004 161203
+[info] SortedIns 200 1604 1604 1604
+[info] Sort 300 198913 990004 361803
+[info] SortedIns 300 2404 2404 2404
+[info] Sort 400 343996 1760004 642403
+[info] SortedIns 400 3204 3204 3204
+[info] Sort 500 538113 2750004 1003003
+[info] SortedIns 500 4004 4004 4004
+[info] Sort 600 801256 3960004 1443603
+[info] SortedIns 600 4804 4804 4804
+[info] Sort 700 1076680 5390004 1964203
+[info] SortedIns 700 5604 5604 5604
+[info] Sort 800 1403077 7040004 2564803
+[info] SortedIns 800 6404 6404 6404
+[info] Sort 900 1806017 8910004 3245403
+[info] SortedIns 900 7204 7204 7204
+[info] Sort 1000 2170761 11000004 4006003
+[info] SortedIns 1000 8004 8004 8004
+[info] Sort 1100 2648937 13310004 4846603
+[info] SortedIns 1100 8804 8804 8804
+[info] Sort 1200 3286513 15840004 5767203
+[info] SortedIns 1200 9604 9604 9604
+[info] Sort 1300 3772998 18590004 6767803
+[info] SortedIns 1300 10404 10404 10404
+[info] Sort 1400 4308508 21560004 7848403
+[info] SortedIns 1400 11204 11204 11204
+[info] Sort 1500 4885840 24750004 9009003
+[info] SortedIns 1500 12004 12004 12004
+[info] Sort 1600 5613025 28160004 10249603
+[info] SortedIns 1600 12804 12804 12804
+[info] Sort 1700 6340121 31790004 11570203
+[info] SortedIns 1700 13604 13604 13604
+[info] Sort 1800 7164710 35640004 12970803
+[info] SortedIns 1800 14404 14404 14404
+[info] Sort 1900 7955329 39710004 14451403
+[info] SortedIns 1900 15204 15204 15204
+[info] Sort 2000 8893809 44000004 16012003
+[info] SortedIns 2000 16004 16004 16004
+[info] Sort 1000 2110388 11000004 4006003
+[info] SortedIns 1000 8004 8004 8004
+[info] Sort 2000 8857166 44000004 16012003
+[info] SortedIns 2000 16004 16004 16004
+[info] Sort 3000 19778574 99000004 36018003
+[info] SortedIns 3000 24004 24004 24004
+[info] Sort 4000 35738301 176000004 64024003
+[info] SortedIns 4000 32004 32004 32004
+[info] Sort 5000 54588995 275000004 100030003
+[info] SortedIns 5000 40004 40004 40004
+[info] Sort 6000 78992279 396000004 144036003
+[info] SortedIns 6000 48004 48004 48004
+[info] Sort 7000 107858389 539000004 196042003
+[info] SortedIns 7000 56004 56004 56004
+[info] Sort 8000 140478595 704000004 256048003
+[info] SortedIns 8000 64004 64004 64004
+[info] Sort 9000 177157438 891000004 324054003
+[info] SortedIns 9000 72004 72004 72004
+[info] Sort 10000 219827270 1100000004 400060003
+[info] SortedIns 10000 80004 80004 80004
+

@@ -56,5 +56,44 @@ object InsertionSort {
   }
 
   def main(args: Array[String]): Unit = {
+    import scala.util.Random
+    import java.io._
+
+    val rand = Random
+
+    val sr = new File("sort-runnable.data")
+    val so1 = new File("sort-orb1.data")
+    val so2 = new File("sort-orb2.data")
+    val sir = new File("sortins-runnable.data")
+    val sio1 = new File("sortins-orb1.data")
+    val sio2 = new File("sortins-orb2.data")
+
+    
+    val pwl = List(sr, so1, so2, sir, sio1, sio2).map(a => new PrintWriter(new FileOutputStream(a)))
+
+    ((10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)).foreach { i =>
+      val ls: List = {
+        (1 to i).foldLeft[List](Nil()) {
+          case (acc, curr) =>
+            val x = rand.nextInt(10)
+            Cons(x, acc)
+        }
+      }
+
+
+      val sortset1 = (11 * i * i + 4)
+      val sortinsset1 = 8*i + 4
+      val sortset2 = 4*i*i + 6*i + 3
+      val sortinsset2 = 8*i + 4
+
+      pwl(0).println(i + " " + sorttimerec(ls)._2)
+      pwl(1).println(i + " " + sortset1)
+      pwl(2).println(i + " " + sortset2)
+      pwl(3).println(i + " " + sortedInstimedepth(11, ls)._2)
+      pwl(4).println(i + " " + sortinsset1)
+      pwl(5).println(i + " " + sortinsset2)
+    }
+
+    pwl.foreach(pw => pw.close())
   }
 }

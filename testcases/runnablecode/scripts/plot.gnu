@@ -12,6 +12,6 @@ set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
 set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
 
 plot \
-'numbers-runnable.data' using 1:2 t'orb' with linespoints, \
-'numbers-set-1.data' using 1:2 t'run1' with linespoints, \
-'numbers-set-2.data' using 1:2 t'run2' with linespoints,
+'numbers-runnable.data' using 1:2 t'runtime' with linespoints, \
+'numbers-set-1.data' using 1:2 t'orb1' with linespoints, \
+'numbers-set-2.data' using 1:2 t'orb2' with linespoints,
