@@ -1,5 +1,6 @@
 import leon.invariant._
 import leon.instrumentation._
+import org.sameersingh.scalaplot.Implicits._
 
 object InsertionSort {
   abstract class List
@@ -68,7 +69,7 @@ object InsertionSort {
     val sio1 = new File("sortins-orb1.data")
     val sio2 = new File("sortins-orb2.data")
 
-    
+
     val pwl = List(sr, so1, so2, sir, sio1, sio2).map(a => new PrintWriter(new FileOutputStream(a)))
 
     ((10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)).foreach { i =>

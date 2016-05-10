@@ -13,3 +13,6 @@ javaOptions in run ++= Seq("-Xmx5G", "-Xms3G", "-Xss500M")
 scalacOptions ++= Seq("-optimise")
 
 unmanagedSourceDirectories in Compile ++= Seq("src").map(dir => baseDirectory.value / dir)
+
+
+libraryDependencies += "org.sameersingh.scalaplot" % "scalaplot" % "0.0.4"

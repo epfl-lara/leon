@@ -33,7 +33,6 @@ object PropositionalLogic {
     case Implies(lhs, rhs) => Or(Not(removeImplies(lhs)),removeImplies(rhs))
     case Not(f) => Not(removeImplies(f))
     case _ => f
-
   }) ensuring(_ => time <= ? * size(f) + ?)
 
   def nnf(formula: Formula): Formula = (formula match {
