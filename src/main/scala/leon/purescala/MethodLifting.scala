@@ -12,20 +12,7 @@ import Types._
 import Constructors._
 import TypeOps.instantiateType
 import xlang.Expressions._
-
-
-import invariant.util._
 import invariant.structure.FunctionUtils._
-import purescala.Common._
-import purescala.Definitions._
-import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import leon.invariant.util.TypeUtil._
-import ProgramUtil._
-import PredicateUtil._
-import purescala.TypeOps.bestRealType
 
 object MethodLifting extends TransformationPhase {
 
