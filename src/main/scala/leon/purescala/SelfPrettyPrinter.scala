@@ -66,7 +66,7 @@ trait PrettyPrinterFinder[T, U >: T] {
   def prettyPrinterFromCandidate(fd: FunDef, inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[T] = {
     TypeOps.canBeSubtypeOf(inputType, fd.tparams.map(_.tp), fd.params.head.getType) match {
       case Some(genericTypeMap) =>
-        println("Found a mapping")
+        //println("Found a mapping")
         val defGenericTypeMap = genericTypeMap.map{ case (k, v) => (Definitions.TypeParameterDef(k), v) }
         def gatherPrettyPrinters(funIds: List[Identifier], acc: ListBuffer[Stream[U]] = ListBuffer[Stream[U]]()): Option[Stream[List[U]]] = funIds match {
           case Nil => Some(StreamUtils.cartesianProduct(acc.toList))
