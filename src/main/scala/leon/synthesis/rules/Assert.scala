@@ -23,7 +23,7 @@ case object Assert extends NormalizingRule("Assert") {
           if (others.isEmpty) {
             val simplestOut = simplestValue(tupleTypeWrap(p.xs.map(_.getType)))
 
-            if (!isRealExpr(simplestOut)) {
+            if (!isRealExpr(simplestOut) || p.hasOutputTests) {
               None
             } else {
               Some(solve(Solution(pre = andJoin(exprsA), defs = Set(), term = simplestOut)))

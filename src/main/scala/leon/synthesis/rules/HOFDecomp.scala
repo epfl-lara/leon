@@ -235,7 +235,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                   val eb = ExamplesBank(tests, Nil)
                   println(eb.asString("Tests:"))
 
-                  if (tests.nonEmpty) {
+                  // Heuristic: we don't want to synthesize HOFs with only one tests, those are trivial and ininteresting
+                  if (tests.size > 1) {
                     val cAssigned = substAll(freeValuations, c)
 
                     val (ls, xs) = hofId.getType match {
@@ -247,7 +248,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
 
                     // TODO: collect pc that concerns ''env''
                     val subs = List(
-                      Problem(as, BooleanLiteral(true), Path.empty, QualifiedExamplesBank(as, xs, eb).asConstraint, xs, eb)
+                      Problem(as, BooleanLiteral(true), Path.empty, BooleanLiteral(true), xs, eb)
                     )
 
                     val onSuccess: List[Solution] => Option[Solution] = {

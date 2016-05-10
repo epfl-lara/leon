@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    if (p.as.nonEmpty && p.xs.nonEmpty) {
+    if (p.as.nonEmpty && p.xs.nonEmpty && !p.isTestBased) {
       val res = new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext) = {
 

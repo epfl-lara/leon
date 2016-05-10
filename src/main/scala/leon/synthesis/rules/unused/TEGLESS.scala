@@ -2,7 +2,8 @@
 
 package leon
 package synthesis
-package rules.unused
+package rules
+package unused
 
 import purescala.Types._
 import purescala.Extractors._
