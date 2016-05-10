@@ -65,7 +65,7 @@ object RunnableCodePhase extends TransformationPhase {
     })
 
     if (debugRunnable)
-      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog))
+      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(disableFcallMethodInvocation = true)))
     newprog
   }
 }

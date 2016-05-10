@@ -241,7 +241,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case BinaryMethodCall(a, op, b) =>
         optP { p"$a $op $b" }
 
-      case FcallMethodInvocation(rec, fd, id, tps, args) =>
+      case FcallMethodInvocation(rec, fd, id, tps, args) if(!(opts.disableFcallMethodInvocation))  =>
 
         p"$rec.$id${nary(tps, ", ", "[", "]")}"
 
