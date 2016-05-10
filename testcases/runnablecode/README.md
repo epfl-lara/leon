@@ -12,4 +12,4 @@ cp ./leon.out/InsertionSort.scala ./testcases/runnablecode/src/
 ```
 
 This shall now compile. <br/>
-Use the `main` template as defined in `template.scala` to do the necessary benchmarks
+Use the `main` template as defined in `template/template.scala` to do the necessary benchmarks

@@ -47,9 +47,9 @@ object RunnableCodePhase extends TransformationPhase {
               case (TupleSelect(u, i), index) if v == u && i == index + 1 => true
               case _ => false
             }
-            val tup = v.getType
+            val tup = v.getType.asInstanceOf[TupleType]
             if(success && (tup.dimension == args.size)) v else Tuple(args)
-          case e => e
+          case _ => Tuple(args)
         }
       }
       case e => e
