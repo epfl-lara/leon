@@ -651,7 +651,7 @@ object StringSolver {
   /** Returns all subsets of i elements of a sequence. */
   def take[A](i: Int, of: Seq[A]): Stream[Seq[A]] = {
     if(i > of.size || i < 0) Stream.empty
-    if(i == of.size) Stream(of)
+    else if(i == of.size) Stream(of)
     else if(i == 0) Stream(Seq.empty)
     else {
       take(i - 1, of.tail).map(of.head +: _) #::: take(i, of.tail)

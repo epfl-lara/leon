@@ -742,7 +742,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         debug("Acquiring initial list of examples")
 
         // To the list of known examples, we add an additional one produced by the solver
-        val solverExample = if (p.pc == BooleanLiteral(true)) {
+        val solverExample = if (p.pc.isEmpty) {
           List(InExample(p.as.map(a => simplestValue(a.getType))))
         } else {
           val solverf = hctx.solverFactory
