@@ -13,6 +13,20 @@ import Constructors._
 import TypeOps.instantiateType
 import xlang.Expressions._
 
+
+import invariant.util._
+import invariant.structure.FunctionUtils._
+import purescala.Common._
+import purescala.Definitions._
+import purescala.Expressions._
+import purescala.ExprOps._
+import purescala.Extractors._
+import purescala.Types._
+import leon.invariant.util.TypeUtil._
+import ProgramUtil._
+import PredicateUtil._
+import purescala.TypeOps.bestRealType
+
 object MethodLifting extends TransformationPhase {
 
   val name = "Method Lifting"
@@ -287,7 +301,7 @@ object MethodLifting extends TransformationPhase {
     // 5) Replace method calls with function calls
     for (fd <- pgm.definedFunctions) {
       fd.fullBody = postMap{
-        case mi @ MethodInvocation(IsTyped(rec, ct: ClassType), cd, tfd, args) =>
+        case mi @ MethodInvocation(IsTyped(rec, ct: ClassType), cd, tfd, args) if !tfd.fd.isLibrary =>
           Some(FunctionInvocation(mdToFds(tfd.fd).typed(ct.tps ++ tfd.tps), rec +: args).setPos(mi))
         case _ => None
       }(fd.fullBody)
