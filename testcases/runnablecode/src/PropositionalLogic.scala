@@ -6,7 +6,7 @@ import org.sameersingh.scalaplot.Implicits._
 
 object PropositionalLogic {
   abstract class Formula
-  
+
   case class And(lhs : Formula, rhs : Formula) extends Formula
   
   case class Or(lhs : Formula, rhs : Formula) extends Formula
@@ -201,22 +201,18 @@ object PropositionalLogic {
     val rand = Random
 
     val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    val size = points.map(2*_ + 1)
-    val orbTime = size.map(43*_ - 17)
-    var operTime = List[Int]()
-    var realTime = List[Long]()
+    val size = points.map(2*_ + 1).toList
+    val orbTime = size.map(43*_ - 17).toList
+    var operTime = List[Any]()
+    var realTime = List[Any]()
     ((10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)).foreach { i =>
       val form = {
         (1 to i).foldLeft[Formula](Literal(1)) { (f, n) =>
           if(n%2 == 0) And(f, Literal(1)) else Or(f, Literal(1))
         }
       }
-      operTime :+ (timed{ nnftime(form) }{realTime :+ _})._2
+      operTime :+= (timed{ nnftime(form) }{realTime :+= _})._2
     }
-    println(orbTime)
-    println(operTime)
-    println(realTime)
-
-//    val char = xyChart(List(size -> (orbTime, operTime, realTime)))
+    output(PNG("plots/", "run3"), xyChart(size -> (orbTime, operTime, realTime)))
   }
 }
