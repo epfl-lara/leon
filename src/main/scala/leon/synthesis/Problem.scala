@@ -41,9 +41,28 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
 
     val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
 
+    val spec = if(!isTestBased) {
+      s"φ ${pad("    ", phi.asString)}"
+    } else {
+      def vsToString(vs: Seq[Expr]): String = {
+        if(vs.size == 1) {
+          vs.head.asString
+        } else {
+          vs.map(_.asString).mkString("(", ", ", ")")
+        }
+      }
+
+      val tests = eb.valids.collect {
+        case InOutExample(ins, outs) =>
+          vsToString(ins)+" -> "+vsToString(outs)
+      }
+
+      s"T $tests"
+    }
+
     s"""|⟦ α ${if (as.nonEmpty) as.map(_.asString).mkString(", ") else "()"}
         |  Π ${pad("    ", pcws.fullClause.asString)}
-        |  φ ${pad("    ", phi.asString)}
+        |  $spec
         |  x ${if (xs.nonEmpty) xs.map(_.asString).mkString(", ") else "()"}
         |⟧ $ebInfo""".stripMargin
   }
@@ -57,6 +76,12 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
   def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)
 
+  lazy val hasOutputTests = eb.valids.exists{
+    case io: InOutExample => true
+    case _ => false
+  }
+
+  lazy val isTestBased = (phi == BooleanLiteral(true)) && hasOutputTests
 }
 
 object Problem {

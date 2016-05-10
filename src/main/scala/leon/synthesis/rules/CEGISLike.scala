@@ -65,6 +65,10 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       return Nil
     }
 
+    if (p.isTestBased) {
+      return Nil
+    }
+
     // Represents a non-deterministic program
     object NonDeterministicProgram {
 
