@@ -412,6 +412,15 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def simplerLet(t: Expr): Option[Expr] = t match {
 
+      /* Untangle */
+      case LetTuple(ids1, LetTuple(ids2, e2, b2), b1) =>
+        Some(letTuple(ids2, e2, letTuple(ids1, b2, b1)))
+
+      case Let(i1, Let(i2, e2, b2), b1) =>
+        Some(Let(i2, e2, Let(i1, b2, b1)))
+
+      // TODO
+
       case Let(i, e, b) if freeComputable(e) && isPurelyFunctional(e) =>
         // computation is very quick and code easy to read, always inline
         Some(replaceFromIDs(Map(i -> e), b))
@@ -432,7 +441,7 @@ object ExprOps extends GenTreeOps[Expr] {
         }
 
       case LetTuple(ids, Tuple(elems), body) =>
-        Some(ids.zip(elems).foldRight(body) { case ((id, elem), bd) => Let(id, elem, body) })
+        Some(ids.zip(elems).foldRight(body) { case ((id, elem), bd) => Let(id, elem, bd) })
 
       /*case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
         // Will turn the match-expression with a single case into a list of lets.
