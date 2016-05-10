@@ -3,12 +3,6 @@
 package leon
 package synthesis.programsets
 
-import leon.purescala
-import purescala.Expressions._
-import purescala.Extractors._
-import purescala.Constructors._
-import purescala.Types._
-
 object UnionProgramSet {
   def apply[T](sets: Seq[ProgramSet[T]]): UnionProgramSet[T] = {
     new UnionProgramSet(sets)

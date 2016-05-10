@@ -1,13 +1,10 @@
 package leon
 package invariant.util
 
-import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap }
 
 /**
  * A class that looks for structural equality of expressions
