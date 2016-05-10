@@ -27,35 +27,39 @@ object LazyNumericalRep {
   sealed abstract class NumList {
     @inline
     val isTip = this == Tip()
-
     @inline
     val isSpine: Boolean = !isTip
-
   }
 
   case class Tip() extends NumList
-  case class Spine(head: Digit, rearValorFun: NumStream) extends NumList
+  case class Spine(head: Digit, rear: NumStream) extends NumList
 
   sealed abstract class NumStream {
+    @inline
     def get: NumList = {
       this match {
         case Susp(f) => fval
         case Val(x) => x
       }
     }
+    @inline
+    def isSusp = this match {
+      case _: Susp => true
+      case _       => false
+    }
 
     lazy val fval = {
-      require(this match {
-        case _: Susp => true
-        case _ => false
-      })
+      require(isSusp)
       this match {
         case Susp(f) => f()
       }
     }
 
     @inline
-    def getV = get*
+    def getV = this match {
+      case Susp(f) => fval*
+      case Val(x)  => x
+    }
 
     @inline
     def isCached = this match {
@@ -116,12 +120,9 @@ object LazyNumericalRep {
     schs match {
       case Cons(head, tail) =>
         head match {
-          case Susp(fun) => fun()* match {
-            case Spine(Zero(), _) => // head starts with zero
-              concreteUntil(q, head) &&
+          case Susp(fun) =>
+             concreteUntil(q, head) &&
               schedulesProperty(pushUntilCarry(head), tail)
-            case _ => false
-          }
           case _ => false
         }
       case Nil() =>
@@ -202,7 +203,7 @@ object LazyNumericalRep {
       case Spine(Zero(), r) =>
         (r match {
           case _: Val    => true
-          case Susp(fun) => fun().isSpine // this is necessary to assert properties on the state in the recursive invocation (and note this cannot go first)
+          case Susp(fun) => fun().isSpine // this is necessary to assert properties on the state in the recursive invocation
         }) &&
           (!isConcrete(xs) || isConcrete(pushUntilCarry(r)))
       case _ => false
@@ -217,15 +218,11 @@ object LazyNumericalRep {
   @invisibleBody
   @invstate
   def incLazyLemma(xs: NumStream, suf: NumStream): Boolean = {
-     require(zeroPrecedesSuf(xs, suf) &&
+    require(zeroPrecedesSuf(xs, suf) &&
       (xs.getV match {
         case Spine(h, _) => h != Zero()
-        case _ => false
-      }) &&
-      (suf.getV match {
-        case Spine(Zero(), _) => concreteUntil(xs, suf)
-        case _ => false
-      }))
+        case _           => false
+      }) && suf.isSusp && concreteUntil(xs, suf))
     // induction scheme
     (xs.getV match {
       case Spine(head, rear) =>
@@ -237,14 +234,12 @@ object LazyNumericalRep {
           case _ => true
         }
     }) &&
-      // instantiate the lemma that implies zeroPrecedesLazy
-      (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
-        // property
-        (incLazy(xs) match {
-          case Spine(Zero(), rear) =>
-            concreteUntil(pushUntilCarry(rear), suf)
-        })
-      } else false)
+      zeroPredSufConcreteUntilLemma(xs, suf) && // instantiate the lemma that implies zeroPrecedesLazy
+      // property
+      (incLazy(xs) match {
+        case Spine(Zero(), rear) =>
+          concreteUntil(pushUntilCarry(rear), suf)
+      })
   }.holds
 
   @invisibleBody
