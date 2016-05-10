@@ -71,8 +71,11 @@ object Constructors {
       Let(x, value, body)
     case xs =>
       require(
-        value.getType.isInstanceOf[TupleType],
-        s"The definition value in LetTuple must be of some tuple type; yet we got [${value.getType}]. In expr: \n$value"
+        value.getType match {
+          case TupleType(args) => args.size == xs.size
+          case _ => false
+        },
+        s"In letTuple: '$value' is being assigned as a tuple of arity ${xs.size}; yet its type is '${value.getType}' (body is '$body')"
       )
 
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
