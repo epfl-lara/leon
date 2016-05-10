@@ -9,209 +9,90 @@ import collection._
 import instrumentation._
 import invariant._
 
-object RealTimeQueue1 {
+object RealTimeQueueFinite {
 
-  sealed abstract class LList[T] {
+  sealed abstract class Stream[T] {
     @inline
     def isEmpty: Boolean = this == SNil[T]()
     @inline
     def isCons: Boolean = !isEmpty
-  }
-  case class SCons[T](x: T, tail: Stream[T]) extends LList[T]
-  case class SNil[T]() extends LList[T]
 
-  case class Stream[T](fun: () => LList[T], wf: List[Unit]) {
+    def size: BigInt = { // ranking function this.rank
+      this match {
+        case SNil()      => BigInt(0)
+        case c@SCons(_, _, _) => 1 + (c.tail*).size
+      }
+    } ensuring (_ >= 0)    
+        
+    @inline
+    def rank: BigInt = size
+//      this match {
+//      case SNil() => BigInt(0)
+//      case SCons(_, _, r) => r 
+//    }
+       
+    def wf: Boolean = {
+      rank >= 0  && 
+      (this match {
+        case SNil()      => true        
+        case SCons(_, tfun, r) =>
+          val t = (tfun()*)
+          t.rank < r && t.wf              
+      })
+    } // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
 
-    def wellfounded[T]: Boolean = {
-      (wf, (list*)) match {
-        case (Nil(), l)      =>   l == SNil()
-        case (Cons(_, t), SCons(_, ts)) =>  ts.wf == t
-        case _ => false
+    lazy val tail: Stream[T] = {
+      require(isCons)
+      this match {
+        case SCons(x, tailFun, _) => tailFun()
       }
     }
-
-    def size: BigInt = {
-      require(wellfounded)
-      wf match {
-        case Nil() => BigInt(0)
-        case _ => (list*) match {
-          case SNil()      => BigInt(0)
-          case SCons(_, t) => 1 + t.size
-        }
-      }
-    } ensuring (_ >= 0)
-
-    lazy val list: LList[T] = fun()
   }
+  case class SCons[T](x: T, tailFun: () => Stream[T], r: BigInt) extends Stream[T]
+  case class SNil[T]() extends Stream[T]
 
-  def isConcrete[T](l: FiniteStream[T]): Boolean = {
-    require(l.wellfounded)
-    l.s match {
-      case c@SCons(_, _) =>
-        c.tail.cached && isConcrete(l.fstail)
+  def isConcrete[T](l: Stream[T]): Boolean = {
+    require(l.wf) // ranking function l.rank (it decreases across each iteration and is positive)
+    l match {
+      case c@SCons(_, _, _) =>
+        c.tail.cached && isConcrete(c.tail*)
       case _ => true
     }
   }
 
   @invisibleBody
   @invstate // says that the function doesn't change state
-  def rotate[T](f: FiniteStream[T], r: List[T], a: FiniteStream[T]): FiniteStream[T] = {
-    require(f.wellfounded && a.wellfounded &&
-        r.size == f.size + 1 && isConcrete(f))
-    (f.s, r) match {
+  def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
+    require(f.wf && a.wf && r.size == f.size + 1 && isConcrete(f)) 
+    (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        val ns = SCons[T](y, lift(a.s))
-        FiniteStream(ns, Cons((), a.wf))
-
-      case (c@SCons(x, _), Cons(y, r1)) =>
-        val newa = FiniteStream(SCons[T](y, lift(a.s)), Cons((), a.wf))
-        val ftail = f.fstail
+        SCons[T](y, lift(a), a.rank + 1) //  rank: a.rank + 1
+      case (c@SCons(x, _, fr), Cons(y, r1)) =>
+        val newa = SCons[T](y, lift(a), a.rank + 1) // rank : a.rank + 1
+        val ftail = c.tail
         val rot = () => rotate(ftail, r1, newa)
-        SCons[T](x, rot)
+        SCons[T](x, rot, fr + r.size + a.rank) // @ rank == f.rank + r.rank + a.rank && wf(newlist)
     }
-  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && time <= ?) // Orb results: time <= 31
+  } ensuring (res => res.wf) // Orb results: time <= 31
 
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
   @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
+    require(l.wf)
     l match {
-      case c @ SCons(_, _) =>
+      case c @ SCons(_, _, _) =>
         if (c.tail.cached)
           firstUnevaluated(c.tail*)
         else l
       case _           => l
     }
-  } ensuring (res => (!res.isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    (res match {
-      case c@SCons(_, _) =>
-        firstUnevaluated(l) == firstUnevaluated(c.tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
-      case _ => true
-    }))
-
-  case class Queue[T](f: Stream[T], r: List[T], s: Stream[T]) {
-    @inline
-    def isEmpty = f.isEmpty
-
-    //@inline
-    def valid = {
-      (firstUnevaluated(f) == firstUnevaluated(s)) &&
-        s.size == f.size - r.size //invariant: |s| = |f| - |r|
-    }
-  }
-
-  @inline
-  def createQ[T](f: Stream[T], r: List[T], s: Stream[T]) = {
-    s match {
-      case c@SCons(_, _) => Queue(f, r, c.tail) // force the schedule once
-      case SNil() =>
-        val rotres = rotate(f, r, SNil[T]())
-        Queue(rotres, Nil(), rotres)
-    }
-  }
-
-  def empty[T] = {
-    val a: Stream[T] = SNil()
-    Queue(a, Nil(), a)
-  }
-
-  def head[T](q: Queue[T]): T = {
-    require(!q.isEmpty && q.valid)
-    q.f match {
-      case SCons(x, _) => x
-    }
-  } //ensuring (res => res.valid && time <= ?)
-
-  def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
-    require(q.valid)
-    createQ(q.f, Cons(x, q.r), q.s)
-  } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-    res.valid && time <= ?
-  } // Orb results: time <= 62
-
-  def dequeue[T](q: Queue[T]): Queue[T] = {
-    require(!q.isEmpty && q.valid)
-    q.f match {
-      case c@SCons(x, _) =>
-        createQ(c.tail, q.r, q.s)
-    }
-  } ensuring{res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-    res.valid && time <= ?
-  } // Orb results: time <= 119
-
-   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
-  /**
-   * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
-   */
-  @traceInduct
-  def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
-    require(st1.subsetOf(st2))
-    // property
-    (firstUnevaluated(l1) withState st2) == (firstUnevaluated(firstUnevaluated(l1) withState st1) withState st2)
-  } holds
-
-  @invisibleBody
-  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
-    require((firstUnevaluated(l1) withState st1) == (firstUnevaluated(l2) withState st1) &&
-        st1.subsetOf(st2))
-     funeCompose(l1, st1, st2) &&  // implies: fune(l1, st2) == fune(fune(l1,st1), st2)
-     funeCompose(l2, st1, st2) &&  // implies: fune(l2, st2) == fune(fune(l2,st1), st2)
-      (firstUnevaluated(l1) withState st2) == (firstUnevaluated(l2) withState st2) // property
-  } holds
-
-  @ignore
-  def main(args: Array[String]) {
-    //import eagerEval.AmortizedQueue
-    import scala.util.Random
-    import scala.math.BigInt
-    import stats._
-    import collection._
-
-    println("Running RTQ test...")
-    val ops = 10000000
-    val rand = Random
-    // initialize to a queue with one element (required to satisfy preconditions of dequeue and front)
-    var rtq = empty[BigInt]
-    //var amq = AmortizedQueue.Queue(AmortizedQueue.Nil(), AmortizedQueue.Nil())
-    var totalTime1 = 0L
-    var totalTime2 = 0L
-    println(s"Testing amortized emphemeral behavior on $ops operations...")
-    for (i <- 0 until ops) {
-      if (!rtq.isEmpty) {
-        val h1 = head(rtq)
-        //val h2 = amq.head
-        //assert(h1 == h2, s"Eager head: $h2 Lazy head: $h1")
-      }
-      rand.nextInt(2) match {
-        case x if x == 0 => //enqueue
-          //          /if(i%100000 == 0) println("Enqueue..")
-          rtq = timed { enqueue(BigInt(i), rtq) } { totalTime1 += _ }
-        //amq = timed { amq.enqueue(BigInt(i)) } { totalTime2 += _ }
-        case x if x == 1 => //dequeue
-          if (!rtq.isEmpty) {
-            //if(i%100000 == 0) println("Dequeue..")
-            rtq = timed { dequeue(rtq) } { totalTime1 += _ }
-            //amq = timed { amq.dequeue } { totalTime2 += _ }
-          }
-      }
-    }
-    println(s"Ephemeral Amortized Time - Eager: ${totalTime2 / 1000.0}s Lazy: ${totalTime1 / 1000.0}s") // this should be linear in length for both cases
-    // now, test worst-case behavior (in persitent mode if necessary)
-    val length = (1 << 22) - 2 // a number of the form: 2^{n-2}
-    // reset the queues
-    rtq = empty[BigInt]
-    //amq = AmortizedQueue.Queue(AmortizedQueue.Nil(), AmortizedQueue.Nil())
-    // enqueue length elements
-    for (i <- 0 until length) {
-      rtq = enqueue(BigInt(0), rtq)
-      //amq = amq.enqueue(BigInt(0))
-    }
-    //println(s"Amortized queue size: ${amq.front.size}, ${amq.rear.size}")
-    //dequeue 1 element from both queues
-    //timed { amq.dequeue } { t => println(s"Time to dequeue one element from Amortized Queue in the worst case: ${t / 1000.0}s") }
-    timed { dequeue(rtq) } { t => println(s"Time to dequeue one element from RTQ in the worst case: ${t / 1000.0}s") }
-  }
+  } 
+//    ensuring (res => (!res.isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
+//    (res match {
+//      case c@SCons(_, _) =>
+//        firstUnevaluated(l) == firstUnevaluated(c.tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
+//      case _ => true
+//    }))
 }
