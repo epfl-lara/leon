@@ -28,11 +28,11 @@ object ConcTrees {
         (x, BigInt(3))
       case CC(l, r) =>
         val c28 = BigInt(2)
-        val expr8 = if (i < l.sizetime._1) {
+        val expr8 = if (i < Conc.sizetime[T](l)._1) {
           val e210 = lookuptime[T](l, i)
           (e210._1, (BigInt(2) + c28) + e210._2)
         } else {
-          val e213 = lookuptime[T](r, i - l.sizetime._1)
+          val e213 = lookuptime[T](r, i - Conc.sizetime[T](l)._1)
           (e213._1, (BigInt(4) + c28) + e213._2)
         }
         (expr8._1, BigInt(5) + expr8._2)
@@ -43,7 +43,7 @@ object ConcTrees {
   @invisibleBody
   def instAppendIndexAxiom[T](xs : Conc[T], i : BigInt): Boolean = xs match {
     case CC(l, r) =>
-      appendIndex[T](l.toList, r.toList, i)
+      appendIndex[T](Conc.toList[T](l), Conc.toList[T](r), i)
     case _ =>
       true
   }
@@ -55,11 +55,11 @@ object ConcTrees {
         (Single[T](y), BigInt(4))
       case CC(l, r) =>
         val c62 = BigInt(2)
-        val expr6 = if (i < l.sizetime._1) {
+        val expr6 = if (i < Conc.sizetime[T](l)._1) {
           val e144 = updatetime[T](l, i, y)
           (CC[T](e144._1, r), (BigInt(3) + c62) + e144._2)
         } else {
-          val e150 = updatetime[T](r, i - l.sizetime._1, y)
+          val e150 = updatetime[T](r, i - Conc.sizetime[T](l)._1, y)
           (CC[T](l, e150._1), (BigInt(5) + c62) + e150._2)
         }
         (expr6._1, BigInt(5) + expr6._2)
@@ -70,21 +70,21 @@ object ConcTrees {
   @invisibleBody
   def instAppendUpdateAxiom[T](xs : Conc[T], i : BigInt, y : T): Boolean = xs match {
     case CC(l, r) =>
-      appendUpdate[T](l.toList, r.toList, i, y)
+      appendUpdate[T](Conc.toList[T](l), Conc.toList[T](r), i, y)
     case _ =>
       true
   }
   
   @invisibleBody
   def concatNonEmptytime[T](xs : Conc[T], ys : Conc[T]): (Conc[T], BigInt) = {
-    val ir9 = ys.leveltime._1 - xs.leveltime._1
+    val ir9 = Conc.leveltime[T](ys)._1 - Conc.leveltime[T](xs)._1
     val c30 = BigInt(3)
     val r187 = if (ir9 >= BigInt(-1) && ir9 <= BigInt(1)) {
       (CC[T](xs, ys), BigInt(2) + c30)
     } else {
       val el1 = if (ir9 < BigInt(-1)) {
         val c34 = BigInt(9)
-        val th2 = if (xs.isInstanceOf[CC[T]] && xs.asInstanceOf[CC[T]].left.leveltime._1 >= xs.asInstanceOf[CC[T]].right.leveltime._1) {
+        val th2 = if (xs.isInstanceOf[CC[T]] && Conc.leveltime[T](xs.asInstanceOf[CC[T]].left)._1 >= Conc.leveltime[T](xs.asInstanceOf[CC[T]].right)._1) {
           val e38 = concatNonEmptytime[T](xs.asInstanceOf[CC[T]].right, ys)
           (CC[T](xs.asInstanceOf[CC[T]].left, e38._1), (BigInt(7) + c34) + e38._2)
         } else {
@@ -95,7 +95,7 @@ object ConcTrees {
                 val e45 = concatNonEmptytime[T](rr, ys)
                 val e349 = e45._1
                 val c38 = BigInt(4)
-                val r188 = if (e349.leveltime._1 == xs.leveltime._1 - BigInt(3)) {
+                val r188 = if (Conc.leveltime[T](e349)._1 == Conc.leveltime[T](xs)._1 - BigInt(3)) {
                   (CC[T](xs.asInstanceOf[CC[T]].left, CC[T](rl, e349)), BigInt(5) + c38)
                 } else {
                   (CC[T](CC[T](xs.asInstanceOf[CC[T]].left, rl), e349), BigInt(5) + c38)
@@ -112,7 +112,7 @@ object ConcTrees {
         (th2._1, BigInt(2) + th2._2)
       } else {
         val c40 = BigInt(9)
-        val el2 = if (ys.isInstanceOf[CC[T]] && ys.asInstanceOf[CC[T]].right.leveltime._1 >= ys.asInstanceOf[CC[T]].left.leveltime._1) {
+        val el2 = if (ys.isInstanceOf[CC[T]] && Conc.leveltime[T](ys.asInstanceOf[CC[T]].right)._1 >= Conc.leveltime[T](ys.asInstanceOf[CC[T]].left)._1) {
           val e88 = concatNonEmptytime[T](xs, ys.asInstanceOf[CC[T]].left)
           (CC[T](e88._1, ys.asInstanceOf[CC[T]].right), (BigInt(7) + c40) + e88._2)
         } else {
@@ -123,7 +123,7 @@ object ConcTrees {
                 val e93 = concatNonEmptytime[T](xs, ll)
                 val e407 = e93._1
                 val c44 = BigInt(4)
-                val r193 = if (e407.leveltime._1 == ys.leveltime._1 - BigInt(3)) {
+                val r193 = if (Conc.leveltime[T](e407)._1 == Conc.leveltime[T](ys)._1 - BigInt(3)) {
                   (CC[T](CC[T](e407, lr), ys.asInstanceOf[CC[T]].right), BigInt(5) + c44)
                 } else {
                   (CC[T](e407, CC[T](lr, ys.asInstanceOf[CC[T]].right)), BigInt(5) + c44)
@@ -147,9 +147,9 @@ object ConcTrees {
   @invisibleBody
   def appendAssocInst[T](xs : Conc[T], ys : Conc[T]): Boolean = (xs match {
     case CC(l, r) =>
-      appendAssoc[T](l.toList, r.toList, ys.toList) && (r match {
+      appendAssoc[T](Conc.toList[T](l), Conc.toList[T](r), Conc.toList[T](ys)) && (r match {
         case CC(rl, rr) =>
-          appendAssoc[T](rl.toList, rr.toList, ys.toList) && appendAssoc[T](l.toList, rl.toList, (rr.toList ++ ys.toList))
+          appendAssoc[T](Conc.toList[T](rl), Conc.toList[T](rr), Conc.toList[T](ys)) && appendAssoc[T](Conc.toList[T](l), Conc.toList[T](rl), List.++[T](Conc.toList[T](rr), Conc.toList[T](ys)))
         case _ =>
           true
       })
@@ -157,9 +157,9 @@ object ConcTrees {
       true
   }) && (ys match {
     case CC(l, r) =>
-      appendAssoc[T](xs.toList, l.toList, r.toList) && (l match {
+      appendAssoc[T](Conc.toList[T](xs), Conc.toList[T](l), Conc.toList[T](r)) && (l match {
         case CC(ll, lr) =>
-          appendAssoc[T](xs.toList, ll.toList, lr.toList) && appendAssoc[T]((xs.toList ++ ll.toList), lr.toList, r.toList)
+          appendAssoc[T](Conc.toList[T](xs), Conc.toList[T](ll), Conc.toList[T](lr)) && appendAssoc[T](List.++[T](Conc.toList[T](xs), Conc.toList[T](ll)), Conc.toList[T](lr), Conc.toList[T](r))
         case _ =>
           true
       })
@@ -182,7 +182,7 @@ object ConcTrees {
   }
   
   @invisibleBody
-  def concatCorrectness[T](res : Conc[T], xs : Conc[T], ys : Conc[T]): Boolean = res.toList == xs.toList ++ ys.toList
+  def concatCorrectness[T](res : Conc[T], xs : Conc[T], ys : Conc[T]): Boolean = Conc.toList[T](res) == List.++[T](Conc.toList[T](xs), Conc.toList[T](ys))
   
   @invisibleBody
   def inserttime[T](xs : Conc[T], i : BigInt, y : T): (Conc[T], BigInt) = {
@@ -198,13 +198,13 @@ object ConcTrees {
         (th11._1, BigInt(2) + th11._2)
       } else {
         val c52 = BigInt(6)
-        val el11 = if (xs.isInstanceOf[CC[T]] && i < xs.asInstanceOf[CC[T]].left.sizetime._1) {
+        val el11 = if (xs.isInstanceOf[CC[T]] && i < Conc.sizetime[T](xs.asInstanceOf[CC[T]].left)._1) {
           val e176 = inserttime[T](xs.asInstanceOf[CC[T]].left, i, y)
           val e170 = concatNonEmptytime[T](e176._1, xs.asInstanceOf[CC[T]].right)
           (e170._1, ((BigInt(7) + c52) + e170._2) + e176._2)
         } else {
           val el13 = if (xs.isInstanceOf[CC[T]]) {
-            val e185 = inserttime[T](xs.asInstanceOf[CC[T]].right, i - xs.asInstanceOf[CC[T]].left.sizetime._1, y)
+            val e185 = inserttime[T](xs.asInstanceOf[CC[T]].right, i - Conc.sizetime[T](xs.asInstanceOf[CC[T]].left)._1, y)
             val e181 = concatNonEmptytime[T](xs.asInstanceOf[CC[T]].left, e185._1)
             (e181._1, (BigInt(12) + e181._2) + e185._2)
           } else {
@@ -239,16 +239,16 @@ object ConcTrees {
       } else {
         appendInsertIndex[T](xs, l2, i - BigInt(1), y)
       }
-  }) && insertAtIndex[T]((l1 ++ l2), i, y) == (if (i < l1.size) {
-    insertAtIndex[T](l1, i, y) ++ l2
+  }) && insertAtIndex[T](List.++[T](l1, l2), i, y) == (if (i < List.size[T](l1)) {
+    List.++[T](insertAtIndex[T](l1, i, y), l2)
   } else {
-    l1 ++ insertAtIndex[T](l2, i - l1.size, y)
+    List.++[T](l1, insertAtIndex[T](l2, i - List.size[T](l1), y))
   })
   
   @invisibleBody
   def insertAppendAxiomInst[T](xs : Conc[T], i : BigInt, y : T): Boolean = xs match {
     case CC(l, r) =>
-      appendInsertIndex[T](l.toList, r.toList, i, y)
+      appendInsertIndex[T](Conc.toList[T](l), Conc.toList[T](r), i, y)
     case _ =>
       true
   }
@@ -267,7 +267,7 @@ object ConcTrees {
         (expr10._1, BigInt(4) + expr10._2)
       case CC(l, r) =>
         val c58 = BigInt(2)
-        val expr11 = if (n < l.sizetime._1) {
+        val expr11 = if (n < Conc.sizetime[T](l)._1) {
           val e234 = splittime[T](l, n)
           val ir3 = {
             val (ll, lr) = e234._1
@@ -278,8 +278,8 @@ object ConcTrees {
           ((ir15._1, e241._1), ((BigInt(8) + c58) + e241._2) + ir3._2)
         } else {
           val c60 = BigInt(2)
-          val el17 = if (n > l.sizetime._1) {
-            val e246 = splittime[T](r, n - l.sizetime._1)
+          val el17 = if (n > Conc.sizetime[T](l)._1) {
+            val e246 = splittime[T](r, n - Conc.sizetime[T](l)._1)
             val ir6 = {
               val (rl, rr) = e246._1
               ((rl, rr), BigInt(8) + e246._2)
@@ -298,12 +298,12 @@ object ConcTrees {
   }
   
   @invisibleBody
-  def splitCorrectness[T](r : (Conc[T], Conc[T]), xs : Conc[T], n : BigInt): Boolean = r._1.toList == xs.toList.take(n) && r._2.toList == xs.toList.drop(n)
+  def splitCorrectness[T](r : (Conc[T], Conc[T]), xs : Conc[T], n : BigInt): Boolean = Conc.toList[T](r._1) == List.take[T](Conc.toList[T](xs), n) && Conc.toList[T](r._2) == List.drop[T](Conc.toList[T](xs), n)
   
   @invisibleBody
   def instSplitAxiom[T](xs : Conc[T], n : BigInt): Boolean = xs match {
     case CC(l, r) =>
-      appendTakeDrop[T](l.toList, r.toList, n)
+      appendTakeDrop[T](Conc.toList[T](l), Conc.toList[T](r), n)
     case _ =>
       true
   }
@@ -318,10 +318,10 @@ object Conc {
         (BigInt(0), BigInt(4))
       case ConcTrees.CC(l, r) =>
         val c64 = BigInt(3)
-        val e15 = if (l.leveltime._1 >= r.leveltime._1) {
-          (l.leveltime._1, BigInt(2) + c64)
+        val e15 = if (leveltime[T](l)._1 >= leveltime[T](r)._1) {
+          (leveltime[T](l)._1, BigInt(2) + c64)
         } else {
-          (r.leveltime._1, BigInt(2) + c64)
+          (leveltime[T](r)._1, BigInt(2) + c64)
         }
         (BigInt(1) + e15._1, BigInt(7) + e15._2)
     }
@@ -330,14 +330,14 @@ object Conc {
   
   def balanced[T](thiss : ConcTrees.Conc[T]): Boolean = thiss match {
     case ConcTrees.CC(l, r) =>
-      l.leveltime._1 - r.leveltime._1 >= BigInt(-1) && l.leveltime._1 - r.leveltime._1 <= BigInt(1) && l.balanced && r.balanced
+      leveltime[T](l)._1 - leveltime[T](r)._1 >= BigInt(-1) && leveltime[T](l)._1 - leveltime[T](r)._1 <= BigInt(1) && balanced[T](l) && balanced[T](r)
     case _ =>
       true
   }
   
   def concInv[T](thiss : ConcTrees.Conc[T]): Boolean = thiss match {
     case ConcTrees.CC(l, r) =>
-      !l.isEmpty && !r.isEmpty && l.concInv && r.concInv
+      !isEmpty[T](l) && !isEmpty[T](r) && concInv[T](l) && concInv[T](r)
     case _ =>
       true
   }
@@ -360,7 +360,7 @@ object Conc {
       case ConcTrees.Single(x) =>
         (BigInt(1), BigInt(4))
       case ConcTrees.CC(l, r) =>
-        (l.sizetime._1 + r.sizetime._1, BigInt(9))
+        (sizetime[T](l)._1 + sizetime[T](r)._1, BigInt(9))
     }
     bd6
   }
@@ -372,6 +372,6 @@ object Conc {
     case ConcTrees.Single(x) =>
       List[T](x)
     case ConcTrees.CC(l, r) =>
-      l.toList ++ r.toList
+      List.++[T](toList[T](l), toList[T](r))
   }
 }

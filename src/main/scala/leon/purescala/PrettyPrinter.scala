@@ -241,23 +241,23 @@ class PrettyPrinter(opts: PrinterOptions,
       case BinaryMethodCall(a, op, b) =>
         optP { p"$a $op $b" }
 
-      case FcallMethodInvocation(rec, fd, id, tps, args) if(!(opts.disableFcallMethodInvocation))  =>
-
-        p"$rec.$id${nary(tps, ", ", "[", "]")}"
-
-        if (fd.isRealFunction) {
-          // The non-present arguments are synthetic function invocations
-          val presentArgs = args filter {
-            case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
-            case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
-            case other => true
-          }
-
-          val requireParens = presentArgs.nonEmpty || args.nonEmpty
-          if (requireParens) {
-            p"($presentArgs)"
-          }
-        }
+//      case FcallMethodInvocation(rec, fd, id, tps, args) if !(opts.disableFcallMethodInvocation)  =>
+//
+//        p"$rec.$id${nary(tps, ", ", "[", "]")}"
+//
+//        if (fd.isRealFunction) {
+//          // The non-present arguments are synthetic function invocations
+//          val presentArgs = args filter {
+//            case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
+//            case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
+//            case other => true
+//          }
+//
+//          val requireParens = presentArgs.nonEmpty || args.nonEmpty
+//          if (requireParens) {
+//            p"($presentArgs)"
+//          }
+//        }
 
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
         printNameWithPath(fd)
@@ -583,35 +583,35 @@ class PrettyPrinter(opts: PrinterOptions,
 
   }
 
-  protected object FcallMethodInvocation {
-    def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, Identifier, Seq[TypeTree], Seq[Expr])] = {
-      val FunctionInvocation(tfd, args) = fi
-      tfd.fd.methodOwner.map { cd =>
-        val (rec, rargs) = (args.head, args.tail)
-
-        val fid = tfd.fd.id
-
-        val realtps = tfd.tps.drop(cd.tparams.size)
-
-        (rec, tfd.fd, fid, realtps, rargs)
-      }
-    }
-  }
+//  protected object FcallMethodInvocation {
+//    def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, Identifier, Seq[TypeTree], Seq[Expr])] = {
+//      val FunctionInvocation(tfd, args) = fi
+//      tfd.fd.methodOwner.map { cd =>
+//        val (rec, rargs) = (args.head, args.tail)
+//
+//        val fid = tfd.fd.id
+//
+//        val realtps = tfd.tps.drop(cd.tparams.size)
+//
+//        (rec, tfd.fd, fid, realtps, rargs)
+//      }
+//    }
+//  }
 
   protected object BinaryMethodCall {
     val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
-      case FcallMethodInvocation(rec, _, id, Nil, List(a)) =>
-        val name = id.name
-        if (makeBinary contains name) {
-          if(name == "::")
-            Some((a, name, rec))
-          else
-            Some((rec, name, a))
-        } else {
-          None
-        }
+//      case FcallMethodInvocation(rec, _, id, Nil, List(a)) if(!(opts.disableFcallMethodInvocation)) =>
+//        val name = id.name
+//        if (makeBinary contains name) {
+//          if(name == "::")
+//            Some((a, name, rec))
+//          else
+//            Some((rec, name, a))
+//        } else {
+//          None
+//        }
       case _ => None
     }
   }
