@@ -427,9 +427,8 @@ object ExprOps extends GenTreeOps[Expr] {
 
       // Untuple
       case Let(id, Tuple(es), b) =>
-        val tps = es map (_.getType)
-        val ids = tps.zipWithIndex.map {
-          case (tp, ind) => FreshIdentifier(id + (ind + 1).toString, tp, true)
+        val ids = es.zipWithIndex.map { case (e, ind) =>
+          FreshIdentifier(id + (ind + 1).toString, e.getType, true)
         }
         val theMap: Map[Expr, Expr] = es.zip(ids).zipWithIndex.map {
           case ((e, subId), ind) => TupleSelect(Variable(id), ind + 1) -> Variable(subId)

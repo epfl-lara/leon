@@ -138,7 +138,7 @@ object Types {
     def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {
       case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
       case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
-      case TupleType(ts) => Some((ts, Constructors.tupleTypeWrap _))
+      case TupleType(ts) => Some((ts, TupleType))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
       case BagType(t) => Some((Seq(t), ts => BagType(ts.head)))

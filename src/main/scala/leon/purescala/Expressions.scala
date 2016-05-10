@@ -823,8 +823,8 @@ object Expressions {
     require(index >= 1)
 
     val getType = tuple.getType match {
-      case TupleType(ts) =>
-        require(index <= ts.size)
+      case tp@TupleType(ts) =>
+        require(index <= ts.size, s"Got index $index for '$tuple' of type '$tp")
         ts(index - 1)
 
       case _ =>

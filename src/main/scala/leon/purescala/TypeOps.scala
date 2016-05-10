@@ -122,7 +122,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
 
       prefix.lastOption
 
-    case (TupleType(args1), TupleType(args2)) =>
+    case (TupleType(args1), TupleType(args2)) if args1.size == args2.size =>
       val args = (args1 zip args2).map(p => leastUpperBound(p._1, p._2))
       if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
 
