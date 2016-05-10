@@ -376,7 +376,7 @@ object StringSolver {
       }
       constantPropagate(p).map(ps => {
         val newP = if(ps._2.nonEmpty) reduceProblem(ps._2)(p) else p
-        (ps._1, s ++ ps._2)
+        (newP, s ++ ps._2)
       })
     }
   }
