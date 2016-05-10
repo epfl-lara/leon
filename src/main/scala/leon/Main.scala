@@ -27,6 +27,7 @@ object Main {
       solvers.isabelle.AdaptationPhase,
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
+      transformations.RunnableCodePhase,
       invariant.engine.InferInvariantsPhase,
       laziness.LazinessEliminationPhase,
       genc.GenerateCPhase,
@@ -162,6 +163,7 @@ object Main {
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
+    import transformations.RunnableCodePhase
     import laziness._
 
     val helpF = ctx.findOptionOrDefault(optHelp)
@@ -207,7 +209,7 @@ object Main {
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
-        else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
+        else if (instrumentF) InstrumentationPhase andThen RunnableCodePhase andThen FileOutputPhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
         else verification
