@@ -3,12 +3,16 @@
 package leon
 package transformations
 
+import java.io.File
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
+import leon._
 import leon.purescala.ScalaPrinter
 import leon.utils._
 import invariant.util._
@@ -59,6 +63,7 @@ object RunnableCodePhase extends TransformationPhase {
       to.fullBody = removeContracts(from.fullBody, from)
       from.flags.foreach(to.addFlag(_)) //copy annotations
     }
+
     val newprog = copyProgram(pgm, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef if funMap.contains(fd) => funMap(fd)
       case d                                 => d
@@ -66,7 +71,32 @@ object RunnableCodePhase extends TransformationPhase {
 
     if (debugRunnable)
       println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(disableFcallMethodInvocation = true)))
-//    /purescala.Test.print()
+
+    val optOutputDirectory = LeonStringOptionDef("o", "Output directory", "leon.out", "dir")
+
+    val outputFolder = ctx.findOptionOrDefault(optOutputDirectory)
+    try {
+      new File(outputFolder).mkdir()
+    } catch {
+      case _ : java.io.IOException => ctx.reporter.fatalError("Could not create directory " + outputFolder)
+    }
+
+    for (u <- newprog.units if u.isMainUnit) {
+      val outputFile = s"$outputFolder${File.separator}${u.id.toString}.scala"
+      try {
+        import java.io.FileWriter
+        import java.io.BufferedWriter
+        val fstream = new FileWriter(outputFile)
+        val out = new BufferedWriter(fstream)
+        out.write(ScalaPrinter(u, purescala.PrinterOptions(disableFcallMethodInvocation = true), opgm = Some(newprog)))
+        out.close()
+
+      }
+      catch {
+        case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)
+      }
+    }
+    ctx.reporter.info("Output written on " + outputFolder)
     newprog
   }
 }

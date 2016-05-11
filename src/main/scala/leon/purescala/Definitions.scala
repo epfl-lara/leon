@@ -35,7 +35,7 @@ object Definitions {
       import java.io.BufferedWriter
       val fstream = new FileWriter(filename)
       val out = new BufferedWriter(fstream)
-      out.write(ScalaPrinter(this, purescala.PrinterOptions(disableFcallMethodInvocation = true), opgm = opgm))
+      out.write(ScalaPrinter(this, opgm = opgm))
       out.close()
     }
   }

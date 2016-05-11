@@ -209,7 +209,7 @@ object Main {
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
-        else if (instrumentF) InstrumentationPhase andThen RunnableCodePhase andThen FileOutputPhase
+        else if (instrumentF) InstrumentationPhase andThen RunnableCodePhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
         else verification
