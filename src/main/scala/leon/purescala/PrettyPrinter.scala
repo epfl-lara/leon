@@ -25,6 +25,14 @@ case class PrinterContext(
   def parent = parents.headOption
 }
 
+object Test {
+  var data: List[(Tree,List[Tree])] = List()
+
+  def print() = {
+    println(data.map{ case (t, p) => s"Tree: $t parents: ${p.mkString(",")}" }.mkString("\n ================= \n"))
+  }
+}
+
 /** This pretty-printer uses Unicode for some operators, to make sure we
  * distinguish PureScala from "real" Scala (and also because it's cute). */
 class PrettyPrinter(opts: PrinterOptions,
@@ -42,8 +50,8 @@ class PrettyPrinter(opts: PrinterOptions,
       body
     }
   }
-  
-  protected def getScope(implicit ctx: PrinterContext) = 
+
+  protected def getScope(implicit ctx: PrinterContext) =
     ctx.parents.collectFirst { case (d: Definition) if !d.isInstanceOf[ValDef] => d }
 
   protected def printNameWithPath(df: Definition)(implicit ctx: PrinterContext) {
@@ -55,10 +63,16 @@ class PrettyPrinter(opts: PrinterOptions,
         p"${df.id}"
     }
   }
-  
+
   private val dbquote = "\""
 
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
+
+/*    ctx.parent match {
+      case Some(LetPattern(_, _, _)) =>
+        Test.data :+= (tree, ctx.parents)
+      case _ =>
+    }*/
 
     if (requiresBraces(tree, ctx.parent) && !ctx.parent.contains(tree)) {
       p"""|{
@@ -127,7 +141,6 @@ class PrettyPrinter(opts: PrinterOptions,
                   |}"""
             }
         }
-        
 
       case c @ WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>
@@ -180,15 +193,14 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVUMinus(expr)       => p"-$expr"
       case RealUMinus(expr)     => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
-      
-      
+
       case Int32ToString(expr)    => p"$expr.toString"
       case BooleanToString(expr)  => p"$expr.toString"
       case IntegerToString(expr)  => p"$expr.toString"
       case CharToString(expr)     => p"$expr.toString"
       case RealToString(expr)     => p"$expr.toString"
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
-    
+
       case SubString(expr, start, end) => p"leon.lang.StrOps.substring($expr, $start, $end)"
       case StringLength(expr)          => p"leon.lang.StrOps.length($expr)"
 
@@ -200,7 +212,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
-      case StringLiteral(v)     => 
+      case StringLiteral(v)     =>
         if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
@@ -376,7 +388,6 @@ class PrettyPrinter(opts: PrinterOptions,
       case (tfd: TypedFunDef)   => p"typed def ${tfd.id}[${tfd.tps}]"
       case TypeParameterDef(tp) => p"$tp"
       case TypeParameter(id)    => p"$id"
-
 
       case IfExpr(c, t, ie : IfExpr) =>
         optP {
@@ -580,7 +591,6 @@ class PrettyPrinter(opts: PrinterOptions,
           p"@(?)"
       }
     }
-
   }
 
 //  protected object FcallMethodInvocation {
@@ -637,6 +647,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
     case (_: Expr, Some(_: MatchCase)) => false
     case (_: LetDef, Some(_: LetDef)) => false
+    case (e: Expr, Some(LetPattern(_, _, _))) => false
     case (e: Expr, Some(_)) => true
     case _ => false
   }

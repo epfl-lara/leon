@@ -1,4 +1,4 @@
-package conctrees
+//package conctrees
 import leon.instrumentation._
 import leon.collection._
 import leon.lang._
@@ -91,17 +91,15 @@ object ConcTrees {
           val el3 = if (xs.isInstanceOf[CC[T]]) {
             val th4 = {
               val CC(rl, rr) = xs.asInstanceOf[CC[T]].right
-              {
-                val e41 = concatNonEmptytime[T](rr, ys)
-                val e465 = e41._1
-                val c58 = BigInt(4)
-                val r188 = if (Conc.leveltime[T](e465)._1 == Conc.leveltime[T](xs)._1 - BigInt(3)) {
-                  (CC[T](xs.asInstanceOf[CC[T]].left, CC[T](rl, e465)), BigInt(5) + c58)
-                } else {
-                  (CC[T](CC[T](xs.asInstanceOf[CC[T]].left, rl), e465), BigInt(5) + c58)
-                }
-                (r188._1, (BigInt(8) + r188._2) + e41._2)
+              val e41 = concatNonEmptytime[T](rr, ys)
+              val e465 = e41._1
+              val c58 = BigInt(4)
+              val r188 = if (Conc.leveltime[T](e465)._1 == Conc.leveltime[T](xs)._1 - BigInt(3)) {
+                (CC[T](xs.asInstanceOf[CC[T]].left, CC[T](rl, e465)), BigInt(5) + c58)
+              } else {
+                (CC[T](CC[T](xs.asInstanceOf[CC[T]].left, rl), e465), BigInt(5) + c58)
               }
+              (r188._1, (BigInt(8) + r188._2) + e41._2)
             }
             (th4._1, BigInt(2) + th4._2)
           } else {
@@ -119,17 +117,15 @@ object ConcTrees {
           val el6 = if (ys.isInstanceOf[CC[T]]) {
             val th7 = {
               val CC(ll, lr) = ys.asInstanceOf[CC[T]].left
-              {
-                val e89 = concatNonEmptytime[T](xs, ll)
-                val e523 = e89._1
-                val c64 = BigInt(4)
-                val r193 = if (Conc.leveltime[T](e523)._1 == Conc.leveltime[T](ys)._1 - BigInt(3)) {
-                  (CC[T](CC[T](e523, lr), ys.asInstanceOf[CC[T]].right), BigInt(5) + c64)
-                } else {
-                  (CC[T](e523, CC[T](lr, ys.asInstanceOf[CC[T]].right)), BigInt(5) + c64)
-                }
-                (r193._1, (BigInt(8) + r193._2) + e89._2)
+              val e89 = concatNonEmptytime[T](xs, ll)
+              val e523 = e89._1
+              val c64 = BigInt(4)
+              val r193 = if (Conc.leveltime[T](e523)._1 == Conc.leveltime[T](ys)._1 - BigInt(3)) {
+                (CC[T](CC[T](e523, lr), ys.asInstanceOf[CC[T]].right), BigInt(5) + c64)
+              } else {
+                (CC[T](e523, CC[T](lr, ys.asInstanceOf[CC[T]].right)), BigInt(5) + c64)
               }
+              (r193._1, (BigInt(8) + r193._2) + e89._2)
             }
             (th7._1, BigInt(2) + th7._2)
           } else {

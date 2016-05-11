@@ -64,8 +64,9 @@ object RunnableCodePhase extends TransformationPhase {
       case d                                 => d
     })
 
-    if (debugRunnable)
+    //if (debugRunnable)
       println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(disableFcallMethodInvocation = true)))
+//    /purescala.Test.print()
     newprog
   }
 }
