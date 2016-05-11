@@ -10,7 +10,7 @@ case class PrinterOptions (
   printPositions: Boolean = false,
   printUniqueIds: Boolean = false,
   printTypes: Boolean = false,
-  disableFcallMethodInvocation: Boolean = false
+  printRunnableCode: Boolean = false
 )
 
 object PrinterOptions {

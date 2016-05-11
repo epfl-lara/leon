@@ -70,7 +70,7 @@ object RunnableCodePhase extends TransformationPhase {
     })
 
     if (debugRunnable)
-      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(disableFcallMethodInvocation = true)))
+      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(printRunnableCode = true)))
 
     val optOutputDirectory = LeonStringOptionDef("o", "Output directory", "leon.out", "dir")
 
@@ -88,9 +88,8 @@ object RunnableCodePhase extends TransformationPhase {
         import java.io.BufferedWriter
         val fstream = new FileWriter(outputFile)
         val out = new BufferedWriter(fstream)
-        out.write(ScalaPrinter(u, purescala.PrinterOptions(disableFcallMethodInvocation = true), opgm = Some(newprog)))
+        out.write(ScalaPrinter(u, purescala.PrinterOptions(printRunnableCode = true), opgm = Some(newprog)))
         out.close()
-
       }
       catch {
         case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)

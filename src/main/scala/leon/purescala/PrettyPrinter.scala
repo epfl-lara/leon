@@ -253,7 +253,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case BinaryMethodCall(a, op, b) =>
         optP { p"$a $op $b" }
 
-      case FcallMethodInvocation(rec, fd, id, tps, args) if !(opts.disableFcallMethodInvocation)  =>
+      case FcallMethodInvocation(rec, fd, id, tps, args) if !(opts.printRunnableCode)  =>
 
         p"$rec.$id${nary(tps, ", ", "[", "]")}"
 
@@ -487,7 +487,7 @@ class PrettyPrinter(opts: PrinterOptions,
         p"""${nary(units filter { /*opts.printUniqueIds ||*/ _.isMainUnit }, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
-        if (pack.nonEmpty && (!(opts.disableFcallMethodInvocation))){
+        if (pack.nonEmpty && (!(opts.printRunnableCode))){
           p"""|package ${pack mkString "."}
               |"""
         }
@@ -612,7 +612,7 @@ class PrettyPrinter(opts: PrinterOptions,
     val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
-      case FcallMethodInvocation(rec, _, id, Nil, List(a)) if(!(opts.disableFcallMethodInvocation)) =>
+      case FcallMethodInvocation(rec, _, id, Nil, List(a)) if(!(opts.printRunnableCode)) =>
         val name = id.name
         if (makeBinary contains name) {
           if(name == "::")
