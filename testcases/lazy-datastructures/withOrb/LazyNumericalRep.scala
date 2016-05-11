@@ -39,7 +39,7 @@ object LazyNumericalRep {
     def get: NumList = {
       this match {
         case Susp(f) => fval
-        case Val(x) => x
+        case Val(x)  => x
       }
     }
     @inline
@@ -63,8 +63,8 @@ object LazyNumericalRep {
 
     @inline
     def isCached = this match {
-      case _ : Val => true
-      case _  => fval.cached
+      case _: Val => true
+      case _      => fval.cached
     }
   }
   case class Val(x: NumList) extends NumStream
@@ -77,8 +77,8 @@ object LazyNumericalRep {
     if (q.isCached) {
       q.getV match {
         case Spine(Zero(), rear) => true // here we have seen a zero
-        case Spine(_, rear) => zeroPrecedesLazy(rear) //here we have not seen a zero
-        case Tip() => true
+        case Spine(_, rear)      => zeroPrecedesLazy(rear) //here we have not seen a zero
+        case Tip()               => true
       }
     } else false
   }
@@ -90,8 +90,8 @@ object LazyNumericalRep {
     if (q != suf) {
       q.getV match {
         case Spine(Zero(), rear) => true
-        case Spine(_, rear) => zeroPrecedesSuf(rear, suf)
-        case Tip() => false
+        case Spine(_, rear)      => zeroPrecedesSuf(rear, suf)
+        case Tip()               => false
       }
     } else false
   }
@@ -104,7 +104,7 @@ object LazyNumericalRep {
     if (l != suf) {
       l.isCached && (l.getV match {
         case Spine(_, tail) => concreteUntil(tail, suf)
-        case _ => false
+        case _              => false
       })
     } else true
   }
@@ -112,7 +112,7 @@ object LazyNumericalRep {
   def isConcrete(l: NumStream): Boolean = {
     l.isCached && (l.getV match {
       case Spine(_, tail) => isConcrete(tail)
-      case _ => true
+      case _              => true
     })
   }
 
@@ -121,7 +121,7 @@ object LazyNumericalRep {
       case Cons(head, tail) =>
         head match {
           case Susp(fun) =>
-             concreteUntil(q, head) &&
+            concreteUntil(q, head) &&
               schedulesProperty(pushUntilCarry(head), tail)
           case _ => false
         }
@@ -171,7 +171,7 @@ object LazyNumericalRep {
         Spine(One(), xs)
       case s @ Spine(Zero(), rear) =>
         Spine(One(), rear)
-      case s @ Spine(_,  _) =>
+      case s @ Spine(_, _) =>
         incLazy(xs)
     }
   } ensuring (_ => time <= ?)
@@ -182,10 +182,10 @@ object LazyNumericalRep {
     require(zeroPrecedesLazy(xs) &&
       (xs.getV match {
         case Spine(h, _) => h != Zero() // xs is a spine and it doesn't start with a zero
-        case _              => false
+        case _           => false
       }))
     xs.get match {
-      case s@Spine(head, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
+      case s @ Spine(head, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
         val carry = One()
         rear.get match {
           case Tip() =>
@@ -255,7 +255,7 @@ object LazyNumericalRep {
     val nq = inc(w.digs)
     val nsched = nq match {
       case Spine(Zero(), rear: Susp) =>
-          Cons(rear, w.schedule) // this is the only case where we create a new lazy closure
+        Cons(rear, w.schedule) // this is the only case where we create a new lazy closure
       case _ =>
         w.schedule
     }
@@ -284,7 +284,7 @@ object LazyNumericalRep {
       case c @ Cons(head, rest) =>
         head.get match {
           case Spine(Zero(), rear: Susp) => Cons(rear, rest)
-          case _ => rest
+          case _                         => rest
         }
       case Nil() => scheds
     }
@@ -383,7 +383,7 @@ object LazyNumericalRep {
     if (q == suf) true
     else {
       q.getV match {
-        case Spine(_,  rear) =>
+        case Spine(_, rear) =>
           suffix(rear, suf)
         case Tip() => false
       }
@@ -392,7 +392,7 @@ object LazyNumericalRep {
 
   def properSuffix[T](l: NumStream, suf: NumStream): Boolean = {
     l.getV match {
-      case Spine(_,  rear) =>
+      case Spine(_, rear) =>
         suffix(rear, suf)
       case _ => false
     }
@@ -404,7 +404,7 @@ object LazyNumericalRep {
   @traceInduct
   def suffixTrans[T](q: NumStream, suf: NumStream): Boolean = {
     suffix(q, suf) ==> ((q.getV, suf.getV) match {
-      case (Spine(_,  rear), Spine(_,  sufRear)) =>
+      case (Spine(_, rear), Spine(_, sufRear)) =>
         // 'sufRear' should be a suffix of 'rear1'
         suffix(rear, sufRear)
       case _ => true
@@ -418,7 +418,7 @@ object LazyNumericalRep {
     require(properSuffix(l, suf))
     suffixTrans(l, suf) && // lemma instantiation
       ((l.getV, suf.getV) match { // induction scheme
-        case (Spine(_,  rear), Spine(_,  sufRear)) =>
+        case (Spine(_, rear), Spine(_, sufRear)) =>
           // 'sufRear' should be a suffix of 'rear1'
           suffixDisequality(rear, sufRear)
         case _ => true
@@ -441,14 +441,10 @@ object LazyNumericalRep {
 
   @traceInduct
   def concUntilExtenLemma[T](q: NumStream, suf: NumStream, st1: Set[Fun[NumList]], st2: Set[Fun[NumList]]): Boolean = {
-    (concreteUntil(q, suf) withState st1) ==>
-      (suf match {
-        case _: Susp =>
-          suf.getV match {
-            case Spine(_, rear) =>
-              (st2 == st1 ++ Set(Fun(suf.fval))) ==> concreteUntil(q, rear) withState st2
-            case _ => true
-          }
+    (suf.isSusp && (concreteUntil(q, suf) withState st1) && (st2 == st1 ++ Set(Fun(suf.fval)))) ==>
+      (suf.getV match {
+        case Spine(_, rear) =>
+          concreteUntil(q, rear) withState st2
         case _ => true
       })
   } holds
@@ -488,7 +484,7 @@ object LazyNumericalRep {
       // induction scheme
       if (q != suf) {
         q.getV match {
-          case Spine(_,  tail) =>
+          case Spine(_, tail) =>
             suffixZeroLemma(tail, suf, suf2)
           case _ =>
             true
