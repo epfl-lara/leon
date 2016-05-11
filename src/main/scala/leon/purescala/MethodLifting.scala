@@ -12,7 +12,6 @@ import Types._
 import Constructors._
 import TypeOps.instantiateType
 import xlang.Expressions._
-import invariant.structure.FunctionUtils._
 
 object MethodLifting extends TransformationPhase {
 
@@ -288,7 +287,7 @@ object MethodLifting extends TransformationPhase {
     // 5) Replace method calls with function calls
     for (fd <- pgm.definedFunctions) {
       fd.fullBody = postMap{
-        case mi @ MethodInvocation(IsTyped(rec, ct: ClassType), cd, tfd, args) if !tfd.fd.isLibrary =>
+        case mi @ MethodInvocation(IsTyped(rec, ct: ClassType), cd, tfd, args) =>
           Some(FunctionInvocation(mdToFds(tfd.fd).typed(ct.tps ++ tfd.tps), rec +: args).setPos(mi))
         case _ => None
       }(fd.fullBody)
