@@ -487,10 +487,10 @@ class PrettyPrinter(opts: PrinterOptions,
         p"""${nary(units filter { /*opts.printUniqueIds ||*/ _.isMainUnit }, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
-        if (pack.nonEmpty){
-          p"""|package ${pack mkString "."}
-              |"""
-        }
+//        if (pack.nonEmpty){
+//          p"""|package ${pack mkString "."}
+//              |"""`
+//        }
         p"""|${nary(imports,"\n")}
             |
             |${nary(defs,"\n\n")}
