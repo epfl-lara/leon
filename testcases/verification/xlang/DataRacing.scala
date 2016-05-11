@@ -16,7 +16,7 @@ object DataRacing {
   case class RunnableCons(instr: AtomicInstr, tail: Runnable) extends Runnable
   case class RunnableNil() extends Runnable
 
-  def execute(t1: Runnable, t2: Runnable, state: SharedState): Unit = (t1, t2) match {
+  def execute(t1: Runnable, t2: Runnable, state: SharedState)(implicit randomState: Random.State): Unit = (t1, t2) match {
     case (RunnableCons(x,xs), RunnableCons(y,ys)) =>
       if(Random.nextBoolean) {
         x.instr(state)
@@ -37,6 +37,7 @@ object DataRacing {
   //z3 finds counterexample in 0.5
   //cvc4 needs 130 seconds
   def main(): Int = {
+    implicit val randomState = Random.newState
     val state = SharedState(0)
     val t1 = RunnableCons((s: SharedState) => s.i = s.i + 1, RunnableNil())
     val t2 = RunnableCons((s: SharedState) => s.i = s.i * 2, RunnableNil())
