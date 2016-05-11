@@ -76,7 +76,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
 
       while(workList.nonEmpty) {
         val reporter = new TestSilentReporter
-        val ctx = createLeonContext("--synthesis", "--timeout=120").copy(reporter = reporter)
+        val ctx = createLeonContext("--synthesis", "--solvers=smt-z3", "--timeout=120").copy(reporter = reporter)
         val j = workList.pop()
 
         info(j.info("compilation"))

@@ -74,7 +74,6 @@ trait PrettyPrinterFinder[T, U >: T] {
             getPrintersForType(funId.getType) match {
               case Some(u) => gatherPrettyPrinters(tail, acc += u)
               case None    =>
-                println("could not finish")
                 None
             }
         }
