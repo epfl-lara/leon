@@ -25,7 +25,23 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
     } {
       val (res, scope, _) = toFunction(body)(State(fd, Set(), Map()))
       fd.body = Some(scope(res))
+
     }
+
+    //probably not the cleanest way to do it, but if somehow we still have Old
+    //expressions at that point, they can be safely removed as the object is
+    //equals to its original value
+    for {
+      fd <- pgm.definedFunctions
+    } {
+      fd.postcondition = fd.postcondition.map(post => {
+        preMap{
+          case Old(v) => Some(v.toVariable)
+          case _ => None
+        }(post)
+      })
+    }
+
   }
 
   /* varsInScope refers to variable declared in the same level scope.
