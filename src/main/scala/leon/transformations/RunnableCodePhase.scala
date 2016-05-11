@@ -63,7 +63,6 @@ object RunnableCodePhase extends TransformationPhase {
       to.fullBody = removeContracts(from.fullBody, from)
       from.flags.foreach(to.addFlag(_)) //copy annotations
     }
-
     val newprog = copyProgram(pgm, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef if funMap.contains(fd) => funMap(fd)
       case d                                 => d
