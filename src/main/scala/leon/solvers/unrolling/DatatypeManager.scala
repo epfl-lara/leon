@@ -33,7 +33,7 @@ object DatatypeTemplate {
     tpe: TypeTree
   ) : DatatypeTemplate[T] = {
     val id = FreshIdentifier("x", tpe, true)
-    val expr = manager.typeUnroller(Variable(id))
+    val expr = matchToIfThenElse(manager.typeUnroller(Variable(id)))
 
     val pathVar = FreshIdentifier("b", BooleanType, true)
 
