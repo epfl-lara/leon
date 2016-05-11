@@ -1310,15 +1310,6 @@ object ExprOps extends GenTreeOps[Expr] {
         b: Apriori => Option[Apriori]):
         Option[Apriori] = a.flatMap(b)
 
-    object Same {
-      def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
-        if (tt._1.getClass == tt._2.getClass) {
-          Some(tt)
-        } else {
-          None
-        }
-      }
-    }
     implicit class AugmentedContext(c: Option[Apriori]) {
       def &&(other: Apriori => Option[Apriori]): Option[Apriori] = mergeContexts(c, other)
       def --(other: Seq[Identifier]) =

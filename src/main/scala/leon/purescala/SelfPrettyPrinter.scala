@@ -64,10 +64,9 @@ trait PrettyPrinterFinder[T, U >: T] {
   def buildLambda(inputType: TypeTree, fd: FunDef, slu: Stream[List[U]]): Stream[T]
   
   def prettyPrinterFromCandidate(fd: FunDef, inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[T] = {
-    TypeOps.canBeSubtypeOf(inputType, fd.tparams.map(_.tp), fd.params.head.getType) match {
+    TypeOps.subtypingInstantiation(inputType, fd.params.head.getType) match {
       case Some(genericTypeMap) =>
         //println("Found a mapping")
-        val defGenericTypeMap = genericTypeMap.map{ case (k, v) => (Definitions.TypeParameterDef(k), v) }
         def gatherPrettyPrinters(funIds: List[Identifier], acc: ListBuffer[Stream[U]] = ListBuffer[Stream[U]]()): Option[Stream[List[U]]] = funIds match {
           case Nil => Some(StreamUtils.cartesianProduct(acc.toList))
           case funId::tail => // For each function, find an expression which could be provided if it exists.
@@ -77,7 +76,7 @@ trait PrettyPrinterFinder[T, U >: T] {
                 None
             }
         }
-        val funIds = fd.params.tail.map(x => TypeOps.instantiateType(x.id, defGenericTypeMap)).toList
+        val funIds = fd.params.tail.map(x => TypeOps.instantiateType(x.id, genericTypeMap)).toList
         gatherPrettyPrinters(funIds) match {
           case Some(l) => buildLambda(inputType, fd, l)
           case None =>    Stream.empty

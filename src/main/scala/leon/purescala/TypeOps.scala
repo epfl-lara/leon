@@ -22,155 +22,126 @@ object TypeOps extends GenTreeOps[TypeTree] {
       subs.flatMap(typeParamsOf).toSet
   }
 
-  def canBeSubtypeOf(
-    tpe: TypeTree,
-    freeParams: Seq[TypeParameter],
-    stpe: TypeTree,
-    lhsFixed: Boolean = false,
-    rhsFixed: Boolean = false
-  ): Option[Map[TypeParameter, TypeTree]] = {
 
-    def unify(res: Seq[Option[Map[TypeParameter, TypeTree]]]): Option[Map[TypeParameter, TypeTree]] = {
-      if (res.forall(_.isDefined)) {
-        var result = Map[TypeParameter, TypeTree]()
+  /** Generic type bounds between two types. Serves as a base for a set of subtyping/unification functions.
+    * It will allow subtyping between classes (but type parameters are invariant).
+    * It will also allow a set of free parameters to be unified if needed.
+    *
+    * @param allowSub Allow subtyping for class types
+    * @param freeParams The unifiable type parameters
+    * @param isLub Whether the bound calculated is the LUB
+    * @return An optional pair of (type, map) where type the resulting type bound
+    *         (with type parameters instantiated as needed)
+    *         and map the assignment of type variables.
+    *         Result is empty if types are incompatible.
+    * @see [[leastUpperBound]], [[greatestLowerBound]], [[isSubtypeOf]], [[typesCompatible]], [[unify]]
+    */
+  def typeBound(t1: TypeTree, t2: TypeTree, isLub: Boolean, allowSub: Boolean)
+               (implicit freeParams: Seq[TypeParameter]): Option[(TypeTree, Map[TypeParameter, TypeTree])] = {
 
-        for (Some(m) <- res; (f, t) <- m) {
-          result.get(f) match {
-            case Some(t2) if t != t2 => return None
-            case _ => result += (f -> t)
+    def flatten(res: Seq[Option[(TypeTree, Map[TypeParameter, TypeTree])]]): Option[(Seq[TypeTree], Map[TypeParameter, TypeTree])] = {
+      val (tps, subst) = res.map(_.getOrElse(return None)).unzip
+      val flat = subst.flatMap(_.toSeq).groupBy(_._1)
+      Some((tps, flat.mapValues { vs =>
+        vs.map(_._2).distinct match {
+          case Seq(unique) => unique
+          case _ => return None
+        }
+      }))
+    }
+
+    (t1, t2) match {
+      case (_: TypeParameter, _: TypeParameter) if t1 == t2 =>
+        Some((t1, Map()))
+
+      case (t, tp1: TypeParameter) if (freeParams contains tp1) && !(typeParamsOf(t) contains tp1) =>
+        Some((t, Map(tp1 -> t)))
+
+      case (tp1: TypeParameter, t) if (freeParams contains tp1) && !(typeParamsOf(t) contains tp1) =>
+        Some((t, Map(tp1 -> t)))
+
+      case (_: TypeParameter, _) =>
+        None
+
+      case (_, _: TypeParameter) =>
+        None
+
+      case (ct1: ClassType, ct2: ClassType) =>
+        val cd1 = ct1.classDef
+        val cd2 = ct2.classDef
+        val bound: Option[ClassDef] = if (allowSub) {
+          val an1 = cd1 +: cd1.ancestors
+          val an2 = cd2 +: cd2.ancestors
+          if (isLub) {
+            (an1.reverse zip an2.reverse)
+              .takeWhile(((_: ClassDef) == (_: ClassDef)).tupled)
+              .lastOption.map(_._1)
+          } else {
+            // Lower bound
+            if(an1.contains(cd2)) Some(cd1)
+            else if (an2.contains(cd1)) Some(cd2)
+            else None
+          }
+        } else {
+          (cd1 == cd2).option(cd1)
+        }
+        for {
+          cd <- bound
+          (subs, map) <- flatten((ct1.tps zip ct2.tps).map { case (tp1, tp2) =>
+            // Class types are invariant!
+            typeBound(tp1, tp2, isLub, allowSub = false)
+          })
+        } yield (cd.typed(subs), map)
+
+      case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
+        if (from1.size != from2.size) None
+        else {
+          val in = (from1 zip from2).map { case (tp1, tp2) =>
+            typeBound(tp1, tp2, !isLub, allowSub) // Contravariant args
+          }
+          val out = typeBound(to1, to2, isLub, allowSub) // Covariant result
+          flatten(out +: in) map {
+            case (Seq(newTo, newFrom@_*), map) =>
+              (FunctionType(newFrom, newTo), map)
           }
         }
 
-        Some(result)
-      } else {
+      case Same(t1, t2) =>
+        // Only tuples are covariant
+        def allowVariance = t1 match {
+          case _ : TupleType => true
+          case _ => false
+        }
+        val NAryType(ts1, recon) = t1
+        val NAryType(ts2, _) = t2
+        if (ts1.size == ts2.size) {
+          flatten((ts1 zip ts2).map { case (tp1, tp2) =>
+            typeBound(tp1, tp2, isLub, allowSub = allowVariance)
+          }).map { case (subs, map) => (recon(subs), map) }
+        } else None
+
+      case _ =>
         None
-      }
-    }
-
-    if (freeParams.isEmpty) {
-      if (isSubtypeOf(tpe, stpe)) {
-        Some(Map())
-      } else {
-        None
-      }
-    } else {
-      (tpe, stpe) match {
-        case (t1, t2) if t1 == t2 =>
-          Some(Map())
-
-        case (t, tp1: TypeParameter) if (freeParams contains tp1) && (!rhsFixed) && !(typeParamsOf(t) contains tp1) =>
-          Some(Map(tp1 -> t))
-
-        case (tp1: TypeParameter, t) if (freeParams contains tp1) && (!lhsFixed) && !(typeParamsOf(t) contains tp1) =>
-          Some(Map(tp1 -> t))
-
-        case (ct1: ClassType, ct2: ClassType) =>
-          val rt1 = ct1.root
-          val rt2 = ct2.root
-
-
-          if (rt1.classDef == rt2.classDef) {
-            unify((rt1.tps zip rt2.tps).map { case (tp1, tp2) =>
-              canBeSubtypeOf(tp1, freeParams, tp2, lhsFixed, rhsFixed)
-            })
-          } else {
-            None
-          }
-
-        case (_: TupleType, _: TupleType) |
-             (_: SetType, _: SetType) |
-             (_: MapType, _: MapType) |
-             (_: BagType, _: BagType) |
-             (_: FunctionType, _: FunctionType) =>
-
-          val NAryType(ts1, _) = tpe
-          val NAryType(ts2, _) = stpe
-
-          if (ts1.size == ts2.size) {
-            unify((ts1 zip ts2).map { case (tp1, tp2) =>
-              canBeSubtypeOf(tp1, freeParams, tp2, lhsFixed, rhsFixed)
-            })
-          } else {
-            None
-          }
-
-        case (t1, t2) =>
-          None
-      }
     }
   }
 
-  def bestRealType(t: TypeTree) : TypeTree = t match {
-    case (c: ClassType) => c.root
-    case NAryType(tps, builder) => builder(tps.map(bestRealType))
-  }
+  def unify(tp1: TypeTree, tp2: TypeTree, freeParams: Seq[TypeParameter]) =
+    typeBound(tp1, tp2, isLub = true, allowSub = false)(freeParams).map(_._2)
 
-  def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
-    case (c1: ClassType, c2: ClassType) =>
+  /** Will try to instantiate superT so that subT <: superT
+    *
+    * @return Mapping of instantiations
+    */
+  def subtypingInstantiation(subT: TypeTree, superT: TypeTree) =
+    typeBound(subT, superT, isLub = true, allowSub = true)(typeParamsOf(superT).toSeq) collect {
+      case (tp, map) if instantiateType(superT, map) == tp => map
+    }
 
-      def computeChain(ct: ClassType): List[ClassType] = ct.parent match {
-        case Some(pct) =>
-          computeChain(pct) ::: List(ct)
-        case None =>
-          List(ct)
-      }
+  def leastUpperBound(tp1: TypeTree, tp2: TypeTree): Option[TypeTree] =
+    typeBound(tp1, tp2, isLub = true, allowSub = true)(Seq()).map(_._1)
 
-      val chain1 = computeChain(c1)
-      val chain2 = computeChain(c2)
-
-      val prefix = (chain1 zip chain2).takeWhile { case (ct1, ct2) => ct1 == ct2 }.map(_._1)
-
-      prefix.lastOption
-
-    case (TupleType(args1), TupleType(args2)) if args1.size == args2.size =>
-      val args = (args1 zip args2).map(p => leastUpperBound(p._1, p._2))
-      if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
-
-    case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
-      val args = (from1 zip from2).map(p => greatestLowerBound(p._1, p._2))
-      if (args.forall(_.isDefined)) {
-        leastUpperBound(to1, to2) map { FunctionType(args.map(_.get), _) }
-      } else {
-        None
-      }
-
-    case (o1, o2) if o1 == o2 => Some(o1)
-    case _ => None
-  }
-
-  def greatestLowerBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
-    case (c1: ClassType, c2: ClassType) =>
-
-      def computeChains(ct: ClassType): Set[ClassType] = ct.parent match {
-        case Some(pct) =>
-          computeChains(pct) + ct
-        case None =>
-          Set(ct)
-      }
-
-      if (computeChains(c1)(c2)) {
-        Some(c2)
-      } else if (computeChains(c2)(c1)) {
-        Some(c1)
-      } else {
-        None
-      }
-
-    case (TupleType(args1), TupleType(args2)) =>
-      val args = (args1 zip args2).map(p => greatestLowerBound(p._1, p._2))
-      if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
-
-    case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
-      val args = (from1 zip from2).map(p => leastUpperBound(p._1, p._2))
-      if (args.forall(_.isDefined)) {
-        greatestLowerBound(to1, to2).map { FunctionType(args.map(_.get), _) }
-      } else {
-        None
-      }
-
-    case (o1, o2) if o1 == o2 => Some(o1)
-    case _ => None
-  }
+  def greatestLowerBound(tp1: TypeTree, tp2: TypeTree): Option[TypeTree] =
+    typeBound(tp1, tp2, isLub = false, allowSub = true)(Seq()).map(_._1)
 
   def leastUpperBound(ts: Seq[TypeTree]): Option[TypeTree] = {
     def olub(ot1: Option[TypeTree], t2: Option[TypeTree]): Option[TypeTree] = ot1 match {
@@ -201,6 +172,11 @@ object TypeOps extends GenTreeOps[TypeTree] {
     }
   }
 
+  def bestRealType(t: TypeTree) : TypeTree = t match {
+    case (c: ClassType) => c.root
+    case NAryType(tps, builder) => builder(tps.map(bestRealType))
+  }
+
   def isParametricType(tpe: TypeTree): Boolean = tpe match {
     case (tp: TypeParameter) => true
     case NAryType(tps, builder) => tps.exists(isParametricType)
@@ -220,26 +196,26 @@ object TypeOps extends GenTreeOps[TypeTree] {
     }
   }
 
-  def instantiateType(id: Identifier, tps: Map[TypeParameterDef, TypeTree]): Identifier = {
-    freshId(id, typeParamSubst(tps map { case (tpd, tp) => tpd.tp -> tp })(id.getType))
+  def instantiateType(id: Identifier, tps: Map[TypeParameter, TypeTree]): Identifier = {
+    freshId(id, typeParamSubst(tps)(id.getType))
   }
 
-  def instantiateType(tpe: TypeTree, tps: Map[TypeParameterDef, TypeTree]): TypeTree = {
+  def instantiateType(tpe: TypeTree, tps: Map[TypeParameter, TypeTree]): TypeTree = {
     if (tps.isEmpty) {
       tpe
     } else {
-      typeParamSubst(tps.map { case (tpd, tp) => tpd.tp -> tp })(tpe)
+      typeParamSubst(tps)(tpe)
     }
   }
 
-  def instantiateType(e: Expr, tps: Map[TypeParameterDef, TypeTree], ids: Map[Identifier, Identifier]): Expr = {
+  def instantiateType(e: Expr, tps: Map[TypeParameter, TypeTree], ids: Map[Identifier, Identifier]): Expr = {
     if (tps.isEmpty && ids.isEmpty) {
       e
     } else {
       val tpeSub = if (tps.isEmpty) {
         { (tpe: TypeTree) => tpe }
       } else {
-        typeParamSubst(tps.map { case (tpd, tp) => tpd.tp -> tp }) _
+        typeParamSubst(tps) _
       }
 
       val transformer = new TreeTransformer {
@@ -255,6 +231,8 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case Untyped => Some(0)
     case BooleanType => Some(2)
     case UnitType => Some(1)
+    case TupleType(tps) =>
+      Some(tps.map(typeCardinality).map(_.getOrElse(return None)).product)
     case SetType(base) =>
       typeCardinality(base).map(b => Math.pow(2, b).toInt)
     case FunctionType(from, to) =>

@@ -25,10 +25,9 @@ object Helpers {
    */
   def functionsReturning(fds: Set[FunDef], tpe: TypeTree): Set[TypedFunDef] = {
     fds.flatMap { fd =>
-      val free = fd.tparams.map(_.tp)
-      canBeSubtypeOf(fd.returnType, free, tpe) match {
+      subtypingInstantiation(tpe, fd.returnType) match {
         case Some(tpsMap) =>
-          Some(fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp))))
+          Some(fd.typed(fd.typeArgs.map(tp => tpsMap.getOrElse(tp, tp))))
         case None =>
           None
       }

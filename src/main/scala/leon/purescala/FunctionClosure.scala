@@ -6,10 +6,9 @@ package purescala
 import Definitions._
 import Expressions._
 import ExprOps._
-import Constructors._
 import TypeOps.instantiateType
 import Common.Identifier
-import Types.TypeParameter
+import leon.purescala.Types.TypeParameter
 import utils.GraphOps._
 
 object FunctionClosure extends TransformationPhase {
@@ -152,7 +151,7 @@ object FunctionClosure extends TransformationPhase {
     val reqPC = pc.filterByIds(free.toSet)
 
     val tpFresh = outer.tparams map { _.freshen }
-    val tparamsMap = outer.tparams.zip(tpFresh map {_.tp}).toMap
+    val tparamsMap = outer.typeArgs.zip(tpFresh map {_.tp}).toMap
     
     val freshVals = (inner.paramIds ++ free).map{_.freshen}.map(instantiateType(_, tparamsMap))
     val freeMap   = (inner.paramIds ++ free).zip(freshVals).toMap
@@ -185,7 +184,7 @@ object FunctionClosure extends TransformationPhase {
     newFd.fullBody = replaceFromIDs(freeMap.map(p => (p._1, p._2.toVariable)), newFd.fullBody)
 
 
-    FunSubst(newFd, freeMap, tparamsMap.map{ case (from, to) => from.tp -> to})
+    FunSubst(newFd, freeMap, tparamsMap)
   }
 
   override def apply(ctx: LeonContext, program: Program): Program = {

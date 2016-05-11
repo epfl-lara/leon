@@ -183,9 +183,9 @@ object Expressions {
     val getType = {
       // We need ot instantiate the type based on the type of the function as well as receiver
       val fdret = tfd.returnType
-      val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
+      val extraMap: Map[TypeParameter, TypeTree] = rec.getType match {
         case ct: ClassType =>
-          (cd.tparams zip ct.tps).toMap
+          (cd.typeArgs zip ct.tps).toMap
         case _ =>
           Map()
       }

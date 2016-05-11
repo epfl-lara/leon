@@ -332,6 +332,8 @@ object Definitions {
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
 
+    def typeArgs = tparams map (_.tp)
+
     def typed(tps: Seq[TypeTree]): ClassType
     def typed: ClassType
   }
@@ -536,6 +538,8 @@ object Definitions {
 
     def paramIds = params map { _.id }
 
+    def typeArgs = tparams map (_.tp)
+
     def applied(args: Seq[Expr]): FunctionInvocation = Constructors.functionInvocation(this, args)
     def applied = FunctionInvocation(this.typed, this.paramIds map Variable)
   }
@@ -553,8 +557,8 @@ object Definitions {
       }
     }
 
-    private lazy val typesMap: Map[TypeParameterDef, TypeTree] = {
-      (fd.tparams zip tps).toMap.filter(tt => tt._1.tp != tt._2)
+    private lazy val typesMap: Map[TypeParameter, TypeTree] = {
+      (fd.typeArgs zip tps).toMap.filter(tt => tt._1 != tt._2)
     }
 
     def translated(t: TypeTree): TypeTree = instantiateType(t, typesMap)

@@ -161,7 +161,7 @@ object MethodLifting extends TransformationPhase {
       if c.ancestors.forall(!_.methods.map{_.id}.contains(fd.id))
     } {
       val root = c.ancestors.last
-      val tMap = c.tparams.zip(root.tparams.map{_.tp}).toMap
+      val tMap = c.typeArgs.zip(root.typeArgs).toMap
       val tSubst: TypeTree => TypeTree  = instantiateType(_, tMap)
 
       val fdParams = fd.params map { vd =>
@@ -187,7 +187,7 @@ object MethodLifting extends TransformationPhase {
       for { cd <- u.classHierarchyRoots; fd <- cd.methods } {
         // We import class type params and freshen them
         val ctParams = cd.tparams map { _.freshen }
-        val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
+        val tparamsMap = cd.typeArgs.zip(ctParams map { _.tp }).toMap
 
         val id = fd.id.freshen
         val recType = cd.typed(ctParams.map(_.tp))
@@ -239,13 +239,13 @@ object MethodLifting extends TransformationPhase {
           val classParamsMap = (for {
             c <- cd.knownDescendants :+ cd
             (from, to) <- c.tparams zip ctParams
-          } yield (from, to.tp)).toMap
+          } yield (from.tp, to.tp)).toMap
 
           val methodParamsMap = (for {
             c <- cd.knownDescendants :+ cd
             m <- c.methods if m.id == fd.id
             (from,to) <- m.tparams zip fd.tparams
-          } yield (from, to.tp)).toMap
+          } yield (from.tp, to.tp)).toMap
 
           def inst(cs: Seq[MatchCase]) = instantiateType(
             matchExpr(Variable(receiver), cs).setPos(fd),

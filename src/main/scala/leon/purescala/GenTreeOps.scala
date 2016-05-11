@@ -415,5 +415,14 @@ trait GenTreeOps[SubTree <: Tree]  {
     fold[Int]{ (_, sub) => 1 + (0 +: sub).max }(e)
   }
 
+  object Same {
+    def unapply(tt: (SubTree, SubTree)): Option[(SubTree, SubTree)] = {
+      if (tt._1.getClass == tt._2.getClass) {
+        Some(tt)
+      } else {
+        None
+      }
+    }
+  }
 
 }

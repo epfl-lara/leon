@@ -98,7 +98,7 @@ object Types {
     assert(classDef.tparams.size == tps.size)
 
     lazy val fields = {
-      val tmap = (classDef.tparams zip tps).toMap
+      val tmap = (classDef.typeArgs zip tps).toMap
       if (tmap.isEmpty) {
         classDef.fields
       } else {
@@ -124,11 +124,12 @@ object Types {
     lazy val root: ClassType = parent.map{ _.root }.getOrElse(this)
 
     lazy val parent = classDef.parent.map { pct =>
-      instantiateType(pct, (classDef.tparams zip tps).toMap) match {
+      instantiateType(pct, (classDef.typeArgs zip tps).toMap) match {
         case act: AbstractClassType  => act
         case t => throw LeonFatalError("Unexpected translated parent type: "+t)
       }
     }
+
   }
 
   case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType

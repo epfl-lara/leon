@@ -21,9 +21,9 @@ import Types.{TypeTree => LeonType, _}
 import Common._
 import Extractors._
 import Constructors._
-import ExprOps._
-import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
-import xlang.Expressions.{Block => LeonBlock, _}
+import ExprOps.exists
+import TypeOps.{exists => _, _}
+import xlang.Expressions.{Block => _, _}
 import xlang.ExprOps._
 import xlang.Constructors.{block => leonBlock}
 
@@ -1086,10 +1086,11 @@ trait CodeExtraction extends ASTExtractors {
           extractType(up.tpe),
           tupleTypeWrap(args map { tr => extractType(tr.tpe)})
         ))
-        val newTps = canBeSubtypeOf(realTypes, typeParamsOf(formalTypes).toSeq, formalTypes) match {
+        val newTps = subtypingInstantiation(realTypes, formalTypes) match {
           case Some(tmap) =>
             fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
           case None =>
+            //println(realTypes, formalTypes)
             reporter.fatalError("Could not instantiate type of unapply method")
         }
 

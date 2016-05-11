@@ -128,7 +128,7 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
           rawpost
         }
       // instantiate the post
-      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val tparamMap = (callee.typeArgs zip tfd.tps).toMap
       val instSpec =  instantiateType(replace(formalToActual(call), rawspec), tparamMap, Map())
       val inlinedSpec = ExpressionTransformer.normalizeExpr(instSpec, ctx.multOp)
       Some(inlinedSpec)
@@ -142,7 +142,7 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
     val callee = tfd.fd
     if (callee.hasTemplate) {
       val argmap = formalToActual(call)
-      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val tparamMap = (callee.typeArgs zip tfd.tps).toMap
       val tempExpr = instantiateType(replace(argmap, freshenLocals(callee.getTemplate)), tparamMap, Map())
       val template = if (callee.hasPrecondition) {
         val pre = instantiateType(replace(argmap, freshenLocals(callee.precondition.get)), tparamMap, Map())

@@ -361,7 +361,7 @@ case object StringRender extends Rule("StringRender") {
     def extractCaseVariants(cct: CaseClassType, ctx: StringSynthesisContext)
       : (Stream[WithIds[MatchCase]], StringSynthesisResult) = cct match {
       case CaseClassType(ccd: CaseClassDef, tparams2) =>
-        val typeMap = ccd.tparams.zip(tparams2).toMap
+        val typeMap = ccd.typeArgs.zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
         val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
         val (rhs, result) = createFunDefsTemplates(ctx.copy(currentCaseClassParent=Some(cct)), fields.map(Variable)) // Invoke functions for each of the fields.
@@ -387,7 +387,7 @@ case object StringRender extends Rule("StringRender") {
     def constantPatternMatching(fd: FunDef, act: AbstractClassType): WithIds[MatchExpr] = {
       val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
         case (acc, cct @ CaseClassType(ccd, tparams2)) =>
-          val typeMap = ccd.tparams.zip(tparams2).toMap
+          val typeMap = ccd.typeArgs.zip(tparams2).toMap
           val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
           val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
           val rhs = StringLiteral(ccd.id.asString)
