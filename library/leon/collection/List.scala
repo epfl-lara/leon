@@ -62,6 +62,8 @@ sealed abstract class List[T] {
     } else {
       tail(index-1)
     }
+  } ensuring {
+    content.contains(_)
   }
 
   @isabelle.function(term = "%xs x. x # xs")
