@@ -23,15 +23,17 @@ class RepairSuite extends LeonRegressionSuite {
   )
   
   for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala"))) {
-    if (!(fileToFun contains file.getName)) {
-      fail(s"Don't know which function to repair for ${file.getName}")
-    }
+
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 
-    val ctx = createLeonContext("--parallel", "--timeout=180", "--solvers=smt-z3")
-
     test(name) {
+      if (!(fileToFun contains file.getName)) {
+        fail(s"Don't know which function to repair for ${file.getName}")
+      }
+
+      val ctx = createLeonContext("--parallel", "--timeout=180", "--solvers=smt-z3", s"--functions=${fileToFun(name)}")
+
       pipeline.run(ctx, List(path))
       if(ctx.reporter.errorCount > 0) {
         fail("Errors during repair:\n"+ctx.reporter.asInstanceOf[TestSilentReporter].lastErrors.mkString("\n"))
