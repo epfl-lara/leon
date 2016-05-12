@@ -358,6 +358,9 @@ object Expressions {
       FunctionInvocation(unapplyFun, Seq(scrut)),
       someValue.id
     )
+
+    def isSome(scrut: Expr) = IsInstanceOf(FunctionInvocation(unapplyFun, Seq(scrut)), someType)
+
   }
   
   // Extracts without taking care of the binder. (contrary to Extractos.Pattern)

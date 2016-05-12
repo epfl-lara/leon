@@ -58,7 +58,10 @@ class Path private[purescala](
   def --(ids: Set[Identifier]) = new Path(elements.filterNot(_.left.exists(p => ids(p._1))))
 
   /** Appends `that` path at the end of `this` */
-  def merge(that: Path) = new Path(elements ++ that.elements)
+  def merge(that: Path): Path = new Path(elements ++ that.elements)
+
+  /** Appends `those` paths at the end of `this` */
+  def merge(those: Traversable[Path]): Path = those.foldLeft(this)(_ merge _)
 
   /** Transforms all expressions inside the path
     *

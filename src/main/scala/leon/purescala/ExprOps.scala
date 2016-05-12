@@ -692,22 +692,19 @@ object ExprOps extends GenTreeOps[Expr] {
           assert(cct.classDef.fields.size == subps.size)
           val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
-          val together = subTests.foldLeft(bind(ob, in))(_ merge _)
-          Path(IsInstanceOf(in, cct)) merge together
+          Path(IsInstanceOf(in, cct)) merge bind(ob, in) merge subTests
 
         case TuplePattern(ob, subps) =>
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
-          val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
-          subTests.foldLeft(bind(ob, in))(_ merge _)
+          val subTests = subps.zipWithIndex.map {
+            case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)
+          }
+          bind(ob, in) merge subTests
 
         case up @ UnapplyPattern(ob, fd, subps) =>
-          def someCase(e: Expr) = {
-            // In the case where unapply returns a Some, it is enough that the subpatterns match
-            val subTests = unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p) }
-            subTests.foldLeft(Path.empty)(_ merge _).toClause
-          }
-          Path(up.patternMatch(in, BooleanLiteral(false), someCase).setPos(in)) merge bind(ob, in)
+          val subs = unwrapTuple(up.get(in), subps.size).zip(subps) map (rec _).tupled
+          bind(ob, in) withCond up.isSome(in) merge subs
 
         case LiteralPattern(ob, lit) =>
           Path(Equals(in, lit)) merge bind(ob, in)
