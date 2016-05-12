@@ -49,7 +49,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     } else oldId
   }
 
-  val funMap = ProgramUtil.userLevelFunctions(p).map { fd =>
+  val funMap = ProgramUtil.userLevelFunctions(p).collect {
+    case fd if fd.hasBody =>
       val stparams =
         if (funsNeedStateTps(fd)) {
           // create fresh type parameters for the state

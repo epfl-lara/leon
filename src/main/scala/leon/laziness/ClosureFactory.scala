@@ -106,7 +106,7 @@ class ClosureFactory(p: Program) {
      * Checks if the types of lambdas are not instantiations of one another.
      * This is currently not supported.
      */
-    lambdasList.groupBy { lop =>      
+    lambdasList.groupBy { lop =>
       val FunctionType(argts, _) = lop.getType
       argts.size
     }.foreach {
@@ -224,6 +224,7 @@ class ClosureFactory(p: Program) {
           case None =>
             throw new IllegalStateException(s"No lambda compatible with type: $t exists in the program")
           case Some((uninstType, absClass)) =>
+//            /println(s"Getting type arguments of unintstType: $uninstType instType: $ft")
             val ftparams = getTypeArguments(ft, uninstType).get
             // here, we have the guarantee that the `abstractType` wouldn't take any more type parameters than its corresponding function type
             AbstractClassType(absClass, ftparams)

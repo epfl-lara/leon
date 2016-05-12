@@ -27,7 +27,7 @@ object TypeUtil {
       case _ => None
     }
   }
- 
+
   def isSubclass(sub: ClassDef, sup: ClassDef) = {
     sub == sup || (sub.parent.isDefined && sub.parent.get.classDef == sup)
   }

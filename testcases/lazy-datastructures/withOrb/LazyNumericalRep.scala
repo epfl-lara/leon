@@ -53,7 +53,6 @@ object LazyNumericalRep {
       }
     }
 
-    //@inline
     def get: NumList = {
       this match {
         case Susp(f) => fval
@@ -61,13 +60,11 @@ object LazyNumericalRep {
       }
     }
 
-    //@inline
     def getV = this match {
       case Susp(f) => fval*
       case Val(x)  => x
     }
 
-    //@inline
     def isCached = this match {
       case _: Val => true
       case _      => fval.cached
@@ -193,7 +190,7 @@ object LazyNumericalRep {
       xs.isCached &&
       (xs.getV match {
         case Spine(h, rear) => h != Zero() && rear.isCached // xs is a spine and it doesn't start with a zero
-        case _           => false
+        case _              => false
       }))
     xs.get match {
       case Spine(head, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
@@ -221,37 +218,6 @@ object LazyNumericalRep {
     }) &&
       time <= ?
   }
-
-  /**
-   * Lemma:
-   * forall suf. suf.getV.head != Zero() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
-   */
-  @invisibleBody
-  @invstate
-  def incLazyLemma(xs: NumStream, suf: NumStream): Boolean = {
-    require(zeroPrecedesSuf(xs, suf) &&
-      (xs.getV match {
-        case Spine(h, _) => h != Zero()
-        case _           => false
-      }) && suf.isSusp && concreteUntil(xs, suf))
-    // induction scheme
-    (xs.getV match {
-      case Spine(head, rear) =>
-        rear.getV match {
-          case s @ Spine(h, _) =>
-            if (h != Zero())
-              incLazyLemma(rear, suf)
-            else true
-          case _ => true
-        }
-    }) &&
-      zeroPredSufConcreteUntilLemma(xs, suf) && // instantiate the lemma that implies zeroPrecedesLazy
-      // property
-      (incLazy(xs) match {
-        case Spine(Zero(), rear) =>
-          concreteUntil(pushUntilCarry(rear), suf)
-      })
-  }.holds
 
   @invisibleBody
   def incNum(w: Number): (NumStream, List[NumStream]) = {
@@ -300,43 +266,7 @@ object LazyNumericalRep {
       case Nil() => scheds
     }
   } ensuring { res =>
-    {
-      val in = inState[NumList]
-      val out = outState[NumList]
-      // instantiations for proving the scheds property
-      (scheds match {
-        case Cons(head, rest) =>
-          concUntilExtenLemma(q, head, in, out) &&
-            (head.getV match {
-              case Spine(Zero(), rear) =>
-                res match {
-                  case Cons(rhead, rtail) =>
-                    schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
-                      concUntilMonotone(rear, rhead, in, out) &&
-                      concUntilCompose(q, rear, rhead)
-                  case _ =>
-                    concreteMonotone(in, out, rear) &&
-                      concUntilConcreteExten(q, rear)
-                }
-            })
-        case _ => true
-      }) &&
-        // instantiations for zeroPrecedesSuf property
-        (scheds match {
-          case Cons(head, rest) =>
-            (concreteUntilIsSuffix(q, head) withState in) &&
-              (res match {
-                case Cons(rhead, rtail) =>
-                  concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
-                    suffixZeroLemma(q, head, rhead) &&
-                    zeroPrecedesSuf(q, rhead)
-                case _ =>
-                  true
-              })
-          case _ =>
-            true
-        })
-    } && // properties
+    payPostconditionInst(q, res, scheds, inState[NumList], outState[NumList]) && // properties
       schedulesProperty(q, res) &&
       time <= ?
   }
@@ -359,6 +289,77 @@ object LazyNumericalRep {
       case Spine(d, _) => d
     }
   }
+
+  /**
+   * Lemma instantiations (separated into a function for readability)
+   */
+  @inline
+  def payPostconditionInst(q: NumStream, res: List[NumStream], scheds: List[NumStream], in: Set[Fun[NumList]], out: Set[Fun[NumList]]) = {
+    // instantiations for proving the scheds property
+    (scheds match {
+      case Cons(head, rest) =>
+        concUntilExtenLemma(q, head, in, out) &&
+          (head.getV match {
+            case Spine(Zero(), rear) =>
+              res match {
+                case Cons(rhead, rtail) =>
+                  schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
+                    concUntilMonotone(rear, rhead, in, out) &&
+                    concUntilCompose(q, rear, rhead)
+                case _ =>
+                  concreteMonotone(in, out, rear) &&
+                    concUntilConcreteExten(q, rear)
+              }
+          })
+      case _ => true
+    }) &&
+      // instantiations for zeroPrecedesSuf property
+      (scheds match {
+        case Cons(head, rest) =>
+          (concreteUntilIsSuffix(q, head) withState in) &&
+            (res match {
+              case Cons(rhead, rtail) =>
+                concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
+                  suffixZeroLemma(q, head, rhead) &&
+                  zeroPrecedesSuf(q, rhead)
+              case _ =>
+                true
+            })
+        case _ =>
+          true
+      })
+  }
+
+  /**
+   * Lemma:
+   * forall suf. suf.getV.head != Zero() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
+   */
+  @invisibleBody
+  @invstate
+  def incLazyLemma(xs: NumStream, suf: NumStream): Boolean = {
+    require(zeroPrecedesSuf(xs, suf) &&
+      (xs.getV match {
+        case Spine(h, _) => h != Zero()
+        case _           => false
+      }) && suf.isSusp && concreteUntil(xs, suf))
+    // induction scheme
+    (xs.getV match {
+      case Spine(head, rear) =>
+        rear.getV match {
+          case s @ Spine(h, _) =>
+            if (h != Zero())
+              incLazyLemma(rear, suf)
+            else true
+          case _ => true
+        }
+    }) &&
+      zeroPredSufConcreteUntilLemma(xs, suf) && // instantiate the lemma that implies zeroPrecedesLazy
+      // property
+      (incLazy(xs) match {
+        case Spine(Zero(), rear) =>
+          concreteUntil(pushUntilCarry(rear), suf)
+      })
+  }.holds
 
   // monotonicity lemmas
   def schedMonotone[T](st1: Set[Fun[NumList]], st2: Set[Fun[NumList]], scheds: List[NumStream], l: NumStream): Boolean = {

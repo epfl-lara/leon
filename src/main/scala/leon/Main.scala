@@ -193,6 +193,7 @@ object Main {
           new PreprocessingPhase(xlangF)
 
       val verification =
+        InstrumentationPhase andThen
         VerificationPhase andThen
         FixReportLabels.when(xlangF) andThen
         PrintReportPhase
