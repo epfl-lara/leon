@@ -448,13 +448,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         }
         val innerSol = outerExprToInnerExpr(outerSol)
         val cnstr = letTuple(p.xs, innerSol, innerPhi)
-        cTreeFd.fullBody = innerSol
-
-        timers.testForProgram.start()
 
         def withBindings(e: Expr) = p.pc.bindings.foldRight(e){
           case ((id, v), bd) => let(id, outerExprToInnerExpr(v), bd)
         }
+
+        cTreeFd.fullBody = withBindings(innerSol) // FIXME! This shouldnt be needed... Solution around should be somehow used
+
+        timers.testForProgram.start()
 
         val boundCnstr = withBindings(cnstr)
 
@@ -482,6 +483,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           case EvaluationResults.EvaluatorError(err) =>
             debug("Error testing CE: "+err)
+            //println(s"InnerSol: $innerSol")
+            //println(s"Constr  : $boundCnstr")
             None
         }
 
