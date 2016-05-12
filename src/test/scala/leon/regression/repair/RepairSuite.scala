@@ -2,12 +2,10 @@
 
 package leon.regression.repair
 
-import leon._
 import leon.test._
 import leon.utils._
 import leon.frontends.scalac.ExtractionPhase
 import leon.repair._
-import leon.verification.VerificationPhase
 
 class RepairSuite extends LeonRegressionSuite {
   val pipeline = ExtractionPhase andThen 
@@ -31,23 +29,12 @@ class RepairSuite extends LeonRegressionSuite {
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 
-    val reporter = new TestSilentReporter
-    //val reporter = new DefaultReporter(Set(utils.DebugSectionRepair))
-
-    val ctx = new LeonContext(
-      reporter = reporter,
-      interruptManager = new InterruptManager(reporter),
-      options = Seq(
-        LeonOption(GlobalOptions.optFunctions)(Seq(fileToFun(name))),
-        LeonOption(VerificationPhase.optParallelVCs)(true),
-        LeonOption(GlobalOptions.optTimeout)(180L)
-      )
-    )
+    val ctx = createLeonContext("--parallel", "--timeout=180", "--solvers=smt-z3")
 
     test(name) {
       pipeline.run(ctx, List(path))
-      if(reporter.errorCount > 0) {
-        fail("Errors during repair:\n"+reporter.lastErrors.mkString("\n"))
+      if(ctx.reporter.errorCount > 0) {
+        fail("Errors during repair:\n"+ctx.reporter.asInstanceOf[TestSilentReporter].lastErrors.mkString("\n"))
       }
     }
   }
