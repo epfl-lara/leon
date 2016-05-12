@@ -5,7 +5,6 @@ package leon.regression.synthesis
 import leon.test._
 
 import leon._
-import leon.purescala.Definitions._
 import leon.synthesis._
 
 import java.io.File

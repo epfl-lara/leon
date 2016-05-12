@@ -69,7 +69,7 @@ case object StringRender extends Rule("StringRender") {
   
   val booleanTemplate = (a: Expr) => StringTemplateGenerator(Hole => IfExpr(a, Hole, Hole))
   
-  import StringSolver.{StringFormToken, StringForm, Problem => SProblem, Equation, Assignment}
+  import StringSolver.{StringFormToken, Problem => SProblem, Equation, Assignment}
   
   /** Augment the left-hand-side to have possible function calls, such as x + "const" + customToString(_) ...
    *  Function calls will be eliminated when converting to a valid problem.

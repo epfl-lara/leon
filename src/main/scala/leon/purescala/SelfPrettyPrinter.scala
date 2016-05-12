@@ -2,27 +2,16 @@
 
 package leon.purescala
 
-import leon.purescala
-import leon.solvers.{ Model, SolverFactory }
+import Constructors._
+import Expressions._
+import Types._
+import Common._
+import Definitions._
+import leon.evaluators._
 import leon.LeonContext
-import leon.evaluators
 import leon.utils.StreamUtils
-import leon.purescala.Quantification._
-import leon.utils.DebugSectionEvaluation
-import purescala.Definitions.Program
-import purescala.Expressions._
-import purescala.Types.StringType
-import purescala.Constructors._
-import purescala.ExprOps._
-import purescala.Expressions._
-import purescala.Expressions.{Choose }
-import purescala.Extractors._
-import purescala.TypeOps._
-import purescala.Types._
-import purescala.Common._
-import purescala.Definitions._
+
 import scala.collection.mutable.ListBuffer
-import leon.evaluators.DefaultEvaluator
 
 object SelfPrettyPrinter {
   def prettyPrintersForType(inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[Lambda] = {
@@ -185,7 +174,7 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
               orElse
           }
         } catch {
-          case e: evaluators.ContextualEvaluator#EvalError =>
+          case e: ContextualEvaluator#EvalError =>
             ctx.reporter.debug("Error "  + e.msg)
             orElse
         }
