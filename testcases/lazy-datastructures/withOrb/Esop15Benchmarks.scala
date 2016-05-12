@@ -10,7 +10,7 @@ import invariant._
 
 /**
  * This file is the collection of programs in the ESOP 2015 paper.
- * Note this benchmark is very good for finding counter-examples.s
+ * Note this benchmark is very good for finding counter-examples.
  * Decreasing the time bounds slightly will display counter-examples.
  */
 object Esop15Benchmarks {

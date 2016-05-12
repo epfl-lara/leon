@@ -52,13 +52,13 @@ object WeightedSched {
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    sched(i).isCached &&
+    sched(i).cached &&
       (if (i == 0) true
       else allEval(i - 1))
   }
 
   @traceInduct
-  def evalMono(i: BigInt, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
+  def evalMono(i: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0)
     (st1.subsetOf(st2) && (allEval(i) withState st1)) ==> (allEval(i) withState st2)
   } holds

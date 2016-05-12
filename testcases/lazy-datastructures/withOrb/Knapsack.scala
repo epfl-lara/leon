@@ -30,7 +30,7 @@ object Knapscak {
 
   def deps(i: BigInt, items: IList): Boolean = {
     require(i >= 0)
-    knapSack(i, items).isCached && // if we have the cached check only along the else branch, we would get a counter-example.
+    knapSack(i, items).cached && // if we have the cached check only along the else branch, we would get a counter-example.
       (if (i <= 0) true
       else {
         deps(i - 1, items)
@@ -102,7 +102,7 @@ object Knapscak {
    */
   // deps is monotonic
   @traceInduct
-  def depsMono(i: BigInt, items: IList, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
+  def depsMono(i: BigInt, items: IList, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0)
     (st1.subsetOf(st2) && (deps(i, items) withState st1)) ==> (deps(i, items) withState st2)
   } holds
