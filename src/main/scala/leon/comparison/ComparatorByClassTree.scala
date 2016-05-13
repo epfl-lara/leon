@@ -3,7 +3,6 @@ package leon.comparison
 import leon.purescala.Expressions._
 import leon.comparison.Utils._
 
-import scala.collection.GenTraversableOnce
 
 /**
   * Created by joachimmuth on 12.05.16.
@@ -13,18 +12,57 @@ import scala.collection.GenTraversableOnce
   * But this time, instead of searching similar paths, and then trying to recompose a tree, we search all possible
   * roots, and then, from each root, we search all similar tree possibles.
   */
-object ComparatorByClassTree {
-  val name: String = "BiggestClassTree"
+object ComparatorByClassTree extends Comparator{
+  val name: String = "ClassTree"
 
   def compare(expr_base: Expr, expr: Expr): Double = {
     val pairOfRoots = possibleRoots(expr_base, expr)
 
-    val sizeBiggestTree: Int = 0
+    val allPossibleTrees = pairOfRoots.flatMap(possibleTrees(_))
+    val biggestTree = allPossibleTrees.sortBy(- _.size).head
+
+    println(biggestTree)
 
     val listClassesB = collectClass(expr_base)
     val listClasses = collectClass(expr)
 
-    percentBetweenTwo(sizeBiggestTree, listClassesB.size, listClasses.size)
+    percentBetweenTwo(biggestTree.size, listClassesB.size, listClasses.size)
+  }
+
+
+
+  def toTreeList(pair: (Expr, Expr), listChildren: List[List[Tree[(Expr, Expr)]]]): List[Tree[(Expr, Expr)]] = {
+    def combine(list: List[List[Tree[(Expr, Expr)]]]): List[List[Tree[(Expr, Expr)]]] = list match {
+      case Nil => List(Nil)
+      case x :: xs =>
+        for {
+          j <- combine(xs)
+          i <- x
+        } yield i :: j
+    }
+
+    combine(listChildren).map(children => Tree(pair, children))
+  }
+
+
+  def possibleTrees(pair: (Expr, Expr)): List[Tree[(Expr, Expr)]] = {
+    val exprBase = pair._1
+    val expr = pair._2
+    val childrenBase = getChildren(exprBase)
+    val children = getChildren(expr)
+
+
+    val pairOfMatchingChildren = pairOfChildren(childrenBase, children)
+    val combinationOfChildren = combineChildren(pairOfMatchingChildren)
+
+
+    if(pairOfMatchingChildren.isEmpty) {
+      List(Tree(pair, List()))
+    } else {
+      combinationOfChildren.foldLeft(List(): List[Tree[(Expr, Expr)]])(
+        (listOfTree, children) => listOfTree ++ toTreeList(pair, children.map(p => possibleTrees(p)))
+      )
+    }
   }
 
 
@@ -38,30 +76,17 @@ object ComparatorByClassTree {
     }
   }
 
+  /**
+    * Here, it would be possible to already filter some cases.
+    * When we do the combination, we try all cases, using one pair of matching, two, three, ... we could only keep the
+    * ones using maximum of possible children, as we only want the biggest tree.
+    * I don't do that for the moment, because maybe i'll search in smaller tree too later.
+    * @param pairOfMatchingChildren
+    * @return
+    */
   def combineChildren(pairOfMatchingChildren: List[(Expr, Expr)]): List[List[(Expr, Expr)]] = {
     combine(pairOfMatchingChildren).filterNot(p => isSameChildUsedTwice(p)).toList
   }
-
-
-  def possibleTrees(pair: (Expr, Expr)): List[Tree[(Expr, Expr)]] = {
-    val exprBase = pair._1
-    val expr = pair._2
-    val childrenBase = getChildren(exprBase)
-    val children = getChildren(expr)
-
-    val pairOfMatchingChildren = pairOfChildren(childrenBase, children)
-    val combinationOfChildren = combineChildren(pairOfMatchingChildren)
-
-    if(pairOfMatchingChildren.isEmpty)
-      return List(Tree(pair, List()))
-
-
-    combinationOfChildren.foldLeft(List(): List[Tree[(Expr, Expr)]])(
-      (listOfTree, children) => listOfTree ++ BadTree(pair, children.map(p => possibleTrees(p))).toTreeList
-    )
-  }
-
-
 
   def isSameChildUsedTwice(list: List[(Expr, Expr)]): Boolean = {
     list.map(_._1).distinct.size != list.size ||

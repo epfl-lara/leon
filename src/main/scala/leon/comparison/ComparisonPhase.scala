@@ -18,8 +18,9 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   val comparators: List[Comparator] = List(
     ComparatorByListExpr,
     ComparatorByListType,
-    ComparatorByBiggestClassTree,
-    ComparatorByTree
+    //ComparatorByBiggestClassTree,
+    ComparatorByTree,
+    ComparatorByClassTree
     )
 
   val comparatorsNames = comparators map (_.name)
