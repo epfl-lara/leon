@@ -40,7 +40,7 @@ class FunctionsManager(p: Program) {
               args map rec(WithState())
             case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f)(p) =>
               rec(Star())(invExpr)
-            case f @ FunctionInvocation(TypedFunDef(callee, _), args) if !callee.canBeStrictField => // ignoring vals. Note: lazy vals will become memoized functions              
+            case f @ FunctionInvocation(TypedFunDef(callee, _), args) => //if !callee.canBeStrictField
               dg.addEdge(fd, callee, l)
               args map rec(l)
             case Ensuring(e, Lambda(_, post)) =>
@@ -49,7 +49,7 @@ class FunctionsManager(p: Program) {
             case Require(pre, e) =>
               rec(Specs())(pre)
               rec(l)(e)
-            case Lambda(_, body) => 
+            case Lambda(_, body) =>
               rec(Lamb())(body)
             case Operator(args, _) => args map rec(l)
           }
@@ -87,30 +87,32 @@ class FunctionsManager(p: Program) {
                 case FunctionInvocation(_, args) =>
                   args foreach rec
               }
-            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>              
+            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
               readRoots += fd
               args foreach rec
             case Application(l, args) if !inspec => // note: not all applications need to update state. This info can be obtained from closureFactory (but is based on types)
               updateRoots += fd
+              readRoots += fd
               (l +: args) foreach rec
             case FunctionInvocation(tfd, args) if !inspec && isMemoized(tfd.fd) =>
               updateRoots += fd
-              args foreach rec            
+              readRoots += fd
+              args foreach rec
             case Operator(args, _) =>
               args foreach rec
           }
           if (fd.hasBody)
             rec(fd.body.get)(false)
-          if (fd.hasPrecondition)             
-            rec(fd.precondition.get)(true)         
+          if (fd.hasPrecondition)
+            rec(fd.precondition.get)(true)
           if (fd.hasPostcondition)
             rec(fd.postcondition.get)(true)
       }
     }
     //println("Original sucessors of concrete: "+cg.succsWithLabels(node).map{ case (fd, lbs) => fd.id +" label: "+lbs.mkString(",")}.mkString("\n"))
     // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
-    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)    
-    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState` 
+    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
+    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState`
     val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what
     val needTargsCallers = cg.transitiveCallers(needTargsRoots.toSeq)

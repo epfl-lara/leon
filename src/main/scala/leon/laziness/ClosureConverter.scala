@@ -35,7 +35,10 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   val funsRetStates = funsManager.funsRetStates
   val funsNeedStateTps = funsManager.funsNeedStateTps
   val closureTnames = closureFactory.closureTypeNames
+  val stateNeedingTypes = closureFactory.stateNeedingTypes
+  val stateUpdatingTypes = closureFactory.stateUpdatingTypes
 
+  println("Functions needing state: "+funsNeedStates.map(_.id))
   /**
    * Copies a identifier if it is not of the required type.
    * Note this method has side-effects
@@ -149,7 +152,6 @@ class ClosureConverter(p: Program, ctx: LeonContext,
    * Also by using 'assume-pre' we can also assume the preconditions of closures at
    * the call-sites.
    */
-  var evalsUpdatingState = Set[FunDef]()
   val evalFunctions = closureTnames.map { tname =>
     closureFactory.functionType(tname) match {
       case ft @ FunctionType(argTps, retTp) =>
@@ -162,17 +164,10 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val stType = closureFactory.stateType(stTparams)
         val stParam = FreshIdentifier("st", stType)
         val otherParams = argTps.zipWithIndex.map { case (tp, i) => FreshIdentifier("a" + i, tp) }
-        val params = (recv +: otherParams :+ stParam)
-        val retType = TupleType(Seq(retTp, stType))
-
-        val allTparams = recvTparams ++ stTparams
-        // create a eval function
-        val dfun = new FunDef(FreshIdentifier(evalFunctionName(absdef.id.name)), allTparams map TypeParameterDef,
-          params map ValDef, retType)
-        //println("Creating eval function: "+dfun)
-        // assign body of the eval fucntion
+        val withStTparams = recvTparams ++ stTparams
+        // TODO: need to handle preconditions on arguments!!
+        // create body of the eval fucntion
         // create a match case to switch over the possible class defs and invoke the corresponding functions
-        var evalUpdatesState = false
         val bodyMatchCases = cdefs map { cdef =>
           val ctype = CaseClassType(cdef, recvTparams) // we know that the type parameters of cdefs are same as absdefs
           val binder = FreshIdentifier("t", ctype)
@@ -197,47 +192,68 @@ class ClosureConverter(p: Program, ctx: LeonContext,
                 case Variable(id) => argMap(id)
               }
           }
-          // update a state (we can move this to closureFactory)
-          evalUpdatesState ||= funsRetStates(srcTarget)
           // invoke the target fun with appropriate values
           val invoke =
             if (funsNeedStates(srcTarget)) {
-              FunctionInvocation(TypedFunDef(targetFun, allTparams), targetArgs :+ stParam.toVariable)
+              FunctionInvocation(TypedFunDef(targetFun, withStTparams), targetArgs :+ stParam.toVariable)
             } else
               FunctionInvocation(TypedFunDef(targetFun, recvTparams), targetArgs)
-          val invokeRes = FreshIdentifier("dres", invoke.getType)
-          //println(s"invoking function $targetFun with args $args")
-          val (valPart, currState) =
-            if (funsRetStates(srcTarget)) {
-              (TupleSelect(invokeRes.toVariable, 1), TupleSelect(invokeRes.toVariable, 2))
-            } else {
-              (invokeRes.toVariable, stParam.toVariable)
-            }
-          val stPart =
-            if (isMemoized(srcTarget)) {
-              // create a memo closure to mark that the function invocation has been memoized
-              val cc = CaseClass(CaseClassType(closureFactory.memoClasses(srcTarget), stTparams), targetArgs)
-              closureFactory.stateUpdate(cc, currState)
-            } else {
-              currState
-            }
-          val rhs = Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
-          MatchCase(pattern, None, rhs)
+          // construct the return values
+          if (stateUpdatingTypes(tname)) {
+            val invokeRes = FreshIdentifier("dres", invoke.getType)
+            //println(s"invoking function $targetFun with args $args")
+            val (valPart, currState) =
+              if (funsRetStates(srcTarget)) {
+                (TupleSelect(invokeRes.toVariable, 1), TupleSelect(invokeRes.toVariable, 2))
+              } else {
+                (invokeRes.toVariable, stParam.toVariable)
+              }
+            val stPart =
+              if (isMemoized(srcTarget)) {
+                // create a memo closure to mark that the function invocation has been memoized
+                val cc = CaseClass(CaseClassType(closureFactory.memoClasses(srcTarget), stTparams), targetArgs)
+                closureFactory.stateUpdate(cc, currState)
+              } else {
+                currState
+              }
+            val rhs = Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
+            MatchCase(pattern, None, rhs)
+          } else {
+            MatchCase(pattern, None, invoke)
+          }
         }
         val cases = bodyMatchCases
+        // create a eval function
+        val (params, allTparams) =
+          if (stateNeedingTypes(tname)) ((recv +: otherParams :+ stParam), withStTparams)
+          else (recv +: otherParams, recvTparams)
+        val retType =
+          if (stateUpdatingTypes(tname)) TupleType(Seq(retTp, stType))
+          else retTp
+        val dfun = new FunDef(FreshIdentifier(evalFunctionName(absdef.id.name)), allTparams map TypeParameterDef,
+          params map ValDef, retType)
+        //println("Creating eval function: "+dfun)
         dfun.body = Some(MatchExpr(recv.toVariable, cases))
         dfun.addFlag(Annotation("axiom", Seq()))
-        if (evalUpdatesState) evalsUpdatingState += dfun
         (tname -> dfun)
     }
   }.toMap
 
+  /*var evalsUpdatingState = Set[FunDef]()
+  var evalsNeedingState = Set[FunDef]()*/
+  //println("State udpating types: "+stateUpdatingTypes)
+  //println("state needing types: "+stateNeedingTypes)
+
   /**
    * These are evalFunctions that do not affect the state.
    */
-  val computeFunctions = evalFunctions.map {
-    case (tname, evalfd) =>
-      val TupleType(Seq(rettpe, _)) = evalfd.returnType
+  val computeFunctions = evalFunctions.collect {
+    case (tname, evalfd) if stateNeedingTypes(tname) =>
+      val rettpe =
+        if(stateUpdatingTypes(tname)) {
+          val TupleType(Seq(rt, _)) = evalfd.returnType
+          rt
+        } else evalfd.returnType
       val params = evalfd.params.dropRight(1) // drop the last argument
       val fun = new FunDef(FreshIdentifier(evalfd.id.name + "S", Untyped),
         evalfd.tparams, params, rettpe)
@@ -368,9 +384,11 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       val dispFun = evalFunctions(tname)
       val targs = getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams
       val op = (nargs: Seq[Expr]) => ((stOpt: Option[Expr]) => {
-        val st = stOpt.get
-        FunctionInvocation(TypedFunDef(dispFun, targs), nargs :+ st)
-      }, evalsUpdatingState(dispFun))
+        val invargs =
+          if (stateNeedingTypes(tname)) nargs :+ stOpt.get
+          else nargs
+        FunctionInvocation(TypedFunDef(dispFun, targs), invargs)
+      }, stateUpdatingTypes(tname))
       mapNAryOperator(lambdaExpr +: args, op)
 
     // (g) `*` invocation ?
@@ -380,7 +398,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         case Application(lambdaExpr, args) =>
           val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
           val uninstType = closureFactory.functionType(tname)
-          (computeFunctions(tname),
+          (computeFunctions.getOrElse(tname, evalFunctions(tname)),
               getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
               lambdaExpr +: args, id)
         case FunctionInvocation(TypedFunDef(tar, tps), args) =>
@@ -425,7 +443,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         }, true))
 
     // Rest: usual language constructs
-    case FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
+    case finv@FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
           val stArgs =

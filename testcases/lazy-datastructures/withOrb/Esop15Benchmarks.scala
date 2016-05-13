@@ -9,110 +9,138 @@ import higherorder._
 import collection._
 import invariant._
 
-/**
- * This file is the collection of programs in the ESOP 2015 paper.
- * Note this benchmark is very good for finding counter-examples.s
- * Decreasing the time bounds slightly will display counter-examples.
- */
-object Esop15Benchmarks {
-  /*sealed abstract class Stream[T] {
-    lazy val tail = {
-      require(this != SNil())
-      this match {
-        case SCons(_, tailfun) => tailfun()
-      }
-    }
-  }*/
-  case class SCons[T](x: T, tail: ValOrSusp[T])
+object ZipWithAndFibStream {
+  /**
+   *  An infinite integer stream.
+   *  Technically, the data structure is *not* infinite but the tail is has a higher-order function.
+   */
+  case class SCons(x: BigInt, tail: ValOrSusp)
 
-  sealed abstract class ValOrSusp[T] {
+  sealed abstract class ValOrSusp {
     def isCached = this match {
       case Val(_) => true
-      case _ => get.cached
+      case _ => fval.cached
     }
 
-    /*def isSusp = this match {
-      case Val(_) => false
-      case _ =>  true
-    }*/
-
-    lazy val get = {
+    def get = {
       this match {
+        case Susp(f) => fval
         case Val(x) => x
+      }
+    }
+
+    // ideally, fval should not be called on `Val` as it would unnecessarily cache it.
+    lazy val fval = {
+      this match {
         case Susp(f) => f()
+        case Val(x) => x
       }
     }
   }
-  case class Val[T](x: SCons[T]) extends ValOrSusp[T]
-  case class Susp[T](fun: () => SCons[T]) extends ValOrSusp[T]
+  case class Val(x: SCons) extends ValOrSusp
+  case class Susp(fun: () => SCons) extends ValOrSusp
 
-  lazy val fibstream: SCons[BigInt] =
-    SCons[BigInt](0, Val(SCons[BigInt](1, Val(SCons[BigInt](1, Susp(() => fibStreamGen))))))
-
-  def fibStreamGen: SCons[BigInt] = {
-    val fibs = this.fibstream
-    fibs match {
-      case s @ SCons(x, _) => zipWithFun((x: BigInt, y: BigInt) => x + y, fibs, s.tail.get)
-    }
-  } ensuring(_ => time <= ?)
-
-  @invstate
-  def zipWithFun(f: (BigInt, BigInt) => BigInt, xs: SCons[BigInt], ys: SCons[BigInt]): SCons[BigInt] = {
-    require(xs.tail.isCached && ys.tail.isCached)
+  /**
+   * A generic higher-order `zipWithFun` function
+   */
+  def zipWithFun(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
     (xs, ys) match {
       case (SCons(x, _), SCons(y, _)) =>
-        val xtail = xs.tail.get
-        val ytail = ys.tail.get
-        SCons[BigInt](f(x, y), Susp(() => zipWithFun(f, xtail, ytail)))
+        SCons(f(x, y), Susp(() => zipWithSusp(f, xs, ys)))
     }
-  } ensuring { _ =>
-//    /if (isCached(xs, ys, inState[BigInt]))
-      time <= ?
-    //else true
+  } ensuring(time <= ?) // Orb result: 17
+
+  def zipWithSusp(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
+    zipWithFun(f, xs.tail.get, ys.tail.get)
   }
 
   /**
-   * Checks if `xs.tail` and `ys.tail` have been evaluated in the state `st`
+   * Properties of `zipWithFun`. In fact, they are generalizable beyond `zipWithFun`.
    */
-  /*def isCached(xs: SCons[BigInt], ys: SCons[BigInt], st: Set[Fun[BigInt]]) = {
-    (xs, ys) match {
-      case (SCons(_, _), SCons(_, _)) => (xs.tail.isCached withState st) && (ys.tail.isCached withState st)
-      case _ => true
+  /**
+   * Holds if for given a stream `s`, s.tail.tail is a suspension of `zipWithSusp` applied over `s` and `s.tail`.
+   */
+  def argChainingProp(s: SCons): Boolean = {
+    val stail = (s.tail.get*)
+    stail.tail match {
+      case Susp(tailfun) =>
+        tailfun fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
+          case (f, xs, ys) if (tailfun.is(() => zipWithSusp(f, xs, ys))) =>
+            (xs == s && ys == stail)
+          case _ => false
+        }
+      case _ => false
     }
-  }*/
+  }
 
-  def nthElem(n: BigInt, fibs: SCons[BigInt]): BigInt = {
+  /**
+   * States that `argChaining` property holds for every sub-stream until a limit `n`
+   * (note: this method could generalized to a co-recursive function)
+   */
+  def argChainedStreamProp(s: SCons, n: BigInt): Boolean = {
     require(n >= 0)
-    fibs match {
+    argChainingProp(s) &&
+    (if(n == 0) true
+    else {
+     argChainedStreamProp(s.tail.get*, n - 1)
+    })
+  }
+
+  @inline
+  def inductionScheme(fibs: SCons, n: BigInt): Boolean = {
+    val fibTail = (fibs.tail.get*)
+    (fibTail.tail match {
+      case Val(_) => true
+      case Susp(tailfun) =>
+        tailfun.fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
+          case (f, xs, ys) if (tailfun.is(() => zipWithSusp(f, xs, ys))) =>
+            argChainingIsTransitive(fibTail, n)
+          case _ => true
+        }
+    })
+  }
+
+  def argChainingIsTransitive(fibs: SCons, n: BigInt): Boolean = {
+    require(n >= 0 && argChainingProp(fibs))
+    inductionScheme(fibs, n) && argChainedStreamProp(fibs, n)
+  } holds
+
+  /**
+   * Reading the nth element from a `argChainedStream` will take only linear time.
+   */
+  def nthElem(n: BigInt, s: SCons): BigInt = {
+    require(n >= 0 && s.tail.isCached && argChainedStreamProp(s, n))
+    s match {
       case SCons(x, _) =>
         if (n == 0) x
         else
-          nthElem(n - 1, fibs.tail.get)
+          nthElem(n - 1, s.tail.get)
     }
-  } ensuring(_ => time <= ? * n + ?)
+  } ensuring(_ => time <= ? * n + ?) // Orb result: 23 * n + 6
 
-  /*def nextFib(x: BigInt, y: BigInt, n: BigInt): IStream = {
-    if (n <= 0)
-      SNil()
-    else {
-      val next = x + y
-      SCons(next, $(nextFib(y, next, n - 1)))
-    }
-  } ensuring(_ => time <= ?)
+  /**
+   * Using a `zipWithFun` function to implement a fibonacci stream.
+   */
+  val fibstream: SCons = SCons(0, Val(SCons(1, Susp(() => {
+    val fibs = this.fibstream
+    zipWithSusp(_ + _, fibs, fibs.tail.get)
+  }))))
 
-  def fibStream(n: BigInt) : IStream = {
-    SCons(0, SCons(1, $(nextFib(0, 1, n))))
-  }
-
-  def nthFib(n: BigInt, fs: Lazy[IStream]): BigInt = {
+  /**
+   * Establishes that `fibstream` satisfies `argChainedStream` property.
+   */
+  def fibStreamSastisfiesProp(n: BigInt): Boolean = {
     require(n >= 0)
-    fs.value match {
-      case SCons(x, tail) =>
-        if (n == 0)
-          x
-        else
-          nthFib(n - 1, tail)
-      case SNil() => BigInt(-1)
-    }
-  } ensuring(_ => time <= ? * n + ?) // you get a counter-example for 20*n + 20
-*/ }
+    val fibs = fibstream
+    argChainingIsTransitive((fibs.tail.get*), n) &&
+      argChainedStreamProp(fibs, n)
+  } holds
+
+  /**
+   * `nth` fib in O(n) time.
+   */
+  def nthFib(n: BigInt) = {
+    require(n >= 0 && fibStreamSastisfiesProp(n))
+    nthElem(n, fibstream)
+  } ensuring(_ => time <= ? * n + ?) // Orb result: 23 * n + 8
+}

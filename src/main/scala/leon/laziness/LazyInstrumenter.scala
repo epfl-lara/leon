@@ -43,8 +43,10 @@ class LazyInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, 
           if(funManager.funsNeedStates(oldTarget)) {
             //remove the state argument
             (subeVals.dropRight(1), subeVals.last)
-          } else
-            (subeVals, stateParam)
+          } else {
+            throw new IllegalStateException("Cannot access the state at this point!!")
+            //(subeVals, stateParam)
+          }
         val cc = CaseClass(CaseClassType(ccdef, stateTps(stExpr)), args)
         val instId = FreshIdentifier("instd", instExpr.getType, true)
         val instExprs = instrumenters map { m =>

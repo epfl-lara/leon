@@ -18,7 +18,7 @@ import purescala.Extractors._
  * where one is an instantiation of the other. To support it we should specialize the dispatchers foreach instantiation.
  * TODO: Make acyclicity an annotation, instead of hard coding it.
  */
-class ClosureFactory(p: Program) {
+class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   val debug = false
   implicit val prog = p
 
@@ -149,6 +149,8 @@ class ClosureFactory(p: Program) {
     }
 
     var opToAdt = Map[CanonLambda, CaseClassDef]()
+    var stateUpdatingTypes = Set[String]()
+    var stateNeedingTypes = Set[String]()
     val tpeToADT = tpeToLambda map { case (tpename, lambdas) => // we create a closure for each lambda
         val baseT = lambdas.head.getType
         val absClass = tpeToAbsClass(tpename)._2
@@ -156,6 +158,12 @@ class ClosureFactory(p: Program) {
         val canonLambdas = lambdas.map(l => new CanonLambda(l)).distinct
         val cdefs = canonLambdas map (cl => cl.l match {
           case l@Lambda(_, FunctionInvocation(TypedFunDef(target, _), _)) =>
+            // collect some info about the traget
+            if(funsManager.funsNeedStates(target))
+              stateNeedingTypes += tpename
+            if(funsManager.funsRetStates(target))
+              stateUpdatingTypes += tpename
+            // build closure for the target
             val fieldIds = capturedVars(l)
             val cdef = createCaseClass(target.id.name + "L", absClass, createFields(fieldIds))
             // TODO: not clear for now how to enforce this ? (We can later on check how this assumption can be enforced. We can make this an assumption.)
@@ -177,10 +185,10 @@ class ClosureFactory(p: Program) {
     /*tpeToADT.foreach {
       case (k, v) => println(s"$k --> ${ (v._2 +: v._3).mkString("\n\t") }")
     }*/
-    (tpeToADT, opToAdt, memoClasses)
+    (tpeToADT, opToAdt, memoClasses, stateNeedingTypes, stateUpdatingTypes)
   }
 
-  val (tpeToADT, opToCaseClass, memoClasses) = closuresForOps
+  val (tpeToADT, opToCaseClass, memoClasses, stateNeedingTypes, stateUpdatingTypes) = closuresForOps
   val closureTypeNames = tpeToADT.keys.toSeq   // this fixes an ordering on clsoure types
   val canonLambdas = opToCaseClass.keySet
   val allClosuresAndParents: Seq[ClassDef] = tpeToADT.values.flatMap(v => v._2 +: v._3).toSeq
@@ -224,7 +232,7 @@ class ClosureFactory(p: Program) {
           case None =>
             throw new IllegalStateException(s"No lambda compatible with type: $t exists in the program")
           case Some((uninstType, absClass)) =>
-//            /println(s"Getting type arguments of unintstType: $uninstType instType: $ft")
+//            println(s"Getting type arguments of unintstType: $uninstType instType: $ft")
             val ftparams = getTypeArguments(ft, uninstType).get
             // here, we have the guarantee that the `abstractType` wouldn't take any more type parameters than its corresponding function type
             AbstractClassType(absClass, ftparams)

@@ -25,7 +25,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
   val debugSolvers = false
-  val skipStateVerification = true
+  val skipStateVerification = false
   val skipResourceVerification = false
 
   val name = "Laziness Elimination Phase"
@@ -76,7 +76,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
     val funsManager = new FunctionsManager(nprog)
-    val closureFactory = new ClosureFactory(nprog)
+    val closureFactory = new ClosureFactory(nprog, funsManager)
     val progWithClosures = (new ClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
     if (dumpProgramWithClosures)
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
