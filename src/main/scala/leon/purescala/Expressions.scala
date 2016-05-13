@@ -328,9 +328,13 @@ object Expressions {
     lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
     lazy val Seq(noneType, someType) = optionType.knownCCDescendants.sortBy(_.fields.size)
     lazy val someValue = someType.classDef.fields.head
-    // Pattern match unapply(scrut)
-    // In case of None, return noneCase.
-    // In case of Some(v), return someCase(v).
+
+    /** Construct a pattern matching against unapply(scrut) (as an if-expression)
+      *
+      * @param scrut The scrutinee of the pattern matching
+      * @param noneCase The expression that will happen if unapply(scrut) is None
+      * @param someCase How unapply(scrut).get will be handled in case it exists
+      */
     def patternMatch(scrut: Expr, noneCase: Expr, someCase: Expr => Expr): Expr = {
       // We use this hand-coded if-then-else because we don't want to generate
       // match exhaustiveness checks in the program
@@ -345,14 +349,17 @@ object Expressions {
         )
       )
     }
-    // Inlined .get method
+
+    /** Inlined .get method */
     def get(scrut: Expr) = patternMatch(
       scrut,
       Error(optionType.tps.head, "None.get"),
       e => e
     )
-    // Selects Some.v field without type-checking.
-    // Use in a context where scrut.isDefined returns true.
+
+    /** Selects Some.v field without type-checking.
+      * Use in a context where scrut.isDefined returns true.
+      */
     def getUnsafe(scrut: Expr) = CaseClassSelector(
       someType,
       FunctionInvocation(unapplyFun, Seq(scrut)),
