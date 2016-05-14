@@ -22,6 +22,7 @@ class FunctionsManager(p: Program) {
   case class Star() extends Label
   case class WithState() extends Label
   case class Lamb() extends Label
+  case class LambWoPre() extends Label
   case class None() extends Label
 
   val cg = {
@@ -50,7 +51,12 @@ class FunctionsManager(p: Program) {
               rec(Specs())(pre)
               rec(l)(e)
             case Lambda(_, body) =>
-              rec(Lamb())(body)
+              body match {
+                case FunctionInvocation(tfd, _)  if tfd.fd.hasPrecondition =>
+                  rec(Lamb())(body)
+                case _ => 
+                  rec(LambWoPre())(body) 
+              }              
             case Operator(args, _) => args map rec(l)
           }
           rec(None())(body)
@@ -82,7 +88,7 @@ class FunctionsManager(p: Program) {
             case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
               needTargsRoots += fd
               invExpr match {
-                case Application(l, args) => // we need to prevent the application here from being treated as a `val` root
+                case Application(l, args) => // we need to prevent the application here from being treated as a `read/write` root
                   (l +: args) foreach rec
                 case FunctionInvocation(_, args) =>
                   args foreach rec
@@ -90,7 +96,7 @@ class FunctionsManager(p: Program) {
             case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
               readRoots += fd
               args foreach rec
-            case Application(l, args) if !inspec => // note: not all applications need to update state. This info can be obtained from closureFactory (but is based on types)
+            case Application(l, args) if !inspec => // note: not all applications need to update state but is hard to determine this upfront
               updateRoots += fd
               readRoots += fd
               (l +: args) foreach rec
@@ -112,8 +118,8 @@ class FunctionsManager(p: Program) {
     //println("Original sucessors of concrete: "+cg.succsWithLabels(node).map{ case (fd, lbs) => fd.id +" label: "+lbs.mkString(",")}.mkString("\n"))
     // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
     val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
-    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState`
-    val readfuns = cg.removeEdgesWithLabel(WithState()).reverse.BFSReachables(readRoots.toSeq)
+    // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState` or `Star`
+    val readfuns = cg.removeEdgesWithLabels(Set(WithState(), Star(), LambWoPre())).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what
     val needTargsCallers = cg.transitiveCallers(needTargsRoots.toSeq)
     //println("Ret roots: " + updateRoots.map(_.id) + " ret funs: " + updatefuns.map(_.id))

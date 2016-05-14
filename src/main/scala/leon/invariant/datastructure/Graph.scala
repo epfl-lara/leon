@@ -228,14 +228,14 @@ class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new Dire
     labels.update(key, labels.getOrElse(key, Set[L]()) + label)
   }
 
-  def removeEdgesWithLabel(label: L) = {
+  def removeEdgesWithLabels(remlabels: Set[L]) = {
     val nlg = new DirectedLabeledGraph[T, L](dgraph.copy)
     var edgesToRemove = Set[Edge]()
     labels.foreach {
-      case (edge, edgeLabels) if (edgeLabels.size > 1 || !edgeLabels(label)) =>
-        nlg.labels.update(edge, (edgeLabels - label))
-      case (edge, _) =>
+      case (edge, edgeLabels) if (edgeLabels -- remlabels).isEmpty =>
         edgesToRemove += edge
+      case (edge, edgeLabels) =>
+        nlg.labels.update(edge, (edgeLabels -- remlabels))        
     }
     edgesToRemove.foreach{ case (src, dest) => nlg.dgraph.removeEdge(src, dest) }
     nlg

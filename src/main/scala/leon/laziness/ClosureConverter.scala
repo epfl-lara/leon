@@ -38,7 +38,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   val stateNeedingTypes = closureFactory.stateNeedingTypes
   val stateUpdatingTypes = closureFactory.stateUpdatingTypes
 
-  println("Functions needing state: "+funsNeedStates.map(_.id))
+  //println("Functions needing state: "+funsNeedStates.map(_.id))
   /**
    * Copies a identifier if it is not of the required type.
    * Note this method has side-effects
@@ -299,7 +299,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val targs = getTypeParameters(l.getType)
         val cc = CaseClass(CaseClassType(caseClassDef, targs), capturedVars(l).map(_.toVariable))
         val tname = closureFactory.uninstantiatedFunctionTypeName(l.getType).get
-        if (funsNeedStates(target)) {
+        if (target.hasPrecondition) {
+          // note:  the only purpose of closureCons is to check preconditions
           FunctionInvocation(TypedFunDef(closureCons(tname), targs ++ stTparams), Seq(cc, st.get))
         } else cc
       }, false)
