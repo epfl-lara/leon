@@ -9,26 +9,35 @@ import higherorder._
 import collection._
 import invariant._
 
+/**
+ * Hint: requires unrollfactor=4
+ */
 object ZipWithAndFibStream {
   /**
    *  An infinite integer stream.
    *  Technically, the data structure is *not* infinite but the tail is has a higher-order function.
    */
-  case class SCons(x: BigInt, tail: ValOrSusp)
+  case class SCons(x: BigInt, tailFun: ValOrSusp) {
+    @inline
+    def tail = tailFun match {
+      case s@Susp(f) => s.fval
+      case Val(x) => x
+    }
+    
+    // this will not modify state
+    @inline
+    def tailVal = tailFun match {
+      case s@Susp(f) => s.fval*
+      case Val(x) => x
+    } 
+  }
 
   sealed abstract class ValOrSusp {
+    @inline
     def isCached = this match {
       case Val(_) => true
       case _ => fval.cached
     }
-
-    def get = {
-      this match {
-        case Susp(f) => fval
-        case Val(x) => x
-      }
-    }
-
     // ideally, fval should not be called on `Val` as it would unnecessarily cache it.
     lazy val fval = {
       this match {
@@ -51,96 +60,156 @@ object ZipWithAndFibStream {
   } ensuring(time <= ?) // Orb result: 17
 
   def zipWithSusp(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
-    zipWithFun(f, xs.tail.get, ys.tail.get)
+    zipWithFun(f, xs.tail, ys.tail)
   }
+//  ensuring{_ => 
+//    val in = inState[BigInt]
+//    if((xs.tailFun.isCached withState in) && (ys.tailFun.isCached withState in))
+//      time <= ?
+//    else true
+//  }
 
   /**
    * Properties of `zipWithFun`. In fact, they are generalizable beyond `zipWithFun`.
    */
   /**
-   * Holds if for given a stream `s`, s.tail.tail is a suspension of `zipWithSusp` applied over `s` and `s.tail`.
+   * Given first three elements of a stream,  the thridElem.tailFun is a suspension of `zipWithSusp` applied over 
+   * first and second element.
    */
   def argChainingProp(s: SCons): Boolean = {
-    val stail = (s.tail.get*)
-    stail.tail match {
-      case Susp(tailfun) =>
-        tailfun fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
-          case (f, xs, ys) if (tailfun.is(() => zipWithSusp(f, xs, ys))) =>
-            (xs == s && ys == stail)
+    val first = s
+    val second = first.tailVal
+    val third = second.tailVal
+    third.tailFun match {
+      case Susp(fun) =>
+        fun fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
+          case (f, xs, ys) if (fun.is(() => zipWithSusp(f, xs, ys))) =>
+            (xs == first && ys == second)
+          case _ => false
+        }
+      case _ => false
+    }
+  } 
+
+  // proof that argchaining is satisfiable.   
+//  def gen: SCons = {
+//    val f = (x: BigInt, y: BigInt) => x + y 
+//    val xs = SCons(0, Val(SCons(1, Susp(() => gen))))
+//    val ys = SCons(1, Susp(() => gen))
+//    SCons(1, Susp(() => zipWithSusp(f, xs, ys)))
+//  }
+//  //The following function should be sat i.e, invalid. The model is given by `y`
+//  def argChainingIsSat(): Boolean = {        
+//    val y = SCons(0, Val(SCons(1, Susp(() => gen))))    
+//    !argChainingProp(y)
+//  } holds
+
+  /**
+   * States that `argChaining` property holds for every sub-stream until a limit `n`
+   * (note: this method could generalized to a co-recursive function)
+   */
+  @invisibleBody
+  def argChainedStreamProp(s: SCons, n: BigInt): Boolean = {
+    require(n >= 0)
+    argChainingProp(s) &&
+    (if(n == 0) true
+    else {
+     argChainedStreamProp(s.tailVal, n - 1)
+    })
+  } //ensuring(res => !res || n == 0)
+
+  @inline
+  def inductionScheme(s: SCons, n: BigInt): Boolean = {    
+    val second = s.tailVal
+    val third = second.tailVal
+    third.tailFun match {
+      case Susp(fun) =>
+        fun fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
+          case (f, xs, ys) if (fun.is(() => zipWithSusp(f, xs, ys))) =>
+            argChainingIsTransitive(second, n - 1)
           case _ => false
         }
       case _ => false
     }
   }
 
-  /**
-   * States that `argChaining` property holds for every sub-stream until a limit `n`
-   * (note: this method could generalized to a co-recursive function)
-   */
-  def argChainedStreamProp(s: SCons, n: BigInt): Boolean = {
-    require(n >= 0)
-    argChainingProp(s) &&
-    (if(n == 0) true
-    else {
-     argChainedStreamProp(s.tail.get*, n - 1)
-    })
-  }
-
-  @inline
-  def inductionScheme(fibs: SCons, n: BigInt): Boolean = {
-    val fibTail = (fibs.tail.get*)
-    (fibTail.tail match {
-      case Val(_) => true
-      case Susp(tailfun) =>
-        tailfun.fmatch[(BigInt, BigInt) => BigInt, SCons, SCons, Boolean] {
-          case (f, xs, ys) if (tailfun.is(() => zipWithSusp(f, xs, ys))) =>
-            argChainingIsTransitive(fibTail, n)
-          case _ => true
-        }
-    })
-  }
-
-  def argChainingIsTransitive(fibs: SCons, n: BigInt): Boolean = {
-    require(n >= 0 && argChainingProp(fibs))
-    inductionScheme(fibs, n) && argChainedStreamProp(fibs, n)
+  @invisibleBody
+  def argChainingIsTransitive(s: SCons, n: BigInt): Boolean = {
+    require(n >= 0 && argChainingProp(s)) 
+    (if(n == 0) true 
+    else inductionScheme(s, n)) && argChainedStreamProp(s, n)
   } holds
+  
+  /**
+   * First two elements have been evaluated
+   */
+  @inline  
+  def firstThreeEval(first: SCons, second: SCons, third: SCons) = {
+    first.tailVal == second && second.tailVal == third &&  
+        first.tailFun.isCached && second.tailFun.isCached 
+  }
+  
+  /**
+   * Given three elements, computes the next element.
+   */
+  @invisibleBody
+  def next(f: SCons, s: SCons, t: SCons): SCons = {
+    require(firstThreeEval(f, s, t) && argChainingProp(f))
+    t.tail 
+  } ensuring(_ => time <= ?) // Orb result: time <= 73
+
 
   /**
-   * Reading the nth element from a `argChainedStream` will take only linear time.
+   * Given the first three elements, reading the nth element (s.t. n >= 4) from a 
+   * `argChainedStream` will take only linear time.
    */
-  def nthElem(n: BigInt, s: SCons): BigInt = {
-    require(n >= 0 && s.tail.isCached && argChainedStreamProp(s, n))
-    s match {
-      case SCons(x, _) =>
-        if (n == 0) x
+  @invisibleBody
+  def nthElemAfterThird(n: BigInt, f: SCons, s: SCons, t: SCons): BigInt = {
+    require(n >= 3  && firstThreeEval(f, s, t) && argChainedStreamProp(f, n))
+    next(f, s, t) match {
+      case fourth@SCons(x, _) =>
+        if (n == 3) x
         else
-          nthElem(n - 1, s.tail.get)
+          nthElemAfterThird(n - 1, s, t, fourth)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 23 * n + 6
+  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n - 167
+  
 
   /**
    * Using a `zipWithFun` function to implement a fibonacci stream.
    */
-  val fibstream: SCons = SCons(0, Val(SCons(1, Susp(() => {
+  val fibstream: SCons = SCons(0, Val(SCons(1, Susp(() => genNext))))
+  @invisibleBody
+  val genNext = {
     val fibs = this.fibstream
-    zipWithSusp(_ + _, fibs, fibs.tail.get)
-  }))))
+    zipWithSusp(_ + _, fibs, fibs.tail)
+  } ensuring(_ => time <= ?)
 
   /**
    * Establishes that `fibstream` satisfies `argChainedStream` property.
    */
-  def fibStreamSastisfiesProp(n: BigInt): Boolean = {
+  @invisibleBody
+  def fibStreamSatisfiesProp(n: BigInt): Boolean = {
     require(n >= 0)
     val fibs = fibstream
-    argChainingIsTransitive((fibs.tail.get*), n) &&
-      argChainedStreamProp(fibs, n)
+    argChainingIsTransitive(fibs, n) && argChainedStreamProp(fibs, n)
   } holds
 
   /**
    * `nth` fib in O(n) time.
    */
   def nthFib(n: BigInt) = {
-    require(n >= 0 && fibStreamSastisfiesProp(n))
-    nthElem(n, fibstream)
+    require(n >= 0 && fibStreamSatisfiesProp(n))
+    val first = fibstream
+    if(n == 0) first.x 
+    else{
+      val second = first.tail
+      if(n == 1) second.x
+      else {
+        val third = second.tail
+        if(n == 2) third.x
+        else nthElemAfterThird(n, first, second, third)
+      }       
+    }
   } ensuring(_ => time <= ? * n + ?) // Orb result: 23 * n + 8
 }
