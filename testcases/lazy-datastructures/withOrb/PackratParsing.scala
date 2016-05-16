@@ -75,7 +75,7 @@ object PackratParsing {
       case _ =>
         mulRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 26
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 35
 
   @invisibleBody
   @memoize
@@ -101,7 +101,7 @@ object PackratParsing {
       case _ =>
         primRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 26
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 35
 
   @invisibleBody
   @memoize
@@ -123,7 +123,7 @@ object PackratParsing {
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 28
+  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 32
 
   //@inline
   def depsEval(i: BigInt) =
@@ -206,7 +206,7 @@ object PackratParsing {
     val out = outState[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      time <= ? // 128
+      time <= ? // 136
   }
 
   /**
@@ -225,7 +225,7 @@ object PackratParsing {
       }
     }
   } ensuring (_ => allEval(n) &&
-    time <= ? * n + ?) // 137 * n + 131
+    time <= ? * n + ?) // 145 * n + 139
 
   @ignore
   def main(args: Array[String]) {
