@@ -56,7 +56,7 @@ object PackratParsing {
   @invstate
   def pAdd(i: BigInt): Result = {
     require {
-      if (depsEval(i) && pMul(i).isCached && pPrim(i).isCached)
+      if (depsEval(i) && pMul(i).cached && pPrim(i).cached)
         resEval(i, pMul(i)) // lemma inst
       else false
     }
@@ -82,7 +82,7 @@ object PackratParsing {
   @invstate
   def pMul(i: BigInt): Result = {
     require{
-      if (depsEval(i) && pPrim(i).isCached)
+      if (depsEval(i) && pPrim(i).cached)
         resEval(i, pPrim(i)) // lemma inst
       else false
     }
@@ -133,13 +133,13 @@ object PackratParsing {
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    (pPrim(i).isCached && pMul(i).isCached && pAdd(i).isCached) && (
+    (pPrim(i).cached && pMul(i).cached && pAdd(i).cached) && (
       if (i == 0) true
       else allEval(i - 1))
   }
 
   @traceInduct
-  def evalMono(i: BigInt, st1: Set[Mem[Result]], st2: Set[Mem[Result]]) = {
+  def evalMono(i: BigInt, st1: Set[Fun[Result]], st2: Set[Fun[Result]]) = {
     require(i >= 0)
     (st1.subsetOf(st2) && (allEval(i) withState st1)) ==> (allEval(i) withState st2)
   } holds
