@@ -57,7 +57,7 @@ object BottomUpMergeSort {
       case Nil()           => Nil[Stream]()
       case Cons(_, Nil()) => l
       case Cons(l1, Cons(l2, rest)) =>
-        Cons(Stream(() => merge(l1, l2)), pairs(rest))
+        Cons(Stream(() => forceAndMerge(l1, l2)), pairs(rest))
     }
   } ensuring (res => res.size <= (l.size + 1) / 2 &&
     fullSize(l) == fullSize(res) &&
@@ -88,7 +88,24 @@ object BottomUpMergeSort {
     valid(res) && 
     time <= ? * l.size + ?
   }
-
+  
+  @invisibleBody
+  def merge(a: Stream, b: Stream): LList = {
+    require((a.list.cached && b.list.cached))
+    b.list match {
+      case SNil() => a.list
+      case SCons(x, xs) =>
+        a.list match {
+          case SNil() => b.list
+          case SCons(y, ys) =>
+            if (y < x)
+              SCons(y, Stream(() => forceAndMerge(ys, b)))
+            else
+              SCons(x, Stream(() => forceAndMerge(a, xs)))
+        }
+    }
+  } ensuring(_ => time <= ?)
+  
   /**
    *  A function that merges two sorted streams of integers.
    *  Note: the sorted stream of integers may by recursively constructed using merge.
@@ -96,25 +113,22 @@ object BottomUpMergeSort {
    */
   @invisibleBody
   @usePost
-  def merge(a: Stream, b: Stream): LList = {
-    require(((a.list*) != SNil() || b.list.cached) && // if one of the arguments is Nil then the other is evaluated
-        ((b.list*) != SNil() || a.list.cached) &&
-        ((a.list*) != SNil() || (b.list*) != SNil())) // at least one of the arguments is not Nil
-    b.list match {
-      case SNil() => a.list
-      case bl @ SCons(x, xs) =>
-        a.list match {
-          case SNil() => bl
-          case SCons(y, ys) =>
-            if (y < x)
-              SCons(y, Stream(() => merge(ys, b)))
-            else
-              SCons(x, Stream(() => merge(a, xs)))
-        }
+  def forceAndMerge(a: Stream, b: Stream): LList = {
+    require {
+      val alist = (a.list*)
+      val blist = (b.list*)
+      (alist != SNil() || b.list.cached) && // if one of the arguments is Nil then the other is evaluated
+        (blist != SNil() || a.list.cached) &&
+        (alist != SNil() || blist != SNil()) // at least one of the arguments is not Nil      
+    } 
+    (a.list, b.list) match {
+      case _ => merge(a, b)
     }
-  } ensuring (res => a.size + b.size == res.size &&
-       time <= ? * res.size + ?) // note: res.size >= 1 // here stack is max of a and b
-     // time <= 67 * res.size - 47) // Orb cannot infer this due to issues with CVC4 set solving !
+  } ensuring {res =>
+    val rsize = res.size
+    a.size + b.size == rsize && rsize >= 1 &&     
+    time <= 156 * rsize - 86 // 156 * res.size -  86  // Orb cannot infer this due to issues with CVC4 set solving !
+  }
 
   /**
    * Converts a list of integers to a list of streams of integers
@@ -140,12 +154,13 @@ object BottomUpMergeSort {
    * Takes list of integers and returns a sorted stream of integers.
    * Takes time linear in the size of the  input since it sorts lazily.
    */
-  def mergeSort(l: List[BigInt]): LList = {
+  @invisibleBody
+  def mergeSort(l: List[BigInt]): Stream = {
     l match {
-      case Nil() => SNil()
+      case Nil() => Stream(lift(SNil()))
       case _ =>
         constructMergeTree(ListToStreamList(l)) match {
-          case Cons(r, Nil()) => r.list
+          case Cons(r, Nil()) => r
         }
     }
   } ensuring (res => time <= ? * l.size + ?)
@@ -160,16 +175,16 @@ object BottomUpMergeSort {
 //    }
 //  } ensuring (res => time <= ? * l.size + ?)
 //
-//  def kthMin(l: IStream, k: BigInt): BigInt = {
-//    require(k >= 0)
-//    l match {
-//      case SCons(x, xs) =>
-//        if (k == 0) x
-//        else
-//          kthMin(xs.value, k - 1)
-//      case SNil() => BigInt(0)
-//    }
-//  } //ensuring (_ => time <= ? * (k * ssize(l)) + ? * k + ?)
+  def kthMin(s: Stream, k: BigInt): BigInt = {
+    require(k >= 0)
+    s.list match {
+      case SCons(x, xs) =>
+        if (k == 0) x
+        else
+          kthMin(xs, k - 1)
+      case SNil() => BigInt(0)
+    }
+  } ensuring (_ => time <= ? * (k * s.size) + ?)
 
   @ignore
   def main(args: Array[String]) {
