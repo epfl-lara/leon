@@ -107,6 +107,11 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
      * This is currently not supported.
      */
     lambdasList.groupBy { lop =>
+      /*println(s"Lambdas: $lop type: ${lop.getType}")
+      lop match {
+        case Lambda(_, FunctionInvocation(target, args)) =>
+          println(s"Target: $target Arg types: ${args.map(_.getType).mkString(",")} ret type: ${target.returnType}")
+      }*/
       val FunctionType(argts, _) = lop.getType
       argts.size
     }.foreach {
