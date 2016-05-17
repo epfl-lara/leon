@@ -365,7 +365,7 @@ object DefOps {
                                  fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
                                  : (Program, Map[Identifier, Identifier], Map[FunDef, FunDef], Map[ClassDef, ClassDef]) = {
     replaceDefs(p)(fdMapF, cd => None, fiMapF)
-      }
+  }
 
   /** Replaces all function calls by an expression depending on the previous function invocation and the new mapped function */
   def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap): Expr = {
@@ -671,9 +671,11 @@ object DefOps {
       println(s"addDefs could not find anchor definition! Not found: $after")
       p.definedFunctions.filter(f => f.id.name == after.id.name).map(fd => fd.id.name + " : " + fd) match {
         case Nil => 
-        case e => println("Did you mean " + e)
+        case e =>
+          println("Did you mean one of:")
+          e foreach println
     }
-      println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
+      (new Exception).printStackTrace()
     }
 
     res
