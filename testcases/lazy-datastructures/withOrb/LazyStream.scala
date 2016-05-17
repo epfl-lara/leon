@@ -62,13 +62,13 @@ object LazyStream {
   } ensuring(_ => time <= ?) // Orb result: time <= 3
 
   /**
-   * Get the nth zero from a given zeroStream
+   * Get the nth elem from a given stream
    */
   @invisibleBody
-  def getnthZero(n: BigInt, f: SCons): BigInt = {
+  def getnthElem(n: BigInt, f: SCons): BigInt = {
     require(n >= 0)
     if(n == 0) f.x
-    else getnthZero(n-1, f.tail)
+    else getnthElem(n-1, f.tail)
   } ensuring(_ => time <= ? * n + ?) // Orb result: time <=  27 * n + 4
 
   /**
@@ -76,8 +76,8 @@ object LazyStream {
    */
   def nthZero(n: BigInt) = {
     require(n >= 0)
-    val first = zeroStream
-    getnthZero(n, first)
+    val zeros = zeroStream
+    getnthElem(n, zeros)
   } ensuring(_ => time <= ? * n + ?) // Orb result: time <= 27 * n + 6 
 
   /**
@@ -105,5 +105,21 @@ object LazyStream {
       case Cons(x, tail) => SCons(x, Susp(() => lazyappend(tail, s)))
     }
   } ensuring(_ => time <= ? * l.size + ?)
+
+  /** 
+   * The function repeat expects a list and returns a 
+   * stream that represents infinite appends of the
+   * list to itself.
+   */
+  def repeat(l: IList): SCons = {
+    lazyappend(l, repeat(l))
+  } ensuring(_ => time <= ?)
+
+  def nthElemInRepeat(n: BigInt, l: IList) = {
+    require(n >= 0)
+    val rstream = repeat(l)
+    if(n == 0) rstream.x
+    else getnthElem(n, rstream)
+  } ensuring(_ => time <= ? * n + ?)
 
 }
