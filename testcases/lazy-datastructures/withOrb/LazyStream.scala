@@ -104,7 +104,7 @@ object LazyStream {
       case Nil() => s
       case Cons(x, tail) => SCons(x, Susp(() => lazyappend(tail, s)))
     }
-  } ensuring(_ => time <= ? * l.size + ?)
+  } ensuring(_ => time <= ? * l.size + ?) // Orb result: ??
 
   /** 
    * The function repeat expects a list and returns a 
@@ -113,13 +113,32 @@ object LazyStream {
    */
   def repeat(l: IList): SCons = {
     lazyappend(l, repeat(l))
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => time <= ?) // Orb result: ??
 
   def nthElemInRepeat(n: BigInt, l: IList) = {
     require(n >= 0)
     val rstream = repeat(l)
     if(n == 0) rstream.x
     else getnthElem(n, rstream)
-  } ensuring(_ => time <= ? * n + ?)
+  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+
+  /**
+   * Stream for all natural numbers starting from n
+   *
+   */
+  val nats: SCons = SCons(0, Susp(() => genNextNatFrom(0)))
+
+  @invisibleBody
+  def genNextNatFrom(n: BigInt): SCons = {
+    require(n >= 0)
+    SCons(n + 1, Susp(() => genNextNatFrom(n + 1)))
+  } ensuring(_ => time <= ?) // Orb result: ??
+
+  def nthElemInNats(n: BigInt) = {
+    require(n >= 0)
+    val natstream = nats
+    if(n == 0) natstream.x
+    else getnthElem(n, natstream)
+  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
 
 }
