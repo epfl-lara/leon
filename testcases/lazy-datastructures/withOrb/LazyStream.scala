@@ -59,7 +59,7 @@ object LazyStream {
   @invisibleBody
   def genZeroNext: SCons = {
     SCons(0, Susp(() => genZeroNext))
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => time <= ?) // Orb result: time <= 3
 
   /**
    * Get the nth zero from a given zeroStream
@@ -78,5 +78,32 @@ object LazyStream {
     require(n >= 0)
     val first = zeroStream
     getnthZero(n, first)
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 27 * n + 6 
+  } ensuring(_ => time <= ? * n + ?) // Orb result: time <= 27 * n + 6 
+
+  /**
+   * An integer list data-structure
+   */
+  sealed abstract class IList {
+    def size: BigInt = {
+      this match {
+        case Cons(_, tail) => 1 + tail.size
+        case Nil() => BigInt(0)
+      }
+    } ensuring(_ >= 0)
+  }
+  case class Cons(x: BigInt, tail: IList) extends IList
+  case class Nil() extends IList
+
+  /** 
+   * The function lazyappend appends a list to a stream, 
+   * returning a stream of all the list elements
+   * followed by all the original stream elements.
+   */
+  def lazyappend(l: IList, s: SCons): SCons = {
+    l match {
+      case Nil() => s
+      case Cons(x, tail) => SCons(x, Susp(() => lazyappend(tail, s)))
+    }
+  } ensuring(_ => time <= ? * l.size + ?)
+
 }
