@@ -54,9 +54,11 @@ class FunctionsManager(p: Program) {
               body match {
                 case FunctionInvocation(tfd, _)  if tfd.fd.hasPrecondition =>
                   rec(Lamb())(body)
-                case _ => 
-                  rec(LambWoPre())(body) 
-              }              
+                case FunctionInvocation(tfd, _) =>
+                  rec(LambWoPre())(body)
+                case _ =>
+                  rec(LambWoPre())(body)
+              }
             case Operator(args, _) => args map rec(l)
           }
           rec(None())(body)

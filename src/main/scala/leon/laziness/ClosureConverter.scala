@@ -53,7 +53,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   }
 
   val funMap = ProgramUtil.userLevelFunctions(p).collect {
-    case fd if fd.hasBody =>
+    case fd =>
       val stparams =
         if (funsNeedStateTps(fd)) {
           // create fresh type parameters for the state
@@ -299,8 +299,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val targs = getTypeParameters(l.getType)
         val cc = CaseClass(CaseClassType(caseClassDef, targs), capturedVars(l).map(_.toVariable))
         val tname = closureFactory.uninstantiatedFunctionTypeName(l.getType).get
-        if (target.hasPrecondition) {
-          // note:  the only purpose of closureCons is to check preconditions
+        if (st.isDefined) { // otherwise the function does not take preconditions that depend on state.
           FunctionInvocation(TypedFunDef(closureCons(tname), targs ++ stTparams), Seq(cc, st.get))
         } else cc
       }, false)
@@ -587,7 +586,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   def assignBodiesToFunctions = {
     val paramMap: Map[Expr, Expr] = idmap.map(e => (e._1.toVariable -> e._2.toVariable))
     funMap foreach {
-      case (fd, nfd) =>
+      case (fd, nfd) if fd.hasBody =>
         //println("Considering function: "+fd+" New fd: "+nfd)
         // Here, using name to identify 'state' parameter
         val stateParam = nfd.params.collectFirst {
@@ -683,6 +682,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           }
         nfd.postcondition = Some(Lambda(Seq(ValDef(newres)),
           createAnd(stateRel.toList ++ valRel.toList ++ targetPost.toList)))
+      case _ =>
     }
   }
 
