@@ -67,10 +67,13 @@ object Problem {
     eb: ExamplesBank = ExamplesBank.empty,
     fd: Option[FunDef] = None
   ): Problem = {
-    val xs = {
-      val tps = spec.getType.asInstanceOf[FunctionType].from
-      tps map (FreshIdentifier("x", _, alwaysShowUniqueID = true))
-    }.toList
+    val xs = (spec match {
+      case Lambda(args, _) => args.map(_.id)
+      case IsTyped(_, FunctionType(from, to)) =>
+        from map (FreshIdentifier("x", _, alwaysShowUniqueID = true))
+      case _ =>
+        throw LeonFatalError(s"$spec is the spec of a choose but is not a function?")
+    }).toList
 
     val phi = application(simplifyLets(spec), xs map { _.toVariable})
     val as = (variablesOf(phi) ++ pc.variables -- xs).toList.sortBy(_.name)
