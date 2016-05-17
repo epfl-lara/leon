@@ -3,12 +3,12 @@
 package leon
 package evaluators
 
-import leon.purescala.Extractors.{IsTyped, TopLevelAnds}
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Types._
-import solvers.{PartialModel, Model}
+import solvers.Model
+import codegen.runtime.{LeonCodeGenRuntimeException, LeonCodeGenEvaluationException}
 
 abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps: Int) extends Evaluator(ctx, prog) with CEvalHelpers {
 
@@ -37,10 +37,14 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
     } catch {
       case EvalError(msg) =>
         EvaluationResults.EvaluatorError(msg)
+      case ee: LeonCodeGenEvaluationException =>
+        EvaluationResults.EvaluatorError(ee.getMessage)
       case so: StackOverflowError =>
         EvaluationResults.RuntimeError("Stack overflow")
       case e @ RuntimeError(msg) =>
         EvaluationResults.RuntimeError(msg)
+      case re: LeonCodeGenRuntimeException =>
+        EvaluationResults.RuntimeError(re.getMessage)
       case jre: java.lang.RuntimeException =>
         EvaluationResults.RuntimeError(jre.getMessage)
     } finally {
