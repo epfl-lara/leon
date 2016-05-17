@@ -57,7 +57,7 @@ object LazyStream {
   val zeroStream: SCons = SCons(0, Susp(() => genZeroNext))
 
   @invisibleBody
-  val genZeroNext: SCons = {
+  def genZeroNext: SCons = {
     SCons(0, Susp(() => genZeroNext))
   } ensuring(_ => time <= ?)
 
