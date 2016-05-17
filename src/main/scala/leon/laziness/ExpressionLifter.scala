@@ -96,7 +96,7 @@ object ExpressionLifter {
                   val nname = FreshIdentifier(freshFunctionNameForClosure, Untyped, true)
                   val tparamDefs = tparams map TypeParameterDef.apply
                   val params = freevars.map{ fv =>
-                    val freshid = FreshIdentifier(fv.name, TypeOps.bestRealType(body.getType), true)
+                    val freshid = FreshIdentifier(fv.name, TypeOps.bestRealType(fv.getType), true)
                     ValDef(freshid)
                   }
                   val retType = TypeOps.bestRealType(body.getType)
