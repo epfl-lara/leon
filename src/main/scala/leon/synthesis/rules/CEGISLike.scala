@@ -268,28 +268,26 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         }
       }
 
-      // The function which calls the synthesized expression within programCTree
-      private val cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
 
-      // The spec of the problem
-      private val phiFd = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
+      private val cTreeFd0 = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
+      private val phiFd0 = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
 
       // The program with the body of the current function replaced by the current partial solution
       private val (innerProgram, origIdMap, origFdMap, origCdMap) = {
 
         val outerSolution = {
           new PartialSolution(hctx.search.strat, true)
-            .solutionAround(hctx.currentNode)(FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)))
+            .solutionAround(hctx.currentNode)(FunctionInvocation(cTreeFd0.typed, p.as.map(_.toVariable)))
             .getOrElse(fatalError("Unable to get outer solution"))
         }
 
-        val program0 = addFunDefs(hctx.program, Seq(cTreeFd, phiFd) ++ outerSolution.defs, hctx.functionContext)
+        val program0 = addFunDefs(hctx.program, Seq(cTreeFd0, phiFd0) ++ outerSolution.defs, hctx.functionContext)
 
-        cTreeFd.body = None
+        cTreeFd0.body = None
 
-        phiFd.body = Some(
+        phiFd0.body = Some(
           letTuple(p.xs,
-                   FunctionInvocation(cTreeFd.typed, p.as.map(_.toVariable)),
+                   FunctionInvocation(cTreeFd0.typed, p.as.map(_.toVariable)),
                    p.phi)
         )
 
@@ -306,15 +304,15 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
             Some(nfd)
 
-          // We freshen/duplicate every functions, except these two as they are
-          // fresh anyway and we refer to them directly.
-          case `cTreeFd` | `phiFd` =>
-            None
-
           case fd =>
             Some(fd.duplicate())
         }
       }
+
+      // The function which calls the synthesized expression within programCTree
+      private val cTreeFd = origFdMap.getOrElse(cTreeFd0, cTreeFd0)
+      // The spec of the problem
+      private val phiFd   = origFdMap.getOrElse(phiFd0, phiFd0)
 
       private val outerToInner = new purescala.TreeTransformer {
         override def transform(id: Identifier): Identifier = origIdMap.getOrElse(id, id)
