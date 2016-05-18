@@ -11,7 +11,9 @@ import scala.annotation.tailrec
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
-class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, val strat: Strategy) extends Interruptible {
+class Search(val ctx: LeonContext, ci: SourceInfo, val strat: Strategy) extends Interruptible {
+
+  val p: Problem = ci.problem
   val g = new Graph(p)
 
   val interrupted = new AtomicBoolean(false)

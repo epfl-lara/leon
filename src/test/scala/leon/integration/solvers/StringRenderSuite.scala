@@ -85,7 +85,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
 
   def applyStringRenderOn(functionName: String): (FunDef, Program) = {
     val ci = synthesisInfos(functionName)
-    val search = new Search(ctx, ci, ci.problem, new CostBasedStrategy(ctx, CostModels.default))
+    val search = new Search(ctx, ci, new CostBasedStrategy(ctx, CostModels.default))
     val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
     val orNode = search.g.root
     if (!orNode.isExpanded) {

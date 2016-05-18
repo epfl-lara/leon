@@ -20,8 +20,6 @@ class Synthesizer(val context : LeonContext,
                   val ci: SourceInfo,
                   val settings: SynthesisSettings) {
 
-  val problem = ci.problem
-
   val reporter = context.reporter
 
   lazy val sctx = new SynthesisContext(context, settings, ci.fd, program)
@@ -44,14 +42,14 @@ class Synthesizer(val context : LeonContext,
         strat1
     }
 
-    new Search(context, ci, problem, strat2)
+    new Search(context, ci, strat2)
   }
 
   private var lastTime: Long = 0
 
   def synthesize(): (Search, Stream[Solution]) = {
     reporter.ifDebug { printer =>
-      printer(problem.eb.asString("Tests available for synthesis")(context))
+      printer(ci.problem.eb.asString("Tests available for synthesis")(context))
     }
 
     val s = getSearch
