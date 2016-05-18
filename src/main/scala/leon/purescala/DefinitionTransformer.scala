@@ -27,9 +27,7 @@ class DefinitionTransformer(
     super.transform(transformType(tpe).getOrElse(tpe))
   }
 
-
   final override def transform(id: Identifier): Identifier = transformId(id, false)
-
 
   def transformExpr(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = None
   final override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = {

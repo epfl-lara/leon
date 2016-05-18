@@ -223,6 +223,9 @@ trait AbstractZ3Solver extends Z3Solver {
     case tt @ MapType(fromType, toType) =>
       typeToSort(RawArrayType(fromType, library.optionType(toType)))
 
+    case tt @ BagType(base) =>
+      typeToSort(RawArrayType(base, IntegerType))
+
     case rat @ RawArrayType(from, to) =>
       sorts.cached(rat) {
         val fromSort = typeToSort(from)
@@ -473,6 +476,35 @@ trait AbstractZ3Solver extends Z3Solver {
       case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
       case f @ FiniteSet(elems, base) => elems.foldLeft(z3.mkEmptySet(typeToSort(base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
 
+      case fb @ FiniteBag(elems, base) =>
+        typeToSort(fb.getType)
+        toSMT(RawArrayValue(base, elems, InfiniteIntegerLiteral(0)))
+
+      case BagAdd(b, e) =>
+        val bag = rec(b)
+        val elem = rec(e)
+        z3.mkStore(bag, elem, z3.mkAdd(z3.mkSelect(bag, elem), rec(InfiniteIntegerLiteral(1))))
+
+      case MultiplicityInBag(e, b) =>
+        z3.mkSelect(rec(b), rec(e))
+
+      case BagUnion(b1, b2) =>
+        val plus = z3.getFuncDecl(OpAdd, typeToSort(IntegerType), typeToSort(IntegerType))
+        z3.mkArrayMap(plus, rec(b1), rec(b2))
+
+      case BagIntersection(b1, b2) =>
+        rec(BagDifference(b1, BagDifference(b1, b2)))
+
+      case BagDifference(b1, b2) =>
+        val abs = z3.getFuncDecl(OpAbs, typeToSort(IntegerType))
+        val plus = z3.getFuncDecl(OpAdd, typeToSort(IntegerType), typeToSort(IntegerType))
+        val minus = z3.getFuncDecl(OpSub, typeToSort(IntegerType), typeToSort(IntegerType))
+        val div = z3.getFuncDecl(OpDiv, typeToSort(IntegerType), typeToSort(IntegerType))
+
+        val all2 = z3.mkArrayConst(typeToSort(IntegerType), z3.mkInt(2))
+        val withNeg = z3.mkArrayMap(minus, rec(b1), rec(b2))
+        z3.mkArrayMap(div, z3.mkArrayMap(plus, withNeg, z3.mkArrayMap(abs, withNeg)), all2)
+
       case RawArrayValue(keyTpe, elems, default) =>
         val ar = z3.mkConstArray(typeToSort(keyTpe), rec(default))
 
@@ -670,7 +702,7 @@ trait AbstractZ3Solver extends Z3Solver {
                     // We expect a RawArrayValue with keys in from and values in Option[to],
                     // with default value == None
                     if (r.default.getType != library.noneType(to)) {
-                      unsupported(r, "Solver returned a co-finite set which is not supported.")
+                      unsupported(r, "Solver returned a co-finite map which is not supported.")
                     }
                     require(r.keyTpe == from, s"Type error in solver model, expected ${from.asString}, found ${r.keyTpe.asString}")
 
@@ -681,6 +713,14 @@ trait AbstractZ3Solver extends Z3Solver {
 
                     FiniteMap(elems, from, to)
                 }
+
+              case BagType(base) =>
+                val r @ RawArrayValue(_, elems, default) = rec(t, RawArrayType(base, IntegerType))
+                if (default != InfiniteIntegerLiteral(0)) {
+                  unsupported(r, "Solver returned a co-finite bag which is not supported.")
+                }
+
+                FiniteBag(elems, base)
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {

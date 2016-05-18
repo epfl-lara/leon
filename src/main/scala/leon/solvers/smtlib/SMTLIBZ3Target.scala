@@ -154,6 +154,9 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       ArrayMap(plus, toSMT(b1), toSMT(b2))
 
     case BagIntersection(b1, b2) =>
+      toSMT(BagDifference(b1, BagDifference(b1, b2)))
+
+    case BagDifference(b1, b2) =>
       val abs   = SortedSymbol("abs", List(IntegerType).map(declareSort), declareSort(IntegerType))
       val plus  = SortedSymbol("+", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
       val minus = SortedSymbol("-", List(IntegerType, IntegerType).map(declareSort), declareSort(IntegerType))
