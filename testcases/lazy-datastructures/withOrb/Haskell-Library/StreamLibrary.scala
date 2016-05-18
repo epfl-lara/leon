@@ -190,7 +190,7 @@ object StreamLibrary {
      takeWhile(p, s.tailOrNil)
    } ensuring(_ => time <= ?)
 
-     /**
+  /**
    * 'scan' yields a stream of successive reduced values from:
    *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
    */
