@@ -221,7 +221,7 @@ object StreamLibrary {
   
   /**
    * The 'isPrefixOf' function returns True if the first argument is
-   * a prefix of the second. DOUBT: Lazy?
+   * a prefix of the second.
    */
   def isPrefixOf(l: List[BigInt], s: LList): Boolean = {
     require(validNatStream(s))
@@ -240,5 +240,28 @@ object StreamLibrary {
         }
     }
   } ensuring(_ => time <= ? * l.size + ?)
+
+  /**
+   * The elements of two tuples are combined using the function
+   * passed as the first argument to 'zipWith'.
+   */
+   def zipWith(f: (BigInt, BigInt) => BigInt, a: LList, b: LList): LList = {
+    require(validNatStream(a) && validNatStream(b))
+    a match {
+      case SNil()          => SNil()
+      case al @ SCons(x, _) =>
+        b match {
+          case SNil() => SNil()
+          case bl @ SCons(y, _) =>
+            SCons(f(x, y), Susp(() => zipWithSusp(f, al, bl)))
+        }
+    }
+   } ensuring(_ => time <= ?)
+
+  @invisibleBody
+  def zipWithSusp(f: (BigInt, BigInt) => BigInt, a: LList, b: LList) = {
+    require(validNatStream(a) && validNatStream(b))
+    zipWith(f, a.tailOrNil, b.tailOrNil)
+  } ensuring(_ => time <= ?)
 
 }

@@ -69,4 +69,9 @@ object NatStream {
     getnthElem(n, unfold(tupFunc, c))
   } ensuring(_ => time <= ? * n + ?) // Orb result: ??
 
+  def nthElemAfterZipWith(n: BigInt) = {
+    require(n >= 0)
+    getnthElem(n, zipWith(acc, natsFromn(0), natsFromn(0)))
+  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+
 }
