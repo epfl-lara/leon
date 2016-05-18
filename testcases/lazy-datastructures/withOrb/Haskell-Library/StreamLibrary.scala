@@ -218,5 +218,27 @@ object StreamLibrary {
     val (x, d) = f(c)
     SCons(x, Susp(() => unfold(f, d)))
   } ensuring(_ => time <= ?)
+  
+  /**
+   * The 'isPrefixOf' function returns True if the first argument is
+   * a prefix of the second. DOUBT: Lazy?
+   */
+  def isPrefixOf(l: List[BigInt], s: LList): Boolean = {
+    require(validNatStream(s))
+    s match {
+      case SNil()          =>
+        l match {
+          case Nil() => true
+          case _ => false
+        }
+      case ss @ SCons(x, _) =>
+        l match {
+          case Nil() => true
+          case ll @ Cons(y, tail) =>
+            if(x == y) isPrefixOf(tail, s.tailOrNil)
+            else false
+        }
+    }
+  } ensuring(_ => time <= ? * l.size + ?)
 
 }
