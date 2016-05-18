@@ -97,6 +97,23 @@ class SerialInstrumenter(program: Program,
         }
       }
 
+      // create a map from datatypes to datatypes to handle function types in the datatypes
+//      var dataMap = Map[ClassDef, ClassDef]()
+//      (program.definedClasses).distinct.foreach { fd =>
+//        if (instFuncs.contains(fd)) {
+//          val newRetType = TupleType(fd.returnType +: instTypes(fd))
+//          // let the names of the function encode the kind of instrumentations performed
+//          val freshId = FreshIdentifier(fd.id.name + "-" + funcInsts(fd).map(_.name).mkString("-"), newRetType)
+//          val newfd = new FunDef(freshId, fd.tparams, fd.params, newRetType)
+//          funMap += (fd -> newfd)
+//        } else {
+//          //here we need not augment the return types but do need to create a new copy
+//          val freshId = FreshIdentifier(fd.id.name, fd.returnType)
+//          val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+//          funMap += (fd -> newfd)
+//        }
+//      }
+
       def mapExpr(ine: Expr): Expr = {
         simplePostTransform((e: Expr) => e match {
           case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
@@ -321,28 +338,6 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
         }
         transform(ite)
       } else {
-
-        /*def transformMatchCaseList(mCases: Seq[MatchCase]): Seq[MatchCase] = {
-          def transformMatchCase(mCase: MatchCase) = {
-            val MatchCase(pattern, guard, expr) = mCase
-            val newExpr = {
-              val exprVal =
-                Variable(FreshIdentifier("expr", TupleType(expr.getType +: instTypes), true))
-              val newExpr = transform(expr)
-              val instExprs = instrumenters map { m =>
-                m.instrumentMatchCase(me, mCase, selectInst(exprVal, m.inst),
-                  selectInst(instScrutinee, m.inst))
-              }
-              val letBody = Tuple(TupleSelect(exprVal, 1) +: instExprs)
-              Let(exprVal.id, newExpr, letBody)
-            }
-            MatchCase(pattern, guard, newExpr)
-          }
-          if (mCases.length == 0) Seq[MatchCase]()
-          else {
-            transformMatchCase(mCases.head) +: transformMatchCaseList(mCases.tail)
-          }
-        }*/
         val scrutRes =
           Variable(FreshIdentifier("scr", TupleType(scrutinee.getType +: instTypes), true))
         val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
@@ -354,7 +349,7 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
                   selectInst(scrutRes, m.inst))
               }
               MatchCase(pattern, guard,
-                  Let(bodyRes.id, transform(body), Tuple(TupleSelect(bodyRes, 1) +: instExprs)))
+                Let(bodyRes.id, transform(body), Tuple(TupleSelect(bodyRes, 1) +: instExprs)))
           })
         Let(scrutRes.id, transform(scrutinee), matchExpr)
       }

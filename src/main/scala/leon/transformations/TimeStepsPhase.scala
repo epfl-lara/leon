@@ -37,6 +37,9 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
 
   def additionalfunctionsToAdd() = Seq()
 
+  /**
+   * Computes the complete cost of match
+   */
   def instrumentMatchCase(
     me: MatchExpr,
     mc: MatchCase,
@@ -89,6 +92,12 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
         (acc: Expr, subeTime: Expr) => Plus(subeTime, acc))
   }
 
+  /**
+   * consInst Time taken by condition
+   * thenInst - Time taken by then branch
+   * @return values is a pair. 1st component is time when condition is tru, 2nd component
+   * is time when condition is false.
+   */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
       thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
     val costIf = costOfExpr(e)
