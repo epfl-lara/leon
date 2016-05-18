@@ -7,6 +7,11 @@ import leon.collection._
 
 object PatternMatching {
 
+  def match_value(x: Int): Char = x match {
+    case 1 => 'a'
+    case 2 => 'b'
+  }
+
 
   /*
   case class B(x: Int) extends A

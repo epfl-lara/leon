@@ -26,8 +26,8 @@ import leon.comparison.Utils._
   * ComparatorByList -> similarity 33%
   * ComparatorByListType -> similarity 66%
   */
-object ComparatorByListType extends Comparator {
-  val name = "byListType"
+object ComparatorByClassList extends Comparator {
+  val name = "ClassList"
 
   /**
     * Compare two functions using different method
@@ -42,7 +42,7 @@ object ComparatorByListType extends Comparator {
 
     val similarExpr: Int = pairsOfSimilarExp(listClassesB, listClasses)
 
-    Utils.percentBetweenTwo(similarExpr, listClassesB.size, listClasses.size)
+    Utils.matchScore(similarExpr, listClassesB.size, listClasses.size)
   }
 
 

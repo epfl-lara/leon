@@ -21,7 +21,7 @@ object ComparatorByBiggestClassTree extends Comparator {
     val listClassesB = collectClass(expr_base)
     val listClasses = collectClass(expr)
 
-    percentBetweenTwo(sizeBiggestTree, listClassesB.size, listClasses.size)
+    matchScore(sizeBiggestTree, listClassesB.size, listClasses.size)
   }
 
 

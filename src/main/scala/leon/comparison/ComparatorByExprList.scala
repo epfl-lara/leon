@@ -14,10 +14,8 @@ import leon.comparison.Utils._
   * "foo_base" always represent the item extracted from the base of exemple and is always put in first, in order
   * to avoid confusion
   */
-object ComparatorByListExpr extends Comparator {
-  val name = "byListExpr"
-
-
+object ComparatorByExprList extends Comparator {
+  val name = "ExprList"
   /**
     * Compare two functions using different method
     *
@@ -31,7 +29,7 @@ object ComparatorByListExpr extends Comparator {
 
     val numberOfSimilarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
 
-    Utils.percentBetweenTwo(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
+    Utils.matchScore(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
   }
 
 

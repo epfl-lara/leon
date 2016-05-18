@@ -1,11 +1,12 @@
 package leon.comparison
 
 import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-import leon.{LeonContext, OptionsHelpers, SharedOptions, SimpleLeonPhase}
+import leon._
 import leon.purescala.Definitions.{FunDef, Program}
 import leon.purescala.{ExprOps, Expressions}
 import leon.purescala.Expressions.{Let, MatchExpr, Passes, Variable, _}
 import leon.purescala.Types.TypeParameter
+import leon.synthesis.SynthesisSettings
 
 /**
   * Created by joachimmuth on 23.03.16.
@@ -15,11 +16,16 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   override val description: String = "Comparison phase between input program and Leon example suite"
   override val name: String = "Comparison"
 
+  var debug = false
+
+
+
+
   val comparators: List[Comparator] = List(
-    ComparatorByListExpr,
-    ComparatorByListType,
+    ComparatorByExprList,
+    ComparatorByClassList,
     //ComparatorByBiggestClassTree,
-    ComparatorByTree,
+    //ComparatorByTree,
     ComparatorByClassTree
     )
 
@@ -28,6 +34,13 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   val print = true
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
+    val debugFlag = ctx.findOption(SharedOptions.optDebug)
+    debug = if (debugFlag.isDefined) {
+      ctx.reporter.info("Debug mode")
+      true
+    } else false
+
+
     val comparisonBase = ComparisonBase(ctx, "testcases/comparison/base/")
     val listFunDef_base = comparisonBase.listFunDef.tail
     val listFunDef = getFunDef(ctx, program).tail

@@ -83,7 +83,7 @@ object Utils {
     else Math.min(a.toDouble/b.toDouble, b.toDouble/a.toDouble)
   }
 
-  def percentBetweenTwo(a: Int, option1: Int, option2: Int): Double =
+  def matchScore(a: Int, option1: Int, option2: Int): Double =
     Math.min(percent(a, option1), percent(a, option2))
 
   def mean(a: Double): Double = a
