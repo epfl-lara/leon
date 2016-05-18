@@ -57,5 +57,4 @@ class ObjAllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumen
     (Plus(costIf, Plus(condInst.get, thenInst.get)),
       Plus(costIf, Plus(condInst.get, elzeInst.get)))
   }
-
 }
