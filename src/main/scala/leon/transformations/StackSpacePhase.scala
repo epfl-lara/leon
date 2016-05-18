@@ -22,6 +22,9 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Stack))).toMap
   }
+  
+  // TODO: ignoring higher-order functions here. Fix this
+  def functionTypesToInstrument() =  Map()  
 
   def additionalfunctionsToAdd(): Seq[FunDef] = Seq() //Seq(InstUtil.maxFun) - max functions are inlined, so they need not be added
 

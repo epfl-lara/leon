@@ -10,7 +10,10 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import leon.utils._
-import leon.invariant.util.Util._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import TypeUtil._
 
 object timeCostModel {
   def costOf(e: Expr): Int = e match {
@@ -28,15 +31,56 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
 
   def inst = Time
 
+  val (funsToInst, funTypesToInst) = {    
+    val funToFTypes = userLevelFunctions(p).map { fd => 
+      def rec(e: Expr): Set[CompatibleType] = e match {     
+        case NoTree(_) => Set()
+        case l@Lambda(_, b) => rec(b) + new CompatibleType(l.getType)
+        case Ensuring(b, Lambda(_, p)) => rec(b) ++ rec(p)
+        case Operator(args, op) => args.toSet flatMap rec
+      }      
+      fd -> rec(fd.fullBody)
+    }.toMap
+    var instFuns = getRootFuncs()
+    var newFuns = instFuns
+    var instFunTypes = Set[CompatibleType]()
+    while(!newFuns.isEmpty) {
+      // (a) find all function types of applications in the nextSets
+      val appTypes = newFuns flatMap {
+        case ifd if ifd.hasBody =>
+          collect[CompatibleType] {
+            case Application(l, _) => Set(new CompatibleType(l.getType))
+            case _ => Set()
+          }(ifd.body.get)
+        case _ => Set[CompatibleType]()
+      }         
+      // (b) find all userLevelFunctions that may create a lambda compatible with the types of the application.
+      val newRoots = funToFTypes.collect { 
+        case (fd, ftypes) if !ftypes.intersect(appTypes).isEmpty => fd        
+      }
+      // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
+      val nextFunSet = newRoots.flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
+      newFuns = nextFunSet -- instFuns
+      instFuns ++= nextFunSet      
+      instFunTypes ++= appTypes
+    }
+    (instFuns, instFunTypes)
+  }
+
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
-    //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody) // ignore uninterpreted functions
     //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
-    instFunSet.map(x => (x, List(Time))).toMap
+    funsToInst.map(x => (x, List(Time))).toMap
+  }
+  
+  def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
+    funTypesToInst.map(x => (x, List(Time))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
 
+  /**
+   * Computes the complete cost of match
+   */
   def instrumentMatchCase(
     me: MatchExpr,
     mc: MatchCase,
@@ -89,6 +133,12 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
         (acc: Expr, subeTime: Expr) => Plus(subeTime, acc))
   }
 
+  /**
+   * consInst Time taken by condition
+   * thenInst - Time taken by then branch
+   * @return values is a pair. 1st component is time when condition is tru, 2nd component
+   * is time when condition is false.
+   */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
       thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
     val costIf = costOfExpr(e)

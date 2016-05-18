@@ -48,6 +48,9 @@ class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p
     timeFuncs.map(fd => update(fd, Time))
     emap.toMap
   }
+  
+  // TODO: ignoring applications. Fix this.
+  def functionTypesToInstrument() =  Map()  
 
   def additionalfunctionsToAdd() = Seq()
 

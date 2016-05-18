@@ -94,6 +94,22 @@ object TypeUtil {
         tps1.size == tps2.size && (tps1 zip tps2).forall { case (x, y) => isTypeInstance(x, y) }
     }
   }
+  
+  /**
+   * A helper class that uses isTypeInstance as equality
+   */
+  class CompatibleType(val baset: TypeTree) {
+    override def equals(other: Any) = other match {
+      case ot : CompatibleType => 
+        isTypeInstance(baset, ot.baset)        
+      case _ => false
+    }   
+    val hcode = baset match {
+      case NAryType(tps, _) => tps.size      
+    }
+    override def hashCode = hcode
+    override def toString = baset.toString()
+  }
 
   def typeNameWOParams(t: TypeTree): String = t match {
     case ct: ClassType     => ct.id.name
@@ -126,5 +142,13 @@ object TypeUtil {
     case absT: AbstractClassType => Some(absT)
     case ct: CaseClassType       => ct.parent
     case _                       => None
+  }
+
+  def uninstantiatedType(tp: TypeTree): TypeTree = tp match {
+    case CaseClassType(ccd, tps) => ccd.typed
+    case FunctionType(argts, rett) =>
+      FunctionType(argts.map(uninstantiatedType), uninstantiatedType(rett))
+    case NAryType(tps, op) =>
+      op(tps.map(uninstantiatedType))
   }
 }

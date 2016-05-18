@@ -35,6 +35,9 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Depth))).toMap
   }
+  
+  //TODO: ignoring higher-order function calls. Fix this!!
+  def functionTypesToInstrument() =  Map()  
 
   def additionalfunctionsToAdd(): Seq[FunDef] = Seq()// - max functions are inlined, so they need not be added
 
