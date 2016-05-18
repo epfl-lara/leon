@@ -88,6 +88,8 @@ object TypeUtil {
           (t1.tps zip t2.tps).forall { case (x, y) => isTypeInstance(x, y) }
       case (_: TypeParameter, _) => true
       case (_, _: TypeParameter) => true
+      case (NAryType(Seq(), _), NAryType(Seq(), _)) => // represents primitive types
+        t1 == t2
       case (NAryType(tps1, _), NAryType(tps2, _)) =>
         tps1.size == tps2.size && (tps1 zip tps2).forall { case (x, y) => isTypeInstance(x, y) }
     }

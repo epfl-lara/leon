@@ -170,43 +170,44 @@ object StreamLibrary {
   } ensuring (_ => time <= ?) // Orb result: ??
 
   /**
-   * 'scan' yields a stream of successive reduced values from:
-   *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
-   */
-  // def scan(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList): LList = {
-  //   require(validNatStream(s))
-  //   s match {
-  //     case SNil()          => SNil()
-  //     case l @ SCons(x, _) => SCons(z, Susp(() => scanSusp(f, f(z, x), s)))
-  //   }
-  // } ensuring (_ => time <= ?)
-
-  // @invisibleBody
-  // def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
-  //   require(validNatStream(s))
-  //   scan(f, z, s.tailOrNil)
-  // } ensuring(_ => time <= ?)
-
-  /**
-   * 'takeWhile' returns the longest prefix of the stream for which the 
+   * 'takeWhile' returns the longest prefix of the stream for which the
    * predicate p holds.
    */
-  def takeWhile(p: BigInt => Boolean, s: LList): List[BigInt] = {
+  def takeWhile(p: BigInt => Boolean, s: LList): LList = {
     require(validNatStream(s))
     s match {
-      case SNil()          => Nil()
+      case SNil()          => SNil()
       case l @ SCons(x, _) => {
-        if(p(x)) Cons(x, takeWhile(p, s.tailOrNil))
-        else takeWhile(p, s.tailOrNil)
+        if(p(x)) SCons(x, Susp(() => takeWhileSusp(p, s)))
+        else SNil()
       }
     }
   } ensuring (_ => time <= ?)
 
-  // @invisibleBody
-  // def takeWhileSusp(p: BigInt => Boolean, s: LList): List[BigInt] = {
-  //   require(validNatStream(s))
-  //   takeWhile(p, s.tailOrNil)
-  // } ensuring(_ => time <= ?)
+   @invisibleBody
+   def takeWhileSusp(p: BigInt => Boolean, s: LList): LList = {
+     require(validNatStream(s))
+     takeWhile(p, s.tailOrNil)
+   } ensuring(_ => time <= ?)
 
+     /**
+   * 'scan' yields a stream of successive reduced values from:
+   *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+   */
+   def scan(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList): LList = {
+     require(validNatStream(s))
+     s match {
+       case SNil()          => SNil()
+       case l @ SCons(x, _) =>
+         val r = f(z, x)
+         SCons(z, Susp(() => scanSusp(f, r, s)))
+     }
+   } ensuring (_ => time <= ?)
+
+   @invisibleBody
+   def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
+     require(validNatStream(s))
+     scan(f, z, s.tailOrNil)
+   } ensuring(_ => time <= ?)
 
 }
