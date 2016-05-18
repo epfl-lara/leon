@@ -54,11 +54,16 @@ object Stack extends Instrumentation {
   override val getType = IntegerType
   override val name = "stack"
 }
+
+object Obj extends Instrumentation {
+  override val getType = IntegerType
+  override val name = "obj"
+}
 //add more instrumentation variables
 
 object InstUtil {
 
-  val InstTypes = Seq(Time, Depth, Rec, TPR, Stack)
+  val InstTypes = Seq(Time, Depth, Rec, TPR, Stack, Obj)
 
   val maxFun = {
     val xid = FreshIdentifier("x", IntegerType)
