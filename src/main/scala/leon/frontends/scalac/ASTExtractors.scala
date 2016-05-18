@@ -171,6 +171,8 @@ trait ASTExtractors {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
           => Some((body, contract))
+        case Apply(Select(Apply(TypeApply(ExSelected("leon", "lang", "StaticChecks", "any2Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
+          => Some((body, contract))
         case _ => None
       }
     }
