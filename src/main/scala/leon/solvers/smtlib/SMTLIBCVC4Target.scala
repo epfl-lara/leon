@@ -178,7 +178,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
     case SubString(a, start, BVPlus(start2, length)) if start == start2  =>
                                       Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
-    case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
+    case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(BVMinus(end, start)))
     case BigSubString(a, start, Plus(start2, length)) if start == start2  =>
                                       Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
     case BigSubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))

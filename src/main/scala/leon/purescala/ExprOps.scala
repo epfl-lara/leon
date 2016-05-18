@@ -1934,7 +1934,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
   /** Returns the precondition of an expression wrapped in Option */
   def preconditionOf(expr: Expr): Option[Expr] = expr match {
-    case Let(i, e, b)                 => preconditionOf(b).map(Let(i, e, _))
+    case Let(i, e, b)                 => preconditionOf(b).map(Let(i, e, _).copiedFrom(expr))
     case Require(pre, _)              => Some(pre)
     case Ensuring(Require(pre, _), _) => Some(pre)
     case b                            => None
@@ -1942,7 +1942,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
   /** Returns the postcondition of an expression wrapped in Option */
   def postconditionOf(expr: Expr): Option[Expr] = expr match {
-    case Let(i, e, b)      => postconditionOf(b).map(Let(i, e, _))
+    case Let(i, e, b)      => postconditionOf(b).map(Let(i, e, _).copiedFrom(expr))
     case Ensuring(_, post) => Some(post)
     case _                 => None
   }
