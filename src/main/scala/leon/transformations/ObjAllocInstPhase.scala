@@ -14,7 +14,9 @@ import invariant.util.Util._
 
 object objCostModel {
   def costOf(e: Expr): Int = e match {
-  	// TODO
+  	case CaseClass(_, _) => 1
+    case t: Terminal => 0
+    case _ => 0
   }
 
   def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
@@ -34,18 +36,26 @@ class ObjAllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumen
 
   def additionalfunctionsToAdd() = Seq()
 
-  def instrumentMatchCase(
-    // TODO
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
+    caseExprCost: Expr, scrutineeCost: Expr): Expr = {
+    val costMatch = costOfExpr(me)
+    def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
+    Plus(costMatch, Plus(caseExprCost, scrutineeCost))
   }
 
   def instrument(e: Expr, subInsts: Seq[Expr], funInvResVar: Option[Variable] = None)
   	(implicit fd: FunDef, letIdMap: Map[Identifier,Identifier]): Expr = e match {
-    // TODO
+    case t: Terminal => costOfExpr(t)
+    case _ =>
+      subInsts.foldLeft(costOfExpr(e) : Expr)(
+        (acc: Expr, subeObjAlloc: Expr) => Plus(subeObjAlloc, acc))
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-      thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
-    // TODO
+      thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {    
+  	val costIf = costOfExpr(e)
+    (Plus(costIf, Plus(condInst.get, thenInst.get)),
+      Plus(costIf, Plus(condInst.get, elzeInst.get)))
   }
 
 }
