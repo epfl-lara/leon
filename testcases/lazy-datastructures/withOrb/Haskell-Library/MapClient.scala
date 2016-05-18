@@ -10,11 +10,18 @@ import collection._
 import invariant._
 import StreamLibrary._
 
-object NatStream {
+object MapClient {
 
-  def nthElemInNatsFromM(n: BigInt, M: BigInt) = {
+  @ignore
+  val array = Array[BigInt]()
+  @extern
+  def f(n: BigInt): BigInt = {
+    array(0)
+  } ensuring(_ => time <= 1)
+
+  def nthElemAfterMap(n: BigInt) = {
     require(n >= 0)
-    getnthElem(n, natsFromn(M))
+    getnthElem(n, map(f, natsFromn(0)))
   } ensuring(_ => time <= ? * n + ?) // Orb result: ??
 
 }
