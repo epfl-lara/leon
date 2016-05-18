@@ -194,20 +194,29 @@ object StreamLibrary {
    * 'scan' yields a stream of successive reduced values from:
    *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
    */
-   def scan(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList): LList = {
-     require(validNatStream(s))
-     s match {
-       case SNil()          => SNil()
-       case l @ SCons(x, _) =>
-         val r = f(z, x)
-         SCons(z, Susp(() => scanSusp(f, r, s)))
-     }
-   } ensuring (_ => time <= ?)
+  def scan(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList): LList = {
+    require(validNatStream(s))
+    s match {
+      case SNil()          => SNil()
+      case l @ SCons(x, _) =>
+        val r = f(z, x)
+        SCons(z, Susp(() => scanSusp(f, r, s)))
+    }
+  } ensuring (_ => time <= ?)
 
-   @invisibleBody
-   def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
-     require(validNatStream(s))
-     scan(f, z, s.tailOrNil)
-   } ensuring(_ => time <= ?)
+  @invisibleBody
+  def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
+    require(validNatStream(s))
+    scan(f, z, s.tailOrNil)
+  } ensuring(_ => time <= ?)
+
+  /**
+   * The unfold function is similar to the unfold for lists. Note
+   * there is no base case: all streams must be infinite.
+   */
+  def unfold(f: BigInt => (BigInt, BigInt), c: BigInt): LList = {
+    val (x, d) = f(c)
+    SCons(x, Susp(() => unfold(f, d)))
+  } ensuring(_ => time <= ?)
 
 }
