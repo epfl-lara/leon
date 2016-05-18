@@ -21,4 +21,7 @@ package object instrumentation {
 
   @library
   def tpr: BigInt = 0
+
+  @library
+  def obj: BigInt = 0
 }
