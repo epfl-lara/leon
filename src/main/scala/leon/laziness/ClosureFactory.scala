@@ -117,9 +117,10 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     }.foreach {
       case (_, lambs) =>
         val reps = lambs.groupBy(l => canonTypeName(l.getType)).map{
-          case (_, ls) => ls.head
+          case (tname, ls) => ls.head
         }.toArray
         val fta = reps.map(_.getType)
+        //println("Distinct types with same number of arguments: "+fta.mkString(","))
         for (i <- 0 until fta.length)
           for (j <- i + 1 until fta.length) {
             if (isTypeInstance(fta(i), fta(j)))

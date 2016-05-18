@@ -303,36 +303,26 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
   def transform(e: Expr)(implicit letIdMap: Map[Identifier, Identifier]): Expr = e match {
     // Assume that none of the matchcases has a guard. It has already been converted into an if then else
     case me @ MatchExpr(scrutinee, matchCases) =>
-      val containsGuard = matchCases.exists(currCase => currCase.optGuard.isDefined)
-      if (containsGuard) {
-        def rewritePM(me: MatchExpr): Option[Expr] = {
-          val MatchExpr(scrut, cases) = me
-          val condsAndRhs = for (cse <- cases) yield {
-            val map = mapForPattern(scrut, cse.pattern)
-            val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
-            val realCond = cse.optGuard match {
-              case Some(g) => And(patCond, replaceFromIDs(map, g))
-              case None    => patCond
-            }
-            val newRhs = replaceFromIDs(map, cse.rhs)
-            (realCond, newRhs)
+      if (matchCases.exists(_.optGuard.isDefined)) {
+        // converts match to if-then-else here.
+        val condsAndRhs = for (cse <- matchCases) yield {
+          val map = mapForPattern(scrutinee, cse.pattern)
+          val patCond = conditionForPattern(scrutinee, cse.pattern, includeBinders = false)
+          val realCond = cse.optGuard match {
+            case Some(g) => And(patCond, replaceFromIDs(map, g))
+            case None    => patCond
           }
-          val bigIte = condsAndRhs.foldRight[Expr](
-            Error(me.getType, "Match is non-exhaustive").copiedFrom(me))((p1, ex) => {
-              if (p1._1 == BooleanLiteral(true)) {
-                p1._2
-              } else {
-                IfExpr(p1._1, p1._2, ex)
-              }
-            })
-          Some(bigIte)
+          val newRhs = replaceFromIDs(map, cse.rhs)
+          (realCond, newRhs)
         }
-        transform(rewritePM(me).get)
+        val ite = condsAndRhs.foldRight[Expr](Error(me.getType, "Match is non-exhaustive").copiedFrom(me)) {
+          case ((cond, rhs), elze) =>
+            if (cond == tru) rhs else IfExpr(cond, rhs, elze)
+        }
+        transform(ite)
       } else {
-        val instScrutinee =
-          Variable(FreshIdentifier("scr", TupleType(scrutinee.getType +: instTypes), true))
 
-        def transformMatchCaseList(mCases: Seq[MatchCase]): Seq[MatchCase] = {
+        /*def transformMatchCaseList(mCases: Seq[MatchCase]): Seq[MatchCase] = {
           def transformMatchCase(mCase: MatchCase) = {
             val MatchCase(pattern, guard, expr) = mCase
             val newExpr = {
@@ -352,10 +342,21 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
           else {
             transformMatchCase(mCases.head) +: transformMatchCaseList(mCases.tail)
           }
-        }
-        val matchExpr = MatchExpr(TupleSelect(instScrutinee, 1),
-          transformMatchCaseList(matchCases))
-        Let(instScrutinee.id, transform(scrutinee), matchExpr)
+        }*/
+        val scrutRes =
+          Variable(FreshIdentifier("scr", TupleType(scrutinee.getType +: instTypes), true))
+        val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
+          matchCases.map {
+            case mCase @ MatchCase(pattern, guard, body) =>
+              val bodyRes = Variable(FreshIdentifier("mc", TupleType(body.getType +: instTypes), true))
+              val instExprs = instrumenters map { m =>
+                m.instrumentMatchCase(me, mCase, selectInst(bodyRes, m.inst),
+                  selectInst(scrutRes, m.inst))
+              }
+              MatchCase(pattern, guard,
+                  Let(bodyRes.id, transform(body), Tuple(TupleSelect(bodyRes, 1) +: instExprs)))
+          })
+        Let(scrutRes.id, transform(scrutinee), matchExpr)
       }
 
     case Let(i, v, b) => {
