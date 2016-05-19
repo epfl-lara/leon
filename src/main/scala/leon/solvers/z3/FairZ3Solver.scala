@@ -133,8 +133,8 @@ class FairZ3Solver(val sctx: SolverContext, val program: Program)
 
     def extractNot(l: Z3AST): Option[Z3AST] = z3.getASTKind(l) match {
       case Z3AppAST(decl, args) => z3.getDeclKind(decl) match {
-        case Z3DeclKind.OpNot => Some(args.head)
-        case Z3DeclKind.OpUninterpreted => None
+        case OpNot => Some(args.head)
+        case _ => None
       }
       case ast => None
     }

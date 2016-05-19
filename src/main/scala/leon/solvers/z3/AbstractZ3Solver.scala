@@ -478,7 +478,7 @@ trait AbstractZ3Solver extends Z3Solver {
 
       case fb @ FiniteBag(elems, base) =>
         typeToSort(fb.getType)
-        toSMT(RawArrayValue(base, elems, InfiniteIntegerLiteral(0)))
+        rec(RawArrayValue(base, elems, InfiniteIntegerLiteral(0)))
 
       case BagAdd(b, e) =>
         val bag = rec(b)
@@ -496,12 +496,12 @@ trait AbstractZ3Solver extends Z3Solver {
         rec(BagDifference(b1, BagDifference(b1, b2)))
 
       case BagDifference(b1, b2) =>
-        val abs = z3.getFuncDecl(OpAbs, typeToSort(IntegerType))
+        val abs = z3.getAbsFuncDecl()
         val plus = z3.getFuncDecl(OpAdd, typeToSort(IntegerType), typeToSort(IntegerType))
         val minus = z3.getFuncDecl(OpSub, typeToSort(IntegerType), typeToSort(IntegerType))
         val div = z3.getFuncDecl(OpDiv, typeToSort(IntegerType), typeToSort(IntegerType))
 
-        val all2 = z3.mkArrayConst(typeToSort(IntegerType), z3.mkInt(2))
+        val all2 = z3.mkConstArray(typeToSort(IntegerType), z3.mkInt(2, typeToSort(IntegerType)))
         val withNeg = z3.mkArrayMap(minus, rec(b1), rec(b2))
         z3.mkArrayMap(div, z3.mkArrayMap(plus, withNeg, z3.mkArrayMap(abs, withNeg)), all2)
 
