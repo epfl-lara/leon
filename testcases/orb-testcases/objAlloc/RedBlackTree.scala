@@ -77,7 +77,7 @@ object RedBlackTree {
           balance(c,a,y,t1)
         }
     }
-  } ensuring(res => obj <= ?)
+  } ensuring(res => tmpl((a,b) => obj <= a*blackHeight(t) + b))
 
   def makeBlack(n: Tree): Tree = {
     n match {
@@ -90,7 +90,8 @@ object RedBlackTree {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
     val t1 =  ins(x, t)
     makeBlack(t1)
-  } ensuring(res => obj <= ?)
+
+  } ensuring(res => tmpl((a,b) => obj <= a*blackHeight(t) + b))
 
   def balance(co: Color, l: Tree, x: BigInt, r: Tree): Tree = {
     Node(co,l,x,r)
@@ -105,7 +106,7 @@ object RedBlackTree {
         Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
       case _ => Node(co,l,x,r)
     }
-  } ensuring(res => obj <= ?)
+  }
 
 
 }

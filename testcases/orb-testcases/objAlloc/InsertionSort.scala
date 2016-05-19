@@ -9,9 +9,9 @@ object InsertionSort {
   def size(l : List): BigInt = {
     l match {
       case Cons(_, xs) => 1 + size(xs)
-      case _ => 0
+      case _ => BigInt(0)
     }
-  }
+  } ensuring(res => res >= 0 && obj <= ?)
 
   def sortedIns(e: BigInt, l: List): List = {
     l match {
@@ -23,6 +23,6 @@ object InsertionSort {
     def sort(l: List): List = (l match {
       case Cons(x,xs) => sortedIns(x, sort(xs))
       case _ => Nil()
-    }) ensuring(res => size(res) == size(l) && obj <= ? *(size(res)*size(res)) + ? * size(res) + ?)
+    }) ensuring(res => size(res) == size(l) && obj <= ? *(size(res) * size(res)) + ? * size(res) + ?)
 }
 
