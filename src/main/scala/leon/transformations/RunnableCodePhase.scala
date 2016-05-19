@@ -3,12 +3,16 @@
 package leon
 package transformations
 
+import java.io.File
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
+import leon._
 import leon.purescala.ScalaPrinter
 import leon.utils._
 import invariant.util._
@@ -65,7 +69,32 @@ object RunnableCodePhase extends TransformationPhase {
     })
 
     if (debugRunnable)
-      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog))
+      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(printRunnableCode = true)))
+
+    val optOutputDirectory = LeonStringOptionDef("o", "Output directory", "leon.out", "dir")
+
+    val outputFolder = ctx.findOptionOrDefault(optOutputDirectory)
+    try {
+      new File(outputFolder).mkdir()
+    } catch {
+      case _ : java.io.IOException => ctx.reporter.fatalError("Could not create directory " + outputFolder)
+    }
+
+    for (u <- newprog.units if u.isMainUnit) {
+      val outputFile = s"$outputFolder${File.separator}${u.id.toString}.scala"
+      try {
+        import java.io.FileWriter
+        import java.io.BufferedWriter
+        val fstream = new FileWriter(outputFile)
+        val out = new BufferedWriter(fstream)
+        out.write(ScalaPrinter(u, purescala.PrinterOptions(printRunnableCode = true), opgm = Some(newprog)))
+        out.close()
+      }
+      catch {
+        case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)
+      }
+    }
+    ctx.reporter.info("Output written on " + outputFolder)
     newprog
   }
 }
