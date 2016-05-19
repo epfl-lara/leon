@@ -1,7 +1,8 @@
 package withOrb
 
 import leon._
-import lazyeval._
+import mem._
+import higherorder._
 import lang._
 import annotation._
 import collection._
@@ -11,87 +12,88 @@ import invariant._
 object RealTimeQueue {
 
   sealed abstract class Stream[T] {
-    def isEmpty: Boolean = {
-      this match {
-        case SNil() => true
-        case _      => false
-      }
-    }
-
-    def isCons: Boolean = {
-      this match {
-        case SCons(_, _) => true
-        case _           => false
-      }
-    }
+    @inline
+    def isEmpty: Boolean = this == SNil[T]()
+    @inline
+    def isCons: Boolean = !isEmpty
 
     def size: BigInt = {
       this match {
         case SNil()      => BigInt(0)
-        case SCons(x, t) => 1 + (t*).size
+        case c@SCons(_, _) => 1 + (c.tail*).size
       }
-    } ensuring (_ >= 0)
+    } ensuring (_ >= 0)                
+
+    lazy val tail: Stream[T] = {
+      require(isCons)
+      this match {
+        case SCons(x, tailFun) => tailFun()
+      }
+    }
   }
-  case class SCons[T](x: T, tail: Lazy[Stream[T]]) extends Stream[T]
+  // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
+  case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
-  def isConcrete[T](l: Lazy[Stream[T]]): Boolean = {
-    l.isEvaluated && (l* match {
-      case SCons(_, tail) =>
-        isConcrete(tail)
+  def isConcrete[T](l: Stream[T]): Boolean = {
+    l match {
+      case c@SCons(_, _) =>
+        c.tail.cached && isConcrete(c.tail*)
       case _ => true
-    })
+    }
   }
 
   @invisibleBody
-  @invstate
-  def rotate[T](f: Lazy[Stream[T]], r: List[T], a: Lazy[Stream[T]]): Stream[T] = { // doesn't change state
-    require(r.size == (f*).size + 1 && isConcrete(f))
-    (f.value, r) match {
+  @invstate // says that the function doesn't change state
+  def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
+    require(r.size == f.size + 1 && isConcrete(f))  
+    (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, a)
-      case (SCons(x, tail), Cons(y, r1)) =>
-        val newa: Stream[T] = SCons[T](y, a)
-        val rot = $(rotate(tail, r1, newa)) //this creates a lazy rotate operation
-        SCons[T](x, rot)
+        SCons[T](y, lift(a)) //  rank: a.rank + 1
+      case (c@SCons(x, _), Cons(y, r1)) =>
+        val newa = SCons[T](y, lift(a)) // rank : a.rank + 1
+        val ftail = c.tail
+        val rot = () => rotate(ftail, r1, newa)
+        SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
     }
-  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons &&
-    time <= ?)
+  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && time <= ?) // Orb results: time <= 31
 
   /**
-   * Returns the first element of the stream that is not evaluated.
+   * Returns the first element of the stream whose tail is not evaluated.
    */
-  def firstUnevaluated[T](l: Lazy[Stream[T]]): Lazy[Stream[T]] = {
-    if (l.isEvaluated) {
-      l* match {
-        case SCons(_, tail) =>
-          firstUnevaluated(tail)
-        case _ => l
-      }
-    } else
-      l
-  } ensuring (res => (!(res*).isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    (res.value match {
-      case SCons(_, tail) =>
-        firstUnevaluated(l) == firstUnevaluated(tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
+  @invisibleBody
+  def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
+    l match {
+      case c @ SCons(_, _) =>
+        if (c.tail.cached)
+          firstUnevaluated(c.tail*)
+        else l
+      case _           => l
+    }
+  } ensuring (res => (!res.isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
+    (res match {
+      case c@SCons(_, _) =>
+        firstUnevaluated(l) == firstUnevaluated(c.tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
       case _ => true
     }))
 
-  case class Queue[T](f: Lazy[Stream[T]], r: List[T], s: Lazy[Stream[T]]) {
-    def isEmpty = (f*).isEmpty
+  case class Queue[T](f: Stream[T], r: List[T], s: Stream[T]) {
+    @inline
+    def isEmpty = f.isEmpty
+
+    //@inline
     def valid = {
       (firstUnevaluated(f) == firstUnevaluated(s)) &&
-        (s*).size == (f*).size - r.size //invariant: |s| = |f| - |r|
+        s.size == f.size - r.size //invariant: |s| = |f| - |r|
     }
   }
 
   @inline
-  def createQ[T](f: Lazy[Stream[T]], r: List[T], s: Lazy[Stream[T]]) = {
-    s.value match {
-      case SCons(_, tail) => Queue(f, r, tail)
+  def createQ[T](f: Stream[T], r: List[T], s: Stream[T]) = {
+    s match {
+      case c@SCons(_, _) => Queue(f, r, c.tail) // force the schedule once
       case SNil() =>
-        val newa: Stream[T] = SNil()
-        val rotres = $(rotate(f, r, newa))
+        val rotres = rotate(f, r, SNil[T]())
         Queue(rotres, Nil(), rotres)
     }
   }
@@ -103,7 +105,7 @@ object RealTimeQueue {
 
   def head[T](q: Queue[T]): T = {
     require(!q.isEmpty && q.valid)
-    q.f.value match {
+    q.f match {
       case SCons(x, _) => x
     }
   } //ensuring (res => res.valid && time <= ?)
@@ -111,15 +113,41 @@ object RealTimeQueue {
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring { res =>
+    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
+    res.valid && time <= ?
+  } // Orb results: time <= 62
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
-    q.f.value match {
-      case SCons(x, nf) =>
-        createQ(nf, q.r, q.s)
+    q.f match {
+      case c@SCons(x, _) =>
+        createQ(c.tail, q.r, q.s)
     }
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring{res =>
+    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
+    res.valid && time <= ?
+  } // Orb results: time <= 119
+
+   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
+  /**
+   * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
+   */
+  @traceInduct
+  def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
+    require(st1.subsetOf(st2))
+    // property
+    (firstUnevaluated(l1) withState st2) == (firstUnevaluated(firstUnevaluated(l1) withState st1) withState st2)
+  } holds
+
+  @invisibleBody
+  def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
+    require((firstUnevaluated(l1) withState st1) == (firstUnevaluated(l2) withState st1) &&
+        st1.subsetOf(st2))
+     funeCompose(l1, st1, st2) &&  // implies: fune(l1, st2) == fune(fune(l1,st1), st2)
+     funeCompose(l2, st1, st2) &&  // implies: fune(l2, st2) == fune(fune(l2,st1), st2)
+      (firstUnevaluated(l1) withState st2) == (firstUnevaluated(l2) withState st2) // property
+  } holds
 
   @ignore
   def main(args: Array[String]) {
@@ -148,7 +176,7 @@ object RealTimeQueue {
         case x if x == 0 => //enqueue
           //          /if(i%100000 == 0) println("Enqueue..")
           rtq = timed { enqueue(BigInt(i), rtq) } { totalTime1 += _ }
-          //amq = timed { amq.enqueue(BigInt(i)) } { totalTime2 += _ }
+        //amq = timed { amq.enqueue(BigInt(i)) } { totalTime2 += _ }
         case x if x == 1 => //dequeue
           if (!rtq.isEmpty) {
             //if(i%100000 == 0) println("Dequeue..")

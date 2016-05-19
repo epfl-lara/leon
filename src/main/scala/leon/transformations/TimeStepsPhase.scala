@@ -31,11 +31,15 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody) // ignore uninterpreted functions
+    //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
     instFunSet.map(x => (x, List(Time))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
 
+  /**
+   * Computes the complete cost of match
+   */
   def instrumentMatchCase(
     me: MatchExpr,
     mc: MatchCase,
@@ -88,6 +92,12 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
         (acc: Expr, subeTime: Expr) => Plus(subeTime, acc))
   }
 
+  /**
+   * consInst Time taken by condition
+   * thenInst - Time taken by then branch
+   * @return values is a pair. 1st component is time when condition is tru, 2nd component
+   * is time when condition is false.
+   */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
       thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
     val costIf = costOfExpr(e)

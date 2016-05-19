@@ -14,15 +14,16 @@ import java.io._
 import invariant.engine.InferenceReport
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
+ * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
-object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
+object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
   val dumpInputProg = false
-  val dumpLiftProg = false
-  val dumpProgramWithClosures = false
-  val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = false
-  val dumpProgWOInstSpecs = false
-  val dumpInstrumentedProgram = false
+  val dumpLiftProg = true
+  val dumpProgramWithClosures = true
+  val dumpTypeCorrectProg = true
+  val dumpProgWithPreAsserts = true
+  val dumpProgWOInstSpecs = true
+  val dumpInstrumentedProgram = true
   val debugSolvers = false
   val skipStateVerification = false
   val skipResourceVerification = false
@@ -33,13 +34,9 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
-  val optUseOrb = LeonFlagOptionDef("useOrb", "Use Orb to infer constants", false)
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optUseOrb, optRefEquality)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality)
 
-  /**
-   * TODO: add inlining annotations for optimization.
-   */
   def apply(ctx: LeonContext, prog: Program): LazyVerificationReport = {
     val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
     val checkCtx = contextForChecks(ctx)
@@ -50,8 +47,7 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
 
     val resourceVeri =
       if (!skipResourceVerification)
-        Some(checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false)))
+        Some(checkInstrumentationSpecs(instProg, checkCtx))
       else None
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
@@ -75,13 +71,13 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     assert(pass, msg)
 
     // refEq is by default false
-    val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
+    val nprog = ExpressionLifter.liftLambdaBody(ctx, prog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
-    val funsManager = new LazyFunctionsManager(nprog)
-    val closureFactory = new LazyClosureFactory(nprog)
-    val progWithClosures = (new LazyClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
+    val funsManager = new FunctionsManager(nprog)
+    val closureFactory = new ClosureFactory(nprog, funsManager)
+    val progWithClosures = (new ClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
     if (dumpProgramWithClosures)
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
 
@@ -90,7 +86,7 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     if (dumpTypeCorrectProg)
       prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, closureFactory)).apply
     if (dumpProgWithPreAsserts)
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
 
@@ -100,7 +96,7 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory)
+    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory, funsManager)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)

@@ -3,37 +3,29 @@
 package leon
 package invariant.datastructure
 
-class DirectedGraph[T] {
+/**
+ * The trait represents a graph-like data structure supporting the following operations.
+ */
+trait Graph[T] {
 
-  var adjlist = scala.collection.mutable.Map[T, Set[T]]()
-  var edgeCount: Int = 0
+  def nodes: Set[T]
 
-  def addNode(n: T) {
-    if (!adjlist.contains(n)) {
-      adjlist.update(n, Set())
-    }
-  }
+  def successors(src: T): Set[T]
 
-  def addEdge(src: T, dest: T): Unit = {
-    val newset = if (adjlist.contains(src)) adjlist(src) + dest
-    else Set(dest)
+  def edgeCount: Int
 
-    //this has some side-effects
-    adjlist.update(src, newset)
-
-    edgeCount += 1
-  }
+  def containsEdge(src: T, dest: T): Boolean
 
   def BFSReach(src: T, dest: T, excludeSrc: Boolean = false): Boolean = {
+    val nods = nodes
     var queue = List[T]()
     var visited = Set[T]()
     visited += src
-
     //TODO: is there a better (and efficient) way to implement BFS without using side-effects
     def BFSReachRecur(cur: T): Boolean = {
       var found: Boolean = false
-      if (adjlist.contains(cur)) {
-        adjlist(cur).foreach((fi) => {
+      if (nods(cur)) {
+        successors(cur).foreach((fi) => {
           if (fi == dest) found = true
           else if (!visited.contains(fi)) {
             visited += fi
@@ -55,13 +47,14 @@ class DirectedGraph[T] {
   }
 
   def BFSReachables(srcs: Seq[T]): Set[T] = {
+    val nods = nodes
     var queue = List[T]()
     var visited = Set[T]()
     visited ++= srcs.toSet
 
     def BFSReachRecur(cur: T): Unit = {
-      if (adjlist.contains(cur)) {
-        adjlist(cur).foreach((neigh) => {
+      if (nods(cur)) {
+        successors(cur).foreach((neigh) => {
           if (!visited.contains(neigh)) {
             visited += neigh
             queue ::= neigh
@@ -74,20 +67,9 @@ class DirectedGraph[T] {
         BFSReachRecur(head)
       }
     }
-
     srcs.foreach{src => BFSReachRecur(src) }
     visited
   }
-
-  def containsEdge(src: T, dest: T): Boolean = {
-    if (adjlist.contains(src)) {
-      adjlist(src).contains(dest)
-    } else false
-  }
-
-  def getEdgeCount: Int = edgeCount
-  def getNodes: Set[T] = adjlist.keySet.toSet
-  def getSuccessors(src: T): Set[T] = adjlist(src)
 
   /**
    * TODO: Change this to the verified component
@@ -123,7 +105,7 @@ class DirectedGraph[T] {
           } else st
         }
       }
-      val strslt = getSuccessors(vertex).foldLeft(newState)(processNeighbor)
+      val strslt = successors(vertex).foldLeft(newState)(processNeighbor)
       if (strslt.lowlinks(vertex) == strslt.dfNumber(vertex)) {
         val index = strslt.stack.indexOf(vertex)
         val (comp, rest) = strslt.stack.splitAt(index + 1)
@@ -140,7 +122,7 @@ class DirectedGraph[T] {
       components = Nil)
 
     var state = initial
-    val totalNodes = getNodes
+    val totalNodes = nodes
     while (state.visited.size < totalNodes.size) {
       totalNodes.find(n => !state.visited.contains(n)).foreach { n =>
         state = search(n, state)
@@ -149,16 +131,66 @@ class DirectedGraph[T] {
     state.components
   }
 
+  def reverse: Graph[T]
+}
+
+/**
+ * A mutable directed graph.
+ * We can add and also remove edges from this graph.
+ */
+class DirectedGraph[T] extends Graph[T] {
+
+  val adjlist = scala.collection.mutable.Map[T, Set[T]]()
+  var edgeCount: Int = 0
+
+  def addNode(n: T) {
+    if (!adjlist.contains(n)) {
+      adjlist.update(n, Set())
+    }
+  }
+
+  def addEdge(src: T, dest: T) {
+    if (!containsEdge(src, dest)) {
+      val newset = adjlist.getOrElse(src, Set[T]()) + dest
+      adjlist.update(src, newset)
+      edgeCount += 1
+    }
+  }
+
+  def removeEdge(src: T, dest: T): Unit = {
+    if (adjlist.contains(src) && adjlist(src).contains(dest)){
+      val nset = adjlist(src) - dest
+      adjlist.update(src, nset)
+      edgeCount -= 1
+    }
+  }
+
+  def containsEdge(src: T, dest: T): Boolean = {
+    if (adjlist.contains(src)) {
+      adjlist(src).contains(dest)
+    } else false
+  }
+
+  def nodes: Set[T] = adjlist.keySet.toSet
+
+  def successors(src: T): Set[T] = adjlist(src)
   /**
    * Reverses the direction of the edges in the graph
    */
-  def reverse : DirectedGraph[T] = {
+  def reverse = {
     val revg = new DirectedGraph[T]()
     adjlist.foreach{
       case (src, dests) =>
         dests.foreach { revg.addEdge(_, src) }
     }
     revg
+  }
+
+  def copy: DirectedGraph[T] = {
+    val ng = new DirectedGraph[T]()
+    adjlist.foreach { case (k, v) => ng.adjlist.update(k, v) }
+    ng.edgeCount = this.edgeCount
+    ng
   }
 }
 
@@ -175,5 +207,73 @@ class UndirectedGraph[T] extends DirectedGraph[T] {
     adjlist.update(src, newset1)
     adjlist.update(dest, newset2)
     edgeCount += 1
+  }
+
+  override def removeEdge(src: T, dest: T): Unit = throw new IllegalStateException("Not yet implemented!")
+
+}
+
+/**
+ * A directed graph with labels
+ */
+class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new DirectedGraph[T]()) extends Graph[T] {
+  type Edge = (T, T)
+  val labels = scala.collection.mutable.Map[Edge, Set[L]]()
+
+  def addNode(n: T) = dgraph.addNode(n)
+
+  def addEdge(src: T, dest: T, label: L) {
+    dgraph.addEdge(src, dest)
+    val key = (src, dest)
+    labels.update(key, labels.getOrElse(key, Set[L]()) + label)
+  }
+
+  def removeEdgesWithLabels(remlabels: Set[L]) = {
+    val nlg = new DirectedLabeledGraph[T, L](dgraph.copy)
+    var edgesToRemove = Set[Edge]()
+    labels.foreach {
+      case (edge, edgeLabels) if (edgeLabels -- remlabels).isEmpty =>
+        edgesToRemove += edge
+      case (edge, edgeLabels) =>
+        nlg.labels.update(edge, (edgeLabels -- remlabels))        
+    }
+    edgesToRemove.foreach{ case (src, dest) => nlg.dgraph.removeEdge(src, dest) }
+    nlg
+  }
+
+  def projectOnLabel(label: L): DirectedGraph[T] = {
+    val ng = dgraph.copy
+    var edgesToRemove = Set[Edge]()
+    labels.foreach {
+      case (edge, edgeLabels) if !edgeLabels(label) => edgesToRemove += edge
+      case _ =>
+    }
+    edgesToRemove.foreach{ case (src, dest) => ng.removeEdge(src, dest) }
+    ng
+  }
+
+  def reverse = {
+    val nlg = new DirectedLabeledGraph[T, L](dgraph.reverse)
+    labels.foreach{
+      case ((src, dest), ls) => nlg.labels.update((dest, src), ls)
+    }
+    nlg
+  }
+
+  /**
+   * Label agnostic procedures
+   */
+  def containsEdge(src: T, dest: T): Boolean = dgraph.containsEdge(src, dest)
+
+  def successors(src: T): Set[T] = dgraph.successors(src)
+
+  def edgeCount: Int = dgraph.edgeCount
+
+  def nodes: Set[T] = dgraph.nodes
+  
+  def succsWithLabels(src: T): Map[T, Set[L]] = {
+    successors(src).map{ dst => 
+      dst -> labels.getOrElse((src, dst), Set[L]())
+    }.toMap
   }
 }

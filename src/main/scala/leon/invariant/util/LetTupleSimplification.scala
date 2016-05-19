@@ -44,6 +44,7 @@ object LetTupleSimplification {
   }
 
   /**
+   * TODO: rewrite this function in a better way
    * This function simplifies lets of the form <Var> = <TupleType Expr> by replacing
    * uses of the <Var>._i by the approppriate expression in the let body or by
    * introducing a new let <Var'> = <Var>._i and using <Var'> in place of <Var>._i
@@ -304,10 +305,6 @@ object LetTupleSimplification {
 
         case t: Terminal => t
 
-        /*case Operator(Seq(e1, e2), op) =>
-          replaceLetBody(pullLetToTop(e1), te1 =>
-            replaceLetBody(pullLetToTop(e2), te2 => op(Seq(te1, te2))))*/
-
         // Note: it is necessary to handle unary operators specially
         case Operator(Seq(sube), op) =>
           replaceLetBody(pullLetToTop(sube), e => op(Seq(e)))
@@ -337,30 +334,50 @@ object LetTupleSimplification {
       }
       // println(s"E : $e After Pulling lets to top : \n $transe")
       transe
-    }   
+    }
     val res = pullLetToTop(ine)
     /*if(debug)
       println(s"InE : $ine After Pulling lets to top : \n ${ScalaPrinter.apply(res)}")*/
     res
   }
 
-  def simplifyLetsAndLetsWithTuples(ine: Expr) = {
+  /**
+   * Here, cntFun is assumed to be >= 0
+   * The second return value is true if the cntFun was positive within a lambda.
+   */
+  def countWithLambda(cntFun: Expr => Int)(e: Expr): (Int, Boolean) = e match {
+    case Lambda(_, lb) =>
+      val (occ, withinLam) = countWithLambda(cntFun)(lb)
+      if (occ > 0)
+        (occ + cntFun(e), true)
+      else
+        (cntFun(e), withinLam)
+    case Operator(args, op) =>
+      args.foldLeft((cntFun(e), false)) {
+        case ((occ, withinLam), arg) =>
+          val (o, wl) = countWithLambda(cntFun)(arg)
+          (occ + o, withinLam || wl)
+      }
+  }
 
-    def simplerLet(t: Expr): Expr = {
+  /**
+   * This also preserves resources in the presence of higher-order functions
+   */
+  def simplerLet(ine: Expr): Expr = {
+    def rec(t: Expr): Expr = {
       val res = t match {
         case letExpr @ Let(i, t: Terminal, b) =>
           replace(Map(Variable(i) -> t), b)
 
         // check if the let can be completely removed
         case letExpr @ Let(i, e, b) => {
-          val occurrences = count {
+          val (occurrences, withinLam) = countWithLambda {
             case Variable(x) if x == i => 1
             case _                     => 0
           }(b)
-
           if (occurrences == 0) {
             b
-          } else if (occurrences == 1) {
+          } else if (occurrences == 1 && !withinLam) {
             replace(Map(Variable(i) -> e), b)
           } else {
             //TODO: we can also remove zero occurrences and compress the tuples
@@ -368,20 +385,19 @@ object LetTupleSimplification {
             letExpr match {
               case letExpr @ Let(binder, lval @ Tuple(subes), b) =>
                 def occurrences(index: Int) = {
-                  val res = count {
+                  countWithLambda {
                     case TupleSelect(sel, i) if sel == binder.toVariable && i == index => 1
                     case _ => 0
                   }(b)
-                  res
                 }
                 val binderVar = binder.toVariable
                 val repmap: Map[Expr, Expr] = subes.zipWithIndex.collect {
-                  case (sube, i) if occurrences(i + 1) == 1 => // sube is used only once ?
-                    (TupleSelect(binderVar, i + 1) -> sube)
                   case (v @ Variable(_), i) => // sube is a variable ?
                     (TupleSelect(binderVar, i + 1) -> v)
                   case (ts @ TupleSelect(Variable(_), _), i) => // sube is a tuple select of a variable ?
                     (TupleSelect(binderVar, i + 1) -> ts)
+                  case (sube, i) if occurrences(i + 1) == (1, false) => // sube is used only once ?
+                    (TupleSelect(binderVar, i + 1) -> sube)
                 }.toMap
                 Let(binder, lval, replace(repmap, b))
               //note: here, we cannot remove the let,
@@ -393,11 +409,30 @@ object LetTupleSimplification {
         // also perform a tuple simplification
         case ts @ TupleSelect(Tuple(subes), i) =>
           subes(i - 1)
+        // in the case of match or if-then-else or lets, push the tupleSelect into the cases or body
+        case ts @ TupleSelect(sube, i) =>
+          sube match {
+            case MatchExpr(scr, cases) =>
+              MatchExpr(scr, cases map {
+                case MatchCase(pat, guard, body) =>
+                  MatchCase(pat, guard, rec(TupleSelect(body, i)))
+              })
+            case IfExpr(cond, th, elze) =>
+              IfExpr(cond, rec(TupleSelect(th, i)), rec(TupleSelect(elze, i)))
+            case Let(id, v, b) =>
+              Let(id, v, rec(TupleSelect(b, i)))
+            case _ => ts
+          }
         case e => e
       }
       res
     }
-    val transforms = removeLetsFromLetValues _ andThen fixpoint(simplePostTransform(simplerLet)) _ andThen simplifyArithmetic
+    fixpoint(simplePostTransform(rec))(ine)
+  }
+
+  def simplifyLetsAndLetsWithTuples(ine: Expr) = {
+
+    val transforms = removeLetsFromLetValues _ andThen simplerLet _ andThen simplifyArithmetic
     transforms(ine)
   }
 

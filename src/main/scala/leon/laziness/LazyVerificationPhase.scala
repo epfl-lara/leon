@@ -89,30 +89,18 @@ object LazyVerificationPhase {
     report
   }
 
-  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext, useOrb: Boolean): VerificationReport = {
+  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext): VerificationReport = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
+    val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
+    val useOrb = funsToCheck.exists(_.template.isDefined)
     val rep =
       if (useOrb) {
-        /*// create an inference context
-        val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds", "--solvers=smt-cvc4"))
-        val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
-          inferOpts.options ++ checkCtx.options)
-        val inferctx = new InferenceContext(p, ctxForInf)
-        val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
-        if (debugInferProgram){
-          prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
-        }
-
-        val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram,
-            funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)
-        new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)*/
         val inferctx = getInferenceContext(checkCtx, p)
         checkUsingOrb(new InferenceEngine(inferctx), inferctx)
       } else {
-        val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
         val rep = checkVCs(funsToCheck.map(vcForFun), checkCtx, p)
         // record some stats
         collectCumulativeStats(rep)
