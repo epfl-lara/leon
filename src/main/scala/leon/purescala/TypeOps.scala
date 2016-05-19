@@ -41,13 +41,14 @@ object TypeOps extends GenTreeOps[TypeTree] {
 
     def flatten(res: Seq[Option[(TypeTree, Map[TypeParameter, TypeTree])]]): Option[(Seq[TypeTree], Map[TypeParameter, TypeTree])] = {
       val (tps, subst) = res.map(_.getOrElse(return None)).unzip
-      val flat = subst.flatMap(_.toSeq).groupBy(_._1)
-      Some((tps, flat.mapValues { vs =>
+      val tpsMap = subst.flatMap(_.toSeq).groupBy(_._1).mapValues { vs =>
         vs.map(_._2).distinct match {
           case Seq(unique) => unique
           case _ => return None
         }
-      }))
+      }
+
+      Some((tps.map(instantiateType(_, tpsMap)), tpsMap))
     }
 
     (t1, t2) match {
@@ -132,7 +133,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
     *
     * @return Mapping of instantiations
     */
-  private def subtypingInstantiation(subT: TypeTree, superT: TypeTree, free: Seq[TypeParameter]) =
+  def subtypingInstantiation(subT: TypeTree, superT: TypeTree, free: Seq[TypeParameter]) =
     typeBound(subT, superT, isLub = true, allowSub = true)(free) collect {
       case (tp, map) if instantiateType(superT, map) == tp => map
     }
