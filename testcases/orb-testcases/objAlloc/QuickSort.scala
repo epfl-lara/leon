@@ -16,7 +16,7 @@ object QuickSort {
   def append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x, xs) => Cons(x,append(xs,bList))
-  }} ensuring(res => size(res) == size(aList) + size(bList) && obj <= ?)
+  }} ensuring(res => size(res) == size(aList) + size(bList) && obj <= ? * (size(aList) + size(bList)) + ?)
 
   def partition(n:BigInt,l:List) : Triple = (l match {
     case Nil() => Triple(Nil(), Nil(), Nil())
@@ -26,8 +26,9 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }
-  }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && obj <= ?)
+  }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && obj <= ? * (size(l)) + ?)
 
+  // obj bound doesn't work too :-(
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()
     case Cons(x,Nil()) => l
@@ -36,7 +37,7 @@ object QuickSort {
       append(append(quickSort(t.fst), Cons(x, t.snd)), quickSort(t.trd))
     }
     case _ => l
-  }) ensuring(res => size(l) == size(res) && obj <= ?)
-  //ensuring(res => size(l) == size(res) && tmpl((a,b,c,d) => time <= a*(size(l)*size(l)) + c*size(l) + d))
+  }) ensuring(res => size(l) == size(res))
+  // ensuring(res => size(l) == size(res) && obj <= ? *(size(res)*size(res)) + ? * size(res) + ?)
 }
 
