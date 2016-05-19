@@ -18,26 +18,44 @@ import leon.comparison.Utils._
 object ComparatorByClassTree extends Comparator{
   val name: String = "ClassTree"
 
+
   def compare(expr_base: Expr, expr: Expr): Double = {
     val pairOfRoots = possibleRoots(expr_base, expr)
 
     val allPossibleTrees = pairOfRoots.flatMap(possibleTrees(_))
-    val biggestTree = allPossibleTrees.sortBy(- _.size).head
+    val exclusives = exclusivesTrees(allPossibleTrees)
+    val sum = exclusives.foldLeft(0)( (acc, tree) => acc + tree.size)
 
     val listClassesB = collectClass(expr_base)
     val listClasses = collectClass(expr)
 
-    val score = matchScore(biggestTree.size, listClassesB.size, listClasses.size)
+    val score = matchScore(sum, listClassesB.size, listClasses.size)
+
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
-      println("COMPARATOR CLASS TREE")
-      println("Expressions: ", expr, expr_base)
-      println("Common Tree: ", biggestTree)
+      println("COMPARATOR " + name)
+      println("Expressions: ", expr_base, expr)
+      println("Common Tree: ", exclusives)
       println("---------------------")
-      score
-    } else score
+    }
+
+    score
   }
 
+  /**
+    * Extract all non-overlapping trees, in size order
+    * @param trees
+    * @return
+    */
+  def exclusivesTrees(trees: List[myTree[(Expr, Expr)]]): List[myTree[(Expr, Expr)]] = trees match {
+    case Nil => Nil
+    case x :: xs =>
+      val biggest = trees.sortBy(-_.size).head
+      val rest = trees.filter(tree => flatList(tree).intersect( flatList(biggest) ).isEmpty)
+      List(biggest) ++ exclusivesTrees(rest)
+  }
+
+  def flatList(tree: myTree[(Expr, Expr)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
 
   /**
     * list of all similar pair of expressions, based on classes.

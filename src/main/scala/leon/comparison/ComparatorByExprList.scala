@@ -29,7 +29,17 @@ object ComparatorByExprList extends Comparator {
 
     val numberOfSimilarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
 
-    Utils.matchScore(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
+    val score = Utils.matchScore(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
+
+    if (score > 0.0 && ComparisonPhase.debug){
+      println("---------------------")
+      println("COMPARATOR " + name)
+      println("Expressions: ", expr_base, expr)
+      println("similar expr: ", numberOfSimilarExpr)
+      println("---------------------")
+    }
+
+    score
   }
 
 

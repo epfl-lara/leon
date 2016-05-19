@@ -35,11 +35,11 @@ object ClassBase {
 
   def tricky_for_ClassList_match_value(x:Int): Char = {
     val somme = x match {
-      case 1 => 1
-      case 2 => 2
+      case 1 => 'a'
+      case 2 => 'c'
     }
 
-    if (somme < 3) 'a' else 'b'
+    if (somme == 'a') 'a' else 'b'
   }
 
 

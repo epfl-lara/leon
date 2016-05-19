@@ -42,7 +42,17 @@ object ComparatorByClassList extends Comparator {
 
     val similarExpr: Int = pairsOfSimilarExp(listClassesB, listClasses)
 
-    Utils.matchScore(similarExpr, listClassesB.size, listClasses.size)
+    val score = Utils.matchScore(similarExpr, listClassesB.size, listClasses.size)
+
+    if (score > 0.0 && ComparisonPhase.debug){
+      println("-----------")
+      println("COMPARATOR " + name)
+      println("Expressions: ", expr, expr_base)
+      println("List of classes: ", listClasses, listClassesB)
+      println("-----------")
+    }
+
+    score
   }
 
 

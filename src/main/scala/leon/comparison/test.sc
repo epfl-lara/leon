@@ -1,5 +1,3 @@
-val res =
-  if !(2 == 2 && 3 == 3)
-    "oui"
-  else
-    "non"
+val list2: List[Int] = List(8)
+
+list2.foldLeft(4)(_ + _)
