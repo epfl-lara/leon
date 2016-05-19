@@ -47,9 +47,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
     def getCandidates(fd: FunDef): Seq[RuleInstantiation] = {
       val free = fd.tparams.map(_.tp)
 
-      canBeSubtypeOf(fd.returnType, free, tpe, rhsFixed = true) match {
+      canBeSubtypeOf(fd.returnType, tpe) match {
         case Some(tpsMap1) =>
-
           val stillFree = free.filterNot(tpsMap1.keySet)
 
           /* Finding compatible calls:
@@ -98,12 +97,15 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               //
               // We refine later.
               val compatibleInputs = {
-                p.as.filter(a => canBeSubtypeOf(a.getType, stillFree, vd.getType).nonEmpty)
+                p.as.filter(a => canBeSupertypeOf(vd.getType, a.getType).nonEmpty)
               }
 
               compatibleInputs :+ free
             }
           }
+
+          println("-"*80)
+          println("Considering function: "+tfd.asString)
 
           val asSet = p.as.toSet
 
@@ -119,13 +121,15 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               val argsTpe   = tupleTypeWrap(vs.map(_.getType))
               val paramsTpe = tupleTypeWrap(tfd.params.map(_.getType))
 
+              //println(s"${paramsTpe.asString} >: ${argsTpe.asString} (${stillFree.map(_.asString).mkString(", ")})")
+
               // Check that all arguments are compatible, together.
-              canBeSubtypeOf(argsTpe, stillFree, paramsTpe) match {
+              subtypingInstantiation(paramsTpe, argsTpe, stillFree.toSeq) match {
                 case Some(tpsMap2) =>
                   val tpsMap = tpsMap1 ++ tpsMap2
                   val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
 
-                  val hofId2 = instantiateTypeDirect(hofId, tpsMap)
+                  val hofId2 = instantiateType(hofId, tpsMap)
 
                   val vs2 = vs.map { v => subst(hofId -> hofId2.toVariable, v.toVariable) }
 

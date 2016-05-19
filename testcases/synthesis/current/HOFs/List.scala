@@ -37,6 +37,16 @@ object HOFDecomp1 {
         case Nil()      => z
       }
     }
+
+    def collect[B](f: T => Option[B]): List[B] = {
+      this match {
+        case Cons(h, t) => f(h) match {
+          case Some(v) => Cons(v, t.collect(f))
+          case None() => t.collect(f)
+        }
+        case Nil() => Nil[B]()
+      }
+    }
   }
 
   case class Cons[T](h: T, t: List[T]) extends List[T]
@@ -191,6 +201,20 @@ object HOFDecomp1 {
       case Cons(1, Cons(12, Nil()))                      => 13
       case Cons(1, Cons(-2, Cons(3, Cons(-4, Nil()))))   => -2
       case Cons(1, Cons(1, Cons(1, Cons(1, Nil()))))     => 4
+    }
+  }
+
+
+  case class Person(name: String, age: Int)
+
+  def adultsNames(in: List[Person]): List[String] = {
+    // in.filter(_.age >= 18).map(_.name)
+    ???[List[String]]
+  } ensuring {
+    out => (in, out) passes {
+      case Cons(Person("Alice", 17), Cons(Person("Bob", 18), Cons(Person("Jane", 12), Cons(Person("Arnold", 22), Nil())))) => Cons("Bob", Cons("Arnold", Nil()))
+      case Cons(Person("Alice", 22), Cons(Person("Bob", 12), Cons(Person("Jane", 32), Cons(Person("Arnold", 42), Nil())))) => Cons("Alice", Cons("Jane", Cons("Arnold", Nil())))
+      case Nil()                                         => Nil()
     }
   }
 }
