@@ -40,7 +40,8 @@ class ObjAllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumen
     caseExprCost: Expr, scrutineeCost: Expr): Expr = {
     val costMatch = costOfExpr(me)
     def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
-    Plus(costMatch, Plus(caseExprCost, scrutineeCost))
+    //Plus(costMatch, Plus(caseExprCost, scrutineeCost))
+    Plus(costMatch, caseExprCost)
   }
 
   def instrument(e: Expr, subInsts: Seq[Expr], funInvResVar: Option[Variable] = None)
