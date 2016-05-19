@@ -520,6 +520,9 @@ trait AbstractZ3Solver extends Z3Solver {
         val constructor = constructors.toB(tp)
         constructor(rec(InfiniteIntegerLiteral(id)))
 
+      case MutableExpr(ex) =>
+        rec(ex)
+
       case other =>
         unsupported(other)
     }

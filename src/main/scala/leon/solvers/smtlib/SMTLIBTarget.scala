@@ -529,6 +529,9 @@ trait SMTLIBTarget extends Interruptible {
         val constructor = constructors.toB(tpe)
         FunctionApplication(constructor, Seq(toSMT(InfiniteIntegerLiteral(n))))
 
+      case MutableExpr(ex) =>
+        toSMT(ex)
+
       /**
        * ===== Everything else =====
        */

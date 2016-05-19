@@ -998,6 +998,19 @@ object Expressions {
     val getType = ArrayType(tpe).unveilUntyped
   }
 
+  case class MutableExpr(var underlying: Expr) extends Expr with Extractable with PrettyPrintable {
+    def getType = underlying.getType
+
+    def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = Some(
+      Seq(underlying),
+      { case Seq(e) => underlying = e; this }
+    )
+
+    override def printWith(implicit pctx: PrinterContext): Unit = {
+      import PrinterHelpers._
+      p"$underlying"
+    }
+  }
 
   /* Special trees for synthesis */
   /** $encodingof `choose(pred)`, the non-deterministic choice in Leon.

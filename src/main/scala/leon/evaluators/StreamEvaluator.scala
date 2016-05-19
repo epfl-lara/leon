@@ -287,6 +287,9 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           Stream()
       }
 
+    case MutableExpr(ex) =>
+      e(ex)
+
     case MatchExpr(scrut, cases) =>
 
       def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Stream[(MatchCase, Map[Identifier, Expr])] = {

@@ -11,7 +11,7 @@ import TypeOps._
 object Types {
 
   trait Typed extends Printable {
-    val getType: TypeTree
+    def getType: TypeTree
     def isTyped : Boolean = getType != Untyped
   }
 

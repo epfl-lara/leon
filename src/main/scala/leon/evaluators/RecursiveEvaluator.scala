@@ -831,6 +831,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
           throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
       }
 
+    case MutableExpr(ex) =>
+      e(ex)
+
     case gl: GenericValue => gl
     case fl : FractionalLiteral => normalizeFraction(fl)
     case l : Literal[_] => l
