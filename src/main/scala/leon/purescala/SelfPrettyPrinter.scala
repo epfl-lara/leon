@@ -53,7 +53,7 @@ trait PrettyPrinterFinder[T, U >: T] {
   def buildLambda(inputType: TypeTree, fd: FunDef, slu: Stream[List[U]]): Stream[T]
   
   def prettyPrinterFromCandidate(fd: FunDef, inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[T] = {
-    TypeOps.subtypingInstantiation(inputType, fd.params.head.getType) match {
+    TypeOps.canBeSupertypeOf(fd.params.head.getType, inputType) match {
       case Some(genericTypeMap) =>
         //println("Found a mapping")
         def gatherPrettyPrinters(funIds: List[Identifier], acc: ListBuffer[Stream[U]] = ListBuffer[Stream[U]]()): Option[Stream[List[U]]] = funIds match {

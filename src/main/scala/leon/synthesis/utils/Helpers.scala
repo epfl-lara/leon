@@ -25,7 +25,7 @@ object Helpers {
    */
   def functionsReturning(fds: Set[FunDef], tpe: TypeTree): Set[TypedFunDef] = {
     fds.flatMap { fd =>
-      subtypingInstantiation(tpe, fd.returnType) match {
+      canBeSubtypeOf(fd.returnType, tpe) match {
         case Some(tpsMap) =>
           Some(fd.typed(fd.typeArgs.map(tp => tpsMap.getOrElse(tp, tp))))
         case None =>

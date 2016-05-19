@@ -66,19 +66,25 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     )
 
     assert(
-      subtypingInstantiation(consD.typed(Seq(tp)), listD.typed(Seq(tp2))) contains Map(tp2 -> tp),
-      "Cons[T] <: List[A] under A -> T"
+      canBeSupertypeOf(listD.typed(Seq(tp2)), consD.typed(Seq(tp))) contains Map(tp2 -> tp),
+      "List[A] >: Cons[T] under A -> T"
     )
 
     assert(
-      subtypingInstantiation(consD.typed(Seq(IntegerType)), listD.typed(Seq(tp2))) contains Map(tp2 -> IntegerType),
-      "Cons[BigInt] <: List[A] under A -> BigInt"
+      canBeSubtypeOf(consD.typed(Seq(tp)), listD.typed(Seq(tp2))) contains Map(tp -> tp2),
+      "Cons[T] <: List[A] under T -> A"
     )
 
     assert(
-      subtypingInstantiation(consD.typed(Seq(tp)), listD.typed(Seq(IntegerType))).isEmpty,
-      "List[BigInt] cannot be instantiated such that Cons[T] <: List[BigInt]"
+      canBeSubtypeOf(consD.typed(Seq(IntegerType)), listD.typed(Seq(tp2))).isEmpty,
+      "Cons[BigInt] cannot be instantiated so that it is <: List[A]"
     )
+
+    assert(
+      canBeSupertypeOf(listD.typed(Seq(tp2)), consD.typed(Seq(IntegerType))) contains Map(tp2 -> IntegerType),
+      "List[A] >: Cons[BigInt] under A -> BigInt"
+    )
+
   }
 
   test("instantiateType Hole") { ctx =>

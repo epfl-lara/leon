@@ -128,14 +128,22 @@ object TypeOps extends GenTreeOps[TypeTree] {
   def unify(tp1: TypeTree, tp2: TypeTree, freeParams: Seq[TypeParameter]) =
     typeBound(tp1, tp2, isLub = true, allowSub = false)(freeParams).map(_._2)
 
-  /** Will try to instantiate superT so that subT <: superT
+  /** Will try to instantiate subT and superT so that subT <: superT
     *
     * @return Mapping of instantiations
     */
-  def subtypingInstantiation(subT: TypeTree, superT: TypeTree) =
-    typeBound(subT, superT, isLub = true, allowSub = true)(typeParamsOf(superT).toSeq) collect {
+  private def subtypingInstantiation(subT: TypeTree, superT: TypeTree, free: Seq[TypeParameter]) =
+    typeBound(subT, superT, isLub = true, allowSub = true)(free) collect {
       case (tp, map) if instantiateType(superT, map) == tp => map
     }
+
+  def canBeSubtypeOf(subT: TypeTree, superT: TypeTree) = {
+    subtypingInstantiation(subT, superT, (typeParamsOf(subT) -- typeParamsOf(superT)).toSeq)
+  }
+
+  def canBeSupertypeOf(superT: TypeTree, subT: TypeTree) = {
+    subtypingInstantiation(subT, superT, (typeParamsOf(superT) -- typeParamsOf(subT)).toSeq)
+  }
 
   def leastUpperBound(tp1: TypeTree, tp2: TypeTree): Option[TypeTree] =
     typeBound(tp1, tp2, isLub = true, allowSub = true)(Seq()).map(_._1)

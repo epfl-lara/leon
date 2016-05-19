@@ -28,7 +28,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
       val isDet = fd.body.exists(isDeterministic)
 
       if (!isRecursiveCall && isDet) {
-        subtypingInstantiation(t, fd.returnType) match {
+        canBeSubtypeOf(fd.returnType, t) match {
           case Some(tpsMap) =>
             val free = fd.tparams.map(_.tp)
             val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))

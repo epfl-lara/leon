@@ -122,7 +122,7 @@ object Constructors {
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
 
-    subtypingInstantiation(actualType, formalType) match {
+    canBeSupertypeOf(formalType, actualType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
       case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!")

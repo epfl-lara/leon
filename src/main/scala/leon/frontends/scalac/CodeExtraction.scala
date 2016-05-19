@@ -1086,7 +1086,7 @@ trait CodeExtraction extends ASTExtractors {
           extractType(up.tpe),
           tupleTypeWrap(args map { tr => extractType(tr.tpe)})
         ))
-        val newTps = subtypingInstantiation(realTypes, formalTypes) match {
+        val newTps = canBeSupertypeOf(formalTypes, realTypes) match {
           case Some(tmap) =>
             fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
           case None =>
