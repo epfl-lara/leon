@@ -9,14 +9,17 @@ object AmortizedQueue {
     val size: BigInt = this match {
       case Nil()       => 0
       case Cons(_, xs) => 1 + xs.size
-    } ensuring(res => res >= 0 && )
+    }
   }
   case class Cons(head: BigInt, tail: List) extends List
   case class Nil() extends List
 
   def length(l: List): BigInt = {
-    l.size
-  } ensuring(res => res >= 0)
+    l match {
+      case Nil()       => BigInt(0)
+      case Cons(_, xs) => 1 + length(xs)
+    }
+  } ensuring(res => res >= 0 && obj <= ?)
 
   def concat(l1: List, l2: List): List = (l1 match {
     case Nil()       => l2
@@ -43,7 +46,7 @@ object AmortizedQueue {
   } ensuring (res => res.size <= l.size && tmpl((a, b) => obj <= a * l.size + b))
 
   case class Queue(front: List, rear: List) {
-    def qsize: BigInt = length(front) + length(rear)
+    def qsize: BigInt = front.size + rear.size
 
     def asList: List = concat(front, listRev(rear))
 
