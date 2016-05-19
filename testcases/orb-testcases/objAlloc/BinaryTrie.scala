@@ -40,7 +40,7 @@ object BinaryTrie {
       }
       case _ => t
     }
-  } ensuring (_ => obj <= ? * listSize(inp) + ?)
+  } ensuring (_ => alloc <= ? * listSize(inp) + ?)
 
   def insert(inp: IList, t: Tree): Tree = {
     t match {
@@ -72,11 +72,11 @@ object BinaryTrie {
         }
       }
     }
-  } ensuring (_ => obj <= ? * listSize(inp) + ?)
+  } ensuring (_ => alloc <= ? * listSize(inp) + ?)
 
   def create(inp: IList): Tree = {
     insert(inp, Leaf())
-  } ensuring (res => true && tmpl((a, c) => obj <= a * listSize(inp) + c))
+  } ensuring (res => true && tmpl((a, c) => alloc <= a * listSize(inp) + c))
 
   def delete(inp: IList, t: Tree): Tree = {
     t match {
@@ -115,5 +115,5 @@ object BinaryTrie {
         }
       }
     }
-  } ensuring (_ => obj <= ? * listSize(inp) + ?)
+  } ensuring (_ => alloc <= ? * listSize(inp) + ?)
 }

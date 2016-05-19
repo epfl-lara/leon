@@ -47,7 +47,7 @@ class SerialInstrumenter(program: Program,
       Rec -> new RecursionCountInstrumenter(program, this),
       Stack -> new StackSpaceInstrumenter(program, this),
       TPR -> new TPRInstrumenter(program, this),
-      Obj -> new ObjAllocInstrumenter(program, this))
+      Alloc -> new AllocInstrumenter(program, this))
 
   // a map from functions to the list of instrumentations to be performed for the function
   val funcInsts = {

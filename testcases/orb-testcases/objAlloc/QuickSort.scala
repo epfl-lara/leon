@@ -16,7 +16,7 @@ object QuickSort {
   def append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x, xs) => Cons(x,append(xs,bList))
-  }} ensuring(res => size(res) == size(aList) + size(bList) && obj <= ? * (size(aList) + size(bList)) + ?)
+  }} ensuring(res => size(res) == size(aList) + size(bList) && alloc <= ? * (size(aList) + size(bList)) + ?)
 
   def partition(n:BigInt,l:List) : Triple = (l match {
     case Nil() => Triple(Nil(), Nil(), Nil())
@@ -26,9 +26,9 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }
-  }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && obj <= ? * (size(l)) + ?)
+  }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && alloc <= ? * (size(l)) + ?)
 
-  // obj bound doesn't work too :-(
+  // alloc bound doesn't work too :-(
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()
     case Cons(x,Nil()) => l
@@ -38,6 +38,6 @@ object QuickSort {
     }
     case _ => l
   }) ensuring(res => size(l) == size(res))
-  // ensuring(res => size(l) == size(res) && obj <= ? *(size(res)*size(res)) + ? * size(res) + ?)
+  // ensuring(res => size(l) == size(res) && alloc <= ? *(size(res)*size(res)) + ? * size(res) + ?)
 }
 

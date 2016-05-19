@@ -19,22 +19,22 @@ object AmortizedQueue {
       case Nil()       => BigInt(0)
       case Cons(_, xs) => 1 + length(xs)
     }
-  } ensuring(res => res >= 0 && obj <= ?)
+  } ensuring(res => res >= 0 && alloc <= ?)
 
   def concat(l1: List, l2: List): List = (l1 match {
     case Nil()       => l2
     case Cons(x, xs) => Cons(x, concat(xs, l2))
 
-  }) ensuring (res => res.size == l1.size + l2.size && obj <= ? * l1.size + ?)
+  }) ensuring (res => res.size == l1.size + l2.size && alloc <= ? * l1.size + ?)
 
   def reverseRec(l1: List, l2: List): List = (l1 match {
     case Nil()       => l2
     case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
-  }) ensuring (res => l1.size + l2.size == res.size && obj <= ? * l1.size + ?)
+  }) ensuring (res => l1.size + l2.size == res.size && alloc <= ? * l1.size + ?)
 
   def listRev(l: List): List = {
     reverseRec(l, Nil())
-  } ensuring (res => l.size == res.size && obj <= ? * l.size + ?)
+  } ensuring (res => l.size == res.size && alloc <= ? * l.size + ?)
 
   def removeLast(l: List): List = {
     require(l != Nil())
@@ -43,7 +43,7 @@ object AmortizedQueue {
       case Cons(x, xs)    => Cons(x, removeLast(xs))
       case _              => Nil()
     }
-  } ensuring (res => res.size <= l.size && tmpl((a, b) => obj <= a * l.size + b))
+  } ensuring (res => res.size <= l.size && tmpl((a, b) => alloc <= a * l.size + b))
 
   case class Queue(front: List, rear: List) {
     def qsize: BigInt = front.size + rear.size
@@ -66,7 +66,7 @@ object AmortizedQueue {
 
     def enqueue(elem: BigInt): Queue = ({
       amortizedQueue(front, Cons(elem, rear))
-    }) ensuring (_ => obj <= ? * qsize + ?)
+    }) ensuring (_ => alloc <= ? * qsize + ?)
 
     def dequeue: Queue = {
       require(isAmortized && !isEmpty)
@@ -74,7 +74,7 @@ object AmortizedQueue {
         case Cons(f, fs) => amortizedQueue(fs, rear)
         case _           => Queue(Nil(), Nil())
       }
-    } ensuring (_ => obj <= ? * qsize + ?)
+    } ensuring (_ => alloc <= ? * qsize + ?)
 
     def head: BigInt = {
       require(isAmortized && !isEmpty)
@@ -83,7 +83,7 @@ object AmortizedQueue {
       }
     }
 
-    def reverse: Queue = { // this lets the queue perform deque operation (but they no longer have efficient constant obj amortized bounds)
+    def reverse: Queue = { // this lets the queue perform deque operation (but they no longer have efficient constant alloc amortized bounds)
       amortizedQueue(rear, front)
     }
   }
