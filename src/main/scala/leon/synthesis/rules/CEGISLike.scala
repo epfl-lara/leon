@@ -270,7 +270,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
 
       private val cTreeFd0 = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
-      private val phiFd0 = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
 
       // The program with the body of the current function replaced by the current partial solution
       private val (innerProgram, origIdMap, origFdMap, origCdMap) = {
@@ -281,15 +280,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             .getOrElse(fatalError("Unable to get outer solution"))
         }
 
-        val program0 = addFunDefs(hctx.program, Seq(cTreeFd0, phiFd0) ++ outerSolution.defs, hctx.functionContext)
+        val program0 = addFunDefs(hctx.program, Seq(cTreeFd0) ++ outerSolution.defs, hctx.functionContext)
 
         cTreeFd0.body = None
-
-        phiFd0.body = Some(
-          letTuple(p.xs,
-                   FunctionInvocation(cTreeFd0.typed, p.as.map(_.toVariable)),
-                   p.phi)
-        )
 
         replaceFunDefs(program0){
           case fd if fd == hctx.functionContext =>
@@ -311,8 +304,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       // The function which calls the synthesized expression within programCTree
       private val cTreeFd = origFdMap.getOrElse(cTreeFd0, cTreeFd0)
-      // The spec of the problem
-      private val phiFd   = origFdMap.getOrElse(phiFd0, phiFd0)
 
       private val outerToInner = new purescala.TreeTransformer {
         override def transform(id: Identifier): Identifier = origIdMap.getOrElse(id, id)
@@ -330,6 +321,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       private val innerPc  = p.pc map outerExprToInnerExpr
       private val innerPhi = outerExprToInnerExpr(p.phi)
+      private val innerSpec = outerExprToInnerExpr(
+        letTuple(
+          p.xs,
+          FunctionInvocation(cTreeFd0.typed, p.as.map(_.toVariable)),
+          p.phi
+        )
+      )
+
 
       // The program with the c-tree functions
       private var programCTree: Program = _
@@ -620,13 +619,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         timers.tentative.start()
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
-        val cnstr = phiFd.applied
 
         //println("Program: ")
         //println("-"*80)
         //println(programCTree.asString)
 
-        val toFind = innerPc and cnstr
+        val toFind = innerPc and innerSpec
         //println(" --- Constraints ---")
         //println(" - "+toFind.asString)
         try {
@@ -696,11 +694,10 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         timers.cex.start()
         val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
-        val cnstr   = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
         try {
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
-          solver.assertCnstr(innerPc and not(cnstr))
+          solver.assertCnstr(innerPc and not(innerSpec))
 
           //println("*"*80)
           //println(Not(cnstr))
