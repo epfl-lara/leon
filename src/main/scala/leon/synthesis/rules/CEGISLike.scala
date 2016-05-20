@@ -20,7 +20,6 @@ import leon.utils._
 
 import evaluators._
 import datagen._
-import codegen.CodeGenParams
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
@@ -276,6 +275,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       // It should be set to the solution you want to check at each time.
       // Usually it will either be cExpr or a concrete solution.
       private val solutionBox = MutableExpr(NoTree(p.outType))
+      private def setSolution(e: Expr) = solutionBox.underlying = e
 
       // The program with the body of the current function replaced by the current partial solution
       private val (innerProgram, origIdMap, origFdMap, origCdMap) = {
@@ -440,14 +440,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           excludeProgram(bs, true)
           return Some(false)
         }
-        val innerSol = outerExprToInnerExpr(outerSol)
 
+        val innerSol = outerExprToInnerExpr(outerSol)
 
         def withBindings(e: Expr) = p.pc.bindings.foldRight(e){
           case ((id, v), bd) => let(id, outerExprToInnerExpr(v), bd)
         }
 
-        solutionBox.underlying = innerSol // FIXME! This shouldnt be needed... Solution around should be somehow used
+        setSolution(innerSol)
 
         timers.testForProgram.start()
 
@@ -511,7 +511,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           val innerSol = outerExprToInnerExpr(outerSol)
           //println(s"Testing $innerSol")
           //println(innerProgram)
-          solutionBox.underlying = innerSol
+          setSolution(innerSol)
 
           val cnstr = innerPc and letTuple(p.xs, innerSol, Not(innerPhi))
 
@@ -614,7 +614,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         //println("-"*80)
         //println(programCTree.asString)
 
-        solutionBox.underlying = cExpr
+        setSolution(cExpr)
         val toFind = innerPc and innerSpec
         //println(" --- Constraints ---")
         //println(" - "+toFind.asString)
@@ -687,7 +687,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         val solver  = solverf.getNewSolver()
 
         try {
-          solutionBox.underlying = cExpr
+          setSolution(cExpr)
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
           solver.assertCnstr(innerPc and not(innerSpec))
 
