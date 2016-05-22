@@ -9,25 +9,25 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import solvers._
 import transformations._
-import LazinessUtil._
+import HOMemUtil._
 import purescala.Constructors._
 import verification._
 import PredicateUtil._
 import invariant.engine._
 
-object LazyVerificationPhase {
+object HOMemVerificationPhase {
 
   val debugInstVCs = false
   val debugInferProgram = false
 
-  class LazyVerificationReport(val stateVerification: Option[VerificationReport],
+  class MemVerificationReport(val stateVerification: Option[VerificationReport],
       val resourceVeri: Option[VerificationReport]) {
     def inferReport= resourceVeri match {
       case Some(inf: InferenceReport) => Some(inf)
       case _ => None
     }
   }
-
+  
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
       exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)

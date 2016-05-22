@@ -13,15 +13,17 @@ package object lazyeval {
   def $[T](f: => T) = Lazy(Unit => f)
   //def apply[T](f: => T) = new $(Unit => f)
 
+  // we can duplicate this to handle multiple argument closures
   @library
-  def eager[T](x: => T) = Lazy(Unit => x)
+  def eager[A, R](x: R) = (arg: A) => x
 
   /**
-   * implicit conversion from eager evaluation to lazy evaluation
+   * implicit conversion from values to closures.
+   * `A` is the argument type, and `R` is the return type
    */
   @library
   @inline
-  implicit def eagerToLazy[T](x: T) = eager(x)
+  implicit def eagerToClosure[A, R](x: R) = eager[A, R](x)
 
   /**
    * For accessing in and out states.

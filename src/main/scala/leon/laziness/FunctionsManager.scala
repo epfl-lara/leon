@@ -6,7 +6,7 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
-import LazinessUtil._
+import HOMemUtil._
 import ProgramUtil._
 import invariant.datastructure._
 

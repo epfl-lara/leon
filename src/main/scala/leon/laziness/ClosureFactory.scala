@@ -10,7 +10,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
-import LazinessUtil._
+import HOMemUtil._
 import purescala.Extractors._
 
 /**

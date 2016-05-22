@@ -16,7 +16,7 @@ import utils.FileOutputPhase
 import invariant.util.PredicateUtil._
 import invariant.util.Util._
 
-object LazinessUtil {
+object HOMemUtil {
 
   def isMemoized(fd: FunDef) = {
     fd.flags.contains(Annotation("memoize", Seq()))

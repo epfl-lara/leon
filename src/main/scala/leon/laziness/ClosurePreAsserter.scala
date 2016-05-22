@@ -12,7 +12,7 @@ import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.ProgramUtil._
 import leon.invariant.util.PredicateUtil._
-import LazinessUtil._
+import HOMemUtil._
 
 /**
  * Generate lemmas that ensure that preconditions hold for closures.

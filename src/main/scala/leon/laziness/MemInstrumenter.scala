@@ -8,9 +8,9 @@ import purescala.ExprOps._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.transformations._
-import LazinessUtil._
+import HOMemUtil._
 
-class LazyInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, funManager: FunctionsManager) {
+class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, funManager: FunctionsManager) {
 
   val exprInstFactory = (ictx: InstruContext) => new MemExprInstrumenter(ictx)
   val serialInst = new SerialInstrumenter(p, Some(exprInstFactory))
