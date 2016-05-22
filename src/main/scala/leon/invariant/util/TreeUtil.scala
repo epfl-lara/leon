@@ -299,9 +299,9 @@ object ClassExpr {
     case IsInstanceOf(arg, ct) =>
       Some(ct, Seq(arg), (nct: ClassType) => (nargs: Seq[Expr]) => IsInstanceOf(nargs.head, nct))
     case CaseClassSelector(ct, arg, index) =>
-      val r: ClassType => Seq[Expr] => Expr = (nt: ClassType) => {
-        val nct = nt.asInstanceOf[CaseClassType]
-        val nindex = nct.fields.find(_.id.name == index.name).get.id
+      val r: ClassType => Seq[Expr] => Expr = (nt: ClassType) => {        
+        val nct = nt.asInstanceOf[CaseClassType]        
+        val nindex = nct.classDef.fields.find(_.id.name == index.name).get.id
         (nargs: Seq[Expr]) => CaseClassSelector(nct, nargs.head, nindex)        
       }
       Some(ct, Seq(arg), r)
