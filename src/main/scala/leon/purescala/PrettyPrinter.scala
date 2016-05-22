@@ -241,7 +241,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case BinaryMethodCall(a, op, b) =>
         optP { p"$a $op $b" }
 
-      case FcallMethodInvocation(rec, fd, id, tps, args) =>
+      case FcallMethodInvocation(rec, fd, id, tps, args) if (fd.annotations.contains("library") || !(opts.printRunnableCode)) =>
 
         p"$rec.$id${nary(tps, ", ", "[", "]")}"
 
@@ -476,7 +476,7 @@ class PrettyPrinter(opts: PrinterOptions,
         p"""${nary(units filter { /*opts.printUniqueIds ||*/ _.isMainUnit }, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
-        if (pack.nonEmpty){
+        if (pack.nonEmpty && (!(opts.printRunnableCode))){
           p"""|package ${pack mkString "."}
               |"""
         }
@@ -602,7 +602,7 @@ class PrettyPrinter(opts: PrinterOptions,
     val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
-      case FcallMethodInvocation(rec, _, id, Nil, List(a)) =>
+      case FcallMethodInvocation(rec, fd, id, Nil, List(a)) if (fd.annotations.contains("library") || !(opts.printRunnableCode)) =>
         val name = id.name
         if (makeBinary contains name) {
           if(name == "::")
@@ -637,6 +637,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
     case (_: Expr, Some(_: MatchCase)) => false
     case (_: LetDef, Some(_: LetDef)) => false
+    case (e: Expr, Some(LetPattern(_, _, _))) => false
     case (e: Expr, Some(_)) => true
     case _ => false
   }
