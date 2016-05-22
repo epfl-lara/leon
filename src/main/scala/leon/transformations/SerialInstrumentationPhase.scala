@@ -18,6 +18,7 @@ import PredicateUtil._
 import TypeUtil._
 import TVarFactory._
 import invariant.structure.FunctionUtils._
+import laziness._
 import scala.collection.mutable.{ Map => MutableMap, Set => MutableSet }
 
 /**
@@ -340,6 +341,31 @@ object ExprInstrumenter {
   val instVarContext = newContext
   def createInstVar(name: String, tpe: TypeTree) = createTemp(name, tpe, instVarContext)
   def isInstVar(id: Identifier) = isTemp(id, instVarContext)
+
+  /**
+   * The following are stubs for the classes/methods that update and lookup the cache.
+   * These methods are defined in the library but are marked "ignore", so we cannot refer to them.
+   */
+  lazy val anyList = new CaseClassDef(FreshIdentifier("List", Untyped), Seq(), None, false)
+  lazy val lookupFun = {
+    val tparam = TypeParameter.fresh("T")
+    new FunDef(FreshIdentifier("lookup", Untyped), Seq(TypeParameterDef(tparam)),
+      Seq(ValDef(FreshIdentifier("args", anyList.typed))), TupleType(Seq(BooleanType, tparam)))
+  }
+  lazy val updateFun = new FunDef(FreshIdentifier("update", Untyped), Seq(), Seq(ValDef(
+      FreshIdentifier("args", anyList.typed)), ValDef(FreshIdentifier("res", Untyped))), UnitType)
+  
+  // In the following methods, we use the globalId of the identifier of a function 
+  // to represent the function in the cache.
+  def lookupCall(f: FunctionInvocation) = {    
+    val argsList = CaseClass(anyList.typed, IntLiteral(f.tfd.fd.id.globalId) +: f.args)
+    FunctionInvocation(TypedFunDef(lookupFun, Seq(f.tfd.returnType)), Seq(argsList))
+  }
+  
+  def updateCall(f: FunctionInvocation, invRes: Expr) = {        
+    val argsList = CaseClass(anyList.typed, IntLiteral(f.tfd.fd.id.globalId) +: f.args)
+    FunctionInvocation(TypedFunDef(updateFun, Seq()), Seq(argsList, invRes))
+  }
 }
 class ExprInstrumenter(ictx: InstruContext) {
   import ExprInstrumenter._
@@ -351,18 +377,14 @@ class ExprInstrumenter(ictx: InstruContext) {
     // e      = Op(n1,n2,n3)
     // subs   = Seq(n1,n2,n3)
     // recons = { Seq(newn1,newn2,newn3) => Op(newn1, newn2, newn3) }
-    //
-    // This transformation should return, informally:
-    //
-    // LetTuple((e1,t1), transform(n1),
-    //   LetTuple((e2,t2), transform(n2),
+    // This transformation should return, informally
+    // Let((e1,t1), transform(n1),
+    //   Let((e2,t2), transform(n2),
     //    ...
     //      Tuple(recons(e1, e2, ...), t1 + t2 + ... costOfExpr(Op)
     //    ...
     //   )
     // )
-    //
-    // You will have to handle FunctionInvocation specially here!
     tupleifyRecur(e, subs, recons, List(), Map())
   }
 
@@ -413,33 +435,47 @@ class ExprInstrumenter(ictx: InstruContext) {
     import ictx._
     implicit val currFun = ictx.currFun
     f match {
-      case FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        if (!fd.hasLazyFieldFlag) {
-          val newfd = TypedFunDef(funMap(fd), tps)
-          val newFunInv = FunctionInvocation(newfd, subeVals)
-          //create a variables to store the result of function invocation
-          if (serialInst.instFuncs(fd)) {
-            //this function is also instrumented
-            val resvar = Variable(createInstVar("e", newfd.returnType))
-            val valexpr = TupleSelect(resvar, 1)
-            val instexprs = ictx.instrumenters.map { m =>
-              val calleeInst =
-                if (serialInst.funcInsts(fd).contains(m.inst) && fd.isUserFunction) {
-                  List(selectInst(resvar, m.inst))
-                } else List() // ignoring fields here
-              m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar)) // note: even though calleeInst is passed, it may or may not be used.
-            }
-            Let(resvar.id, newFunInv, Tuple(valexpr +: instexprs))
-          } else {
-            val resvar = Variable(createInstVar("e", newFunInv.getType))
-            val instexprs = ictx.instrumenters.map { m =>
-              m.instrument(f, subeInsts.getOrElse(m.inst, List()))
-            }
-            Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
+      case fi@FunctionInvocation(tfd@TypedFunDef(fd, tps), args) =>      
+        val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
+        val newFunInv = FunctionInvocation(newfd, subeVals)
+        //create a variables to store the result of function invocation
+        if (serialInst.instFuncs(fd)) { //this function is also instrumented          
+          val funres = Variable(createInstVar("e", newfd.returnType))
+          val valexpr = TupleSelect(funres, 1)
+          val instexprs = ictx.instrumenters.map { m =>
+            val calleeInst =
+              if (serialInst.funcInsts(fd).contains(m.inst) && fd.isUserFunction) {
+                List(selectInst(funres, m.inst))
+              } else List() // ignoring fields here
+            m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
           }
-        } else
-          throw new UnsupportedOperationException("Lazy fields are not handled directly by instrumentation." +
-            " Consider using the --mem option")
+          val instFunInv = Let(funres.id, newFunInv, Tuple(valexpr +: instexprs))          
+          if (fd.hasLazyFieldFlag || LazinessUtil.isMemoized(fd)) {
+            println("Warning: found Lazy/memoized functions/fields. To verify the program use --mem option")
+            // here the invoked function is memoized, so we need to lookup/update the cache    
+            // note: the lookup cost would be included while computing the cost of the function
+            val lookupres = Variable(FreshIdentifier("lr", TupleType(Seq(BooleanType, tfd.returnType)), true))
+            val hitCond = TupleSelect(lookupres, 1)
+            val hitCase = {
+              val lookupVal = TupleSelect(lookupres, 2)
+              // here, we ignore the cost of the callee function completely, as if this is a val field access.
+              val hitInstExprs = instrumenters.map(m =>
+                m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres))) 
+              Tuple(lookupVal +: hitInstExprs)
+            }
+            val invRes = FreshIdentifier("invr", instFunInv.getType, true)
+            val missCase = Let(invRes, instFunInv, Let(FreshIdentifier("ur", UnitType, true), 
+                updateCall(fi, valexpr), invRes.toVariable))
+            IfExpr(hitCond, hitCase, missCase)            
+          } else 
+            instFunInv          
+        } else {
+          val resvar = Variable(createInstVar("e", newFunInv.getType))
+          val instexprs = ictx.instrumenters.map { m =>
+            m.instrument(f, subeInsts.getOrElse(m.inst, List()))
+          }
+          Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
+        }
 
       case Application(fterm, args) =>
         val newApp = Application(subeVals.head, subeVals.tail)
@@ -609,7 +645,6 @@ class ExprInstrumenter(ictx: InstruContext) {
         case _ => e
       }
     }
-
     if (retainMatches) helper(ine)
     else simplePostTransform(helper)(ine)
   }

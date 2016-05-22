@@ -4,6 +4,7 @@ package leon
 
 import annotation._
 import lang._
+import collection._
 import scala.language.implicitConversions
 import scala.annotation.StaticAnnotation
 
@@ -60,4 +61,22 @@ package object mem {
   case class Star[T](f: T) {
     def * = f
   }
+  
+  /**
+   * methods for running instrumented code using memoization
+   */
+  @ignore
+  var memoTable = Map[List[Any], Any]()
+  @ignore
+  def update(args: List[Any], res: Any) {
+    memoTable += (args -> res)
+  }
+  @ignore
+  def lookup[T](args:List[Any]): (Boolean, T) = {
+    if(memoTable.contains(args)) {
+      (true, memoTable(args).asInstanceOf[T])      
+    } else {
+      (false, null.asInstanceOf[T]) // for ints and bools this will be zero, false
+    }
+  }    
 }
