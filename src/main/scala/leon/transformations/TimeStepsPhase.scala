@@ -45,6 +45,7 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     var newFuns = instFuns
     var instFunTypes = Set[CompatibleType]()
     while(!newFuns.isEmpty) {
+      //println("newfuns: "+newFuns.map(_.id))
       // (a) find all function types of applications in the nextSets
       val appTypes = newFuns flatMap {
         case ifd if ifd.hasBody =>
@@ -59,7 +60,8 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
         case (fd, ftypes) if !ftypes.intersect(appTypes).isEmpty => fd        
       }
       // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-      val nextFunSet = newRoots.flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
+      val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
+      //println("nextFunSet: "+nextFunSet.map(_.id))
       newFuns = nextFunSet -- instFuns
       instFuns ++= nextFunSet      
       instFunTypes ++= appTypes

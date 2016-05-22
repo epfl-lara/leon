@@ -121,14 +121,16 @@ object CallGraphUtil {
           funExpr = Tuple(Seq(funExpr, fd.getTemplate))
         }
         //introduce a new edge for every callee
-        getCallees(funExpr).foreach{ce => cg.addEdge(fd, ce)}
+        val callees = getCallees(funExpr)        
+        callees.foreach{ce => cg.addEdge(fd, ce)}
       }
     }
     cg
   }
 
   def getCallees(expr: Expr): Set[FunDef] = collect {
-    case expr@FunctionInvocation(TypedFunDef(callee, _), _) if callee.isRealFunction =>
+    case expr@FunctionInvocation(TypedFunDef(callee, _), _) 
+      if !callee.flags.contains(IsField(false)) =>
       Set(callee)
     case _ =>
       Set[FunDef]()
