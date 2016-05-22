@@ -1,4 +1,4 @@
-name := "LazyDataStructures"
+name := "RunnableCode"
 
 version := "1.0"
 
@@ -14,5 +14,3 @@ scalacOptions ++= Seq("-optimise")
 
 unmanagedSourceDirectories in Compile ++= Seq("src").map(dir => baseDirectory.value / dir)
 
-
-libraryDependencies += "org.sameersingh.scalaplot" % "scalaplot" % "0.0.4"

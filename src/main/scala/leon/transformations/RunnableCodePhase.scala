@@ -3,12 +3,16 @@
 package leon
 package transformations
 
+import java.io.File
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
+import leon._
 import leon.purescala.ScalaPrinter
 import leon.utils._
 import invariant.util._
@@ -36,23 +40,24 @@ object RunnableCodePhase extends TransformationPhase {
     }.toMap
 
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
-        case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
-          FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
-        case Ensuring(body, pred) => removeContracts(body, fd)
-        case Require(pred, body) => removeContracts(body, fd)
-//        case Tuple(args) => {
-//          args.head match {
-//            case TupleSelect(v, j) if j == 1 =>
-//              val success =  args.zipWithIndex.forall {
-//                case (TupleSelect(u, i), index) if v == u && i == index + 1 => true
-//                case _ => false
-//              }
-//              if(success) v else Tuple(args)
-//            case e => e
-//          }
+      case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
+        FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
+      case Ensuring(body, pred) => removeContracts(body, fd)
+      case Require(pred, body) => removeContracts(body, fd)
+//      case Tuple(args) => {
+//        args.head match {
+//          case TupleSelect(v, j) if j == 1 =>
+//            val success =  args.zipWithIndex.forall {
+//              case (TupleSelect(u, i), index) if v == u && i == index + 1 => true
+//              case _ => false
+//            }
+//            val tup = v.getType.asInstanceOf[TupleType]
+//            if(success && (tup.dimension == args.size)) v else Tuple(args)
+//          case _ => Tuple(args)
 //        }
-        case e => e
-      }(ine)
+//      }
+      case e => e
+    }(ine)
 
     for ((from, to) <- funMap) {
       to.fullBody = removeContracts(from.fullBody, from)
@@ -64,7 +69,32 @@ object RunnableCodePhase extends TransformationPhase {
     })
 
     if (debugRunnable)
-      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog))
+      println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(printRunnableCode = true)))
+
+    val optOutputDirectory = LeonStringOptionDef("o", "Output directory", "leon.out", "dir")
+
+    val outputFolder = ctx.findOptionOrDefault(optOutputDirectory)
+    try {
+      new File(outputFolder).mkdir()
+    } catch {
+      case _ : java.io.IOException => ctx.reporter.fatalError("Could not create directory " + outputFolder)
+    }
+
+    for (u <- newprog.units if u.isMainUnit) {
+      val outputFile = s"$outputFolder${File.separator}${u.id.toString}.scala"
+      try {
+        import java.io.FileWriter
+        import java.io.BufferedWriter
+        val fstream = new FileWriter(outputFile)
+        val out = new BufferedWriter(fstream)
+        out.write(ScalaPrinter(u, purescala.PrinterOptions(printRunnableCode = true), opgm = Some(newprog)))
+        out.close()
+      }
+      catch {
+        case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)
+      }
+    }
+    ctx.reporter.info("Output written on " + outputFolder)
     newprog
   }
 }
