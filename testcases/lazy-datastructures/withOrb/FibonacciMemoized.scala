@@ -6,7 +6,6 @@ import lang._
 import annotation._
 import instrumentation._
 import invariant._
-import Mem._
 
 object FibMem {
   sealed abstract class IList
