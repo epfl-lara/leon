@@ -77,7 +77,7 @@ class SerialInstrumenter(program: Program,
   println(s"instfuncs: ${instFuncs.map(_.id).mkString(",")} instFuncTypes: ${instFuncTypes.mkString(",")}")
   
   val hasMemoFuns = {    
-    if(instFuncs.exists{fd => fd.hasLazyFieldFlag || HOMemUtil.isMemoized(fd) }) { 
+    if(instFuncs.exists{fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) { 
       println("Warning: found Lazy/memoized functions/fields. To verify the program use --mem option")
       true
     } else false 
@@ -463,7 +463,7 @@ class ExprInstrumenter(ictx: InstruContext) {
               } else List() // ignoring fields here
             m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
           }        
-          if (fd.hasLazyFieldFlag || HOMemUtil.isMemoized(fd)) {            
+          if (fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd)) {            
             // here the invoked function is memoized, so we need to lookup/update the cache    
             // note: the lookup cost would be included while computing the cost of the function
             val lookupres = Variable(FreshIdentifier("lr", TupleType(Seq(BooleanType, newfd.returnType)), true))

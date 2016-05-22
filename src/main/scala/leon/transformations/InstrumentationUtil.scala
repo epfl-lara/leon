@@ -77,8 +77,10 @@ object InstUtil {
 
   def userFunctionName(fd: FunDef) = {
     val splits = fd.id.name.split("-")
-    if(!splits.isEmpty) splits(0)
-    else ""
+    if(!splits.isEmpty) {
+      val instNames = InstTypes.map(_.name).toSet
+      splits.head + splits.tail.takeWhile(x => !instNames.contains(x)).mkString("-", "-", "")
+    } else ""
   }
 
   def getInstMap(fd: FunDef) = {

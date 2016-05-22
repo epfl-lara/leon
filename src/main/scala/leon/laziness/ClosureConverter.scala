@@ -76,8 +76,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           if (funsRetStates(fd))
             TupleType(Seq(nretType, stType))
           else
-            nretType
-        // the type parameters will be unified later
+            nretType         
+        // the type parameters will be unified later            
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef),
           nparams :+ stParam, retTypeWithState)
         // body of these functions are defined later

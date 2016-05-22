@@ -149,7 +149,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
               false
             } else {
               // arguments or return types of memoized functions cannot be lazy because we do not know how to compare them for equality
-              if (isMemoized(fd)) {
+              if (hasMemAnnotation(fd)) {
                 val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(isLazyType)
                 if (argCheckFailed) {
                   failMsg = "Memoized function has a lazy argument or return type: " + fd.id

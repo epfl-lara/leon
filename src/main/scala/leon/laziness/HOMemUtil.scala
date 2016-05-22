@@ -18,8 +18,12 @@ import invariant.util.Util._
 
 object HOMemUtil {
 
-  def isMemoized(fd: FunDef) = {
+  def hasMemAnnotation(fd: FunDef) = {
     fd.flags.contains(Annotation("memoize", Seq()))
+  }
+  
+  def isMemoized(fd: FunDef) = {
+    fd.id.name.contains("-mem")
   }
 
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
