@@ -361,8 +361,7 @@ case object StringRender extends Rule("StringRender") {
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.flatMap(_._2).toList)
   
-  class FunDefTemplateGenerator(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) { fdTemplateGenerator =>
-    implicit val program: Program = hctx.program
+  object FunDefTemplateGenerator {
     protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
     import gcontext._
     
@@ -370,25 +369,113 @@ case object StringRender extends Rule("StringRender") {
     protected val integerSymbol = NonTerminal(IntegerType)
     protected val booleanSymbol = NonTerminal(BooleanType)
     protected val stringSymbol  = NonTerminal(StringType)
-    
     protected val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
-    
-    case class GrammarUnroller(grammar: Grammar) {
-      def markovize_vertical(): GrammarUnroller = GrammarUnroller(grammar.markovize_vertical())
-      def markovize_horizontal(): GrammarUnroller = GrammarUnroller(grammar.markovize_horizontal())
-      def markovize_abstract_vertical(): GrammarUnroller = GrammarUnroller(grammar.markovize_abstract_vertical())
-      def buildFunDefTemplate() = FunDefTemplateGenerator.this.buildFunDefTemplate(grammar)
-    }
-    def init(): GrammarUnroller = GrammarUnroller(exhaustive(startGrammar(inputs)))
-    
-    //TODO: Out of order ?
-    def startGrammar(inputs: Seq[Expr]) = Grammar(
+      
+    def apply(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext): GrammarBasedTemplateGenerator = { 
+      implicit val program: Program = hctx.program
+      val startGrammar = Grammar(
         (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType, Nil, Nil) }),
         Map(int32Symbol -> TerminalRHS(Terminal(Int32Type, Stream(expr => (Int32ToString(expr), Nil)))),
             integerSymbol -> TerminalRHS(Terminal(IntegerType, Stream((expr => (IntegerToString(expr), Nil))))),
             booleanSymbol -> TerminalRHS(Terminal(BooleanType, Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
             stringSymbol -> TerminalRHS(Terminal(StringType, Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
+      GrammarBasedTemplateGenerator(exhaustive(startGrammar), inputs, prettyPrinters)
+    }
+    
+    case class GrammarBasedTemplateGenerator(grammar: Grammar, inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) {
+      // TODO: Too much to introduce vertical context for every type. Need more refinement.
+      def markovize_vertical(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_vertical())
+      // TODO: Too much to introduce horizontal context for every type. Need more refinement.
+      def markovize_horizontal(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_horizontal())
+      // TODO: Too much to introduce abstract vertical context for every type. Need more refinement.
+      def markovize_abstract_vertical(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_abstract_vertical())
+      
+      
+      /** Builds a set of fun defs out of the grammar */
+      // TODO: The set of fundefs might even be a stream (e.g. with markovization...?)
+      def buildFunDefTemplate(): (Stream[WithIds[Expr]], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
+        // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
+        val nts = grammar.nonTerminals
+        // Fresh function name generator.
+        val ctx = new FreshFunNameGenerator with PrettyPrinterProvider {
+          var funNames: Set[String] = Set()
+          override def freshFunName(s: String): String = {
+            val res = super.freshFunName(s)
+            funNames += res
+            res
+          }
+          def provided_functions = prettyPrinters
+        }
+         // Matches a case class and returns its context type.
+        object TypedNonTerminal {
+          def unapply(nt: NonTerminal) = Some((nt.tag, nt.vcontext.map(_.tag), nt.hcontext.map(_.tag)))
+        }
+        /* We create FunDef for all on-terminals */
+        val (funDefs, ctx2) = ((Map[NonTerminal, FunDef](), ctx) /: nts) {
+          case (mgen@(m, genctx), nt@TypedNonTerminal(tp, vct, hct)) =>
+            (m + ((nt: NonTerminal) -> createEmptyFunDef(genctx, vct, hct, tp)), genctx)
+        }
+        
+        def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
+          val inputs = fd.params.map(_.id)
+          e match {
+            case TerminalRHS(Terminal(typeTree, exprStream)) if exprStream.nonEmpty => //Render this as a simple expression.
+              exprStream.map(f => f(Variable(inputs.head)))
+            case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs), _), nts) => // The subsequent calls of this function to sub-functions.
+              val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
+                FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
+                    CaseClassSelector(cct, Variable(inputs.head), ccd.fields(childIndex).id
+                    )) ++ prettyPrinters.map(Variable))
+              }
+              Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
+            case HorizontalRHS(terminal@Terminal(cct@TupleType(targs), _), nts) => // The subsequent calls of this function to sub-functions.
+              val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
+                FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
+                    TupleSelect(Variable(inputs.head), childIndex + 1)
+                    ) ++ prettyPrinters.map(Variable))
+              }
+              Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
+            case VerticalRHS(children) => // Match statement.
+              assert(inputs.length == 1 + prettyPrinters.length)
+              val idInput = inputs.head
+              val scrut = Variable(idInput)
+              val matchCases = nt.tag match {
+                case AbstractClassType(acd, typeArgs) =>
+                  acd.knownCCDescendants map { ccd => 
+                    children.find(childNt => childNt.tag match {
+                      case CaseClassType(`ccd`, `typeArgs`) => true
+                      case _ => false
+                    }) match {
+                      case Some(nt) =>
+                        val matchInput = idInput.duplicate(tpe = nt.tag)
+                        MatchCase(InstanceOfPattern(Some(matchInput), nt.tag.asInstanceOf[ClassType]), None,
+                            FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), List(Variable(matchInput)) ++ prettyPrinters.map(Variable)))
+                      case None => throw new Exception(s"Could not find $ccd in the children non-terminals $children")
+                    }
+                  }
+                case t =>
+                  throw new Exception(s"Should have been Vertical RHS, got $t. Rule:\n$nt -> $e\nFunDef:\n$fd")
+              }
+              
+              Stream(interleaveIdentifiers(Seq((MatchExpr(scrut, matchCases), Nil))))
+          }
+        }
+        
+        // We create the bodies of these functions  
+        val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
+          val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
+          (fd, bodies)
+        }
+        
+        val startExpr = interleaveIdentifiers(grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
+                (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex))), Nil)
+        })
+        (Stream(startExpr), possible_functions)
+        // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
+        // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.
+      }
+    }
 
     /** Used to produce rules such as Cons => Elem List without context*/
     protected def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
@@ -428,95 +515,6 @@ case object StringRender extends Rule("StringRender") {
     protected def exhaustive(grammar: Grammar): Grammar = {
       leon.utils.fixpoint(extendGrammar _)(grammar)
     }
-    
-    /** Builds a set of fun defs out of the grammar */
-    // TODO: The set of fundefs might even be a stream (e.g. with markovization...?)
-    protected def buildFunDefTemplate(grammar: Grammar): (Stream[WithIds[Expr]], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
-      // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
-      val nts = grammar.nonTerminals
-      // Fresh function name generator.
-      val ctx = new FreshFunNameGenerator with PrettyPrinterProvider {
-        var funNames: Set[String] = Set()
-        override def freshFunName(s: String): String = {
-          val res = super.freshFunName(s)
-          funNames += res
-          res
-        }
-        def provided_functions = FunDefTemplateGenerator.this.prettyPrinters
-      }
-       // Matches a case class and returns its context type.
-      object TypedNonTerminal {
-        def unapply(nt: NonTerminal) = Some((nt.tag, nt.vcontext.map(_.tag), nt.hcontext.map(_.tag)))
-      }
-      /* We create FunDef for all on-terminals */
-      val (funDefs, ctx2) = ((Map[NonTerminal, FunDef](), ctx) /: nts) {
-        case (mgen@(m, genctx), nt@TypedNonTerminal(tp, vct, hct)) =>
-          (m + ((nt: NonTerminal) -> createEmptyFunDef(genctx, vct, hct, tp)), genctx)
-      }
-      
-      def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
-        val inputs = fd.params.map(_.id)
-        e match {
-          case TerminalRHS(Terminal(typeTree, exprStream)) if exprStream.nonEmpty => //Render this as a simple expression.
-            exprStream.map(f => f(Variable(inputs.head)))
-          case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs), _), nts) => // The subsequent calls of this function to sub-functions.
-            val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
-              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
-                  CaseClassSelector(cct, Variable(inputs.head), ccd.fields(childIndex).id
-                  )) ++ prettyPrinters.map(Variable))
-            }
-            Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
-          case HorizontalRHS(terminal@Terminal(cct@TupleType(targs), _), nts) => // The subsequent calls of this function to sub-functions.
-            val childExprs = nts.zipWithIndex.map{ case (childNt, childIndex) =>
-              FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
-                  TupleSelect(Variable(inputs.head), childIndex + 1)
-                  ) ++ prettyPrinters.map(Variable))
-            }
-            Stream(interleaveIdentifiers(childExprs.map(x => (x, Nil))))
-          case VerticalRHS(children) => // Match statement.
-            assert(inputs.length == 1 + prettyPrinters.length)
-            val idInput = inputs.head
-            val scrut = Variable(idInput)
-            val matchCases = nt.tag match {
-              case AbstractClassType(acd, typeArgs) =>
-                acd.knownCCDescendants map { ccd => 
-                  children.find(childNt => childNt.tag match {
-                    case CaseClassType(`ccd`, `typeArgs`) => true
-                    case _ => false
-                  }) match {
-                    case Some(nt) =>
-                      val matchInput = idInput.duplicate(tpe = nt.tag)
-                      MatchCase(InstanceOfPattern(Some(matchInput), nt.tag.asInstanceOf[ClassType]), None,
-                          FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), List(Variable(matchInput)) ++ prettyPrinters.map(Variable)))
-                    case None => throw new Exception(s"Could not find $ccd in the children non-terminals $children")
-                  }
-                }
-              case t =>
-                throw new Exception(s"Should have been Vertical RHS, got $t. Rule:\n$nt -> $e\nFunDef:\n$fd")
-            }
-            
-            Stream(interleaveIdentifiers(Seq((MatchExpr(scrut, matchCases), Nil))))
-        }
-      }
-      
-      // We create the bodies of these functions  
-      val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
-        val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
-        (fd, bodies)
-      }
-      
-      val startExpr = interleaveIdentifiers(grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
-              (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex))), Nil)
-      })
-      (Stream(startExpr), possible_functions)
-      //g.rules(startSymbol)
-      //???
-      
-      // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
-      // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.
-    }
-    
-    
   }
   
   /** Returns a (possibly recursive) template which can render the inputs in their order.
@@ -742,8 +740,8 @@ case object StringRender extends Rule("StringRender") {
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         val originalInputs = inputVariables.map(Variable)
         ruleInstantiations += RuleInstantiation("String conversion") {
-          val (expr, synthesisResult) = new FunDefTemplateGenerator(originalInputs, functionVariables)
-            .init().markovize_horizontal().markovize_vertical().markovize_abstract_vertical().buildFunDefTemplate()
+          val (expr, synthesisResult) = FunDefTemplateGenerator(originalInputs, functionVariables)
+            .markovize_horizontal().markovize_vertical().markovize_abstract_vertical().buildFunDefTemplate()
           /*val (expr, synthesisResult) = createFunDefsTemplates(
               StringSynthesisContext.empty(
                   abstractStringConverters,
