@@ -14,19 +14,17 @@ import leon.invariant.util.Util._
 
 import scala.collection.mutable.{Map => MutableMap}
 
-object tprCostModel {
+class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
+
   def costOf(e: Expr): Int = e match {
     case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
     case FunctionInvocation(fd, args) => 1
     case t: Terminal => 0
     case _ => 1
-  }
+  }  
+  
   def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
-}
-
-class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
-  import tprCostModel._
-
+  
   def inst = TPR
 
   val sccs = cg.sccs.flatMap { scc =>

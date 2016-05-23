@@ -59,9 +59,9 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
             val cc = CaseClass(CaseClassType(ccdef, stateTps(stExpr)), args)
             val instId = FreshIdentifier("instd", instExpr.getType, true)
             val instExprs = instrumenters map { m =>
-              IfExpr(ElementOfSet(cc, stExpr),
-                InfiniteIntegerLiteral(costOfMemoization(m.inst)),
-                selectInst(instId.toVariable, m.inst))
+              val lookupCost = InfiniteIntegerLiteral(costOfMemoization(m.inst))
+              IfExpr(ElementOfSet(cc, stExpr), lookupCost,
+                Plus(lookupCost, selectInst(instId.toVariable, m.inst)))
             }
             Let(instId, instExpr,
               Tuple(TupleSelect(instId.toVariable, 1) +: instExprs))
@@ -74,11 +74,28 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
     }
   }
 
+  object memTimeCostModel {
+    def costOf(e: Expr): Int = e match {
+      case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
+      case FunctionInvocation(fd, args)             => 1
+      case t: Terminal                              => 0
+      case Tuple(Seq(_, s)) if isStateType(s.getType)  =>  0 // state construction
+      case TupleSelect(se, _) => se.getType match {
+        case TupleType(Seq(_, stType)) if isStateType(stType) => 0 // state extraction
+        case _ => 1
+      }
+      case FiniteSet(_, stType) if isStateType(stType) => 0 // creating a memo set
+      case CaseClass(cct, _) if isStateType(cct.root) => 0 // createing a memo closure
+      case SetUnion(s1, _) if isStateType(s1.getType) => 0 // state union
+      case _ => 1
+    }
+  }
+
   /**
    * Here, we assume that all match cases of dispatch function take the same cost.
    */
   class MemTimeInstrumenter(p: Program, si: SerialInstrumenter) extends TimeInstrumenter(p, si) {
-    import timeCostModel._
+    override def costOf(e: Expr): Int = memTimeCostModel.costOf(e)    
     override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
       val costMatch = costOfExpr(me)
       val costOfPattern = patternCost(mc.pattern, false, true)
@@ -95,7 +112,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
    * Here, we assume that all match cases of dispatch function take the same cost.
    */
   class MemTPRInstrumenter(p: Program, si: SerialInstrumenter) extends TPRInstrumenter(p, si) {
-    import timeCostModel._
+    override def costOf(e: Expr): Int = memTimeCostModel.costOf(e)
     override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
       val costMatch = costOfExpr(me)
       val costOfPattern = patternCost(mc.pattern, false, true)
