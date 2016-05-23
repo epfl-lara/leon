@@ -63,3 +63,5 @@ out-classes
 /scalaz3.lib
 /vcomp100.dll
 /z3.exe
+/libz3java.dll
+/libz3java.lib

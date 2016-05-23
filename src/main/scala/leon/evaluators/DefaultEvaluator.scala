@@ -1,11 +1,11 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package evaluators
 
 import purescala.Definitions.Program
 
-class DefaultEvaluator(ctx: LeonContext, prog: Program)
-  extends RecursiveEvaluator(ctx, prog, 5000)
-  with HasDefaultGlobalContext
-  with HasDefaultRecContext
+class DefaultEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new EvaluationBank)
+  extends RecursiveEvaluator(ctx, prog, bank, 50000)
+     with HasDefaultGlobalContext
+     with HasDefaultRecContext

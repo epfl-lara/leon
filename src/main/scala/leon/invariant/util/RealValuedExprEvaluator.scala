@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.util
 
@@ -47,12 +49,14 @@ object RealValuedExprEvaluator {
     case _ => throw new IllegalStateException("Not an evaluatable expression: " + expr)
   }
 
-  def evaluateRealPredicate(expr: Expr): Boolean = expr match {
-    case Equals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) => isEQZ(evaluate(Minus(a, b)))
-    case LessEquals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) => isLEZ(evaluate(Minus(a, b)))
-    case LessThan(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) => isLTZ(evaluate(Minus(a, b)))
-    case GreaterEquals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) => isGEZ(evaluate(Minus(a, b)))
-    case GreaterThan(a @ FractionalLiteral(n1, d1), b @ FractionalLiteral(n2, d2)) => isGTZ(evaluate(Minus(a, b)))
+  def evaluateRealPredicate(expr: Expr): Boolean = {
+    expr match {
+      case Equals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _))          => isEQZ(evaluate(Minus(a, b)))
+      case LessEquals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _))      => isLEZ(evaluate(Minus(a, b)))
+      case LessThan(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _))        => isLTZ(evaluate(Minus(a, b)))
+      case GreaterEquals(a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _))   => isGEZ(evaluate(Minus(a, b)))
+      case GreaterThan(a @ FractionalLiteral(n1, d1), b @ FractionalLiteral(n2, d2)) => isGTZ(evaluate(Minus(a, b)))
+    }
   }
 
   def isEQZ(rlit: FractionalLiteral): Boolean = {
@@ -95,6 +99,9 @@ object RealValuedExprEvaluator {
     case Not(arg) => !evaluateRealFormula(arg)
     case BooleanLiteral(b) => b
     case Operator(args, op) =>
-      evaluateRealPredicate(op(args map evaluate))
+      op(args map evaluate) match {
+        case BooleanLiteral(b) => b
+        case p => evaluateRealPredicate(p)
+      }
   }
 }

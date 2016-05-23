@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.unit.solvers
 
@@ -12,7 +12,7 @@ import leon.purescala.Expressions._
 
 class SolverPoolSuite extends LeonTestSuite {
 
-  private class DummySolver(val context : LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
+  private class DummySolver(val sctx: SolverContext, val program: Program) extends Solver with NaiveAssumptionSolver {
     val name = "Dummy"
     val description = "dummy"
 
@@ -28,7 +28,7 @@ class SolverPoolSuite extends LeonTestSuite {
   }
 
   def sfactory(implicit ctx: LeonContext): SolverFactory[Solver] = {
-    SolverFactory(() => new DummySolver(ctx, Program.empty))
+    SolverFactory("dummy", () => new DummySolver(ctx.toSctx, Program.empty))
   }
 
   val poolSize = 5;

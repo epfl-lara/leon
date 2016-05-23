@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.regression.verification
 
@@ -34,12 +34,12 @@ trait VerificationSuite extends LeonRegressionSuite {
   private def mkTest(files: List[String], cat: String)(block: Output => Unit) = {
     val extraction =
       ExtractionPhase andThen
-      new PreprocessingPhase(desugarXLang)
+      new PreprocessingPhase
 
     val analysis =
-      (if (isabelle) AdaptationPhase else NoopPhase[Program]) andThen
+      AdaptationPhase.when(isabelle) andThen
       VerificationPhase andThen
-      (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
+      FixReportLabels.when(desugarXLang)
 
     val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
 

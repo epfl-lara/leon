@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.test.helpers
 
@@ -44,8 +44,7 @@ trait WithLikelyEq {
       val allValues = freeVars.map(id => values.get(id).map(Seq(_)).getOrElse(typesValues(id.getType)))
 
       cartesianProduct(allValues).foreach { vs =>
-        val m = (freeVars zip vs).toMap
-
+        val m = evaluator.evalEnv(freeVars zip vs)
         val doTest = pre.map { p =>
           evaluator.eval(p, m).result match {
             case Some(BooleanLiteral(b)) => b

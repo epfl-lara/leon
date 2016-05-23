@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.solvers.isabelle
 
 import scala.concurrent._
@@ -12,6 +14,7 @@ import leon.purescala.Types._
 import leon.utils._
 
 import edu.tum.cs.isabelle._
+import edu.tum.cs.isabelle.pure.{Expr => _, _}
 
 final class Translator(context: LeonContext, program: Program, types: Types, system: System)(implicit ec: ExecutionContext) {
 

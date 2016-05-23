@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package solvers.isabelle
 
@@ -12,11 +14,15 @@ import leon.purescala.Expressions._
 import leon.verification.VC
 
 import edu.tum.cs.isabelle._
+import edu.tum.cs.isabelle.api.Environment
+import edu.tum.cs.isabelle.pure.{Expr => _, _}
+
+import shapeless.tag
 
 object `package` {
 
   val theory = "Leon_Runtime"
-  val isabelleVersion = "2015"
+  val isabelleVersion = "2016"
 
 
   implicit class FutureResultOps[A](val future: Future[ProverResult[A]]) extends AnyVal {
@@ -106,10 +112,11 @@ object `package` {
     }
   }
 
-  def canonicalizeOutput(str: String) =
-    // FIXME expose this via libisabelle
+  def canonicalizeOutput(system: System, str: String) = {
     // FIXME use this everywhere
-    isabelle.Symbol.decode("""\s+""".r.replaceAllIn(str, " "))
+    val raw = """\s+""".r.replaceAllIn(str, " ")
+    system.env.decode(tag[Environment.Raw].apply(raw))
+  }
 
   val Prove = Operation.implicitly[(List[Term], Option[String]), Option[String]]("prove")
   val Pretty = Operation.implicitly[Term, String]("pretty")

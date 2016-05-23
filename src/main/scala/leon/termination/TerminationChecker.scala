@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package termination
@@ -9,7 +9,7 @@ import purescala.DefOps._
 
 abstract class TerminationChecker(val context: LeonContext, initProgram: Program) extends LeonComponent {
   val program = {
-    val (pgm, _) = replaceFunDefs(initProgram){ fd => Some(fd.duplicate()) }
+    val (pgm, _, _, _) = replaceFunDefs(initProgram){ fd => Some(fd.duplicate()) }
 
     pgm
   }

@@ -21,14 +21,11 @@ object DoubleListRender {
   } holds
 
   def AtoString(a : A): String =  {
-    ???
-  } ensuring {
-    (res : String) => (a, res) passes {
-      case N() =>
-        "[]"
-      case B(NN(), N()) =>
-        "[()]"
-    }
+    ???[String] ask a
+  }
+
+  def AAtoString(a : AA): String =  {
+    ???[String] ask a
   }
   
   def structurallyEqualA(a: A, b: A): Boolean = (a, b) match {

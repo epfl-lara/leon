@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -9,7 +9,7 @@ import purescala.TypeOps._
 
 case object UnusedInput extends NormalizingRule("UnusedInput") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val unused = (p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc) -- variablesOf(p.ws)).filter { a =>
+    val unused = (p.as.toSet -- variablesOf(p.phi) -- p.pc.variables -- variablesOf(p.ws)).filter { a =>
       !isParametricType(a.getType)
     }
 

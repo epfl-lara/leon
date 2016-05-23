@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -12,4 +12,4 @@ object SolverUnsupportedError {
 }
 
 case class SolverUnsupportedError(t: Tree, s: Solver, reason: Option[String] = None)
-  extends Unsupported(t, SolverUnsupportedError.msg(t,s,reason))(s.leonContext)
+  extends Unsupported(t, SolverUnsupportedError.msg(t,s,reason))(s.context)

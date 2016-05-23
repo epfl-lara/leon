@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.purescala
 
@@ -183,9 +183,9 @@ object Expressions {
     val getType = {
       // We need ot instantiate the type based on the type of the function as well as receiver
       val fdret = tfd.returnType
-      val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
+      val extraMap: Map[TypeParameter, TypeTree] = rec.getType match {
         case ct: ClassType =>
-          (cd.tparams zip ct.tps).toMap
+          (cd.typeArgs zip ct.tps).toMap
         case _ =>
           Map()
       }
@@ -234,7 +234,6 @@ object Expressions {
   /* Universal Quantification */
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
-    assert(body.getType == BooleanType)
     val getType = BooleanType
   }
 
@@ -329,9 +328,13 @@ object Expressions {
     lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
     lazy val Seq(noneType, someType) = optionType.knownCCDescendants.sortBy(_.fields.size)
     lazy val someValue = someType.classDef.fields.head
-    // Pattern match unapply(scrut)
-    // In case of None, return noneCase.
-    // In case of Some(v), return someCase(v).
+
+    /** Construct a pattern matching against unapply(scrut) (as an if-expression)
+      *
+      * @param scrut The scrutinee of the pattern matching
+      * @param noneCase The expression that will happen if unapply(scrut) is None
+      * @param someCase How unapply(scrut).get will be handled in case it exists
+      */
     def patternMatch(scrut: Expr, noneCase: Expr, someCase: Expr => Expr): Expr = {
       // We use this hand-coded if-then-else because we don't want to generate
       // match exhaustiveness checks in the program
@@ -346,23 +349,29 @@ object Expressions {
         )
       )
     }
-    // Inlined .get method
+
+    /** Inlined .get method */
     def get(scrut: Expr) = patternMatch(
       scrut,
       Error(optionType.tps.head, "None.get"),
       e => e
     )
-    // Selects Some.v field without type-checking.
-    // Use in a context where scrut.isDefined returns true.
+
+    /** Selects Some.v field without type-checking.
+      * Use in a context where scrut.isDefined returns true.
+      */
     def getUnsafe(scrut: Expr) = CaseClassSelector(
       someType,
       FunctionInvocation(unapplyFun, Seq(scrut)),
       someValue.id
     )
+
+    def isSome(scrut: Expr) = IsInstanceOf(FunctionInvocation(unapplyFun, Seq(scrut)), someType)
+
   }
   
   // Extracts without taking care of the binder. (contrary to Extractos.Pattern)
-  object PatternExtractor extends SubTreeOps.Extractor[Pattern] {
+  object PatternExtractor extends TreeExtractor[Pattern] {
     def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
       case (_: InstanceOfPattern) | (_: WildcardPattern) | (_: LiteralPattern[_]) =>
         Some(Seq(), es => e)
@@ -376,7 +385,9 @@ object Expressions {
     }
   }
   
-  object PatternOps extends { val Deconstructor = PatternExtractor } with SubTreeOps[Pattern]
+  object PatternOps extends GenTreeOps[Pattern] {
+    val Deconstructor = PatternExtractor
+  }
 
   /** Symbolic I/O examples as a match/case.
     * $encodingof `out == (in match { cases; case _ => out })`
@@ -388,8 +399,8 @@ object Expressions {
     * @param out The output expression
     * @param cases The cases to compare against
     */
-  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
-    require(cases.nonEmpty)
+  case class Passes(in: Expr, out: Expr, cases: Seq[MatchCase]) extends Expr {
+    //require(cases.nonEmpty)
 
     val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
       case None => Untyped
@@ -444,7 +455,6 @@ object Expressions {
     * This is useful e.g. to present counterexamples of generic types.
     */
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
-  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
     val getType = tp
   }
 
@@ -497,6 +507,7 @@ object Expressions {
     val getType = {
       if (typesCompatible(lhs.getType, rhs.getType)) BooleanType
       else {
+        //println(s"Incompatible argument types: arguments: ($lhs, $rhs) types: ${lhs.getType}, ${rhs.getType}")
         Untyped
       }
     }
@@ -594,7 +605,17 @@ object Expressions {
       val ext = expr.getType
       val st = start.getType
       val et = end.getType
-      if (ext == StringType && (st == IntegerType || st == Int32Type) && (et == IntegerType || et == Int32Type)) StringType
+      if (ext == StringType && st == Int32Type && et == Int32Type) StringType
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.subString(start, end)` for strings */
+  case class BigSubString(expr: Expr, start: Expr, end: Expr) extends Expr {
+    val getType = {
+      val ext = expr.getType
+      val st = start.getType
+      val et = end.getType
+      if (ext == StringType && st == IntegerType && et == IntegerType) StringType
       else Untyped
     }
   }
@@ -602,6 +623,13 @@ object Expressions {
   case class StringLength(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == StringType) Int32Type
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.length` for strings */
+  case class StringBigLength(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType) IntegerType
       else Untyped
     }
   }
@@ -786,11 +814,11 @@ object Expressions {
     *
     * [[exprs]] should always contain at least 2 elements.
     * If you are not sure about this requirement, you should use
-    * [[leon.purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
+    * [[leon.purescala.Constructors.tupleWrap purescala's constructor tupleWrap]]
     *
     * @param exprs The expressions in the tuple
     */
-  case class Tuple (exprs: Seq[Expr]) extends Expr {
+  case class Tuple(exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
     val getType = TupleType(exprs.map(_.getType)).unveilUntyped
   }
@@ -805,8 +833,8 @@ object Expressions {
     require(index >= 1)
 
     val getType = tuple.getType match {
-      case TupleType(ts) =>
-        require(index <= ts.size)
+      case tp@TupleType(ts) =>
+        require(index <= ts.size, s"Got index $index for '$tuple' of type '$tp")
         ts(index - 1)
 
       case _ =>
@@ -821,9 +849,22 @@ object Expressions {
   case class FiniteSet(elements: Set[Expr], base: TypeTree) extends Expr {
     val getType = SetType(base).unveilUntyped
   }
+  /** $encodingof `set + elem` */
+  case class SetAdd(set: Expr, elem: Expr) extends Expr {
+    val getType = {
+      val base = set.getType match {
+        case SetType(base) => base
+        case _ => Untyped
+      }
+      checkParamTypes(Seq(elem.getType), Seq(base), SetType(base).unveilUntyped)
+    }
+  }
   /** $encodingof `set.contains(element)` or `set(element)` */
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
-    val getType = BooleanType
+    val getType = checkParamTypes(Seq(element.getType), Seq(set.getType match {
+      case SetType(base) => base
+      case _ => Untyped
+    }), BooleanType)
   }
   /** $encodingof `set.length` */
   case class SetCardinality(set: Expr) extends Expr {
@@ -831,9 +872,12 @@ object Expressions {
   }
   /** $encodingof `set.subsetOf(set2)` */
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
-    val getType  = BooleanType
+    val getType = (set1.getType, set2.getType) match {
+      case (SetType(b1), SetType(b2)) if b1 == b2 => BooleanType
+      case _ => Untyped
+    }
   }
-  /** $encodingof `set.intersect(set2)` */
+  /** $encodingof `set & set2` */
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
     val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
@@ -845,6 +889,42 @@ object Expressions {
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
     val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
+
+  /* Bag operations */
+  /** $encodingof `Bag[base](elements)` */
+  case class FiniteBag(elements: Map[Expr, Expr], base: TypeTree) extends Expr {
+    val getType = BagType(base).unveilUntyped
+  }
+  /** $encodingof `bag + elem` */
+  case class BagAdd(bag: Expr, elem: Expr) extends Expr {
+    val getType = {
+      val base = bag.getType match {
+        case BagType(base) => base
+        case _ => Untyped
+      }
+      checkParamTypes(Seq(base), Seq(elem.getType), BagType(base).unveilUntyped)
+    }
+  }
+  /** $encodingof `bag.get(element)` or `bag(element)` */
+  case class MultiplicityInBag(element: Expr, bag: Expr) extends Expr {
+    val getType = checkParamTypes(Seq(element.getType), Seq(bag.getType match {
+      case BagType(base) => base
+      case _ => Untyped
+    }), IntegerType)
+  }
+  /** $encodingof `bag1 & bag2` */
+  case class BagIntersection(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+  /** $encodingof `bag1 ++ bag2` */
+  case class BagUnion(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+  /** $encodingof `bag1 -- bag2` */
+  case class BagDifference(bag1: Expr, bag2: Expr) extends Expr {
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+  }
+
 
   // TODO: Add checks for these expressions too
 
@@ -918,6 +998,19 @@ object Expressions {
     val getType = ArrayType(tpe).unveilUntyped
   }
 
+  case class MutableExpr(var underlying: Expr) extends Expr with Extractable with PrettyPrintable {
+    def getType = underlying.getType
+
+    def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = Some(
+      Seq(underlying),
+      { case Seq(e) => underlying = e; this }
+    )
+
+    override def printWith(implicit pctx: PrinterContext): Unit = {
+      import PrinterHelpers._
+      p"$underlying"
+    }
+  }
 
   /* Special trees for synthesis */
   /** $encodingof `choose(pred)`, the non-deterministic choice in Leon.

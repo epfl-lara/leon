@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -9,7 +9,6 @@ import Types._
 import Definitions.Program
 
 object Common {
-
 
   abstract class Tree extends Positioned with Serializable with Printable {
     def copiedFrom(o: Tree): this.type = {
@@ -43,8 +42,6 @@ object Common {
     private val alwaysShowUniqueID: Boolean = false
   ) extends Tree with Typed with Ordered[Identifier] {
 
-    self: Serializable =>
-
     val getType = tpe
 
     override def equals(other: Any): Boolean = other match {
@@ -56,16 +53,12 @@ object Common {
     override def hashCode: Int = globalId
 
     override def toString: String = {
-      if (alwaysShowUniqueID) {
-        name + (if (id > 0) id else "")
-      } else {
-        name
-      }
+      if (alwaysShowUniqueID) uniqueName else name
     }
 
-    def uniqueNameDelimited(delim: String) = name + delim + id
+    def uniqueNameDelimited(delim: String) = s"$name$delim$id"
 
-    def uniqueName: String = uniqueNameDelimited("")
+    def uniqueName: String = uniqueNameDelimited("$")
 
     def toVariable: Variable = Variable(this)
 
@@ -98,8 +91,10 @@ object Common {
       * @param tpe The type of the identifier
       * @param alwaysShowUniqueID If the unique ID should always be shown
       */
-    def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
-      new Identifier(decode(name), uniqueCounter.nextGlobal, uniqueCounter.next(name), tpe, alwaysShowUniqueID)
+    def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = {
+      val decoded = decode(name)
+      new Identifier(decoded, uniqueCounter.nextGlobal, uniqueCounter.next(decoded), tpe, alwaysShowUniqueID)
+    }
 
     /** Builds a fresh identifier, whose ID is always shown
       *
@@ -107,7 +102,7 @@ object Common {
       * @param forceId The forced ID of the identifier
       * @param tpe The type of the identifier
       */
-    def apply(name: String, forceId: Int, tpe: TypeTree): Identifier = 
+    def apply(name: String, forceId: Int, tpe: TypeTree): Identifier =
       new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID =  true)
 
   }
@@ -116,6 +111,7 @@ object Common {
     id1.toString == id2.toString
   }
 
+  /** Returns true if the two group of identifiers ovelap. */
   def aliased(ids1 : Set[Identifier], ids2 : Set[Identifier]) = {
     val s1 = ids1.groupBy{ _.toString }.keySet
     val s2 = ids2.groupBy{ _.toString }.keySet

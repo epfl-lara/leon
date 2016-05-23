@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.util
 
@@ -12,6 +14,9 @@ import leon.invariant.templateSolvers.ExtendedUFSolver
 import java.io._
 import Util._
 import PredicateUtil._
+import evaluators._
+import EvaluationResults._
+import purescala.Extractors._
 
 object SolverUtil {
 
@@ -22,6 +27,15 @@ object SolverUtil {
       if (acc == tru) eq
       else And(acc, eq)
     })
+  }
+
+  def completeWithRefModel(currModel: Model, refModel: Model) = {
+    new Model(refModel.toMap.map {
+      case (id, _) if currModel.isDefinedAt(id) =>
+        (id -> currModel(id))
+      case (id, v) =>
+        (id -> v)
+    }.toMap)
   }
 
   def toZ3SMTLIB(expr: Expr, filename: String,
@@ -38,6 +52,14 @@ object SolverUtil {
     writer.close()
   }
 
+  def verifyModel(e: Expr, model: Model, solver: SimpleSolverAPI) = {
+    solver.solveSAT(And(e, modelToExpr(model))) match {
+      case (Some(false), _) =>
+        throw new IllegalStateException("Model doesn't staisfy formula!")
+      case _ =>
+    }
+  }
+
   /**
    * A helper function that can be used to hardcode an invariant and see if it unsatifies the paths
    */
@@ -50,7 +72,7 @@ object SolverUtil {
     if (idmap.keys.nonEmpty) {
       val newpathcond = replace(idmap, expr)
       //check if this is solvable
-      val solver = SimpleSolverAPI(SolverFactory(() => new ExtendedUFSolver(ctx, prog)))
+      val solver = SimpleSolverAPI(SolverFactory("extendedUF", () => new ExtendedUFSolver(ctx, prog)))
       solver.solveSAT(newpathcond)._1 match {
         case Some(true) => {
           println("Path satisfiable for a?,c? -->6,2 ")
@@ -70,7 +92,7 @@ object SolverUtil {
     val solver = new ExtendedUFSolver(ctx, prog)
     val newe = simplePostTransform {
       case e@(And(_) | Or(_)) => {
-        val v = TVarFactory.createTemp("a", BooleanType).toVariable
+        val v = TVarFactory.createTempDefault("a", BooleanType).toVariable
         newEqs += (v -> e)
         val newe = Equals(v, e)
 
@@ -106,8 +128,7 @@ object SolverUtil {
 
     solver.free
     //cores
-    ExpressionTransformer.unFlatten(cores,
-      variablesOf(ine).filterNot(TVarFactory.isTemporary _))
+    ExpressionTransformer.unflatten(cores)
   }
 
   //tests if the solver uses nlsat

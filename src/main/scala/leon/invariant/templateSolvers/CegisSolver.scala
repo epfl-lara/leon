@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.templateSolvers
 
@@ -14,13 +16,14 @@ import invariant.structure.FunctionUtils._
 import leon.invariant.util.RealValuedExprEvaluator._
 import PredicateUtil._
 import SolverUtil._
+import Stats._
+import Util._
 
 class CegisSolver(ctx: InferenceContext, program: Program,
   rootFun: FunDef, ctrTracker: ConstraintTracker,
   timeout: Int, bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker) {
 
-  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Model], Option[Set[Call]]) = {
-
+  override def solve(tempIds: Set[Identifier], funcs: Seq[FunDef]): (Option[Model], Option[Set[Call]]) = {
     val initCtr = if (bound.isDefined) {
       //use a predefined bound on the template variables
       createAnd(tempIds.map((id) => {
@@ -30,10 +33,7 @@ class CegisSolver(ctx: InferenceContext, program: Program,
       }).toSeq)
 
     } else tru
-
-    val funcs = funcVCs.keys
-    val formula = createOr(funcs.map(funcVCs.apply _).toSeq)
-
+    val formula = createOr(funcs.map(getVCForFun _).toSeq)
     //using reals with bounds does not converge and also results in overflow
     val (res, _, model) = (new CegisCore(ctx, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
@@ -112,7 +112,7 @@ class CegisCore(ctx: InferenceContext,
 
         if (dumpCandidateInvs) {
           reporter.info("Candidate invariants")
-          val candInvs = cegisSolver.getAllInvariants(model)
+          val candInvs = TemplateInstantiator.getAllInvariants(model, cegisSolver.ctrTracker.getFuncs)
           candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
         }
         val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
@@ -122,17 +122,12 @@ class CegisCore(ctx: InferenceContext,
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (spuriousTempIds.nonEmpty)
           throw new IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
-        if (hasReals(instFormula))
-          throw new IllegalStateException("Reals in instFormula: " + instFormula)
 
         //println("solving instantiated vcs...")
-        val t1 = System.currentTimeMillis()
         val solver1 = new ExtendedUFSolver(context, program)
         solver1.assertCnstr(instFormula)
-        val res = solver1.check
-        val t2 = System.currentTimeMillis()
-        println("1: " + (if (res.isDefined) "solved" else "timedout") + "... in " + (t2 - t1) / 1000.0 + "s")
-
+        val (res, solTime) = getTime{ solver1.check }
+        println("1: " + (if (res.isDefined) "solved" else "timedout") + "... in " + solTime / 1000.0 + "s")
         res match {
           case Some(true) => {
             //simplify the tempctrs, evaluate every atom that does not involve a template variable
@@ -149,56 +144,37 @@ class CegisCore(ctx: InferenceContext,
                 case e => e
               }(Not(formula))
             solver1.free()
-
             //sanity checks
             val spuriousProgIds = variablesOf(satctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
             if (spuriousProgIds.nonEmpty)
               throw new IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
-
             val tempctrs = if (!solveAsInt) ExpressionTransformer.IntLiteralToReal(satctrs) else satctrs
             val newctr = And(tempctrs, prevctr)
-            //println("Newctr: " +newctr)
-
             if (ctx.dumpStats) {
               Stats.updateCounterStats(atomNum(newctr), "CegisTemplateCtrs", "CegisIters")
             }
-
-            //println("solving template constraints...")
             val t3 = System.currentTimeMillis()
             val elapsedTime = (t3 - startTime)
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver),
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extededUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver),
               timeoutMillis - elapsedTime))
-
             val (res1, newModel) = if (solveAsInt) {
-              //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
-              val rti = new RealToInt()
-              val intctr = rti.mapRealToInt(And(newctr, initRealCtr))
-              val intObjective = rti.mapRealToInt(tempVarSum)
-              val (res1, intModel) = if (minimizeSum) {
-                minimizeIntegers(intctr, intObjective)
-              } else {
+              val intctr = And(newctr, initRealCtr)
+              if (minimizeSum)
+                minimizeIntegers(intctr, tempVarSum)
+              else
                 solver2.solveSAT(intctr)
-              }
-              (res1, rti.unmapModel(intModel))
             } else {
-
-              /*if(InvarianthasInts(tempctrs))
-            	throw new IllegalStateException("Template constraints have integer terms: " + tempctrs)*/
               if (minimizeSum) {
                 minimizeReals(And(newctr, initRealCtr), tempVarSum)
               } else {
                 solver2.solveSAT(And(newctr, initRealCtr))
               }
             }
-
-            val t4 = System.currentTimeMillis()
-            println("2: " + (if (res1.isDefined) "solved" else "timed out") + "... in " + (t4 - t3) / 1000.0 + "s")
-
+            println("2: " + (if (res1.isDefined) "solved" else "timed out") + "... in " + (System.currentTimeMillis() - t3) / 1000.0 + "s")
             if (res1.isDefined) {
               if (!res1.get) {
                 //there exists no solution for templates
                 (Some(false), newctr, Model.empty)
-
               } else {
                 //this is for sanity check
                 addModel(newModel)
@@ -238,8 +214,7 @@ class CegisCore(ctx: InferenceContext,
   val debugMinimization = false
 
   def minimizeReals(inputCtr: Expr, objective: Expr): (Option[Boolean], Model) = {
-    //val t1 = System.currentTimeMillis()
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -278,11 +253,8 @@ class CegisCore(ctx: InferenceContext,
 
               }
               val boundCtr = LessEquals(objective, currval)
-              //val t1 = System.currentTimeMillis()
-              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
               val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
-              //val t2 = System.currentTimeMillis()
-              //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
               res match {
                 case Some(true) => {
                   //here we have a new upper bound
@@ -324,8 +296,7 @@ class CegisCore(ctx: InferenceContext,
   }
 
   def minimizeIntegers(inputCtr: Expr, objective: Expr): (Option[Boolean], Model) = {
-    //val t1 = System.currentTimeMillis()
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -357,11 +328,8 @@ class CegisCore(ctx: InferenceContext,
               } else 2 * upperBound
             }
             val boundCtr = LessEquals(objective, InfiniteIntegerLiteral(currval))
-            //val t1 = System.currentTimeMillis()
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extededUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
             val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
-            //val t2 = System.currentTimeMillis()
-            //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
             res match {
               case Some(true) => {
                 //here we have a new upper bound

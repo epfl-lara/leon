@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package invariant.templateSolvers
@@ -13,7 +13,7 @@ import leon.solvers.z3.UninterpretedZ3Solver
  *  TODO: need to handle bit vectors
  */
 class ExtendedUFSolver(context: LeonContext, program: Program)
-    extends UninterpretedZ3Solver(context, program) {
+    extends UninterpretedZ3Solver(context.toSctx, program) {
 
   override val name = "Z3-eu"
   override  val description = "Extended UF-ADT Z3 Solver"

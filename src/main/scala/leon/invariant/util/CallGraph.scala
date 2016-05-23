@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.util
 
@@ -13,6 +15,7 @@ import invariant.datastructure._
  */
 class CallGraph {
   val graph = new DirectedGraph[FunDef]()
+  lazy val reverseCG = graph.reverse
 
   def addFunction(fd: FunDef) = graph.addNode(fd)
 
@@ -26,7 +29,19 @@ class CallGraph {
   }
 
   def transitiveCallees(src: FunDef): Set[FunDef] = {
-    graph.BFSReachables(src)
+    graph.BFSReachables(Seq(src))
+  }
+
+  def transitiveCallers(dest: FunDef) : Set[FunDef] = {
+    reverseCG.BFSReachables(Seq(dest))
+  }
+
+  def transitiveCallees(srcs: Seq[FunDef]): Set[FunDef] = {
+    graph.BFSReachables(srcs)
+  }
+
+  def transitiveCallers(dests: Seq[FunDef]) : Set[FunDef] = {
+    reverseCG.BFSReachables(dests)
   }
 
   def isRecursive(fd: FunDef): Boolean = {
@@ -34,10 +49,10 @@ class CallGraph {
   }
 
   /**
-   * Checks if the src transitively calls the procedure proc
+   * Checks if the src transitively calls the procedure proc.
+   * Note: We cannot say that src calls itself even though source is reachable from itself in the callgraph
    */
   def transitivelyCalls(src: FunDef, proc: FunDef): Boolean = {
-    //important: We cannot say that src calls it self even though source is reachable from itself in the callgraph
     graph.BFSReach(src, proc, excludeSrc = true)
   }
 
@@ -46,38 +61,13 @@ class CallGraph {
   }
 
   /**
-   * sorting functions in ascending topological order
+   * Sorting functions in reverse topological order.
+   * For functions within an SCC, we preserve the initial order
+   * given as input
    */
-  def topologicalOrder: Seq[FunDef] = {
-
-    def insert(index: Int, l: Seq[FunDef], fd: FunDef): Seq[FunDef] = {
-      var i = 0
-      var head = Seq[FunDef]()
-      l.foreach((elem) => {
-        if (i == index)
-          head :+= fd
-        head :+= elem
-        i += 1
-      })
-      head
-    }
-
-    var funcList = Seq[FunDef]()
-    graph.getNodes.toList.foreach((f) => {
-      var inserted = false
-      var index = 0
-      for (i <- funcList.indices) {
-        if (!inserted && this.transitivelyCalls(funcList(i), f)) {
-          index = i
-          inserted = true
-        }
-      }
-      if (!inserted)
-        funcList :+= f
-      else funcList = insert(index, funcList, f)
-    })
-
-    funcList
+  def reverseTopologicalOrder(initOrder: Seq[FunDef]): Seq[FunDef] = {
+    val orderMap = initOrder.zipWithIndex.toMap
+    graph.sccs.flatMap{scc => scc.sortWith((f1, f2) => orderMap(f1) <= orderMap(f2)) }
   }
 
   override def toString: String = {
@@ -91,12 +81,14 @@ class CallGraph {
 
 object CallGraphUtil {
 
-  def constructCallGraph(prog: Program, onlyBody: Boolean = false, withTemplates: Boolean = false): CallGraph = {
-    // println("Constructing call graph")
+  def constructCallGraph(prog: Program,
+      onlyBody: Boolean = false,
+      withTemplates: Boolean = false,
+      calleesFun: Expr => Set[FunDef] = getCallees): CallGraph = {
     val cg = new CallGraph()
-    functionsWOFields(prog.definedFunctions).foreach((fd) => {
+    functionsWOFields(prog.definedFunctions).foreach{fd =>
+      cg.addFunction(fd)
       if (fd.hasBody) {
-        // println("Adding func " + fd.id.uniqueName)
         var funExpr = fd.body.get
         if (!onlyBody) {
           if (fd.hasPrecondition)
@@ -107,15 +99,10 @@ object CallGraphUtil {
         if (withTemplates && fd.hasTemplate) {
           funExpr = Tuple(Seq(funExpr, fd.getTemplate))
         }
-
         //introduce a new edge for every callee
-        val callees = getCallees(funExpr)
-        if (callees.isEmpty)
-          cg.addFunction(fd)
-        else
-          callees.foreach(cg.addEdgeIfNotPresent(fd, _))
+        calleesFun(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))
       }
-    })
+    }
     cg
   }
 

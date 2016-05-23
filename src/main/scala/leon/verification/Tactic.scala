@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package verification
@@ -9,7 +9,7 @@ import purescala.Expressions._
 abstract class Tactic(vctx: VerificationContext) {
   val description : String
 
-  implicit protected val ctx = vctx.context
+  implicit val ctx = vctx
 
   def generateVCs(fd: FunDef): Seq[VC] = {
     generatePostconditions(fd) ++

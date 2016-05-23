@@ -1,8 +1,9 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
 
+import purescala.Expressions.Choose
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.DefOps._
@@ -12,37 +13,48 @@ import leon.utils._
 
 import scala.concurrent.duration._
 
-import synthesis.graph._
+import synthesis.strategies._
 
 class Synthesizer(val context : LeonContext,
                   val program: Program,
                   val ci: SourceInfo,
                   val settings: SynthesisSettings) {
 
-  val problem = ci.problem
-
   val reporter = context.reporter
 
-  lazy val sctx = SynthesisContext.fromSynthesizer(this)
+  lazy val sctx = new SynthesisContext(context, settings, ci.fd, program)
 
   implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   def getSearch: Search = {
-    if (settings.manualSearch.isDefined) {
-      new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
+    val strat0 = new CostBasedStrategy(context, settings.costModel)
+
+    val strat1 = if (settings.manualSearch.isDefined) {
+      new ManualStrategy(context, settings.manualSearch, strat0)
     } else {
-      new SimpleSearch(context, ci, problem, settings.costModel, settings.searchBound)
+      strat0
     }
+
+    val strat2 = settings.searchBound match {
+      case Some(b) =>
+        BoundedStrategy(strat1, b)
+      case None =>
+        strat1
+    }
+
+    new Search(context, ci, strat2)
   }
 
   private var lastTime: Long = 0
 
   def synthesize(): (Search, Stream[Solution]) = {
     reporter.ifDebug { printer =>
-      printer(problem.eb.asString("Tests available for synthesis")(context))
+      printer(ci.problem.eb.asString("Tests available for synthesis")(context))
     }
 
     val s = getSearch
+
+    reporter.info(ASCIIHelpers.title(s"Synthesizing '${ci.fd.id}'"))
 
     val t = context.timers.synthesis.search.start()
 
@@ -63,7 +75,7 @@ class Synthesizer(val context : LeonContext,
 
     val result = sols.map {
       case sol if sol.isTrusted =>
-        (sol, true)
+        (sol, Some(true))
       case sol =>
         validateSolution(s, sol, 5.seconds)
     }
@@ -86,10 +98,15 @@ class Synthesizer(val context : LeonContext,
 
       val (size, calls, proof) = result.headOption match {
         case Some((sol, trusted)) =>
-          val expr = sol.toSimplifiedExpr(context, program)
-          (formulaSize(expr), functionCallsOf(expr).size, if (trusted) "$\\surd$" else "")
+          val expr = sol.toSimplifiedExpr(context, program, ci.fd)
+          val pr = trusted match {
+            case Some(true) => "✓"
+            case Some(false) => "✗"
+            case None => "?"
+          }
+          (formulaSize(expr), functionCallsOf(expr).size, pr)
         case _ =>
-          (0, 0, "X")
+          (0, 0, "F")
       }
 
       val date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
@@ -97,46 +114,54 @@ class Synthesizer(val context : LeonContext,
       val fw = new java.io.FileWriter("synthesis-report.txt", true)
 
       try {
-        fw.write(f"$date:  $benchName%-50s & $psize%4d & $size%4d & $calls%4d & $proof%7s & $time%2.1f \\\\\n")
+        fw.write(f"$date:  $benchName%-50s | $psize%4d | $size%4d | $calls%4d | $proof%7s | $time%2.1f \n")
       } finally {
         fw.close
       }
     }(DebugSectionReport)
 
     (s, if (result.isEmpty && allowPartial) {
-      List((new PartialSolution(s.g, true).getSolution, false)).toStream
+      Stream((new PartialSolution(s.strat, true).getSolutionFor(s.g.root), false))
     } else {
-      result
+      // Discard invalid solutions
+      result collect {
+        case (sol, Some(true)) => (sol, true)
+        case (sol, None)       => (sol, false)
+      }
     })
   }
 
-  def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Boolean) = {
+  def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Option[Boolean]) = {
     import verification.VerificationPhase._
     import verification.VerificationContext
+
+    val timer = context.timers.synthesis.validation
+    timer.start()
 
     reporter.info("Solution requires validation")
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
+    val solverf = SolverFactory.getFromSettings(context, npr).withTimeout(timeout)
 
     try {
-      val vctx = VerificationContext(context, npr, solverf, context.reporter)
+      val vctx = new VerificationContext(context, npr, solverf)
       val vcs = generateVCs(vctx, fds)
-      val vcreport = checkVCs(vctx, vcs)
+      val vcreport = checkVCs(vctx, vcs, stopWhen = _.isInvalid)
 
       if (vcreport.totalValid == vcreport.totalConditions) {
-        (sol, true)
+        (sol, Some(true))
       } else if (vcreport.totalValid + vcreport.totalUnknown == vcreport.totalConditions) {
         reporter.warning("Solution may be invalid:")
-        (sol, false)
+        (sol, None)
       } else {
-        reporter.warning("Solution was invalid:")
-        reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
-        reporter.warning(vcreport.summaryString)
-        (new PartialSolution(search.g, false).getSolution, false)
+        reporter.error("Solution was invalid:")
+        reporter.error(fds.map(ScalaPrinter(_)).mkString("\n\n"))
+        reporter.error(vcreport.summaryString)
+        (new PartialSolution(search.strat, false).getSolutionFor(search.g.root), Some(false))
       }
     } finally {
+      timer.stop()
       solverf.shutdown()
     }
   }
@@ -145,12 +170,17 @@ class Synthesizer(val context : LeonContext,
   def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
     // We replace the choose with the body of the synthesized solution
 
-    val solutionExpr = sol.toSimplifiedExpr(context, program)
+    val solutionExpr = sol.toSimplifiedExpr(context, program, ci.fd)
 
-    val (npr, fdMap) = replaceFunDefs(program)({
+    val (npr, _, fdMap, _) = replaceFunDefs(program)({
       case fd if fd eq ci.fd =>
         val nfd = fd.duplicate()
         nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)
+        (fd.body, fd.postcondition) match {
+          case (Some(Choose(pred)), None) =>
+            nfd.postcondition = Some(pred)
+          case _ =>
+        }
         Some(nfd)
       case _ => None
     })

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.xlang
 
@@ -30,6 +30,8 @@ object EpsilonElimination extends UnitPhase[Program] {
           }.toMap ++ Seq((epsilonVar, Variable(resId)))
           val postcondition = replace(eMap, pred)
           newFunDef.postcondition = Some(Lambda(Seq(ValDef(resId)), postcondition))
+          newFunDef.addFlags(fd.flags)
+          newFunDef.addFlag(Annotation("extern", Seq()))
           LetDef(Seq(newFunDef), FunctionInvocation(newFunDef.typed, bSeq map Variable))
 
         case (other, _) => other

@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -57,7 +57,7 @@ object RestoreMethods extends TransformationPhase {
       })
     })
 
-    val (np2, _) = replaceFunDefs(np)(fd => None, { (fi, fd) =>
+    val (np2, _, _, _) = replaceFunDefs(np)(fd => None, { (fi, fd) =>
       fdToMd.get(fi.tfd.fd) match {
         case Some(md) =>
           Some(MethodInvocation(

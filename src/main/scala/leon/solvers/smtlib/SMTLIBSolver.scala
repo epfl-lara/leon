@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -10,15 +10,20 @@ import purescala.ExprOps._
 import purescala.Definitions._
 
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => SMTFunDef, _}
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
+import _root_.smtlib.parser.Terms.{Identifier => _, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 
-abstract class SMTLIBSolver(val context: LeonContext, val program: Program) 
+import theories._
+import utils._
+
+abstract class SMTLIBSolver(val sctx: SolverContext, val program: Program, theories: TheoryEncoder)
                            extends Solver with SMTLIBTarget with NaiveAssumptionSolver {
 
   /* Solver name */
   def targetName: String
   override def name: String = "smt-"+targetName
+
+  private val ids = new IncrementalBijection[Identifier, Identifier]()
 
   override def dbg(msg: => Any) = {
     debugOut foreach { o =>
@@ -28,8 +33,10 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   }
 
   /* Public solver interface */
-  def assertCnstr(expr: Expr): Unit = if(!hasError) {
+  def assertCnstr(raw: Expr): Unit = if (!hasError) {
     try {
+      val bindings = variablesOf(raw).map(id => id -> ids.cachedB(id)(theories.encode(id))).toMap
+      val expr = theories.encode(raw)(bindings)
       variablesOf(expr).foreach(declareVariable)
 
       val term = toSMT(expr)(Map())
@@ -67,27 +74,26 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
       Model.empty
     } else {
       try {
-        val cmd = GetModel()
-
-        emit(cmd) match {
+        emit(GetModel()) match {
           case GetModelResponseSuccess(smodel) =>
-            var modelFunDefs = Map[SSymbol, DefineFun]()
-
             // first-pass to gather functions
-            for (me <- smodel) me match {
+            val modelFunDefs = smodel.collect {
               case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
-                modelFunDefs += a -> me
-              case _ =>
-            }
+                a -> me
+            }.toMap
 
-            var model = Map[Identifier, Expr]()
-
-            for (me <- smodel) me match {
-              case DefineFun(SMTFunDef(s, args, kind, e)) if syms(s) =>
-                val id = variables.toA(s)
-                model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
-              case _ =>
-            }
+            val model = smodel.flatMap {
+              case DefineFun(SMTFunDef(s, _, _, e)) if syms(s) =>
+                try {
+                  val id = variables.toA(s)
+                  val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
+                  Some(ids.getAorElse(id, id) -> theories.decode(value)(variablesOf(value).map(id => id -> ids.toA(id)).toMap))
+                } catch {
+                  case _: Unsupported =>
+                    None
+                }
+              case _ => None
+            }.toMap
 
             new Model(model)
 
@@ -101,14 +107,14 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
     }
   }
 
-  override def getModel: Model = getModel( _ => true)
+  override def getModel: Model = getModel(_ => true)
 
   override def push(): Unit = {
+    ids.push()
     constructors.push()
     selectors.push()
     testers.push()
     variables.push()
-    genericValues.push()
     sorts.push()
     lambdas.push()
     functions.push()
@@ -118,11 +124,11 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   }
 
   override def pop(): Unit = {
+    ids.pop()
     constructors.pop()
     selectors.pop()
     testers.pop()
     variables.pop()
-    genericValues.pop()
     sorts.pop()
     lambdas.pop()
     functions.pop()

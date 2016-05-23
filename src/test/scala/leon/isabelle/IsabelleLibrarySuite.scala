@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.isabelle
 
 import scala.concurrent._
@@ -27,7 +29,7 @@ class IsabelleLibrarySuite extends LeonRegressionSuite {
   test("Define the library") {
     val pipeline = ExtractionPhase andThen new PreprocessingPhase andThen IsabelleNoopPhase
 
-    val ctx = Main.processOptions(Seq("--isabelle:download=true", "--functions=_")).copy(reporter = new TestSilentReporter())
+    val ctx = Main.processOptions(Seq("--functions=_")).copy(reporter = new TestSilentReporter())
 
     pipeline.run(ctx, Nil)
   }

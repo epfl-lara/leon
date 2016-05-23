@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -23,7 +23,7 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarge
     val (funs, exploredAll) = typedTransitiveCallees(Set(tfd), Some(typedFunDefExplorationLimit))
 
     if (!exploredAll) {
-      reporter.warning(
+      context.reporter.warning(
         "Did not manage to explore the space of typed functions " +
           s"transitively called from ${tfd.id}. The solver may fail"
       )
@@ -65,6 +65,5 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarge
     }
 
     functions.toB(tfd)
-
   }
 }

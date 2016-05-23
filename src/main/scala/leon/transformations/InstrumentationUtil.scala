@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package transformations
 
@@ -56,6 +58,8 @@ object Stack extends Instrumentation {
 
 object InstUtil {
 
+  val InstTypes = Seq(Time, Depth, Rec, TPR, Stack)
+
   val maxFun = {
     val xid = FreshIdentifier("x", IntegerType)
     val yid = FreshIdentifier("y", IntegerType)
@@ -106,6 +110,11 @@ object InstUtil {
     fd.id.name.split("-").contains(instType.toString)
   }
 
+  def isInstrumented(fd: FunDef) = {
+    val comps = fd.id.name.split("-")
+    InstTypes.exists { x => comps.contains(x.toString) }
+  }
+
   def resultExprForInstVariable(fd: FunDef, instType: Instrumentation) = {
     getInstVariableMap(fd).collectFirst {
       case (k, Variable(id)) if (id.name == instType.toString) => k
@@ -116,5 +125,19 @@ object InstUtil {
     val resvar = getResId(fd).get.toVariable
     val newres = FreshIdentifier(resvar.id.name, resvar.getType).toVariable
     replace(getInstVariableMap(fd) + (TupleSelect(resvar, 1) -> newres), e)
+  }
+
+  /**
+   * Checks if the given expression is a resource bound of the given function.
+   */
+  def isResourceBoundOf(fd: FunDef)(e: Expr) = {
+    val instExprs = InstTypes.map(getInstExpr(fd, _)).collect {
+      case Some(inste) => inste
+    }.toSet
+    !instExprs.isEmpty && isArithmeticRelation(e).get &&
+      exists {
+        case sub: TupleSelect => instExprs(sub)
+        case _                => false
+      }(e)
   }
 }

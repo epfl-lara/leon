@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.regression.synthesis
 
@@ -40,13 +40,10 @@ class StablePrintingSuite extends LeonRegressionSuite {
       EquivalentInputs,
       UnconstrainedOutput,
       OptimisticGround,
-      EqualitySplit,
       InequalitySplit,
       rules.Assert,
-      DetupleOutput,
       DetupleInput,
       ADTSplit,
-      IntInduction,
       InnerCaseSplit
     )
 
@@ -79,7 +76,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
 
       while(workList.nonEmpty) {
         val reporter = new TestSilentReporter
-        val ctx = createLeonContext("--synthesis").copy(reporter = reporter)
+        val ctx = createLeonContext("--synthesis", "--solvers=smt-z3", "--timeout=120").copy(reporter = reporter)
         val j = workList.pop()
 
         info(j.info("compilation"))
@@ -104,9 +101,9 @@ class StablePrintingSuite extends LeonRegressionSuite {
             val sctx = synthesizer.sctx
             try {
               val search = synthesizer.getSearch
-              val hctx = SearchContext(sctx, ci, search.g.root, search)
+              val hctx = new SearchContext(sctx, ci.source, search.g.root, search)
               val problem = ci.problem
-              info(j.info("synthesis "+problem.asString(sctx.context)))
+              info(j.info("synthesis "+problem.asString(sctx)))
               val apps = decompRules flatMap { _.instantiateOn(hctx, problem)}
 
               for (a <- apps) {
@@ -115,7 +112,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
                   case RuleExpanded(sub) =>
                     a.onSuccess(sub.map(Solution.choose)) match {
                       case Some(sol) =>
-                        val result = sol.toSimplifiedExpr(ctx, pgm)
+                        val result = sol.toSimplifiedExpr(ctx, pgm, ci.fd)
 
                         val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.source, (indent: Int) => {
                           val p = new ScalaPrinter(PrinterOptions(), Some(pgm))

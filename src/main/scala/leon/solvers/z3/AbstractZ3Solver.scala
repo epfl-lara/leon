@@ -1,11 +1,11 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers.z3
 
 import leon.utils._
 
-import z3.scala._
+import z3.scala.{Z3Solver => ScalaZ3Solver, _}
 import solvers._
 import purescala.Common._
 import purescala.Definitions._
@@ -13,24 +13,19 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.TypeOps._
-import xlang.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
-
-import scala.collection.mutable.{Map => MutableMap}
 
 case class UnsoundExtractionException(ast: Z3AST, msg: String)
   extends Exception("Can't extract " + ast + " : " + msg)
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver extends Solver {
+trait AbstractZ3Solver extends Z3Solver {
 
   val program : Program
 
   val library = program.library
-
-  protected val reporter : Reporter = context.reporter
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -48,8 +43,17 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  protected[leon] val z3cfg : Z3Config
-  protected[leon] var z3 : Z3Context    = null
+  protected var z3 : Z3Context = new Z3Context(
+    "MODEL"             -> true,
+    "TYPE_CHECK"        -> true,
+    "WELL_SORTED_CHECK" -> true
+  )
+
+  // @nv: This MUST take place AFTER Z3Context was created!!
+  // Well... actually maybe not, but let's just leave it here to be sure
+  toggleWarningMessages(true)
+
+  protected var solver : ScalaZ3Solver = null
 
   override def free(): Unit = {
     freed = true
@@ -76,55 +80,40 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  def genericValueToDecl(gv: GenericValue): Z3FuncDecl = {
-    generics.cachedB(gv) {
-      z3.mkFreshFuncDecl(gv.tp.id.uniqueName+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
-    }
-  }
-
   // ADT Manager
   protected val adtManager = new ADTManager(context)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
   protected val functions = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
-  protected val generics  = new IncrementalBijection[GenericValue, Z3FuncDecl]()
   protected val lambdas   = new IncrementalBijection[FunctionType, Z3FuncDecl]()
-  protected val sorts     = new IncrementalBijection[TypeTree, Z3Sort]()
   protected val variables = new IncrementalBijection[Expr, Z3AST]()
 
-  protected val constructors  = new IncrementalBijection[TypeTree, Z3FuncDecl]()
-  protected val selectors     = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
-  protected val testers       = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+  protected val constructors = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+  protected val selectors    = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
+  protected val testers      = new IncrementalBijection[TypeTree, Z3FuncDecl]()
+
+  protected val sorts     = new IncrementalMap[TypeTree, Z3Sort]()
 
   var isInitialized = false
-  protected[leon] def initZ3() {
+  protected[leon] def initZ3(): Unit = {
     if (!isInitialized) {
-      val timer = context.timers.solvers.z3.init.start()
-
-      z3 = new Z3Context(z3cfg)
+      solver = z3.mkSolver()
 
       functions.clear()
       lambdas.clear()
-      generics.clear()
-      sorts.clear()
       variables.clear()
       constructors.clear()
       selectors.clear()
       testers.clear()
+      sorts.reset()
 
       prepareSorts()
 
       isInitialized = true
-
-      timer.stop()
     }
   }
 
-  protected[leon] def restartZ3() {
-    isInitialized = false
-
-    initZ3()
-  }
+  initZ3()
 
   def rootType(ct: TypeTree): TypeTree = ct match {
     case ct: ClassType => ct.root
@@ -138,7 +127,7 @@ trait AbstractZ3Solver extends Solver {
     adtManager.defineADT(t) match {
       case Left(adts) =>
         declareDatatypes(adts.toSeq)
-        sorts.toB(normalizeType(t))
+        sorts(normalizeType(t))
 
       case Right(conflicts) =>
         conflicts.foreach { declareStructuralSort }
@@ -165,7 +154,7 @@ trait AbstractZ3Solver extends Solver {
     val defs = for ((_, DataType(sym, cases)) <- adts) yield {(
       sym.uniqueName,
       cases.map(c => c.sym.uniqueName),
-      cases.map(c => c.fields.map{ case(id, tpe) => (id.uniqueName, typeToSortRef(tpe))})
+      cases.map(c => c.fields.map { case(id, tpe) => (id.uniqueName, typeToSortRef(tpe))})
     )}
 
     val resultingZ3Info = z3.mkADTSorts(defs)
@@ -219,39 +208,34 @@ trait AbstractZ3Solver extends Solver {
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
     case Int32Type | BooleanType | IntegerType | RealType | CharType =>
-      sorts.toB(oldtt)
+      sorts(oldtt)
 
-    case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | UnitType) =>
-      sorts.cachedB(tpe) {
+    case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | _: TypeParameter | UnitType) =>
+      sorts.cached(tpe) {
         declareStructuralSort(tpe)
       }
 
     case tt @ SetType(base) =>
-      sorts.cachedB(tt) {
+      sorts.cached(tt) {
         z3.mkSetSort(typeToSort(base))
       }
 
     case tt @ MapType(fromType, toType) =>
       typeToSort(RawArrayType(fromType, library.optionType(toType)))
 
+    case tt @ BagType(base) =>
+      typeToSort(RawArrayType(base, IntegerType))
+
     case rat @ RawArrayType(from, to) =>
-      sorts.cachedB(rat) {
+      sorts.cached(rat) {
         val fromSort = typeToSort(from)
         val toSort = typeToSort(to)
 
         z3.mkArraySort(fromSort, toSort)
       }
 
-    case tt @ TypeParameter(id) =>
-      sorts.cachedB(tt) {
-        val symbol = z3.mkFreshStringSymbol(id.name)
-        val newTPSort = z3.mkUninterpretedSort(symbol)
-
-        newTPSort
-      }
-
     case ft @ FunctionType(from, to) =>
-      sorts.cachedB(ft) {
+      sorts.cached(ft) {
         val symbol = z3.mkFreshStringSymbol(ft.toString)
         z3.mkUninterpretedSort(symbol)
       }
@@ -262,7 +246,7 @@ trait AbstractZ3Solver extends Solver {
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {
 
-    var z3Vars: Map[Identifier,Z3AST] = if(initialMap.nonEmpty) {
+    var z3Vars: Map[Identifier,Z3AST] = if (initialMap.nonEmpty) {
       initialMap
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
@@ -273,7 +257,7 @@ trait AbstractZ3Solver extends Solver {
     def rec(ex: Expr): Z3AST = ex match {
 
       // TODO: Leave that as a specialization?
-      case LetTuple(ids, e, b) => {
+      case LetTuple(ids, e, b) =>
         z3Vars = z3Vars ++ ids.zipWithIndex.map { case (id, ix) =>
           val entry = id -> rec(tupleSelect(e, ix + 1, ids.size))
           entry
@@ -281,7 +265,6 @@ trait AbstractZ3Solver extends Solver {
         val rb = rec(b)
         z3Vars = z3Vars -- ids
         rb
-      }
 
       case p @ Passes(_, _, _) =>
         rec(p.asConstraint)
@@ -289,40 +272,30 @@ trait AbstractZ3Solver extends Solver {
       case me @ MatchExpr(s, cs) =>
         rec(matchToIfThenElse(me))
 
-      case Let(i, e, b) => {
+      case Let(i, e, b) =>
         val re = rec(e)
         z3Vars = z3Vars + (i -> re)
         val rb = rec(b)
         z3Vars = z3Vars - i
         rb
-      }
 
-      case Waypoint(_, e, _) => rec(e)
       case a @ Assert(cond, err, body) =>
         rec(IfExpr(cond, body, Error(a.getType, err.getOrElse("Assertion failed")).setPos(a.getPos)).setPos(a.getPos))
 
-      case e @ Error(tpe, _) => {
+      case e @ Error(tpe, _) =>
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
         // Might introduce dupplicates (e), but no worries here
         variables += (e -> newAST)
         newAST
-      }
-      case v @ Variable(id) => z3Vars.get(id) match {
-        case Some(ast) => 
-          ast
-        case None => {
-          variables.getB(v) match {
-            case Some(ast) =>
-              ast
 
-            case None =>
+      case v @ Variable(id) => z3Vars.getOrElse(id,
+        variables.getB(v).getOrElse {
           val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
           z3Vars = z3Vars + (id -> newAST)
           variables += (v -> newAST)
           newAST
         }
-      }
-      }
+      )
 
       case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
       case And(exs) => z3.mkAnd(exs.map(rec): _*)
@@ -339,7 +312,7 @@ trait AbstractZ3Solver extends Solver {
       case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
       case Minus(l, r) => z3.mkSub(rec(l), rec(r))
       case Times(l, r) => z3.mkMul(rec(l), rec(r))
-      case Division(l, r) => {
+      case Division(l, r) =>
         val rl = rec(l)
         val rr = rec(r)
         z3.mkITE(
@@ -347,14 +320,11 @@ trait AbstractZ3Solver extends Solver {
           z3.mkDiv(rl, rr),
           z3.mkUnaryMinus(z3.mkDiv(z3.mkUnaryMinus(rl), rr))
         )
-      }
-      case Remainder(l, r) => {
+      case Remainder(l, r) =>
         val q = rec(Division(l, r))
         z3.mkSub(rec(l), z3.mkMul(rec(r), q))
-      }
-      case Modulo(l, r) => {
+      case Modulo(l, r) =>
         z3.mkMod(rec(l), rec(r))
-      }
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
 
       case RealPlus(l, r) => z3.mkAdd(rec(l), rec(r))
@@ -506,6 +476,35 @@ trait AbstractZ3Solver extends Solver {
       case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
       case f @ FiniteSet(elems, base) => elems.foldLeft(z3.mkEmptySet(typeToSort(base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
 
+      case fb @ FiniteBag(elems, base) =>
+        typeToSort(fb.getType)
+        rec(RawArrayValue(base, elems, InfiniteIntegerLiteral(0)))
+
+      case BagAdd(b, e) =>
+        val bag = rec(b)
+        val elem = rec(e)
+        z3.mkStore(bag, elem, z3.mkAdd(z3.mkSelect(bag, elem), rec(InfiniteIntegerLiteral(1))))
+
+      case MultiplicityInBag(e, b) =>
+        z3.mkSelect(rec(b), rec(e))
+
+      case BagUnion(b1, b2) =>
+        val plus = z3.getFuncDecl(OpAdd, typeToSort(IntegerType), typeToSort(IntegerType))
+        z3.mkArrayMap(plus, rec(b1), rec(b2))
+
+      case BagIntersection(b1, b2) =>
+        rec(BagDifference(b1, BagDifference(b1, b2)))
+
+      case BagDifference(b1, b2) =>
+        val abs = z3.getAbsFuncDecl()
+        val plus = z3.getFuncDecl(OpAdd, typeToSort(IntegerType), typeToSort(IntegerType))
+        val minus = z3.getFuncDecl(OpSub, typeToSort(IntegerType), typeToSort(IntegerType))
+        val div = z3.getFuncDecl(OpDiv, typeToSort(IntegerType), typeToSort(IntegerType))
+
+        val all2 = z3.mkConstArray(typeToSort(IntegerType), z3.mkInt(2, typeToSort(IntegerType)))
+        val withNeg = z3.mkArrayMap(minus, rec(b1), rec(b2))
+        z3.mkArrayMap(div, z3.mkArrayMap(plus, withNeg, z3.mkArrayMap(abs, withNeg)), all2)
+
       case RawArrayValue(keyTpe, elems, default) =>
         val ar = z3.mkConstArray(typeToSort(keyTpe), rec(default))
 
@@ -548,9 +547,13 @@ trait AbstractZ3Solver extends Solver {
           z3.mkStore(m, rec(k), rec(CaseClass(library.someType(t), Seq(v))))
         }
 
-
       case gv @ GenericValue(tp, id) =>
-        z3.mkApp(genericValueToDecl(gv))
+        typeToSort(tp)
+        val constructor = constructors.toB(tp)
+        constructor(rec(InfiniteIntegerLiteral(id)))
+
+      case MutableExpr(ex) =>
+        rec(ex)
 
       case other =>
         unsupported(other)
@@ -624,8 +627,6 @@ trait AbstractZ3Solver extends Solver {
             val tfd = functions.toA(decl)
             assert(tfd.params.size == argsSize)
             FunctionInvocation(tfd, args.zip(tfd.params).map{ case (a, p) => rec(a, p.getType) })
-          } else if (generics containsB decl)  {
-            generics.toA(decl)
           } else if (constructors containsB decl) {
             constructors.toA(decl) match {
               case cct: CaseClassType =>
@@ -657,6 +658,13 @@ trait AbstractZ3Solver extends Solver {
                   case (s : IntLiteral, arr) => unsound(args(1), "invalid array type")
                   case (size, _) => unsound(args(0), "invalid array size")
                 }
+
+              case tp @ TypeParameter(id) =>
+                val InfiniteIntegerLiteral(n) = rec(args(0), IntegerType)
+                GenericValue(tp, n.toInt)
+
+              case t =>
+                unsupported(t, "Woot? structural type that is non-structural")
             }
           } else {
             tpe match {
@@ -674,7 +682,7 @@ trait AbstractZ3Solver extends Solver {
 
               case ft @ FunctionType(fts, tt) => lambdas.getB(ft) match {
                 case None => simplestValue(ft)
-                case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
+                case Some(decl) => model.getFuncInterpretations.find(_._1 == decl) match {
                   case None => simplestValue(ft)
                   case Some((_, mapping, elseValue)) =>
                     val leonElseValue = rec(elseValue, tt)
@@ -688,32 +696,37 @@ trait AbstractZ3Solver extends Solver {
                 }
               }
 
-              case tp: TypeParameter =>
-                val id = t.toString.split("!").last.toInt
-                GenericValue(tp, id)
-
               case MapType(from, to) =>
                 rec(t, RawArrayType(from, library.optionType(to))) match {
                   case r: RawArrayValue =>
                     // We expect a RawArrayValue with keys in from and values in Option[to],
                     // with default value == None
                     if (r.default.getType != library.noneType(to)) {
-                      unsupported(r, "Solver returned a co-finite set which is not supported.")
+                      unsupported(r, "Solver returned a co-finite map which is not supported.")
                     }
                     require(r.keyTpe == from, s"Type error in solver model, expected ${from.asString}, found ${r.keyTpe.asString}")
 
                     val elems = r.elems.flatMap {
                       case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
                       case (k, _) => None
-                    }.toMap
+                    }
 
                     FiniteMap(elems, from, to)
                 }
 
+              case BagType(base) =>
+                val r @ RawArrayValue(_, elems, default) = rec(t, RawArrayType(base, IntegerType))
+                if (default != InfiniteIntegerLiteral(0)) {
+                  unsupported(r, "Solver returned a co-finite bag which is not supported.")
+                }
+
+                FiniteBag(elems, base)
+
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
                   case None => unsound(t, "invalid set AST")
-                  case Some(set) =>
+                  case Some((_, false)) => unsound(t, "co-finite set AST")
+                  case Some((set, true)) =>
                     val elems = set.map(e => rec(e, dt))
                     FiniteSet(elems, dt)
                 }

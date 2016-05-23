@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package transformations
 
@@ -30,7 +32,7 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
+    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Depth))).toMap
   }
 

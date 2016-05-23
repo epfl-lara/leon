@@ -117,7 +117,7 @@ fun fold_opt _ [] y = SOME y
   | fold_opt f (x :: xs) y = Option.mapPartial (fold_opt f xs) (f x y)
 
 fun fold_res _ [] y = Exn.Res y
-  | fold_res f (x :: xs) y = Exn.maps_result (fold_res f xs) (f x y)
+  | fold_res f (x :: xs) y = Exn.maps_res (fold_res f xs) (f x y)
 
 fun map_generalized f t =
   case t of
@@ -229,7 +229,7 @@ fun homogenize_spec_types ctxt thms =
     val typ = Sign.the_const_type (Proof_Context.theory_of ctxt) head
 
     fun mk_subst (iname, (sort, inst)) =
-      (Thm.ctyp_of ctxt (TVar (iname, sort)), Thm.ctyp_of ctxt inst)
+      ((iname, sort), Thm.ctyp_of ctxt inst)
 
     fun instantiate ((_, ttyp), thm) =
       let

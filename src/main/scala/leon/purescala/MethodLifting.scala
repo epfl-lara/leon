@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -11,6 +11,7 @@ import ExprOps._
 import Types._
 import Constructors._
 import TypeOps.instantiateType
+import xlang.Expressions._
 
 object MethodLifting extends TransformationPhase {
 
@@ -63,6 +64,7 @@ object MethodLifting extends TransformationPhase {
       } getOrElse {
         (List(), false)
       }
+
     case acd: AbstractClassDef =>
       val (r, c) = acd.knownChildren.map(makeCases(_, fdId, breakDown)).unzip
       val recs = r.flatten
@@ -70,26 +72,78 @@ object MethodLifting extends TransformationPhase {
       if (complete) {
         // Children define all cases completely, we don't need to add anything
         (recs, true)
-      } else if (!acd.methods.exists( m => m.id == fdId && m.body.nonEmpty)) {
+      } else if (!acd.methods.exists(m => m.id == fdId && m.body.nonEmpty)) {
         // We don't have anything to add
         (recs, false)
       } else {
         // We have something to add
-        val m = acd.methods.find( m => m.id == fdId ).get
+        val m = acd.methods.find(m => m.id == fdId).get
         val at = acd.typed
         val binder = FreshIdentifier(acd.id.name.toLowerCase, at, true)
-        def subst(e: Expr): Expr = e match {
-          case This(ct) =>
-            asInstOf(Variable(binder), ct)
-          case e =>
-            e
-        }
-        val newE = simplePreTransform(subst)(breakDown(m.fullBody))
+        val newE = simplePreTransform {
+          case This(ct) => asInstOf(Variable(binder), ct)
+          case e => e
+        } (breakDown(m.fullBody))
+
         val cse = SimpleCase(InstanceOfPattern(Some(binder), at), newE).setPos(newE)
         (recs :+ cse, true)
       }
   }
 
+  def makeInvCases(cd: ClassDef): (Seq[MatchCase], Boolean) = {
+    val ct = cd.typed
+    val binder = FreshIdentifier(cd.id.name.toLowerCase, ct, true)
+    val fd = cd.methods.find(_.isInvariant).get
+
+    cd match {
+      case ccd: CaseClassDef =>
+        val fBinders = (ccd.fieldsIds zip ct.fields).map(p => p._1 -> p._2.id.freshen).toMap
+
+        // Ancestor's method is a method in the case class
+        val subPatts = ccd.fields map (f => WildcardPattern(Some(fBinders(f.id))))
+        val patt = CaseClassPattern(Some(binder), ct.asInstanceOf[CaseClassType], subPatts)
+        val newE = simplePreTransform {
+          case e @ CaseClassSelector(`ct`, This(`ct`), i) =>
+            Variable(fBinders(i)).setPos(e)
+          case e @ This(`ct`) =>
+            Variable(binder).setPos(e)
+          case e =>
+            e
+        } (fd.fullBody)
+
+        if (newE == BooleanLiteral(true)) {
+          (Nil, false)
+        } else {
+          val cse = SimpleCase(patt, newE).setPos(newE)
+          (List(cse), true)
+        }
+
+      case acd: AbstractClassDef =>
+        val (r, c) = acd.knownChildren.map(makeInvCases).unzip
+        val recs = r.flatten
+        val complete = !(c contains false)
+
+        val newE = simplePreTransform {
+          case This(ct) => asInstOf(Variable(binder), ct)
+          case e => e
+        } (fd.fullBody)
+
+        if (newE == BooleanLiteral(true)) {
+          (recs, false)
+        } else {
+          val rhs = if (recs.isEmpty) {
+            newE
+          } else {
+            val allCases = if (complete) recs else {
+              recs :+ SimpleCase(WildcardPattern(None), BooleanLiteral(true))
+            }
+            and(newE, MatchExpr(binder.toVariable, allCases)).setPos(newE)
+          }
+          val cse = SimpleCase(InstanceOfPattern(Some(binder), ct), rhs).setPos(newE)
+          (Seq(cse), true)
+        }
+    }
+  }
 
   def apply(ctx: LeonContext, program: Program): Program = {
 
@@ -107,7 +161,7 @@ object MethodLifting extends TransformationPhase {
       if c.ancestors.forall(!_.methods.map{_.id}.contains(fd.id))
     } {
       val root = c.ancestors.last
-      val tMap = c.tparams.zip(root.tparams.map{_.tp}).toMap
+      val tMap = c.typeArgs.zip(root.typeArgs).toMap
       val tSubst: TypeTree => TypeTree  = instantiateType(_, tMap)
 
       val fdParams = fd.params map { vd =>
@@ -133,7 +187,7 @@ object MethodLifting extends TransformationPhase {
       for { cd <- u.classHierarchyRoots; fd <- cd.methods } {
         // We import class type params and freshen them
         val ctParams = cd.tparams map { _.freshen }
-        val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
+        val tparamsMap = cd.typeArgs.zip(ctParams map { _.tp }).toMap
 
         val id = fd.id.freshen
         val recType = cd.typed(ctParams.map(_.tp))
@@ -155,27 +209,23 @@ object MethodLifting extends TransformationPhase {
             isInstOf(Variable(receiver), cl.typed(ctParams map { _.tp }))
         }
 
-
-        if (cd.knownDescendants.forall( cd => (cd.methods ++ cd.fields).forall(_.id != fd.id))) {
+        if (cd.knownDescendants.forall(cd => (cd.methods ++ cd.fields).forall(_.id != fd.id))) {
           // Don't need to compose methods
-          val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
+          val paramsMap = fd.params.zip(fdParams).map { case (x,y) => (x.id, y.id) }.toMap
           def thisToReceiver(e: Expr): Option[Expr] = e match {
-            case th@This(ct) =>
+            case th @ This(ct) =>
               Some(asInstOf(receiver.toVariable, ct).setPos(th))
             case _ =>
               None
           }
 
           val insTp: Expr => Expr = instantiateType(_, tparamsMap, paramsMap)
-          nfd.fullBody = insTp( postMap(thisToReceiver)(insTp(nfd.fullBody)) )
+          nfd.fullBody = postMap(thisToReceiver)(insTp(nfd.fullBody))
 
           // Add precondition if the method was defined in a subclass
-          val pre = and(
-            classPre(fd),
-            nfd.precOrTrue
-          )
+          val pre = and(classPre(fd), nfd.precOrTrue)
           nfd.fullBody = withPrecondition(nfd.fullBody, Some(pre))
-        
+
         } else {
           // We need to compose methods of subclasses
 
@@ -185,78 +235,90 @@ object MethodLifting extends TransformationPhase {
             m <- c.methods if m.id == fd.id
             (from,to) <- m.params zip fdParams
           } yield (from.id, to.id)).toMap
+
           val classParamsMap = (for {
             c <- cd.knownDescendants :+ cd
             (from, to) <- c.tparams zip ctParams
-          } yield (from, to.tp)).toMap
+          } yield (from.tp, to.tp)).toMap
+
           val methodParamsMap = (for {
             c <- cd.knownDescendants :+ cd
             m <- c.methods if m.id == fd.id
             (from,to) <- m.tparams zip fd.tparams
-          } yield (from, to.tp)).toMap
+          } yield (from.tp, to.tp)).toMap
+
           def inst(cs: Seq[MatchCase]) = instantiateType(
             matchExpr(Variable(receiver), cs).setPos(fd),
             classParamsMap ++ methodParamsMap,
-            paramsMap
+            paramsMap + (receiver -> receiver)
           )
 
-          /* Separately handle pre, post, body */
-          val (pre, _)  = makeCases(cd, fd.id, preconditionOf(_).getOrElse(BooleanLiteral(true)))
-          val (post, _) = makeCases(cd, fd.id, postconditionOf(_).getOrElse(
-            Lambda(Seq(ValDef(FreshIdentifier("res", retType, true))), BooleanLiteral(true))
-          ))
-          val (body, _) = makeCases(cd, fd.id, withoutSpec(_).getOrElse(NoTree(retType)))
+          if (fd.isInvariant) {
+            val (cases, complete) = makeInvCases(cd)
+            val allCases = if (complete) cases else {
+              cases :+ SimpleCase(WildcardPattern(None), BooleanLiteral(true))
+            }
 
-          // Some simplifications
-          val preSimple = {
-            val nonTrivial = pre.count{ _.rhs != BooleanLiteral(true) }
+            nfd.fullBody = inst(allCases).setPos(fd.getPos)
+          } else {
+            /* Separately handle pre, post, body */
+            val (pre, _)  = makeCases(cd, fd.id, preconditionOf(_).getOrElse(BooleanLiteral(true)))
+            val (post, _) = makeCases(cd, fd.id, postconditionOf(_).getOrElse(
+              Lambda(Seq(ValDef(FreshIdentifier("res", retType, true))), BooleanLiteral(true))
+            ))
+            val (body, _) = makeCases(cd, fd.id, withoutSpec(_).getOrElse(NoTree(retType)))
 
-            val compositePre =
-              if (nonTrivial == 0) {
-                BooleanLiteral(true)
-              } else {
-                inst(pre).setPos(fd.getPos)
+            // Some simplifications
+            val preSimple = {
+              val nonTrivial = pre.count{ _.rhs != BooleanLiteral(true) }
+
+              val compositePre =
+                if (nonTrivial == 0) {
+                  BooleanLiteral(true)
+                } else {
+                  inst(pre).setPos(fd.getPos)
+                }
+
+              Some(and(classPre(fd), compositePre))
+            }
+
+            val postSimple = {
+              val trivial = post.forall {
+                case SimpleCase(_, Lambda(_, BooleanLiteral(true))) => true
+                case _ => false
               }
-
-            Some(and(classPre(fd), compositePre))
-          }
-          val postSimple = {
-            val trivial = post.forall {
-              case SimpleCase(_, Lambda(_, BooleanLiteral(true))) => true
-              case _ => false
+              if (trivial) None
+              else {
+                val resVal = FreshIdentifier("res", retType, true)
+                Some(Lambda(
+                  Seq(ValDef(resVal)),
+                  inst(post map { cs => cs.copy( rhs =
+                    application(cs.rhs, Seq(Variable(resVal)))
+                  )})
+                ).setPos(fd))
+              }
             }
-            if (trivial) None
-            else {
-              val resVal = FreshIdentifier("res", retType, true)
-              Some(Lambda(
-                Seq(ValDef(resVal)),
-                inst(post map { cs => cs.copy( rhs =
-                  application(cs.rhs, Seq(Variable(resVal)))
-                )})
-              ).setPos(fd))
-            }
-          }
-          val bodySimple = {
-            val trivial = body forall {
-              case SimpleCase(_, NoTree(_)) => true
-              case _ => false
-            }
-            if (trivial) NoTree(retType) else inst(body)
-          }
 
-          /* Construct full body */
-          nfd.fullBody = withPostcondition(
-            withPrecondition(bodySimple, preSimple),
-            postSimple
-          )
-        }
+            val bodySimple = {
+              val trivial = body forall {
+                case SimpleCase(_, NoTree(_)) => true
+                case _ => false
+              }
+              if (trivial) NoTree(retType) else inst(body)
+            }
 
-        if (cd.methods.exists(md => md.id == fd.id && md.isInvariant)) {
-          cd.setInvariant(nfd)
+            /* Construct full body */
+            nfd.fullBody = withPostcondition(
+              withPrecondition(bodySimple, preSimple),
+              postSimple
+            )
+          }
         }
 
         mdToFds += fd -> nfd
         fdsOf += cd.id.name -> (fdsOf.getOrElse(cd.id.name, Set()) + nfd)
+
+        if (fd.isInvariant) cd.setInvariant(nfd)
       }
 
       // 2) Place functions in existing companions:

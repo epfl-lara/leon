@@ -1,40 +1,34 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
 package rules
 
-import leon.grammars.transformers.Union
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
 import leon.grammars._
+import leon.grammars.aspects._
 import Witnesses._
 
-case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
+case object CEGLESS extends CEGISLike("CEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     val TopLevelAnds(clauses) = p.ws
-
-    val ctx = sctx.context
 
     val guides = clauses.collect {
       case Guide(e) => e
     }
 
-    val inputs = p.as.map(_.toVariable)
-
     sctx.reporter.ifDebug { printer =>
       printer("Guides available:")
       for (g <- guides) {
-        printer(" - "+g.asString(ctx))
+        printer(" - "+g.asString(sctx))
       }
     }
 
-    val guidedGrammar = Union(guides.map(SimilarTo(_, inputs.toSet, sctx, p)))
-
     CegisParams(
-      grammar = guidedGrammar,
-      rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") },
+      grammar = Grammars.default(sctx, p),
+      rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides)),
       optimizations = false,
       maxSize = Some((0 +: guides.map(depth(_) + 1)).max)
     )

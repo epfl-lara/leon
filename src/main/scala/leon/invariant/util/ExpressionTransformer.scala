@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.util
 
@@ -12,6 +14,7 @@ import purescala.ScalaPrinter
 import leon.invariant.factories.TemplateIdFactory
 import PredicateUtil._
 import Util._
+import TVarFactory._
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -19,12 +22,14 @@ import Util._
  */
 object ExpressionTransformer {
 
-  val zero = InfiniteIntegerLiteral(0)
-  val one = InfiniteIntegerLiteral(1)
-  val mone = InfiniteIntegerLiteral(-1)
-  val tru = BooleanLiteral(true)
-  val fls = BooleanLiteral(false)
-  val bone = BigInt(1)
+  // identifier for temporaries that are generated during flattening of terms other than functions
+  val flatContext = newContext
+  // temporaries used in the function flattening
+  val funFlatContext = newContext
+  // conversion of other language constructs
+  val langContext = newContext
+
+  def createFlatTemp(name: String, tpe: TypeTree = Untyped) = createTemp(name, tpe, flatContext)
 
   /**
    * This function conjoins the conjuncts created by 'transfomer' within the clauses containing Expr.
@@ -32,51 +37,38 @@ object ExpressionTransformer {
    * @param insideFunction when set to true indicates that the newConjuncts (second argument)
    * should not conjoined to the And(..) / Or(..) expressions found because they
    * may be called inside a function.
+   * TODO: remove this function altogether and treat 'and' and 'or's as functions.
    */
   def conjoinWithinClause(e: Expr, transformer: (Expr, Boolean) => (Expr, Set[Expr]),
     insideFunction: Boolean): (Expr, Set[Expr]) = {
-      e match {
-        case And(args) if !insideFunction => {
-          val newargs = args.map((arg) => {
-            val (nexp, ncjs) = transformer(arg, false)
-            createAnd(nexp +: ncjs.toSeq)
-          })
-          (createAnd(newargs), Set())
+    e match {
+      case And(args) if !insideFunction =>
+        val newargs = args.map{arg =>
+          val (nexp, ncjs) = transformer(arg, false)
+          createAnd(nexp +: ncjs.toSeq)
         }
+        (createAnd(newargs), Set())
 
-        case Or(args) if !insideFunction => {
-          val newargs = args.map((arg) => {
-            val (nexp, ncjs) = transformer(arg, false)
-            createAnd(nexp +: ncjs.toSeq)
-          })
-          (createOr(newargs), Set())
+      case Or(args) if !insideFunction =>
+        val newargs = args.map{arg =>
+          val (nexp, ncjs) = transformer(arg, false)
+          createAnd(nexp +: ncjs.toSeq)
         }
+        (createOr(newargs), Set())
 
-        case t: Terminal => (t, Set())
+      case t: Terminal => (t, Set())
 
-        /*case BinaryOperator(e1, e2, op) => {
-          val (nexp1, ncjs1) = transformer(e1, true)
-          val (nexp2, ncjs2) = transformer(e2, true)
-          (op(nexp1, nexp2), ncjs1 ++ ncjs2)
-        }
-
-        case u @ UnaryOperator(e1, op) => {
-          val (nexp, ncjs) = transformer(e1, true)
-          (op(nexp), ncjs)
-        }*/
-
-        case n @ Operator(args, op) => {
-          var ncjs = Set[Expr]()
-          val newargs = args.map((arg) => {
-            val (nexp, js) = transformer(arg, true)
-            ncjs ++= js
-            nexp
-          })
-          (op(newargs), ncjs)
-        }
-        case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + e)
-      }
+      case n @ Operator(args, op) =>
+        var ncjs = Set[Expr]()
+        val newargs = args.map((arg) => {
+          val (nexp, js) = transformer(arg, true)
+          ncjs ++= js
+          nexp
+        })
+        (op(newargs), ncjs)
+      case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + e)
     }
+  }
 
   /**
    * Assumed that that given expression has boolean type
@@ -87,16 +79,16 @@ object ExpressionTransformer {
     def transform(e: Expr, insideFunction: Boolean): (Expr, Set[Expr]) = {
       e match {
         // Handle asserts here. Return flattened body as the result
-        case as @ Assert(pred, _, body) => {
-          val freshvar = TVarFactory.createTemp("asrtres", e.getType).toVariable
+        case as @ Assert(pred, _, body) =>
+          val freshvar = createFlatTemp("asrtres", e.getType).toVariable
           val newexpr = Equals(freshvar, body)
           val resset = transform(newexpr, insideFunction)
           (freshvar, resset._2 + resset._1)
-        }
+
         //handles division by constant
-        case Division(lhs, rhs @ InfiniteIntegerLiteral(v)) => {
+        case Division(lhs, rhs @ InfiniteIntegerLiteral(v)) =>
           //this models floor and not integer division
-          val quo = TVarFactory.createTemp("q", IntegerType).toVariable
+          val quo = createTemp("q", IntegerType, langContext).toVariable
           var possibs = Seq[Expr]()
           for (i <- v - 1 to 0 by -1) {
             if (i == 0) possibs :+= Equals(lhs, Times(rhs, quo))
@@ -107,78 +99,51 @@ object ExpressionTransformer {
           //println("newexpr: "+newexpr)
           val resset = transform(newexpr, true)
           (quo, resset._2 + resset._1)
-        }
+
         //handles division by variables
-        case Division(lhs, rhs) => {
+        case Division(lhs, rhs) =>
           //this models floor and not integer division
-          val quo = TVarFactory.createTemp("q", IntegerType).toVariable
-          val rem = TVarFactory.createTemp("r", IntegerType).toVariable
+          val quo = createTemp("q", IntegerType, langContext).toVariable
+          val rem = createTemp("r", IntegerType, langContext).toVariable
           val mult = multop(quo, rhs)
           val divsem = Equals(lhs, Plus(mult, rem))
           //TODO: here, we have to use |rhs|
           val newexpr = createAnd(Seq(divsem, LessEquals(zero, rem), LessEquals(rem, Minus(rhs, one))))
           val resset = transform(newexpr, true)
           (quo, resset._2 + resset._1)
-        }
-        case err @ Error(_, msg) => {
+
+        case err @ Error(_, msg) =>
           //replace this by a fresh variable of the error type
-          (TVarFactory.createTemp("err", err.getType).toVariable, Set[Expr]())
-        }
-        case Equals(lhs, rhs) => {
+          (createTemp("err", err.getType, langContext).toVariable, Set[Expr]())
+
+        case Equals(lhs, rhs) =>
           val (nexp1, ncjs1) = transform(lhs, true)
           val (nexp2, ncjs2) = transform(rhs, true)
           (Equals(nexp1, nexp2), ncjs1 ++ ncjs2)
-        }
-        case IfExpr(cond, thn, elze) => {
-          val freshvar = TVarFactory.createTemp("ifres", e.getType).toVariable
-          val newexpr = Or(And(cond, Equals(freshvar, thn)), And(Not(cond), Equals(freshvar, elze)))
-          val resset = transform(newexpr, insideFunction)
-          (freshvar, resset._2 + resset._1)
-        }
-        case Let(binder, value, body) => {
+
+        case IfExpr(cond, thn, elze) if insideFunction =>
+          val freshvar = createTemp("ifres", e.getType, langContext).toVariable
+          val (ncond, condConjs) = transform(cond, true)
+          val (nthen, thenConjs) = transform(Equals(freshvar, thn), false)
+          val (nelze, elzeConjs) = transform(Equals(freshvar, elze), false)
+          val conjs = condConjs + IfExpr(cond,
+              createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq))
+          (freshvar, conjs)
+
+        case IfExpr(cond, thn, elze) => // here, we are at the top, and hence can avoid creating freshids
+          val (ncond, condConjs) = transform(cond, true)
+          val (nthen, thenConjs) = transform(thn, false)
+          val (nelze, elzeConjs) = transform(elze, false)
+          (IfExpr(cond,
+              createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq)), condConjs)
+
+        case Let(binder, value, body) =>
           //TODO: do we have to consider reuse of let variables ?
           val (resbody, bodycjs) = transform(body, true)
           val (resvalue, valuecjs) = transform(value, true)
-
           (resbody, (valuecjs + Equals(binder.toVariable, resvalue)) ++ bodycjs)
-        }
-        //the value is a tuple in the following case
-        case LetTuple(binders, value, body) => {
-          //TODO: do we have to consider reuse of let variables ?
-          val (resbody, bodycjs) = transform(body, true)
-          val (resvalue, valuecjs) = transform(value, true)
 
-          //here we optimize the case where resvalue itself has tuples
-          val newConjuncts = resvalue match {
-            case Tuple(args) => {
-              binders.zip(args).map((elem) => {
-                val (bind, arg) = elem
-                Equals(bind.toVariable, arg)
-              })
-            }
-            case _ => {
-              //may it is better to assign resvalue to a temporary variable (if it is not already a variable)
-              val (resvalue2, cjs) = resvalue match {
-                case t: Terminal => (t, Seq())
-                case _ => {
-                  val freshres = TVarFactory.createTemp("tres", resvalue.getType).toVariable
-                  (freshres, Seq(Equals(freshres, resvalue)))
-                }
-              }
-              var i = 0
-              val cjs2 = binders.map((bind) => {
-                i += 1
-                Equals(bind.toVariable, TupleSelect(resvalue2, i))
-              })
-              (cjs ++ cjs2)
-            }
-          }
-
-          (resbody, (valuecjs ++ newConjuncts) ++ bodycjs)
-        }
-        case _ => {
-          conjoinWithinClause(e, transform, false)
-        }
+        case _ => conjoinWithinClause(e, transform, insideFunction)
       }
     }
     val (nexp, ncjs) = transform(inexpr, false)
@@ -186,6 +151,21 @@ object ExpressionTransformer {
       createAnd(nexp +: ncjs.toSeq)
     } else nexp
     res
+  }
+
+  def isAtom(e: Expr): Boolean = e match {
+    case _: And | _: Or  | _: IfExpr => false
+    case _ => true
+  }
+
+  def isADTTheory(e: Expr) = e match {
+    case _: CaseClassSelector | _: CaseClass | _: TupleSelect | _: Tuple | _: IsInstanceOf => true
+    case _ => false
+  }
+
+  def isSetTheory(e: Expr) = e match {
+    case _: SetUnion | _: ElementOfSet | _: SubsetOf | _: FiniteSet => true
+    case _ => false
   }
 
   /**
@@ -206,74 +186,58 @@ object ExpressionTransformer {
      */
     def flattenFunc(e: Expr, insideFunction: Boolean): (Expr, Set[Expr]) = {
       e match {
-        case fi @ FunctionInvocation(fd, args) => {
-          //now also flatten the args. The following is slightly tricky
+        case fi @ FunctionInvocation(fd, args) =>
           val (newargs, newConjuncts) = flattenArgs(args, true)
-          //create a new equality in UIFs
-          val newfi = FunctionInvocation(fd, newargs)
-          //create a new variable to represent the function
-          val freshResVar = Variable(TVarFactory.createTemp("r", fi.getType))
-          val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))
-          res
-        }
-        case inst @ IsInstanceOf(e1, cd) => {
-          //replace e by a variable
-          val (newargs, newcjs) = flattenArgs(Seq(e1), true)
-          var newConjuncts = newcjs
+          val freshResVar = Variable(createTemp("r", fi.getType, funFlatContext))
+          (freshResVar, newConjuncts + Equals(freshResVar, FunctionInvocation(fd, newargs)))
 
-          val freshArg = newargs(0)
-          val newInst = IsInstanceOf(freshArg, cd)
-          val freshResVar = Variable(TVarFactory.createTemp("ci", inst.getType))
-          newConjuncts += Equals(freshResVar, newInst)
-          (freshResVar, newConjuncts)
-        }
-        case cs @ CaseClassSelector(cd, e1, sel) => {
-          val (newargs, newcjs) = flattenArgs(Seq(e1), true)
-          var newConjuncts = newcjs
-
-          val freshArg = newargs(0)
-          val newCS = CaseClassSelector(cd, freshArg, sel)
-          val freshResVar = Variable(TVarFactory.createTemp("cs", cs.getType))
-          newConjuncts += Equals(freshResVar, newCS)
-
-          (freshResVar, newConjuncts)
-        }
-        case ts @ TupleSelect(e1, index) => {
-          val (newargs, newcjs) = flattenArgs(Seq(e1), true)
-          var newConjuncts = newcjs
-
-          val freshArg = newargs(0)
-          val newTS = TupleSelect(freshArg, index)
-          val freshResVar = Variable(TVarFactory.createTemp("ts", ts.getType))
-          newConjuncts += Equals(freshResVar, newTS)
-
-          (freshResVar, newConjuncts)
-        }
-        case cc @ CaseClass(cd, args) => {
-
+        case adte if isADTTheory(adte) =>
+          val Operator(args, op) = adte
+          val freshName = adte match {
+            case _: IsInstanceOf => "ci"
+            case _: CaseClassSelector => "cs"
+            case _: CaseClass => "cc"
+            case _: TupleSelect => "ts"
+            case _: Tuple => "tp"
+          }
+          val freshVar = Variable(createFlatTemp(freshName, adte.getType))
           val (newargs, newcjs) = flattenArgs(args, true)
-          var newConjuncts = newcjs
+          (freshVar, newcjs + Equals(freshVar, op(newargs)))
 
-          val newCC = CaseClass(cd, newargs)
-          val freshResVar = Variable(TVarFactory.createTemp("cc", cc.getType))
-          newConjuncts += Equals(freshResVar, newCC)
+        case SetUnion(_, _) | ElementOfSet(_, _) | SubsetOf(_, _) =>
+          val Operator(args, op) = e
+          val (Seq(a1, a2), newcjs) = flattenArgs(args, true)
+          val newexpr = op(Seq(a1, a2))
+          val freshResVar = Variable(createFlatTemp("set", e.getType))
+          (freshResVar, newcjs + Equals(freshResVar, newexpr))
 
-          (freshResVar, newConjuncts)
-        }
-        case tp @ Tuple(args) => {
-          val (newargs, newcjs) = flattenArgs(args, true)
-          var newConjuncts = newcjs
+        case fs @ FiniteSet(es, typ) =>
+          val args = es.toSeq
+          val (nargs, newcjs) = flattenArgs(args, true)
+          val newexpr = FiniteSet(nargs.toSet, typ)
+          val freshResVar = Variable(createFlatTemp("fset", fs.getType))
+          (freshResVar, newcjs + Equals(freshResVar, newexpr))
 
-          val newTP = Tuple(newargs)
-          val freshResVar = Variable(TVarFactory.createTemp("tp", tp.getType))
-          // if(freshResVar.id.toString == "tp6"){
-          //   println("Creating temporary tp6 type: "+tp.getType+" expr: "+tp)
-          //   throw new IllegalStateException("")
-          // }
-          newConjuncts += Equals(freshResVar, newTP)
+        case And(args) if insideFunction =>
+          val (nargs, cjs) = flattenArithmeticCtrs(args)
+          (And(nargs), cjs)
 
-          (freshResVar, newConjuncts)
-        }
+        case Or(args) if insideFunction =>
+          val (nargs, cjs) = flattenArithmeticCtrs(args)
+          (Or(nargs), cjs)
+
+        case IfExpr(cond, thn, elze) => // make condition of if-then-elze an atom
+          val (nthen, thenConjs) = flattenFunc(thn, false)
+          val (nelze, elzeConjs) = flattenFunc(elze, false)
+          val (ncond, condConjs) = flattenFunc(cond, true) match {
+            case r@(nc, _) if isAtom(nc) && getTemplateIds(nc).isEmpty => r
+            case (nc, conjs) =>
+              val condvar = createFlatTemp("cond", cond.getType).toVariable
+              (condvar, conjs + Equals(condvar, nc))
+          }
+          (IfExpr(ncond, createAnd(nthen +: thenConjs.toSeq),
+              createAnd(nelze +: elzeConjs.toSeq)), condConjs)
+
         case _ => conjoinWithinClause(e, flattenFunc, insideFunction)
       }
     }
@@ -283,23 +247,33 @@ object ExpressionTransformer {
       val newargs = args.map {
         case v: Variable => v
         case r: ResultVariable => r
-        case arg => {
+        case arg =>
           val (nexpr, ncjs) = flattenFunc(arg, insideFunction)
-
           newConjuncts ++= ncjs
-
           nexpr match {
             case v: Variable => v
             case r: ResultVariable => r
-            case _ => {
-              val freshArgVar = Variable(TVarFactory.createTemp("arg", arg.getType))
+            case _ =>
+              val freshArgVar = Variable(createFlatTemp("arg", arg.getType))
               newConjuncts += Equals(freshArgVar, nexpr)
               freshArgVar
-            }
           }
-        }
       }
       (newargs, newConjuncts)
+    }
+
+    def flattenArithmeticCtrs(args: Seq[Expr]) = {
+      val (flatArgs, cjs) = flattenArgs(args, true)
+      var ncjs = Set[Expr]()
+      val nargs = flatArgs.map {
+        case farg if isArithmeticRelation(farg) != Some(false) =>
+          // 'farg' is a possibly arithmetic relation.
+          val argvar = createFlatTemp("ar", farg.getType).toVariable
+          ncjs += Equals(argvar, farg)
+          argvar
+        case farg => farg
+      }
+      (nargs, cjs ++ ncjs)
     }
 
     val (nexp, ncjs) = flattenFunc(inExpr, false)
@@ -309,72 +283,63 @@ object ExpressionTransformer {
   }
 
   /**
+   * note: we consider even type parameters as ADT type
+   */
+  def adtType(e: Expr) = {
+    val tpe = e.getType
+    tpe.isInstanceOf[ClassType] || tpe.isInstanceOf[TupleType] || tpe.isInstanceOf[TypeParameter]
+  }
+
+  /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
-   * It also handles disequality constraints.
+   * It will not convert boolean equalities or inequalities to disjunctions for performance.
    * Assumption:
    *  (a) the formula does not have match constructs
+   *  (b) all lets have been pulled to the top
    * Some important features.
    * (a) For a strict inequality with real variables/constants, the following produces a strict inequality
    * (b) Strict inequalities with only integer variables/constants are reduced to non-strict inequalities
    */
-  def TransformNot(expr: Expr, retainNEQ: Boolean = false): Expr = { // retainIff : Boolean = false
-    def nnf(inExpr: Expr): Expr = {
-
-      if (inExpr.getType != BooleanType) inExpr
-      else inExpr match {
-        case Not(Not(e1)) => nnf(e1)
-        case e @ Not(t: Terminal) => e
-        case e @ Not(FunctionInvocation(_, _)) => e
-        case Not(And(args)) => createOr(args.map(arg => nnf(Not(arg))))
-        case Not(Or(args)) => createAnd(args.map(arg => nnf(Not(arg))))
-        case Not(e @ Operator(Seq(e1, e2), op)) => {
-        	//matches integer binary relation or a boolean equality
-          if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType || e1.getType == IntegerType) {
-            e match {
-              case e: Equals => {
-                if (e1.getType == BooleanType && e2.getType == BooleanType) {
-                  Or(And(nnf(e1), nnf(Not(e2))), And(nnf(e2), nnf(Not(e1))))
-                } else {
-                  if (retainNEQ) Not(Equals(e1, e2))
-                  else Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
-                }
-              }
-              case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
-              case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
-              case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
-              case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
-              case e: Implies => And(nnf(e1), nnf(Not(e2)))
-              case _ => throw new IllegalStateException("Unknown binary operation: " + e)
-            }
-          } else {
-            //in this case e is a binary operation over ADTs
-            e match {
-              case ninst @ Not(IsInstanceOf(e1, cd)) => Not(IsInstanceOf(nnf(e1), cd))
-              case e: Equals => Not(Equals(nnf(e1), nnf(e2)))
-              case _ => throw new IllegalStateException("Unknown operation on algebraic data types: " + e)
-            }
+  def toNNF(inExpr: Expr, retainNEQ: Boolean = false): Expr = {
+    def nnf(expr: Expr): Expr = {
+//      /println("Invoking nnf on: "+expr)
+      expr match {
+        //case e if e.getType != BooleanType      => e
+        case Not(Not(e1))                       => nnf(e1)
+        case e @ Not(t: Terminal)               => e
+        case Not(FunctionInvocation(tfd, args)) => Not(FunctionInvocation(tfd, args map nnf))
+        case Not(And(args))                     => createOr(args.map(arg => nnf(Not(arg))))
+        case Not(Or(args))                      => createAnd(args.map(arg => nnf(Not(arg))))
+        case Not(Let(i, v, e))                  => Let(i, nnf(v), nnf(Not(e)))
+        case Not(IfExpr(cond, thn, elze))       => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))
+        case Not(e @ Operator(Seq(e1, e2), op)) => // Not of binary operator ?
+          e match {
+            case _: LessThan => GreaterEquals(e1, e2)
+            case _: LessEquals => GreaterThan(e1, e2)
+            case _: GreaterThan => LessEquals(e1, e2)
+            case _: GreaterEquals => LessThan(e1, e2)
+            case _: Implies => And(nnf(e1), nnf(Not(e2)))
+            case _: SubsetOf | _: ElementOfSet | _: SetUnion | _: FiniteSet => Not(e) // set ops
+            // handle equalities (which is shared by theories)
+            case _: Equals if e1.getType == BooleanType => Not(Equals(nnf(e1), nnf(e2)))
+            case _: Equals if adtType(e1) || e1.getType.isInstanceOf[SetType] => Not(e) // adt or set equality
+            case _: Equals if TypeUtil.isNumericType(e1.getType) =>
+              if (retainNEQ) Not(Equals(e1, e2))
+              else Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+            case _ => throw new IllegalStateException(s"Unknown binary operation: $e arg types: ${e1.getType},${e2.getType}")
           }
-        }
         case Implies(lhs, rhs) => nnf(Or(Not(lhs), rhs))
-        case e @ Equals(lhs, IsInstanceOf(_, _) | CaseClassSelector(_, _, _) | TupleSelect(_, _) | FunctionInvocation(_, _)) =>
-          //all case where rhs could use an ADT tree e.g. instanceOF, tupleSelect, fieldSelect, function invocation
-          e
-        case Equals(lhs, rhs) if (lhs.getType == BooleanType && rhs.getType == BooleanType) => {
-          nnf(And(Implies(lhs, rhs), Implies(rhs, lhs)))
-        }
-        case Not(IfExpr(cond, thn, elze)) => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))
-        case Not(Let(i, v, e)) => Let(i, nnf(v), nnf(Not(e)))
-        //note that Not(LetTuple) is not possible
+        case Equals(lhs, rhs @ (_: SubsetOf | _: ElementOfSet | _: IsInstanceOf | _: TupleSelect | _: CaseClassSelector)) =>
+          Equals(nnf(lhs), rhs)
+        case Equals(lhs, FunctionInvocation(tfd, args)) =>
+          Equals(nnf(lhs), FunctionInvocation(tfd, args map nnf))
+        case Equals(lhs, rhs) if lhs.getType == BooleanType => Equals(nnf(lhs), nnf(rhs))
         case t: Terminal => t
-        /*case u @ UnaryOperator(e1, op) => op(nnf(e1))
-        case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))*/
-        case n @ Operator(args, op) => op(args.map(nnf(_)))
-
+        case n @ Operator(args, op) => op(args map nnf)
         case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
       }
     }
-    val nnfvc = nnf(expr)
-    nnfvc
+    nnf(inExpr)
   }
 
   /**
@@ -382,98 +347,82 @@ object ExpressionTransformer {
    * This is supposed to be a semantic preserving transformation
    */
   def pullAndOrs(expr: Expr): Expr = {
-
     simplePostTransform {
-      case Or(args) => {
+      case Or(args) =>
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case Or(inArgs) => acc ++ inArgs
           case _ => acc :+ arg
         })
         createOr(newArgs)
-      }
-      case And(args) => {
+      case And(args) =>
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case And(inArgs) => acc ++ inArgs
           case _ => acc :+ arg
         })
         createAnd(newArgs)
-      }
       case e => e
     }(expr)
-  }
-
-  def classSelToCons(e: Expr): Expr = {
-    val (r, cd, ccvar, ccfld) = e match {
-      case Equals(r0 @ Variable(_), CaseClassSelector(cd0, ccvar0, ccfld0)) => (r0, cd0, ccvar0, ccfld0)
-      case _ => throw new IllegalStateException("Not a case-class-selector call")
-    }
-    //convert this to a cons by creating dummy variables
-    val args = cd.fields.map((fld) => {
-      if (fld.id == ccfld) r
-      else {
-        //create a dummy identifier there
-        TVarFactory.createDummy(fld.getType).toVariable
-      }
-    })
-    Equals(ccvar, CaseClass(cd, args))
-  }
-
-  def tupleSelToCons(e: Expr): Expr = {
-    val (r, tpvar, index) = e match {
-      case Equals(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
-      // case Iff(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
-      case _ => throw new IllegalStateException("Not a tuple-selector call")
-    }
-    //convert this to a Tuple by creating dummy variables
-    val tupleType = tpvar.getType.asInstanceOf[TupleType]
-    val args = (1 until tupleType.dimension + 1).map((i) => {
-      if (i == index) r
-      else {
-        //create a dummy identifier there (note that here we have to use i-1)
-        TVarFactory.createDummy(tupleType.bases(i - 1)).toVariable
-      }
-    })
-    Equals(tpvar, Tuple(args))
   }
 
   /**
    * Normalizes the expressions
    */
   def normalizeExpr(expr: Expr, multOp: (Expr, Expr) => Expr): Expr = {
-    //reduce the language before applying flatten function
-    // println("Normalizing " + ScalaPrinter(expr) + "\n")
-    val redex = reduceLangBlocks(expr, multOp)
-    // println("Redex: "+ScalaPrinter(redex) + "\n")
-    val nnfExpr = TransformNot(redex)
-    // println("NNFexpr: "+ScalaPrinter(nnfExpr) + "\n")
-    //flatten all function calls
-    val flatExpr = FlattenFunction(nnfExpr)
-    // println("Flatexpr: "+ScalaPrinter(flatExpr) + "\n")
-    //perform additional simplification
-    val simpExpr = pullAndOrs(TransformNot(flatExpr))
+    //println("Normalizing " + ScalaPrinter(expr) + "\n")
+    val redex = reduceLangBlocks(toNNF(matchToIfThenElse(expr)), multOp)
+    //println("After reducing lang blocks: " + ScalaPrinter(redex) + "\n")
+    val flatExpr = FlattenFunction(redex)
+    val simpExpr = pullAndOrs(flatExpr)
+    //println("After Normalizing: " + ScalaPrinter(flatExpr) + "\n")
     simpExpr
   }
 
   /**
-   * This is the inverse operation of flattening, this is mostly
-   * used to produce a readable formula.
-   * Freevars is a set of identifiers that are program variables
-   * This assumes that temporary identifiers (which are not freevars) are not reused across clauses.
+   * This is the inverse operation of flattening.
+   * This is used to produce a readable formula or more efficiently
+   * solvable formulas.
+   * Note: this is a helper method that assumes that 'flatIds'
+   * are not shared across disjuncts.
+   * If this is not guaranteed to hold, use the 'unflatten' method
    */
-  def unFlatten(ine: Expr, freevars: Set[Identifier]): Expr = {
-    var tempMap = Map[Expr, Expr]()
-    val newinst = simplePostTransform {
-      case e@Equals(v@Variable(id), rhs@_) if !freevars.contains(id) =>
-        if (tempMap.contains(v)) e
+  def simpleUnflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
+      includeFuns: Boolean): (Expr, Map[Identifier,Expr]) = {
+
+    def isFlatTemp(id: Identifier) =
+      isTemp(id, flatContext) || (includeFuns && isTemp(id, funFlatContext))
+
+    var idMap = Map[Identifier, Expr]()
+    /**
+     * Here, relying on library transforms is dangerous as they
+     * can perform additional simplifications to the expression on-the-fly,
+     * which is not desirable here.
+     */
+    def rec(e: Expr): Expr = e match {
+      case e @ Equals(Variable(id), rhs @ _) if isFlatTemp(id) && !excludeIds(id) =>
+        val nrhs = rec(rhs)
+        if (idMap.contains(id)) Equals(Variable(id), nrhs)
         else {
-          tempMap += (v -> rhs)
+          idMap += (id -> nrhs)
           tru
         }
-      case e => e
-    }(ine)
-    val closure = (e: Expr) => replace(tempMap, e)
-    fix(closure)(newinst)
+      // specially handle boolean function to prevent unnecessary simplifications
+      case Or(args)           => Or(args map rec)
+      case And(args)          => And(args map rec)
+      case IfExpr(cond, th, elze) => IfExpr(rec(cond), rec(th), rec(elze))
+      case e => e // we should not recurse in other operations, note: Not(equals) should not be considered
+    }
+    val newe = rec(ine)
+    val closure = (e: Expr) => replaceFromIDs(idMap, e)
+    val rese = fix(closure)(newe)
+    (rese, idMap)
   }
+
+  def unflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
+      includeFuns: Boolean = true): (Expr, Map[Identifier,Expr]) = {
+    simpleUnflattenWithMap(ine, sharedIds(ine) ++ excludeIds, includeFuns)
+  }
+
+  def unflatten(ine: Expr) = unflattenWithMap(ine)._1
 
   /**
    * convert all integer constants to real constants
@@ -504,7 +453,6 @@ object ExpressionTransformer {
    * TODO: fix this
    */
   def isSubExpr(key: Expr, expr: Expr): Boolean = {
-
     var found = false
     simplePostTransform {
       case e if (e == key) =>
@@ -518,7 +466,6 @@ object ExpressionTransformer {
    * Some simplification rules (keep adding more and more rules)
    */
   def simplify(expr: Expr): Expr = {
-
     //Note: some simplification are already performed by the class constructors (see Tree.scala)
     simplePostTransform {
       case Equals(lhs, rhs) if (lhs == rhs) => tru
@@ -558,7 +505,10 @@ object ExpressionTransformer {
     case _ => true
   }
 
-  def PrintWithIndentation(wr: PrintWriter, expr: Expr): Unit = {
+  def PrintWithIndentation(filePrefix: String, expr: Expr): Unit = {
+
+    val filename = filePrefix + FileCountGUID.getID + ".txt"
+    val wr = new PrintWriter(new File(filename))
 
     def uniOP(e: Expr, seen: Int): Boolean = e match {
       case And(args) => {
@@ -572,8 +522,6 @@ object ExpressionTransformer {
         else args.forall(arg => uniOP(arg, 2))
       }
       case t: Terminal => true
-      /*case u @ UnaryOperator(e1, op) => uniOP(e1, seen)
-      case b @ BinaryOperator(e1, e2, op) => uniOP(e1, seen) && uniOP(e2, seen)*/
       case n @ Operator(args, op) => args.forall(arg => uniOP(arg, seen))
     }
 
@@ -606,6 +554,8 @@ object ExpressionTransformer {
       }
     }
     printRec(expr, 0)
+    wr.close()
+    println("Printed to file: " + filename)
   }
 
   /**
@@ -624,7 +574,7 @@ object ExpressionTransformer {
 
     def distribute(e: Expr): Expr = {
       simplePreTransform {
-        case e@FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
+        case e @ FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
           val newe = (e1, e2) match {
             case (Plus(sum1, sum2), _) =>
               // distribute e2 over e1

@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.solvers.isabelle
 
 import scala.concurrent._
@@ -9,6 +11,8 @@ import leon.purescala.Definitions._
 import leon.solvers._
 
 final class IsabelleSolverFactory(context: LeonContext, program: Program) extends SolverFactory[TimeoutSolver] {
+
+  val name = "isabelle"
 
   private val env = IsabelleEnvironment(context, program)
 

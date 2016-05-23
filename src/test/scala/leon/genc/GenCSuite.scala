@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package genc
@@ -48,7 +48,7 @@ class GenCSuite extends LeonRegressionSuite {
   private def mkTest(files: List[String], cat: String)(block: (ExtendedContext, Program) => Unit) = {
     val extraction =
       ExtractionPhase andThen
-      new PreprocessingPhase(true, true)
+      new PreprocessingPhase(genc = true)
 
     val ctx = createLeonContext(files:_*)
 

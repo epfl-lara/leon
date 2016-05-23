@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
@@ -6,12 +6,12 @@ package solvers
 import purescala.Types._
 import purescala.Common._
 
-case class DataType(sym: Identifier, cases: Seq[Constructor]) {
+case class DataType(sym: Identifier, cases: Seq[Constructor]) extends Printable {
   def asString(implicit ctx: LeonContext) = {
     "Datatype: "+sym.asString+"\n"+cases.map(c => " - "+c.asString(ctx)).mkString("\n")
   }
 }
-case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) {
+case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) extends Printable {
   def asString(implicit ctx: LeonContext) = {
     sym.asString(ctx)+" ["+tpe.asString(ctx)+"] "+fields.map(f => f._1.asString(ctx)+": "+f._2.asString(ctx)).mkString("(", ", ", ")")
   }
@@ -70,7 +70,15 @@ class ADTManager(ctx: LeonContext) {
   def forEachType(t: TypeTree)(f: TypeTree => Unit): Unit = t match {
     case NAryType(tps, builder) =>
       f(t)
-      tps.foreach(forEachType(_)(f))
+      // note: each of the tps could be abstract classes in which case we need to
+      // lock their dependencies, transitively.
+      tps.foreach {
+        case ct: ClassType =>
+          val (root, sub) = getHierarchy(ct)
+          (root +: sub).flatMap(_.fields.map(_.getType)).foreach(subt => forEachType(subt)(f))
+        case othert =>
+          forEachType(othert)(f)
+      }
   }
 
   protected def findDependencies(t: TypeTree): Unit = t match {
@@ -116,10 +124,7 @@ class ADTManager(ctx: LeonContext) {
 
     case UnitType =>
       if (!(discovered contains t) && !(defined contains t)) {
-
-        val sym = freshId("Unit")
-
-        discovered += (t -> DataType(sym, Seq(Constructor(freshId(sym.name), t, Nil))))
+        discovered += (t -> DataType(freshId("Unit"), Seq(Constructor(freshId("Unit"), t, Nil))))
       }
 
     case at @ ArrayType(base) =>
@@ -134,6 +139,17 @@ class ADTManager(ctx: LeonContext) {
         discovered += (at -> DataType(sym, Seq(c)))
 
         findDependencies(base)
+      }
+
+    case tp @ TypeParameter(id) =>
+      if (!(discovered contains t) && !(defined contains t)) {
+        val sym = freshId(id.name)
+
+        val c = Constructor(freshId(sym.name), tp, List(
+          (freshId("val"), IntegerType)
+        ))
+
+        discovered += (tp -> DataType(sym, Seq(c)))
       }
 
     case _ =>

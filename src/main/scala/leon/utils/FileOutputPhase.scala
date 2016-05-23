@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.utils
 
@@ -11,13 +11,7 @@ object FileOutputPhase extends UnitPhase[Program] {
   val name = "File output"
   val description = "Output parsed/generated program to the specified directory (default: leon.out)"
 
-  val optOutputDirectory = new LeonOptionDef[String] {
-    val name = "o"
-    val description = "Output directory"
-    val default = "leon.out"
-    val usageRhs = "dir"
-    val parser = (x: String) => x
-  }
+  val optOutputDirectory = LeonStringOptionDef("o", "Output directory", "leon.out", "dir")
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(optOutputDirectory)
 

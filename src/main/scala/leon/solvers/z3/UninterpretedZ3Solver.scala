@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers.z3
@@ -22,24 +22,12 @@ import purescala.Types._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
+class UninterpretedZ3Solver(val sctx: SolverContext, val program: Program)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
 
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
-
-  // this is fixed
-  protected[leon] val z3cfg = new Z3Config(
-    "MODEL" -> true,
-    "TYPE_CHECK" -> true,
-    "WELL_SORTED_CHECK" -> true
-  )
-  toggleWarningMessages(true)
-
-  initZ3()
-
-  val solver = z3.mkSolver()
 
   def push() {
     solver.push()

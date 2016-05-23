@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 
@@ -11,9 +11,9 @@ object Main {
       frontends.scalac.ExtractionPhase,
       frontends.scalac.ClassgenPhase,
       utils.TypingPhase,
-      FileOutputPhase,
+      utils.FileOutputPhase,
       purescala.RestoreMethods,
-      xlang.ArrayTransformation,
+      xlang.AntiAliasingPhase,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       xlang.FixReportLabels,
@@ -28,13 +28,15 @@ object Main {
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
       invariant.engine.InferInvariantsPhase,
+      laziness.LazinessEliminationPhase,
       genc.GenerateCPhase,
-      genc.CFileOutputPhase)
+      genc.CFileOutputPhase
+    )
   }
 
   // Add whatever you need here.
   lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
-    solvers.combinators.UnrollingProcedure, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
+    solvers.unrolling.UnrollingProcedure, MainComponent, GlobalOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
   )
 
   /*
@@ -45,7 +47,7 @@ object Main {
     val name = "main"
     val description = "Selection of Leon functionality. Default: verify"
 
-    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[code|default]")
+    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[codegen|default]")
     val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",     false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                 false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                  false)
@@ -55,10 +57,11 @@ object Main {
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
     val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
+    val optLazyEval    = LeonFlagOptionDef("lazy",        "Handles programs that may use the 'lazy' construct",        false)
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optGenc)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval, optGenc)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -72,17 +75,17 @@ object Main {
     reporter.info("")
 
     reporter.title("Additional global options")
-    for (opt <- SharedOptions.definedOptions.toSeq.sortBy(_.name)) {
+    for (opt <- GlobalOptions.definedOptions.toSeq.sortBy(_.name)) {
       reporter.info(opt.helpString)
     }
     reporter.info("")
 
     reporter.title("Additional options, by component:")
 
-    for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
+    for (c <- (allComponents - MainComponent - GlobalOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
       reporter.info(s"${c.name} (${c.description})")
-      for(opt <- c.definedOptions.toSeq.sortBy(_.name)) {
+      for (opt <- c.definedOptions.toSeq.sortBy(_.name)) {
         // there is a non-breaking space at the beginning of the string :)
         reporter.info(opt.helpString)
       }
@@ -101,21 +104,18 @@ object Main {
 
     val initReporter = new DefaultReporter(Set())
 
-    val options = args.filter(_.startsWith("--")).toSet
+    val options = args.filter(_.startsWith("--"))
 
     val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
-    val leonOptions: Set[LeonOption[Any]] = options.map { opt =>
-      val (name, value) = try {
-        OptionsHelpers.nameValue(opt)
-      } catch {
-        case _ : IllegalArgumentException =>
-          initReporter.fatalError(
-            s"Malformed option $opt. Options should have the form --name or --name=value"
-          )
-      }
+    val leonOptions: Seq[LeonOption[Any]] = options.map { opt =>
+      val (name, value) = OptionsHelpers.nameValue(opt).getOrElse(
+        initReporter.fatalError(
+          s"Malformed option $opt. Options should have the form --name or --name=value"
+        )
+      )
       // Find respective LeonOptionDef, or report an unknown option
-      val df = allOptions.find(_. name == name).getOrElse{
+      val df = allOptions.find(_.name == name).getOrElse{
         initReporter.fatalError(
           s"Unknown option: $name\n" +
           "Try 'leon --help' for more information."
@@ -126,7 +126,8 @@ object Main {
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {
-        case LeonOption(SharedOptions.optDebug, sections) => sections.asInstanceOf[Set[DebugSection]]
+        case LeonOption(GlobalOptions.optDebug, sections) =>
+          sections.asInstanceOf[Set[DebugSection]]
       }.getOrElse(Set[DebugSection]())
     )
 
@@ -138,7 +139,7 @@ object Main {
     LeonContext(
       reporter = reporter,
       files = files,
-      options = leonOptions.toSeq,
+      options = leonOptions,
       interruptManager = new InterruptManager(reporter)
     )
   }
@@ -148,7 +149,7 @@ object Main {
     import purescala.Definitions.Program
     import purescala.RestoreMethods
     import utils.FileOutputPhase
-    import frontends.scalac.{ExtractionPhase, ClassgenPhase}
+    import frontends.scalac.{ ExtractionPhase, ClassgenPhase }
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
     import xlang.FixReportLabels
@@ -161,25 +162,22 @@ object Main {
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
+    import laziness._
 
-    val helpF        = ctx.findOptionOrDefault(optHelp)
-    val noopF        = ctx.findOptionOrDefault(optNoop)
-    val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
-    val xlangF       = ctx.findOptionOrDefault(SharedOptions.optXLang)
-    val repairF      = ctx.findOptionOrDefault(optRepair)
-    val isabelleF    = ctx.findOptionOrDefault(optIsabelle)
+    val helpF = ctx.findOptionOrDefault(optHelp)
+    val noopF = ctx.findOptionOrDefault(optNoop)
+    val synthesisF = ctx.findOptionOrDefault(optSynthesis)
+    val repairF = ctx.findOptionOrDefault(optRepair)
+    val isabelleF = ctx.findOptionOrDefault(optIsabelle)
     val terminationF = ctx.findOptionOrDefault(optTermination)
-    val verifyF      = ctx.findOptionOrDefault(optVerify)
-    val gencF        = ctx.findOptionOrDefault(optGenc)
-    val evalF        = ctx.findOption(optEval).isDefined
-    val inferInvF    = ctx.findOptionOrDefault(optInferInv)
-    val instrumentF  = ctx.findOptionOrDefault(optInstrument)
-    val analysisF    = verifyF && terminationF
-
+    val verifyF = ctx.findOptionOrDefault(optVerify)
+    val gencF = ctx.findOptionOrDefault(optGenc)
+    val evalF = ctx.findOption(optEval).isDefined
+    val inferInvF = ctx.findOptionOrDefault(optInferInv)
+    val instrumentF = ctx.findOptionOrDefault(optInstrument)
+    val lazyevalF = ctx.findOptionOrDefault(optLazyEval)
+    val analysisF = verifyF && terminationF
     // Check consistency in options
-    if (gencF && !xlangF) {
-      ctx.reporter.fatalError("Generating C code with --genc requires --xlang")
-    }
 
     if (helpF) {
       displayVersion(ctx.reporter)
@@ -188,21 +186,26 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         ClassgenPhase andThen
         ExtractionPhase andThen
-        new PreprocessingPhase(xlangF, gencF)
+        new PreprocessingPhase(genc = gencF)
 
-      val verification = if (xlangF) VerificationPhase andThen FixReportLabels else VerificationPhase
+      val verification =
+        VerificationPhase andThen
+        FixReportLabels andThen
+        PrintReportPhase
+      val termination = TerminationPhase andThen PrintReportPhase
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(verification, TerminationPhase)
-        else if (terminationF) TerminationPhase
-        else if (isabelleF) IsabellePhase
+        else if (analysisF) Pipeline.both(verification, termination)
+        else if (terminationF) termination
+        else if (isabelleF) IsabellePhase andThen PrintReportPhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
+        else if (lazyevalF) LazinessEliminationPhase
         else verification
       }
 
@@ -219,10 +222,9 @@ object Main {
     // Process options
     val ctx = try {
       processOptions(argsl)
-
     } catch {
       case LeonFatalError(None) =>
-        exit(error=true)
+        exit(error = true)
 
       case LeonFatalError(Some(msg)) =>
         // For the special case of fatal errors not sent though Reporter, we
@@ -233,15 +235,15 @@ object Main {
           case _: LeonFatalError =>
         }
 
-        exit(error=true)
+        exit(error = true)
     }
 
     ctx.interruptManager.registerSignalHandler()
 
-    val doWatch = ctx.findOptionOrDefault(SharedOptions.optWatch)
+    val doWatch = ctx.findOptionOrDefault(GlobalOptions.optWatch)
 
     if (doWatch) {
-      val watcher = new FilesWatcher(ctx, ctx.files ++ Build.libFiles.map{ new java.io.File(_)})
+      val watcher = new FilesWatcher(ctx, ctx.files ++ Build.libFiles.map { new java.io.File(_) })
       watcher.onChange {
         execute(args, ctx)
       }
@@ -262,23 +264,7 @@ object Main {
       val timer = ctx.timers.total.start()
 
       // Run pipeline
-      val ctx2 = pipeline.run(ctx, args.toList) match {
-        case (ctx2, (vReport: verification.VerificationReport, tReport: termination.TerminationReport)) =>
-          ctx2.reporter.info(vReport.summaryString)
-          ctx2.reporter.info(tReport.summaryString)
-          ctx2
-
-        case (ctx2, report: verification.VerificationReport) =>
-          ctx2.reporter.info(report.summaryString)
-          ctx2
-
-        case (ctx2, report: termination.TerminationReport) =>
-          ctx2.reporter.info(report.summaryString)
-          ctx2
-
-        case (ctx2, _) =>
-          ctx2
-      }
+      val (ctx2, _) = pipeline.run(ctx, args.toList)
 
       timer.stop()
 

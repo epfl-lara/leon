@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -7,11 +7,11 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.Constructors.and
+import purescala.Constructors._
 import rules._
 
 /** A Rule can be applied on a synthesis problem */
-abstract class Rule(val name: String) extends RuleDSL {
+abstract class Rule(val name: String) extends RuleDSL with Printable {
   def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation]
 
   val priority: RulePriority = RulePriorityDefault
@@ -19,8 +19,6 @@ abstract class Rule(val name: String) extends RuleDSL {
   implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   implicit val thisRule = this
-
-  implicit def hctxToCtx(implicit hctx: SearchContext): LeonContext = hctx.sctx.context
 
   def asString(implicit ctx: LeonContext) = name
 }
@@ -53,25 +51,15 @@ object Rules {
     UnusedInput,
     EquivalentInputs,
     UnconstrainedOutput,
-    OptimisticGround,
-    EqualitySplit,
-    InequalitySplit,
     if(naiveGrammar) NaiveCEGIS else CEGIS,
-    //TEGIS,
-    //BottomUpTEGIS,
+    OptimisticGround,
+    GenericTypeEqualitySplit,
+    InequalitySplit,
+    IntroduceRecCalls,
     rules.Assert,
-    DetupleOutput,
     DetupleInput,
     ADTSplit,
-    //IntegerEquation,
-    //IntegerInequalities,
-    IntInduction,
     InnerCaseSplit
-    //new OptimisticInjection(_),
-    //new SelectiveInlining(_),
-    //ADTLongInduction,
-    //ADTInduction
-    //AngelicHoles // @EK: Disabled now as it is explicit with withOracle { .. }
   )
 
 }
@@ -79,7 +67,7 @@ object Rules {
 /** When applying this to a [SearchContext] it returns a wrapped stream of solutions or a new list of problems. */
 abstract class RuleInstantiation(val description: String,
                                  val onSuccess: SolutionBuilder = SolutionBuilderCloser())
-                                (implicit val problem: Problem, val rule: Rule) {
+                                (implicit val problem: Problem, val rule: Rule) extends Printable {
 
   def apply(hctx: SearchContext): RuleApplication
 

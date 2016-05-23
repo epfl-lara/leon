@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -24,7 +24,10 @@ object PrinterHelpers {
       var firstElem = true
 
       while(strings.hasNext) {
-        val s = strings.next.stripMargin
+        val currval = strings.next
+        val s = if(currval != " || ") {
+          currval.stripMargin
+        } else currval
 
         // Compute indentation
         val start = s.lastIndexOf('\n')
@@ -45,6 +48,8 @@ object PrinterHelpers {
 
         if (expressions.hasNext) {
           val e = expressions.next
+          if(e == "||")
+        	  println("Seen Expression: "+e)
 
           e match {
             case (t1, t2) =>

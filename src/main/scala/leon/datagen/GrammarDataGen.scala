@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package datagen
@@ -19,7 +19,7 @@ import utils.SeqUtils.cartesianProduct
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] = ValueGrammar) extends DataGenerator {
+class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar = ValueGrammar) extends DataGenerator {
   implicit val ctx = evaluator.context
 
   // Assume e contains generic values with index 0.
@@ -54,13 +54,25 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] 
   }
 
   def generate(tpe: TypeTree): Iterator[Expr] = {
-    val enum = new MemoizedEnumerator[TypeTree, Expr, ProductionRule[TypeTree, Expr]](grammar.getProductions)
-    enum.iterator(tpe).flatMap(expandGenerics)
+    val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
+    enum.iterator(Label(tpe)).flatMap(expandGenerics).takeWhile(_ => !interrupted.get)
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
+
+    def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
+      case BooleanLiteral(true) =>
+        true
+      case e =>
+        // in -> e should be enough. We shouldn't find any subexpressions of in.
+        evaluator.eval(e, (ins zip vs).toMap) match {
+          case EvaluationResults.Successful(BooleanLiteral(true)) => true
+          case _ => false
+        }
+    }
+
     if (ins.isEmpty) {
-      Iterator.empty
+      Iterator(Seq[Expr]()).filter(filterCond)
     } else {
       val values = generate(tupleTypeWrap(ins.map{ _.getType }))
 
@@ -68,20 +80,10 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] 
         v => unwrapTuple(v, ins.size)
       }
 
-      def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
-        case BooleanLiteral(true) =>
-          true 
-        case e => 
-          // in -> e should be enough. We shouldn't find any subexpressions of in.
-          evaluator.eval(e, (ins zip vs).toMap) match {
-            case EvaluationResults.Successful(BooleanLiteral(true)) => true
-            case _ => false
-          }
-      }
-
       detupled.take(maxEnumerated)
               .filter(filterCond)
               .take(maxValid)
+              .takeWhile(_ => !interrupted.get)
     }
   }
 

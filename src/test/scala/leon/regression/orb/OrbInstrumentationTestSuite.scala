@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.regression.orb
 import leon.test._
@@ -37,7 +37,7 @@ class OrbInstrumentationTestSuite extends LeonRegressionSuite {
     // check properties.
     val (ctx3, instProg) = processPipe.run(ctx2, program)
     val sizeFun = instProg.definedFunctions.find(_.id.name.startsWith("size"))
-    if(!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
+    if (!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
       fail("Error in instrumentation")
   }
 

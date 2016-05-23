@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -25,9 +25,9 @@ class ScalaPrinter(opts: PrinterOptions,
           case _ => true
         }))
       case Not(Equals(l, r))         => optP { p"$l != $r" }
-      case Choose(pred)              => p"choose($pred)"
 
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
+      case SetAdd(s,e)               => optP { p"$s + $e" }
       case ElementOfSet(e,s)         => p"$s.contains($e)"
       case SetUnion(l,r)             => optP { p"$l ++ $r" }
       case SetDifference(l,r)        => optP { p"$l -- $r" }
@@ -35,8 +35,14 @@ class ScalaPrinter(opts: PrinterOptions,
       case SetCardinality(s)         => p"$s.size"
       case SubsetOf(subset,superset) => p"$subset.subsetOf($superset)"
 
+      case b @ FiniteBag(els, t)     => p"Bag[$t](${els.toSeq})"
+      case BagAdd(s,e)               => optP { p"$s + $e" }
+      case BagUnion(l,r)             => optP { p"$l ++ $r" }
+      case BagDifference(l,r)        => optP { p"$l -- $r" }
+      case BagIntersection(l,r)      => optP { p"$l & $r" }
+
       case MapUnion(l,r)             => optP { p"$l ++ $r" }
-      case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
+      case m @ FiniteMap(els, k, v)  => p"Map[$k,$v](${els.toSeq})"
 
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
       case a@FiniteArray(elems, oDef, size) =>

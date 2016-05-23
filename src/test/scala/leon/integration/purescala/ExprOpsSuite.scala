@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.integration.purescala
 
@@ -41,6 +41,7 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
   test("mapForPattern introduces casts"){ implicit fix =>
     funDef("Casts1.aMatch").body match {
       case Some(MatchExpr(scrut, Seq(MatchCase(p, None, b)))) =>
+        val bar3 = caseClassDef("Casts1.Bar3").typed
         val bar4 = caseClassDef("Casts1.Bar4").typed
         val i    = caseClassDef("Casts1.Bar4").fields.head.id
 
@@ -48,7 +49,7 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
           if (id.name == "b1") {
             assert(v === AsInstanceOf(scrut, bar4))
           } else if (id.name == "b2") {
-            assert(v === CaseClassSelector(bar4, AsInstanceOf(scrut, bar4), i))
+            assert(v === AsInstanceOf(CaseClassSelector(bar4, AsInstanceOf(scrut, bar4), i), bar3))
           } else {
             fail("Map contained unknown entry "+id.asString)
           }

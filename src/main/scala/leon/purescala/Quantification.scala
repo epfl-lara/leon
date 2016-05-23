@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -22,10 +22,15 @@ object Quantification {
     qargs: A => Set[B]
   ): Seq[Set[A]] = {
     def expand(m: A): Set[A] = Set(m) ++ margs(m).flatMap(expand)
+    def allQArgs(m: A): Set[B] = qargs(m) ++ margs(m).flatMap(allQArgs)
     val expandedMap: Map[A, Set[A]] = matchers.map(m => m -> expand(m)).toMap
     val reverseMap : Map[A, Set[A]] = expandedMap.toSeq
       .flatMap(p => p._2.map(m => m -> p._1))     // flatten to reversed pairs
       .groupBy(_._1).mapValues(_.map(_._2).toSet) // rebuild map from pair set
+      .map { case (m, ms) =>                      // filter redundant matchers
+        val allM = allQArgs(m)
+        m -> ms.filter(rm => allQArgs(rm) != allM)
+      }
 
     def rec(oms: Seq[A], mSet: Set[A], qss: Seq[Set[B]]): Seq[Set[A]] = {
       if (qss.contains(quantified)) {
@@ -49,7 +54,7 @@ object Quantification {
     res.filter(ms => ms.forall(m => reverseMap(m) subsetOf ms))
   }
 
-  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Expr, Expr, Seq[Expr])]] = {
+  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Path, Expr, Seq[Expr])]] = {
     object QMatcher {
       def unapply(e: Expr): Option[(Expr, Seq[Expr])] = e match {
         case QuantificationMatcher(expr, args) =>
@@ -66,19 +71,26 @@ object Quantification {
     val matchers = allMatchers.map { case ((caller, args), path) => (path, caller, args) }.toSet
 
     extractQuorums(matchers, quantified,
-      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
-      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
+      (p: (Path, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
+      (p: (Path, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
   }
 
   object Domains {
     def empty = new Domains(Map.empty, Map.empty)
   }
 
-  class Domains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+  class Domains (_lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+    val lambdas = _lambdas.map { case (lambda, domain) =>
+      val (nl, _) = normalizeStructure(lambda)
+      nl -> domain
+    }
+
     def get(e: Expr): Set[Seq[Expr]] = {
       val specialized: Set[Seq[Expr]] = e match {
         case FiniteLambda(mapping, _, _) => mapping.map(_._1).toSet
-        case l: Lambda => lambdas.getOrElse(l, Set.empty)
+        case l: Lambda =>
+          val (nl, _) = normalizeStructure(l)
+          lambdas.getOrElse(nl, Set.empty)
         case _ => Set.empty
       }
       specialized ++ tpes.getOrElse(e.getType, Set.empty)

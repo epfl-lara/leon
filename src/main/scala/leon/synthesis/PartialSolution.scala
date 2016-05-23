@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -6,8 +6,9 @@ package synthesis
 import purescala.Expressions._
 
 import graph._
+import strategies._
 
-class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
+class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false) {
 
   def includeSolution(s: Solution) = {
     includeUntrusted || s.isTrusted
@@ -48,11 +49,6 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
 
   }
 
-
-  def getSolution: Solution = {
-    getSolutionFor(g.root)
-  }
-
   def getSolutionFor(n: Node): Solution = {
     n match {
       case on: OrNode =>
@@ -66,11 +62,9 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
         }
 
         if (n.isExpanded) {
-          val descs = on.descendants.filterNot(_.isDeadEnd)
-          if (descs.isEmpty) {
-            completeProblem(on.p)
-          } else {
-            getSolutionFor(descs.minBy(_.cost))
+          strat.bestAlternative(on) match {
+            case None => completeProblem(on.p)
+            case Some(d) => getSolutionFor(d)
           }
         } else {
           completeProblem(on.p)

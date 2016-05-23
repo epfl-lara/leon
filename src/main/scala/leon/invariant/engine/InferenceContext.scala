@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.engine
 
@@ -24,7 +26,8 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   // get  options from ctx or initialize them to default values
   // the following options are enabled by default
   val targettedUnroll = !(leonContext.findOption(optFunctionUnroll).getOrElse(false))
-  val autoInference = leonContext.findOption(optDisableInfer).getOrElse(true)
+  val autoInference = !(leonContext.findOption(optDisableInfer).getOrElse(false))
+  val assumepre = leonContext.findOption(optAssumePre).getOrElse(false)
 
   // the following options are disabled by default
   val tightBounds = leonContext.findOption(optMinBounds).getOrElse(false)
@@ -32,20 +35,21 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val withmult = leonContext.findOption(optWithMult).getOrElse(false)
   val usereals = leonContext.findOption(optUseReals).getOrElse(false)
   val useCegis: Boolean = leonContext.findOption(optCegis).getOrElse(false)
-  val dumpStats = false
+  val dumpStats = leonContext.findOption(GlobalOptions.optBenchmark).getOrElse(false)
 
   // the following options have default values
   val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(15L) // in secs
-  val totalTimeout = leonContext.findOption(SharedOptions.optTimeout) // in secs
-  val functionsToInfer = leonContext.findOption(SharedOptions.optFunctions)
+  val nlTimeout = leonContext.findOption(optNLTimeout).getOrElse(15L)
+  val totalTimeout = leonContext.findOption(GlobalOptions.optTimeout) // in secs
+  val functionsToInfer = leonContext.findOption(GlobalOptions.optFunctions)
   val reporter = leonContext.reporter
   val maxCegisBound = 1000
   val statsSuffix = leonContext.findOption(optStatsSuffix).getOrElse("-stats" + FileCountGUID.getID)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
-  // convets qmarks to templates
+  // converts qmarks to templates
   val qMarksRemovedProg = {
-    val funToTmpl = instrumentedProg.definedFunctions.collect {
+    val funToTmpl = userLevelFunctions(instrumentedProg).collect {
       case fd if fd.hasTemplate =>
         fd -> fd.getTemplate
     }.toMap
@@ -56,9 +60,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
 
   val inferProgram = {
     // convert nonlinearity to recursive functions
-    nlelim(if (usereals)
-      (new IntToRealProgram())(qMarksRemovedProg)
-    else qMarksRemovedProg)
+    nlelim(if (usereals) (new IntToRealProgram())(qMarksRemovedProg) else qMarksRemovedProg)
   }
 
   // other utilities
@@ -95,7 +97,9 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   def isFunctionPostVerified(funName: String) = {
     if (validPosts.contains(funName)) {
       validPosts(funName).isValid
-    } else {
+    }
+    else if (abort) false
+    else {
       val verifyPipe = VerificationPhase
       val ctxWithTO = createLeonContext(leonContext, s"--timeout=$vcTimeout", s"--functions=$funName")
       (true /: verifyPipe.run(ctxWithTO, qMarksRemovedProg)._2.results) {

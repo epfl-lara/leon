@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package utils
@@ -32,19 +32,19 @@ object TypingPhase extends SimpleLeonPhase[Program, Program] {
     pgm.definedFunctions.foreach(fd => {
 
       // Part (1)
-      fd.precondition = {
-        val argTypesPreconditions = fd.params.flatMap(arg => arg.getType match {
-          case cct: ClassType if cct.parent.isDefined =>
-            Seq(IsInstanceOf(arg.id.toVariable, cct))
-          case at: ArrayType =>
-            Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
-          case _ =>
-            Seq()
-        })
-        argTypesPreconditions match {
-          case Nil => fd.precondition
-          case xs => fd.precondition match {
-            case Some(p) => Some(andJoin(xs :+ p))
+      val argTypesPreconditions = fd.params.flatMap(arg => arg.getType match {
+        case cct: ClassType if cct.parent.isDefined =>
+          Seq(IsInstanceOf(arg.id.toVariable, cct))
+        case at: ArrayType =>
+          Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
+        case _ =>
+          Seq()
+      })
+      argTypesPreconditions match {
+        case Nil => ()
+        case xs => fd.precondition = {
+          fd.precondition match {
+            case Some(p) => Some(andJoin(xs :+ p).copiedFrom(p))
             case None => Some(andJoin(xs))
           }
         }

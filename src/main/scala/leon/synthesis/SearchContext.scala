@@ -1,23 +1,26 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
 
 import graph._
+import purescala.Expressions.Expr
 
 /**
  * This is context passed down rules, and include search-wise context, as well
  * as current search location information
  */
-case class SearchContext (
+class SearchContext (
   sctx: SynthesisContext,
-  ci: SourceInfo,
-  currentNode: Node,
-  search: Search
+  val source: Expr,
+  val currentNode: Node,
+  val search: Search
+) extends SynthesisContext(
+  sctx,
+  sctx.settings,
+  sctx.functionContext,
+  sctx.program
 ) {
-  val context  = sctx.context
-  val reporter = sctx.reporter
-  val program  = sctx.program
 
   def searchDepth = {
     def depthOf(n: Node): Int = n.parent match {
@@ -29,4 +32,5 @@ case class SearchContext (
   }
 
   def parentNode: Option[Node] = currentNode.parent
+
 }

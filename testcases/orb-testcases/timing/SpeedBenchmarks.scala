@@ -1,6 +1,7 @@
 import leon.invariant._
 import leon.instrumentation._
 
+
 object SpeedBenchmarks {
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
@@ -71,7 +72,7 @@ object SpeedBenchmarks {
 
   //Fig. 2 of Speed POPL'09
   def Dis1(x : BigInt, y : BigInt, n: BigInt, m: BigInt) : BigInt = {
-    if(x >= n) 0
+    if(x >= n) BigInt(0)
     else {
       if(y < m) Dis1(x, y+1, n, m)
       else Dis1(x+1, y, n, m)
@@ -80,7 +81,7 @@ object SpeedBenchmarks {
 
   //Fig. 2 of Speed POPL'09
   def Dis2(x : BigInt, z : BigInt, n: BigInt) : BigInt = {
-    if(x >= n) 0
+    if(x >= n) BigInt(0)
     else {
       if(z > x) Dis2(x+1, z, n)
       else Dis2(x, z+1, n)
@@ -90,7 +91,7 @@ object SpeedBenchmarks {
   //Pg. 138, Speed POPL'09
   def Dis3(x : BigInt, b : Boolean, t: BigInt, n: BigInt) : BigInt = {
     require((b && t == 1) || (!b && t == -1))
-    if(x > n || x < 0) 0
+    if(x > n || x < 0) BigInt(0)
     else {
       if(b) Dis3(x+t, b, t, n)
       else Dis3(x-t, b, t, n)
@@ -99,7 +100,7 @@ object SpeedBenchmarks {
 
   //Pg. 138, Speed POPL'09
   def Dis4(x : BigInt, b : Boolean, t: BigInt, n: BigInt) : BigInt = {
-    if(x > n || x < 0) 0
+    if(x > n || x < 0) BigInt(0)
     else {
       if(b) Dis4(x+t, b, t, n)
       else Dis4(x-t, b, t, n)

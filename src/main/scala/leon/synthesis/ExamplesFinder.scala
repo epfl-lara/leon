@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -18,6 +18,8 @@ import solvers.z3._
 class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
   lazy val evaluator = new DefaultEvaluator(ctx, program)
+  
+  lazy val abstractEvaluator = new AbstractEvaluator(ctx, program)
 
   implicit val ctx = ctx0
 
@@ -55,7 +57,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       def isValidTest(e: Example): Boolean = {
         e match {
           case InOutExample(ins, outs) =>
-            evaluator.eval(Equals(outs.head, FunctionInvocation(fd.typed(fd.tparams.map(_.tp)), ins))) match {
+            evaluator.eval(Equals(outs.head, FunctionInvocation(fd.typed, ins))) match {
               case EvaluationResults.Successful(BooleanLiteral(true)) => true
               case _                                                  => false
             }
@@ -76,7 +78,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   
   /** Extract examples from the passes found in expression */
   def extractFromProblem(p: Problem): ExamplesBank = {
-    val testClusters = extractTestsOf(and(p.pc, p.phi))
+    val testClusters = extractTestsOf(p.pc and p.phi)
 
     // Finally, we keep complete tests covering all as++xs
     val allIds  = (p.as ++ p.xs).toSet
@@ -97,12 +99,12 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
 
     def isValidExample(ex: Example): Boolean = {
-      if(this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
+      if (this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
       val (mapping, cond) = ex match {
         case io: InOutExample =>
-          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), And(p.pc, p.phi))
+          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), p.pc and p.phi)
         case i =>
-          ((p.as zip i.ins).toMap, p.pc)
+          ((p.as zip i.ins).toMap, p.pc.toClause)
       }
 
       evaluator.eval(cond, mapping) match {
@@ -114,11 +116,13 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     ExamplesBank(examples.filter(isValidExample), Seq())
   }
 
-  def generateForPC(ids: List[Identifier], pc: Expr, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
+  def generateForPC(ids: List[Identifier], pc: Expr, ctx: LeonContext, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
+    //println(program.definedClasses)
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
     val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
-    val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory(() => new FairZ3Solver(ctx, pgm)))
+    val solverF   = SolverFactory.getFromSettings(ctx, program)
+    val solverDataGen = new SolverDataGen(ctx, program, solverF)
 
     val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 
@@ -139,8 +143,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           val ids  = variablesOf(test)
 
           // Test could contain expressions, we evaluate
-          evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
-            case EvaluationResults.Successful(res) => res
+          abstractEvaluator.eval(test, Model.empty) match {
+            case EvaluationResults.Successful((res, _)) => res
             case _                                 => test
           }
         }
@@ -160,6 +164,15 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
     consolidateTests(allTests)
   }
+  
+  private def expand(e: Expr): Expr=  {
+    abstractEvaluator.eval(e) match {
+      case EvaluationResults.Successful((res, a)) => res
+      case _                                 => e
+    }
+  }
+  
+  private def expand(e: (Expr, Expr)): (Expr, Expr) = (expand(e._1), expand(e._2))
 
   /** Processes ((in, out) passes {
     * cs[=>Case pattExpr if guard => outR]*/
@@ -177,7 +190,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       // The pattern as expression (input expression)(may contain free variables)
       val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
       val freeVars = variablesOf(pattExpr).toSeq
-      if (exists(_.isInstanceOf[NoTree])(pattExpr)) {
+      val res = if (exists(_.isInstanceOf[NoTree])(pattExpr)) {
         reporter.warning(cs.pattern.getPos, "Unapply patterns are not supported in IO-example extraction")
         Seq()
       } else if (freeVars.isEmpty) {
@@ -194,8 +207,6 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
             None
         }) getOrElse {
 
-          // If the input contains free variables, it does not provide concrete examples. 
-          // We will instantiate them according to a simple grammar to get them.
           if(this.keepAbstractExamples) {
             cs.optGuard match {
               case Some(BooleanLiteral(false)) =>
@@ -206,6 +217,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
                 Seq((Require(pred, pattExpr), cs.rhs))
             }
           } else {
+            // If the input contains free variables, it does not provide concrete examples. 
+            // We will instantiate them according to a simple grammar to get them.
             val dataGen = new GrammarDataGen(evaluator)
 
             val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
@@ -219,6 +232,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           }
         }
       }
+      
+      if(this.keepAbstractExamples) res.map(expand) else res
     }
   }
 

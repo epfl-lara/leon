@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
@@ -16,7 +16,7 @@ object Definitions {
     
     val id: Identifier
 
-    def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
+    def subDefinitions: Seq[Definition] // The enclosed scopes/definitions by this definition
   
     def containsDef(df: Definition): Boolean = {
       subDefinitions.exists { sd =>
@@ -51,6 +51,10 @@ object Definitions {
     val getType = id.getType
 
     var defaultValue : Option[FunDef] = None
+
+    var isVar: Boolean = false
+
+    def setIsVar(b: Boolean): this.type = { this.isVar = b; this }
 
     def subDefinitions = Seq()
 
@@ -113,14 +117,21 @@ object Definitions {
       }
     }
   }
-  
-  /** Object definition */
+
+  /** Definition of a compilation unit, corresponding to a source file
+    *
+    * @param id The name of the file this [[UnitDef]] was compiled from
+    * @param pack The package of this [[UnitDef]]
+    * @param imports The imports of this [[UnitDef]]
+    * @param defs The [[Definition]]s (classes and objects) in this [[UnitDef]]
+    * @param isMainUnit Whether this is a user-provided file or a library file
+    */
   case class UnitDef(
     id: Identifier,
-    pack : PackageRef,
-    imports : Seq[Import],
-    defs : Seq[Definition],
-    isMainUnit : Boolean // false for libraries/imports
+    pack: PackageRef,
+    imports: Seq[Import],
+    defs: Seq[Definition],
+    isMainUnit: Boolean
   ) extends Definition {
      
     def subDefinitions = defs
@@ -161,8 +172,7 @@ object Definitions {
       UnitDef(id, Nil, Nil, modules, true)
   }
   
-  /** Objects work as containers for class definitions, functions (def's) and
-   * val's. */
+  /** Corresponds to an '''object''' in scala. Contains [[FunDef]]s, [[ClassDef]]s and [[ValDef]]s. */
   case class ModuleDef(id: Identifier, defs: Seq[Definition], isPackageObject: Boolean) extends Definition {
     
     def subDefinitions = defs
@@ -176,15 +186,22 @@ object Definitions {
     }
 
     lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = defs.collect {
-      case c@CaseClassDef(_, _, Some(p), _) => c
+      case c : CaseClassDef if c.parent.isDefined => c
     }.groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
-      case c @ CaseClassDef(_, _, None, _) => c
+      case c : CaseClassDef if !c.parent.isDefined => c
     }
   }
 
-  // A class that represents flags that annotate a FunDef with different attributes
+  /** A trait that represents flags that annotate a ClassDef with different attributes */
+  sealed trait ClassFlag
+
+  object ClassFlag {
+    def fromName(name: String, args: Seq[Option[Any]]): ClassFlag = Annotation(name, args)
+  }
+
+  /** A trait that represents flags that annotate a FunDef with different attributes */
   sealed trait FunctionFlag
 
   object FunctionFlag {
@@ -192,13 +209,6 @@ object Definitions {
       case "inline" => IsInlined
       case _ => Annotation(name, args)
     }
-  }
-
-  // A class that represents flags that annotate a ClassDef with different attributes
-  sealed trait ClassFlag
-
-  object ClassFlag {
-    def fromName(name: String, args: Seq[Option[Any]]): ClassFlag = Annotation(name, args)
   }
 
   // Whether this FunDef was originally a (lazy) field
@@ -217,15 +227,15 @@ object Definitions {
   // Is inlined
   case object IsInlined extends FunctionFlag
   // Is an ADT invariant method
-  case object IsADTInvariant extends FunctionFlag with ClassFlag
+  case object IsADTInvariant extends FunctionFlag
+  case object IsInner extends FunctionFlag
 
-  /** Useful because case classes and classes are somewhat unified in some
-   * patterns (of pattern-matching, that is) */
+  /** Represents a class definition (either an abstract- or a case-class) */
   sealed trait ClassDef extends Definition {
     self =>
 
     def subDefinitions = fields ++ methods ++ tparams 
-      
+
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
     def fields: Seq[ValDef]
@@ -270,12 +280,13 @@ object Definitions {
 
     private var _invariant: Option[FunDef] = None
 
-    def invariant = _invariant
-    def hasInvariant = flags contains IsADTInvariant
-    def setInvariant(fd: FunDef): Unit = {
-      addFlag(IsADTInvariant)
-      _invariant = Some(fd)
+    def invariant: Option[FunDef] = parent.flatMap(_.classDef.invariant).orElse(_invariant)
+    def setInvariant(fd: FunDef): Unit = parent match {
+      case Some(act) => act.classDef.setInvariant(fd)
+      case None => _invariant = Some(fd)
     }
+
+    def hasInvariant: Boolean = invariant.isDefined || (this +: root.knownDescendants).exists(cd => cd.methods.exists(_.isInvariant))
 
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
@@ -321,14 +332,16 @@ object Definitions {
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
 
+    def typeArgs = tparams map (_.tp)
+
     def typed(tps: Seq[TypeTree]): ClassType
     def typed: ClassType
   }
 
   /** Abstract classes. */
-  case class AbstractClassDef(id: Identifier,
-                              tparams: Seq[TypeParameterDef],
-                              parent: Option[AbstractClassType]) extends ClassDef {
+  class AbstractClassDef(val id: Identifier,
+                         val tparams: Seq[TypeParameterDef],
+                         val parent: Option[AbstractClassType]) extends ClassDef {
 
     val fields = Nil
     val isAbstract   = true
@@ -352,16 +365,17 @@ object Definitions {
     ): AbstractClassDef = {
       val acd = new AbstractClassDef(id, tparams, parent)
       acd.addFlags(this.flags)
-      parent.map(_.classDef.ancestors.map(_.registerChild(acd)))
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => acd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(acd))
       acd.copiedFrom(this)
     }
   }
 
-  /** Case classes/objects. */
-  case class CaseClassDef(id: Identifier,
-                          tparams: Seq[TypeParameterDef],
-                          parent: Option[AbstractClassType],
-                          isCaseObject: Boolean) extends ClassDef {
+  /** Case classes/ case objects. */
+  class CaseClassDef(val id: Identifier,
+                     val tparams: Seq[TypeParameterDef],
+                     val parent: Option[AbstractClassType],
+                     val isCaseObject: Boolean) extends ClassDef {
 
     private var _fields = Seq[ValDef]()
 
@@ -383,17 +397,17 @@ object Definitions {
         )
       } else index
     }
-    
+
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
 
+    def typed: CaseClassType = typed(tparams.map(_.tp))
     def typed(tps: Seq[TypeTree]): CaseClassType = {
       require(tps.length == tparams.length)
       CaseClassType(this, tps)
     }
-    def typed: CaseClassType = typed(tparams.map(_.tp))
     
     /** Duplication of this [[CaseClassDef]].
-      * @note This will not replace recursive case class def calls in [[arguments]] nor the parent abstract class types
+      * @note This will not replace recursive [[CaseClassDef]] calls in [[fields]] nor the parent abstract class types
       */
     def duplicate(
       id: Identifier                    = this.id.freshen,
@@ -405,9 +419,9 @@ object Definitions {
       val cd = new CaseClassDef(id, tparams, parent, isCaseObject)
       cd.setFields(fields)
       cd.addFlags(this.flags)
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => cd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(cd))
       cd.copiedFrom(this)
-      parent.map(_.classDef.ancestors.map(_.registerChild(cd)))
-      cd
     }
   }
 
@@ -442,7 +456,10 @@ object Definitions {
 
     def precondition = preconditionOf(fullBody)
     def precondition_=(oe: Option[Expr]) = {
-      fullBody = withPrecondition(fullBody, oe) 
+      fullBody = withPrecondition(fullBody, oe)
+    }
+    def precondition_=(p: Path) = {
+      fullBody = withPath(fullBody, p)
     }
     def precOrTrue = precondition getOrElse BooleanLiteral(true)
 
@@ -501,6 +518,7 @@ object Definitions {
     def isRealFunction    = !canBeField
     def isSynthetic       = flags contains IsSynthetic
     def isInvariant       = flags contains IsADTInvariant
+    def isInner           = flags contains IsInner
     def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
     /* Wrapping in TypedFunDef */
@@ -519,6 +537,11 @@ object Definitions {
     def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
 
     def paramIds = params map { _.id }
+
+    def typeArgs = tparams map (_.tp)
+
+    def applied(args: Seq[Expr]): FunctionInvocation = Constructors.functionInvocation(this, args)
+    def applied = FunctionInvocation(this.typed, this.paramIds map Variable)
   }
 
 
@@ -534,8 +557,8 @@ object Definitions {
       }
     }
 
-    private lazy val typesMap: Map[TypeParameterDef, TypeTree] = {
-      (fd.tparams zip tps).toMap.filter(tt => tt._1.tp != tt._2)
+    private lazy val typesMap: Map[TypeParameter, TypeTree] = {
+      (fd.typeArgs zip tps).toMap.filter(tt => tt._1 != tt._2)
     }
 
     def translated(t: TypeTree): TypeTree = instantiateType(t, typesMap)
@@ -602,6 +625,8 @@ object Definitions {
         res
       })
     }
+
+    // Methods that extract expressions from the underlying FunDef, using a cache
 
     def fullBody      = cached(fd.fullBody)
     def body          = fd.body map cached

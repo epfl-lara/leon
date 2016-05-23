@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.integration.solvers
 
 import org.scalatest.FunSuite
@@ -239,5 +241,22 @@ T2: ret Pop() -> 5"""
     val p = Future { solve(problem) }
     assert(p.isReadyWithin(2 seconds), "Could not solve propagate")
     p.futureValue should not be('empty)
+  }
+  
+  test("solveMinChange") {
+    implicit val idMap = MMap[String, Identifier]()
+    val problem = List(
+        "u+v+w" === "akbc"
+    )
+    val u = idMap("u")
+    val v = idMap("v")
+    val w = idMap("w")
+    val solutions = solveMinChange(problem, Map(u -> "a", v -> "b", w -> "c"))
+    solutions(0) should equal (Map(u -> "ak"))
+    solutions(1) should equal (Map(v -> "kb"))
+    (2 to 5).toSet.map((i: Int) => solutions(i)) should equal (Set(Map(u -> "", v -> "akb")
+    , Map(u -> "a", v -> "kb")
+    , Map(u -> "ak", v -> "b")
+    , Map(u -> "akb", v -> "")))
   }
 }

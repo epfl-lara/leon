@@ -1,24 +1,22 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package repair
 
-import leon.datagen.GrammarDataGen
-import purescala.Common._
+import purescala.Path
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
-import purescala.Types._
 import purescala.DefOps._
 import purescala.Constructors._
-import purescala.Extractors.unwrapTuple
 
 import evaluators._
 import solvers._
 import utils._
 import codegen._
 import verification._
+import datagen.GrammarDataGen
 
 import synthesis._
 import synthesis.rules._
@@ -27,17 +25,14 @@ import synthesis.graph.{dotGenIds, DotGenerator}
 
 import rules._
 
-class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
-  implicit val ctx = ctx0
+class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
+  implicit val ctx0 = ctx
 
   val reporter = ctx.reporter
 
-  val doBenchmark = ctx.findOptionOrDefault(SharedOptions.optBenchmark)
-
-  var program = initProgram
+  val doBenchmark = ctx.findOptionOrDefault(GlobalOptions.optBenchmark)
 
   implicit val debugSection = DebugSectionRepair
-
 
   def repair(): Unit = {
     val to = new TimeoutFor(ctx.interruptManager)
@@ -101,7 +96,6 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           }
 
           reporter.ifDebug { printer =>
-            import java.io.FileWriter
             import java.text.SimpleDateFormat
             import java.util.Date
 
@@ -112,15 +106,15 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
               case fd: FunDef => 1 + fd.params.size + formulaSize(fd.fullBody)
             }
 
-            val pSize = defs.sum;
+            val pSize = defs.sum
             val fSize = formulaSize(fd.body.get)
 
             def localizedExprs(n: graph.Node): List[Expr] = {
               n match {
                 case on: graph.OrNode =>
-                  on.selected.map(localizedExprs).flatten
+                  on.selected.flatMap(localizedExprs)
                 case an: graph.AndNode if an.ri.rule == Focus =>
-                  an.selected.map(localizedExprs).flatten
+                  an.selected.flatMap(localizedExprs)
                 case an: graph.AndNode =>
                   val TopLevelAnds(clauses) = an.p.ws
 
@@ -132,11 +126,11 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
               }
             }
 
-            val locSize = localizedExprs(search.g.root).map(formulaSize).sum;
+            val locSize = localizedExprs(search.g.root).map(formulaSize).sum
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
-                val solExpr = sol.toSimplifiedExpr(ctx, program)
+                val solExpr = sol.toSimplifiedExpr(ctx, program, fd)
                 val totalSolSize = formulaSize(solExpr)
                 (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
               case _ =>
@@ -150,7 +144,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             try {
               fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
             } finally {
-              fw.close
+              fw.close()
             }
           }(DebugSectionReport)
 
@@ -166,7 +160,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             reporter.info(ASCIIHelpers.title("Repair successful:"))
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
-              val expr = sol.toSimplifiedExpr(ctx, synth.program)
+              val expr = sol.toSimplifiedExpr(ctx, synth.program, fd)
               reporter.info(expr.asString(program)(ctx))
             }
           }
@@ -183,29 +177,20 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val origBody = fd.body.get
 
-    val term  = Terminating(fd.typed, fd.params.map(_.id.toVariable))
+    val term  = Terminating(fd.applied)
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val ci = SourceInfo(
-      fd = fd,
-      pc = andJoin(Seq(pre, guide, term)),
-      source = origBody,
-      spec = fd.postOrTrue,
-      eb = eb
-    )
+    val prob = Problem.fromSpec(fd.postOrTrue, Path(Seq(pre, guide, term)), eb, Some(fd))
+
+    val ci = SourceInfo(fd, origBody, prob)
 
     // Return synthesizer for this choose
     val so0 = SynthesisPhase.processOptions(ctx)
 
     val soptions = so0.copy(
       functionsToIgnore = so0.functionsToIgnore + fd,
-      costModel = RepairCostModel(so0.costModel),
-      rules = (so0.rules ++ Seq(
-        Focus,
-        CEGLESS
-        //TEGLESS
-      )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
+      rules = Seq(Focus, CEGLESS) ++ so0.rules
     )
 
     new Synthesizer(ctx, program, ci, soptions)
@@ -214,14 +199,14 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
   def getVerificationCExs(fd: FunDef): Seq[Example] = {
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(timeoutMs)
-    val vctx = VerificationContext(ctx, program, solverf, reporter)
+    val vctx = new VerificationContext(ctx, program, solverf)
     val vcs = VerificationPhase.generateVCs(vctx, Seq(fd))
 
     try {
       val report = VerificationPhase.checkVCs(
         vctx,
         vcs,
-        stopAfter = Some({ (vc, vr) => vr.isInvalid })
+        stopWhen = _.isInvalid
       )
 
       val vrs = report.vrs
@@ -239,7 +224,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val maxEnumerated = 1000
     val maxValid      = 400
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
 
     val inputsToExample: Seq[Expr] => Example = { ins =>
       evaluator.eval(functionInvocation(fd, ins)) match {

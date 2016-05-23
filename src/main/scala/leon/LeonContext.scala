@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 
@@ -9,7 +9,7 @@ import java.io.File
 import scala.reflect.ClassTag
 
 /** Everything that is part of a compilation unit, except the actual program tree.
-  * Contexts are immutable, and so should all there fields (with the possible
+  * LeonContexts are immutable, and so should all their fields (with the possible
   * exception of the reporter).
   */
 case class LeonContext(
@@ -27,6 +27,8 @@ case class LeonContext(
 
   def findOptionOrDefault[A: ClassTag](optDef: LeonOptionDef[A]): A =
     findOption(optDef).getOrElse(optDef.default)
+
+  def toSctx = solvers.SolverContext(this, new evaluators.EvaluationBank)
 }
 
 object LeonContext {
@@ -36,8 +38,11 @@ object LeonContext {
   }
 
   def printNames = {
-    empty.copy(options =
-      Seq(LeonOption[Set[DebugSection]](SharedOptions.optDebug)(Set(DebugSectionTrees)))
+    val reporter = new DefaultReporter(Set())
+    LeonContext(
+      reporter,
+      new InterruptManager(reporter),
+      options = Seq(LeonOption[Set[DebugSection]](GlobalOptions.optDebug)(Set(DebugSectionTrees)))
     )
   }
 }

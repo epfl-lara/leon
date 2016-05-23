@@ -11,16 +11,13 @@ import leon.collection.ListOps._
 import leon.lang.synthesis._
 
 object ModularRender {
-  def customToString[T](l : List[T], f : (T) => String): String =  {
-    ???
-  } ensuring {
-    (res : String) => (l, res) passes {
-      case _ if false => ""
-    }
-  }
   
   def booleanToString(b: Boolean) = if(b) "Up" else "Down"
+
   def intToString(b: BigInt) = b.toString
+  
+  def customToString[T](l : List[T], f : (T) => String): String =
+    ???[String] ask l
   
   case class Configuration(flags: List[Boolean], strokes: List[BigInt])
 
@@ -28,14 +25,8 @@ object ModularRender {
   // Solution:
   //   [Up, Down,  Up....]
   //   [1, 2, 5, ...]
-  def ConfigToString(config : Configuration): String =  {
-    ???
-  } ensuring {
-    (res : String) => (config, res) passes {
-      case _ if false =>
-        ""
-    }
-  }
+  def ConfigToString(config : Configuration): String =
+    ???[String] ask config
   
   /** Wrong lemma for demonstration */
   def configurationsAreSimple(c: Configuration) =

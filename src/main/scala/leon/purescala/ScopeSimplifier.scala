@@ -1,9 +1,9 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package purescala
 
-import collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
 import Common._
 import Definitions._
 import Expressions._

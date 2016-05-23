@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 
@@ -6,6 +6,8 @@ import OptionParsers._
 
 import purescala.Definitions._
 import purescala.DefOps.fullName
+
+import scala.util.Try
 
 abstract class LeonOptionDef[+A] {
   val name: String
@@ -22,14 +24,12 @@ abstract class LeonOptionDef[+A] {
   }
 
   private def parseValue(s: String)(implicit reporter: Reporter): A = {
-    try { parser(s) }
-    catch {
-      case _ : IllegalArgumentException =>
-        reporter.fatalError(
-          s"Invalid option usage: --$name\n" +
-          "Try 'leon --help' for more information."
-        )
-    }
+    parser(s).getOrElse(
+      reporter.fatalError(
+        s"Invalid option usage: --$name\n" +
+        "Try 'leon --help' for more information."
+      )
+    )
   }
 
   def parse(s: String)(implicit reporter: Reporter): LeonOption[A] =
@@ -67,7 +67,7 @@ class LeonOption[+A] private (val optionDef: LeonOptionDef[A], val value: A) {
       optionDef.name == this.optionDef.name && value == this.value
     case _ => false
   }
-  override def hashCode = optionDef.hashCode
+  override def hashCode = optionDef.hashCode + value.hashCode
 }
 
 object LeonOption {
@@ -78,20 +78,28 @@ object LeonOption {
 }
 
 object OptionParsers {
-  type OptionParser[A] = String => A
+  type OptionParser[A] = String => Option[A]
 
-  val longParser: OptionParser[Long] = _.toLong
-  val stringParser: OptionParser[String] = x => x
-  def booleanParser: OptionParser[Boolean] = {
-    case "on"  | "true"  | "yes" | "" => true
-    case "off" | "false" | "no"       => false
-    case _  => throw new IllegalArgumentException
+  val longParser: OptionParser[Long] = { s =>
+    Try(s.toLong).toOption
   }
+  val stringParser: OptionParser[String] = Some(_)
+  val booleanParser: OptionParser[Boolean] = {
+    case "on"  | "true"  | "yes" | "" => Some(true)
+    case "off" | "false" | "no"       => Some(false)
+    case _  => None
+  }
+
   def seqParser[A](base: OptionParser[A]): OptionParser[Seq[A]] = s => {
-    s.split(",").filter(_.nonEmpty).map(base)
+    @inline def foo: Option[Seq[A]] = Some(
+      s.split(",")
+        .filter(_.nonEmpty)
+        .map(base andThen (_.getOrElse(return None)))
+    )
+    foo
   }
-  def setParser[A](base: OptionParser[A]): OptionParser[Set[A]] = s => {
-    s.split(",").filter(_.nonEmpty).map(base).toSet
+  def setParser[A](base: OptionParser[A]): OptionParser[Set[A]] = {
+    seqParser(base)(_).map(_.toSet)
   }
 
 }
@@ -103,9 +111,9 @@ object OptionsHelpers {
   private val matcherWithout = s"--(.*)".r
 
   def nameValue(s: String) = s match {
-    case matcher(name, value) => (name, value)
-    case matcherWithout(name) => (name, "")
-    case _ => throw new IllegalArgumentException
+    case matcher(name, value) => Some(name, value)
+    case matcherWithout(name) => Some(name, "")
+    case _ => None
   }
 
   // helper for options that include patterns
@@ -131,7 +139,7 @@ object OptionsHelpers {
       Pattern.compile("(.+\\.)?"+p)
     }
 
-    { (name: String) => regexPatterns.exists(p => p.matcher(name).matches()) }
+    (name: String) => regexPatterns.exists(p => p.matcher(name).matches())
   }
 
   def fdMatcher(pgm: Program)(patterns: Traversable[String]): FunDef => Boolean = {
@@ -144,11 +152,8 @@ object OptionsHelpers {
         i
       case None =>
         excluded match {
-          case Some(f) =>
-            { (t: T) => !f(t) }
-
-          case None =>
-            { (t: T) => true }
+          case Some(f) => (t: T) => !f(t)
+          case None    => (t: T) => true
         }
     }
   }

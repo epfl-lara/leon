@@ -1,30 +1,22 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package solvers
 package z3
 
-import utils._
 import _root_.z3.scala._
 
-import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Constructors._
-import purescala.Quantification._
 import purescala.ExprOps._
 import purescala.Types._
 
-import solvers.templates._
-import solvers.combinators._
-import Template._
+import unrolling._
+import theories._
+import utils._
 
-import evaluators._
-
-import termination._
-
-class FairZ3Solver(val context: LeonContext, val program: Program)
+class FairZ3Solver(val sctx: SolverContext, val program: Program)
   extends AbstractZ3Solver
      with AbstractUnrollingSolver[Z3AST] {
 
@@ -37,16 +29,11 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   override val name = "Z3-f"
   override val description = "Fair Z3 Solver"
 
-  override protected val reporter = context.reporter
   override def reset(): Unit = super[AbstractZ3Solver].reset()
 
-  // FIXME: Dirty hack to bypass z3lib bug. Assumes context is the same over all instances of FairZ3Solver
-  protected[leon] val z3cfg = context.synchronized { new Z3Config(
-    "MODEL" -> true,
-    "TYPE_CHECK" -> true,
-    "WELL_SORTED_CHECK" -> true
-  )}
-  toggleWarningMessages(true)
+  def declareVariable(id: Identifier): Z3AST = variables.cachedB(Variable(id)) {
+    templateEncoder.encodeId(id)
+  }
 
   def solverCheck[R](clauses: Seq[Z3AST])(block: Option[Boolean] => R): R = {
     solver.push()
@@ -65,7 +52,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   }
 
   def solverGetModel: ModelWrapper = new ModelWrapper {
-    val model = solver.getModel
+    val model: Z3Model = solver.getModel
 
     /*
     val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
@@ -96,23 +83,21 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
     */
 
-    def get(id: Identifier): Option[Expr] = variables.getB(id.toVariable).flatMap {
-      z3ID => eval(z3ID, id.getType) match {
-        case Some(Variable(id)) => None
-        case e => e
+    def modelEval(elem: Z3AST, tpe: TypeTree): Option[Expr] = {
+      val timer = context.timers.solvers.z3.eval.start()
+      val res = tpe match {
+        case BooleanType => model.evalAs[Boolean](elem).map(BooleanLiteral)
+        case Int32Type => model.evalAs[Int](elem).map(IntLiteral).orElse {
+          model.eval(elem).flatMap(t => softFromZ3Formula(model, t, Int32Type))
+        }
+        case IntegerType => model.evalAs[Int](elem).map(InfiniteIntegerLiteral(_))
+        case other => model.eval(elem) match {
+          case None => None
+          case Some(t) => softFromZ3Formula(model, t, other)
+        }
       }
-    }
-
-    def eval(elem: Z3AST, tpe: TypeTree): Option[Expr] = tpe match {
-      case BooleanType => model.evalAs[Boolean](elem).map(BooleanLiteral)
-      case Int32Type => model.evalAs[Int](elem).map(IntLiteral).orElse {
-        model.eval(elem).flatMap(t => softFromZ3Formula(model, t, Int32Type))
-      }
-      case IntegerType => model.evalAs[Int](elem).map(InfiniteIntegerLiteral(_))
-      case other => model.eval(elem) match {
-        case None => None
-        case Some(t) => softFromZ3Formula(model, t, other)
-      }
+      timer.stop()
+      res
     }
 
     override def toString = model.toString
@@ -121,6 +106,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   val printable = (z3: Z3AST) => new Printable {
     def asString(implicit ctx: LeonContext) = z3.toString
   }
+
+  val theoryEncoder = new StringEncoder(context, program) >> new BagEncoder(context, program)
 
   val templateEncoder = new TemplateEncoder[Z3AST] {
     def encodeId(id: Identifier): Z3AST = {
@@ -146,19 +133,15 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
     def extractNot(l: Z3AST): Option[Z3AST] = z3.getASTKind(l) match {
       case Z3AppAST(decl, args) => z3.getDeclKind(decl) match {
-        case Z3DeclKind.OpNot => Some(args.head)
-        case Z3DeclKind.OpUninterpreted => None
+        case OpNot => Some(args.head)
+        case _ => None
       }
       case ast => None
     }
   }
 
-  initZ3()
-
-  val solver = z3.mkSolver()
-
   private val incrementals: List[IncrementalState] = List(
-    errors, functions, generics, lambdas, sorts, variables,
+    errors, functions, lambdas, sorts, variables,
     constructors, selectors, testers
   )
 
@@ -190,21 +173,19 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     }
   }
 
-  def assertCnstr(expression: Expr): Unit = {
+  override def assertCnstr(expression: Expr): Unit = {
     try {
-      val bindings = variablesOf(expression).map(id => id -> variables.cachedB(Variable(id)) {
-        templateGenerator.encoder.encodeId(id)
-      }).toMap
-
-      assertCnstr(expression, bindings)
+      super.assertCnstr(expression)
     } catch {
-      case _: Unsupported =>
+      case u: Unsupported =>
         addError()
     }
   }
 
   def solverAssert(cnstr: Z3AST): Unit = {
+    val timer = context.timers.solvers.z3.assert.start()
     solver.assertCnstr(cnstr)
+    timer.stop()
   }
 
   def solverUnsatCore = Some(solver.getUnsatCore)
@@ -212,7 +193,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   override def foundAnswer(res: Option[Boolean], model: Model = Model.empty, core: Set[Expr] = Set.empty) = {
     super.foundAnswer(res, model, core)
 
-    if (!interrupted && res == None && model == None) {
+    if (!interrupted && res.isEmpty && model.isEmpty) {
       reporter.ifDebug { debug => 
         if (solver.getReasonUnknown != "canceled") {
           debug("Z3 returned unknown: " + solver.getReasonUnknown)

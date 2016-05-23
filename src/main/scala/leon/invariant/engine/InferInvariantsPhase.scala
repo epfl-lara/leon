@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.engine
 
@@ -19,17 +21,22 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   val optCegis = LeonFlagOptionDef("cegis", "use cegis instead of farkas", false)
   val optStatsSuffix = LeonStringOptionDef("stats-suffix", "the suffix of the statistics file", "", "s")
   val optVCTimeout = LeonLongOptionDef("vcTimeout", "Timeout after T seconds when trying to prove a verification condition", 20, "s")
+  val optNLTimeout = LeonLongOptionDef("nlTimeout", "Timeout after T seconds when trying to solve nonlinear constraints", 20, "s")
   val optDisableInfer = LeonFlagOptionDef("disableInfer", "Disable automatic inference of auxiliary invariants", false)
+  val optAssumePre = LeonFlagOptionDef("assumepreInf", "Assume preconditions of callees during unrolling", false)
 
   override val definedOptions: Set[LeonOptionDef[Any]] =
     Set(optFunctionUnroll, optWithMult, optUseReals,
         optMinBounds, optInferTemp, optCegis, optStatsSuffix, optVCTimeout,
-        optDisableInfer)
+        optNLTimeout, optDisableInfer, optAssumePre)
 
   def apply(ctx: LeonContext, program: Program): InferenceReport = {
     val inferctx = new InferenceContext(program,  ctx)
     val report = (new InferenceEngine(inferctx)).runWithTimeout()
     //println("Final Program: \n" +PrettyPrinter.apply(InferenceReportUtil.pushResultsToInput(inferctx, report.conditions)))
+    if(!ctx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
+      println("Inference Result: \n"+report.summaryString)
+    }
     report
   }
 }

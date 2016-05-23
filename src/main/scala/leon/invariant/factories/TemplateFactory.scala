@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.factories
 
@@ -13,6 +15,7 @@ import invariant.structure._
 import FunctionUtils._
 import PredicateUtil._
 import ProgramUtil._
+import TypeUtil._
 
 object TemplateIdFactory {
   //a set of template ids
@@ -29,7 +32,7 @@ object TemplateIdFactory {
   }
 
   def copyIdentifier(id: Identifier) : Identifier = {
-    val freshid = FreshIdentifier(id.name, RealType, false)
+    val freshid = FreshIdentifier(id.name, id.getType, false)
     ids += freshid
     freshid
   }

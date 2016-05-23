@@ -4,7 +4,7 @@ package leon
 package codegen.runtime
 
 import utils._
-import purescala.Expressions._
+import purescala.Expressions.{CaseClass => LeonCaseClass, _}
 import purescala.Constructors._
 import purescala.Definitions._
 import purescala.Common._
@@ -19,15 +19,20 @@ import scala.collection.immutable.{Map => ScalaMap}
 import scala.collection.mutable.{HashMap => MutableMap, Set => MutableSet}
 import scala.concurrent.duration._
 
-import solvers.SolverFactory
-import solvers.combinators.UnrollingProcedure
+import solvers.{SolverContext, SolverFactory}
+import solvers.unrolling.UnrollingProcedure
 
+import evaluators._
 import synthesis._
 
 abstract class Monitor {
   def onInvocation(): Unit
 
   def typeParams(params: Array[Int], tps: Array[Int], newTps: Array[Int]): Array[Int]
+
+  def invariantCheck(obj: AnyRef, tpeIdx: Int): Boolean
+
+  def invariantResult(obj: AnyRef, tpeIdx: Int, result: Boolean): Unit
 
   def onAbstractInvocation(id: Int, tps: Array[Int], args: Array[AnyRef]): AnyRef
 
@@ -40,6 +45,14 @@ class NoMonitor extends Monitor {
   def onInvocation(): Unit = {}
 
   def typeParams(params: Array[Int], tps: Array[Int], newTps: Array[Int]): Array[Int] = {
+    throw new LeonCodeGenEvaluationException("No monitor available.")
+  }
+
+  def invariantCheck(obj: AnyRef, tpeIdx: Int): Boolean = {
+    throw new LeonCodeGenEvaluationException("No monitor available.")
+  }
+
+  def invariantResult(obj: AnyRef, tpeIdx: Int, result: Boolean): Unit = {
     throw new LeonCodeGenEvaluationException("No monitor available.")
   }
 
@@ -70,11 +83,26 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
     }
   }
 
+  def invariantCheck(obj: AnyRef, tpeIdx: Int): Boolean = {
+    val tpe = unit.runtimeIdToTypeMap(tpeIdx)
+    val cc = unit.jvmToValue(obj, tpe).asInstanceOf[LeonCaseClass]
+    val result = unit.bank.invariantCheck(cc)
+    if (result.isFailure) throw new LeonCodeGenRuntimeException("ADT invariant failed @" + cc.ct.classDef.invariant.get.getPos)
+    else result.isRequired
+  }
+
+  def invariantResult(obj: AnyRef, tpeIdx: Int, result: Boolean): Unit = {
+    val tpe = unit.runtimeIdToTypeMap(tpeIdx)
+    val cc = unit.jvmToValue(obj, tpe).asInstanceOf[LeonCaseClass]
+    unit.bank.invariantResult(cc, result)
+    if (!result) throw new LeonCodeGenRuntimeException("ADT invariant failed @" + cc.ct.classDef.invariant.get.getPos)
+  }
+
   def typeParams(params: Array[Int], tps: Array[Int], newTps: Array[Int]): Array[Int] = {
     val tparams = params.toSeq.map(unit.runtimeIdToTypeMap(_).asInstanceOf[TypeParameter])
     val static = tps.toSeq.map(unit.runtimeIdToTypeMap(_))
     val newTypes = newTps.toSeq.map(unit.runtimeIdToTypeMap(_))
-    val tpMap = (tparams.map(TypeParameterDef(_)) zip newTypes).toMap
+    val tpMap = (tparams zip newTypes).toMap
     static.map(tpe => unit.registerType(instantiateType(tpe, tpMap))).toArray
   }
 
@@ -110,11 +138,12 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
     } else {
       val tStart = System.currentTimeMillis
 
-      val solverf = SolverFactory.default(ctx, program).withTimeout(10.second)
+      val sctx = SolverContext(ctx, unit.bank)
+      val solverf = SolverFactory.getFromSettings(sctx, program).withTimeout(10.second)
       val solver = solverf.getNewSolver()
 
       val newTypes = tps.toSeq.map(unit.runtimeIdToTypeMap(_))
-      val tpMap = (tparams.map(TypeParameterDef(_)) zip newTypes).toMap
+      val tpMap = (tparams zip newTypes).toMap
 
       val newXs = p.xs.map { id =>
         val newTpe = instantiateType(id.getType, tpMap)
@@ -127,11 +156,16 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
       }
 
       val inputsMap = (newAs zip inputs).map {
-        case (id, v) => Equals(Variable(id), unit.jvmToValue(v, id.getType))
+        case (id, v) => id -> unit.jvmToValue(v, id.getType)
       }
 
-      val expr = instantiateType(and(p.pc, p.phi), tpMap, (p.as zip newAs).toMap ++ (p.xs zip newXs))
-      solver.assertCnstr(andJoin(expr +: inputsMap))
+      val instTpe: Expr => Expr = {
+        val idMap = (p.as zip newAs).toMap ++ (p.xs zip newXs)
+        instantiateType(_: Expr, tpMap, idMap)
+      }
+
+      val expr = p.pc map instTpe withBindings inputsMap and instTpe(p.phi)
+      solver.assertCnstr(expr)
 
       try {
         solver.check match {
@@ -171,11 +205,16 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
     val (tparams, f) = unit.runtimeForallMap(id)
 
     val program = unit.program
-    val ctx     = unit.ctx.copy(options = unit.ctx.options.map {
-      case LeonOption(optDef, value) if optDef == UnrollingProcedure.optFeelingLucky =>
-        LeonOption(optDef)(false)
-      case opt => opt
-    })
+
+    val newOptions = Seq(
+      LeonOption(UnrollingProcedure.optFeelingLucky)(false),
+      LeonOption(UnrollingProcedure.optSilentErrors)(true),
+      LeonOption(UnrollingProcedure.optCheckModels)(true)
+    )
+
+    val ctx = unit.ctx.copy(options = unit.ctx.options.filterNot { opt =>
+      newOptions.exists(no => opt.optionDef == no.optionDef)
+    } ++ newOptions)
 
     ctx.reporter.debug("Executing forall (codegen)!")
     val argsSeq = args.toSeq
@@ -185,11 +224,12 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
     } else {
       val tStart = System.currentTimeMillis
 
-      val solverf = SolverFactory.default(ctx, program).withTimeout(1.second)
+      val sctx = SolverContext(ctx, unit.bank)
+      val solverf = SolverFactory.getFromSettings(sctx, program).withTimeout(.5.second)
       val solver = solverf.getNewSolver()
 
       val newTypes = tps.toSeq.map(unit.runtimeIdToTypeMap(_))
-      val tpMap = (tparams.map(TypeParameterDef(_)) zip newTypes).toMap
+      val tpMap = (tparams zip newTypes).toMap
 
       val vars = variablesOf(f).toSeq.sortBy(_.uniqueName)
       val newVars = vars.map(id => FreshIdentifier(id.name, instantiateType(id.getType, tpMap), true))
@@ -220,7 +260,12 @@ class StdMonitor(unit: CompilationUnit, invocationsMax: Int, bodies: ScalaMap[Id
 
           val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
           andJoin(domainMap.toSeq.map { case (id, dom) =>
-            orJoin(dom.toSeq.map { case (path, value) => and(path, Equals(Variable(id), value)) })
+            orJoin(dom.toSeq.map { case (path, value) =>
+              // @nv: Note that we know id.getType is first-order since quantifiers can only
+              //      range over basic types. This means equality is guaranteed well-defined
+              //      between `id` and `value`
+              path and Equals(Variable(id), value)
+            })
           })
         })
 

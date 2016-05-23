@@ -33,12 +33,13 @@ fun err_timeout msg f x =
   | Exn.Exn exn => reraise exn
 
 datatype report =
-  Function of {names: string list, raws: string list, specs: string list, inducts: (string * string) list} |
+  Function of {heads: (string * string) list, raws: string list, specs: string list, inducts: (string * string) list} |
   Datatype of string |
   Theory of {import: string, scripts: (string * string) list} |
   Equivalence of string |
   Lemma of {name: string, prop: string} |
-  Oracle
+  Oracle |
+  End
 
 structure Reports = Theory_Data
 (
@@ -363,6 +364,12 @@ fun functions raw_funs =
         Exn.Res (thms, lthy) =>
           let
             val names = map #1 raw_funs
+            val get_typ =
+              Thm.prop_of #> HOLogic.dest_Trueprop #> HOLogic.dest_eq #> fst
+              #> strip_comb #> fst
+              #> fastype_of
+              #> print_typ lthy
+            val typs = map get_typ thms
             val lthy' = Local_Theory.restore lthy
             val thms = Proof_Context.export lthy lthy' thms
             val simpss = thms
@@ -375,7 +382,7 @@ fun functions raw_funs =
             val binding = Binding.qualified true "spec" (Binding.make (hd names, @{here}))
             val report =
               Function
-                {names = names,
+                {heads = names ~~ typs,
                  inducts = map_filter print_induct specs,
                  specs = map (print_thm lthy') simps,
                  raws = map (print_thm lthy') thms}
@@ -486,10 +493,10 @@ fun lookup_datatype (name, raw_constructors) =
         (Codec.Left ("unknown datatype " ^ name), lthy)
     | SOME {ctrs, discs, selss, split, split_asm, case_thms, ...} =>
         let
-          val raw_constructors = sort_wrt snd (raw_constructors)
+          val raw_constructors = sort_by snd (raw_constructors)
           val (names, terms) =
             map (fst o dest_Const) ctrs ~~ (discs ~~ selss)
-            |> sort_wrt fst
+            |> sort_by fst
             |> split_list
           fun process (internal_name, name) (disc, sels) =
             (internal_name, (Const (name, dummyT), dummify_types disc, map dummify_types sels))
@@ -547,11 +554,19 @@ fun dump () =
         | print_report (Lemma {prop, ...}) = ([], "lemma [simp]: " ^ quote prop ^ "\nsorry")
         | print_report (Datatype spec) = ([], spec)
         | print_report Oracle = ([], "")
-        | print_report (Function {names, specs, ...}) =
-            ([], "fun " ^ space_implode " and " names ^ " where\n" ^ space_implode "|\n" (map quote specs))
+        | print_report End = ([], "\nend\n")
+        | print_report (Function {heads, specs, ...}) =
+            let
+              fun mk_head (name, typ) = quote name ^ " :: " ^ quote typ
+              val head = "fun " ^ space_implode " and " (map mk_head heads) ^ " where\n"
+              val body = space_implode "|\n" (map quote specs)
+            in
+              ([], head ^ body)
+            end
     in
       Proof_Context.theory_of lthy
       |> Reports.get
+      |> cons End
       |> rev
       |> map print_report
       |> split_list

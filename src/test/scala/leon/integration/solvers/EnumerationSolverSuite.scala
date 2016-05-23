@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.integration.solvers
 
@@ -11,7 +11,7 @@ import leon.LeonContext
 
 class EnumerationSolverSuite extends LeonSolverSuite {
   def getSolver(implicit ctx: LeonContext, pgm: Program) = {
-    new EnumerationSolver(ctx, pgm)
+    new EnumerationSolver(ctx.toSctx, pgm)
   }
 
   val sources = Nil

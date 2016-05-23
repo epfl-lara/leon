@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 package termination
@@ -20,7 +20,7 @@ object TerminationPhase extends SimpleLeonPhase[Program, TerminationReport] {
     val fdFilter = {
       import OptionsHelpers._
 
-      filterInclusive(ctx.findOption(SharedOptions.optFunctions).map(fdMatcher(program)), Some(excludeByDefault _))
+      filterInclusive(ctx.findOption(GlobalOptions.optFunctions).map(fdMatcher(program)), Some(excludeByDefault _))
     }
 
     val toVerify = tc.program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
@@ -30,6 +30,6 @@ object TerminationPhase extends SimpleLeonPhase[Program, TerminationReport] {
     }
     val endTime = System.currentTimeMillis
 
-    new TerminationReport(ctx, results, (endTime - startTime).toDouble / 1000.0d)
+    new TerminationReport(ctx, tc.program, results, (endTime - startTime).toDouble / 1000.0d)
   }
 }

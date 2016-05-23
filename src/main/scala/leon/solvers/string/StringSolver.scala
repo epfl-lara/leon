@@ -1,13 +1,9 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.solvers.string
 
 import leon.purescala.Common._
-import leon.purescala.Definitions._
-import leon.purescala.Expressions._
-import leon.solvers.Solver
-import leon.utils.Interruptible
-import leon.LeonContext
 import scala.collection.mutable.ListBuffer
-import vanuatoo.Pattern
 import scala.annotation.tailrec
 
 /**
@@ -73,6 +69,26 @@ object StringSolver {
   def reduceProblem(s: Assignment, acc: ListBuffer[Equation] = ListBuffer())(p: Problem): Problem = p match {
     case Nil => acc.toList
     case ((sf, rhs)::q) => reduceProblem(s, acc += ((reduceStringForm(s)(sf): StringForm, rhs)))(q)
+  }
+  
+  /** Computes a foldable property on the problem */
+  def fold[T](init: T, s: StringFormToken => T, f: (T, T) => T)(p: Problem) = {
+    p.view.foldLeft(init) {
+      case (t, (lhs, rhs)) =>
+        lhs.view.foldLeft(t) {
+          case (t, sft) => f(t, s(sft))
+        }
+    }
+  }
+  
+  /** Returns true if there is a StringFormToken which satisfies the given property */
+  def exists(s: StringFormToken => Boolean)(p: Problem) = fold[Boolean](false, s, _ || _)(p)
+  /** Counts the number of StringFormToken which satisfy the given property */
+  def count(s: StringFormToken => Boolean)(p: Problem) = fold[Int](0, s andThen (if(_) 1 else 0), _ + _)(p)
+  
+  /** Maps every StringFormToken of the problem to create a new one */
+  def map(s: StringFormToken => StringFormToken)(p: Problem): Problem = {
+    p.map { case (lhs, rhs) => (lhs map s, rhs) }
   }
   
   /** Returns true if the assignment is a solution to the problem */
@@ -285,7 +301,7 @@ object StringSolver {
             (constants match {
               case Some(_) => None
               case None => // Ok now let's assign all variables to empty string.
-                val newMap = (ids.collect{ case Right(id) => id -> ""})
+                val newMap = ids.collect { case Right(id) => id -> "" }
                 val newAssignments = (Option(assignments) /: newMap) {
                   case (None, (id, rhs)) => None 
                   case (Some(a), (id, rhs)) => 
@@ -308,7 +324,7 @@ object StringSolver {
             }
             // Check if constants form a partition in the string, i.e. getting the .indexOf() the first time is the only way to split the string.
             
-            if(constants.length > 0) {
+            if(constants.nonEmpty) {
               
               var pos = -2
               var lastPos = -2
@@ -325,7 +341,7 @@ object StringSolver {
               if(invalid) None else {
                 val i = rhs.indexOfSlice(lastConst, lastPos + 1)
                 if(i == -1) { // OK it's the smallest position possible, hence we can split at the last position.
-                  val (before, constant, after) = splitAtLastConstant(ids)
+                  val (before, _, after) = splitAtLastConstant(ids)
                   val firstConst = rhs.substring(0, lastPos)
                   val secondConst = rhs.substring(lastPos + lastConst.length)
                   constantPropagate((before, firstConst)::(after, secondConst)::q, assignments, newProblem)
@@ -360,7 +376,7 @@ object StringSolver {
       }
       constantPropagate(p).map(ps => {
         val newP = if(ps._2.nonEmpty) reduceProblem(ps._2)(p) else p
-        (ps._1, s ++ ps._2)
+        (newP, s ++ ps._2)
       })
     }
   }
@@ -413,12 +429,12 @@ object StringSolver {
       case List(x) => 
         Stream(Map(x -> rhs))
       case x :: ys => 
-        val (bestVar, bestScore, worstScore) = (((None:Option[(Identifier, Int, Int)]) /: ids) {
+        val (bestVar, bestScore, worstScore) = ((None: Option[(Identifier, Int, Int)]) /: ids) {
           case (None, x) => val sx = statistics(x)
             Some((x, sx, sx))
           case (s@Some((x, i, ws)), y) => val yi = statistics(y)
-            if(i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
-        }).get
+            if (i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
+        }.get
         val pos = prioritizedPositions(rhs)
         val numBestVars = ids.count { x => x == bestVar }
 
@@ -460,11 +476,11 @@ object StringSolver {
           }
           //println("Best variable:" + bestVar + " going to test " + strings.toList)
           
-          (for(str <- strings.distinct
+          for (str <- strings.distinct
                if java.util.regex.Pattern.quote(str).r.findAllMatchIn(rhs).length >= numBestVars
           ) yield {
             Map(bestVar -> str)
-          })
+          }
         }
     }
   }
@@ -494,7 +510,7 @@ object StringSolver {
     for((lhs, rhs) <- p) {
       val constants = lhs.collect{ case Left(constant) => constant }
       val identifiers_grouped = ListBuffer[List[Identifier]]()
-      var current_buffer = ListBuffer[Identifier]()
+      val current_buffer = ListBuffer[Identifier]()
       for(e <- lhs) e match {
         case Left(constant) => // At this point, there is only one constant here.
           identifiers_grouped.append(current_buffer.toList)
@@ -521,7 +537,7 @@ object StringSolver {
         minIdentifiersGrouped = identifiers_grouped.toList
       }
     }
-    val (lhs, rhs) = minStatement
+    val (_, rhs) = minStatement
     val constants = minConstants
     val identifiers_grouped = minIdentifiersGrouped
     val statistics = stats(p)
@@ -583,7 +599,7 @@ object StringSolver {
   /** Supposes that all variables are transitively bounded by length*/
   type GeneralProblem = List[GeneralEquation]
   
-  def variablesStringForm(sf: StringForm): Set[Identifier] = (sf.collect{ case Right(id) => id }).toSet
+  def variablesStringForm(sf: StringForm): Set[Identifier] = sf.collect { case Right(id) => id }.toSet
   def variables(gf: GeneralEquation): Set[Identifier] = variablesStringForm(gf._1) ++ variablesStringForm(gf._2)
   
   /** Returns true if the problem is transitively bounded */
@@ -591,7 +607,7 @@ object StringSolver {
     def isBounded(sf: GeneralEquation) = {
       variablesStringForm(sf._1).forall(transitivelyBounded) || variablesStringForm(sf._2).forall(transitivelyBounded)
     }
-    val (bounded, notbounded) = b.partition(isBounded _)
+    val (bounded, notbounded) = b.partition(isBounded)
     
     if(notbounded == Nil) true
     else if(notbounded == b) false
@@ -625,5 +641,75 @@ object StringSolver {
     solve(bounded).flatMap(assignment => {
       solveGeneralProblem(unbounded.map(reduceGeneralEquation(assignment)(_))).map(assignment ++ _)
     })
+  }
+  
+  
+  ////////////////////////////////////////////////
+  ////      Incremental problem extension     ////
+  ////////////////////////////////////////////////
+  
+  /** Returns all subsets of i elements of a sequence. */
+  def take[A](i: Int, of: Seq[A]): Stream[Seq[A]] = {
+    if(i > of.size || i < 0) Stream.empty
+    else if(i == of.size) Stream(of)
+    else if(i == 0) Stream(Seq.empty)
+    else {
+      take(i - 1, of.tail).map(of.head +: _) #::: take(i, of.tail)
+    }
+  }
+  
+  /** For each variable from `ifVariable`, if it occurs only once, it will do nothing.
+   *  If it occurs at least twice, it will first duplicate the problem with every but 1 occurrence of this variable set to its initialMapping.*/
+  def keepEachOccurenceSeparatlyAndThenAllOfThem(p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Problem] = {
+    ifVariable.foldLeft(Stream(p)){
+      case (problems, v) =>
+        val c = count(s => s == Right(v))(p)
+        if(c == 1) {
+          problems
+        } else {
+          val originalValue = initialMapping(v)
+          for{p <- problems
+              i <- (1 to c).toStream} yield {
+            var index = 0
+            map{ case r@Right(`v`) =>
+              index += 1
+              if(index != i) Left(originalValue) else r
+            case e => e}(p)
+          }
+        }
+    }
+  }
+  
+  /** If the stream is not empty and there are more than two variables,
+   *  it will try to assign values to variables which minimize changes.
+   *  It will try deletions from the end and from the start of one variable.
+   * */
+  def minimizeChanges(s: Stream[Assignment], p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Assignment] = {
+    if(s.isEmpty || ifVariable.size <= 1) s else {
+      ((for{v <- ifVariable.toStream
+          originalValue = initialMapping(v)
+          i <- originalValue.length to 0 by -1
+          prefix <- (if(i == 0 || i == originalValue.length) List(true) else List(true, false))
+          possibleValue = (if(prefix) originalValue.substring(0, i) else originalValue.substring(originalValue.length - i))
+          s <- solve(reduceProblem(Map(v -> possibleValue))(p))
+         } yield s + (v -> possibleValue)) ++ s).distinct
+    }
+  }
+  
+  /** Solves the problem while supposing that a minimal number of variables have been changed.
+   *  Will try to replace variables from the left first.
+   *  If a variable occurs multiple times, will try to replace each of its occurrence first.
+   *  */
+  def solveMinChange(p: Problem, initialMapping: Assignment): Stream[Assignment] = {
+    // First try to see if the problem is solved. If yes, returns the initial mapping
+    val initKeys = initialMapping.keys.toSeq
+    for{
+      i <- (0 to initialMapping.size).toStream
+      toReplace <- take(i, initKeys)
+      ifVariable = toReplace.toSet
+      newProblems = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
+      newProblem <- keepEachOccurenceSeparatlyAndThenAllOfThem(newProblems, ifVariable, initialMapping)
+      solution <- minimizeChanges(solve(newProblem), newProblem, ifVariable, initialMapping: Assignment)
+    } yield solution
   }
 }

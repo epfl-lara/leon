@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.codegen.runtime;
 
@@ -23,6 +23,10 @@ public final class Set {
     _underlying = new HashSet<Object>(Arrays.asList(elements));
   }
 
+  private Set(HashSet<Object> u) {
+    _underlying = u;
+  }
+
   // Uses mutation! Useful at building time.
   public void add(Object e) {
     _underlying.add(e);
@@ -32,12 +36,14 @@ public final class Set {
     return _underlying.iterator();
   }
 
-  private Set(HashSet<Object> u) {
-    _underlying = u;
-  }
-
   public boolean contains(Object element) {
     return _underlying.contains(element);
+  }
+
+  public Set plus(Object e) {
+    Set n = new Set(new HashSet<Object>(_underlying));
+    n.add(e);
+    return n;
   }
 
   public boolean subsetOf(Set s) {

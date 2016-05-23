@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package transformations
 
@@ -14,6 +16,7 @@ import invariant.util._
 import Util._
 import ProgramUtil._
 import PredicateUtil._
+import TypeUtil._
 import invariant.structure._
 
 abstract class ProgramTypeTransformer {
@@ -37,7 +40,7 @@ abstract class ProgramTypeTransformer {
             val absType = ccdef.parent.get
             Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
           } else None
-          val newclassDef = ccdef.copy(id = FreshIdentifier(ccdef.id.name, ccdef.id.getType, true), parent = newparent)
+          val newclassDef = ccdef.duplicate(id = FreshIdentifier(ccdef.id.name, ccdef.id.getType, true), parent = newparent)
 
           //important: register a child if a parent was newly created.
           if (newparent.isDefined)
@@ -52,7 +55,7 @@ abstract class ProgramTypeTransformer {
             val absType = acdef.parent.get
             Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
           } else None
-          val newClassDef = acdef.copy(id = FreshIdentifier(acdef.id.name, acdef.id.getType, true), parent = newparent)
+          val newClassDef = acdef.duplicate(id = FreshIdentifier(acdef.id.name, acdef.id.getType, true), parent = newparent)
           defmap += (acdef -> newClassDef)
           newClassDef.asInstanceOf[T]
       }

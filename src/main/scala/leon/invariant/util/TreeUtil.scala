@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon
 package invariant.util
 
@@ -16,6 +18,7 @@ import FunctionUtils._
 import scala.annotation.tailrec
 import PredicateUtil._
 import ProgramUtil._
+import TypeUtil._
 import Util._
 import solvers._
 import purescala.DefOps._
@@ -34,11 +37,48 @@ object ProgramUtil {
   def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])): Program = {
     prog.copy(units = prog.units.collect {
       case unit if unit.defs.nonEmpty => unit.copy(defs = unit.defs.collect {
-        case module : ModuleDef  if module.defs.nonEmpty =>
+        case module: ModuleDef if module.defs.nonEmpty =>
           module.copy(defs = mapdefs(module.defs))
         case other => other
       })
     })
+  }
+
+  def appendDefsToModules(p: Program, defs: Map[ModuleDef, Traversable[Definition]]): Program = {
+    val res = p.copy(units = for (u <- p.units) yield {
+      u.copy(
+        defs = u.defs.map {
+          case m: ModuleDef if defs.contains(m) =>
+            m.copy(defs = m.defs ++ defs(m))
+          case other => other
+        })
+    })
+    res
+  }
+
+  def addDefs(p: Program, defs: Traversable[Definition], after: Definition): Program = {
+    var found = false
+    val res = p.copy(units = for (u <- p.units) yield {
+      u.copy(
+        defs = u.defs.map {
+          case m: ModuleDef =>
+            val newdefs = for (df <- m.defs) yield {
+              df match {
+                case `after` =>
+                  found = true
+                  after +: defs.toSeq
+                case d =>
+                  Seq(d)
+              }
+            }
+            m.copy(defs = newdefs.flatten)
+          case other => other
+        })
+    })
+    if (!found) {
+      println("addDefs could not find anchor definition!")
+    }
+    res
   }
 
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
@@ -79,23 +119,23 @@ object ProgramUtil {
   }
 
   /**
-   * For functions for which `funToTmpl` is not defined, their templates
-   * will be removed
+   * For functions for which `funToTmpl` is not defined, their templates will be removed.
+   * Will only consider user-level functions.
    */
   def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
-      funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay : Boolean = true): Program = {
+                                  funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = false): Program = {
 
-    val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
-      case (accMap, fd) if fd.isTheoryOperation =>
-        accMap + (fd -> fd)
+    val keys = funToTmpl.keySet ++ funToPost.keySet
+    val userLevelFuns = userLevelFunctions(prog).toSet
+    if(!keys.diff(userLevelFuns).isEmpty)
+      throw new IllegalStateException("AssignTemplate function called on library functions: "+ keys.diff(userLevelFuns))
+
+    val funMap = userLevelFuns.foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) => {
         val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
-        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-        accMap.updated(fd, newfd)
+        accMap + (fd -> new FunDef(freshId, fd.tparams, fd.params, fd.returnType))
       }
     }
-
-    // FIXME: This with createAnd (which performs simplifications) gives an error during composition.
     val mapExpr = mapFunctionsInExpr(funMap) _
     for ((from, to) <- funMap) {
       to.fullBody = if (!funToTmpl.contains(from)) {
@@ -148,6 +188,39 @@ object ProgramUtil {
     newprog
   }
 
+  def updatePost(funToPost: Map[FunDef, Lambda], prog: Program, uniqueIdDisplay: Boolean = true): Program = {
+
+    val funMap = userLevelFunctions(prog).foldLeft(Map[FunDef, FunDef]()) {
+      case (accMap, fd) =>
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
+        accMap + (fd -> new FunDef(freshId, fd.tparams, fd.params, fd.returnType))
+    }
+    val mapExpr = mapFunctionsInExpr(funMap) _
+    for ((from, to) <- funMap) {
+      to.fullBody = if (!funToPost.contains(from)) {
+        mapExpr(from.fullBody)
+      } else {
+        val newpost = funToPost(from)
+        mapExpr {
+          from.fullBody match {
+            case Ensuring(body, post) =>
+              Ensuring(body, newpost) // replace the old post with new post
+            case body =>
+              Ensuring(body, newpost)
+          }
+        }
+      }
+      //copy annotations
+      from.flags.foreach(to.addFlag(_))
+    }
+    val newprog = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
+      case fd: FunDef if funMap.contains(fd) =>
+        funMap(fd)
+      case d => d
+    })
+    newprog
+  }
+
   def functionByName(nm: String, prog: Program) = {
     prog.definedFunctions.find(fd => fd.id.name == nm)
   }
@@ -157,17 +230,36 @@ object ProgramUtil {
   }
 
   def functionsWOFields(fds: Seq[FunDef]): Seq[FunDef] = {
-    fds.filter(_.isRealFunction)
+    fds.filter(fd => fd.isRealFunction)
+  }
+
+  /**
+   * Functions that are not theory-operations or library methods that are not a part of the main unit
+   */
+  def userLevelFunctions(program: Program): Seq[FunDef] = {
+    program.units.flatMap { u =>
+      u.definedFunctions.filter(fd => !fd.isTheoryOperation && (u.isMainUnit || !(fd.isLibrary || fd.isInvariant)))
+    }
   }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
+    var funCache = Map[String, Option[FunDef]]()
+    def funInNewprog(fn: String) =
+      funCache.get(fn) match {
+        case None =>
+          val fd = functionByFullName(fn, newProg)
+          funCache += (fn -> fd)
+          fd
+        case Some(fd) => fd
+      }
     simplePostTransform {
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        functionByName(fullName(fd)(currProg), newProg) match {
+        val fname = fullName(fd)(currProg)
+        funInNewprog(fname) match {
           case Some(nfd) =>
             FunctionInvocation(TypedFunDef(nfd, tps), args)
           case _ =>
-            throw new IllegalStateException(s"Cannot find translation for ${fd.id.name}")
+            throw new IllegalStateException(s"Cannot find translation for ${fname}")
         }
       case e => e
     }(ine)
@@ -199,26 +291,47 @@ object ProgramUtil {
 }
 
 object PredicateUtil {
+  /**
+   * Returns a constructor for the let* and also the current
+   * body of let*
+   */
+  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
+    case Let(binder, letv, letb) =>
+      val (cons, body) = letStarUnapply(letb)
+      (e => Let(binder, letv, cons(e)), body)
+    case base =>
+      (e => e, base)
+  }
+
+  def letStarUnapplyWithSimplify(e: Expr): (Expr => Expr, Expr) = {
+    val (letCons, letBody) = letStarUnapply(e)
+    (letCons andThen simplifyLets, letBody)
+  }
 
   /**
    * Checks if the input expression has only template variables as free variables
    */
   def isTemplateExpr(expr: Expr): Boolean = {
     var foundVar = false
-    simplePostTransform {
-      case e@Variable(id) => {
+    postTraversal {
+      case e @ Variable(id) =>
         if (!TemplateIdFactory.IsTemplateIdentifier(id))
           foundVar = true
-        e
-      }
-      case e@ResultVariable(_) => {
+      case e @ ResultVariable(_) =>
         foundVar = true
-        e
-      }
-      case e => e
+      case e =>
     }(expr)
-
     !foundVar
+  }
+
+  def isArithmeticRelation(e: Expr) = {
+    e match {
+      case Equals(l, r) =>
+        if (l.getType == Untyped) None
+        else Some(TypeUtil.isNumericType(l.getType))
+      case _: LessThan | _: LessEquals | _: GreaterThan | _: GreaterEquals => Some(true)
+      case _ => Some(false)
+    }
   }
 
   def getTemplateIds(expr: Expr) = {
@@ -234,14 +347,27 @@ object PredicateUtil {
    */
   def hasReals(expr: Expr): Boolean = {
     var foundReal = false
-    simplePostTransform {
-      case e => {
-        if (e.getType == RealType)
+    postTraversal {
+      case e if e.getType == RealType =>
           foundReal = true
-        e
-      }
+      case _ =>
     }(expr)
     foundReal
+  }
+
+  /**
+   * Checks if the expression has real valued sub-expressions.
+   */
+  def hasRealsOrTemplates(expr: Expr): Boolean = {
+    var found = false
+    postTraversal {
+      case Variable(id) if id.getType == RealType || TemplateIdFactory.IsTemplateIdentifier(id) =>
+        found = true
+      case e if e.getType == RealType =>
+        found = true
+      case _ =>
+    }(expr)
+    found
   }
 
   /**
@@ -252,12 +378,10 @@ object PredicateUtil {
    */
   def hasInts(expr: Expr): Boolean = {
     var foundInt = false
-    simplePostTransform {
-      case e: Terminal if (e.getType == Int32Type || e.getType == IntegerType) => {
+    postTraversal {
+      case e: Terminal if (e.getType == Int32Type || e.getType == IntegerType) =>
         foundInt = true
-        e
-      }
-      case e => e
+      case _ =>
     }(expr)
     foundInt
   }
@@ -266,26 +390,21 @@ object PredicateUtil {
     hasInts(expr) && hasReals(expr)
   }
 
-  def atomNum(e: Expr): Int = {
-    var count: Int = 0
-    simplePostTransform {
-      case e@And(args) => {
-        count += args.size
-        e
-      }
-      case e@Or(args) => {
-        count += args.size
-        e
-      }
-      case e => e
-    }(e)
-    count
+  /**
+   * Assuming a flattenned formula
+   */
+  def atomNum(e: Expr): Int = e match {
+    case And(args)         => (args map atomNum).sum
+    case Or(args)          => (args map atomNum).sum
+    case IfExpr(c, th, el) => atomNum(c) + atomNum(th) + atomNum(el)
+    case Not(arg)          => atomNum(arg)
+    case e                 => 1
   }
 
   def numUIFADT(e: Expr): Int = {
     var count: Int = 0
     simplePostTransform {
-      case e@(FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_)) => {
+      case e @ (FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_)) => {
         count += 1
         e
       }
@@ -316,8 +435,8 @@ object PredicateUtil {
 
   def isADTConstructor(e: Expr): Boolean = e match {
     case Equals(Variable(_), CaseClass(_, _)) => true
-    case Equals(Variable(_), Tuple(_)) => true
-    case _ => false
+    case Equals(Variable(_), Tuple(_))        => true
+    case _                                    => false
   }
 
   def isMultFunctions(fd: FunDef) = {
@@ -338,23 +457,52 @@ object PredicateUtil {
   def createAnd(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(conj => conj == tru)
     newExprs match {
-      case Seq() => tru
+      case Seq()  => tru
       case Seq(e) => e
-      case _ => And(newExprs)
+      case _      => And(newExprs)
     }
   }
 
   def createOr(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(disj => disj == fls)
     newExprs match {
-      case Seq() => fls
+      case Seq()  => fls
       case Seq(e) => e
-      case _ => Or(newExprs)
+      case _      => Or(newExprs)
     }
   }
 
-  def isNumericType(t: TypeTree) = t match {
-    case IntegerType | RealType => true
-    case _ => false
+  def precOrTrue(fd: FunDef): Expr = fd.precondition match {
+    case Some(pre) => pre
+    case None      => BooleanLiteral(true)
+  }
+
+  /**
+   * Computes the set of variables that are shared across disjunctions.
+   * This may return bound variables as well
+   */
+  def sharedIds(ine: Expr): Set[Identifier] = {
+
+    def sharedOfDisjointExprs(args: Seq[Expr]) = {
+      var uniqueVars = Set[Identifier]()
+      var sharedVars = Set[Identifier]()
+      args.foreach { arg =>
+        val candUniques = variablesOf(arg) -- sharedVars
+        val newShared = uniqueVars.intersect(candUniques)
+        sharedVars ++= newShared
+        uniqueVars = (uniqueVars ++ candUniques) -- newShared
+      }
+      sharedVars ++ (args flatMap rec)
+    }
+    def rec(e: Expr): Set[Identifier] =
+      e match {
+        case Or(args) => sharedOfDisjointExprs(args)
+        case IfExpr(c, th, el) =>
+          rec(c) ++ sharedOfDisjointExprs(Seq(th, el))
+        case Variable(_) => Set()
+        case Operator(args, op) =>
+          (args flatMap rec).toSet
+      }
+    rec(ine)
   }
 }

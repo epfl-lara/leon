@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.regression.termination
 
@@ -33,8 +33,10 @@ class TerminationSuite extends LeonRegressionSuite {
     }
 
     val ignored = List(
-      "verification/purescala/valid/MergeSort.scala",
-      "verification/purescala/valid/Nested14.scala"
+      "termination/valid/NNF.scala",
+      //"verification/purescala/valid/MergeSort.scala",
+      "verification/purescala/valid/Nested14.scala",
+      "verification/purescala/valid/MergeSort2.scala"
     )
 
     val t = if (ignored.exists(displayName.replaceAll("\\\\","/").endsWith)) {
@@ -66,7 +68,7 @@ class TerminationSuite extends LeonRegressionSuite {
 
   private def forEachFileIn(files: Iterable[File], forError: Boolean = false)(block : Output=>Unit) {
     for(f <- files) {
-      mkTest(f, Seq(), forError)(block)
+      mkTest(f, Seq("--solvers=smt-z3", "--timeout=150"), forError)(block)
     }
   }
 

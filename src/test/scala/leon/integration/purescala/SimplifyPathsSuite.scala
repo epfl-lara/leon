@@ -1,4 +1,4 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon.integration.purescala
 
@@ -25,7 +25,7 @@ class SimplifyPathsSuite extends LeonTestSuite {
   val l2 = InfiniteIntegerLiteral(2)
 
   def simplifyPaths(ctx: LeonContext, expr: Expr): Expr = {
-    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, Program.empty))
+    val uninterpretedZ3 = SolverFactory.getFromName(ctx, Program.empty)("nativez3-u")
     try {
       ExprOps.simplifyPaths(uninterpretedZ3)(expr)
     } finally {
@@ -50,10 +50,9 @@ class SimplifyPathsSuite extends LeonTestSuite {
       MatchCase(LiteralPattern(None, BooleanLiteral(false)), None, Not(cV))
 
     ))
-    val exp = cV
 
     val out = simplifyPaths(ctx, in)
-    assert(out === exp)
+    assert(out.asInstanceOf[MatchExpr].cases.size == 1)
   }
 
   test("Simplify Paths 03 - ") { ctx =>
@@ -86,5 +85,17 @@ class SimplifyPathsSuite extends LeonTestSuite {
 
     val out = simplifyPaths(ctx, in)
     assert(out === exp)
+  }
+
+  test("Simplify Paths 04 - error - 1") { ctx =>
+    val in = And(Error(BooleanType, ""), aV)
+    val out = simplifyPaths(ctx, in)
+    assert(out === in)
+  }
+
+  test("Simplify Paths 05 - error - 2") { ctx =>
+    val in = And(BooleanLiteral(false), Error(BooleanType, ""))
+    val out = simplifyPaths(ctx, in)
+    assert(out === BooleanLiteral(false))
   }
 }
