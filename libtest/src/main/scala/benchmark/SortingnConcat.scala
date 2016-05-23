@@ -6,21 +6,14 @@ import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
 import leon.collection._
+import leon.runtimeDriver._
 
-object SortingnConcat {
-  abstract class LList
-  
+object SortingnConcat {  
   abstract class LList2
-  
-  case class SCons(x : BigInt, tailFun : Stream) extends LList
-  
+
   case class SCons1(x316 : BigInt, tailFun1 : Stream2) extends LList2
   
-  case class SNil() extends LList
-  
   case class SNil1() extends LList2
-  
-  case class Stream(lfun : () => LList)
   
   case class Stream2(lfun1 : () => (LList2, BigInt))
   
@@ -96,6 +89,27 @@ object SortingnConcat {
         (BigInt(0), BigInt(3) + scr1._2)
     }
     (bd2._1, bd2._2)
+  }
+
+   def main(args: Array[String]): Unit = {
+    import scala.util.Random
+    val rand = Random
+
+    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
+    val size = points.map(x => BigInt(2*x)).toList
+    var ops = List[() => BigInt]()
+    var orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = {
+        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
+          Cons(n, f)  
+        }
+      }
+      ops :+= {() => sorttime(input)._2}
+      orb :+= {() => 11 * i + 35}
+    }
+
+    run(size, ops, orb)
   }
 }
 
