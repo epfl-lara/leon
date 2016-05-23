@@ -385,12 +385,35 @@ case object StringRender extends Rule("StringRender") {
     
     case class GrammarBasedTemplateGenerator(grammar: Grammar, inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) {
       // TODO: Too much to introduce vertical context for every type. Need more refinement.
-      def markovize_vertical(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_vertical())
+      def markovize_vertical() = copy(grammar=grammar.markovize_vertical())
       // TODO: Too much to introduce horizontal context for every type. Need more refinement.
-      def markovize_horizontal(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_horizontal())
+      def markovize_horizontal() = copy(grammar=grammar.markovize_horizontal())
       // TODO: Too much to introduce abstract vertical context for every type. Need more refinement.
-      def markovize_abstract_vertical(): GrammarBasedTemplateGenerator = copy(grammar=grammar.markovize_abstract_vertical())
+      def markovize_abstract_vertical() = copy(grammar=grammar.markovize_abstract_vertical())
       
+      def getAllTypes(): Set[TypeTree] = {
+        grammar.rules.keys.map(_.tag).toSet
+      }
+      
+      /** Monitoring data in the grammar */
+      // Find all non-terminals which have a rule that use this type tree.
+      def getCallsfor(e: TypeTree): Seq[(NonTerminal, Expansion)] = {
+        grammar.rules.toSeq.filter{ case (k, v) => v.ls.exists(l => l.exists ( _.tag == e ))}
+      }
+      // Find all non-terminals which have the type tree on the RHS at least twice in the same rule.
+      def getDuplicateCallsInSameRuleFor(e: TypeTree): Seq[(NonTerminal, Expansion)] = {
+        grammar.rules.toSeq.filter{ case (k, v) => v.ls.exists(l => l.count ( _.tag == e ) >= 2)}
+      }
+      // Return types which call themselves in argument (and which might require vertical markovization).
+      def getDirectlyRecursiveTypes(): Seq[(NonTerminal, Expansion)] = {
+        grammar.rules.toSeq.filter{ case (k, v) => v match {
+          case VerticalRHS(children) => children.exists(child => grammar.rules(child) match {
+            case HorizontalRHS(t, arguments) => arguments.exists(_.tag == k)
+            case _ => false
+          })
+          case _ => false
+        }}
+      }
       
       /** Builds a set of fun defs out of the grammar */
       // TODO: The set of fundefs might even be a stream (e.g. with markovization...?)

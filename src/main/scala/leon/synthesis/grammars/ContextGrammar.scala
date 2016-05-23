@@ -120,9 +120,8 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       Grammar(start, newRules2)
     }
     
-    /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
-      * Is idempotent. */
-    def markovize_horizontal(): Grammar = {
+    /** Perform horizontal markovization only on the provided non-terminals. */
+    def markovize_horizontal_filtered(pred: NonTerminal => Boolean): Grammar = {
       val nts = nonTerminals
       val rulesSeq = rules.toSeq
       def newHorizontalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
@@ -132,9 +131,11 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       
       object Mapping extends NonTerminalMapping {
         def updateMapping(nt: NonTerminal, leftContext: List[Symbol]): NonTerminal = {
-          val res = nt.copy(hcontext = leftContext)
-          mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-          res
+          if(pred(nt)) {
+            val res = nt.copy(hcontext = leftContext)
+            mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+            res
+          } else nt
         }
         
         def apply(elem: NonTerminal) = mapping.getOrElse(elem, List(elem))
@@ -162,6 +163,12 @@ class ContextGrammar[SymbolTag, TerminalTag] {
         }).toMap
       val newRules2 =Mapping.mapKeys(newRules)
       Grammar(newStart, newRules2.toMap)
+    }
+    
+    /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
+      * Is idempotent. */
+    def markovize_horizontal(): Grammar = {
+      markovize_horizontal_filtered(_ => true)
     }
     
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy"

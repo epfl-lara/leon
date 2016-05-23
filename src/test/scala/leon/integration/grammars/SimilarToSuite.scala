@@ -14,8 +14,8 @@ import leon.purescala.Types._
 import leon.codegen._
 import synthesis._
 import bonsai.enumerators._
-import grammars._
-import grammars.aspects.SimilarTo
+import leon.grammars._
+import leon.grammars.aspects.SimilarTo
 
 class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
 
