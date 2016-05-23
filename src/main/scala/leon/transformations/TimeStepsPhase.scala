@@ -31,14 +31,14 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
 
   def inst = Time
 
-  val (funsToInst, funTypesToInst) = {    
-    val funToFTypes = userLevelFunctions(p).map { fd => 
-      def rec(e: Expr): Set[CompatibleType] = e match {     
+  val (funsToInst, funTypesToInst) = {
+    val funToFTypes = userLevelFunctions(p).map { fd =>
+      def rec(e: Expr): Set[CompatibleType] = e match {
         case NoTree(_) => Set()
         case l@Lambda(_, b) => rec(b) + new CompatibleType(l.getType)
         case Ensuring(b, Lambda(_, p)) => rec(b) ++ rec(p)
         case Operator(args, op) => args.toSet flatMap rec
-      }      
+      }
       fd -> rec(fd.fullBody)
     }.toMap
     var instFuns = getRootFuncs()
@@ -54,16 +54,16 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
             case _ => Set()
           }(ifd.body.get)
         case _ => Set[CompatibleType]()
-      }         
+      }
       // (b) find all userLevelFunctions that may create a lambda compatible with the types of the application.
-      val newRoots = funToFTypes.collect { 
-        case (fd, ftypes) if !ftypes.intersect(appTypes).isEmpty => fd        
+      val newRoots = funToFTypes.collect {
+        case (fd, ftypes) if !ftypes.intersect(appTypes).isEmpty => fd
       }
       // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
       val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
       //println("nextFunSet: "+nextFunSet.map(_.id))
       newFuns = nextFunSet -- instFuns
-      instFuns ++= nextFunSet      
+      instFuns ++= nextFunSet
       instFunTypes ++= appTypes
     }
     (instFuns, instFunTypes)
@@ -73,58 +73,45 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
     funsToInst.map(x => (x, List(Time))).toMap
   }
-  
+
   def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
     funTypesToInst.map(x => (x, List(Time))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
 
+  def patternCost(pattern: Pattern, innerPat: Boolean, countLeafs: Boolean): Int = {
+    pattern match {
+      case InstanceOfPattern(_, _) => {
+        if (innerPat) 2 else 1
+      }
+      case WildcardPattern(None) => 0
+      case WildcardPattern(Some(id)) => {
+        if (countLeafs && innerPat) 1
+        else 0
+      }
+      case CaseClassPattern(_, _, subPatterns) => {
+        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
+          acc + patternCost(subPat, true, countLeafs))
+      }
+      case TuplePattern(_, subPatterns) => {
+        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
+          acc + patternCost(subPat, true, countLeafs))
+      }
+      case LiteralPattern(_, _) => if (innerPat) 2 else 1
+      case _ =>
+        throw new NotImplementedError(s"Pattern $pattern not handled yet!")
+    }
+  }
+
   /**
    * Computes the complete cost of match
    */
-  def instrumentMatchCase(
-    me: MatchExpr,
-    mc: MatchCase,
-    caseExprCost: Expr,
-    scrutineeCost: Expr): Expr = {
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     val costMatch = costOfExpr(me)
-
-    def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = {
-
-      def patCostRecur(pattern: Pattern, innerPat: Boolean, countLeafs: Boolean): Int = {
-        pattern match {
-          case InstanceOfPattern(_, _) => {
-            if (innerPat) 2 else 1
-          }
-          case WildcardPattern(None) => 0
-          case WildcardPattern(Some(id)) => {
-            if (countLeafs && innerPat) 1
-            else 0
-          }
-          case CaseClassPattern(_, _, subPatterns) => {
-            (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-              acc + patCostRecur(subPat, true, countLeafs))
-          }
-          case TuplePattern(_, subPatterns) => {
-            (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-              acc + patCostRecur(subPat, true, countLeafs))
-          }
-          case LiteralPattern(_, _) => if (innerPat) 2 else 1
-          case _ =>
-            throw new NotImplementedError(s"Pattern $pattern not handled yet!")
-        }
-      }
-
-      me.cases.take(me.cases.indexOf(mc)).foldLeft(0)(
-        (acc, currCase) => acc + patCostRecur(currCase.pattern, false, false)) +
-        patCostRecur(mc.pattern, false, true)
-    }
-
-    Plus(costMatch, Plus(
-      Plus(InfiniteIntegerLiteral(totalCostOfMatchPatterns(me, mc)),
-        caseExprCost),
-      scrutineeCost))
+    val cumulativeCostOfPattern = me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) +
+        patternCost(mc.pattern, false, true)
+    Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
   }
 
   def instrument(e: Expr, subInsts: Seq[Expr], funInvResVar: Option[Variable] = None)

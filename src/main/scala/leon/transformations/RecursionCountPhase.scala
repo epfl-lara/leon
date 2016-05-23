@@ -27,9 +27,9 @@ class RecursionCountInstrumenter(p: Program, si: SerialInstrumenter) extends Ins
     val instFunSet = getRootFuncs().flatMap(sccs.apply _).filter(_.hasBody)
     instFunSet.map(x => (x, List(Rec))).toMap
   }
-  
+
   // Here, we need not consider calls through lambdas
-  def functionTypesToInstrument() =  Map()  
+  def functionTypesToInstrument() =  Map()
 
   override def additionalfunctionsToAdd(): Seq[FunDef] = Seq.empty[FunDef]
 
@@ -41,10 +41,7 @@ class RecursionCountInstrumenter(p: Program, si: SerialInstrumenter) extends Ins
     }
   }
 
-  def instrumentMatchCase(me: MatchExpr,
-    mc: MatchCase,
-    caseExprCost: Expr,
-    scrutineeCost: Expr): Expr = {
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     Plus(caseExprCost, scrutineeCost)
   }
 

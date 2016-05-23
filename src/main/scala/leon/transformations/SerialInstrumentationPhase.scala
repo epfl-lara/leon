@@ -29,7 +29,14 @@ object InstrumentationPhase extends TransformationPhase {
   val description = "Instruments the program for all counters needed"
 
   def apply(ctx: LeonContext, program: Program): Program = {
-    val si = new SerialInstrumenter(program)
+    val instrumenterFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter] =
+      si =>
+        Map(Time -> new TimeInstrumenter(program, si),
+          Depth -> new DepthInstrumenter(program, si),
+          Rec -> new RecursionCountInstrumenter(program, si),
+          Stack -> new StackSpaceInstrumenter(program, si),
+          TPR -> new TPRInstrumenter(program, si))
+    val si = new SerialInstrumenter(program, instrumenterFactory)
     val instprog = si.apply
     //println("Instrumented Program: "+ScalaPrinter.apply(instprog, purescala.PrinterOptions(printUniqueIds = true)))
     instprog
@@ -37,19 +44,15 @@ object InstrumentationPhase extends TransformationPhase {
 }
 
 class SerialInstrumenter(program: Program,
-                         exprInstOpt: Option[InstruContext => ExprInstrumenter] = None) {
+    instFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter],
+    exprInstOpt: Option[InstruContext => ExprInstrumenter] = None) {
   val debugInstrumentation = false
 
-  val exprInstFactory = exprInstOpt.getOrElse((ictx: InstruContext) => new ExprInstrumenter(ictx))
-  
   val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
-  
-  val instToInstrumenter: Map[Instrumentation, Instrumenter] =
-    Map(Time -> new TimeInstrumenter(program, this),
-      Depth -> new DepthInstrumenter(program, this),
-      Rec -> new RecursionCountInstrumenter(program, this),
-      Stack -> new StackSpaceInstrumenter(program, this),
-      TPR -> new TPRInstrumenter(program, this))
+
+  val exprInstFactory = exprInstOpt.getOrElse((ictx: InstruContext) => new ExprInstrumenter(ictx))
+
+  val instToInstrumenter: Map[Instrumentation, Instrumenter] = instFactory(this)
 
   // a map from functions to the list of instrumentations to be performed for the function
   val (funcInsts, ftypeInsts) = {
@@ -75,12 +78,12 @@ class SerialInstrumenter(program: Program,
   val instFuncs = funcInsts.keySet
   val instFuncTypes = ftypeInsts.keySet
   println(s"instfuncs: ${instFuncs.map(_.id).mkString(",")} instFuncTypes: ${instFuncTypes.mkString(",")}")
-  
-  val hasMemoFuns = {    
-    if(instFuncs.exists{fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) { 
+
+  val hasMemoFuns = {
+    if(instFuncs.exists{fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) {
       println("Warning: found Lazy/memoized functions/fields. To verify the program use --mem option")
       true
-    } else false 
+    } else false
   }
   /**
    * Tracks the instrumentations necessary for a function type
@@ -306,7 +309,7 @@ class SerialInstrumenter(program: Program,
           if (instFuncs(k))
             instrumenters(k).flatMap(_.additionalfunctionsToAdd)
           else List()
-      }.toList.distinct ++ 
+      }.toList.distinct ++
         (if(hasMemoFuns) Seq(lookupFun, updateFun, anyList) else Seq()))
       val mainModule = program.units.find(_.isMainUnit).get.modules.head
       val newprog = copyProgram(program, (defs: Seq[Definition]) =>
@@ -365,18 +368,18 @@ object ExprInstrumenter {
   }
   lazy val updateFun = {
     val tparam = TypeParameter.fresh("T")
-    new FunDef(FreshIdentifier("update", Untyped), Seq(TypeParameterDef(tparam)),   
+    new FunDef(FreshIdentifier("update", Untyped), Seq(TypeParameterDef(tparam)),
       Seq(ValDef(FreshIdentifier("args", anyList.typed)), ValDef(FreshIdentifier("res", tparam))), tparam)
   }
-  
-  // In the following methods, we use the globalId of the identifier of a function 
+
+  // In the following methods, we use the globalId of the identifier of a function
   // to represent the function in the cache.
-  def lookupCall(f: FunctionInvocation, valType: TypeTree) = {    
+  def lookupCall(f: FunctionInvocation, valType: TypeTree) = {
     val argsList = CaseClass(anyList.typed, IntLiteral(f.tfd.fd.id.globalId) +: f.args)
     FunctionInvocation(TypedFunDef(lookupFun, Seq(valType)), Seq(argsList))
   }
-  
-  def updateCall(f: FunctionInvocation, invRes: Expr) = {        
+
+  def updateCall(f: FunctionInvocation, invRes: Expr) = {
     val argsList = CaseClass(anyList.typed, IntLiteral(f.tfd.fd.id.globalId) +: f.args)
     FunctionInvocation(TypedFunDef(updateFun, Seq(invRes.getType)), Seq(argsList, invRes))
   }
@@ -449,11 +452,11 @@ class ExprInstrumenter(ictx: InstruContext) {
     import ictx._
     implicit val currFun = ictx.currFun
     f match {
-      case fi@FunctionInvocation(tfd@TypedFunDef(fd, tps), args) =>      
+      case fi@FunctionInvocation(tfd@TypedFunDef(fd, tps), args) =>
         val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
         val newFunInv = FunctionInvocation(newfd, subeVals)
         //create a variables to store the result of function invocation
-        if (serialInst.instFuncs(fd)) { //this function is also instrumented          
+        if (serialInst.instFuncs(fd)) { //this function is also instrumented
           val funres = Variable(createInstVar("e", newfd.returnType))
           val valexpr = TupleSelect(funres, 1)
           val instexprs = ictx.instrumenters.map { m =>
@@ -462,9 +465,9 @@ class ExprInstrumenter(ictx: InstruContext) {
                 List(selectInst(funres, m.inst))
               } else List() // ignoring fields here
             m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
-          }        
-          if (fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd)) {            
-            // here the invoked function is memoized, so we need to lookup/update the cache    
+          }
+          if (fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd)) {
+            // here the invoked function is memoized, so we need to lookup/update the cache
             // note: the lookup cost would be included while computing the cost of the function
             val lookupres = Variable(FreshIdentifier("lr", TupleType(Seq(BooleanType, newfd.returnType)), true))
             val hitCond = TupleSelect(lookupres, 1)
@@ -472,16 +475,16 @@ class ExprInstrumenter(ictx: InstruContext) {
               val lookupVal = TupleSelect(lookupres, 2)
               // here, we ignore the cost of the callee function completely, as if this is a val field access.
               val hitInstExprs = instrumenters.map(m =>
-                m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres))) 
+                m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres)))
               Tuple(lookupVal +: hitInstExprs)
-            }            
+            }
             val ur = FreshIdentifier("ur", newfd.returnType, true)
-            val missCase = Let(funres.id, newFunInv, Let(ur, 
+            val missCase = Let(funres.id, newFunInv, Let(ur,
                 updateCall(newFunInv, valexpr), Tuple(ur.toVariable +: instexprs)))
-            Let(lookupres.id, lookupCall(newFunInv, valexpr.getType), 
-                IfExpr(hitCond, hitCase, missCase))            
-          } else 
-            Let(funres.id, newFunInv, Tuple(valexpr +: instexprs))          
+            Let(lookupres.id, lookupCall(newFunInv, valexpr.getType),
+                IfExpr(hitCond, hitCase, missCase))
+          } else
+            Let(funres.id, newFunInv, Tuple(valexpr +: instexprs))
         } else {
           val resvar = Variable(createInstVar("e", newFunInv.getType))
           val instexprs = ictx.instrumenters.map { m =>
@@ -667,11 +670,11 @@ class ExprInstrumenter(ictx: InstruContext) {
  * Implements procedures for a specific instrumentation
  */
 abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
-  
-  def inst: Instrumentation  
+
+  def inst: Instrumentation
 
   val cg = si.cg
-  
+
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]]
 
   def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]]
@@ -711,5 +714,5 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
    * matching across match statements and ifThenElse statements is consistent
    */
   def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
-                          caseExprCost: Expr, scrutineeCost: Expr): Expr
+                          caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr
 }
