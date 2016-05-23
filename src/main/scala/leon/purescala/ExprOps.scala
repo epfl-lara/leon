@@ -1837,6 +1837,7 @@ object ExprOps extends GenTreeOps[Expr] {
   def hasSpec(e: Expr): Boolean = exists {
     case Require(_, _) => true
     case Ensuring(_, _) => true
+    case Let(i, e, b) => hasSpec(b)
     case _ => false
   } (e)
 

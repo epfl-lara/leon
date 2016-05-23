@@ -400,7 +400,7 @@ object Expressions {
     * @param cases The cases to compare against
     */
   case class Passes(in: Expr, out: Expr, cases: Seq[MatchCase]) extends Expr {
-    require(cases.nonEmpty)
+    //require(cases.nonEmpty)
 
     val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
       case None => Untyped

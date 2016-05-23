@@ -901,5 +901,10 @@ object ListSpecs {
         if (i < l1.size) l1.insertAt(i, y) ++ l2
         else l1 ++ l2.insertAt(i - l1.size, y)))
   }.holds
-
+  
+  /** A way to apply the forall axiom */
+  def applyForAll[T](l: List[T], i: BigInt, p: T => Boolean): Boolean = {
+    require(i >= 0 && i < l.length && l.forall(p))
+    p(l(i))
+  } holds
 }
