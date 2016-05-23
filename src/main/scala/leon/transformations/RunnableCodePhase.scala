@@ -31,12 +31,17 @@ object RunnableCodePhase extends TransformationPhase {
   def apply(ctx: LeonContext, pgm: Program): Program = {
     val debugRunnable = false
 
+    var instFunc = Set[FunDef]() 
     val funMap = pgm.definedFunctions.collect {
       case fd if fd.id.name.contains("-") =>
         val freshId = FreshIdentifier((fd.id.name).replaceAll("-",""), fd.returnType)
         val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        instFunc = instFunc + newfd
         (fd -> newfd)
-      case fd => (fd -> fd)
+      case fd =>
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        (fd -> newfd)
     }.toMap
 
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
@@ -67,6 +72,8 @@ object RunnableCodePhase extends TransformationPhase {
       case fd: FunDef if funMap.contains(fd) => funMap(fd)
       case d                                 => d
     })
+    
+    
 
     if (debugRunnable)
       println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(printRunnableCode = true)))
