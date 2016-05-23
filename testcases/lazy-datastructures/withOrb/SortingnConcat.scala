@@ -22,9 +22,9 @@ object SortingnConcat {
   case class SCons(x: BigInt, tailFun: Stream) extends LList
   case class SNil() extends LList
   case class Stream(lfun: () => LList) {
-    lazy val list: LList = lfun()  
+    lazy val list: LList = lfun()
     @inline
-    def size = (list*).size      
+    def size = (list*).size
   }
 
   def pullMin(l: List[BigInt]): List[BigInt] = {

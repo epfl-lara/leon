@@ -27,7 +27,7 @@ object HOMemVerificationPhase {
       case _ => None
     }
   }
-  
+
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
       exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)

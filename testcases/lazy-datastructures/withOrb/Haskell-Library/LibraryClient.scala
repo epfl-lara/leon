@@ -15,9 +15,9 @@ object NatStream {
   def nthElemInNatsFromM(n: BigInt, M: BigInt) = {
     require(n >= 0)
     getnthElem(n, natsFromn(M))
-  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
 
-   def nthElemInRepeat(n: BigInt, m: BigInt) = {
+  def nthElemInRepeat(n: BigInt, m: BigInt) = {
     require(n >= 0)
     getnthElem(n, repeat(m))
   } ensuring (_ => time <= ? * n + ?) // Orb result: ??
@@ -52,26 +52,26 @@ object NatStream {
   @extern
   def acc(n: BigInt, m: BigInt): BigInt = {
     array(0)
-  } ensuring(_ => time <= 1)
+  } ensuring (_ => time <= 1)
 
   def nthElemAfterScan(n: BigInt, z: BigInt) = {
     require(n >= 0)
     getnthElem(n, scan(acc, z, natsFromn(0)))
-  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
 
   @extern
   def tupFunc(n: BigInt): (BigInt, BigInt) = {
     (array(0), array(0))
-  } ensuring(_ => time <= 1)
+  } ensuring (_ => time <= 1)
 
   def nthElemAfterUnfold(n: BigInt, c: BigInt) = {
     require(n >= 0)
     getnthElem(n, unfold(tupFunc, c))
-  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
 
   def nthElemAfterZipWith(n: BigInt) = {
     require(n >= 0)
     getnthElem(n, zipWith(acc, natsFromn(0), natsFromn(0)))
-  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
 
 }
