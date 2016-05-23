@@ -6,3 +6,4 @@
 - [ ] Support type instances in closure conversion
 - [ ] benchmarks ? iterative DP, lazy pairing heaps, implicit queues, amortized bounds ?
 - [ ] collect results for timing and allocations
+- [ ] compare with related works e.g. Vasconsolos work.

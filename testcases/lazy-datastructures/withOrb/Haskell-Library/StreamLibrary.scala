@@ -73,7 +73,7 @@ object StreamLibrary {
   }
   case class SCons(x: BigInt, tailFun: ValOrSusp) extends LList
   case class SNil() extends LList
-
+  
   /**
    * Get the nth elem from a given stream
    */
