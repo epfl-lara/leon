@@ -35,14 +35,14 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Depth))).toMap
   }
-  
+
   //TODO: ignoring higher-order function calls. Fix this!!
-  def functionTypesToInstrument() =  Map()  
+  def functionTypesToInstrument() =  Map()
 
   def additionalfunctionsToAdd(): Seq[FunDef] = Seq()// - max functions are inlined, so they need not be added
 
   def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
-    caseExprCost: Expr, scrutineeCost: Expr): Expr = {
+    caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     val costMatch = costOfExpr(me)
     def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
     combineDepthIds(costMatch, List(caseExprCost, scrutineeCost))

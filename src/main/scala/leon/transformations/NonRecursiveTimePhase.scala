@@ -48,51 +48,44 @@ class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p
     timeFuncs.map(fd => update(fd, Time))
     emap.toMap
   }
-  
+
   // TODO: ignoring applications. Fix this.
-  def functionTypesToInstrument() =  Map()  
+  def functionTypesToInstrument() =  Map()
 
   def additionalfunctionsToAdd() = Seq()
 
-  def instrumentMatchCase(
-    me: MatchExpr,
-    mc: MatchCase,
-    caseExprCost: Expr,
-    scrutineeCost: Expr): Expr = {
-    val costMatch = costOfExpr(me)
-
-    def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = {
-      def patCostRecur(pattern: Pattern, innerPat: Boolean, countLeafs: Boolean): Int = {
-        pattern match {
-          case InstanceOfPattern(_, _) => {
-            if (innerPat) 2 else 1
-          }
-          case WildcardPattern(None) => 0
-          case WildcardPattern(Some(id)) => {
-            if (countLeafs && innerPat) 1
-            else 0
-          }
-          case CaseClassPattern(_, _, subPatterns) => {
-            (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-              acc + patCostRecur(subPat, true, countLeafs))
-          }
-          case TuplePattern(_, subPatterns) => {
-            (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-              acc + patCostRecur(subPat, true, countLeafs))
-          }
-          case LiteralPattern(_, _) => if (innerPat) 2 else 1
-          case _ =>
-            throw new NotImplementedError(s"Pattern $pattern not handled yet!")
-        }
+  def patternCost(pattern: Pattern, innerPat: Boolean, countLeafs: Boolean): Int = {
+    pattern match {
+      case InstanceOfPattern(_, _) => {
+        if (innerPat) 2 else 1
       }
-      me.cases.take(me.cases.indexOf(mc)).foldLeft(0)(
-        (acc, currCase) => acc + patCostRecur(currCase.pattern, false, false)) +
-        patCostRecur(mc.pattern, false, true)
+      case WildcardPattern(None) => 0
+      case WildcardPattern(Some(id)) => {
+        if (countLeafs && innerPat) 1
+        else 0
+      }
+      case CaseClassPattern(_, _, subPatterns) => {
+        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
+          acc + patternCost(subPat, true, countLeafs))
+      }
+      case TuplePattern(_, subPatterns) => {
+        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
+          acc + patternCost(subPat, true, countLeafs))
+      }
+      case LiteralPattern(_, _) => if (innerPat) 2 else 1
+      case _ =>
+        throw new NotImplementedError(s"Pattern $pattern not handled yet!")
     }
-    Plus(costMatch, Plus(
-      Plus(InfiniteIntegerLiteral(totalCostOfMatchPatterns(me, mc)),
-        caseExprCost),
-      scrutineeCost))
+  }
+
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
+    val costMatch = costOfExpr(me)
+    val totalCostOfMatchPatterns = {
+      me.cases.take(me.cases.indexOf(mc)).foldLeft(0)(
+        (acc, currCase) => acc + patternCost(currCase.pattern, false, false)) +
+        patternCost(mc.pattern, false, true)
+    }
+    Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(totalCostOfMatchPatterns), caseExprCost), scrutineeCost))
   }
 
   def instrument(e: Expr, subInsts: Seq[Expr], funInvResVar: Option[Variable] = None)

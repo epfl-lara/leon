@@ -13,7 +13,15 @@ import HOMemUtil._
 class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, funManager: FunctionsManager) {
 
   val exprInstFactory = (ictx: InstruContext) => new MemExprInstrumenter(ictx)
-  val serialInst = new SerialInstrumenter(p, Some(exprInstFactory))
+
+  val instrumenterFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter] =
+      si => Map(Time -> new MemTimeInstrumenter(p, si),
+        Depth -> new DepthInstrumenter(p, si),
+        Rec -> new RecursionCountInstrumenter(p, si),
+        Stack -> new StackSpaceInstrumenter(p, si),
+        TPR -> new MemTPRInstrumenter(p, si))
+
+  val serialInst = new SerialInstrumenter(p, instrumenterFactory, Some(exprInstFactory))
 
   def apply: Program = serialInst.apply
 
@@ -63,6 +71,40 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
         case _: Application =>
           throw new IllegalStateException("Seen application in Lazy Instrumenter!!")
       }
+    }
+  }
+
+  /**
+   * Here, we assume that all match cases of dispatch function take the same cost.
+   */
+  class MemTimeInstrumenter(p: Program, si: SerialInstrumenter) extends TimeInstrumenter(p, si) {
+    import timeCostModel._
+    override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
+      val costMatch = costOfExpr(me)
+      val costOfPattern = patternCost(mc.pattern, false, true)
+      val cumulativeCostOfPattern =
+        if(isEvalFunction(fd))
+           costOfPattern // ignoring the cost of previous cases
+        else
+          me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) + costOfPattern
+      Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+    }
+  }
+
+  /**
+   * Here, we assume that all match cases of dispatch function take the same cost.
+   */
+  class MemTPRInstrumenter(p: Program, si: SerialInstrumenter) extends TPRInstrumenter(p, si) {
+    import timeCostModel._
+    override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
+      val costMatch = costOfExpr(me)
+      val costOfPattern = patternCost(mc.pattern, false, true)
+      val cumulativeCostOfPattern =
+        if(isEvalFunction(fd))
+           costOfPattern // ignoring the cost of previous cases
+        else
+          me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) + costOfPattern
+      Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
     }
   }
 }

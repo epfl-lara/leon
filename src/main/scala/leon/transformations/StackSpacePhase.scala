@@ -22,9 +22,9 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
     val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Stack))).toMap
   }
-  
+
   // TODO: ignoring higher-order functions here. Fix this
-  def functionTypesToInstrument() =  Map()  
+  def functionTypesToInstrument() =  Map()
 
   def additionalfunctionsToAdd(): Seq[FunDef] = Seq() //Seq(InstUtil.maxFun) - max functions are inlined, so they need not be added
 
@@ -58,14 +58,11 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
     else false
   }
 
-  def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
-    caseExprCost: Expr, scrutineeCost: Expr): Expr = {
-
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     def costOfMatchPattern(me: MatchExpr, mc: MatchCase): Expr = {
       val costOfMatchPattern = 1
       InfiniteIntegerLiteral(costOfMatchPattern)
     }
-
     addSubInstsIfNonZero(Seq(costOfMatchPattern(me, mc), caseExprCost, scrutineeCost), InfiniteIntegerLiteral(0))
   }
 
