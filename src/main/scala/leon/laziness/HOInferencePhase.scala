@@ -65,7 +65,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
     new MemVerificationReport(stateVeri, resourceVeri)
   }
 
-  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {    
+  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
 
@@ -100,8 +100,8 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
     // instrument the program for resources (note: we avoid checking preconditions again here)
     val instrumenter = new MemInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory, funsManager)
     val instProg = instrumenter.apply
-    val runnProg = RunnableCodePhase.apply(ctx, instProg)
     if (dumpInstrumentedProgram) {
+      val runnProg = RunnableCodePhase.apply(ctx, instProg)
       prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
     }
