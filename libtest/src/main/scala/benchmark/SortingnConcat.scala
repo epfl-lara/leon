@@ -119,8 +119,9 @@ object SortingnConcat {
           Cons(n, f)  
         }
       }
-      ops :+= {() => kthMintime(input, 10)._2}
-      orb :+= {() => 11 * i + 35}
+      // NOTE: floor take for coeff
+      ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
+      orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
     }
     run(size, ops, orb, "kthMintime")
 
