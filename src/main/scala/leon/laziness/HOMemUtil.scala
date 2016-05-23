@@ -227,7 +227,7 @@ object HOMemUtil {
   def isStateType(t: TypeTree) = {
      t match {
        case SetType(AbstractClassType(adef, _)) =>
-         adef.id.name.startsWith("MemoFuns@")         
+         adef.root.id.name.startsWith("MemoFuns@")         
        case _ => false
      }
   }

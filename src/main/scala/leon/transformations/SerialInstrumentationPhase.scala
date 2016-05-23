@@ -547,11 +547,14 @@ class ExprInstrumenter(ictx: InstruContext) {
         } else {          
           val transScrut = transform(scrutinee)
           val scrutRes = Variable(createInstVar("scr", transScrut.getType))
+          val scrutValType = scrutRes.getType match {
+            case TupleType(bases) => bases.head
+            case Untyped => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization 
+          }
           val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
             matchCases.map {
               case mCase @ MatchCase(pattern, guard, body) =>
-                val (transPattern, bindMap) = serialInst.mapCasePattern(pattern,
-                  scrutRes.getType.asInstanceOf[TupleType].bases.head) // the type of the valpart
+                val (transPattern, bindMap) = serialInst.mapCasePattern(pattern, scrutValType) // the type of the valpart
                 val transBody = transform(body)(letIdMap ++ bindMap)
                 val bodyRes = Variable(createInstVar("mc", transBody.getType))
                 val instExprs = ictx.instrumenters map { m =>
