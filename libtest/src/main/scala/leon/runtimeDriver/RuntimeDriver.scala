@@ -13,9 +13,38 @@ import java.io.FileWriter
 import java.io.BufferedWriter
 
 package object runtimeDriver {
-	def run(testSize: scalaList[BigInt], ops: List[() => BigInt], orb: List[() => BigInt]) {
+	def generatePlotFile(function: String):String = {
+s"""set terminal jpeg
 
-		val orbstream = new FileWriter("results/orb.data")
+set key left top
+
+set xlabel "n"
+set ylabel "time"
+set title "Plot for Orb vs Runnable code, ${function}"
+
+set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
+set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
+
+set output "results/orbVsActual${function}10.jpg"
+plot \\
+"<(sed -n '1,20p' results/orb${function}.data)" using 1:2 t'orb' with linespoints, \\
+"<(sed -n '1,20p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
+
+set output "results/orbVsActual${function}100.jpg"
+plot \\
+"<(sed -n '20,40p' results/orb${function}.data)" using 1:2 t'orb' with linespoints, \\
+"<(sed -n '20,40p' results/ops${function}.data)" using 1:2 t'oper' with linespoints,
+
+set output "results/orbVsActual${function}1000.jpg"
+plot \\
+"<(sed -n '40,50p' results/orb${function}.data)" using 1:2 t'orb' with linespoints, \\
+"<(sed -n '40,50p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
+"""
+	}
+
+	def run(testSize: scalaList[BigInt], ops: List[() => BigInt], orb: List[() => BigInt], function: String) {
+
+		val orbstream = new FileWriter(s"results/orb${function}.data")
     val orbout = new BufferedWriter(orbstream)
 		var j = 0
 		for(i <- testSize) {
@@ -24,7 +53,7 @@ package object runtimeDriver {
 		}
     orbout.close()
 
-    val opsstream = new FileWriter("results/ops.data")
+    val opsstream = new FileWriter(s"results/ops${function}.data")
     val opsout = new BufferedWriter(opsstream)
     j = 0
 		for(i <- testSize) {
@@ -33,6 +62,11 @@ package object runtimeDriver {
 		}
 		opsout.close()
 
-		val result = "gnuplot results/plot.gnu" !!
+		val plotstream = new FileWriter(s"results/plot${function}.gnu")
+    val plotout = new BufferedWriter(plotstream)
+	  plotout.write(generatePlotFile(function))
+		plotout.close()
+
+		val result = s"gnuplot results/plot${function}.gnu" !!
 	}	
 }

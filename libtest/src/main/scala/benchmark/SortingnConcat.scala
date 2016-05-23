@@ -97,6 +97,7 @@ object SortingnConcat {
 
     val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
     val size = points.map(x => BigInt(2*x)).toList
+    
     var ops = List[() => BigInt]()
     var orb = List[() => BigInt]()
     points.foreach { i =>
@@ -108,8 +109,21 @@ object SortingnConcat {
       ops :+= {() => sorttime(input)._2}
       orb :+= {() => 11 * i + 35}
     }
+    run(size, ops, orb, "sort")
 
-    run(size, ops, orb)
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = {
+        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
+          Cons(n, f)  
+        }
+      }
+      ops :+= {() => kthMintime(input, 10)._2}
+      orb :+= {() => 11 * i + 35}
+    }
+    run(size, ops, orb, "kthMintime")
+
   }
 }
 
