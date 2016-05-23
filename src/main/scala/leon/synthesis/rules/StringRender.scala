@@ -345,7 +345,7 @@ case object StringRender extends Rule("StringRender") {
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
     val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
-    val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx).toLowerCase().dropWhile(c => (c < 'a' || c > 'z') && (c < 'A' || c > 'Z')).headOption.getOrElse("x").toString, typeToConvert)
+    val argId= FreshIdentifier(typeToConvert.asString(hctx).toLowerCase().dropWhile(c => (c < 'a' || c > 'z') && (c < 'A' || c > 'Z')).headOption.getOrElse("x").toString, typeToConvert)
     val tparams = hctx.functionContext.tparams
     new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_)).toList, StringType) // Empty function.
   }
@@ -363,11 +363,10 @@ case object StringRender extends Rule("StringRender") {
   
   class FunDefTemplateGenerator(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) { fdTemplateGenerator =>
     implicit val program: Program = hctx.program
-    implicit val ctx = hctx.context
     protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
     import gcontext._
     
-    protected val int32Symbol   = NonTerminal(Int32Type)
+    protected val int32Symbol   = NonTerminal(Int32Type) 
     protected val integerSymbol = NonTerminal(IntegerType)
     protected val booleanSymbol = NonTerminal(BooleanType)
     protected val stringSymbol  = NonTerminal(StringType)
@@ -393,8 +392,8 @@ case object StringRender extends Rule("StringRender") {
 
     /** Used to produce rules such as Cons => Elem List without context*/
     protected def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2), vc, hc) => 
-        val typeMap = tparams.zip(tparams2).toMap
+      case NonTerminal(cct@CaseClassType(ccd: CaseClassDef, tparams2), vc, hc) =>
+        val typeMap = ccd.tparams.map(_.tp).zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
         Some(HorizontalRHS(Terminal(cct, Stream.empty), fields.map(id => NonTerminal(id.getType))))
       case NonTerminal(cct@TupleType(fields), vc, hc) => 
@@ -403,7 +402,7 @@ case object StringRender extends Rule("StringRender") {
     }
     /** Used to produce rules such as List => Cons | Nil without context */
     protected def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps), vc, hc) => 
+      case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), vc, hc) => 
         Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag))))
       case _ => None
     }

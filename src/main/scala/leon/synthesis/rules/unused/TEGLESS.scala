@@ -8,7 +8,7 @@ import purescala.Types._
 import purescala.Extractors._
 import Witnesses._
 import leon.grammars._
-import grammars.aspects.{SimilarTo, DepthBound}
+import leon.grammars.aspects.{SimilarTo, DepthBound}
 
 case object TEGLESS extends TEGISLike("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {

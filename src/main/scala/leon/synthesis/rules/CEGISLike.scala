@@ -15,7 +15,6 @@ import purescala.Constructors._
 
 import solvers._
 import leon.grammars._
-import leon.grammars.transformers._
 import leon.grammars.aspects._
 import leon.utils._
 

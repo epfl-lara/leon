@@ -5,7 +5,6 @@ package synthesis
 package rules
 
 import leon.grammars._
-import leon.grammars.transformers._
 import leon.grammars.aspects._
 import purescala.Types.TypeTree
 
