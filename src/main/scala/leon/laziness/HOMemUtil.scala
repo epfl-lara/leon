@@ -223,6 +223,14 @@ object HOMemUtil {
   def isStateParam(id: Identifier) = {
     id.name.startsWith("st@")
   }
+  
+  def isStateType(t: TypeTree) = {
+     t match {
+       case SetType(AbstractClassType(adef, _)) =>
+         adef.root.id.name.startsWith("MemoFuns@")         
+       case _ => false
+     }
+  }
 
   def isPlaceHolderTParam(tp: TypeParameter) = {
     tp.id.name.endsWith("@")

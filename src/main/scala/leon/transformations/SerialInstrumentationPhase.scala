@@ -44,8 +44,8 @@ object InstrumentationPhase extends TransformationPhase {
 }
 
 class SerialInstrumenter(program: Program,
-    instFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter],
-    exprInstOpt: Option[InstruContext => ExprInstrumenter] = None) {
+                         instFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter],
+                         exprInstOpt: Option[InstruContext => ExprInstrumenter] = None) {
   val debugInstrumentation = false
 
   val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
@@ -80,7 +80,7 @@ class SerialInstrumenter(program: Program,
   println(s"instfuncs: ${instFuncs.map(_.id).mkString(",")} instFuncTypes: ${instFuncTypes.mkString(",")}")
 
   val hasMemoFuns = {
-    if(instFuncs.exists{fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) {
+    if (instFuncs.exists { fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) {
       println("Warning: found Lazy/memoized functions/fields. To verify the program use --mem option")
       true
     } else false
@@ -310,7 +310,7 @@ class SerialInstrumenter(program: Program,
             instrumenters(k).flatMap(_.additionalfunctionsToAdd)
           else List()
       }.toList.distinct ++
-        (if(hasMemoFuns) Seq(lookupFun, updateFun, anyList) else Seq()))
+        (if (hasMemoFuns) Seq(lookupFun, updateFun, anyList) else Seq()))
       val mainModule = program.units.find(_.isMainUnit).get.modules.head
       val newprog = copyProgram(program, (defs: Seq[Definition]) =>
         defs.flatMap {
@@ -452,39 +452,44 @@ class ExprInstrumenter(ictx: InstruContext) {
     import ictx._
     implicit val currFun = ictx.currFun
     f match {
-      case fi@FunctionInvocation(tfd@TypedFunDef(fd, tps), args) =>
+      case fi @ FunctionInvocation(tfd @ TypedFunDef(fd, tps), args) =>
         val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
         val newFunInv = FunctionInvocation(newfd, subeVals)
         //create a variables to store the result of function invocation
         if (serialInst.instFuncs(fd)) { //this function is also instrumented
           val funres = Variable(createInstVar("e", newfd.returnType))
           val valexpr = TupleSelect(funres, 1)
-          val instexprs = ictx.instrumenters.map { m =>
-            val calleeInst =
-              if (serialInst.funcInsts(fd).contains(m.inst) && !fd.flags.contains(IsField(false))) {
-                List(selectInst(funres, m.inst))
-              } else List() // ignoring fields here
-            m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
-          }
           if (fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd)) {
             // here the invoked function is memoized, so we need to lookup/update the cache
             // note: the lookup cost would be included while computing the cost of the function
             val lookupres = Variable(FreshIdentifier("lr", TupleType(Seq(BooleanType, newfd.returnType)), true))
             val hitCond = TupleSelect(lookupres, 1)
-            val hitCase = {
-              val lookupVal = TupleSelect(lookupres, 2)
-              // here, we ignore the cost of the callee function completely, as if this is a val field access.
-              val hitInstExprs = instrumenters.map(m =>
-                m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres)))
-              Tuple(lookupVal +: hitInstExprs)
+            val lookupVal = TupleSelect(lookupres, 2)
+            // here, we ignore the cost of the callee function completely, as if this is a val field access.
+            val hitInstExprs = instrumenters.map(m =>
+              m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres))) // cost of lookup is cost of f
+            val hitCase = Tuple(lookupVal +: hitInstExprs)
+            
+            val missInstExprs = ictx.instrumenters.map { m =>
+              val luCost = InfiniteIntegerLiteral(2) // lookup/update cost combined
+              m.instrument(f, subeInsts.getOrElse(m.inst, List()) :+ Plus(luCost, selectInst(funres, m.inst)),
+                Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
             }
             val ur = FreshIdentifier("ur", newfd.returnType, true)
             val missCase = Let(funres.id, newFunInv, Let(ur,
-                updateCall(newFunInv, valexpr), Tuple(ur.toVariable +: instexprs)))
+              updateCall(newFunInv, valexpr), Tuple(ur.toVariable +: missInstExprs)))
             Let(lookupres.id, lookupCall(newFunInv, valexpr.getType),
-                IfExpr(hitCond, hitCase, missCase))
-          } else
+              IfExpr(hitCond, hitCase, missCase))
+          } else {
+            val instexprs = ictx.instrumenters.map { m =>
+              val calleeInst =
+                if (serialInst.funcInsts(fd).contains(m.inst) && !fd.flags.contains(IsField(false))) {
+                  List(selectInst(funres, m.inst))
+                } else List() // ignoring fields here
+              m.instrument(f, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
+            }
             Let(funres.id, newFunInv, Tuple(valexpr +: instexprs))
+          }
         } else {
           val resvar = Variable(createInstVar("e", newFunInv.getType))
           val instexprs = ictx.instrumenters.map { m =>
@@ -539,14 +544,17 @@ class ExprInstrumenter(ictx: InstruContext) {
               if (cond == tru) rhs else IfExpr(cond, rhs, elze)
           }
           transform(ite)
-        } else {
+        } else {          
           val transScrut = transform(scrutinee)
           val scrutRes = Variable(createInstVar("scr", transScrut.getType))
+          val scrutValType = scrutRes.getType match {
+            case TupleType(bases) => bases.head
+            case Untyped => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization 
+          }
           val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
             matchCases.map {
               case mCase @ MatchCase(pattern, guard, body) =>
-                val (transPattern, bindMap) = serialInst.mapCasePattern(pattern,
-                    scrutRes.getType.asInstanceOf[TupleType].bases.head)  // the type of the valpart
+                val (transPattern, bindMap) = serialInst.mapCasePattern(pattern, scrutValType) // the type of the valpart
                 val transBody = transform(body)(letIdMap ++ bindMap)
                 val bodyRes = Variable(createInstVar("mc", transBody.getType))
                 val instExprs = ictx.instrumenters map { m =>

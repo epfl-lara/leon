@@ -15,20 +15,17 @@ import Util._
 import ProgramUtil._
 import TypeUtil._
 
-object timeCostModel {
+class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
+
   def costOf(e: Expr): Int = e match {
     case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
-    case FunctionInvocation(fd, args) => 1
-    case t: Terminal => 0
-    case _ => 1
+    case FunctionInvocation(fd, args)             => 1
+    case t: Terminal                              => 0
+    case _                                        => 1
   }
 
   def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
-}
-
-class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
-  import timeCostModel._
-
+  
   def inst = Time
 
   val (funsToInst, funTypesToInst) = {
