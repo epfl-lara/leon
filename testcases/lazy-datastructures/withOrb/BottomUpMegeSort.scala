@@ -87,7 +87,7 @@ object BottomUpMergeSort {
       case _ => true
     }) &&
     valid(res) &&
-    time <= ? * l.size + ?
+    time <= ? * l.size + ? //63 * l.size + 283
   }
 
   @invisibleBody
