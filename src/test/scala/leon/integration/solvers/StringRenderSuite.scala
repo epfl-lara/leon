@@ -274,7 +274,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object List {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => Nil(types: _*)()
+          case scala.collection.immutable.Nil => Nil(types: _*)()
           case a::b => Cons(types: _*)(a, List(types: _*)(b: _*))
         }
       }
@@ -285,7 +285,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object BList {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => BNil(types: _*)()
+          case scala.collection.immutable.Nil => BNil(types: _*)()
           case a::b => BCons(types: _*)(a, BList(types: _*)(b: _*))
         }
       }

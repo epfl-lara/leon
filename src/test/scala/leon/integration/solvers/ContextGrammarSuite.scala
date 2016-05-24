@@ -21,7 +21,7 @@ import org.scalatest.time.SpanSugar._
 import org.scalatest.matchers.Matcher
 import org.scalatest.matchers.MatchResult
 
-trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
+trait CustomGrammarEqualMatcher[U, V, W, T <: ContextGrammar[U, V, W]] {
   def symbolToString(symbol: T#Symbol): String = {
     symbol match {
       case s: T#NonTerminal => nonterminalToString(s)
@@ -58,7 +58,7 @@ trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
   def equalGrammar(grammar: T#Grammar) = new EqualGrammarMatcher(grammar)
 }
 
-class ContextGrammarString extends ContextGrammar[String, String] with CustomGrammarEqualMatcher[String, String, ContextGrammarString]
+class ContextGrammarString extends ContextGrammar[String, String, String] with CustomGrammarEqualMatcher[String, String, String, ContextGrammarString]
 
 /**
  * @author Mikael
@@ -67,12 +67,12 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   val ctx = new ContextGrammarString
   import ctx._
   
-  val A = NonTerminal("A")
-  val B = NonTerminal("B")
-  val C = NonTerminal("C")
-  val D = NonTerminal("D")
-  val E = NonTerminal("E")
-  val F = NonTerminal("F")
+  val A = NonTerminal("A", "")
+  val B = NonTerminal("B", "")
+  val C = NonTerminal("C", "")
+  val D = NonTerminal("D", "")
+  val E = NonTerminal("E", "")
+  val F = NonTerminal("F", "")
   val x = Terminal("x", "")
   val y = Terminal("y", "")
   val z = Terminal("z", "")
@@ -195,15 +195,15 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
   // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
   test("Abstract vertical Markovization") {
-    val Alist = NonTerminal("Alist")
-    val Acons = NonTerminal("Acons")
-    val Anil = NonTerminal("Anil")
+    val Alist = NonTerminal("Alist", "")
+    val Acons = NonTerminal("Acons", "")
+    val Anil = NonTerminal("Anil", "")
     val acons = Terminal("acons", "")
     val anil = Terminal("anil", "")
     
-    val Blist = NonTerminal("Blist")
-    val Bcons = NonTerminal("Bcons")
-    val Bnil = NonTerminal("Bnil")
+    val Blist = NonTerminal("Blist", "")
+    val Bcons = NonTerminal("Bcons", "")
+    val Bnil = NonTerminal("Bnil", "")
     val bcons = Terminal("bcons", "")
     val bnil = Terminal("bnil", "")
     val grammar =
@@ -240,15 +240,15 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
   // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
   test("Abstract vertical Markovization Filtered") {
-    val Alist = NonTerminal("Alist")
-    val Acons = NonTerminal("Acons")
-    val Anil = NonTerminal("Anil")
+    val Alist = NonTerminal("Alist", "")
+    val Acons = NonTerminal("Acons", "")
+    val Anil = NonTerminal("Anil", "")
     val acons = Terminal("acons", "")
     val anil = Terminal("anil", "")
     
-    val Blist = NonTerminal("Blist")
-    val Bcons = NonTerminal("Bcons")
-    val Bnil = NonTerminal("Bnil")
+    val Blist = NonTerminal("Blist", "")
+    val Bcons = NonTerminal("Bcons", "")
+    val Bnil = NonTerminal("Bnil", "")
     val bcons = Terminal("bcons", "")
     val bnil = Terminal("bnil", "")
     val grammar =
