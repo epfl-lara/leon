@@ -77,7 +77,7 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-    thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
+    thenInst: Option[Expr], elzeInst: Option[Expr])(implicit fd: FunDef): (Expr, Expr) = {
 
     val cinst = condInst.toList
     val tinst = thenInst.toList

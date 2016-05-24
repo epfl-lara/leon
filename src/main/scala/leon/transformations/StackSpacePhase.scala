@@ -116,7 +116,7 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr], thenInst: Option[Expr],
-    elzeInst: Option[Expr]): (Expr, Expr) = {
+    elzeInst: Option[Expr])(implicit fd: FunDef): (Expr, Expr) = {
     import invariant.util.Util._
 
     val cinst = condInst.toList

@@ -9,6 +9,9 @@ import collection._
 import instrumentation._
 import invariant._
 
+/**
+ * Requires unrollfactor=2
+ */
 object RealTimeQueue {
 
   sealed abstract class Stream[T] {
@@ -22,7 +25,7 @@ object RealTimeQueue {
         case SNil()      => BigInt(0)
         case c@SCons(_, _) => 1 + (c.tail*).size
       }
-    } ensuring (_ >= 0)                
+    } ensuring (_ >= 0)
 
     lazy val tail: Stream[T] = {
       require(isCons)
@@ -46,7 +49,7 @@ object RealTimeQueue {
   @invisibleBody
   @invstate // says that the function doesn't change state
   def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
-    require(r.size == f.size + 1 && isConcrete(f))  
+    require(r.size == f.size + 1 && isConcrete(f))
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, lift(a)) //  rank: a.rank + 1

@@ -58,8 +58,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         if (funsNeedStateTps(fd)) {
           // create fresh type parameters for the state
           closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
-        }
-        else Seq()
+        } else Seq()
       // (a) replace closure types, memoFunTypes in parameters and return values
       val nparams = fd.params map {
         case ValDef(id) if isFunSetType(id.getType)(p) => // replace this with set of memoAbs
@@ -76,12 +75,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           if (funsRetStates(fd))
             TupleType(Seq(nretType, stType))
           else
-            nretType         
-        // the type parameters will be unified later            
+            nretType
+        // the type parameters will be unified later
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef),
           nparams :+ stParam, retTypeWithState)
         // body of these functions are defined later
-      } else if(funsNeedStateTps(fd)){
+      } else if (funsNeedStateTps(fd)) {
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams ++ (stparams map TypeParameterDef), nparams, nretType)
       } else {
         new FunDef(FreshIdentifier(fd.id.name), fd.tparams, nparams, nretType)
@@ -250,7 +249,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   val computeFunctions = evalFunctions.collect {
     case (tname, evalfd) if stateNeedingTypes(tname) =>
       val rettpe =
-        if(stateUpdatingTypes(tname)) {
+        if (stateUpdatingTypes(tname)) {
           val TupleType(Seq(rt, _)) = evalfd.returnType
           rt
         } else evalfd.returnType
@@ -399,8 +398,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
           val uninstType = closureFactory.functionType(tname)
           (computeFunctions.getOrElse(tname, evalFunctions(tname)),
-              getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
-              lambdaExpr +: args, id)
+            getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
+            lambdaExpr +: args, id)
         case FunctionInvocation(TypedFunDef(tar, tps), args) =>
           // quite a few cases to consider here!
           if (funsNeedStateTps(tar)) {
@@ -421,7 +420,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     // (h) direct call to a memoized function ?
-    case finv@FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
+    case finv @ FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
           //println("handling function call: "+finv+" new args: "+nargs)
@@ -443,7 +442,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         }, true))
 
     // Rest: usual language constructs
-    case finv@FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
+    case finv @ FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
           val stArgs =
@@ -586,7 +585,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   def assignBodiesToFunctions = {
     val paramMap: Map[Expr, Expr] = idmap.map(e => (e._1.toVariable -> e._2.toVariable))
     funMap foreach {
-      case (fd, nfd) if fd.hasBody =>
+      case (fd, nfd) =>
         //println("Considering function: "+fd+" New fd: "+nfd)
         // Here, using name to identify 'state' parameter
         val stateParam = nfd.params.collectFirst {
@@ -597,15 +596,17 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val stTparams = nfd.tparams.collect {
           case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
         }
-        val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
-        val nbody = nbodyFun(stateParam)
-        val bodyWithState =
-          if (!bodyUpdatesState && funsRetStates(fd))
-            Tuple(Seq(nbody, stateParam.get))
-          else
-            nbody
-        nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
-        //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
+        if (fd.hasBody) {
+          val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
+          val nbody = nbodyFun(stateParam)
+          val bodyWithState =
+            if (!bodyUpdatesState && funsRetStates(fd))
+              Tuple(Seq(nbody, stateParam.get))
+            else
+              nbody
+          nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
+          //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
+        }
 
         // Important: specifications use memoized semantics but their state changes are ignored after their execution.
         // This guarantees their observational purity/transparency collect class invariants that need to be added.
@@ -622,12 +623,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val newres =
           if (fd.hasPostcondition) {
             val Lambda(Seq(ValDef(r)), _) = fd.postcondition.get
-            FreshIdentifier(r.name, bodyWithState.getType)
+            FreshIdentifier(r.name, nfd.returnType) //bodyType.getOrElse(nfd.returnType))
           } else FreshIdentifier("r", nfd.returnType)
 
         // create an output state map
         val outState =
-          if (bodyUpdatesState || funsRetStates(fd)) {
+          if (funsRetStates(fd)) { //Old code: bodyUpdatesState == Some(true) || funsRetStates(fd)
             Some(TupleSelect(newres.toVariable, 2))
           } else
             stateParam
@@ -659,7 +660,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           if (fd.hasPostcondition) {
             val Lambda(Seq(ValDef(resid)), post) = fd.postcondition.get
             val resval =
-              if (bodyUpdatesState || funsRetStates(fd))
+              if (funsRetStates(fd))
                 TupleSelect(newres.toVariable, 1)
               else newres.toVariable
             // thread state through postcondition

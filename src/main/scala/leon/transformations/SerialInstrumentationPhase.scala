@@ -470,7 +470,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             val hitInstExprs = instrumenters.map(m =>
               m.instrument(f, subeInsts.getOrElse(m.inst, List()), Some(funres))) // cost of lookup is cost of f
             val hitCase = Tuple(lookupVal +: hitInstExprs)
-            
+
             val missInstExprs = ictx.instrumenters.map { m =>
               val luCost = InfiniteIntegerLiteral(2) // lookup/update cost combined
               m.instrument(f, subeInsts.getOrElse(m.inst, List()) :+ Plus(luCost, selectInst(funres, m.inst)),
@@ -545,12 +545,12 @@ class ExprInstrumenter(ictx: InstruContext) {
               if (cond == tru) rhs else IfExpr(cond, rhs, elze)
           }
           transform(ite)
-        } else {          
+        } else {
           val transScrut = transform(scrutinee)
           val scrutRes = Variable(createInstVar("scr", transScrut.getType))
           val scrutValType = scrutRes.getType match {
             case TupleType(bases) => bases.head
-            case Untyped => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization 
+            case Untyped => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization
           }
           val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
             matchCases.map {
@@ -712,7 +712,7 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
    * Instrument procedure specialized for if-then-else
    */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-                               thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr)
+                               thenInst: Option[Expr], elzeInst: Option[Expr])(implicit fd: FunDef): (Expr, Expr)
 
   /**
    * This function is expected to combine the cost of the scrutinee,

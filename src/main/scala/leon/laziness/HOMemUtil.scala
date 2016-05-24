@@ -21,7 +21,7 @@ object HOMemUtil {
   def hasMemAnnotation(fd: FunDef) = {
     fd.flags.contains(Annotation("memoize", Seq()))
   }
-  
+
   def isMemoized(fd: FunDef) = {
     fd.id.name.contains("-mem")
   }
@@ -223,11 +223,22 @@ object HOMemUtil {
   def isStateParam(id: Identifier) = {
     id.name.startsWith("st@")
   }
-  
+
   def isStateType(t: TypeTree) = {
      t match {
-       case SetType(AbstractClassType(adef, _)) =>
-         adef.root.id.name.startsWith("MemoFuns@")         
+       case SetType(baseType) => isMemoClosure(baseType)
+       case _ => false
+     }
+  }
+
+  def isMemoClosure(t: TypeTree) = {
+     t match {
+       case ct: ClassType =>
+         ct.root match {
+           case AbstractClassType(adef, _) =>
+             adef.id.name.startsWith("MemoFuns@")
+           case _ => false
+         }
        case _ => false
      }
   }
