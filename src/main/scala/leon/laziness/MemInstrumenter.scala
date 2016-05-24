@@ -75,20 +75,27 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   }
 
   object memTimeCostModel {
-    def costOf(e: Expr)(implicit currFun: FunDef): Int = e match {
-      case _ if isEvalFunction(currFun)               => 0 // cost of every primitive operation inside eval is zero
-      case FunctionInvocation(fd, _) if !fd.hasBody   => 0 // uninterpreted functions
-      case FunctionInvocation(fd, args)               => 1
-      case t: Terminal                                => 0
-      case Tuple(Seq(_, s)) if isStateType(s.getType) => 0 // state construction
-      case TupleSelect(se, _) => se.getType match {
-        case TupleType(Seq(_, stType)) if isStateType(stType) => 0 // state extraction
+    def costOf(e: Expr)(implicit currFun: FunDef): Int = {
+      val cost = e match {
+        case _ if isEvalFunction(currFun)               => 0 // cost of every primitive operation inside eval is zero
+        case FunctionInvocation(fd, _) if !fd.hasBody   => 0 // uninterpreted functions
+        case FunctionInvocation(fd, args)               => 1
+        case t: Terminal                                => 0
+        case Tuple(Seq(_, s)) if isStateType(s.getType) => 0 // state construction
+        case TupleSelect(se, _) => se.getType match {
+          case TupleType(Seq(_, stType)) if isStateType(stType) => 0 // state extraction
+          case _ => 1
+        }
+        case FiniteSet(_, clType) if isMemoClosure(clType) => 0 // creating a memo set
+        case CaseClass(cct, _) if isMemoClosure(cct.root) => 0 // createing a memo closure
+        case SetUnion(s1, _) if isStateType(s1.getType) => 0 // state union
         case _ => 1
       }
-      case FiniteSet(_, stType) if isStateType(stType) => 0 // creating a memo set
-      case CaseClass(cct, _) if isStateType(cct.root) => 0 // createing a memo closure
-      case SetUnion(s1, _) if isStateType(s1.getType) => 0 // state union
-      case _ => 1
+      /*if(currFun.id.name.contains("kthMin")) {
+        if(cost != 0)
+          println(s"Cost of expression: $e is $cost")
+      }*/
+      cost
     }
   }
 
