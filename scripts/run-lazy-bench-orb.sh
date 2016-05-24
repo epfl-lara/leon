@@ -7,6 +7,7 @@
 ./leon --mem --benchmark --unrollfactor=3 ./testcases/lazy-datastructures/withOrb/BottomUpMegeSort.scala | tee BottomUpMegeSort.out	# works in ~ 5 min, but a time bound of a function is manually provided
 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/Knapsack.scala  | tee Knapsack.out # a few seconds
 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/WeightedScheduling.scala | tee Sched.out # a few seconds
+./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/LongestCommonSubsequence.scala  | tee LongestCommonSubsequence.out # a few seconds
 ./leon --mem --benchmark --unrollfactor=4 ./testcases/lazy-datastructures/withOrb/PackratParsing.scala  | tee PackratParsing.out # ~ 1min
 #./leon --mem --benchmark --unrollfactor=3 ./testcases/lazy-datastructures/withOrb/HammingMemoized.scala | tee HammingMemoized.out   # may take up to 1000s need to optimize
 #./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/Haskell-Library/StreamLibrary.scala ./testcases/lazy-datastructures/withOrb/Haskell-Library/LibraryClient.scala | tee StreamLibrary.out
