@@ -39,8 +39,7 @@ object RunnableCodePhase extends TransformationPhase {
         instFunc = instFunc + newfd
         (fd -> newfd)
       case fd =>
-        val freshId = FreshIdentifier(fd.id.name, fd.returnType)
-        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        val newfd = fd
         (fd -> newfd)
     }.toMap
     
@@ -49,11 +48,8 @@ object RunnableCodePhase extends TransformationPhase {
     for(i <- instFunc) {
       reachableFunc = reachableFunc ++ cg.transitiveCallees(i)
     }
-    println(instFunc)
-    println(reachableFunc)
-    //    var reachableFunc = cg.transitiveCallees(Seq(instFunc))
+//    var reachableFunc = cg.transitiveCallees(Seq(instFunc))
     
-
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
       case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
         FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
