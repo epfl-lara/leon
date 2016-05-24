@@ -4,7 +4,7 @@
 ./leon --mem --benchmark --unrollfactor=5 ./testcases/lazy-datastructures/withOrb/LazyNumericalRep.scala  | tee LazyNumericalRep.out # in a few secs
 ./leon --mem --benchmark --unrollfactor=4 ./testcases/lazy-datastructures/withOrb/Deque.scala | tee Deque.out # takes ~ 2min
 ./leon --mem --benchmark --unrollfactor=4 --vcTimeout=35 ./testcases/lazy-datastructures/withOrb/CyclicHammingStream.scala  | tee CyclicHammingStream.out # takes ~ 200s
-./leon --mem --benchmark --unrollfactor=3 --vcTimeout=35 ./testcases/lazy-datastructures/withOrb/BottomUpMegeSort.scala | tee BottomUpMegeSort.out	# works in ~ 5 min, but a time bound of a function is manually provided
+./leon --mem --benchmark --unrollfactor=3 ./testcases/lazy-datastructures/withOrb/BottomUpMegeSort.scala | tee BottomUpMegeSort.out	# works but a time bound of a function is manually provided
 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/Knapsack.scala  | tee Knapsack.out # a few seconds
 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/WeightedScheduling.scala | tee Sched.out # a few seconds
 ./leon --mem --benchmark --unrollfactor=4 ./testcases/lazy-datastructures/withOrb/PackratParsing.scala  | tee PackratParsing.out # ~ 1min

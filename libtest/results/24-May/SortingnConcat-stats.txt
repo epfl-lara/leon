@@ -1,25 +1,25 @@
-Total-Verification-Time: 1.094s
+Total-Verification-Time: 1.038s
 Total-VCs-Generated: 13
-Z3SolvedVCs: 11
-CVC4SolvedVCs: 2
+Z3SolvedVCs: 13
+CVC4SolvedVCs: 0
 procs: 5
 VC-refinement: 19
 disjuncts: 77
-TotalVCCTime: 2.655s
-Total-AxiomChoose-Time: 0.057s
+TotalVCCTime: 2.612s
+Total-AxiomChoose-Time: 0.058s
 Total-TheoryAxiomatization-Time: 0.0s
-Total-ElimUF-Time: 0.456s
+Total-ElimUF-Time: 0.438s
 UneliminatedEqualities: 396
-ElimTime: 0.294s
-Total-Choose-Time: 1.032s
-BinarySearchTime: 0.971s
+ElimTime: 0.298s
+Total-Choose-Time: 1.041s
+BinarySearchTime: 1.023s
 ### Statistics for counter: CVC4SolvedVCs ####
-Avg.CVC4-Time: 15.0
-Max.CVC4-Time: 30
+Avg.CVC4-Time: NaN
+Max.CVC4-Time: 0
 ### Statistics for counter: procs ####
 ### Statistics for counter: Z3SolvedVCs ####
-Avg.Z3-Time: 96.72727272727273
-Max.Z3-Time: 1064
+Avg.Z3-Time: 79.84615384615384
+Max.Z3-Time: 1038
 ### Statistics for counter: VC-refinement ####
 Avg.AxiomBlowup: 3.9473684210526314
 Max.AxiomBlowup: 50
@@ -31,11 +31,11 @@ Avg.TemplateIds: 2.1578947368421053
 Max.TemplateIds: 3
 Avg.unflatSize: 34.421052631578945
 Max.unflatSize: 196
-Avg.UnflatTime: 0.008736842105263157s
+Avg.UnflatTime: 0.009210526315789473s
 Max.UnflatTime: 0.036s
 ### Statistics for counter: disjuncts ####
-Avg.VC-check-time: 0.03448051948051948s
-Max.VC-check-time: 0.116s
+Avg.VC-check-time: 0.03392207792207792s
+Max.VC-check-time: 0.115s
 Avg.CallADT-Constraints: 27.4025974025974
 Max.CallADT-Constraints: 110
 Avg.CtrsBeforeElim: 47.27272727272727
@@ -46,12 +46,12 @@ Avg.Param-Atoms: 1.0389610389610389
 Max.Param-Atoms: 3
 Avg.NonParam-Atoms: 4.545454545454546
 Max.NonParam-Atoms: 21
-Avg.Disj-choosing-time: 0.013402597402597402s
-Max.Disj-choosing-time: 0.111s
+Avg.Disj-choosing-time: 0.01351948051948052s
+Max.Disj-choosing-time: 0.124s
 Avg.NLsize: 26.90909090909091
 Max.NLsize: 147
-Avg.NL-solving-time: 0.008558441558441559s
-Max.NL-solving-time: 0.028s
+Avg.NL-solving-time: 0.008571428571428572s
+Max.NL-solving-time: 0.029s
 ########## Outputs ############
 Invariants for Function: concat-time
 concat-time --> time2 + BigInt(-7) <= BigInt(0)

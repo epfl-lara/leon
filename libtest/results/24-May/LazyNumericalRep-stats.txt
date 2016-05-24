@@ -1,0 +1,71 @@
+Total-Verification-Time: 9.298s
+Total-VCs-Generated: 113
+Z3SolvedVCs: 97
+CVC4SolvedVCs: 16
+procs: 7
+VC-refinement: 13
+disjuncts: 37
+TotalVCCTime: 1.962s
+Total-AxiomChoose-Time: 0.017s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.272s
+UneliminatedEqualities: 39
+ElimTime: 0.073s
+Total-Choose-Time: 0.477s
+BinarySearchTime: 0.226s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 107.4375
+Max.CVC4-Time: 1719
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 78.1340206185567
+Max.Z3-Time: 7579
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 154.30769230769232
+Max.VC-size: 587
+Avg.UIF+ADT: 77.07692307692308
+Max.UIF+ADT: 293
+Avg.TemplateIds: 1.0
+Max.TemplateIds: 1
+Avg.unflatSize: 20.615384615384617
+Max.unflatSize: 88
+Avg.UnflatTime: 0.009s
+Max.UnflatTime: 0.039s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.053027027027027024s
+Max.VC-check-time: 0.495s
+Avg.CallADT-Constraints: 12.621621621621621
+Max.CallADT-Constraints: 64
+Avg.CtrsBeforeElim: 14.486486486486486
+Max.CtrsBeforeElim: 69
+Avg.EliminatedAtoms: 13.945945945945946
+Max.EliminatedAtoms: 69
+Avg.Param-Atoms: 0.7297297297297297
+Max.Param-Atoms: 1
+Avg.NonParam-Atoms: 0.5405405405405406
+Max.NonParam-Atoms: 2
+Avg.Disj-choosing-time: 0.012891891891891893s
+Max.Disj-choosing-time: 0.129s
+Avg.NLsize: 9.108108108108109
+Max.NLsize: 27
+Avg.NL-solving-time: 0.0065675675675675674s
+Max.NL-solving-time: 0.023s
+########## Outputs ############
+Invariants for Function: incLazy-time
+incLazy-time --> time2 + BigInt(-29) <= BigInt(0)
+
+Invariants for Function: inc-time
+inc-time --> time3 + BigInt(-43) <= BigInt(0)
+
+Invariants for Function: incNum-time
+incNum-time --> time4 + BigInt(-56) <= BigInt(0)
+
+Invariants for Function: Pay-time
+Pay-time --> time5 + BigInt(-52) <= BigInt(0)
+
+Invariants for Function: incAndPay-time
+incAndPay-time --> time6 + BigInt(-122) <= BigInt(0)
+
+

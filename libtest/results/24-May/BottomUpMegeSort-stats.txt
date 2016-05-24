@@ -1,0 +1,73 @@
+Total-Verification-Time: 4.397s
+Total-VCs-Generated: 31
+Z3SolvedVCs: 27
+CVC4SolvedVCs: 4
+procs: 7
+VC-refinement: 32
+disjuncts: 80
+TotalVCCTime: 265.677s
+Total-AxiomChoose-Time: 1.055s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 8.985s
+UneliminatedEqualities: 270
+ElimTime: 1.261s
+Total-Choose-Time: 12.636s
+BinarySearchTime: 0.386s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 465.25
+Max.CVC4-Time: 1861
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 93.92592592592592
+Max.Z3-Time: 2536
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 1391.65625
+Max.VC-size: 4414
+Avg.UIF+ADT: 670.53125
+Max.UIF+ADT: 2075
+Avg.TemplateIds: 1.78125
+Max.TemplateIds: 2
+Avg.unflatSize: 203.0
+Max.unflatSize: 638
+Avg.UnflatTime: 0.02703125s
+Max.UnflatTime: 0.078s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 3.3209625s
+Max.VC-check-time: 28.127s
+Avg.CallADT-Constraints: 82.3625
+Max.CallADT-Constraints: 501
+Avg.CtrsBeforeElim: 129.5625
+Max.CtrsBeforeElim: 788
+Avg.EliminatedAtoms: 120.5625
+Max.EliminatedAtoms: 772
+Avg.Param-Atoms: 1.1
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 9.0
+Max.NonParam-Atoms: 27
+Avg.Disj-choosing-time: 0.15795s
+Max.Disj-choosing-time: 1.514s
+Avg.NLsize: 24.725
+Max.NLsize: 94
+Avg.NL-solving-time: 0.0080375s
+Max.NL-solving-time: 0.027s
+########## Outputs ############
+Invariants for Function: pairs-time
+pairs-time --> (BigInt(-17) * l41.size5 + BigInt(2) * time2) + BigInt(-6) <= BigInt(0)
+
+Invariants for Function: merge-time
+merge-time --> time3 + BigInt(-21) <= BigInt(0)
+
+Invariants for Function: forceAndMerge-time
+
+Invariants for Function: ListToStreamList-time
+ListToStreamList-time --> (BigInt(-13) * l47.size5 + time4) + BigInt(-3) <= BigInt(0)
+
+Invariants for Function: constructMergeTree-time
+constructMergeTree-time --> (BigInt(2) * time5 + BigInt(-71) * l44.size5) + BigInt(-6) <= BigInt(0)
+
+Invariants for Function: mergeSort-time
+mergeSort-time --> (BigInt(128) * time6 + BigInt(-6268) * l48.size5) + BigInt(-1888) <= BigInt(0)
+
+
