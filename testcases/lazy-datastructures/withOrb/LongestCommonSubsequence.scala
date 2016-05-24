@@ -78,7 +78,7 @@ object LongestCommonSubsequence {
    * from right to left, and bottom to top.
    * @param m - number of rows remaining
    * @param n - max. number of columns
-   * @param j - number of columns remaining (initially set to 1)
+   * @param j - number of columns remaining (initially set to n)
    * @result returns a list of solutions for each sub-problem (the size of the resulting list will be quadratic)
    */
   def bottomup(m: BigInt, j: BigInt, n: BigInt): List[BigInt] = {
