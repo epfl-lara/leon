@@ -75,6 +75,14 @@ object InstUtil {
     mfd
   }
 
+  def getInstSuffixes(fd: FunDef) = {
+    val splits = fd.id.name.split("-")
+    if (!splits.isEmpty) {
+      val instNames = InstTypes.map(_.name).toSet
+      splits.tail.dropWhile(x => !instNames.contains(x)).toSeq
+    } else Seq[String]()
+  }
+
   def userFunctionName(fd: FunDef) = {
     val splits = fd.id.name.split("-")
     if(!splits.isEmpty) {
@@ -85,7 +93,7 @@ object InstUtil {
 
   def getInstMap(fd: FunDef) = {
     val resvar = getResId(fd).get.toVariable // note: every instrumented function has a postcondition
-    val insts = fd.id.name.split("-").tail // split the name of the function w.r.t '-'
+    val insts = getInstSuffixes(fd) // fd.id.name.split("-").tail // split the name of the function w.r.t '-'
     (insts.zipWithIndex).foldLeft(Map[Expr, String]()) {
       case (acc, (instName, i)) =>
         acc + (TupleSelect(resvar, i + 2) -> instName)
@@ -94,7 +102,7 @@ object InstUtil {
 
   def getInstExpr(fd: FunDef, inst: Instrumentation) = {
     val resvar = getResId(fd).get.toVariable // note: every instrumented function has a postcondition
-    val insts = fd.id.name.split("-").tail // split the name of the function w.r.t '-'
+    val insts = getInstSuffixes(fd) // split the name of the function w.r.t '-'
     val index = insts.indexOf(inst.name)
     if (index >= 0)
       Some(TupleSelect(resvar, index + 2))

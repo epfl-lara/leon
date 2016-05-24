@@ -16,7 +16,8 @@ import invariant._
  * We require both the front and the rear streams to be of almost equal
  * size. If not, we lazily rotate the streams.
  * The invariants are a lot more complex than in `RealTimeQueue`.
- * The program also fixes a bug in Okasaki's implementatin: see function `rotateDrop`
+ * The program also fixes a bug in Okasaki's implementatin: see function `rotateDrop`.
+ * Proof Hint: requires unrollfactor = 4
  */
 object RealTimeDeque {
   sealed abstract class Stream[T] {
@@ -165,7 +166,7 @@ object RealTimeDeque {
       (lenf >= 2 * lenr + 2 && lenf <= 2 * lenr + 3) && // size invariant between 'f' and 'r'
         lenf > i
     })
-    if (i < 2 || r == SNil[T]()) { // A bug in Okasaki implementation: we must check for: 'rval = SNil()'      
+    if (i < 2 || r == SNil[T]()) { // A bug in Okasaki implementation: we must check for: 'rval = SNil()'
       rotateRev(r, drop(i, f), SNil[T]())
     } else {
       r match {

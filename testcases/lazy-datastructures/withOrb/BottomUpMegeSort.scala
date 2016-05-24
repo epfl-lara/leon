@@ -13,6 +13,7 @@ import stats._
 /**
  * A version of merge sort that operates bottom-up. That allows
  * accessing the first element in the sorted list in constant time.
+ * Needs unrollfactor = 3
  */
 object BottomUpMergeSort {
   sealed abstract class LList {
@@ -28,9 +29,9 @@ object BottomUpMergeSort {
   case class Stream(lfun: () => LList) {
     @inline
     def size = (list*).size
-    lazy val list: LList = lfun()    
+    lazy val list: LList = lfun()
   }
- 
+
   def valid(sl: List[Stream]): Boolean = {
     sl match {
       case Cons(s, tail) => s.size > 0  && valid(tail)
@@ -61,7 +62,7 @@ object BottomUpMergeSort {
     }
   } ensuring (res => res.size <= (l.size + 1) / 2 &&
     fullSize(l) == fullSize(res) &&
-    valid(res) && 
+    valid(res) &&
     time <= ? * l.size + ?
     )
 
@@ -85,10 +86,10 @@ object BottomUpMergeSort {
         fullSize(res) == il.size // this is implied by the previous conditions
       case _ => true
     }) &&
-    valid(res) && 
+    valid(res) &&
     time <= ? * l.size + ?
   }
-  
+
   @invisibleBody
   def merge(a: Stream, b: Stream): LList = {
     require((a.list.cached && b.list.cached))
@@ -105,7 +106,7 @@ object BottomUpMergeSort {
         }
     }
   } ensuring(_ => time <= ?)
-  
+
   /**
    *  A function that merges two sorted streams of integers.
    *  Note: the sorted stream of integers may by recursively constructed using merge.
@@ -119,14 +120,14 @@ object BottomUpMergeSort {
       val blist = (b.list*)
       (alist != SNil() || b.list.cached) && // if one of the arguments is Nil then the other is evaluated
         (blist != SNil() || a.list.cached) &&
-        (alist != SNil() || blist != SNil()) // at least one of the arguments is not Nil      
-    } 
+        (alist != SNil() || blist != SNil()) // at least one of the arguments is not Nil
+    }
     (a.list, b.list) match {
       case _ => merge(a, b)
     }
   } ensuring {res =>
     val rsize = res.size
-    a.size + b.size == rsize && rsize >= 1 &&     
+    a.size + b.size == rsize && rsize >= 1 &&
     time <= 156 * rsize - 86 // 156 * res.size -  86  // Orb cannot infer this due to issues with CVC4 set solving !
   }
 
@@ -146,7 +147,7 @@ object BottomUpMergeSort {
   } ensuring { res =>
     fullSize(res) == l.size &&
       res.size == l.size &&
-      valid(res) && 
+      valid(res) &&
       time <= ? * l.size + ?
   }
 
@@ -175,7 +176,7 @@ object BottomUpMergeSort {
 //    }
 //  } ensuring (res => time <= ? * l.size + ?)
 //
-  def kthMin(s: Stream, k: BigInt): BigInt = {
+  /*def kthMin(s: Stream, k: BigInt): BigInt = {
     require(k >= 0)
     s.list match {
       case SCons(x, xs) =>
@@ -184,7 +185,7 @@ object BottomUpMergeSort {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ?)
+  } ensuring (_ => time <= ? * (k * s.size) + ?)*/
 
   @ignore
   def main(args: Array[String]) {

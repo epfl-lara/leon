@@ -77,7 +77,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   object memTimeCostModel {
     def costOf(e: Expr)(implicit currFun: FunDef): Int = {
       val cost = e match {
-        case _ if isEvalFunction(currFun)               => 0 // cost of every primitive operation inside eval is zero
+        case _ if isEvalFunction(currFun)               => 0 // cost of every operation inside eval is zero (note the cost of targets of `eval` will be included anyway)
         case FunctionInvocation(fd, _) if !fd.hasBody   => 0 // uninterpreted functions
         case FunctionInvocation(fd, args)               => 1
         case t: Terminal                                => 0
@@ -87,7 +87,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
           case _ => 1
         }
         case FiniteSet(_, clType) if isMemoClosure(clType) => 0 // creating a memo set
-        case CaseClass(cct, _) if isMemoClosure(cct.root) => 0 // createing a memo closure
+        case CaseClass(cct, _) if isMemoClosure(cct.root) => 0 // creating a memo closure
         case SetUnion(s1, _) if isStateType(s1.getType) => 0 // state union
         case _ => 1
       }

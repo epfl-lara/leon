@@ -9,7 +9,7 @@ import invariant._
 
 /**
  * A memoized version of the implementation of Hamming problem shown in
- * section 4.3 of Type-based allocation analysis for Co-recursion
+ * section 4.3 of Type-based allocation analysis for Co-recursion.
  */
 object Hamming {
   sealed abstract class IList
