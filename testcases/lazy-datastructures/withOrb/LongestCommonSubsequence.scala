@@ -10,30 +10,6 @@ import collection._
 
 object LongestCommonSubsequence {
 
-  // data-structure and it's methods
-  sealed abstract class Word {
-    val size: BigInt = {
-      this match {
-        case Cons(_, tail) => 1 + tail.size
-        case Nil()         => BigInt(0)
-      }
-    } ensuring (_ >= 0)
-  }
-  case class Cons(x: BigInt, tail: Word) extends Word {
-    @ignore
-    override def toString: String = {
-      if (tail == Nil()) x.toString
-      else x.toString + tail.toString
-    }
-  }
-  case class Nil() extends Word {
-    @ignore
-    override def toString = ""
-  }
-
-  val string1 = Cons(1, Cons(2, Cons(2, Cons(3, Nil()))))
-  val string2 = Cons(1, Cons(2, Cons(3, Cons(4, Nil()))))
-
   @ignore
   var xstring = Array[BigInt]()
   @ignore
@@ -102,22 +78,21 @@ object LongestCommonSubsequence {
    * from right to left, and bottom to top.
    * @param m - number of rows remaining
    * @param n - max. number of columns
-   * @param j - number of columns remaining
+   * @param j - number of columns remaining (initially set to 1)
+   * @result returns a list of solutions for each sub-problem (the size of the resulting list will be quadratic)
    */
-  def bottomup(m: BigInt, j: BigInt, n: BigInt): BigInt = {
+  def bottomup(m: BigInt, j: BigInt, n: BigInt): List[BigInt] = {
     require(0 <= m && 0 <= j && j <= n)
     if (m == 0 && j == 0) {
-      invoke(m, j, n)
+      Cons(invoke(m, j, n), Nil[BigInt]())
     }
     else if(j == 0) {
-      bottomup(m - 1, n, n) match {
-        case _ => invoke(m, j, n)
-      }
+      val tail = bottomup(m - 1, n, n)
+      Cons(invoke(m, j, n), tail)
     }
     else {
-      bottomup(m, j - 1, n) match {
-        case _ => invoke(m, j, n)
-      }
+      val tail = bottomup(m, j - 1, n)
+      Cons(invoke(m, j, n), tail)
     }
   } ensuring {_ =>
     bottomUpPost(m, j, n) &&
@@ -127,14 +102,14 @@ object LongestCommonSubsequence {
   @invisibleBody
   def bottomUpPost(m: BigInt, j: BigInt, n: BigInt): Boolean = {
     require(m >= 0 && n >= j && j >= 0)
-    (m == 0 || (deps(m - 1, n) && depsLem(m - 1, j, m - 1, n))) && deps(m, j) &&
+    (m == 0 || (deps(m - 1, n) && (j == n || depsLem(m - 1, j + 1, m - 1, n)))) && deps(m, j) &&
       depsLem(m, 0, m, j)
   }
 
-  /*def lcsSol(X: Word, Y: Word) = {
-    require(Y.size >= 0 && X.size <= 10) // the second requirement is only to keep the bounds linear
-    bottomup(0, Y.size, X, Y)
-  } ensuring(_ => time <= ? * Y.size + ?)*/
+  def lcsSols(m: BigInt, n: BigInt): List[BigInt] = {
+    require(0 <= m && 0 <= n)
+    bottomup(m, n, n)
+  } ensuring(_ => time <= ? * (m * n)  + ? * m + ? * n + ?)
 
   /*@ignore
   def main(args: Array[String]) {
