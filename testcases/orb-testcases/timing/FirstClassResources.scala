@@ -9,23 +9,23 @@ object TreeOperations {
 
   def size(t: Tree): BigInt = {
     t match {
-      case Leaf() => 0
+      case Leaf() => BigInt(0)
       case Node(l, x, r) => {
         size(l) + size(r) + 1
       }
     }
-  }
+  } ensuring(_ => time <= 10)
 
   def height(t: Tree): BigInt = {
     t match {
-      case Leaf() => 0
+      case Leaf() => BigInt(0)
       case Node(l, x, r) => {
         val hl = height(l)
         val hr = height(r)
         if (hl > hr) hl + 1 else hr + 1
       }
     }
-  }
+  } ensuring(_ => time <= 10)
 
   def timeOfSizeHeight(t: Tree): Boolean = {
     time(size(t)) <= time(height(t))

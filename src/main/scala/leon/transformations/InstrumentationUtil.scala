@@ -19,12 +19,20 @@ import PredicateUtil._
 sealed abstract class Instrumentation {
   val getType: TypeTree
   val name: String
-  def isInstVariable(e: Expr): Boolean = {
+  def isInstCall(e: Expr): Boolean = {
     e match {
-      case FunctionInvocation(TypedFunDef(fd, _), _) if (fd.id.name == name && fd.annotations("library")) =>
-        true
+      case FunctionInvocation(TypedFunDef(fd, _), args) if args.size <= 1 =>
+        fd.id.name == name && fd.annotations("library") 
       case _ => false
     }
+  }
+  def instTarget(e: Expr): Option[Expr] = {
+    if (isInstCall(e)) {
+      e match {
+        case FunctionInvocation(_, Seq()) => None
+        case FunctionInvocation(_, Seq(arg)) => Some(arg)
+      }      
+    } else throw new IllegalStateException("Not inst call: " + e)
   }
   override def toString = name
 }
@@ -74,6 +82,8 @@ object InstUtil {
     mfd.addFlag(Annotation("theoryop", Seq()))
     mfd
   }
+  
+  def instCall(e: Expr) = InstTypes.find(_.isInstCall(e))
 
   def getInstSuffixes(fd: FunDef) = {
     val splits = fd.id.name.split("-")

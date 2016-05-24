@@ -19,6 +19,7 @@ import TypeUtil._
 import TVarFactory._
 import invariant.structure.FunctionUtils._
 import laziness._
+import InstUtil._
 import scala.collection.mutable.{ Map => MutableMap, Set => MutableSet }
 
 /**
@@ -165,6 +166,13 @@ class SerialInstrumenter(program: Program,
 
   def mapExpr(ine: Expr, paramMap: Map[Identifier, Identifier]): Expr = {
     def rec(e: Expr)(implicit idMap: Map[Identifier, Identifier]): Expr = e match {
+      case _ if instCall(e).isDefined =>
+        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
+        val ntargs = targs map instrumentType
+        val nargs = args map rec
+        val inst = instCall(e).get
+        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
+        
       case FunctionInvocation(TypedFunDef(fd, targs), args) =>
         val nfd = funMap.getOrElse(fd, fd)
         val ntargs = targs map instrumentType
@@ -266,11 +274,14 @@ class SerialInstrumenter(program: Program,
             val newpost = postMap((e: Expr) => e match {
               case Variable(`fromRes`) =>
                 Some(TupleSelect(toResId.toVariable, 1))
-              case _ if funcInsts(from).exists(_.isInstVariable(e)) =>
-                val inst = funcInsts(from).find(_.isInstVariable(e)).get
-                Some(TupleSelect(toResId.toVariable, instIndex(from)(inst)))
-              case _ =>
-                None
+              case _ if instCall(e).isDefined =>
+                val inst = instCall(e).get
+                inst.instTarget(e) match {
+                  case None => // e refers to the resource usage of the current function
+                    Some(TupleSelect(toResId.toVariable, instIndex(from)(inst)))
+                  case _ => None // this case will be handled by mapExpr 
+                }
+              case _ => None
             })(postCond)
             Lambda(Seq(ValDef(toResId)), mapExpr(newpost, paramMap))
           case _ =>
@@ -525,6 +536,14 @@ class ExprInstrumenter(ictx: InstruContext) {
     import ictx._
     implicit val currFun = ictx.currFun
     e match {
+      case _ if instCall(e).isDefined =>
+        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
+        val ntargs = targs map serialInst.instrumentType
+        val nargs = args map transform
+        val inst = instCall(e).get
+        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), 
+            serialInst.instIndex(fd)(inst))
+        
       // Matchcases with guards are converted to if-then-else.
       case me @ MatchExpr(scrutinee, matchCases) =>
         if (matchCases.exists(_.optGuard.isDefined)) {
@@ -549,7 +568,7 @@ class ExprInstrumenter(ictx: InstruContext) {
           val scrutRes = Variable(createInstVar("scr", transScrut.getType))
           val scrutValType = scrutRes.getType match {
             case TupleType(bases) => bases.head
-            case Untyped => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization
+            case Untyped          => serialInst.instrumentType(scrutinee.getType) // here, we may be using memoization
           }
           val matchExpr = MatchExpr(TupleSelect(scrutRes, 1),
             matchCases.map {
@@ -693,7 +712,7 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
 
   def getRootFuncs(prog: Program = program): Set[FunDef] = {
     prog.definedFunctions.filter { fd =>
-      (fd.hasPostcondition && exists(inst.isInstVariable)(fd.postcondition.get))
+      (fd.hasPostcondition && exists(inst.isInstCall)(fd.postcondition.get))
     }.toSet
   }
 

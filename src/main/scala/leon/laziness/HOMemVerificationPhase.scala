@@ -30,7 +30,7 @@ object HOMemVerificationPhase {
 
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
-      exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
+      exists(InstUtil.instCall(_).isDefined)(e)
     }
     val newPosts = p.definedFunctions.collect {
       case fd if fd.postcondition.exists { exists(hasInstVar) } =>
