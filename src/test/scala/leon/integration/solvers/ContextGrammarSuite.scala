@@ -236,4 +236,43 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               
     grammar.markovize_abstract_vertical() should equalGrammar (grammar2)
   }
+  
+  // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
+  // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
+  test("Abstract vertical Markovization Filtered") {
+    val Alist = NonTerminal("Alist")
+    val Acons = NonTerminal("Acons")
+    val Anil = NonTerminal("Anil")
+    val acons = Terminal("acons", "")
+    val anil = Terminal("anil", "")
+    
+    val Blist = NonTerminal("Blist")
+    val Bcons = NonTerminal("Bcons")
+    val Bnil = NonTerminal("Bnil")
+    val bcons = Terminal("bcons", "")
+    val bnil = Terminal("bnil", "")
+    val grammar =
+      Grammar(List(Alist),
+          Map(Alist -> Expansion(List(List(Acons), List(Anil))),
+              Acons -> Expansion(List(List(acons, Blist, Alist))),
+              Anil -> Expansion(List(List(anil, x))),
+              Blist -> Expansion(List(List(Bcons), List(Bnil))),
+              Bcons -> Expansion(List(List(bcons, Alist, Blist))),
+              Bnil -> Expansion(List(List(bnil, y)))))
+    
+    val BconsA = Bcons.copy(vcontext = List(Alist))
+    val BnilA = Bnil.copy(vcontext = List(Alist))
+    val BlistA = Blist.copy(vcontext = List(Alist))
+    
+    val grammar2 =
+      Grammar(List(Alist),
+          Map(Alist -> Expansion(List(List(Acons), List(Anil))),
+              Acons -> Expansion(List(List(acons, BlistA, Alist))),
+              Anil -> Expansion(List(List(anil, x))),
+              BlistA -> Expansion(List(List(BconsA), List(BnilA))),
+              BconsA -> Expansion(List(List(bcons, Alist, BlistA))),
+              BnilA -> Expansion(List(List(bnil, y)))))
+              
+    grammar.markovize_abstract_vertical_filtered(_.tag == "Blist") should equalGrammar (grammar2)
+  }
 }

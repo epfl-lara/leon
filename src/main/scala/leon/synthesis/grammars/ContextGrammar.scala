@@ -174,7 +174,7 @@ class ContextGrammar[SymbolTag, TerminalTag] {
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy"
       * Different abstract hierarchy means that nodes do not have the same ancestor.
       */
-    def markovize_abstract_vertical(): Grammar = {
+    def markovize_abstract_vertical_filtered(pred: NonTerminal => Boolean): Grammar = {
       val nts = nonTerminals
       val rulesSeq = rules.toSeq
       def parents(nt: NonTerminal): Seq[NonTerminal] = {
@@ -184,13 +184,15 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       object Mapping extends NonTerminalMapping {
         // Adds a new mapping by introducing a top-context.
         def updateTopContext(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
-          val new_nt = nt.copy(vcontext = topContext)
-          mapping += nt -> (new_nt::mapping.getOrElse(nt, Nil)).distinct
-          Original.recordMapping(nt, new_nt)
-          new_nt
+          if(pred(Ancestor(nt))) {
+            val new_nt = nt.copy(vcontext = topContext)
+            mapping += nt -> (new_nt::mapping.getOrElse(nt, Nil)).distinct
+            Original.recordMapping(nt, new_nt)
+            new_nt
+          } else nt
         }
         // Returns the list of new non-terminals which will replace the given nonterminal
-        def apply(elem: NonTerminal) = 
+        def apply(elem: NonTerminal): Seq[NonTerminal] = 
           (if(Ancestor.isInStart(elem))
                 List(elem)
               else Nil) ++
@@ -273,6 +275,13 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       }, 64)(newRules2) // 64 is the maximum number of nested hierarchies it supports.
       
       Grammar(start, newRules3)
+    }
+    
+    /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy"
+      * Different abstract hierarchy means that nodes do not have the same ancestor.
+      */
+    def markovize_abstract_vertical(): Grammar = {
+      markovize_abstract_vertical_filtered(_ => true)
     }
     
   }

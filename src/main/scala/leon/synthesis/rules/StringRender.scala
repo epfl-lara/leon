@@ -384,12 +384,16 @@ case object StringRender extends Rule("StringRender") {
     }
     
     case class GrammarBasedTemplateGenerator(grammar: Grammar, inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) {
-      // TODO: Too much to introduce vertical context for every type. Need more refinement.
+      /** Use with caution: These functions make the entire grammar increase exponentially in size*/
       def markovize_vertical() = copy(grammar=grammar.markovize_vertical())
-      // TODO: Too much to introduce horizontal context for every type. Need more refinement.
       def markovize_horizontal() = copy(grammar=grammar.markovize_horizontal())
-      // TODO: Too much to introduce abstract vertical context for every type. Need more refinement.
       def markovize_abstract_vertical() = copy(grammar=grammar.markovize_abstract_vertical())
+      
+      /** Mark all occurrences of a given type so that we can differentiate its usage according to its rank from the left.*/
+      def markovize_horizontal_type(tpe: TypeTree) = copy(grammar=grammar.markovize_horizontal_filtered(k => k.tag == tpe))
+      
+      /** Mark all occurences of a given type so that we can differentiate its usage depending from where it was taken from.*/
+      def markovize_vertical_type(tpe: TypeTree) = copy(grammar=grammar.markovize_abstract_vertical_filtered { k => k.tag == tpe })
       
       def getAllTypes(): Set[TypeTree] = {
         grammar.rules.keys.map(_.tag).toSet
