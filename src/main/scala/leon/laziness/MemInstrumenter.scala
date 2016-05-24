@@ -15,11 +15,11 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   val exprInstFactory = (ictx: InstruContext) => new MemExprInstrumenter(ictx)
 
   val instrumenterFactory: SerialInstrumenter => Map[Instrumentation, Instrumenter] =
-      si => Map(Time -> new MemTimeInstrumenter(p, si),
-        Depth -> new DepthInstrumenter(p, si),
-        Rec -> new RecursionCountInstrumenter(p, si),
-        Stack -> new StackSpaceInstrumenter(p, si),
-        TPR -> new MemTPRInstrumenter(p, si))
+    si => Map(Time -> new MemTimeInstrumenter(p, si),
+      Depth -> new DepthInstrumenter(p, si),
+      Rec -> new RecursionCountInstrumenter(p, si),
+      Stack -> new StackSpaceInstrumenter(p, si),
+      TPR -> new MemTPRInstrumenter(p, si))
 
   val serialInst = new SerialInstrumenter(p, instrumenterFactory, Some(exprInstFactory))
 
@@ -75,11 +75,12 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   }
 
   object memTimeCostModel {
-    def costOf(e: Expr): Int = e match {
-      case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
-      case FunctionInvocation(fd, args)             => 1
-      case t: Terminal                              => 0
-      case Tuple(Seq(_, s)) if isStateType(s.getType)  =>  0 // state construction
+    def costOf(e: Expr)(implicit currFun: FunDef): Int = e match {
+      case _ if isEvalFunction(currFun)               => 0 // cost of every primitive operation inside eval is zero
+      case FunctionInvocation(fd, _) if !fd.hasBody   => 0 // uninterpreted functions
+      case FunctionInvocation(fd, args)               => 1
+      case t: Terminal                                => 0
+      case Tuple(Seq(_, s)) if isStateType(s.getType) => 0 // state construction
       case TupleSelect(se, _) => se.getType match {
         case TupleType(Seq(_, stType)) if isStateType(stType) => 0 // state extraction
         case _ => 1
@@ -95,16 +96,19 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
    * Here, we assume that all match cases of dispatch function take the same cost.
    */
   class MemTimeInstrumenter(p: Program, si: SerialInstrumenter) extends TimeInstrumenter(p, si) {
-    override def costOf(e: Expr): Int = memTimeCostModel.costOf(e)    
+    override def costOf(e: Expr)(implicit currFd: FunDef): Int = memTimeCostModel.costOf(e)
+
     override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
-      val costMatch = costOfExpr(me)
-      val costOfPattern = patternCost(mc.pattern, false, true)
-      val cumulativeCostOfPattern =
-        if(isEvalFunction(fd))
-           costOfPattern // ignoring the cost of previous cases
-        else
+      if (isEvalFunction(fd)) {
+        // ignoring the cost of match completely
+        caseExprCost
+      } else {
+        val costMatch = costOfExpr(me)
+        val costOfPattern = patternCost(mc.pattern, false, true)
+        val cumulativeCostOfPattern =
           me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) + costOfPattern
-      Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+        Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+      }
     }
   }
 
@@ -112,16 +116,18 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
    * Here, we assume that all match cases of dispatch function take the same cost.
    */
   class MemTPRInstrumenter(p: Program, si: SerialInstrumenter) extends TPRInstrumenter(p, si) {
-    override def costOf(e: Expr): Int = memTimeCostModel.costOf(e)
+    override def costOf(e: Expr)(implicit currFd: FunDef): Int = memTimeCostModel.costOf(e)
     override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
-      val costMatch = costOfExpr(me)
-      val costOfPattern = patternCost(mc.pattern, false, true)
-      val cumulativeCostOfPattern =
-        if(isEvalFunction(fd))
-           costOfPattern // ignoring the cost of previous cases
-        else
+      if (isEvalFunction(fd)) {
+        // ignoring the cost of match completely
+        caseExprCost
+      } else {
+        val costMatch = costOfExpr(me)
+        val costOfPattern = patternCost(mc.pattern, false, true)
+        val cumulativeCostOfPattern =
           me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) + costOfPattern
-      Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+        Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+      }
     }
   }
 }

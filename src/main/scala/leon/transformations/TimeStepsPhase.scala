@@ -17,15 +17,15 @@ import TypeUtil._
 
 class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
 
-  def costOf(e: Expr): Int = e match {
+  def costOf(e: Expr)(implicit currFun: FunDef): Int = e match {
     case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
     case FunctionInvocation(fd, args)             => 1
     case t: Terminal                              => 0
     case _                                        => 1
   }
 
-  def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
-  
+  def costOfExpr(e: Expr)(implicit currFun: FunDef) = InfiniteIntegerLiteral(costOf(e))
+
   def inst = Time
 
   val (funsToInst, funTypesToInst) = {
@@ -126,7 +126,7 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
    * is time when condition is false.
    */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-      thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
+      thenInst: Option[Expr], elzeInst: Option[Expr])(implicit currFun: FunDef): (Expr, Expr) = {
     val costIf = costOfExpr(e)
     (Plus(costIf, Plus(condInst.get, thenInst.get)),
       Plus(costIf, Plus(condInst.get, elzeInst.get)))

@@ -16,15 +16,15 @@ import scala.collection.mutable.{Map => MutableMap}
 
 class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
 
-  def costOf(e: Expr): Int = e match {
+  def costOf(e: Expr)(implicit fd: FunDef): Int = e match {
     case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
     case FunctionInvocation(fd, args) => 1
     case t: Terminal => 0
     case _ => 1
-  }  
-  
-  def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
-  
+  }
+
+  def costOfExpr(e: Expr)(implicit fd: FunDef) = InfiniteIntegerLiteral(costOf(e))
+
   def inst = TPR
 
   val sccs = cg.sccs.flatMap { scc =>
@@ -109,7 +109,7 @@ class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-      thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
+      thenInst: Option[Expr], elzeInst: Option[Expr])(implicit fd: FunDef): (Expr, Expr) = {
     val costIf = costOfExpr(e)
     (Plus(costIf, Plus(condInst.get, thenInst.get)),
       Plus(costIf, Plus(condInst.get, elzeInst.get)))
