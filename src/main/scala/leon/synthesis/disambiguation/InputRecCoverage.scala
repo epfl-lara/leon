@@ -21,10 +21,7 @@ import leon.grammars.ValueGrammar
 import leon.purescala.TypeOps
 import leon.evaluators.AbstractEvaluator
 import leon.purescala.TypeOps
-import leon.grammars.ValueGrammar
 import scala.collection.mutable.Queue
-import leon.grammars.ValueGrammar
-import leon.grammars.ValueGrammar
 import java.util.IdentityHashMap
 
 object InputRecCoverage {
