@@ -4,9 +4,9 @@ import leon._
 import mem._
 import lang._
 import annotation._
-import com.sun.xml.internal.bind.v2.runtime.reflect.Lister.Pack
 import instrumentation._
 import invariant._
+import collection._
 
 object LongestCommonSubsequence {
 
@@ -59,35 +59,12 @@ object LongestCommonSubsequence {
     require(i >= 0 && j >= 0)
     (st1.subsetOf(st2) && (deps(i, j) withState st1)) ==> (deps(i, j) withState st2)
   } holds
-  //
-  //  // FIXME: Is this even needed? (more lemmas shouldn't hurt though)
-  //  @traceInduct
-  //  def depsLem(i: BigInt, j: BigInt) = {
-  //    require(i >= 0 && j >= 0)
-  //    (i <= j && deps(j, X, Y)) ==> deps(i, X, Y)
-  //  } holds
 
-  /*def fill(i: BigInt, j: BigInt): Word = {
-    require((n ==0 || (n > 0 && deps(n - 1, X, Y))))
-    // Knapsack has a bigger requires here
-    currX match {
-      case Cons(xj, tailx) => {
-        currY match {
-          case Cons(yi, taily) => {
-            if (yi == xj)
-              Cons(xj, lcs(n - 1, tailx, taily))
-            else {
-              val s1 = lcs(n - 1, currX, taily)
-              val s2 = fillithRow(X, Y, n, tailx, currY)
-              if (s1.size >= s2.size) s1 else s2
-            }
-          }
-          case Nil() => Nil()
-        }
-      }
-      case Nil() => Nil()
-    }
-  } ensuring(_ => time <= ? * currX.size + ?)*/
+  @traceInduct
+  def depsLem(i: BigInt, j: BigInt, m: BigInt, n: BigInt) = {
+    require(i >= 0 && j >= 0 && m >= 0 && n >= 0)
+    (i <= m && j <= n && deps(m, n)) ==> deps(i, j)
+  } holds
 
   @invstate
   @memoize
@@ -108,48 +85,58 @@ object LongestCommonSubsequence {
   } ensuring (_ => time <= ?)
 
   @invisibleBody
-  def invoke(i: BigInt, j: BigInt) = {
-    require((i >=0 && j >= 0) && (i == 0 || deps(i - 1, j)) && (j == 0 || deps(i, j-1)))
+  def invoke(i: BigInt, j: BigInt, n: BigInt) = {
+    require((i >=0 && j >= 0 && n >= j) && (i == 0 || deps(i - 1, j)) && (j == 0 || deps(i, j-1)))
     lcs(i, j)
   } ensuring (res => {
     val in = inState[BigInt]
     val out = outState[BigInt]
-      (i == 0 || depsMono(i - 1, j, in, out)) && (j == 0 || depsMono(i, j - 1, in, out)) &&
+      (i == 0 || (depsMono(i - 1, j, in, out) && depsMono(i - 1, n, in, out))) &&
+      (j == 0 || depsMono(i, j - 1, in, out)) &&
       deps(i, j) &&
       time <= ?
   })
 
-  def bottomup(i: BigInt, j: BigInt, m: BigInt, n: BigInt): BigInt = {
-    require(m >= 0 && n >= 0 && n <= 10)
-    val r = invoke(i, j)
-    if (i == m && j == n) r
-    else if(j == n)
-      bottomup(i + 1, 0, m, n)
-    else
-      bottomup(i, j + 1, m, n)
+  /**
+   * Given a m x n DP problem, the following function solves the subproblems by traversing the problem space
+   * from right to left, and bottom to top.
+   * @param m - number of rows remaining
+   * @param n - max. number of columns
+   * @param j - number of columns remaining
+   */
+  def bottomup(m: BigInt, j: BigInt, n: BigInt): BigInt = {
+    require(0 <= m && 0 <= j && j <= n)
+    if (m == 0 && j == 0) {
+      invoke(m, j, n)
+    }
+    else if(j == 0) {
+      bottomup(m - 1, n, n) match {
+        case _ => invoke(m, j, n)
+      }
+    }
+    else {
+      bottomup(m, j - 1, n) match {
+        case _ => invoke(m, j, n)
+      }
+    }
   } ensuring {_ =>
-    val in = inState[BigInt]
-    val out = outState[BigInt]
-    bottomUpPost(m, n, in, out) &&
-      time <= ? * m + ? * n + ?
-       // time <= ? * (m * n) + ? * m + ? * n + ?)
+    bottomUpPost(m, j, n) &&
+      time <= ? * (m * n)  + ? * m + ? * j + ?
    }
 
   @invisibleBody
-   def bottomUpPost(m: BigInt, n: BigInt, in: Set[Fun[BigInt]], out: Set[Fun[BigInt]]): Boolean = {
-    deps(m, n) &&
-    (if (m > 0  && (deps(m - 1, n + 1) withState in)) {
-      depsMono(m - 1, n + 1, in, out) && deps(m - 1, n + 1)
-    } else
-      true)
-   }
+  def bottomUpPost(m: BigInt, j: BigInt, n: BigInt): Boolean = {
+    require(m >= 0 && n >= j && j >= 0)
+    (m == 0 || (deps(m - 1, n) && depsLem(m - 1, j, m - 1, n))) && deps(m, j) &&
+      depsLem(m, 0, m, j)
+  }
 
   /*def lcsSol(X: Word, Y: Word) = {
     require(Y.size >= 0 && X.size <= 10) // the second requirement is only to keep the bounds linear
     bottomup(0, Y.size, X, Y)
-  } ensuring(_ => time <= ? * Y.size + ?)
+  } ensuring(_ => time <= ? * Y.size + ?)*/
 
-  @ignore
+  /*@ignore
   def main(args: Array[String]) {
     import scala.util.Random
     // TODO: Use randomised test cases
