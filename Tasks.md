@@ -2,8 +2,8 @@
 - [ ] fix problems in nonlinearity
 - [ ] allow compisitional verification
 - [ ] support @finite annotation
-- [ ] check that lambdas do not espace for soundness of analyzing data structures
+- [ ] check that lambdas do not escape for soundness of analyzing data structures
 - [ ] Support type instances in closure conversion
-- [ ] benchmarks ? iterative DP, lazy pairing heaps, implicit queues, amortized bounds ?
+- [ ] benchmarks ? iterative DP, lazy pairing heaps, implicit queues, amortized bounds, cyk ?
 - [ ] collect results for timing and allocations
 - [ ] compare with related works e.g. Vasconsolos work.
