@@ -107,7 +107,7 @@ object SortingnConcat {
         }
       }
       ops :+= {() => sorttime(input)._2}
-      orb :+= {() => 11 * i + 35}
+      orb :+= {() => 15 * i + 10}
     }
     run(size, ops, orb, "sort")
 

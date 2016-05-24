@@ -39,7 +39,8 @@ object RunnableCodePhase extends TransformationPhase {
         instFunc = instFunc + newfd
         (fd -> newfd)
       case fd =>
-        val newfd = fd
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
         (fd -> newfd)
     }.toMap
     

@@ -1,68 +1,68 @@
-Total-Verification-Time: 1.1s
+Total-Verification-Time: 1.094s
 Total-VCs-Generated: 13
-Z3SolvedVCs: 13
-CVC4SolvedVCs: 0
+Z3SolvedVCs: 11
+CVC4SolvedVCs: 2
 procs: 5
 VC-refinement: 19
-disjuncts: 65
-TotalVCCTime: 2.51s
-Total-AxiomChoose-Time: 0.065s
+disjuncts: 77
+TotalVCCTime: 2.655s
+Total-AxiomChoose-Time: 0.057s
 Total-TheoryAxiomatization-Time: 0.0s
-Total-ElimUF-Time: 0.419s
-UneliminatedEqualities: 244
-ElimTime: 0.254s
-Total-Choose-Time: 1.02s
-BinarySearchTime: 1.001s
+Total-ElimUF-Time: 0.456s
+UneliminatedEqualities: 396
+ElimTime: 0.294s
+Total-Choose-Time: 1.032s
+BinarySearchTime: 0.971s
 ### Statistics for counter: CVC4SolvedVCs ####
-Avg.CVC4-Time: NaN
-Max.CVC4-Time: 0
+Avg.CVC4-Time: 15.0
+Max.CVC4-Time: 30
 ### Statistics for counter: procs ####
 ### Statistics for counter: Z3SolvedVCs ####
-Avg.Z3-Time: 84.61538461538461
-Max.Z3-Time: 1100
+Avg.Z3-Time: 96.72727272727273
+Max.Z3-Time: 1064
 ### Statistics for counter: VC-refinement ####
 Avg.AxiomBlowup: 3.9473684210526314
 Max.AxiomBlowup: 50
-Avg.VC-size: 196.52631578947367
+Avg.VC-size: 196.68421052631578
 Max.VC-size: 833
-Avg.UIF+ADT: 57.36842105263158
+Avg.UIF+ADT: 57.421052631578945
 Max.UIF+ADT: 181
 Avg.TemplateIds: 2.1578947368421053
 Max.TemplateIds: 3
-Avg.unflatSize: 34.473684210526315
+Avg.unflatSize: 34.421052631578945
 Max.unflatSize: 196
-Avg.UnflatTime: 0.007684210526315789s
-Max.UnflatTime: 0.03s
+Avg.UnflatTime: 0.008736842105263157s
+Max.UnflatTime: 0.036s
 ### Statistics for counter: disjuncts ####
-Avg.VC-check-time: 0.038615384615384614s
-Max.VC-check-time: 0.136s
-Avg.CallADT-Constraints: 25.661538461538463
-Max.CallADT-Constraints: 108
-Avg.CtrsBeforeElim: 44.33846153846154
-Max.CtrsBeforeElim: 210
-Avg.EliminatedAtoms: 39.815384615384616
-Max.EliminatedAtoms: 192
-Avg.Param-Atoms: 0.9384615384615385
+Avg.VC-check-time: 0.03448051948051948s
+Max.VC-check-time: 0.116s
+Avg.CallADT-Constraints: 27.4025974025974
+Max.CallADT-Constraints: 110
+Avg.CtrsBeforeElim: 47.27272727272727
+Max.CtrsBeforeElim: 207
+Avg.EliminatedAtoms: 42.72727272727273
+Max.EliminatedAtoms: 190
+Avg.Param-Atoms: 1.0389610389610389
 Max.Param-Atoms: 3
-Avg.NonParam-Atoms: 4.523076923076923
+Avg.NonParam-Atoms: 4.545454545454546
 Max.NonParam-Atoms: 21
-Avg.Disj-choosing-time: 0.015692307692307693s
-Max.Disj-choosing-time: 0.209s
-Avg.NLsize: 27.49230769230769
-Max.NLsize: 176
-Avg.NL-solving-time: 0.008507692307692308s
-Max.NL-solving-time: 0.033s
+Avg.Disj-choosing-time: 0.013402597402597402s
+Max.Disj-choosing-time: 0.111s
+Avg.NLsize: 26.90909090909091
+Max.NLsize: 147
+Avg.NL-solving-time: 0.008558441558441559s
+Max.NL-solving-time: 0.028s
 ########## Outputs ############
 Invariants for Function: concat-time
-concat-time --> time1 + BigInt(-7) <= BigInt(0)
+concat-time --> time2 + BigInt(-7) <= BigInt(0)
 
 Invariants for Function: pullMin-time
-pullMin-time --> (time2 + BigInt(-15) * l39.size5) + BigInt(-2) <= BigInt(0)
+pullMin-time --> (BigInt(-15) * l39.size5 + time3) + BigInt(-2) <= BigInt(0)
 
 Invariants for Function: sort-time
-sort-time --> (BigInt(-126) * l40.size5 + BigInt(8) * time3) + BigInt(-68) <= BigInt(0)
+sort-time --> (BigInt(-15) * l40.size5 + time4) + BigInt(-10) <= BigInt(0)
 
 Invariants for Function: kthMin-time
-kthMin-time --> ((BigInt(-31) * (k4 * l41.list-mem-time12(uiState15)._1._1.size46) + BigInt(-67) * k4) + BigInt(2) * time4) + BigInt(-1) <= BigInt(0)
+kthMin-time --> ((BigInt(-41) * k4 + BigInt(2) * time5) + BigInt(-30) * (k4 * l41.list-mem-time12(uiState16)._1._1.size48)) + BigInt(-3) <= BigInt(0)
 
 
