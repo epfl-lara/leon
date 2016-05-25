@@ -6,6 +6,7 @@ import leon.annotation._
 import scala.language.implicitConversions
 
 package object lang {
+  import leon.proof._
 
   implicit class BooleanDecorations(val underlying: Boolean) {
     @inline
@@ -14,12 +15,19 @@ package object lang {
     } ensuring {
       _ == true
     }
+    @inline
+    def holds(becauseOfThat: Boolean) = {
+      underlying
+    } ensuring {
+      (res: Boolean) => becauseOfThat && res
+    }
 
     @inline
     def ==>(that: => Boolean): Boolean = {
       if (underlying) that else true
     }
   }
+  @inline def because(b: Boolean) = b
   
   @ignore def forall[A](p: A => Boolean): Boolean = sys.error("Can't execute quantified proposition")
   @ignore def forall[A,B](p: (A,B) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
