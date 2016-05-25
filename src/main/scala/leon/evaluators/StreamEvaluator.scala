@@ -287,7 +287,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           Stream()
       }
 
-    case MutableExpr(ex) =>
+    case synthesis.utils.MutableExpr(ex) =>
       e(ex)
 
     case MatchExpr(scrut, cases) =>

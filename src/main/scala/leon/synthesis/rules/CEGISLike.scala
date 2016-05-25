@@ -13,6 +13,7 @@ import purescala.TypeOps.depth
 import purescala.DefOps._
 import purescala.Constructors._
 
+import utils.MutableExpr
 import solvers._
 import leon.grammars._
 import leon.grammars.aspects._
