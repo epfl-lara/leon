@@ -91,20 +91,22 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
     // If not, we expand the covering example.
     
     val originalEvaluator = new DefaultEvaluator(ctx, program)
-    var originalOutputs: Map[Seq[Expr], Expr] = inputs.map(input => input -> originalEvaluator.eval(functionInvocation(fd, input)).result.get).toMap
+    val originalOutputs: Map[Seq[Expr], Expr] = inputs.map(input => input -> originalEvaluator.eval(functionInvocation(fd, input)).result.get).toMap
     for(stringConcatW <- concatenations; stringConcat = stringConcatW.e; stringConcatReversed <- permutations(stringConcat)) {
-      val (permuttedProgram, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(program)({
+
+      val transformer = DefOps.funDefReplacer {
         (f: FunDef) =>
           if(f.body.exists(body => ExprOps.exists(stringConcat eq _)(body))) {
             val new_f = f.duplicate()
             new_f.body = f.body.map(body => ExprOps.preMap(e => if(stringConcat eq e) { Some(stringConcatReversed)} else None)(body))
             Some(new_f)
           } else None
-      })
+      }
+      val permuttedProgram = DefOps.transformProgram(transformer, program)
       val modifiedEvaluator = new DefaultEvaluator(ctx, permuttedProgram)
       
       val oneInputMakesItDifferent = inputs.exists(input => 
-        modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get != originalOutputs(input))
+        modifiedEvaluator.eval(functionInvocation(transformer.transform(fd), input)).result.get != originalOutputs(input))
       
       assert(oneInputMakesItDifferent, "No input made the change " + stringConcat + " -> " + stringConcatReversed + " produce a different result")
     }
@@ -131,24 +133,26 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
     val originalEvaluator = new DefaultEvaluator(ctx, program)
     var originalOutputs: Map[Seq[Expr], Expr] = inputs.map(input => input -> originalEvaluator.eval(functionInvocation(fd, input)).result.get).toMap
     for(stringConcatW <- concatenations; stringConcat = stringConcatW.e; stringConcatReversed <- permutations(stringConcat)) {
-      val (permuttedProgram, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(program)({
+      //val (permuttedProgram, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(program)({
+      val transformer = DefOps.funDefReplacer {
         (f: FunDef) =>
           if(f.body.exists(body => ExprOps.exists(stringConcat eq _)(body))) {
             val new_f = f.duplicate()
             new_f.body = f.body.map(body => ExprOps.preMap(e => if(stringConcat eq e) { Some(stringConcatReversed)} else None)(body))
             Some(new_f)
           } else None
-      })
+      }
+      val permuttedProgram = DefOps.transformProgram(transformer, program)
       val modifiedEvaluator = new DefaultEvaluator(ctx, permuttedProgram)
       
       val oneInputMakesItDifferent = inputs.exists(input => 
-        modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get != originalOutputs(input))
+        modifiedEvaluator.eval(functionInvocation(transformer.transform(fd), input)).result.get != originalOutputs(input))
       
       if(!oneInputMakesItDifferent) {
         // Now we need to find an input which makes a difference if possible, when modified.
         println("No input make this concatenation differ in output when permutted: " + stringConcat + " -> " + stringConcatReversed)
         println("    mappings:\n" + inputs.map(input => input + "->" + originalEvaluator.eval(functionInvocation(fd, input)).result.get).mkString("\n"))
-        println("New mappings:\n" + inputs.map(input => input + "->" + modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get).mkString("\n"))
+        println("New mappings:\n" + inputs.map(input => input + "->" + modifiedEvaluator.eval(functionInvocation(transformer.transform(fd), input)).result.get).mkString("\n"))
         // First, make all its terminals (strings and numbers) unique.
         val covering = inputCoverage.getRecordMapping()
         val coveringInputs = Option(covering.get(stringConcat)).getOrElse(Set()).map(x => identifiableInputs.getOrElse(x, x))

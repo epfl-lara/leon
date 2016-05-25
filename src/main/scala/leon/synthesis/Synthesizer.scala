@@ -140,13 +140,13 @@ class Synthesizer(val context : LeonContext,
 
     reporter.info("Solution requires validation")
 
-    val (npr, fds) = solutionToProgram(sol)
+    val (npr, fd) = solutionToProgram(sol)
 
     val solverf = SolverFactory.getFromSettings(context, npr).withTimeout(timeout)
 
     try {
       val vctx = new VerificationContext(context, npr, solverf)
-      val vcs = generateVCs(vctx, fds)
+      val vcs = generateVCs(vctx, List(fd))
       val vcreport = checkVCs(vctx, vcs, stopWhen = _.isInvalid)
 
       if (vcreport.totalValid == vcreport.totalConditions) {
@@ -156,7 +156,7 @@ class Synthesizer(val context : LeonContext,
         (sol, None)
       } else {
         reporter.error("Solution was invalid:")
-        reporter.error(fds.map(ScalaPrinter(_)).mkString("\n\n"))
+        reporter.error(ScalaPrinter(fd).mkString("\n\n"))
         reporter.error(vcreport.summaryString)
         (new PartialSolution(search.strat, false).getSolutionFor(search.g.root), Some(false))
       }
@@ -167,12 +167,12 @@ class Synthesizer(val context : LeonContext,
   }
 
   // Returns the new program and the new functions generated for this
-  def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
+  def solutionToProgram(sol: Solution): (Program, FunDef) = {
     // We replace the choose with the body of the synthesized solution
 
     val solutionExpr = sol.toSimplifiedExpr(context, program, ci.fd)
 
-    val (npr, _, fdMap, _) = replaceFunDefs(program)({
+    val transformer = funDefReplacer {
       case fd if fd eq ci.fd =>
         val nfd = fd.duplicate()
         nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)
@@ -182,10 +182,11 @@ class Synthesizer(val context : LeonContext,
           case _ =>
         }
         Some(nfd)
-      case _ => None
-    })
+        case _ => None
+    }
+    val npr = transformProgram(transformer, program)
 
-    (npr, fdMap.get(ci.fd).toList)
+    (npr, transformer.transform(ci.fd))
   }
 
   def shutdown(): Unit = {

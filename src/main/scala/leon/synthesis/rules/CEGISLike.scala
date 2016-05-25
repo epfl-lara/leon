@@ -289,7 +289,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         val program0 = addFunDefs(hctx.program, outerSolution.defs, hctx.functionContext)
 
-        val t = replaceFunDefsTrans(program0){
+        val t = funDefReplacer{
           case fd if fd == hctx.functionContext =>
             val nfd = fd.duplicate()
 

@@ -210,14 +210,14 @@ case object StringRender extends Rule("StringRender") {
     def computeSolutions(funDefsBodies: Seq[(FunDef, WithIds[Expr])], template: WithIds[Expr]): Stream[Assignment] = {
       val funDefs = for((funDef, body) <- funDefsBodies) yield  { funDef.body = Some(body._1); funDef }
       val newProgram = DefOps.addFunDefs(hctx.program, funDefs, hctx.functionContext)
-      
-      val (newProgram2, _, _, _) = DefOps.replaceFunDefs(newProgram){fd => 
+      val transformer = DefOps.funDefReplacer { fd =>
         if(fd == hctx.functionContext) {
           val newfd = fd.duplicate()
           newfd.body = Some(template._1)
           Some(newfd)
         } else None
       }
+      val newProgram2 = DefOps.transformProgram(transformer, newProgram)
       val variablesToReplace = (template._2 ++ funDefsBodies.flatMap(_._2._2)).toSet
       findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1, variablesToReplace)
     }

@@ -305,11 +305,12 @@ object DefOps {
     })
   }
 
-  def replaceDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                              cdMapF: ClassDef => Option[ClassDef],
-                              fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap,
-                              ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap)
-                              : DefinitionTransformer = {
+  def definitionReplacer(
+    fdMapF: FunDef => Option[FunDef],
+    cdMapF: ClassDef => Option[ClassDef],
+    fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap,
+    ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap
+  ): DefinitionTransformer = {
 
     val idMap = new utils.Bijection[Identifier, Identifier]
     val cdMap = new utils.Bijection[ClassDef  , ClassDef  ]
@@ -323,16 +324,12 @@ object DefOps {
             fiMapF(fi, transformFd)
           else
             None
-          //val nfi = fiMapF(fi, transform(fd)) getOrElse expr
-          //Some(super.transform(nfi))
         case cc @ CaseClass(cct, args) =>
           val transformCct = transform(cct).asInstanceOf[CaseClassType]
           if(transformCct != cct)
             ciMapF(cc, transformCct)
           else
             None
-          //val ncc = ciMapF(cc, transform(cct).asInstanceOf[CaseClassType]) getOrElse expr
-          //Some(super.transform(ncc))
         case _ =>
           None
       }
@@ -351,11 +348,11 @@ object DefOps {
   }
 
   /** Return a [[DefinitionTransformer]] that transforms according to the given [[FunDef]] maps */
-  def replaceFunDefsTrans(p: Program)(
+  def funDefReplacer(
     fdMapF: FunDef => Option[FunDef],
     fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap
   ): DefinitionTransformer = {
-    replaceDefs(p)(fdMapF, cd => None, fiMapF)
+    definitionReplacer(fdMapF, cd => None, fiMapF)
   }
 
   def transformProgram(transformer: DefinitionTransformer, p: Program) = {
@@ -363,40 +360,6 @@ object DefOps {
     val fdsMap = p.definedFunctions.map (fd => fd -> transformer.transform(fd) ).toMap
     replaceDefsInProgram(p)(fdsMap, cdsMap)
   }
-
-  /** Clones the given program by replacing some functions by other functions.
-    *
-    * @param p The original program
-    * @param fdMapF Given f, returns Some(g) if f should be replaced by g, and None if f should be kept.
-    * @param fiMapF Given a previous function invocation and its new function definition, returns the expression to use.
-    *               By default it is the function invocation using the new function definition.
-    * @return the new program with a map from the old functions to the new functions */
-  def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
-    val transformer = replaceFunDefsTrans(p)(fdMapF, fiMapF)
-    val cdsMap = p.definedClasses.map (cd => cd -> transformer.transform(cd) ).toMap
-    val fdsMap = p.definedFunctions.map (fd => fd -> transformer.transform(fd) ).toMap
-    val newP = replaceDefsInProgram (p) (fdsMap, cdsMap)
-    (newP, transformer.idMap.toMap, fdsMap, cdsMap)
-  }
-  /** Replaces all function calls by an expression depending on the previous function invocation and the new mapped function */
-  def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap): Expr = {
-    preMap {
-      case me @ MatchExpr(scrut, cases) =>
-        Some(MatchExpr(scrut, cases.map(matchcase => matchcase match {
-          case mc @ MatchCase(pattern, guard, rhs) => MatchCase(replaceFunCalls(pattern, fdMapF), guard, rhs).copiedFrom(mc)
-        })).copiedFrom(me))
-      case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        fiMapF(fi, fdMapF(fd)).map(_.copiedFrom(fi))
-      case _ =>
-        None
-    }(e)
-  }
-
-  def replaceFunCalls(p: Pattern, fdMapF: FunDef => FunDef): Pattern = PatternOps.preMap{
-    case UnapplyPattern(optId, TypedFunDef(fd, tps), subp) => Some(UnapplyPattern(optId, TypedFunDef(fdMapF(fd), tps), subp))
-    case _ => None
-  }(p)
 
   private def defaultCdMap(cc: CaseClass, ccd: CaseClassType): Option[Expr] = (cc, ccd) match {
     case (CaseClass(old, args), newCcd) if old.classDef != newCcd.classDef =>

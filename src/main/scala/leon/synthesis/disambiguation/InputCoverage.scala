@@ -5,12 +5,11 @@ import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Constructors._
 import purescala.Extractors._
-import purescala.Types.{TypeTree, TupleType, BooleanType}
+import purescala.Types.{ TupleType, BooleanType}
 import purescala.Common.{Identifier, FreshIdentifier}
-import purescala.Definitions.{FunDef, Program, TypedFunDef, ValDef}
+import purescala.Definitions.{FunDef, Program, ValDef}
 import purescala.DefOps
 import scala.collection.mutable.ListBuffer
-import leon.LeonContext
 import leon.purescala.Definitions.TypedFunDef
 import leon.verification.VerificationContext
 import leon.verification.VerificationPhase
@@ -295,7 +294,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     
     /* Change all return types to accommodate the new covering boolean */
     
-    val (program, idMap, fdMap, cdMap) = DefOps.replaceFunDefs(p)({
+    val transformer = DefOps.funDefReplacer({
       (f: FunDef) =>
         if((fds contains   f) || f == fd) {
           val new_fd = wrapFunDef(f)
@@ -311,31 +310,31 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
         Some(TupleSelect(FunctionInvocation(newFd.typed, fi.args), 1))
       //} else None
     })
+
+    val program = DefOps.transformProgram(transformer, p)
     
-    val start_fd = fdMap.getOrElse(fd, fd)
+    val start_fd = transformer.transform(fd)
     
     var coveredBooleans = Set[Identifier]()
     // For each boolean flag, set it to true, and find a counter-example which should reach this line.
     // For each new counter-example, abstract evaluate the original function to remove booleans which have been reached.
     val covering_examples =
       for(bvar <- booleanFlags.toStream if !coveredBooleans(bvar)) yield {
-        //println(s"finding input for $bvar")
-      val (program2, idMap2, fdMap2, cdMap2) = DefOps.replaceFunDefs(program)({
+      val transformer2 = DefOps.funDefReplacer {
         (f: FunDef) =>
-          if(ExprOps.exists(e => e match { case Variable(id) => booleanFlags contains id case _ => false })(f.fullBody)) {
+          if(ExprOps.exists { case Variable(id) => booleanFlags contains id case _ => false }(f.fullBody)) {
             val new_f = f.duplicate()
-            new_f.fullBody = ExprOps.preMap(e => {
-              e match {
-                case Variable(id) if id == bvar => Some(BooleanLiteral(true))
-                case Variable(id) if booleanFlags contains id => Some(BooleanLiteral(false))
-                case _ => None
-              }
-            })(f.fullBody)
+            new_f.fullBody = ExprOps.preMap {
+              case Variable(id) if id == bvar => Some(BooleanLiteral(true))
+              case Variable(id) if booleanFlags contains id => Some(BooleanLiteral(false))
+              case _ => None
+            }(f.fullBody)
             Some(new_f)
           } else None
-      })
-      //println("program: " + program2)
-      val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
+
+      }
+      val program2 = DefOps.transformProgram(transformer2, program)
+      val start_fd2 = transformer2.transform(start_fd)
       val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(10.seconds)
       
       val vctx = new VerificationContext(c, program2, tfactory)
@@ -347,7 +346,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           val ae = new AbstractEvaluator(c, p)
           val coveredFlagsByCounterExample = ae.eval(whoIsEvaluated).result match {
             case Some((Tuple(Seq(_, booleans)), _)) =>
-              val targettedIds = ExprOps.collect(e => e match { case Variable(id) => Set(id) case _ => Set[Identifier]() })(booleans)
+              val targettedIds = ExprOps.collect{ case Variable(id) => Set(id) case _ => Set[Identifier]() }(booleans)
               coveredBooleans ++= targettedIds
               targettedIds
             case _ =>

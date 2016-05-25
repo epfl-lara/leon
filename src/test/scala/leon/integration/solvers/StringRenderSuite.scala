@@ -118,9 +118,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val newProgram = DefOps.addFunDefs(synth.program, solutions.head.defs, synth.sctx.functionContext)
     val newFd = ci.fd.duplicate()
     newFd.body = Some(solutions.head.term)
-    val (newProgram2, _, _, _) = DefOps.replaceFunDefs(newProgram)({ fd =>
+    val newProgram2 = DefOps.transformProgram(DefOps.funDefReplacer { fd =>
       if(fd == ci.fd) Some(newFd) else None
-    })
+    }, newProgram)
     (newFd, newProgram2)
   }
   

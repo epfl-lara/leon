@@ -5,7 +5,7 @@ package leon.solvers.isabelle
 import leon._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.DefOps
+import leon.purescala.DefOps._
 import leon.purescala.Expressions._
 import leon.purescala.TypeOps
 import leon.purescala.Types._
@@ -63,7 +63,7 @@ object AdaptationPhase extends TransformationPhase {
         FunctionInvocation(nfd.typed(fi.tfd.tps), fi.args ++ args)
       }
 
-      DefOps.replaceFunDefs(program)(mapFunDef, mapFunInvocation)._1
+      transformProgram(funDefReplacer(mapFunDef, mapFunInvocation), program)
     }
   }
 
