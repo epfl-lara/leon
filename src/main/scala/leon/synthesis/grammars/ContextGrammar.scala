@@ -4,13 +4,13 @@ package grammars
 
 import scala.collection.mutable.ListBuffer
 
-class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
+class ContextGrammar[SymbolTag, TerminalData] {
   /** A tagged symbol */
   abstract class Symbol { def tag: SymbolTag }
   /** A tagged non-terminal */
-  case class NonTerminal(tag: SymbolTag, nonterminalTag: NonTerminalTag, vcontext: List[NonTerminal] = Nil, hcontext: List[Symbol] = Nil) extends Symbol
+  case class NonTerminal(tag: SymbolTag, vcontext: List[NonTerminal] = Nil, hcontext: List[Symbol] = Nil) extends Symbol
   /** A tagged terminal */
-  case class Terminal(tag: SymbolTag, terminalTag: TerminalTag) extends Symbol
+  case class Terminal(tag: SymbolTag)(val terminalData: TerminalData) extends Symbol
   
   /** All possible right-hand-side of rules */
   case class Expansion(ls: List[List[Symbol]]) {
@@ -145,7 +145,7 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
       /** Add to each symbol its left context */
       def processSequence(sq: Seq[Symbol]): Seq[Symbol] = {
         sq.foldLeft(List[Symbol]()) {
-          case (leftContext, nt@NonTerminal(tag, nttag, vc, Nil)) =>
+          case (leftContext, nt@NonTerminal(tag, vc, Nil)) =>
             leftContext :+ Mapping.updateMapping(nt, leftContext)
           case (leftContext, e) => leftContext :+ e
         }
@@ -157,7 +157,7 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
           val expansion = rules(nt)
           nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
             s match {
-              case nt@NonTerminal(tag, nttag, vc, Nil) => Mapping.updateMapping(nt, l)
+              case nt@NonTerminal(tag, vc, Nil) => Mapping.updateMapping(nt, l)
               case e => e
             }
           }
@@ -249,7 +249,7 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
         lhs <- nts
         expansion = rules(lhs)
       }  yield (lhs -> (expansion.map{(s: Symbol) => s match {
-        case rhsterm@NonTerminal(tag, nttag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm))
+        case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm))
         case e => e
       }}))).toMap
       
@@ -258,7 +258,7 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
         Mapping.reset()
         val newRules4 = for{(lhs, expansion) <- newRules} yield {
           lhs -> expansion.map{ (s: Symbol) => s match {
-            case rhsterm@NonTerminal(tag, nttag, vc, hc) => 
+            case rhsterm@NonTerminal(tag, vc, hc) => 
               val lhs_original = Original(lhs)
               val rhs_original = Original(rhsterm)
               if (Ancestor.haveCommonType(rhs_original, lhs_original) &&

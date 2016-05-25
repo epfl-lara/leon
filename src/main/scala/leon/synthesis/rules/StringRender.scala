@@ -367,23 +367,23 @@ case object StringRender extends Rule("StringRender") {
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.flatMap(_._2).toList)
   
   object FunDefTemplateGenerator {
-    protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]], Expr => Expr]
+    protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
     import gcontext._
     
-    protected val int32Symbol   = NonTerminal(Int32Type, i => i) 
-    protected val integerSymbol = NonTerminal(IntegerType, i => i)
-    protected val booleanSymbol = NonTerminal(BooleanType, i => i)
-    protected val stringSymbol  = NonTerminal(StringType, i => i)
+    protected val int32Symbol   = NonTerminal(Int32Type)
+    protected val integerSymbol = NonTerminal(IntegerType)
+    protected val booleanSymbol = NonTerminal(BooleanType)
+    protected val stringSymbol  = NonTerminal(StringType)
     protected val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
       
     def apply(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext): GrammarBasedTemplateGenerator = { 
       implicit val program: Program = hctx.program
       val startGrammar = Grammar(
-        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType, i => i, Nil, Nil) }),
-        Map(int32Symbol -> TerminalRHS(Terminal(Int32Type, Stream(expr => (Int32ToString(expr), Nil)))),
-            integerSymbol -> TerminalRHS(Terminal(IntegerType, Stream((expr => (IntegerToString(expr), Nil))))),
-            booleanSymbol -> TerminalRHS(Terminal(BooleanType, Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
-            stringSymbol -> TerminalRHS(Terminal(StringType, Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
+        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType) }),
+        Map(int32Symbol -> TerminalRHS(Terminal(Int32Type)(Stream(expr => (Int32ToString(expr), Nil)))),
+            integerSymbol -> TerminalRHS(Terminal(IntegerType)(Stream((expr => (IntegerToString(expr), Nil))))),
+            booleanSymbol -> TerminalRHS(Terminal(BooleanType)(Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
+            stringSymbol -> TerminalRHS(Terminal(StringType)(Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
       GrammarBasedTemplateGenerator(exhaustive(startGrammar), inputs, prettyPrinters)
     }
@@ -452,19 +452,28 @@ case object StringRender extends Rule("StringRender") {
         def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
           val inputs = fd.params.map(_.id)
           e match {
-            case TerminalRHS(Terminal(typeTree, exprStream)) if exprStream.nonEmpty => //Render this as a simple expression.
-              exprStream.map(f => f(Variable(inputs.head)))
-            case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs), _), nts) => // The subsequent calls of this function to sub-functions.
-              val childExprs = nts.zipWithIndex.map{ case (childNt@NonTerminal(_, builder, _, _), childIndex) =>
+            case TerminalRHS(terminal@Terminal(typeTree)) if terminal.terminalData.nonEmpty => //Render this as a simple expression.
+              terminal.terminalData.map(f => f(Variable(inputs.head)))
+            case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs)), nts) => // The subsequent calls of this function to sub-functions.
+              val fields = cct.fields.map(_.id)
+              val fieldstypes = fields.map(id => (id.getType, (x: Expr) => CaseClassSelector(cct, x, id)))
+              val flattenedTupleds = fieldstypes.flatMap(x => flattenTupleType(x._1, x._2))
+              val builders = flattenedTupleds.map(_._2)
+              
+              val childExprs = nts.zipWithIndex.map{ case (childNt:NonTerminal, childIndex) =>
                 FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
-                    builder(Variable(inputs.head))) ++
+                    builders(childIndex)(Variable(inputs.head))) ++
                     prettyPrinters.map(Variable))
               }
               childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
-            case HorizontalRHS(terminal@Terminal(cct@TupleType(targs), _), nts) => // The subsequent calls of this function to sub-functions.
-              val childExprs = nts.zipWithIndex.map{ case (childNt@NonTerminal(_, builder, _, _), childIndex) =>
+            case HorizontalRHS(terminal@Terminal(cct@TupleType(targs)), nts) => // The subsequent calls of this function to sub-functions.
+              val fieldstypes = targs.zipWithIndex.map{case (tp, index)  => (tp, (x: Expr) => TupleSelect(x, index+1)) }
+              val flattenedTupleds = fieldstypes.flatMap(x => flattenTupleType(x._1, x._2))
+              val builders = flattenedTupleds.map(_._2)
+              
+              val childExprs = nts.zipWithIndex.map{ case (childNt:NonTerminal, childIndex) =>
                 FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
-                    builder(Variable(inputs.head))) ++
+                    builders(childIndex)(Variable(inputs.head))) ++
                     prettyPrinters.map(Variable))
               }
               childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
@@ -494,9 +503,12 @@ case object StringRender extends Rule("StringRender") {
           }
         }
         
+        println("Extracting functions from grammar:\n" + grammar)
+        
         // We create the bodies of these functions  
         val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
           val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
+          println("Function found: " + fd + "\n" + bodies)
           (fd, bodies)
         }
         
@@ -520,26 +532,26 @@ case object StringRender extends Rule("StringRender") {
           case (t, i) => 
             flattenTupleType(t, builder andThen ((x: Expr) => TupleSelect(x, i+1)))
         }
-        case t => Seq((t, i => i))
+        case t => Seq((t, builder))
       }
     }
 
     /** Used to produce rules such as Cons => Elem List without context*/
     protected def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(cct@CaseClassType(ccd: CaseClassDef, tparams2), rebuild, vc, hc) =>
+      case NonTerminal(cct@CaseClassType(ccd: CaseClassDef, tparams2), vc, hc) =>
         val typeMap = ccd.tparams.map(_.tp).zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
         val fieldstypes = fields.map(id => (id.getType, (x: Expr) => CaseClassSelector(cct, x, id)))
         val flattenedTupleds = fieldstypes.flatMap(x => flattenTupleType(x._1, x._2))
-        Some(HorizontalRHS(Terminal(cct, Stream.empty), flattenedTupleds.map{ case (tpe, builder) => NonTerminal(tpe, builder) }))
-      case NonTerminal(cct@TupleType(fields), rebuild, vc, hc) => 
-        Some(HorizontalRHS(Terminal(cct, Stream.empty), fields.zipWithIndex.map{ case (tpe, index) => NonTerminal(tpe, (x: Expr) => TupleSelect(x, index + 1))}))
+        Some(HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map{ case (tpe, builder) => NonTerminal(tpe) }))
+      case NonTerminal(cct@TupleType(fields), vc, hc) => 
+        Some(HorizontalRHS(Terminal(cct)(Stream.empty), fields.zipWithIndex.map{ case (tpe, index) => NonTerminal(tpe) } ))
       case _ => None
     }
     /** Used to produce rules such as List => Cons | Nil without context */
     protected def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), rebuild, vc, hc) => 
-        Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag, (x: Expr) => x))))
+      case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), vc, hc) => 
+        Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag))))
       case _ => None
     }
     

@@ -21,7 +21,7 @@ import org.scalatest.time.SpanSugar._
 import org.scalatest.matchers.Matcher
 import org.scalatest.matchers.MatchResult
 
-trait CustomGrammarEqualMatcher[U, V, W, T <: ContextGrammar[U, V, W]] {
+trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
   def symbolToString(symbol: T#Symbol): String = {
     symbol match {
       case s: T#NonTerminal => nonterminalToString(s)
@@ -33,7 +33,7 @@ trait CustomGrammarEqualMatcher[U, V, W, T <: ContextGrammar[U, V, W]] {
     (if(nonterminal.hcontext != Nil) "_h["+nonterminal.hcontext.map(x => symbolToString(x)).reduce(_ + "," + _)+"]" else "")
   }
   def terminalToString(terminal: T#Terminal): String = {
-    terminal.tag + (if(terminal.terminalTag == "") "" else "_" + terminal.terminalTag)
+    terminal.tag + (if(terminal.terminalData == "") "" else "_" + terminal.terminalData)
   }
   def reduce(l: Iterable[String], separator: String) = if(l == Nil) "" else l.reduce(_ + separator + _)
   def expansionToString(expansion: T#Expansion): String = {
@@ -58,7 +58,7 @@ trait CustomGrammarEqualMatcher[U, V, W, T <: ContextGrammar[U, V, W]] {
   def equalGrammar(grammar: T#Grammar) = new EqualGrammarMatcher(grammar)
 }
 
-class ContextGrammarString extends ContextGrammar[String, String, String] with CustomGrammarEqualMatcher[String, String, String, ContextGrammarString]
+class ContextGrammarString extends ContextGrammar[String, String] with CustomGrammarEqualMatcher[String, String, ContextGrammarString]
 
 /**
  * @author Mikael
@@ -67,16 +67,16 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   val ctx = new ContextGrammarString
   import ctx._
   
-  val A = NonTerminal("A", "")
-  val B = NonTerminal("B", "")
-  val C = NonTerminal("C", "")
-  val D = NonTerminal("D", "")
-  val E = NonTerminal("E", "")
-  val F = NonTerminal("F", "")
-  val x = Terminal("x", "")
-  val y = Terminal("y", "")
-  val z = Terminal("z", "")
-  val w = Terminal("w", "")
+  val A = NonTerminal("A")
+  val B = NonTerminal("B")
+  val C = NonTerminal("C")
+  val D = NonTerminal("D")
+  val E = NonTerminal("E")
+  val F = NonTerminal("F")
+  val x = Terminal("x")("")
+  val y = Terminal("y")("")
+  val z = Terminal("z")("")
+  val w = Terminal("w")("")
   
   test("Horizontal Markovization Simple")  {
     val xA = A.copy(hcontext = List(x))
@@ -195,17 +195,17 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
   // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
   test("Abstract vertical Markovization") {
-    val Alist = NonTerminal("Alist", "")
-    val Acons = NonTerminal("Acons", "")
-    val Anil = NonTerminal("Anil", "")
-    val acons = Terminal("acons", "")
-    val anil = Terminal("anil", "")
+    val Alist = NonTerminal("Alist")
+    val Acons = NonTerminal("Acons")
+    val Anil = NonTerminal("Anil")
+    val acons = Terminal("acons")("")
+    val anil = Terminal("anil")("")
     
-    val Blist = NonTerminal("Blist", "")
-    val Bcons = NonTerminal("Bcons", "")
-    val Bnil = NonTerminal("Bnil", "")
-    val bcons = Terminal("bcons", "")
-    val bnil = Terminal("bnil", "")
+    val Blist = NonTerminal("Blist")
+    val Bcons = NonTerminal("Bcons")
+    val Bnil = NonTerminal("Bnil")
+    val bcons = Terminal("bcons")("")
+    val bnil = Terminal("bnil")("")
     val grammar =
       Grammar(List(Alist),
           Map(Alist -> Expansion(List(List(Acons), List(Anil))),
@@ -240,17 +240,17 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
   // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
   test("Abstract vertical Markovization Filtered") {
-    val Alist = NonTerminal("Alist", "")
-    val Acons = NonTerminal("Acons", "")
-    val Anil = NonTerminal("Anil", "")
-    val acons = Terminal("acons", "")
-    val anil = Terminal("anil", "")
+    val Alist = NonTerminal("Alist")
+    val Acons = NonTerminal("Acons")
+    val Anil = NonTerminal("Anil")
+    val acons = Terminal("acons")("")
+    val anil = Terminal("anil")("")
     
-    val Blist = NonTerminal("Blist", "")
-    val Bcons = NonTerminal("Bcons", "")
-    val Bnil = NonTerminal("Bnil", "")
-    val bcons = Terminal("bcons", "")
-    val bnil = Terminal("bnil", "")
+    val Blist = NonTerminal("Blist")
+    val Bcons = NonTerminal("Bcons")
+    val Bnil = NonTerminal("Bnil")
+    val bcons = Terminal("bcons")("")
+    val bnil = Terminal("bnil")("")
     val grammar =
       Grammar(List(Alist),
           Map(Alist -> Expansion(List(List(Acons), List(Anil))),
