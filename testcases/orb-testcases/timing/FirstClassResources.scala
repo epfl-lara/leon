@@ -14,7 +14,7 @@ object TreeOperations {
         size(l) + size(r) + 1
       }
     }
-  } ensuring(_ => time <= 10)
+  } //ensuring(_ => time <= 10)
 
   def height(t: Tree): BigInt = {
     t match {
@@ -25,7 +25,7 @@ object TreeOperations {
         if (hl > hr) hl + 1 else hr + 1
       }
     }
-  } ensuring(_ => time <= 10)
+  } //ensuring(_ => time <= 10)
 
   def timeOfSizeHeight(t: Tree): Boolean = {
     time(size(t)) <= time(height(t))

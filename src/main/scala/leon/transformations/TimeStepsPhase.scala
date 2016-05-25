@@ -38,9 +38,13 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
       }
       fd -> rec(fd.fullBody)
     }.toMap
-    var instFuns = getRootFuncs()
-    var newFuns = instFuns
-    var instFunTypes = Set[CompatibleType]()
+
+    def functionCreatingTypes(fts: Set[CompatibleType]) =
+      funToFTypes.collect {
+        case (fd, ftypes) if !ftypes.intersect(fts).isEmpty => fd
+      }
+    var (instFuns, instFunTypes) = getRootFuncs()
+    var newFuns = instFuns ++ functionCreatingTypes(instFunTypes)
     while(!newFuns.isEmpty) {
       //println("newfuns: "+newFuns.map(_.id))
       // (a) find all function types of applications in the nextSets
@@ -53,9 +57,7 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
         case _ => Set[CompatibleType]()
       }
       // (b) find all userLevelFunctions that may create a lambda compatible with the types of the application.
-      val newRoots = funToFTypes.collect {
-        case (fd, ftypes) if !ftypes.intersect(appTypes).isEmpty => fd
-      }
+      val newRoots = functionCreatingTypes(appTypes)
       // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
       val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
       //println("nextFunSet: "+nextFunSet.map(_.id))

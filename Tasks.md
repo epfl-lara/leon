@@ -7,3 +7,4 @@
 - [ ] benchmarks ? iterative DP, lazy pairing heaps, implicit queues, amortized bounds, cyk ?
 - [ ] collect results for timing and allocations
 - [ ] compare with related works e.g. Vasconsolos work.
+- [ ] Consider the application of synthesizing thresholds

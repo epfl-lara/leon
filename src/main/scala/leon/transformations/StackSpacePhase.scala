@@ -19,7 +19,10 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     // find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
+    val (rootFuns, rootTypes) = getRootFuncs()
+    if(!rootTypes.isEmpty)
+      throw new IllegalStateException("Higher-order functions are not supported by Stack instrumentation!")
+    val instFunSet = rootFuns.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Stack))).toMap
   }
 

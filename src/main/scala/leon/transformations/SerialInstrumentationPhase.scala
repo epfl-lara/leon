@@ -161,18 +161,25 @@ class SerialInstrumenter(program: Program,
   }.toMap
 
   def instrumenters(fd: FunDef) = funcInsts(fd) map instToInstrumenter.apply _
+
   def instIndex(fd: FunDef)(ins: Instrumentation) = funcInsts(fd).indexOf(ins) + 2
+
+  def instIndex(ft: FunctionType)(ins: Instrumentation) = ftypeInsts(new CompatibleType(ft)).indexOf(ins) + 2
+
   def selectInst(fd: FunDef)(e: Expr, ins: Instrumentation) = TupleSelect(e, instIndex(fd)(ins))
+
+  def selectInst(ft: FunctionType)(e: Expr, ins: Instrumentation) = TupleSelect(e, instIndex(ft)(ins))
 
   def mapExpr(ine: Expr, paramMap: Map[Identifier, Identifier]): Expr = {
     def rec(e: Expr)(implicit idMap: Map[Identifier, Identifier]): Expr = e match {
       case _ if instCall(e).isDefined =>
-        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
-        val ntargs = targs map instrumentType
-        val nargs = args map rec
-        val inst = instCall(e).get
-        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
-        
+        mapInstCallWithArgs(e, rec)
+      //        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
+      //        val ntargs = targs map instrumentType
+      //        val nargs = args map rec
+      //        val inst = instCall(e).get
+      //        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
+
       case FunctionInvocation(TypedFunDef(fd, targs), args) =>
         val nfd = funMap.getOrElse(fd, fd)
         val ntargs = targs map instrumentType
@@ -250,6 +257,25 @@ class SerialInstrumenter(program: Program,
     (mapPattern(ipat, scrutType), idmap)
   }
 
+  def mapInstCallWithArgs(e: Expr, mapFun: Expr => Expr) = {
+    instCall(e) match {
+      case None => throw new IllegalStateException(s"Expr not an inst call" + e)
+      case Some(inst) =>
+        val FunctionInvocation(_, Seq(instArg)) = e // here, e has to be of this form
+        instArg match {
+          case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+            val ntargs = targs map instrumentType
+            val nargs = args map mapFun
+            TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
+
+          case Application(fterm, args) =>
+            val nargs = (fterm +: args) map mapFun //lambda has to be instrumented here
+            val ftype = fterm.getType.asInstanceOf[FunctionType]
+            TupleSelect(Application(nargs.head, nargs.tail), instIndex(ftype)(inst))
+        }
+    }
+  }
+
   def apply: Program = {
     if (instFuncs.isEmpty) program
     else {
@@ -279,7 +305,7 @@ class SerialInstrumenter(program: Program,
                 inst.instTarget(e) match {
                   case None => // e refers to the resource usage of the current function
                     Some(TupleSelect(toResId.toVariable, instIndex(from)(inst)))
-                  case _ => None // this case will be handled by mapExpr 
+                  case _ => None // this case will be handled by mapExpr
                 }
               case _ => None
             })(postCond)
@@ -464,6 +490,8 @@ class ExprInstrumenter(ictx: InstruContext) {
     implicit val currFun = ictx.currFun
     f match {
       case fi @ FunctionInvocation(tfd @ TypedFunDef(fd, tps), args) =>
+        // here, selectInst must refer to the tagert function, not the current function
+        val selectInst = serialInst.selectInst(fd) _
         val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
         val newFunInv = FunctionInvocation(newfd, subeVals)
         //create a variables to store the result of function invocation
@@ -510,9 +538,12 @@ class ExprInstrumenter(ictx: InstruContext) {
         }
 
       case Application(fterm, args) =>
+        // here, selectInst must refer to the target function type, not the current function
+        val ftype = fterm.getType.asInstanceOf[FunctionType]
+        val selectInst = serialInst.selectInst(ftype) _
         val newApp = Application(subeVals.head, subeVals.tail)
         //create a variables to store the result of application
-        if (!serialInst.instsOfLambdaType(fterm.getType.asInstanceOf[FunctionType]).isEmpty) { //the lambda is instrumented
+        if (!serialInst.instsOfLambdaType(ftype).isEmpty) { //the lambda is instrumented
           val resvar = Variable(createInstVar("e", newApp.getType))
           val valexpr = TupleSelect(resvar, 1)
           val instexprs = ictx.instrumenters.map { m =>
@@ -537,13 +568,20 @@ class ExprInstrumenter(ictx: InstruContext) {
     implicit val currFun = ictx.currFun
     e match {
       case _ if instCall(e).isDefined =>
-        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
-        val ntargs = targs map serialInst.instrumentType
-        val nargs = args map transform
+        serialInst.mapInstCallWithArgs(e, transform)
+      /*val FunctionInvocation(_, Seq(instArg)) = e // here, e has to be of this form
         val inst = instCall(e).get
-        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), 
-            serialInst.instIndex(fd)(inst))
-        
+        instArg match {
+          case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+            val ntargs = targs map serialInst.instrumentType
+            val nargs = args map transform
+            TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs),
+              serialInst.instIndex(fd)(inst))
+          case Application(fterm, args) =>
+              val nargs = (fterm +: args) map transform //lambda has to be instrumented here
+              TupleSelect(Application(nargs.head, nargs.tail), serialInst.instIndex(ftype)(inst))
+        }*/
+
       // Matchcases with guards are converted to if-then-else.
       case me @ MatchExpr(scrutinee, matchCases) =>
         if (matchCases.exists(_.optGuard.isDefined)) {
@@ -710,10 +748,27 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
 
   def instrumentBody(bodyExpr: Expr, instExpr: Expr)(implicit fd: FunDef): Expr = instExpr
 
-  def getRootFuncs(prog: Program = program): Set[FunDef] = {
-    prog.definedFunctions.filter { fd =>
+  def getRootFuncs(prog: Program = program): (Set[FunDef], Set[CompatibleType]) = {
+    // go over all user-defined functions, and collect those functions with an argument less instCall in the postcondition
+    // and the arguments of the instCall
+    var instFuns = Set[FunDef]()
+    var instTypes = Set[CompatibleType]()
+    userLevelFunctions(prog) foreach {fd =>
+      postTraversal{
+        case fi@FunctionInvocation(_, args) if inst.isInstCall(fi) =>
+          args match {
+            case Seq() => instFuns += fd
+            case Seq(FunctionInvocation(tfd, _)) => instFuns += tfd.fd
+            case Seq(Application(fterm, _)) => instTypes += new CompatibleType(fterm.getType)
+            case _ => throw new IllegalStateException("Argument of InstCall not an invocation: "+fi)
+          }
+        case _ =>
+      }(fd.fullBody)
+    }
+    (instFuns, instTypes)
+    /*prog.definedFunctions.filter { fd =>
       (fd.hasPostcondition && exists(inst.isInstCall)(fd.postcondition.get))
-    }.toSet
+    }.toSet*/
   }
 
   /**

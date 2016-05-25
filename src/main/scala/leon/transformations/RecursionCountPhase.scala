@@ -24,7 +24,10 @@ class RecursionCountInstrumenter(p: Program, si: SerialInstrumenter) extends Ins
    * Instrument only those functions that are in the same sccs of the root functions
    */
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
-    val instFunSet = getRootFuncs().flatMap(sccs.apply _).filter(_.hasBody)
+    val (rootFuns, rootTypes) = getRootFuncs()
+    if(!rootTypes.isEmpty)
+      throw new IllegalStateException("Higher-order functions are not supported by Rec instrumentation!")
+    val instFunSet = rootFuns.flatMap(sccs.apply _).filter(_.hasBody)
     instFunSet.map(x => (x, List(Rec))).toMap
   }
 
