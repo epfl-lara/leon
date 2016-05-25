@@ -514,7 +514,7 @@ case object StringRender extends Rule("StringRender") {
         }
         
         val inputExprs = grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
-          (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex))), Nil)
+          (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex)) ++ prettyPrinters.map(Variable)), Nil)
         }
         
         val startExprStream = inputExprs.permutations.toStream.map(inputs =>
