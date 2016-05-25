@@ -80,15 +80,19 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
       // Resets the mapping transformation
       def reset() = mapping = originalMapping
         
-      def apply(lhs: NonTerminal): Seq[NonTerminal]
+      def apply(elem: NonTerminal): Seq[NonTerminal] = mapping.getOrElse(elem, List(elem))
       
-        // Keeps expansion the same but applies the current mapping to all keys
-      def mapKeys(rules: Map[NonTerminal, Expansion]) = 
-        for{(lhs, expansion) <- rules
-          new_lhs <- apply(lhs)
+      def maybeKeep(elem: NonTerminal): Seq[NonTerminal] = Nil
+        // Keeps expansion the same but applies the current mapping to all keys, creating only updates.
+      def mapKeys(rules: Map[NonTerminal, Expansion]) = {
+        val tmpRes2 = for{(lhs, expansion) <- rules.toSeq
+          new_lhs <- (maybeKeep(lhs) ++ mapping.getOrElse(lhs, Nil)).distinct
         } yield {
-          new_lhs -> expansion
+          lhs -> (new_lhs -> expansion)
         }
+        val rulestmpRes2 = rules -- tmpRes2.map(_._1) 
+        rulestmpRes2 ++ tmpRes2.map(_._2).filter(x => !(rulestmpRes2 contains x._1))
+      }
     }
 
     /** Applies 1-markovization to the grammar (add 1 history to every node) */
@@ -105,7 +109,6 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
           mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
           res
         }
-        def apply(elem: NonTerminal) = mapping.getOrElse(elem, List(elem))
       }
       
       val newRules = (for{
@@ -137,8 +140,6 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
             res
           } else nt
         }
-        
-        def apply(elem: NonTerminal) = mapping.getOrElse(elem, List(elem))
       }
       
       /** Add to each symbol its left context */
@@ -191,12 +192,9 @@ class ContextGrammar[SymbolTag, TerminalTag, NonTerminalTag] {
             new_nt
           } else nt
         }
-        // Returns the list of new non-terminals which will replace the given nonterminal
-        def apply(elem: NonTerminal): Seq[NonTerminal] = 
-          (if(Ancestor.isInStart(elem))
-                List(elem)
-              else Nil) ++
-             mapping.getOrElse(elem, List(elem))
+        override def maybeKeep(elem: NonTerminal): Seq[NonTerminal] = {
+          if(Ancestor.isInStart(elem)) Seq(elem) else Nil
+        }
       }
       
       // An object to keep track of all modifications to return to the original symbols.

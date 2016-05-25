@@ -167,7 +167,7 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               BA -> Expansion(List(List(x, AB), List(y))),
               AB -> Expansion(List(List(z, BA), List(x)))))
     
-    grammar1.markovize_vertical() should equal (grammar2)
+    grammar1.markovize_vertical() should equalGrammar (grammar2)
   }
   
   test("Vertical Markovization triple") {
@@ -189,7 +189,7 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               BB -> Expansion(List(List(z, BA), List(z, BB), List(x)))
           ))
           
-    grammar1.markovize_vertical() should equal (grammar2)
+    grammar1.markovize_vertical() should equalGrammar (grammar2)
   }
   
   // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
