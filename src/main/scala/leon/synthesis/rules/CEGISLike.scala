@@ -279,7 +279,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       private def setSolution(e: Expr) = solutionBox.underlying = e
 
       // The program with the body of the current function replaced by the current partial solution
-      private val (innerProgram, origIdMap, origFdMap, origCdMap) = {
+      private val (outerToInnerTrans, innerProgram) = {
 
         val outerSolution = {
           new PartialSolution(hctx.search.strat, true)
@@ -289,7 +289,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         val program0 = addFunDefs(hctx.program, outerSolution.defs, hctx.functionContext)
 
-        replaceFunDefs(program0){
+        val t = replaceFunDefsTrans(program0){
           case fd if fd == hctx.functionContext =>
             val nfd = fd.duplicate()
 
@@ -305,26 +305,25 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           case fd =>
             Some(fd.duplicate())
         }
-      }
-
-      private val outerToInner = new purescala.TreeTransformer {
-        override def transform(id: Identifier): Identifier = origIdMap.getOrElse(id, id)
-        override def transform(cd: ClassDef): ClassDef = origCdMap.getOrElse(cd, cd)
-        override def transform(fd: FunDef): FunDef = origFdMap.getOrElse(fd, fd)
+        (t, transformProgram(t, program0))
       }
 
       /**
-       * Since CEGIS works with a copy of the program, it needs to map outer
-       * function calls to inner function calls and vice-versa. 'inner' refers
-       * to the CEGIS-specific program, 'outer' refers to the actual program on
-       * which we do synthesis.
-       */
-      private def outerExprToInnerExpr(e: Expr): Expr = outerToInner.transform(e)(Map.empty)
+        * Since CEGIS works with a copy of the program, it needs to map outer
+        * function calls to inner function calls and vice-versa. 'inner' refers
+        * to the CEGIS-specific program, 'outer' refers to the actual program on
+        * which we do synthesis.
+        */
+      private def outerToInner(e: Expr) = outerToInnerTrans.transform(e)(Map.empty)
+      private def outerToInner(fd: FunDef) = outerToInnerTrans.transform(fd)
+      private def outerToInner(id: Identifier) = outerToInnerTrans.transform(id)
 
-      private val innerPc  = p.pc map outerExprToInnerExpr
-      private val innerPhi = outerExprToInnerExpr(p.phi)
+
+
+      private val innerPc  = p.pc map outerToInner
+      private val innerPhi = outerToInner(p.phi)
       // Depends on the current solution
-      private val innerSpec = outerExprToInnerExpr(
+      private val innerSpec = outerToInner(
         letTuple(p.xs, solutionBox, p.phi)
       )
 
@@ -350,7 +349,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               fd.applied
           })
 
-          outerExprToInnerExpr(e)
+          outerToInner(e)
         }
 
         // Define all C-def
@@ -384,7 +383,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         val (cExpr, newFds) = computeCExpr()
 
-        programCTree = addFunDefs(innerProgram, newFds, origFdMap(hctx.functionContext))
+        programCTree = addFunDefs(innerProgram, newFds, outerToInner(hctx.functionContext))
         evaluator = new DefaultEvaluator(hctx, programCTree)
 
         cExpr
@@ -442,24 +441,28 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           return Some(false)
         }
 
-        val innerSol = outerExprToInnerExpr(outerSol)
+        val innerSol = outerToInner(outerSol)
 
         def withBindings(e: Expr) = p.pc.bindings.foldRight(e){
-          case ((id, v), bd) => let(id, outerExprToInnerExpr(v), bd)
-      }
+          case ((id, v), bd) => let(outerToInner(id), outerToInner(v), bd)
+        }
 
         setSolution(innerSol)
 
         timers.testForProgram.start()
 
+        val innerEnv =  p.as.zip(ex.ins).map{ case (id, v) =>
+          (outerToInner(id), outerToInner(v))
+        }.toMap
+
         val res = ex match {
           case InExample(ins) =>
-            evaluator.eval(withBindings(innerSpec), p.as.zip(ex.ins).toMap)
+            evaluator.eval(withBindings(innerSpec),innerEnv)
 
           case InOutExample(ins, outs) =>
             evaluator.eval(
               withBindings(equality(innerSol, tupleWrap(outs))),
-              p.as.zip(ex.ins).toMap
+              innerEnv
             )
         }
         timers.testForProgram.stop()
@@ -509,12 +512,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         for (bs <- bss.toSeq) {
           // We compute the corresponding expr and replace it in place of the C-tree
           val outerSol = getExpr(bs)
-          val innerSol = outerExprToInnerExpr(outerSol)
+          val innerSol = outerToInner(outerSol)
           //println(s"Testing $innerSol")
           //println(innerProgram)
           setSolution(innerSol)
 
-          val cnstr = innerPc and letTuple(p.xs, innerSol, Not(innerPhi))
+          val cnstr = innerPc and letTuple(p.xs map outerToInner, innerSol, Not(innerPhi))
 
           val eval = new DefaultEvaluator(hctx, innerProgram)
 

@@ -309,13 +309,13 @@ object DefOps {
                               cdMapF: ClassDef => Option[ClassDef],
                               fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap,
                               ciMapF: (CaseClass, CaseClassType) => Option[Expr] = defaultCdMap)
-                              : (Program, Map[Identifier, Identifier], Map[FunDef, FunDef], Map[ClassDef, ClassDef]) = {
+                              : DefinitionTransformer = {
 
     val idMap = new utils.Bijection[Identifier, Identifier]
     val cdMap = new utils.Bijection[ClassDef  , ClassDef  ]
     val fdMap = new utils.Bijection[FunDef    , FunDef    ]
 
-    val transformer = new DefinitionTransformer(idMap, fdMap, cdMap) {
+    new DefinitionTransformer(idMap, fdMap, cdMap) {
       override def transformExpr(expr: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = expr match {
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
           val transformFd = transform(fd)
@@ -341,10 +341,6 @@ object DefOps {
       override def transformClassDef(cd: ClassDef): Option[ClassDef] = cdMapF(cd)
     }
 
-    val cdsMap = p.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
-    val fdsMap = p.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
-    val newP = replaceDefsInProgram(p)(fdsMap, cdsMap)
-    (newP, idMap.toMap, fdsMap, cdsMap)
   }
 
   private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[Expr] = (fi, nfd) match {
@@ -354,19 +350,35 @@ object DefOps {
       None
   }
 
+  /** Return a [[DefinitionTransformer]] that transforms according to the given [[FunDef]] maps */
+  def replaceFunDefsTrans(p: Program)(
+    fdMapF: FunDef => Option[FunDef],
+    fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap
+  ): DefinitionTransformer = {
+    replaceDefs(p)(fdMapF, cd => None, fiMapF)
+  }
+
+  def transformProgram(transformer: DefinitionTransformer, p: Program) = {
+    val cdsMap = p.definedClasses.map (cd => cd -> transformer.transform(cd) ).toMap
+    val fdsMap = p.definedFunctions.map (fd => fd -> transformer.transform(fd) ).toMap
+    replaceDefsInProgram(p)(fdsMap, cdsMap)
+  }
+
   /** Clones the given program by replacing some functions by other functions.
-    * 
+    *
     * @param p The original program
     * @param fdMapF Given f, returns Some(g) if f should be replaced by g, and None if f should be kept.
     * @param fiMapF Given a previous function invocation and its new function definition, returns the expression to use.
     *               By default it is the function invocation using the new function definition.
     * @return the new program with a map from the old functions to the new functions */
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
-                                 : (Program, Map[Identifier, Identifier], Map[FunDef, FunDef], Map[ClassDef, ClassDef]) = {
-    replaceDefs(p)(fdMapF, cd => None, fiMapF)
+                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
+    val transformer = replaceFunDefsTrans(p)(fdMapF, fiMapF)
+    val cdsMap = p.definedClasses.map (cd => cd -> transformer.transform(cd) ).toMap
+    val fdsMap = p.definedFunctions.map (fd => fd -> transformer.transform(fd) ).toMap
+    val newP = replaceDefsInProgram (p) (fdsMap, cdsMap)
+    (newP, transformer.idMap.toMap, fdsMap, cdsMap)
   }
-
   /** Replaces all function calls by an expression depending on the previous function invocation and the new mapped function */
   def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap): Expr = {
     preMap {

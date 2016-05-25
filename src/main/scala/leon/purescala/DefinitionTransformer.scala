@@ -6,14 +6,13 @@ package purescala
 import Common._
 import Definitions._
 import Expressions._
-import Extractors._
 import Types._
 
 import utils._
 import scala.collection.mutable.{Map => MutableMap}
 
 class DefinitionTransformer(
-  idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
+  val idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
   fdMap: Bijection[FunDef    , FunDef    ] = new Bijection[FunDef    , FunDef    ],
   cdMap: Bijection[ClassDef  , ClassDef  ] = new Bijection[ClassDef  , ClassDef  ]) extends TreeTransformer {
 
@@ -27,24 +26,22 @@ class DefinitionTransformer(
     super.transform(transformType(tpe).getOrElse(tpe))
   }
 
-  final override def transform(id: Identifier): Identifier = transformId(id, false)
+  final override def transform(id: Identifier): Identifier = {
+    val ntpe = transform(id.getType)
+    idMap.getB(id) match {
+      case Some(nid) if ntpe == nid.getType => nid
+      case _ =>
+        val nid = transformId(id, false)
+        idMap += id -> nid
+        nid
+    }
+  }
 
   def transformExpr(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Option[Expr] = None
   final override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = {
     transformExpr(e) match {
       case Some(r) => super.transform(r)
-      case None => e match {
-        case Variable(id) if !(bindings contains id) =>
-          val ntpe = transform(id.getType)
-          Variable(idMap.getB(id) match {
-            case Some(nid) if ntpe == nid.getType => nid
-            case _ =>
-              val nid = transformId(id, false)
-              idMap += id -> nid
-              nid
-          })
-        case _ => super.transform(e)
-      }
+      case None    => super.transform(e)
     }
   }
 
