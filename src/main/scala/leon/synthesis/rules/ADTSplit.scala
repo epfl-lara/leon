@@ -76,7 +76,10 @@ case object ADTSplit extends Rule("ADT Split.") {
 
           val subPhi = subst(id -> whole, p.phi)
           val subPC = {
-            val withSubst = p.pc map (subst(id -> whole, _))
+            val classInv = cct.classDef.invariant.map { fd =>
+              FunctionInvocation(fd.typed(cct.tps), Seq(whole))
+            }.getOrElse(BooleanLiteral(true))
+            val withSubst = (p.pc withCond classInv) map (subst(id -> whole, _))
             if (isInputVar) withSubst
             else {
               val mapping = cct.classDef.fields.zip(args).map {

@@ -80,7 +80,14 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
           subProblem = subst(a -> expr, subProblem)
           subPc      = {
-            val withSubst = subPc map (subst(a -> expr, _))
+            val classInv = a.getType match {
+              case _:TupleType => BooleanLiteral(true)
+              case cc: CaseClassType =>
+                cc.classDef.invariant.map { fd =>
+                  FunctionInvocation(fd.typed(cc.tps), Seq(expr))
+                }.getOrElse(BooleanLiteral(true))
+            }
+            val withSubst = (subPc withCond classInv) map (subst(a -> expr, _))
             if (!p.pc.boundIds.contains(a)){
               withSubst
             } else {
