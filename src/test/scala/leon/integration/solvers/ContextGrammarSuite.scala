@@ -22,11 +22,26 @@ import org.scalatest.matchers.Matcher
 import org.scalatest.matchers.MatchResult
 
 trait CustomGrammarEqualMatcher[U, V] extends ContextGrammar[U, V] {
+  def indexDifference(s1: String, s2: String): Int = {
+    def rec(min: Int, max: Int): Int = if(max-min <= 1) min else {
+      val mid = (min+max)/2
+      val s1mid = s1.substring(0, mid)
+      val s2mid = s2.substring(0, mid)
+      if(s1mid != s2mid) rec(min, mid) else rec(mid, max)
+    }
+    rec(0, Math.min(s1.length, s2.length))
+  }
+  
   class EqualGrammarMatcher(expectedGrammar: Grammar) extends Matcher[Grammar] {
     def apply(left: Grammar) = {
+      val leftString = grammarToString(left)
+      val expected = grammarToString(expectedGrammar)
+      val problem = indexDifference(leftString, expected)
+      val msg1 = leftString.substring(0, problem) + "***got***" + leftString.substring(problem)
+      val msg2 = expected.substring(0, problem) + "***expected***" + expected.substring(problem)
       MatchResult(
         left == expectedGrammar,
-        s"${grammarToString(left)}\n ***did not equal*** \n${grammarToString(expectedGrammar)}",
+        s"$msg1\n ***did not equal*** \n$msg2",
         s"${grammarToString(left)}\n ***equaled*** \n${grammarToString(expectedGrammar)}"
       )
     }
@@ -195,6 +210,9 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
     val AconsB = Acons.copy(vcontext = List(Blist))
     val AnilB = Anil.copy(vcontext = List(Blist))
     val AlistB = Alist.copy(vcontext = List(Blist))
+    val AconsA = Acons.copy(vcontext = List(Alist))
+    val AnilA = Anil.copy(vcontext = List(Alist))
+    val AlistA = Alist.copy(vcontext = List(Alist))
     val BconsA = Bcons.copy(vcontext = List(Alist))
     val BnilA = Bnil.copy(vcontext = List(Alist))
     val BlistA = Blist.copy(vcontext = List(Alist))
@@ -202,8 +220,11 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
     val grammar2 =
       Grammar(List(Alist),
           Map(Alist -> Expansion(List(List(Acons), List(Anil))),
-              Acons -> Expansion(List(List(acons, BlistA, Alist))),
+              Acons -> Expansion(List(List(acons, BlistA, AlistA))),
               Anil -> Expansion(List(List(anil, x))),
+              AlistA -> Expansion(List(List(AconsA), List(AnilA))),
+              AconsA -> Expansion(List(List(acons, BlistA, AlistA))),
+              AnilA -> Expansion(List(List(anil, x))),
               AlistB -> Expansion(List(List(AconsB), List(AnilB))),
               AconsB -> Expansion(List(List(acons, BlistA, AlistB))),
               AnilB -> Expansion(List(List(anil, x))),
@@ -238,8 +259,11 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               Bnil -> Expansion(List(List(bnil, y)))))
     
     val BconsA = Bcons.copy(vcontext = List(Alist))
+    val BconsB = Bcons.copy(vcontext = List(Blist))
     val BnilA = Bnil.copy(vcontext = List(Alist))
+    val BnilB = Bnil.copy(vcontext = List(Blist))
     val BlistA = Blist.copy(vcontext = List(Alist))
+    val BlistB = Blist.copy(vcontext = List(Blist))
     
     val grammar2 =
       Grammar(List(Alist),
@@ -251,5 +275,39 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               BnilA -> Expansion(List(List(bnil, y)))))
               
     grammar.markovize_abstract_vertical_filtered(_.tag == "Blist") should equalGrammar (grammar2)
+  }
+  
+  test("Vertical Markovization on self structures") {
+    val Alist = NonTerminal("Alist")
+    val Acons = NonTerminal("Acons")
+    val Anil = NonTerminal("Anil")
+    val acons = Terminal("acons")("")
+    val anil = Terminal("anil")("")
+    val T = NonTerminal("T")
+    val t = Terminal("t")("")
+    
+    val grammar =
+      Grammar(List(Alist),
+          Map(Alist -> Expansion(List(List(Acons), List(Anil))),
+              Acons -> Expansion(List(List(acons, T, T, Alist))),
+              Anil -> Expansion(List(List(anil, x))),
+              T -> Expansion(List(List(t)))))
+    
+    val AconsA = Acons.copy(vcontext = List(Alist))
+    val AlistA = Alist.copy(vcontext = List(Alist))
+    val AnilA = Anil.copy(vcontext = List(Alist))
+    
+    val grammar2 =
+      Grammar(List(Alist),
+          Map(Alist -> Expansion(List(List(Acons), List(Anil))),
+              Acons -> Expansion(List(List(acons, T, T, AlistA))),
+              Anil -> Expansion(List(List(anil, x))),
+              AlistA -> Expansion(List(List(AconsA), List(AnilA))),
+              AconsA -> Expansion(List(List(acons, T, T, AlistA))),
+              AnilA -> Expansion(List(List(anil, x))),
+              T -> Expansion(List(List(t)))))
+          
+              
+    grammar.markovize_abstract_vertical_filtered(_.tag == "Alist") should equalGrammar (grammar2)
   }
 }

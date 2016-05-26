@@ -61,6 +61,16 @@ class ContextGrammar[SymbolTag, TerminalData] {
     }
   }
   
+  // Remove unreachable non-terminals
+  def clean(g: Grammar): Grammar = {
+    val reachable = leon.utils.fixpoint({
+      (nt: Set[NonTerminal]) =>
+        nt ++ (nt map (g.rules) flatMap (_.symbols) collect { case nt: NonTerminal => nt })
+    }, 64)(g.startNonTerminals.toSet)
+    val nonReachable = g.nonTerminals.toSet -- reachable
+    g.copy(rules = g.rules -- nonReachable)
+  }
+  
   /** A grammar here has a start sequence instead of a start symbol */
   case class Grammar(start: Seq[Symbol], rules: Map[NonTerminal, Expansion]) {
     /** Returns all non-terminals of the given grammar */
@@ -91,7 +101,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
           lhs -> (new_lhs -> expansion)
         }
         val rulestmpRes2 = rules -- tmpRes2.map(_._1) 
-        rulestmpRes2 ++ tmpRes2.map(_._2).filter(x => !(rulestmpRes2 contains x._1))
+        rulestmpRes2 ++ tmpRes2.map(_._2)
       }
     }
     
@@ -180,115 +190,101 @@ class ContextGrammar[SymbolTag, TerminalData] {
     
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy". Top-level nodes count as a different hierarchy.
       * Different abstract hierarchy means that nodes do not have the same ancestor.
+      * @param pred The top-most non-terminals to consider (i.e. abstract ones)
       */
     def markovize_abstract_vertical_filtered(pred: NonTerminal => Boolean): Grammar = {
       val nts = nonTerminals
       val rulesSeq = rules.toSeq
-      def parents(nt: NonTerminal): Seq[NonTerminal] = {
-        rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
-      }
-      // Utilities to perform the mapping from one non-terminal to many new non-terminals
-      object Mapping extends NonTerminalMapping {
-        // Adds a new mapping by introducing a top-context.
-        def updateTopContext(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
-          if(pred(Ancestor(nt))) {
-            val new_nt = nt.copy(vcontext = topContext)
-            mapping += nt -> (new_nt::mapping.getOrElse(nt, Nil)).distinct
-            Original.recordMapping(nt, new_nt)
-            new_nt
-          } else nt
+      val ants = (nts filter { nt => // Abstract non terminals
+        rules(nt) match {
+          case VerticalRHS(sons) => pred(nt)
+          case _ => false
         }
-        override def maybeKeep(elem: NonTerminal): Seq[NonTerminal] = {
-          if(Ancestor.isInStart(elem)) Seq(elem) else Nil
+      }).toSet
+      val cnts = (nts filter { nt => // case class non terminals
+        rules(nt) match {
+          case HorizontalRHS(t, sons) => true
+          case _ => false
+        }
+      }).toSet
+      var getAnts = Map[NonTerminal, NonTerminal]()
+      nts foreach { nt =>
+        rules(nt) match {
+          case VerticalRHS(sons) => sons.foreach(son => getAnts += son -> nt)
+          case _ => false
         }
       }
+      def getTopmostANT(nt: NonTerminal): NonTerminal = if(getAnts contains(nt)) getTopmostANT(getAnts(nt)) else nt
+      def getAncestors(nt: NonTerminal): Set[NonTerminal] = getAnts.get(nt).map(getAncestors).getOrElse(Set.empty[NonTerminal]) + nt
+      val startANT = startNonTerminals.map(getTopmostANT).toSet
       
-      // An object to keep track of all modifications to return to the original symbols.
-      // Useful to find "ancestors"
-      object Original {
-        private var originals = Map[NonTerminal, NonTerminal]()
-        def recordMapping(nt: NonTerminal, new_nt: NonTerminal): Unit = {
-          originals += new_nt -> originals.getOrElse(nt, nt)
-        }
-        def apply(nt: NonTerminal) = originals.getOrElse(nt, nt)
+      var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
+      for(t <- startNonTerminals) {
+        val topAnt = getTopmostANT(t)
+        toDuplicate += topAnt -> Set(topAnt)
       }
+      val newRules = rules.map{ case (k, expansion) =>
+        k -> expansion.map{
+          case nt: NonTerminal => 
+            if(ants(nt)) {
+              val antp = getTopmostANT(k)
+              val ancestors = getAncestors(nt)
+              val ancestorTop = getTopmostANT(nt)
+              if(antp == ancestorTop && !startANT(antp)) nt else {
+                for(ancestor <- ancestors) {
+                  val ancestorCopy = ancestor.copy(vcontext = List(antp))
+                  getAnts += ancestorCopy -> ancestor
+                  toDuplicate += ancestor -> (toDuplicate.getOrElse(ancestor, Set()) + ancestorCopy)
+                }
+                nt.copy(vcontext = List(antp))
+              }
+            } else nt
+          case s => s
+        }
+      }
+      val newRules2 = for{
+          (k, v) <- newRules
+          kp <- (toDuplicate.getOrElse(k, Set(k)) + k)
+      } yield {
+        kp -> v
+      }
+      //println("newRules2 = " + grammarToString(Grammar(start, newRules2)))
       
-      // An ancestor of a non-terminal is the non-terminal which can produce it only and cannot be produced itself.
-      object Ancestor {
-        private var mappingAncestor = Map[NonTerminal, NonTerminal]()
-        private def find(nt: NonTerminal): NonTerminal = {
-          Grammar.this.rules.find(kv => {
-            kv._2.ls.exists(rhs => rhs.size == 1 && rhs(0) == nt)
-          }) match {
-            case None => nt
-            case Some(kv) => apply(kv._1)
+      def reportVContext(nt: NonTerminal, parentNt: NonTerminal, rules: Map[NonTerminal, Expansion]): NonTerminal = {
+        if((nt.vcontext.isEmpty || (getTopmostANT(parentNt) == getTopmostANT(nt) && parentNt.vcontext.nonEmpty)) && pred(getTopmostANT(nt))) {
+          val thecopy = nt.copy(vcontext = parentNt.vcontext)
+          if(!(rules contains thecopy)) {
+            getAnts += thecopy -> nt
+            toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set()) + nt + thecopy)
           }
-        }
-        /** Finds and cache the ancestor in a dynamic way */
-        def apply(nt: NonTerminal): NonTerminal = {
-          mappingAncestor.getOrElse(nt, {
-            val a = find(nt)
-            mappingAncestor += nt -> a
-            a
-          })
-        }
-        // Returns true if two terminals share a common ancestor
-        def haveCommonType(nt1: NonTerminal, nt2: NonTerminal): Boolean = {
-          apply(nt1) == apply(nt2)
-        }
-        // Returns true if the ancestor of this non-terminal is present in the start non-terminals.
-        def isInStart(lhs: NonTerminal) = {
-          val ancestor_lhs = Ancestor(lhs)
-          startNonTerminals.exists(startnt => startnt == ancestor_lhs)
+          thecopy
+        } else nt
+      }
+      val newRules3 = leon.utils.fixpoint((newRules: Map[NonTerminal, Expansion]) => {
+        toDuplicate = Map()
+        val  res = for{
+        (k, v) <- newRules
+      } yield {
+        v match {
+          case VerticalRHS(children) =>
+            k -> VerticalRHS(children.map(x => reportVContext(x, k, newRules)))
+          case HorizontalRHS(t, children) =>
+            k -> HorizontalRHS(t, children.map(x => reportVContext(x, k, newRules)))
+          case _ => k -> v
         }
       }
-      
-      // If nt is not already in the hierarchy of the first element of v (or n if v is empty), add to it. Else discard it.
-      def mergeContexts(lhs: NonTerminal, rhsterm: NonTerminal, forceIfHaveCommonType: Boolean = false): List[NonTerminal] = {
-        lhs.vcontext match {
-          case Nil => if(Ancestor.haveCommonType(lhs, rhsterm) && !forceIfHaveCommonType) Nil else Ancestor(lhs)::Nil
-          case vhead::vtail => if(Ancestor.haveCommonType(lhs, vhead)) lhs.vcontext else Ancestor(lhs)::lhs.vcontext
-        }
+      //println("newRules3 = " + grammarToString(Grammar(start, res)))
+      //println("toDuplicate = " + toDuplicate.map{ case (k, v) => symbolToString(k) + "->" + v.map(symbolToString)})
+      val res2 = for{
+          (k, v) <- res
+          kp <- toDuplicate.getOrElse(k, Set(k))
+      } yield {
+        kp -> v
       }
+      //println("newRules4 = " + grammarToString(Grammar(start, res2)))
+      res2}, 64)(newRules2)
       
-      // All starting rules are in a starting context.
-      
-      val newRules = (for{
-        lhs <- nts
-        expansion = rules(lhs)
-      }  yield (lhs -> (expansion match {
-        case HorizontalRHS(t, terms) =>
-          expansion.map{(s: Symbol) => s match {
-              case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm, forceIfHaveCommonType = true))
-            case e => e
-          }}
-        case _ =>
-           expansion.map{(s: Symbol) => s match {
-              case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm))
-            case e => e
-          }}
-      } ))).toMap
-      
-      val newRules2 = Mapping.mapKeys(newRules)
-      val newRules3 = leon.utils.fixpoint({(newRules: Map[NonTerminal, Expansion]) => 
-        Mapping.reset()
-        val newRules4 = for{(lhs, expansion) <- newRules} yield {
-          lhs -> expansion.map{ (s: Symbol) => s match {
-            case rhsterm@NonTerminal(tag, vc, hc) => 
-              val lhs_original = Original(lhs)
-              val rhs_original = Original(rhsterm)
-              if (Ancestor.haveCommonType(rhs_original, lhs_original) &&
-                  rhsterm.vcontext != lhs.vcontext) {
-                Mapping.updateTopContext(rhsterm, lhs.vcontext)
-              } else rhsterm
-            case e => e
-            }
-          }
-        }
-        Mapping.mapKeys(newRules4)
-      }, 64)(newRules2) // 64 is the maximum number of nested hierarchies it supports.
-      
-      Grammar(start, newRules3)
+      clean(Grammar(start, newRules3))
     }
     
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy"

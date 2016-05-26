@@ -184,7 +184,8 @@ case object StringRender extends Rule("StringRender") {
         }
     }
     gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList) match {
-      case Some(problem) => StringSolver.solve(problem)
+      case Some(problem) =>
+        StringSolver.solve(problem)
       case None => Stream.empty
     }
   }
@@ -553,6 +554,7 @@ case object StringRender extends Rule("StringRender") {
         val inputExprs = grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
           (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex)) ++ prettyPrinters.map(Variable)), Nil)
         }
+        //println("Found grammar\n" + grammarToString(grammar))
         
         val startExprStream = inputExprs.permutations.toStream.map(inputs =>
           interleaveIdentifiers(inputs)
