@@ -365,11 +365,31 @@ object ExpressionTransformer {
   }
 
   /**
+   * Converts all user-level and's and or's to if-then-elze .
+   * The Ands and Ors created during flatenning
+   */
+  def andOrToITE(ine: Expr): Expr = {
+    simplePostTransform {
+      case And(args) =>
+        args.tail.foldRight(args.head) {
+          case (acc, arg) =>
+            IfExpr(arg, acc, fls)
+        }
+      case Or(args) =>
+        args.tail.foldRight(args.head) {
+          case (acc, arg) =>
+            IfExpr(arg, tru, acc)
+        }
+      case e => e
+    }(ine)
+  }
+
+  /**
    * Normalizes the expressions
    */
   def normalizeExpr(expr: Expr, multOp: (Expr, Expr) => Expr): Expr = {
     //println("Normalizing " + ScalaPrinter(expr) + "\n")
-    val redex = reduceLangBlocks(toNNF(matchToIfThenElse(expr)), multOp)
+    val redex = reduceLangBlocks(toNNF(andOrToITE(matchToIfThenElse(expr))), multOp)
     //println("After reducing lang blocks: " + ScalaPrinter(redex) + "\n")
     val flatExpr = FlattenFunction(redex)
     val simpExpr = pullAndOrs(flatExpr)
