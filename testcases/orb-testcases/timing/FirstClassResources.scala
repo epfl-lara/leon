@@ -25,9 +25,5 @@ object TreeOperations {
         if (hl > hr) hl + 1 else hr + 1
       }
     }
-  } //ensuring(_ => time <= 10)
-
-  def timeOfSizeHeight(t: Tree): Boolean = {
-    time(size(t)) <= time(height(t))
-  }
+  } ensuring(res => time  <= ? * time(size(t)) + ?)
 }

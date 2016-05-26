@@ -11,7 +11,7 @@ package object instrumentation {
   def time: BigInt = 0
 
   @library
-  def time[T](arg: T) = 0
+  def time[T](arg: T): BigInt = 0
 
   @library
   def stack: BigInt = 0
