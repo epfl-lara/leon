@@ -396,11 +396,23 @@ case object StringRender extends Rule("StringRender") {
       def markovize_abstract_vertical() = copy(grammar=grammar.markovize_abstract_vertical())
       
       /** Mark all occurrences of a given type so that we can differentiate its usage according to its rank from the left.*/
-      def markovize_horizontal_type(tpe: TypeTree) = copy(grammar=grammar.markovize_horizontal_filtered(k => k.tag == tpe))
+      def markovize_horizontal_nonterminal() = {
+        val selectedNt = getDuplicateCallsInSameRule()
+        copy(grammar=grammar.markovize_horizontal_filtered(selectedNt))
+      }
       
       /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
-      def markovize_vertical_type(tpe: TypeTree) = copy(grammar=grammar.markovize_abstract_vertical_filtered { k => k.tag == tpe })
+      def markovize_abstract_vertical_nonterminal() = {
+        val selectedNt = getDirectlyRecursiveTypes()
+        copy(grammar=grammar.markovize_abstract_vertical_filtered(selectedNt))
+      }
       
+      /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
+      def markovize_vertical_nonterminal() = {
+        val selectedNt = getTypesAppearingAtMultiplePlaces()
+        copy(grammar=grammar.markovize_vertical_filtered(selectedNt))
+      }
+
       def getAllTypes(): Set[TypeTree] = {
         grammar.rules.keys.map(_.tag).toSet
       }
@@ -411,23 +423,48 @@ case object StringRender extends Rule("StringRender") {
         grammar.rules.toSeq.filter{ case (k, v) => v.ls.exists(l => l.exists ( _.tag == e ))}
       }
       // Find all non-terminals which have the type tree on the RHS at least twice in the same rule.
-      def getDuplicateCallsInSameRuleFor(e: TypeTree): Seq[(NonTerminal, Expansion)] = {
-        grammar.rules.toSeq.filter{ case (k, v) => v.ls.exists(l => l.count ( _.tag == e ) >= 2)}
+      // Used for horizontal markovization
+      def getDuplicateCallsInSameRule(): Set[NonTerminal] = {
+        getAllTypes().flatMap { e => 
+          grammar.rules.toSeq.flatMap{ case (k, v) =>
+            v.ls.flatMap{l =>
+              val lnt = l.collect{case nt: NonTerminal => nt}
+              if(lnt.count ( _.tag == e ) >= 2) {
+                lnt.filter(_.tag == e)
+              } else Nil
+            }
+          }.toSet
+        }
       }
-      // Return types which call themselves in argument (and which might require vertical markovization).
-      def getDirectlyRecursiveTypes(): Seq[(NonTerminal, Expansion)] = {
-        grammar.rules.toSeq.filter{ case (k, v) => v match {
+      // Return types which call themselves in argument (and which might require vertical markovization to differentiate between an inner call and an outer call).
+      // Used for vertical markovization
+      def getDirectlyRecursiveTypes(): Set[NonTerminal] = {
+        grammar.rules.toSeq.flatMap{ case (k, v) => if(v match {
           case VerticalRHS(children) => children.exists(child => grammar.rules(child) match {
-            case HorizontalRHS(t, arguments) => arguments.exists(_.tag == k)
+            case HorizontalRHS(t, arguments) => arguments.exists(_ == k)
             case _ => false
           })
-          case _ => false
-        }}
+          case _ => false})
+          Seq(k) else Nil
+        }.toSet
+      }
+      // Returns non-terminals which appear on different RHS of different rules, and which require vertical markovization.
+      def getTypesAppearingAtMultiplePlaces(): Set[NonTerminal] = {
+        grammar.rules.toSeq.flatMap{ case (k, v) =>
+          v.ls.flatten
+        }.
+        groupBy { s => s }.
+        toSeq.
+        map(_._2).
+        filter(_.length >= 2).
+        flatMap(_.headOption).
+        collect{ case t: NonTerminal => t}.
+        toSet
       }
       
       /** Builds a set of fun defs out of the grammar */
       // TODO: The set of fundefs might even be a stream; Interleave other possibilities like markovize certain types
-      def buildFunDefTemplate(): (Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])]) = {
+      def buildFunDefTemplate(markovizations: Boolean = true): (Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])]) = {
         // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
         val nts = grammar.nonTerminals
         // Fresh function name generator.
@@ -504,12 +541,12 @@ case object StringRender extends Rule("StringRender") {
           rulesToBodiesRec(e)
         }
         
-        println("Extracting functions from grammar:\n" + grammar)
+        //println("Extracting functions from grammar:\n" + grammarToString(grammar).replaceAll("\\$", "_").replaceAll("\\[T3\\]", "T3").replaceAll("\\(|\\)","").replaceAll("<function1>",""))
         
         // We create the bodies of these functions  
         val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
           val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
-          println("Function found: " + fd + "\n" + bodies)
+          //println("Function found: " + fd + "\n" + bodies)
           (fd, bodies)
         }
         
@@ -521,9 +558,19 @@ case object StringRender extends Rule("StringRender") {
           interleaveIdentifiers(inputs)
         )
         
-        startExprStream.map(i => (i, possible_functions))
+        startExprStream.map(i => (i, possible_functions)) #:::                 // 1) Expressions without markovizations
+          (if(markovizations) {
+            this.
+              markovize_horizontal_nonterminal().buildFunDefTemplateAndContinue( _.
+                markovize_abstract_vertical_nonterminal().buildFunDefTemplateAndContinue( _.
+                  markovize_vertical_nonterminal().buildFunDefTemplate(false)))
+          } else Stream.empty)
         // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
         // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.
+      }
+      
+      def buildFunDefTemplateAndContinue(continueWith: GrammarBasedTemplateGenerator => (Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])])): (Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])]) = {
+        buildFunDefTemplate(false) #::: (continueWith(this))
       }
     }
     

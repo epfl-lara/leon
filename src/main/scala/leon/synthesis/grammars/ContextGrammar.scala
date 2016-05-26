@@ -94,9 +94,8 @@ class ContextGrammar[SymbolTag, TerminalData] {
         rulestmpRes2 ++ tmpRes2.map(_._2).filter(x => !(rulestmpRes2 contains x._1))
       }
     }
-
-    /** Applies 1-markovization to the grammar (add 1 history to every node) */
-    def markovize_vertical(): Grammar = {
+    
+    def markovize_vertical_filtered(pred: NonTerminal => Boolean): Grammar = {
       val nts = nonTerminals
       val rulesSeq = rules.toSeq
       def parents(nt: NonTerminal): Seq[NonTerminal] = {
@@ -105,9 +104,11 @@ class ContextGrammar[SymbolTag, TerminalData] {
       object Mapping extends NonTerminalMapping {
         mapping = Map[NonTerminal, List[NonTerminal]](startNonTerminals.map(x => x -> List(x)) : _*)
         def updateMapping(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
-          val res = nt.copy(vcontext = topContext)
-          mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-          res
+          if(pred(nt)) {
+            val res = nt.copy(vcontext = topContext)
+            mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+            res
+          } else nt
         }
       }
       
@@ -121,6 +122,11 @@ class ContextGrammar[SymbolTag, TerminalData] {
       
       val newRules2 = Mapping.mapKeys(newRules)
       Grammar(start, newRules2)
+    }
+
+    /** Applies 1-markovization to the grammar (add 1 history to every node) */
+    def markovize_vertical(): Grammar = {
+      markovize_vertical_filtered(_ => true)
     }
     
     /** Perform horizontal markovization only on the provided non-terminals. */
@@ -172,7 +178,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
       markovize_horizontal_filtered(_ => true)
     }
     
-    /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy"
+    /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy". Top-level nodes count as a different hierarchy.
       * Different abstract hierarchy means that nodes do not have the same ancestor.
       */
     def markovize_abstract_vertical_filtered(pred: NonTerminal => Boolean): Grammar = {
@@ -238,20 +244,30 @@ class ContextGrammar[SymbolTag, TerminalData] {
       }
       
       // If nt is not already in the hierarchy of the first element of v (or n if v is empty), add to it. Else discard it.
-      def mergeContexts(lhs: NonTerminal, rhsterm: NonTerminal): List[NonTerminal] = {
+      def mergeContexts(lhs: NonTerminal, rhsterm: NonTerminal, forceIfHaveCommonType: Boolean = false): List[NonTerminal] = {
         lhs.vcontext match {
-          case Nil => if(Ancestor.haveCommonType(lhs, rhsterm)) Nil else Ancestor(lhs)::Nil
+          case Nil => if(Ancestor.haveCommonType(lhs, rhsterm) && !forceIfHaveCommonType) Nil else Ancestor(lhs)::Nil
           case vhead::vtail => if(Ancestor.haveCommonType(lhs, vhead)) lhs.vcontext else Ancestor(lhs)::lhs.vcontext
         }
       }
       
+      // All starting rules are in a starting context.
+      
       val newRules = (for{
         lhs <- nts
         expansion = rules(lhs)
-      }  yield (lhs -> (expansion.map{(s: Symbol) => s match {
-        case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm))
-        case e => e
-      }}))).toMap
+      }  yield (lhs -> (expansion match {
+        case HorizontalRHS(t, terms) =>
+          expansion.map{(s: Symbol) => s match {
+              case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm, forceIfHaveCommonType = true))
+            case e => e
+          }}
+        case _ =>
+           expansion.map{(s: Symbol) => s match {
+              case rhsterm@NonTerminal(tag, vc, hc) => Mapping.updateTopContext(rhsterm, mergeContexts(lhs, rhsterm))
+            case e => e
+          }}
+      } ))).toMap
       
       val newRules2 = Mapping.mapKeys(newRules)
       val newRules3 = leon.utils.fixpoint({(newRules: Map[NonTerminal, Expansion]) => 
@@ -282,5 +298,28 @@ class ContextGrammar[SymbolTag, TerminalData] {
       markovize_abstract_vertical_filtered(_ => true)
     }
     
+  }
+  
+  def symbolToString(symbol: Symbol): String = {
+    symbol match {
+      case s: NonTerminal => nonterminalToString(s)
+      case s: Terminal => terminalToString(s)
+    }
+  }
+  def nonterminalToString(nonterminal: NonTerminal): String = {
+    nonterminal.tag + (if(nonterminal.vcontext != Nil) "_v["+nonterminal.vcontext.map(x => symbolToString(x)).reduce(_ + "," + _) + "]" else "") +
+    (if(nonterminal.hcontext != Nil) "_h["+nonterminal.hcontext.map(x => symbolToString(x)).reduce(_ + "," + _)+"]" else "")
+  }
+  def terminalToString(terminal: Terminal): String = {
+    terminal.tag + (if(terminal.terminalData == "") "" else "_" + terminal.terminalData)
+  }
+  def reduce(l: Iterable[String], separator: String) = if(l == Nil) "" else l.reduce(_ + separator + _)
+  def expansionToString(expansion: Expansion): String = {
+    reduce(expansion.ls.map(l => reduce(l.map(x => symbolToString(x)), " ")), " | ")
+  }
+  
+  def grammarToString(grammar: Grammar) = {
+    "Start: " + reduce(grammar.start.map(s => symbolToString(s)), " ") + "\n" +
+    reduce(grammar.rules.map(kv => symbolToString(kv._1) + " -> " + expansionToString(kv._2)).toList.sorted, "\n")
   }
 }

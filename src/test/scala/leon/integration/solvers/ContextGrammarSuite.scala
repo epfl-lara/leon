@@ -21,32 +21,9 @@ import org.scalatest.time.SpanSugar._
 import org.scalatest.matchers.Matcher
 import org.scalatest.matchers.MatchResult
 
-trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
-  def symbolToString(symbol: T#Symbol): String = {
-    symbol match {
-      case s: T#NonTerminal => nonterminalToString(s)
-      case s: T#Terminal => terminalToString(s)
-    }
-  }
-  def nonterminalToString(nonterminal: T#NonTerminal): String = {
-    nonterminal.tag + (if(nonterminal.vcontext != Nil) "_v["+nonterminal.vcontext.map(x => symbolToString(x)).reduce(_ + "," + _) + "]" else "") +
-    (if(nonterminal.hcontext != Nil) "_h["+nonterminal.hcontext.map(x => symbolToString(x)).reduce(_ + "," + _)+"]" else "")
-  }
-  def terminalToString(terminal: T#Terminal): String = {
-    terminal.tag + (if(terminal.terminalData == "") "" else "_" + terminal.terminalData)
-  }
-  def reduce(l: Iterable[String], separator: String) = if(l == Nil) "" else l.reduce(_ + separator + _)
-  def expansionToString(expansion: T#Expansion): String = {
-    reduce(expansion.ls.map(l => reduce(l.map(x => symbolToString(x)), " ")), " | ")
-  }
-  
-  def grammarToString(grammar: T#Grammar) = {
-    "Start: " + reduce(grammar.start.map(s => symbolToString(s)), " ") + "\n" +
-    reduce(grammar.rules.map(kv => symbolToString(kv._1) + " -> " + expansionToString(kv._2)).toList.sorted, "\n")
-  }
-  
-  class EqualGrammarMatcher(expectedGrammar: T#Grammar) extends Matcher[T#Grammar] {
-    def apply(left: T#Grammar) = {
+trait CustomGrammarEqualMatcher[U, V] extends ContextGrammar[U, V] {
+  class EqualGrammarMatcher(expectedGrammar: Grammar) extends Matcher[Grammar] {
+    def apply(left: Grammar) = {
       MatchResult(
         left == expectedGrammar,
         s"${grammarToString(left)}\n ***did not equal*** \n${grammarToString(expectedGrammar)}",
@@ -55,10 +32,10 @@ trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
     }
   }
 
-  def equalGrammar(grammar: T#Grammar) = new EqualGrammarMatcher(grammar)
+  def equalGrammar(grammar: Grammar) = new EqualGrammarMatcher(grammar)
 }
 
-class ContextGrammarString extends ContextGrammar[String, String] with CustomGrammarEqualMatcher[String, String, ContextGrammarString]
+class ContextGrammarString extends ContextGrammar[String, String] with CustomGrammarEqualMatcher[String, String]
 
 /**
  * @author Mikael
