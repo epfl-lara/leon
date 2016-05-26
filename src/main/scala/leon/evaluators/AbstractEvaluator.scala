@@ -190,7 +190,8 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
           try {
             e(body)(frame, gctx)
           } catch {
-            case e: RuntimeError => (functionInvocation(tfd.fd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
+            case e: RuntimeError =>
+              (functionInvocation(tfd.fd, evArgsValues), functionInvocation(tfd.fd, evArgsOrigin))
           }
         }
       }
@@ -243,7 +244,20 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
         
         (conc_value, final_abs_value)
       } else {
-        (builder(ees), builder(ts))
+        val abs_value = builder(ees)
+        val final_abs_value = if( evaluateCaseClassSelector) {
+          abs_value match {
+            case CaseClassSelector(cct, CaseClass(ct, args), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case CaseClassSelector(cct, AsInstanceOf(CaseClass(ct, args), ccct), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case TupleSelect(Tuple(args), i) =>
+              args(i-1)
+            case e => e
+          }
+        } else abs_value
+        
+        (final_abs_value, builder(ts))
       }
     }
   }
