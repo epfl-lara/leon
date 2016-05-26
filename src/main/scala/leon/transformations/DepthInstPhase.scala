@@ -32,7 +32,10 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
+    val (rootFuns, rootTypes) = getRootFuncs()
+    if(!rootTypes.isEmpty)
+      throw new IllegalStateException("Higher-order functions are not supported by depth instrumentation!")
+    val instFunSet = rootFuns.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Depth))).toMap
   }
 

@@ -32,7 +32,9 @@ class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p
   }.toMap
 
   //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-  val tprFuncs = getRootFuncs()
+  val (tprFuncs, tprTypes) = getRootFuncs()
+  if (!tprTypes.isEmpty)
+    throw new IllegalStateException("Higher-order functions are not supported by TPR instrumentation!")
   val timeFuncs = tprFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
