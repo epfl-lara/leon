@@ -348,6 +348,24 @@ case class SetConstraint(expr: Expr) extends Constraint {
   override def toExpr = expr
 }
 
+case class ExtendedSetConstraint(v: Variable, setCtr: SetConstraint, diseq: Boolean) extends ExtendedConstraint {
+  val expr = {
+    assert(setCtr.comp)
+    val eqExpr = Equals(v, setCtr.toExpr)
+    if(diseq) Not(eqExpr) else eqExpr
+  }
+  override def toExpr = expr
+  override def toString: String = expr.toString
+
+  /**
+   * Chooses a sat disjunct of the constraint
+   */
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier,Expr], eval: DefaultEvaluator) = {
+    if((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) setCtr
+    else SetConstraint(Not(setCtr.toExpr))
+  }
+}
+
 object ConstraintUtil {
   def toLinearTemplate(ie: Expr) = {
     simplifyArithmetic(ie) match {
@@ -376,6 +394,7 @@ object ConstraintUtil {
       case Equals(_: Variable, _: CaseClassSelector | _: CaseClass | _: TupleSelect | _: Tuple | _: IsInstanceOf) =>
         ADTConstraint(ie)
       case _ if SetConstraint.isSetConstraint(ie)                                      => SetConstraint(ie)
+      case Equals(v: Variable, rhs) if SetConstraint.isSetConstraint(rhs) => ExtendedSetConstraint(v, SetConstraint(rhs), false)
       case Equals(v: Variable, rhs) if (isArithmeticRelation(rhs) != Some(false))      => toExtendedTemplate(v, rhs, false)
       case Not(Equals(v: Variable, rhs)) if (isArithmeticRelation(rhs) != Some(false)) => toExtendedTemplate(v, rhs, true)
       case _ if (isArithmeticRelation(ie) != Some(false))                              => toLinearTemplate(ie)
