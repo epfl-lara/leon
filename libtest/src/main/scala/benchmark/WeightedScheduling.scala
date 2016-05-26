@@ -1,10 +1,12 @@
+package WeightedScheduling
+
+import leon.collection._
 import leon._
 import leon.mem._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
-import leon.collection._
 
 object WeightedSched {
   abstract class IList
@@ -14,10 +16,10 @@ object WeightedSched {
   case class Nil() extends IList
   
   @extern
-  def jobInfotime(i : BigInt): ((BigInt, BigInt, BigInt), BigInt) = (((i, i, i), i) : ((BigInt, BigInt, BigInt), BigInt))
+  def jobInfotime(i : BigInt): ((BigInt, BigInt, BigInt), BigInt) = (((i,i,i),i) : ((BigInt, BigInt, BigInt), BigInt))
   
   @extern
-  def prevCompatibleJobtime(i : BigInt): (BigInt, BigInt) = ((i, i) : (BigInt, BigInt))
+  def prevCompatibleJobtime(i : BigInt): (BigInt, BigInt) = ((i,i): (BigInt, BigInt))
   
   @invisibleBody
   @invstate
@@ -87,40 +89,6 @@ object WeightedSched {
     (bd1._1, bd1._2)
   }
   
-  def main(args: Array[String]): Unit = {
-    // import scala.util.Random
-    // val rand = Random
-
-    // val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    // val size = points.map(x => BigInt(2*x)).toList
-    
-    // var ops = List[() => BigInt]()
-    // var orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   ops :+= {() => sorttime(input)._2}
-    //   orb :+= {() => 15 * i + 10}
-    // }
-    // run(size, ops, orb, "sort")
-
-    // ops = List[() => BigInt]()
-    // orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   // NOTE: floor take for coeff
-    //   ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
-    //   orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
-    // }
-    // run(size, ops, orb, "kthMintime")
-  }
 }
 
 object IList {

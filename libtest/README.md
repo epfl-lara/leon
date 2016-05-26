@@ -12,7 +12,8 @@ The files are in `src/benchmark`. You may wish to do the follow:
 
 (*) For this get the source from `leon.out` once you have executed with `--runnable` option. Then remove `****` before `lookup` and `update`
  and fix their names. Also remove unused data-structures, one thumb rule is for data-structures with same name retain the one with highest numerical
- suffix.
+ suffix. You can use the script `runnable.py` which takes in the argument as the filename at your own risk. It automatically picks file from `leon.out`
+ and dumps it into `src/main/scala/benchmark` directory.
 
 ### 2. Testing Model
 

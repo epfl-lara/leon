@@ -1,4 +1,6 @@
-package RealTimeDeque
+package Deque
+
+package Deque
 
 import leon._
 import leon.mem._
@@ -10,18 +12,25 @@ import leon.instrumentation._
 import leon.math._
 import leon.invariant._
 
-object RealTimeDeque {  
+object RealTimeDeque {
+  
   abstract class Stream2[T]
+  
   
   case class SCons1[T](x442 : T, next64 : ValOrFun2[T]) extends Stream2[T]
   
+  
   case class SNil1[T]() extends Stream2[T]
+  
   
   abstract class ValOrFun2[T]
   
+  
   case class Val1[T](x440 : Stream2[T]) extends ValOrFun2[T]
   
+  
   case class Fun3[T](fun23 : () => (Stream2[T], BigInt)) extends ValOrFun2[T]
+  
   
   case class Queue2[T](f226 : Stream2[T], lenf77 : BigInt, sf75 : Stream2[T], r238 : Stream2[T], lenr77 : BigInt, sr75 : Stream2[T])
   
@@ -327,41 +336,7 @@ object RealTimeDeque {
   }
   
   def reversetime[T](q : Queue2[T]): (Queue2[T], BigInt) = (Queue2[T](q.r238, q.lenr77, q.sr75, q.f226, q.lenf77, q.sf75), BigInt(7))
-
-  def main(args: Array[String]): Unit = {
-    // import scala.util.Random
-    // val rand = Random
-
-    // val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    // val size = points.map(x => BigInt(2*x)).toList
-    
-    // var ops = List[() => BigInt]()
-    // var orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   ops :+= {() => sorttime(input)._2}
-    //   orb :+= {() => 15 * i + 10}
-    // }
-    // run(size, ops, orb, "sort")
-
-    // ops = List[() => BigInt]()
-    // orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   // NOTE: floor take for coeff
-    //   ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
-    //   orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
-    // }
-    // run(size, ops, orb, "kthMintime")
-  }
+  
 }
 
 object Stream {

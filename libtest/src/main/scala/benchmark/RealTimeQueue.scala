@@ -1,5 +1,6 @@
 package RealTimeQueue
 
+import leon.collection._
 import leon._
 import leon.mem._
 import leon.higherorder._
@@ -9,12 +10,16 @@ import leon.collection._
 import leon.instrumentation._
 import leon.invariant._
 
-object RealTimeQueue {  
+object RealTimeQueue {
+  
   abstract class Stream2[T]
+  
   
   case class SCons1[T](x345 : T, tailFun19 : () => (Stream2[T], BigInt)) extends Stream2[T]
   
+  
   case class SNil1[T]() extends Stream2[T]
+  
   
   case class Queue2[T](f159 : Stream2[T], r196 : List[T], s106 : Stream2[T])
   
@@ -92,40 +97,6 @@ object RealTimeQueue {
     (bd6._1, bd6._2)
   }
   
-  def main(args: Array[String]): Unit = {
-    // import scala.util.Random
-    // val rand = Random
-
-    // val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    // val size = points.map(x => BigInt(2*x)).toList
-    
-    // var ops = List[() => BigInt]()
-    // var orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   ops :+= {() => sorttime(input)._2}
-    //   orb :+= {() => 15 * i + 10}
-    // }
-    // run(size, ops, orb, "sort")
-
-    // ops = List[() => BigInt]()
-    // orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   // NOTE: floor take for coeff
-    //   ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
-    //   orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
-    // }
-    // run(size, ops, orb, "kthMintime")
-  }
 }
 
 object Stream {

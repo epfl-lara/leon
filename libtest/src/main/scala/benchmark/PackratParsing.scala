@@ -1,12 +1,12 @@
 package PackratParsing
 
+import leon.collection._
 import leon._
 import leon.mem._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
-import leon.collection._
 
 object PackratParsing {
   abstract class Terminal
@@ -220,6 +220,7 @@ object PackratParsing {
     }
     (bd6._1, bd6._2)
   }
+  
 }
 
 object Result {

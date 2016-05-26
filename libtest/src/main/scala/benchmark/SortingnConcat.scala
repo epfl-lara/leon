@@ -1,5 +1,6 @@
 package SortingnConcat
 
+import leon.collection._
 import leon._
 import leon.mem._
 import leon.higherorder._
@@ -8,14 +9,17 @@ import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
 import leon.collection._
-import leon.runtimeDriver._
 
 object SortingnConcat {
+  
   abstract class LList2
+  
   
   case class SCons1(x316 : BigInt, tailFun1 : Stream2) extends LList2
   
+  
   case class SNil1() extends LList2
+  
   
   case class Stream2(lfun1 : () => (LList2, BigInt))
   
@@ -92,41 +96,7 @@ object SortingnConcat {
     }
     (bd2._1, bd2._2)
   }
-
-  def main(args: Array[String]): Unit = {
-    import scala.util.Random
-    val rand = Random
-
-    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    val size = points.map(x => BigInt(2*x)).toList
-    
-    var ops = List[() => BigInt]()
-    var orb = List[() => BigInt]()
-    points.foreach { i =>
-      val input = {
-        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-          Cons(n, f)  
-        }
-      }
-      ops :+= {() => sorttime(input)._2}
-      orb :+= {() => 15 * i + 10}
-    }
-    run(size, ops, orb, "sort")
-
-    ops = List[() => BigInt]()
-    orb = List[() => BigInt]()
-    points.foreach { i =>
-      val input = {
-        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-          Cons(n, f)  
-        }
-      }
-      // NOTE: floor take for coeff
-      ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
-      orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
-    }
-    run(size, ops, orb, "kthMintime")
-  }
+  
 }
 
 object LList {

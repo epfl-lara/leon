@@ -1,5 +1,6 @@
 package LazyNumericalRep
 
+import leon.collection._
 import leon._
 import leon.mem._
 import leon.lang._
@@ -7,6 +8,7 @@ import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
 import leon.collection._
+import DigitObject._
 
 object DigitObject {
   abstract class Digit
@@ -14,21 +16,28 @@ object DigitObject {
   case class Zero() extends Digit
   
   case class One() extends Digit
+  
 }
 
 object LazyNumericalRep {
-
+  
   abstract class NumList2
+  
   
   case class Tip1() extends NumList2
   
+  
   case class Spine1(head12 : DigitObject.Digit, rear21 : NumStream2) extends NumList2
+  
   
   abstract class NumStream2
   
+  
   case class Val1(x324 : NumList2) extends NumStream2
   
+  
   case class Susp1(fun3 : () => (NumList2, BigInt)) extends NumStream2
+  
   
   case class Number2(digs1 : NumStream2, schedule1 : List[NumStream2])
   
@@ -116,41 +125,6 @@ object LazyNumericalRep {
     val ir18 = ir12._1
     val e22 = Paytime[BigInt](ir18, ir12._2)
     (Number2(ir18, e22._1), (BigInt(8) + e22._2) + ir._2)
-  }
-
-  def main(args: Array[String]): Unit = {
-    // import scala.util.Random
-    // val rand = Random
-
-    // val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    // val size = points.map(x => BigInt(2*x)).toList
-    
-    // var ops = List[() => BigInt]()
-    // var orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   ops :+= {() => sorttime(input)._2}
-    //   orb :+= {() => 15 * i + 10}
-    // }
-    // run(size, ops, orb, "sort")
-
-    // ops = List[() => BigInt]()
-    // orb = List[() => BigInt]()
-    // points.foreach { i =>
-    //   val input = {
-    //     (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
-    //       Cons(n, f)  
-    //     }
-    //   }
-    //   // NOTE: floor take for coeff
-    //   ops :+= {() => kthMintime(Stream2(()=>sorttime(input)), 10)._2}
-    //   orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
-    // }
-    // run(size, ops, orb, "kthMintime")
   }
 }
 
