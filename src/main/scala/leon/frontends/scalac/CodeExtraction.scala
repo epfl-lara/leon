@@ -1164,6 +1164,13 @@ trait CodeExtraction extends ASTExtractors {
 
           Ensuring(b, closure)
 
+        case t @ ExHoldsWithProofExpression(body, ExMaybeBecauseExpressionWrapper(proof)) =>
+          val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
+          val p = extractTreeOrNoTree(proof)
+          val post = Lambda(Seq(LeonValDef(resId)), And(Seq(p, Variable(resId)))).setPos(current.pos)
+          val b = extractTreeOrNoTree(body)
+          Ensuring(b, post)
+          
         case t @ ExHoldsExpression(body) =>
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
           val post = Lambda(Seq(LeonValDef(resId)), Variable(resId)).setPos(current.pos)
@@ -1171,7 +1178,15 @@ trait CodeExtraction extends ASTExtractors {
           val b = extractTreeOrNoTree(body)
 
           Ensuring(b, post)
-
+          
+        // If the because statement encompasses a holds statement
+        case t @ ExBecauseExpression(ExHoldsExpression(body), proof) =>
+          val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
+          val p = extractTreeOrNoTree(proof)
+          val post = Lambda(Seq(LeonValDef(resId)), And(Seq(p, Variable(resId)))).setPos(current.pos)
+          val b = extractTreeOrNoTree(body)
+          Ensuring(b, post)
+          
         case t @ ExComputesExpression(body, expected) =>
           val b = extractTreeOrNoTree(body).setPos(body.pos)
           val expected_expr = extractTreeOrNoTree(expected).setPos(expected.pos)

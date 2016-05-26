@@ -13,7 +13,7 @@ package object lang {
     def holds : Boolean = {
       underlying
     } ensuring {
-      _ == true
+      (res: Boolean) => res
     }
     @inline
     def holds(becauseOfThat: Boolean) = {

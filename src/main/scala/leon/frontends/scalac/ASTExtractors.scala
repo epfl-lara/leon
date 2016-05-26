@@ -177,13 +177,40 @@ trait ASTExtractors {
       }
     }
 
-    /** Matches the `holds` expression at the end of any boolean expression, and return the boolean expression.*/
+    /** Matches the `holds` expression at the end of any boolean expression, and returns the boolean expression.*/
     object ExHoldsExpression {
       def unapply(tree: Select) : Option[Tree] = tree match {
         case Select(
           Apply(ExSelected("leon", "lang", "package", "BooleanDecorations"), realExpr :: Nil),
           ExNamed("holds")
         ) => Some(realExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `holds` expression at the end of any boolean expression with a proof as argument, and returns both of themn.*/
+    object ExHoldsWithProofExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "lang", "package", "BooleanDecorations"), body :: Nil), ExNamed("holds")), proof :: Nil) =>
+          Some((body, proof))
+        case _ => None
+       }
+    }
+    
+    /** Matches the `because` method at the end of any boolean expression, and return the assertion and the cause. If no "because" method, still returns the expression */
+    object ExMaybeBecauseExpressionWrapper {
+      def unapply(tree: Tree) : Some[Tree] = tree match {
+        case Apply(ExSelected("leon", "lang", "package", "because"), body :: Nil) =>
+          unapply(body)
+        case body => Some(body)
+       }
+    }
+    
+    /** Matches the `because` method at the end of any boolean expression, and return the assertion and the cause.*/
+    object ExBecauseExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "proof", "package", "boolean2ProofOps"), body :: Nil), ExNamed("because")), proof :: Nil) =>
+          Some((body, proof))
         case _ => None
        }
     }
