@@ -90,7 +90,7 @@ object BottomUpMergeSort {
     time <=  ? * l.size + ? // 32 * l.size + 3
   }
 
-  @invisibleBody
+  // @invisibleBody
   def merge(a: Stream, b: Stream): LList = {
     require((a.list.cached && b.list.cached))
     b.list match {
@@ -128,7 +128,7 @@ object BottomUpMergeSort {
   } ensuring {res =>
     val rsize = res.size
     a.size + b.size == rsize && rsize >= 1 &&
-    time <= 111 * rsize - 86 // time <= 111 * rsize - 86 // Orb cannot infer this due to issues with CVC4 set solving !
+    time <= 123 * rsize - 86 // time <= 111 * rsize - 86 // Orb cannot infer this due to issues with CVC4 set solving !
   }
 
   /**
@@ -169,14 +169,14 @@ object BottomUpMergeSort {
   /**
    * A function that accesses the first element of a list using lazy sorting.
    */
- // def firstMin(l: List[BigInt]) : BigInt ={
- //   require(l != Nil[BigInt]())
- //   mergeSort(l).list match {
- //     case SCons(x, rest) => x
- //   }
- // } ensuring (res => time <= ? * l.size + ?)
+   // def firstMin(l: List[BigInt]) : BigInt ={
+   //   require(l != Nil[BigInt]())
+   //   mergeSort(l).list match {
+   //     case SCons(x, rest) => x
+   //   }
+   // } ensuring (res => time <= ? * l.size + ?)
 
-  /*def kthMin(s: Stream, k: BigInt): BigInt = {
+  def kthMin(s: Stream, k: BigInt): BigInt = {
     require(k >= 0)
     s.list match {
       case SCons(x, xs) =>
@@ -185,7 +185,7 @@ object BottomUpMergeSort {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ?)*/
+  } ensuring (_ => time <= ? * (k * s.size) + ? * (s.size) + ?)
 
   @ignore
   def main(args: Array[String]) {
