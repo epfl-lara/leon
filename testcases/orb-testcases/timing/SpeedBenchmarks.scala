@@ -1,7 +1,6 @@
 import leon.invariant._
 import leon.instrumentation._
 
-
 object SpeedBenchmarks {
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
@@ -105,6 +104,15 @@ object SpeedBenchmarks {
       if(b) Dis4(x+t, b, t, n)
       else Dis4(x-t, b, t, n)
     }
-  } ensuring(res => true && tmpl((a,c,d,e) => (((b && t >= 0) || (!b && t < 0)) && time <= a*max(0,(n-x)) + c)
-  					|| (((!b && t >= 0) || (b && t < 0)) && time <= d*max(0,x) + e)))
+  }ensuring(res => //ensuring(res => true && tmpl((a,c,d,e) => (((b && t >= 0) || (!b && t < 0)) && time <= a*max(0,(n-x)) + c)
+    //			|| (((!b && t >= 0) || (b && t < 0)) && time <= d*max(0,x) + e)))
+    true && tmpl((a, c, d, e) => {
+      val cond =
+        if(b) t >= 0
+        else t < 0
+      if (cond)
+        time <= a * max(0, (n - x)) + c
+      else
+        time <= d * max(0, x) + e
+    }))
 }

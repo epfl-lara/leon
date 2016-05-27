@@ -28,6 +28,8 @@ object ExpressionTransformer {
   val funFlatContext = newContext
   // conversion of other language constructs
   val langContext = newContext
+  // a context used for if conditions
+  val ifContext = newContext
 
   def createFlatTemp(name: String, tpe: TypeTree = Untyped) = createTemp(name, tpe, flatContext)
 
@@ -122,7 +124,7 @@ object ExpressionTransformer {
           (Equals(nexp1, nexp2), ncjs1 ++ ncjs2)
 
         case IfExpr(cond, thn, elze) if insideFunction =>
-          val freshvar = createTemp("ifres", e.getType, langContext).toVariable
+          val freshvar = createTemp("ifres", e.getType, ifContext).toVariable
           val (ncond, condConjs) = transform(cond, true)
           val (nthen, thenConjs) = transform(Equals(freshvar, thn), false)
           val (nelze, elzeConjs) = transform(Equals(freshvar, elze), false)
@@ -365,21 +367,32 @@ object ExpressionTransformer {
   }
 
   /**
-   * Converts all user-level and's and or's to if-then-elze .
+   * Converts all user-level and's and or's to if-then-elze.
+   * This also pull if's nested within conditions of other if's outside if possible.
    * The Ands and Ors created during flatenning
    */
   def andOrToITE(ine: Expr): Expr = {
     simplePostTransform {
       case And(args) =>
-        args.tail.foldRight(args.head) {
-          case (acc, arg) =>
+        args.dropRight(1).foldRight(args.last) {
+          case (arg, acc) =>
             IfExpr(arg, acc, fls)
         }
       case Or(args) =>
-        args.tail.foldRight(args.head) {
-          case (acc, arg) =>
+        args.dropRight(1).foldRight(args.last) {
+          case (arg, acc) =>
             IfExpr(arg, tru, acc)
         }
+      case ife : IfExpr =>
+        // this produces more readable code when ands/ors are used inside if conditions
+        def rec(e: Expr): Expr = e match {
+          case IfExpr(IfExpr(c, th, BooleanLiteral(false)), outTh, outEl: Terminal) =>
+            IfExpr(c,  rec(IfExpr(th, outTh, outEl)), outEl)
+          case IfExpr(IfExpr(c, BooleanLiteral(true), el), outTh: Terminal, outEl) =>
+            IfExpr(c, outTh, rec(IfExpr(el, outTh, outEl)))
+          case e => e
+        }
+        rec(ife)
       case e => e
     }(ine)
   }
@@ -389,7 +402,8 @@ object ExpressionTransformer {
    */
   def normalizeExpr(expr: Expr, multOp: (Expr, Expr) => Expr): Expr = {
     //println("Normalizing " + ScalaPrinter(expr) + "\n")
-    val redex = reduceLangBlocks(toNNF(andOrToITE(matchToIfThenElse(expr))), multOp)
+    val iteExpr = andOrToITE(toNNF(matchToIfThenElse(expr)))
+    val redex = reduceLangBlocks(iteExpr, multOp)
     //println("After reducing lang blocks: " + ScalaPrinter(redex) + "\n")
     val flatExpr = FlattenFunction(redex)
     val simpExpr = pullAndOrs(flatExpr)
@@ -412,6 +426,7 @@ object ExpressionTransformer {
       isTemp(id, flatContext) || (includeFuns && isTemp(id, funFlatContext))
 
     var idMap = Map[Identifier, Expr]()
+    val closure = (e: Expr) => replaceFromIDs(idMap, e)
     /**
      * Here, relying on library transforms is dangerous as they
      * can perform additional simplifications to the expression on-the-fly,
@@ -428,11 +443,23 @@ object ExpressionTransformer {
       // specially handle boolean function to prevent unnecessary simplifications
       case Or(args)           => Or(args map rec)
       case And(args)          => And(args map rec)
-      case IfExpr(cond, th, elze) => IfExpr(rec(cond), rec(th), rec(elze))
+      case IfExpr(cond, th, elze) =>
+        val ncond = rec(cond)
+        val nth = fix(closure)(rec(th)) // simplify then and elze. This may lead to further simplifications
+        val nel = fix(closure)(rec(elze))
+        /*if(!includeFuns)
+          println(s"Processing $e exclude Ids: $excludeIds Nthen: $nth  NElze: $nel")*/
+        (nth, nel) match {
+          case (Equals(Variable(id1), thRhs), Equals(Variable(id2), elRhs))
+            if id1 == id2 && isTemp(id1, ifContext) && !excludeIds(id1) =>
+              idMap += (id1 -> IfExpr(ncond, thRhs, elRhs))
+              tru
+          case _ => IfExpr(ncond, nth, nel)
+        }
+        //IfExpr(rec(cond), rec(th), rec(elze))
       case e => e // we should not recurse in other operations, note: Not(equals) should not be considered
     }
     val newe = rec(ine)
-    val closure = (e: Expr) => replaceFromIDs(idMap, e)
     val rese = fix(closure)(newe)
     (rese, idMap)
   }

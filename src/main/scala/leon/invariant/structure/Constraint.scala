@@ -18,6 +18,7 @@ import leon.evaluators._
 
 trait Constraint {
   def toExpr: Expr
+  def prettyExpr = toExpr // this can be overriden
 }
 
 trait ExtendedConstraint extends Constraint {
@@ -57,18 +58,14 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   }
 
   val lhsExpr = {
-    //construct the expression corresponding to the template here
-    var lhs = coeffTemp.foldLeft(null: Expr) {
-      case (acc, (term, coeff)) =>
+    var lhs = coeffTemp.foldLeft(null: Expr) { case (acc, (term, coeff)) =>
         val minterm = Times(coeff, term)
         if (acc == null) minterm else Plus(acc, minterm)
     }
-    if (constTemp.isDefined) {
-      if (lhs == null) constTemp.get
-      else Plus(lhs, constTemp.get)
-    } else lhs
+    constTemp.map(ct => if (lhs == null) ct else Plus(lhs, ct)).getOrElse(lhs)
   }
 
+  //construct the expression corresponding to the template here (but, preserve equalities)
   val template = oper(Seq(lhsExpr, zero))
 
   def templateVars: Set[Variable] = getTemplateVars(template)
@@ -127,16 +124,20 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
    * Converts the template to a more human readable form
    * by group positive (and negative) terms together
    */
-  def toPrettyExpr = {
+  override lazy val prettyExpr = {
     val (lhsCoeff, rhsCoeff) = coeffTemplate.partition {
       case (term, InfiniteIntegerLiteral(v)) =>
         v >= 0
       case _ => true
     }
-    var lhsExprs: Seq[Expr] = lhsCoeff.map(e => Times(e._2, e._1)).toSeq
+    var lhsExprs: Seq[Expr] = lhsCoeff.map{
+      case (term, InfiniteIntegerLiteral(v)) if v == 1 => term
+      case (term, coeff) => Times(coeff, term)
+    }.toSeq
     var rhsExprs: Seq[Expr] = rhsCoeff.map {
       case (term, InfiniteIntegerLiteral(v)) =>
-        Times(InfiniteIntegerLiteral(-v), term) // make the coeff +ve
+        if (v == -1) term
+        else Times(InfiniteIntegerLiteral(-v), term) // make the coeff +ve
     }.toSeq
     constTemplate match {
       case Some(InfiniteIntegerLiteral(v)) if v < 0 =>
@@ -157,8 +158,9 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
           Some(Plus(acc.get, minterm))
         else Some(minterm)
     }
-    val lhs = lhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
-    val rhs = rhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
+    val zero = InfiniteIntegerLiteral(0)
+    val lhs = lhsExprOpt.getOrElse(zero)
+    val rhs = rhsExprOpt.getOrElse(zero)
     oper(Seq(lhs, rhs))
   }
 
@@ -206,12 +208,13 @@ class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: 
  * Used for efficiently choosing a disjunct
  */
 case class ExtendedLinearTemplate(v: Variable, tmpl: LinearTemplate, diseq: Boolean) extends ExtendedConstraint {
-  val expr = {
-    val eqExpr = Equals(v, tmpl.toExpr)
+  def consExpr(tmplExpr: Expr) = {
+    val eqExpr = Equals(v, tmplExpr)
     if(diseq) Not(eqExpr) else eqExpr
   }
-  override def toExpr = expr
-  override def toString: String = expr.toString
+  override lazy val prettyExpr = consExpr(tmpl.prettyExpr)
+  override val toExpr = consExpr(tmpl.toExpr)
+  override def toString: String = toExpr.toString
 
   /**
    * Chooses a sat disjunct of the constraint
@@ -302,7 +305,8 @@ case class Call(retexpr: Expr, fi: FunctionInvocation) extends Constraint {
  * If-then-else constraint
  */
 case class ITE(cond: BoolConstraint, ths: Seq[Constraint], elzs: Seq[Constraint]) extends Constraint {
-  val expr = IfExpr(cond.toExpr, createAnd(ths.map(_.toExpr)), createAnd(elzs.map(_.toExpr)))
+  lazy val expr = IfExpr(cond.toExpr, createAnd(ths.map(_.toExpr)), createAnd(elzs.map(_.toExpr)))
+  override lazy val prettyExpr = IfExpr(cond.prettyExpr, createAnd(ths.map(_.prettyExpr)), createAnd(elzs.map(_.prettyExpr)))
   override def toExpr = expr
 }
 

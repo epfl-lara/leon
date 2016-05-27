@@ -71,10 +71,11 @@ object MergeAndHammingNumbers {
       if(y <= z) y else z
   }
 
-  @invisibleBody
+  
   /**
    * A three way merge function
    */
+  @invisibleBody
   def merge(a: SCons, b: SCons, c: SCons): SCons = {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
