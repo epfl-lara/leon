@@ -40,16 +40,22 @@ abstract class TEGISLike(name: String) extends Rule(name) {
 
         val useVanuatoo = hctx.settings.cegisUseVanuatoo
 
-        val inputGenerator: Iterator[Seq[Expr]] = if (p.isTestBased) {
-          Iterator.empty
-        } else if (useVanuatoo) {
-          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000)
+        val baseExamples = if (p.isTestBased) {
+          p.qebFiltered.examples.collect { case io: InOutExample => io }
         } else {
-          val evaluator = new DualEvaluator(hctx, hctx.program)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000)
+          p.qebFiltered.examples
         }
 
-        val gi = new GrowableIterable[Example](p.qebFiltered.examples, inputGenerator.map(InExample(_)))
+        val exampleGenerator: Iterator[Example] = if (p.isTestBased) {
+          Iterator.empty
+        } else if (useVanuatoo) {
+          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample(_))
+        } else {
+          val evaluator = new DualEvaluator(hctx, hctx.program)
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample(_))
+        }
+
+        val gi = new GrowableIterable[Example](baseExamples, exampleGenerator)
 
         val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
@@ -90,6 +96,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
                   evaluator.eval(exprToTest, p.as.zip(ins).toMap).result == Some(BooleanLiteral(true))
 
                 case InOutExample(ins, outs) =>
+                  println("Evaluating "+e.asString+" with "+ins.map(_.asString))
                   evaluator.eval(e, p.as.zip(ins).toMap).result == Some(tupleWrap(outs))
               }) {
                 candidate = Some(tupleWrap(Seq(e)))
