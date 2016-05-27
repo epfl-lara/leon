@@ -11,7 +11,7 @@ import purescala.Common._
 import purescala.Types._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.Constructors._
+import purescala.Constructors.{cases => preCases, _}
 import purescala.Definitions._
 
 /** Abstract data type split. If a variable is typed as an abstract data type, then
@@ -125,11 +125,11 @@ case object ADTSplit extends Rule("ADT Split.") {
             }).toMap
             (
               SimpleCase(pattern, sol.term),
-              and(IsInstanceOf(Variable(id), cct), replaceFromIDs(substs, sol.pre))
+              (IsInstanceOf(Variable(id), cct): Expr) -> replaceFromIDs(substs, sol.pre)
             )
           }).unzip
 
-          Some(Solution(orJoin(globalPres), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
+          Some(Solution(preCases(globalPres), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
         }
 
         decomp(subInfo.map(_._2).toList, onSuccess, s"ADT Split on '${id.asString(hctx)}'")

@@ -37,8 +37,12 @@ case object InputSplit extends Rule("In. Split") {
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(s1, s2) =>
-          Some(Solution(or(and(    Variable(a) , s1.pre),
-                           and(Not(Variable(a)), s2.pre)),
+          val pre = cases(List(
+            Variable(a)      -> s1.pre,
+            Not(Variable(a)) -> s2.pre
+          ))
+
+          Some(Solution(pre,
                         s1.defs ++ s2.defs,
                         IfExpr(Variable(a), s1.term, s2.term),
                         s1.isTrusted && s2.isTrusted

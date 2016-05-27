@@ -8,7 +8,7 @@ import purescala.Expressions._
 import graph._
 import strategies._
 
-class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false) {
+class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false)(implicit ctx: LeonContext) {
 
   def includeSolution(s: Solution) = {
     includeUntrusted || s.isTrusted
@@ -31,15 +31,23 @@ class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false) {
           solveWith(on.parent, sol)
 
         case Some(an: AndNode) =>
+          println("Solving AN:"+an.asString)
+
           val ssols = for (d <- an.descendants) yield {
             if (d == n) {
               sol
             } else {
+              println("Solving Desc: "+d.asString)
               getSolutionFor(d)
             }
           }
 
+          println("Calling onSuccess for "+an.ri.asString)
+          println(" - ssols:"+ssols.map(_.asString))
+          println(" result=>:"+an.ri.onSuccess(ssols))
+
           an.ri.onSuccess(ssols).flatMap { nsol =>
+            println("Solution for sub is: "+nsol.asString)
             solveWith(an.parent, nsol)
           }
       }

@@ -62,10 +62,10 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols @ List(sEQ, sNE) =>
-            val pre = or(
-              and(Equals(v1, v2),      sEQ.pre),
-              and(not(Equals(v1, v2)), sNE.pre)
-            )
+            val pre = cases(List(
+              Equals(v1, v2)      -> sEQ.pre,
+              not(Equals(v1, v2)) -> sNE.pre
+            ))
 
             val term = IfExpr(Equals(v1, v2), sEQ.term, sNE.term)
 
