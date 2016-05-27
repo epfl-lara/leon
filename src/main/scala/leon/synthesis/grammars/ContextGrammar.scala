@@ -61,6 +61,21 @@ class ContextGrammar[SymbolTag, TerminalData] {
     }
   }
   
+  object AugmentedTerminalsRHS {
+    def apply(t: Seq[Terminal], e: Expansion) = Expansion(t map (x => List(x: Symbol)) toList) ++ e
+    def unapply(e: Expansion): Option[(List[Terminal], Expansion)] = e.ls match {
+      case Nil => None
+      case _::Nil => Some((Nil, e))
+      case head::tail =>
+        (head, unapply(Expansion(tail))) match {
+          case (_, None) => None
+          case (List(t: Terminal), Some((ts, exp))) => Some((t::ts, exp))
+          case (lnt@List(nt: NonTerminal), Some((Nil, exp))) => Some((Nil, Expansion(List(lnt)) ++ exp))
+          case _ => None
+        }
+    }
+  }
+  
   // Remove unreachable non-terminals
   def clean(g: Grammar): Grammar = {
     val reachable = leon.utils.fixpoint({
@@ -197,20 +212,20 @@ class ContextGrammar[SymbolTag, TerminalData] {
       val rulesSeq = rules.toSeq
       val ants = (nts filter { nt => // Abstract non terminals
         rules(nt) match {
-          case VerticalRHS(sons) => pred(nt)
+          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) => pred(nt)
           case _ => false
         }
       }).toSet
       val cnts = (nts filter { nt => // case class non terminals
         rules(nt) match {
-          case HorizontalRHS(t, sons) => true
+          case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, sons)) => true
           case _ => false
         }
       }).toSet
       var getAnts = Map[NonTerminal, NonTerminal]()
       nts foreach { nt =>
         rules(nt) match {
-          case VerticalRHS(sons) => sons.foreach(son => getAnts += son -> nt)
+          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) => sons.foreach(son => getAnts += son -> nt)
           case _ => false
         }
       }
@@ -266,10 +281,10 @@ class ContextGrammar[SymbolTag, TerminalData] {
         (k, v) <- newRules
       } yield {
         v match {
-          case VerticalRHS(children) =>
-            k -> VerticalRHS(children.map(x => reportVContext(x, k, newRules)))
-          case HorizontalRHS(t, children) =>
-            k -> HorizontalRHS(t, children.map(x => reportVContext(x, k, newRules)))
+          case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
+            k -> AugmentedTerminalsRHS(terminals, VerticalRHS(children.map(x => reportVContext(x, k, newRules))))
+          case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
+            k -> AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children.map(x => reportVContext(x, k, newRules))))
           case _ => k -> v
         }
       }
