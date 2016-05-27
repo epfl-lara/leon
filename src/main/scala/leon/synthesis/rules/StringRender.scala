@@ -399,18 +399,21 @@ case object StringRender extends Rule("StringRender") {
       
       /** Mark all occurrences of a given type so that we can differentiate its usage according to its rank from the left.*/
       def markovize_horizontal_nonterminal() = {
+        //println("markovize_horizontal_nonterminal...")
         val selectedNt = getDuplicateCallsInSameRule()
         copy(grammar=grammar.markovize_horizontal_filtered(selectedNt))
       }
       
       /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
       def markovize_abstract_vertical_nonterminal() = {
+        //println("markovize_abstract_vertical_nonterminal...")
         val selectedNt = getDirectlyRecursiveTypes()
         copy(grammar=grammar.markovize_abstract_vertical_filtered(selectedNt))
       }
       
       /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
       def markovize_vertical_nonterminal() = {
+        //println("markovize_vertical_nonterminal...")
         val selectedNt = getTypesAppearingAtMultiplePlaces()
         copy(grammar=grammar.markovize_vertical_filtered(selectedNt))
       }
@@ -427,15 +430,16 @@ case object StringRender extends Rule("StringRender") {
       // Find all non-terminals which have the type tree on the RHS at least twice in the same rule.
       // Used for horizontal markovization
       def getDuplicateCallsInSameRule(): Set[NonTerminal] = {
+        def duplicates(l: List[Symbol], e: TypeTree) = {
+          val lnt = l.collect{case nt: NonTerminal => nt}
+            if(lnt.count ( _.tag == e ) >= 2) {
+              lnt.filter(_.tag == e)
+            } else Nil
+        }
         getAllTypes().flatMap { e => 
           grammar.rules.toSeq.flatMap{ case (k, v) =>
-            v.ls.flatMap{l =>
-              val lnt = l.collect{case nt: NonTerminal => nt}
-              if(lnt.count ( _.tag == e ) >= 2) {
-                lnt.filter(_.tag == e)
-              } else Nil
-            }
-          }.toSet
+            v.ls.flatMap{l => duplicates(l, e) }
+          }.toSet ++ duplicates(grammar.start.toList, e)
         }
       }
       // Return types which call themselves in argument (and which might require vertical markovization to differentiate between an inner call and an outer call).
@@ -452,9 +456,9 @@ case object StringRender extends Rule("StringRender") {
       }
       // Returns non-terminals which appear on different RHS of different rules, and which require vertical markovization.
       def getTypesAppearingAtMultiplePlaces(): Set[NonTerminal] = {
-        grammar.rules.toSeq.flatMap{ case (k, v) =>
+        (grammar.rules.toSeq.flatMap{ case (k, v) =>
           v.ls.flatten
-        }.
+        } ++ grammar.startNonTerminals).
         groupBy { s => s }.
         toSeq.
         map(_._2).

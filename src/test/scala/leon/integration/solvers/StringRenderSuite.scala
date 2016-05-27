@@ -224,17 +224,15 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |    }
     |  }
     |  
-    |  case class Config3(pushed: Option[Int], pulled: Option[Int])
-    |  
-    |  def config3ToString(c : Config3): String =  {
+    |  def doubleOptionToString(pushed: Option[Int], pulled: Option[Int]): String =  {
     |    ???[String]
     |  } ensuring {
-    |    (res : String) => (c, res) passes {
-    |      case Config3(None(), None()) =>
+    |    (res : String) => ((pushed, pulled), res) passes {
+    |      case (None(), None()) =>
     |        "Config: "
-    |      case Config3(None(), Some(0)) =>
+    |      case (None(), Some(0)) =>
     |        "Config: pulled 0"
-    |      case Config3(Some(0), None()) =>
+    |      case (Some(0), None()) =>
     |        "Config: pushed 0 "
     |    }
     |  }
@@ -341,8 +339,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object T3  extends CCBuilder("T3")
     object ThreadConfig extends CCBuilder("ThreadConfig")
     
-    lazy val config3ToString = method("config3ToString")
-    object Config3 extends CCBuilder("Config3")
+    lazy val doubleOptionToString = method("doubleOptionToString")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -452,8 +449,8 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
   
   test("Activating horizontal markovization should work") { case (ctx, program) =>
     val c = Constructors(program); import c._
-    synthesizeAndTest("config3ToString",
-      Seq(c.Config3(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2)))) -> "Config: pushed 1 pulled 2"
+    synthesizeAndTest("doubleOptionToString",
+      Seq(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2))) -> "Config: pushed 1 pulled 2"
     )
   }
 }
