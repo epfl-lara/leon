@@ -365,7 +365,8 @@ case object StringRender extends Rule("StringRender") {
   }
 
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
-  private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.flatMap(_._2).toList)
+  private val mergeMatchCases = (scrut: Expr) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(scrut, cases.map(_._1)), cases.flatMap(_._2).toList)
+  private val mergeMatchCasesFd = (fd: FunDef) => mergeMatchCases(Variable(fd.params(0).id))
   
   object FunDefTemplateGenerator {
     protected val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
@@ -597,6 +598,27 @@ case object StringRender extends Rule("StringRender") {
         .map{ case (l, identifiers) => (l, (input: Expr) => (application(l, Seq(input)), identifiers)) } // Use already pre-defined pretty printers.
       exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
     }
+    
+    def constantPatternMatching(act: AbstractClassType)(implicit hctx: SearchContext): Stream[Expr => WithIds[Expr]] = {
+      val allKnownDescendantsAreCCAndHaveZeroArgs = act.knownCCDescendants.forall {
+        case CaseClassType(ccd, tparams2) => ccd.fields.isEmpty
+        case _ => false
+      }
+      if(allKnownDescendantsAreCCAndHaveZeroArgs) {
+        val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
+          case (acc, cct @ CaseClassType(ccd, tparams2)) =>
+            val typeMap = ccd.typeArgs.zip(tparams2).toMap
+            val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
+            val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
+            val rhs = StringLiteral(ccd.id.asString)
+            MatchCase(pattern, None, rhs)
+            acc += ((MatchCase(pattern, None, rhs), Nil))
+          case (acc, e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
+        }
+        Stream((x: Expr) => mergeMatchCases(x)(cases))
+      } else Stream.Empty
+    }
+    
     /** Used to produce rules such as Cons => Elem List without context*/
     protected def horizontalChildren(n: NonTerminal)(implicit hctx: SearchContext): Option[Expansion] = n match {
       case NonTerminal(cct@CaseClassType(ccd: CaseClassDef, tparams2), vc, hc) =>
@@ -614,8 +636,8 @@ case object StringRender extends Rule("StringRender") {
     /** Used to produce rules such as List => Cons | Nil without context */
     protected def verticalChildren(n: NonTerminal)(implicit hctx: SearchContext): Option[Expansion] = n match {
       case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), vc, hc) => 
-        val customs = customPrettyPrinters(act)
-        Some(AugmentedTerminalsRHS(Seq(Terminal(act)(customs.toStream)),
+        val customs = constantPatternMatching(act) #::: customPrettyPrinters(act).toStream
+        Some(AugmentedTerminalsRHS(Seq(Terminal(act)(customs)),
             VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag)))))
       case _ => None
     }
@@ -701,7 +723,7 @@ case object StringRender extends Rule("StringRender") {
           acc += ((MatchCase(pattern, None, rhs), Nil))
         case (acc, e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
       }
-      mergeMatchCases(fd)(cases)
+      mergeMatchCasesFd(fd)(cases)
     }
     
     /* Returns a list of expressions converting the list of inputs to string.
@@ -779,7 +801,7 @@ case object StringRender extends Rule("StringRender") {
                       case ((adtToString, acc), e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
                     }
                     
-                    val allMatchExprsEnd = JoinProgramSet(cases.map(DirectProgramSet(_)), mergeMatchCases(fd)).programs // General pattern match expressions
+                    val allMatchExprsEnd = JoinProgramSet(cases.map(DirectProgramSet(_)), mergeMatchCasesFd(fd)).programs // General pattern match expressions
                     val allMatchExprs = if(allKnownDescendantsAreCCAndHaveZeroArgs) {
                       Stream(constantPatternMatching(fd, act)) ++ allMatchExprsEnd
                     } else allMatchExprsEnd
@@ -787,7 +809,7 @@ case object StringRender extends Rule("StringRender") {
                         result += Stream((functionInvocation(fd, input::ctx.provided_functions.toList.map(Variable)), Nil)))
                   case cct @ CaseClassType(ccd, tparams2) =>
                     val (newCases, result3) = extractCaseVariants(cct, ctx2)
-                    val allMatchExprs = newCases.map(acase => mergeMatchCases(fd)(Seq(acase)))
+                    val allMatchExprs = newCases.map(acase => mergeMatchCasesFd(fd)(Seq(acase)))
                     gatherInputs(ctx2.copy(result = result3).add(dependentType, fd, allMatchExprs), q,
                         result += Stream((functionInvocation(fd, input::ctx.provided_functions.toList.map(Variable)), Nil)))
                 }

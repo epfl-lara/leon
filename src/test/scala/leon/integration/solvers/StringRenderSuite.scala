@@ -206,6 +206,23 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def nodeToString(n: Node): String = ??? by example
     |  def edgeToString(e: Edge): String = ??? by example
     |  def listEdgeToString(l: List[Edge]): String = ??? by example
+    |  
+    |  // Test if it can infer functions based on sealed classes.
+    |  abstract class ThreadId
+    |  case object T1 extends ThreadId
+    |  case object T2 extends ThreadId
+    |  case object T3 extends ThreadId
+    |  case object T4 extends ThreadId
+    |  case object T5 extends ThreadId
+    |  
+    |  case class ThreadConfig(t: ThreadId, push: Option[Int])
+    |  
+    |  def threadConfigToString(t: ThreadConfig): String = ???[String] ensuring {
+    |    (res: String) => (t, res) passes {
+    |      case ThreadConfig(T1, Some(2)) => "T1: Push 2"
+    |      case ThreadConfig(T2, None()) => "T2: Skip"
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
 
@@ -279,6 +296,8 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         }
       }
     }
+    object Some extends ParamCCBuilder("Some", "leon.lang.")
+    object None extends ParamCCBuilder("None", "leon.lang.")
     
     object BCons extends ParamCCBuilder("BCons")
     object BNil extends ParamCCBuilder("BNil")
@@ -303,6 +322,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     lazy val dummy2ToString = method("dummy2ToString")
     lazy val bListToString = method("bListToString")
     object customListToString extends paramMethod("customListToString")
+    lazy val threadConfigToString = method("threadConfigToString")
+    object T3  extends CCBuilder("T3")
+    object ThreadConfig extends CCBuilder("ThreadConfig")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -401,5 +423,12 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
           StringLiteral("\n  ")),
           customListToString(Dummy2)(listDummy2, lambdaDummy2ToString)))
     }
+  }
+  
+  test("Pretty-printing a hierarchy of case object") { case (ctx, program) =>
+    val c= Constructors(program); import c._
+    synthesizeAndTest("threadConfigToString",
+      Seq(c.ThreadConfig(c.T3(), c.Some(Int32Type)(IntLiteral(5)))) -> "T3: Push 5"
+    )
   }
 }
