@@ -63,7 +63,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
     new MemVerificationReport(stateVeri, resourceVeri)
   }
 
-  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {    
+  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
 

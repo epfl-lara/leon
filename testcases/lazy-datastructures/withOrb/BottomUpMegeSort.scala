@@ -176,7 +176,7 @@ object BottomUpMergeSort {
  //   }
  // } ensuring (res => time <= ? * l.size + ?)
 
-  /*def kthMin(s: Stream, k: BigInt): BigInt = {
+  def kthMin(s: Stream, k: BigInt): BigInt = {
     require(k >= 0)
     s.list match {
       case SCons(x, xs) =>
@@ -185,7 +185,7 @@ object BottomUpMergeSort {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ?)*/
+  } ensuring (_ => time <= ? * (k * s.size) + ?)
 
   @ignore
   def main(args: Array[String]) {
