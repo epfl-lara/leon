@@ -121,7 +121,7 @@ class Synthesizer(val context : LeonContext,
     }(DebugSectionReport)
 
     (s, if (result.isEmpty && allowPartial) {
-      Stream((new PartialSolution(s.strat, true).getSolutionFor(s.g.root), false))
+      Stream((new PartialSolution(s.strat, true)(context).getSolutionFor(s.g.root), false))
     } else {
       // Discard invalid solutions
       result collect {
@@ -158,7 +158,7 @@ class Synthesizer(val context : LeonContext,
         reporter.error("Solution was invalid:")
         reporter.error(ScalaPrinter(fd))
         reporter.error(vcreport.summaryString)
-        (new PartialSolution(search.strat, false).getSolutionFor(search.g.root), Some(false))
+        (new PartialSolution(search.strat, false)(context).getSolutionFor(search.g.root), Some(false))
       }
     } finally {
       timer.stop()

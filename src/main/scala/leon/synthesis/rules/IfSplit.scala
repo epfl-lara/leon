@@ -32,7 +32,11 @@ case object IfSplit extends Rule("If-Split") {
         case sols if sols.size == 2 =>
           val List(ts, es) = sols
 
-          val pre = or(and(i.cond, ts.pre), and(not(i.cond), es.pre))
+          val pre = cases(List(
+            i.cond      -> ts.pre,
+            not(i.cond) -> es.pre
+          ))
+
           val defs = ts.defs ++ es.defs
           val term = IfExpr(i.cond, ts.term, es.term)
 

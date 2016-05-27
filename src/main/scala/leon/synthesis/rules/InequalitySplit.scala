@@ -73,13 +73,14 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
             case (_, Variable(a2)) if p.as.contains(a2) => (a2, v1, true)
             case (Variable(a1), _)                      => (a1, v2, false)
           }
+
           val newP = if (isInput) {
             p.copy(
               as = p.as.diff(Seq(f)),
               pc = p.pc map (subst(f -> t, _)),
               ws = subst(f -> t, p.ws),
               phi = subst(f -> t, p.phi),
-              eb = p.qeb.removeIns(Set(f))
+              eb = p.qeb.filterIns(m => m(f) == t)
             )
           } else {
             p.copy(pc = p.pc withCond pc).withWs(Seq(Inactive(f))) // equality in pc is fine for numeric types
@@ -94,7 +95,9 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
         else {
 
           val onSuccess: List[Solution] => Option[Solution] = { sols =>
-            val pre = orJoin(pcs.zip(sols).map { case (pc, sol) => and(pc, sol.pre) })
+            val pre = cases(pcs.zip(sols).map {
+                case (pc, sol) => pc -> sol.pre
+              })
 
             val term = pcs.zip(sols) match {
               case Seq((pc1, s1), (_, s2)) =>

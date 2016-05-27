@@ -214,6 +214,20 @@ object HOFDecomp1 {
     out => (in, out) passes {
       case Cons(Person("Alice", 17), Cons(Person("Bob", 18), Cons(Person("Jane", 12), Cons(Person("Arnold", 22), Nil())))) => Cons("Bob", Cons("Arnold", Nil()))
       case Cons(Person("Alice", 22), Cons(Person("Bob", 12), Cons(Person("Jane", 32), Cons(Person("Arnold", 42), Nil())))) => Cons("Alice", Cons("Jane", Cons("Arnold", Nil())))
+
+      case Cons(Person(a, 23), Cons(Person(b, 11), Cons(Person(c, 19), Cons(Person(d, 17), Nil())))) => Cons(a, Cons(c, Nil()))
+      case Cons(Person(a, 9), Cons(Person(b, 18), Cons(Person(c, 15), Cons(Person(d, 25), Nil()))))  => Cons(b, Cons(d, Nil()))
+      case Nil()                                         => Nil()
+    }
+  }
+
+  def posNames(in: List[Person]): List[String] = {
+    // in.filter(_.age >= 0).map(_.name)
+    ???[List[String]]
+  } ensuring {
+    out => (in, out) passes {
+      case Cons(Person(a, 0), Cons(Person(b, -1), Cons(Person(c, 3), Cons(Person(d, -2), Nil())))) => Cons(a, Cons(c, Nil()))
+      case Cons(Person(a, -5), Cons(Person(b, 2), Cons(Person(c, -2), Cons(Person(d, 3), Nil()))))  => Cons(b, Cons(d, Nil()))
       case Nil()                                         => Nil()
     }
   }

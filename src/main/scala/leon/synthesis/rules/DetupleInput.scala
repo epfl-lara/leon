@@ -130,9 +130,13 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         .withWs(inactive.toSeq.map(Inactive))
 
       val s = { (e: Expr) =>
-        val body = simplePostTransform(revMap)(e)
-        (patts zip as).foldRight(body) { case ((patt, a), bd) =>
-          LetPattern(patt, a.toVariable, bd)
+        if (e == BooleanLiteral(true)) {
+          e
+        } else {
+          val body = simplePostTransform(revMap)(e)
+          (patts zip as).foldRight(body) { case ((patt, a), bd) =>
+            LetPattern(patt, a.toVariable, bd)
+          }
         }
       }
      

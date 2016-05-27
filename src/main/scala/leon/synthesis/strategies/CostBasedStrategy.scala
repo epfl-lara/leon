@@ -17,7 +17,7 @@ class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
 
   def computeBestSolutionFor(n: Node): Option[Solution] = {
     val res = if (n.isSolved) {
-      Some(n.generateSolutions().head)
+      n.generateSolutions().headOption
     } else if (n.isDeadEnd) {
       None
     } else if (!n.isExpanded) {

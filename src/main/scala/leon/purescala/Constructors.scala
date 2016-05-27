@@ -212,6 +212,18 @@ object Constructors {
     }
   }
 
+  /**
+   * List((a -> b), (c -> d)) becomes (a ==> b) && (c ==> d)
+   * (a || c) is expected to be true
+   */
+  def cases(cs: List[(Expr, Expr)]): Expr = {
+    if (cs.forall(_._2 == BooleanLiteral(true))) {
+      BooleanLiteral(true)
+    } else {
+      andJoin(cs.map { case (a, b) => implies(a, b) })
+    }
+  }
+
   /** $encodingof `&&`-expressions with arbitrary number of operands as a sequence, and simplified.
     * @see [[purescala.Expressions.And And]]
     */

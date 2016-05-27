@@ -20,6 +20,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   case object Noop extends Command
   case object Best extends Command
   case object Tree extends Command
+  case object Tests extends Command
   case object Help extends Command
 
   // Manual search state:
@@ -159,7 +160,8 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
                       |$tOpen  (cd) N  $tClose  Expand descendant N
                       |$tOpen  cd ..   $tClose  Go one level up
                       |$tOpen  b       $tClose  Expand best descendant
-                      |$tOpen  t       $tClose  Display the partial solution around the current node
+                      |$tOpen  p       $tClose  Display the partial solution around the current node
+                      |$tOpen  t       $tClose  Display tests
                       |$tOpen  q       $tClose  Quit the search
                       |$tOpen  h       $tClose  Display this message
                       |""".stripMargin)
@@ -173,10 +175,16 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
 
           manualGetNext()
 
+        case Tests =>
+          println(c.p.eb.asString("Tests"))
+          manualGetNext()
+
         case Tree =>
           val hole = FreshIdentifier("\u001b[1;31m??? \u001b[0m", c.p.outType)
           val ps = new PartialSolution(this, true)
 
+          println("c: "+c)
+          println("c: "+c.getClass)
           ps.solutionAround(c)(hole.toVariable) match {
             case Some(sol) =>
               println("-"*120)
@@ -258,8 +266,11 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
         Cd(path.map(_.toInt)) :: parseCommands(ts.drop(path.size))
       }
 
-    case "t" :: ts =>
+    case "p" :: ts =>
       Tree :: parseCommands(ts)
+
+    case "t" :: ts =>
+      Tests :: parseCommands(ts)
 
     case "b" :: ts =>
       Best :: parseCommands(ts)
