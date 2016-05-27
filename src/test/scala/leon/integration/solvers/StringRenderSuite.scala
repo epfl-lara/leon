@@ -223,6 +223,21 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |      case ThreadConfig(T2, None()) => "T2: Skip"
     |    }
     |  }
+    |  
+    |  case class Config3(pushed: Option[Int], pulled: Option[Int])
+    |  
+    |  def config3ToString(c : Config3): String =  {
+    |    ???[String]
+    |  } ensuring {
+    |    (res : String) => (c, res) passes {
+    |      case Config3(None(), None()) =>
+    |        "Config: "
+    |      case Config3(None(), Some(0)) =>
+    |        "Config: pulled 0"
+    |      case Config3(Some(0), None()) =>
+    |        "Config: pushed 0 "
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
 
@@ -325,6 +340,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     lazy val threadConfigToString = method("threadConfigToString")
     object T3  extends CCBuilder("T3")
     object ThreadConfig extends CCBuilder("ThreadConfig")
+    
+    lazy val config3ToString = method("config3ToString")
+    object Config3 extends CCBuilder("Config3")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -429,6 +447,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val c= Constructors(program); import c._
     synthesizeAndTest("threadConfigToString",
       Seq(c.ThreadConfig(c.T3(), c.Some(Int32Type)(IntLiteral(5)))) -> "T3: Push 5"
+    )
+  }
+  
+  test("Activating horizontal markovization should work") { case (ctx, program) =>
+    val c = Constructors(program); import c._
+    synthesizeAndTest("config3ToString",
+      Seq(c.Config3(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2)))) -> "Config: pushed 1 pulled 2"
     )
   }
 }
