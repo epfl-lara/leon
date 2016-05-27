@@ -442,8 +442,8 @@ case object StringRender extends Rule("StringRender") {
       // Used for vertical markovization
       def getDirectlyRecursiveTypes(): Set[NonTerminal] = {
         grammar.rules.toSeq.flatMap{ case (k, v) => if(v match {
-          case VerticalRHS(children) => children.exists(child => grammar.rules(child) match {
-            case HorizontalRHS(t, arguments) => arguments.exists(_ == k)
+          case AugmentedTerminalsRHS(_, VerticalRHS(children)) => children.exists(child => grammar.rules(child) match {
+            case AugmentedTerminalsRHS(_, HorizontalRHS(t, arguments)) => arguments.exists(_ == k)
             case _ => false
           })
           case _ => false})
