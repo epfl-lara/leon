@@ -61,6 +61,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
     }
   }
   
+  /** An expansion which starts with terminals and ends with something like HorizontalRHS or VerticalRHS */
   object AugmentedTerminalsRHS {
     def apply(t: Seq[Terminal], e: Expansion) = Expansion(t map (x => List(x: Symbol)) toList) ++ e
     def unapply(e: Expansion): Option[(List[Terminal], Expansion)] = e.ls match {

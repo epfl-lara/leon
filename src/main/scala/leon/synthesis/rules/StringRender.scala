@@ -378,19 +378,19 @@ case object StringRender extends Rule("StringRender") {
     protected val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
     
     // The pretty-printers are variable passed along in argument that have a type T => String for some type parameter T
-    def apply(inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext): GrammarBasedTemplateGenerator = { 
+    def apply(argsInputs: Seq[Expr], argsPrettyPrinting: Seq[Identifier])(implicit hctx: SearchContext): GrammarBasedTemplateGenerator = { 
       implicit val program: Program = hctx.program
       val startGrammar = Grammar(
-        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType) }),
+        (argsInputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType) }),
         Map(int32Symbol -> TerminalRHS(Terminal(Int32Type)(Stream(expr => (Int32ToString(expr), Nil)))),
             integerSymbol -> TerminalRHS(Terminal(IntegerType)(Stream((expr => (IntegerToString(expr), Nil))))),
             booleanSymbol -> TerminalRHS(Terminal(BooleanType)(Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
             stringSymbol -> TerminalRHS(Terminal(StringType)(Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
-      GrammarBasedTemplateGenerator(exhaustive(startGrammar, prettyPrinters), inputs, prettyPrinters)
+      GrammarBasedTemplateGenerator(exhaustive(startGrammar, argsPrettyPrinting), argsInputs, argsPrettyPrinting)
     }
     
-    case class GrammarBasedTemplateGenerator(grammar: Grammar, inputs: Seq[Expr], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext) {
+    case class GrammarBasedTemplateGenerator(grammar: Grammar, argsInputs: Seq[Expr], argsPrettyPrinting: Seq[Identifier])(implicit hctx: SearchContext) {
       /** Use with caution: These functions make the entire grammar increase exponentially in size*/
       def markovize_vertical() = copy(grammar=grammar.markovize_vertical())
       def markovize_horizontal() = copy(grammar=grammar.markovize_horizontal())
@@ -476,7 +476,7 @@ case object StringRender extends Rule("StringRender") {
             funNames += res
             res
           }
-          def provided_functions = prettyPrinters
+          def provided_functions = argsPrettyPrinting
         }
          // Matches a case class and returns its context type.
         object TypedNonTerminal {
@@ -490,11 +490,10 @@ case object StringRender extends Rule("StringRender") {
         
         def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
           val inputs = fd.params.map(_.id)
-          def rulesToBodiesRec(e: Expansion) =
           e match {
             case TerminalRHS(terminal@Terminal(typeTree)) if terminal.terminalData.nonEmpty => //Render this as a simple expression.
               terminal.terminalData.map(f => f(Variable(inputs.head)))
-            case HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs)), nts) => // The subsequent calls of this function to sub-functions.
+            case AugmentedTerminalsRHS(terminals, HorizontalRHS(terminal@Terminal(cct@CaseClassType(ccd, targs)), nts)) => // The subsequent calls of this function to sub-functions.
               val fields = cct.classDef.fieldsIds.zip(cct.fieldsTypes)
               val fieldstypes = fields.map{ case (id, tpe) => (tpe, (x: Expr) => CaseClassSelector(cct, x, id)) }
               val builders = fieldstypes.flatMap(x => flattenTupleExtractors(x._1, x._2))
@@ -502,21 +501,21 @@ case object StringRender extends Rule("StringRender") {
               val childExprs = nts.zipWithIndex.map{ case (childNt:NonTerminal, childIndex) =>
                 FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
                     builders(childIndex)(Variable(inputs.head))) ++
-                    prettyPrinters.map(Variable))
+                    argsPrettyPrinting.map(Variable))
               }
-              childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
-            case HorizontalRHS(terminal@Terminal(cct@TupleType(targs)), nts) => // The subsequent calls of this function to sub-functions.
+              terminals.map(_.terminalData).toStream.flatten.map(_.apply(Variable(inputs.head))) #::: childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
+            case AugmentedTerminalsRHS(terminals, HorizontalRHS(terminal@Terminal(cct@TupleType(targs)), nts)) => // The subsequent calls of this function to sub-functions.
               val fieldstypes = targs.zipWithIndex.map{case (tp, index)  => (tp, (x: Expr) => TupleSelect(x, index+1)) }
               val builders = fieldstypes.flatMap(x => flattenTupleExtractors(x._1, x._2))
               
               val childExprs = nts.zipWithIndex.map{ case (childNt:NonTerminal, childIndex) =>
                 FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), List(
                     builders(childIndex)(Variable(inputs.head))) ++
-                    prettyPrinters.map(Variable))
+                    argsPrettyPrinting.map(Variable))
               }
-              childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
-            case VerticalRHS(children) => // Match statement.
-              assert(inputs.length == 1 + prettyPrinters.length)
+              terminals.map(_.terminalData).toStream.flatten.map(_.apply(Variable(inputs.head))) #::: childExprs.map(x => (x, Nil)).permutations.toStream.map(interleaveIdentifiers)
+            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) => // Match statement.
+              assert(inputs.length == 1 + argsPrettyPrinting.length)
               val idInput = inputs.head
               val scrut = Variable(idInput)
               val matchCases = nt.tag match {
@@ -529,7 +528,7 @@ case object StringRender extends Rule("StringRender") {
                       case Some(nt) =>
                         val matchInput = idInput.duplicate(tpe = nt.tag)
                         MatchCase(InstanceOfPattern(Some(matchInput), nt.tag.asInstanceOf[ClassType]), None,
-                            FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), List(Variable(matchInput)) ++ prettyPrinters.map(Variable)))
+                            FunctionInvocation(TypedFunDef(funDefs(nt), Seq()), List(Variable(matchInput)) ++ argsPrettyPrinting.map(Variable)))
                       case None => throw new Exception(s"Could not find $ccd in the children non-terminals $children")
                     }
                   }
@@ -537,9 +536,8 @@ case object StringRender extends Rule("StringRender") {
                   throw new Exception(s"Should have been Vertical RHS, got $t. Rule:\n$nt -> $e\nFunDef:\n$fd")
               }
               
-              Stream(/*interleaveIdentifiers(Seq(*/(MatchExpr(scrut, matchCases), Nil)/*))*/)
+              terminals.map(_.terminalData).toStream.flatten.map(_.apply(Variable(inputs.head))) #::: Stream((MatchExpr(scrut, matchCases): Expr, Nil: List[Identifier]))
           }
-          rulesToBodiesRec(e)
         }
         
         //println("Extracting functions from grammar:\n" + grammarToString(grammar).replaceAll("\\$", "_").replaceAll("\\[T3\\]", "T3").replaceAll("\\(|\\)","").replaceAll("<function1>",""))
@@ -552,7 +550,7 @@ case object StringRender extends Rule("StringRender") {
         }
         
         val inputExprs = grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
-          (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(inputs(childIndex)) ++ prettyPrinters.map(Variable)), Nil)
+          (FunctionInvocation(TypedFunDef(funDefs(childNt), Seq()), Seq(argsInputs(childIndex)) ++ argsPrettyPrinting.map(Variable)), Nil)
         }
         //println("Found grammar\n" + grammarToString(grammar))
         
@@ -590,21 +588,35 @@ case object StringRender extends Rule("StringRender") {
         case t => Seq(builder)
       }
     }
-
+    
+    protected def customPrettyPrinters(inputType: TypeTree)(implicit hctx: SearchContext): List[Expr => WithIds[Expr]] = {
+      val exprs1s: Stream[(Lambda, Expr => WithIds[Expr])] = (new SelfPrettyPrinter)
+        .allowFunction(hctx.functionContext)
+        .excludeFunction(hctx.functionContext)
+        .withPossibleParameters.prettyPrintersForType(inputType)(hctx, hctx.program)
+        .map{ case (l, identifiers) => (l, (input: Expr) => (application(l, Seq(input)), identifiers)) } // Use already pre-defined pretty printers.
+      exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
+    }
     /** Used to produce rules such as Cons => Elem List without context*/
-    protected def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
+    protected def horizontalChildren(n: NonTerminal)(implicit hctx: SearchContext): Option[Expansion] = n match {
       case NonTerminal(cct@CaseClassType(ccd: CaseClassDef, tparams2), vc, hc) =>
         val flattenedTupleds = cct.fieldsTypes.flatMap(flattenTupleType)
-        Some(HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map(NonTerminal(_))))
+        val customs = customPrettyPrinters(cct)
+        Some(AugmentedTerminalsRHS(Seq(Terminal(cct)(customs.toStream)),
+              HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map(NonTerminal(_)))))
       case NonTerminal(cct@TupleType(fieldsTypes), vc, hc) => 
         val flattenedTupleds = fieldsTypes.flatMap(flattenTupleType)
-        Some(HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map(NonTerminal(_))))
+        val customs = customPrettyPrinters(cct)
+        Some(AugmentedTerminalsRHS(Seq(Terminal(cct)(customs.toStream)),
+              HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map(NonTerminal(_)))))
       case _ => None
     }
     /** Used to produce rules such as List => Cons | Nil without context */
-    protected def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
+    protected def verticalChildren(n: NonTerminal)(implicit hctx: SearchContext): Option[Expansion] = n match {
       case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), vc, hc) => 
-        Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag))))
+        val customs = customPrettyPrinters(act)
+        Some(AugmentedTerminalsRHS(Seq(Terminal(act)(customs.toStream)),
+            VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag)))))
       case _ => None
     }
     
@@ -618,8 +630,9 @@ case object StringRender extends Rule("StringRender") {
         Some(TerminalRHS(Terminal(tp)(callers)))
       case _ => None
     }
+    
     /** Find all dependencies and merge them into one grammar */
-    protected def extendGrammar(grammar: Grammar, prettyPrinters: Seq[Identifier]): Grammar = {
+    protected def extendGrammar(prettyPrinters: Seq[Identifier])(grammar: Grammar)(implicit hctx: SearchContext): Grammar = {
       val nts = grammar.nonTerminals
       (grammar /: nts) {
         case (grammar, n) =>
@@ -637,8 +650,8 @@ case object StringRender extends Rule("StringRender") {
     }
     
     /** Applies the transformation extendGrammar until the grammar reaches its fix point. */
-    protected def exhaustive(grammar: Grammar, prettyPrinters: Seq[Identifier]): Grammar = {
-      leon.utils.fixpoint((g: Grammar) => extendGrammar(g, prettyPrinters))(grammar)
+    protected def exhaustive(grammar: Grammar, prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext): Grammar = {
+      leon.utils.fixpoint(extendGrammar(prettyPrinters))(grammar)
     }
   }
   
@@ -706,7 +719,7 @@ case object StringRender extends Rule("StringRender") {
           gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, input::ctx.provided_functions.toList.map(Variable)), Nil)))
         case None => // No function can render the current type.
           // We should not rely on calling the original function on the first line of the body of the function itself.
-          val exprs1s = (new SelfPrettyPrinter)
+          val exprs1s: Stream[WithIds[Expr]] = (new SelfPrettyPrinter)
             .allowFunction(hctx.functionContext)
             .excludeFunction(hctx.functionContext)
             .withPossibleParameters.prettyPrintersForType(input.getType)(hctx, hctx.program)
