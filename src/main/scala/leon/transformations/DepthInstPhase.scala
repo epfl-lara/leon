@@ -55,9 +55,12 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     val costOfParent = costOfExpr(e)
     e match {
       case Variable(id) if letIdMap.contains(id) =>
-        // add the cost of instrumentation here
-        Plus(costOfParent, si.selectInst(fd)(letIdMap(id).toVariable, inst))
-
+        // add the cost of instrumentation here if the variable is an let identifier
+        val nid = letIdMap(id)
+        if (ExprInstrumenter.isInstVar(nid))
+          Plus(costOfParent, si.selectInst(fd)(nid.toVariable, inst))
+        else
+          costOfParent
       case t: Terminal => costOfParent
       case FunctionInvocation(tfd, args) =>
         val depthvar = subInsts.last

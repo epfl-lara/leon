@@ -128,7 +128,7 @@ object BottomUpMergeSort {
   } ensuring {res =>
     val rsize = res.size
     a.size + b.size == rsize && rsize >= 1 &&
-    time <= 156 * rsize - 86 // 156 * res.size -  86  // Orb cannot infer this due to issues with CVC4 set solving !
+    time <= ? * rsize - 86 // 156 * res.size -  86  // Orb cannot infer this due to issues with CVC4 set solving !
   }
 
   /**
@@ -176,7 +176,7 @@ object BottomUpMergeSort {
 //    }
 //  } ensuring (res => time <= ? * l.size + ?)
 //
-  /*def kthMin(s: Stream, k: BigInt): BigInt = {
+  def kthMin(s: Stream, k: BigInt): BigInt = {
     require(k >= 0)
     s.list match {
       case SCons(x, xs) =>
@@ -185,7 +185,7 @@ object BottomUpMergeSort {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ?)*/
+  } ensuring (_ => time <= ? * (k * s.size) + ?)
 
   @ignore
   def main(args: Array[String]) {
