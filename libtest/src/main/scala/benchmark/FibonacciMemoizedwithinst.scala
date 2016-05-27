@@ -18,27 +18,31 @@ object FibMem0 {
   case class Nil0() extends IList0
   
   def fibRecmemtime0(n6 : BigInt, st1 : Set[MemoFuns0]): ((BigInt, Set[MemoFuns0]), BigInt) = {
-    val bd0 = if (n6 <= BigInt(2)) {
+    val v6 = if(lookup(101, n6)) 
+	(((get(101, n6), st1), BigInt(1))
+	else { 
+ 		val bd0 = if (n6 <= BigInt(2)) {
       ((BigInt(1), st1), BigInt(2))
     } else {
-      val e48 = n6 - BigInt(1)
-      val e20 = fibRecmemtime0(e48, st1)
-      val e50 = e20._1
-      val e52 = n6 - BigInt(2)
-      val e62 = e50._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(1)))
-      val e32 = fibRecmemtime0(e52, e62)
-      val e64 = e32._1
-      ((e50._1 + e64._1, e64._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(2)))), (BigInt(6) + (if (e62.contains(FibRecMem(e52))) {
-        BigInt(1)
-      } else {
-        BigInt(4) + e32._2
-      })) + (if (st1.contains(FibRecMem(e48))) {
-        BigInt(1)
-      } else {
-        BigInt(3) + e20._2
-      }))
-    }
-    (bd0._1, bd0._2)
+	      val e48 = n6 - BigInt(1)
+	      val e20 = fibRecmemtime0(e48, st1)
+	      val e50 = e20._1
+	      val e52 = n6 - BigInt(2)
+	      val e62 = e50._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(1)))
+	      val e32 = fibRecmemtime0(e52, e62)
+	      val e64 = e32._1
+	      ((e50._1 + e64._1, e64._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(2)))), (BigInt(6) + (if (e62.contains(FibRecMem(e52))) {
+		BigInt(1)
+	      } else {
+		BigInt(4) + e32._2
+	      })) + (if (st1.contains(FibRecMem(e48))) {
+		BigInt(1)
+	      } else {
+		BigInt(3) + e20._2
+	      }))
+	    }
+	    (bd0._1, bd0._2)
+	}
   }
   
   abstract class MemoFuns0
