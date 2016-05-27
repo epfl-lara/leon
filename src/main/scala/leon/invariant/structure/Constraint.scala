@@ -292,7 +292,12 @@ case class ExtendedADTConstraint(v: Variable, adtCtr: ADTConstraint, diseq: Bool
    */
   override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier,Expr], eval: DefaultEvaluator) = {
     if((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) adtCtr
-    else ADTConstraint(Not(adtCtr.toExpr))
+    else {
+      adtCtr.toExpr match {
+        case Not(ine) => ADTConstraint(ine)
+        case _ => ADTConstraint(Not(adtCtr.toExpr)) 
+      }      
+    }
   }
 }
 

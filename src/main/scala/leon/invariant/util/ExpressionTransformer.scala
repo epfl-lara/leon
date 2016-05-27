@@ -42,17 +42,17 @@ object ExpressionTransformer {
    * TODO: remove this function altogether and treat 'and' and 'or's as functions.
    */
   def conjoinWithinClause(e: Expr, transformer: (Expr, Boolean) => (Expr, Set[Expr]),
-    insideFunction: Boolean): (Expr, Set[Expr]) = {
+                          insideFunction: Boolean): (Expr, Set[Expr]) = {
     e match {
       case And(args) if !insideFunction =>
-        val newargs = args.map{arg =>
+        val newargs = args.map { arg =>
           val (nexp, ncjs) = transformer(arg, false)
           createAnd(nexp +: ncjs.toSeq)
         }
         (createAnd(newargs), Set())
 
       case Or(args) if !insideFunction =>
-        val newargs = args.map{arg =>
+        val newargs = args.map { arg =>
           val (nexp, ncjs) = transformer(arg, false)
           createAnd(nexp +: ncjs.toSeq)
         }
@@ -129,7 +129,7 @@ object ExpressionTransformer {
           val (nthen, thenConjs) = transform(Equals(freshvar, thn), false)
           val (nelze, elzeConjs) = transform(Equals(freshvar, elze), false)
           val conjs = condConjs + IfExpr(ncond,
-              createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq))
+            createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq))
           (freshvar, conjs)
 
         case IfExpr(cond, thn, elze) => // here, we are at the top, and hence can avoid creating freshids
@@ -137,7 +137,7 @@ object ExpressionTransformer {
           val (nthen, thenConjs) = transform(thn, false)
           val (nelze, elzeConjs) = transform(elze, false)
           (IfExpr(ncond,
-              createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq)), condConjs)
+            createAnd(nthen +: thenConjs.toSeq), createAnd(nelze +: elzeConjs.toSeq)), condConjs)
 
         case Let(binder, value, body) =>
           //TODO: do we have to consider reuse of let variables ?
@@ -156,8 +156,8 @@ object ExpressionTransformer {
   }
 
   def isAtom(e: Expr): Boolean = e match {
-    case _: And | _: Or  | _: IfExpr => false
-    case _ => true
+    case _: And | _: Or | _: IfExpr => false
+    case _                          => true
   }
 
   def isADTTheory(e: Expr) = e match {
@@ -196,11 +196,11 @@ object ExpressionTransformer {
         case adte if isADTTheory(adte) =>
           val Operator(args, op) = adte
           val freshName = adte match {
-            case _: IsInstanceOf => "ci"
+            case _: IsInstanceOf      => "ci"
             case _: CaseClassSelector => "cs"
-            case _: CaseClass => "cc"
-            case _: TupleSelect => "ts"
-            case _: Tuple => "tp"
+            case _: CaseClass         => "cc"
+            case _: TupleSelect       => "ts"
+            case _: Tuple             => "tp"
           }
           val freshVar = Variable(createFlatTemp(freshName, adte.getType))
           val (newargs, newcjs) = flattenArgs(args, true)
@@ -232,13 +232,13 @@ object ExpressionTransformer {
           val (nthen, thenConjs) = flattenFunc(thn, false)
           val (nelze, elzeConjs) = flattenFunc(elze, false)
           val (ncond, condConjs) = flattenFunc(cond, true) match {
-            case r@(nc, _) if isAtom(nc) && getTemplateIds(nc).isEmpty => r
+            case r @ (nc, _) if isAtom(nc) && getTemplateIds(nc).isEmpty => r
             case (nc, conjs) =>
               val condvar = createFlatTemp("cond", cond.getType).toVariable
               (condvar, conjs + Equals(condvar, nc))
           }
           (IfExpr(ncond, createAnd(nthen +: thenConjs.toSeq),
-              createAnd(nelze +: elzeConjs.toSeq)), condConjs)
+            createAnd(nelze +: elzeConjs.toSeq)), condConjs)
 
         case _ => conjoinWithinClause(e, flattenFunc, insideFunction)
       }
@@ -247,13 +247,13 @@ object ExpressionTransformer {
     def flattenArgs(args: Seq[Expr], insideFunction: Boolean): (Seq[Expr], Set[Expr]) = {
       var newConjuncts = Set[Expr]()
       val newargs = args.map {
-        case v: Variable => v
+        case v: Variable       => v
         case r: ResultVariable => r
         case arg =>
           val (nexpr, ncjs) = flattenFunc(arg, insideFunction)
           newConjuncts ++= ncjs
           nexpr match {
-            case v: Variable => v
+            case v: Variable       => v
             case r: ResultVariable => r
             case _ =>
               val freshArgVar = Variable(createFlatTemp("arg", arg.getType))
@@ -304,7 +304,7 @@ object ExpressionTransformer {
    */
   def toNNF(inExpr: Expr, retainNEQ: Boolean = false): Expr = {
     def nnf(expr: Expr): Expr = {
-//      /println("Invoking nnf on: "+expr)
+      //      /println("Invoking nnf on: "+expr)
       expr match {
         //case e if e.getType != BooleanType      => e
         case Not(Not(e1))                       => nnf(e1)
@@ -353,13 +353,13 @@ object ExpressionTransformer {
       case Or(args) =>
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case Or(inArgs) => acc ++ inArgs
-          case _ => acc :+ arg
+          case _          => acc :+ arg
         })
         createOr(newArgs)
       case And(args) =>
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case And(inArgs) => acc ++ inArgs
-          case _ => acc :+ arg
+          case _           => acc :+ arg
         })
         createAnd(newArgs)
       case e => e
@@ -369,7 +369,7 @@ object ExpressionTransformer {
   /**
    * Converts all user-level and's and or's to if-then-elze.
    * This also pull if's nested within conditions of other if's outside if possible.
-   * The Ands and Ors created during flatenning
+   * As an optimization, this presevers the ands in the program as far as possibe.
    */
   def andOrToITE(ine: Expr): Expr = {
     simplePostTransform {
@@ -383,16 +383,16 @@ object ExpressionTransformer {
           case (arg, acc) =>
             IfExpr(arg, tru, acc)
         }
-      case ife : IfExpr =>
+      case ife @ IfExpr(ic, it, ie) =>
         // this produces more readable code when ands/ors are used inside if conditions
-        def rec(e: Expr): Expr = e match {
+        def ifrec(e: Expr): Expr = e match {
           case IfExpr(IfExpr(c, th, BooleanLiteral(false)), outTh, outEl: Terminal) =>
-            IfExpr(c,  rec(IfExpr(th, outTh, outEl)), outEl)
+            IfExpr(c, ifrec(IfExpr(th, outTh, outEl)), outEl)
           case IfExpr(IfExpr(c, BooleanLiteral(true), el), outTh: Terminal, outEl) =>
-            IfExpr(c, outTh, rec(IfExpr(el, outTh, outEl)))
+            IfExpr(c, outTh, ifrec(IfExpr(el, outTh, outEl)))
           case e => e
         }
-        rec(ife)
+        ifrec(ife)
       case e => e
     }(ine)
   }
@@ -420,7 +420,7 @@ object ExpressionTransformer {
    * If this is not guaranteed to hold, use the 'unflatten' method
    */
   def simpleUnflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
-      includeFuns: Boolean): (Expr, Map[Identifier,Expr]) = {
+                             includeFuns: Boolean): (Expr, Map[Identifier, Expr]) = {
 
     def isFlatTemp(id: Identifier) =
       isTemp(id, flatContext) || (includeFuns && isTemp(id, funFlatContext))
@@ -441,8 +441,8 @@ object ExpressionTransformer {
           tru
         }
       // specially handle boolean function to prevent unnecessary simplifications
-      case Or(args)           => Or(args map rec)
-      case And(args)          => And(args map rec)
+      case Or(args)  => Or(args map rec)
+      case And(args) => And(args map rec)
       case IfExpr(cond, th, elze) =>
         val ncond = rec(cond)
         val nth = fix(closure)(rec(th)) // simplify then and elze. This may lead to further simplifications
@@ -450,13 +450,12 @@ object ExpressionTransformer {
         /*if(!includeFuns)
           println(s"Processing $e exclude Ids: $excludeIds Nthen: $nth  NElze: $nel")*/
         (nth, nel) match {
-          case (Equals(Variable(id1), thRhs), Equals(Variable(id2), elRhs))
-            if id1 == id2 && isTemp(id1, ifContext) && !excludeIds(id1) =>
-              idMap += (id1 -> IfExpr(ncond, thRhs, elRhs))
-              tru
+          case (Equals(Variable(id1), thRhs), Equals(Variable(id2), elRhs)) if id1 == id2 && isTemp(id1, ifContext) && !excludeIds(id1) =>
+            idMap += (id1 -> IfExpr(ncond, thRhs, elRhs))
+            tru
           case _ => IfExpr(ncond, nth, nel)
         }
-        //IfExpr(rec(cond), rec(th), rec(elze))
+      //IfExpr(rec(cond), rec(th), rec(elze))
       case e => e // we should not recurse in other operations, note: Not(equals) should not be considered
     }
     val newe = rec(ine)
@@ -465,7 +464,7 @@ object ExpressionTransformer {
   }
 
   def unflattenWithMap(ine: Expr, excludeIds: Set[Identifier] = Set(),
-      includeFuns: Boolean = true): (Expr, Map[Identifier,Expr]) = {
+                       includeFuns: Boolean = true): (Expr, Map[Identifier, Expr]) = {
     simpleUnflattenWithMap(ine, sharedIds(ine) ++ excludeIds, includeFuns)
   }
 
@@ -477,8 +476,8 @@ object ExpressionTransformer {
   def IntLiteralToReal(inexpr: Expr): Expr = {
     val transformer = (e: Expr) => e match {
       case InfiniteIntegerLiteral(v) => FractionalLiteral(v, 1)
-      case IntLiteral(v) => FractionalLiteral(v, 1)
-      case _ => e
+      case IntLiteral(v)             => FractionalLiteral(v, 1)
+      case _                         => e
     }
     simplePostTransform(transformer)(inexpr)
   }
@@ -489,8 +488,8 @@ object ExpressionTransformer {
   def FractionalLiteralToInt(inexpr: Expr): Expr = {
     val transformer = (e: Expr) => e match {
       case FractionalLiteral(v, `bone`) => InfiniteIntegerLiteral(v)
-      case FractionalLiteral(_, _) => throw new IllegalStateException("cannot convert real literal to integer: " + e)
-      case _ => e
+      case FractionalLiteral(_, _)      => throw new IllegalStateException("cannot convert real literal to integer: " + e)
+      case _                            => e
     }
     simplePostTransform(transformer)(inexpr)
   }
@@ -568,7 +567,7 @@ object ExpressionTransformer {
         if (seen == 1) false
         else args.forall(arg => uniOP(arg, 2))
       }
-      case t: Terminal => true
+      case t: Terminal            => true
       case n @ Operator(args, op) => args.forall(arg => uniOP(arg, seen))
     }
 
