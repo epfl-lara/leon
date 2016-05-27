@@ -171,7 +171,8 @@ object BottomUpMergeSort {
    */
    // def firstMin(l: List[BigInt]) : BigInt ={
    //   require(l != Nil[BigInt]())
-   //   mergeSort(l).list match {
+   //   val s = mergeSort(l)
+   //   s.list match {
    //     case SCons(x, rest) => x
    //   }
    // } ensuring (res => time <= ? * l.size + ?)
@@ -185,7 +186,7 @@ object BottomUpMergeSort {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ? * (s.size) + ?)
+  } ensuring (_ => time <= ? * (k * s.size) + ? * (s.size) + ?) //  time <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
 
   @ignore
   def main(args: Array[String]) {

@@ -79,5 +79,9 @@ package object mem {
     } else {
       (false, null.asInstanceOf[T]) // for ints and bools this will be zero, false
     }
+  }
+  @ignore
+  def clearMemo()  = {
+    memoTable = Map[List[Any], Any]() 
   }    
 }

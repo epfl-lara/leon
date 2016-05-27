@@ -57,7 +57,6 @@ object BottomUpMergeSort {
     (bd13._1, bd13._2)
   }
   
-  @invisibleBody
   def mergetime(a : Stream2, b : Stream2): (LList2, BigInt) = {
     val lr3 = lookup[LList2](List(4972, b))
     val scr5 = if (lr3._1) {
@@ -193,13 +192,12 @@ object BottomUpMergeSort {
     (bd3._1, bd3._2)
   }
 
-
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
 
     val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    val size = points.map(x => BigInt(2*x)).toList
+    val size = points.map(x => BigInt(x)).toList
     
     var ops = List[() => BigInt]()
     var orb = List[() => BigInt]()
@@ -209,10 +207,10 @@ object BottomUpMergeSort {
           Cons(n, f)  
         }
       }
-      ops :+= {() => mergeSorttime(input)._2}
-      orb :+= {() => 45*i + 15}
+      ops :+= {() => ListToStreamListtime(input)._2}
+      orb :+= {() => 13 * i + 3}
     }
-    run(size, ops, orb, "mergeSort")
+    run(size, ops, orb, "ListToStreamList")
 
     ops = List[() => BigInt]()
     orb = List[() => BigInt]()
@@ -222,12 +220,54 @@ object BottomUpMergeSort {
           Cons(n, f)  
         }
       }
-      val streamin = ListToStreamListtime(input)._1
       // NOTE: floor take for coeff
-      ops :+= {() => pairstime(streamin)._2}
-      orb :+= {() => 15 * 10 * i + 33 * 10 + 0}
+      ops :+= {() => constructMergeTreetime(ListToStreamListtime(input)._1)._2}
+      orb :+= {() => 34* i + 3}
     }
-    run(size, ops, orb, "kthMintime")
+    run(size, ops, orb, "constructMergeTree")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = {
+        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
+          Cons(n, f)  
+        }
+      }
+      val s = mergeSorttime(input)._1
+      // NOTE: floor take for coeff
+      ops :+= {() => kthMintime(s, 10)._2}
+      orb :+= {() => 123 * (10 * i) + 123 * i + 9}
+    }
+    run(size, ops, orb, "kthMin")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = {
+        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
+          Cons(n, f)  
+        }
+      }
+      ops :+= {() => mergeSorttime(input)._2}
+      orb :+= {() => 47 * i + 15}
+    }
+    run(size, ops, orb, "mergeSort")
+
+    val newpoints = points.map(x => (x/2)).toList
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    newpoints.foreach { i =>
+      val input = {
+        (1 to i).foldLeft[List[BigInt]](Nil()) { (f, n) =>
+          Cons(n, f)  
+        }
+      }
+      val s = mergeSorttime(input)._1
+      ops :+= {() => forceAndMergetime(s, s)._2}
+      orb :+= {() => 123 * 2 * i - 86 }
+    }
+    run(size, ops, orb, "forceAndMerge")
   }
   
 }
