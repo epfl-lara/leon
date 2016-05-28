@@ -251,6 +251,12 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
         }
       }
       val modRefiner = new ModelRefiner(tempModel)
+      // a helper function that updates state on finding a new solution
+      def recordNewSolution(newModel: Model) = {
+        foundModel(newModel)
+        minimized = false
+        tempModel = newModel
+      }
       sat = modRefiner.nextCandidate match {
         case CorrectSolution() if (minimizer.isDefined && !minimized) =>
           minInfo.updateProgress(tempModel)
@@ -267,9 +273,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
           minInfo.complete
           Some(false)
         case NewSolution(newModel) =>
-          foundModel(newModel)
-          minimized = false
-          tempModel = newModel
+          recordNewSolution(newModel)
           Some(true)
         case NoSolution() => // here template is unsolvable or only hard paths remain
           None
@@ -282,9 +286,8 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
             case Seq()    => (Some(false), prevSolution) // no middle value
             case hypoCtrs => existSolver.solveConstraints(toLowerBound(tempModel), tempModel, hypoCtrs)
           }) match {
-            case (Some(true), newModel) =>
-              foundModel(newModel)
-              tempModel = newModel
+            case (Some(true), newModel) =>              
+              recordNewSolution(newModel)              
               funSolvers = initializeSolvers // reinitialize all VC solvers as they all timed out
               Some(true)
             case _ => // stop, we found the minimum (modulo the effectiveness of the solver)  or existential solving timed out 
@@ -297,9 +300,8 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
             reporter.info("VC solving failed!...retrying with a bigger model...")
           }
           existSolver.solveConstraints(toLowerBound(tempModel), tempModel, retryStrategy(tempModel)) match {
-            case (Some(true), newModel) =>
-              foundModel(newModel)
-              tempModel = newModel
+            case (Some(true), newModel) =>              
+              recordNewSolution(newModel)              
               funSolvers = initializeSolvers // reinitialize all VC solvers as they all timed out
               Some(true)
             case _ => // give up, no other bigger invariant exist or existential solving timed out!
