@@ -278,6 +278,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
         case NoSolution() => // here template is unsolvable or only hard paths remain
           None
         case UnsolvableVC() if minInfo.started && !ctx.abort =>
+          Stats.updateCounter(1, "vcTimeouts")
           if (verbose) {
             reporter.info("VC solving failed during minimization!...continuing search with bigger model...")
           }
@@ -296,6 +297,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
               Some(false)
           }
         case UnsolvableVC() if !ctx.abort =>
+          Stats.updateCounter(1, "vcTimeouts")
           if (verbose) {
             reporter.info("VC solving failed!...retrying with a bigger model...")
           }
