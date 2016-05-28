@@ -246,8 +246,8 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       Stats.updateCounter(1, "disjuncts")
       if (verbose) {
         reporter.info("Candidate invariants")
-        TemplateInstantiator.getAllInvariants(tempModel, ctrTracker.getFuncs).foreach{
-          case(f, inv) => reporter.info(f.id + "-->" + PrettyPrinter(inv))
+        TemplateInstantiator.getAllInvariants(tempModel, ctrTracker.getFuncs).foreach {
+          case (f, inv) => reporter.info(f.id + "-->" + PrettyPrinter(inv))
         }
       }
       val modRefiner = new ModelRefiner(tempModel)
@@ -273,14 +273,30 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
           Some(true)
         case NoSolution() => // here template is unsolvable or only hard paths remain
           None
-        case UnsolvableVC() if minInfo.started =>
-          tempModel = minInfo.getLastCorrectModel.get
-          Some(false)
+        case UnsolvableVC() if minInfo.started && !ctx.abort =>
+          if (verbose) {
+            reporter.info("VC solving failed during minimization!...continuing search with bigger model...")
+          }
+          val prevSolution = minInfo.getLastCorrectModel.get
+          (middleValue(tempModel, prevSolution) match {
+            case Seq()    => (Some(false), prevSolution) // no middle value
+            case hypoCtrs => existSolver.solveConstraints(toLowerBound(tempModel), tempModel, hypoCtrs)
+          }) match {
+            case (Some(true), newModel) =>
+              foundModel(newModel)
+              tempModel = newModel
+              funSolvers = initializeSolvers // reinitialize all VC solvers as they all timed out
+              Some(true)
+            case _ => // stop, we found the minimum (modulo the effectiveness of the solver)  or existential solving timed out 
+              minInfo.complete
+              tempModel = prevSolution
+              Some(false)
+          }
         case UnsolvableVC() if !ctx.abort =>
           if (verbose) {
             reporter.info("VC solving failed!...retrying with a bigger model...")
           }
-          existSolver.solveConstraints(retryStrategy(tempModel), tempModel) match {
+          existSolver.solveConstraints(toLowerBound(tempModel), tempModel, retryStrategy(tempModel)) match {
             case (Some(true), newModel) =>
               foundModel(newModel)
               tempModel = newModel
@@ -305,10 +321,26 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
    */
   import RealValuedExprEvaluator._
   val rtwo = FractionalLiteral(2, 1)
+  val half = FractionalLiteral(1, 2)
   def retryStrategy(tempModel: Model): Seq[Expr] = {
     tempModel.map {
       case (id, z @ FractionalLiteral(n, _)) if n == 0 => GreaterThan(id.toVariable, z)
-      case (id, fl: FractionalLiteral)                 => GreaterThan(id.toVariable, evaluate(RealTimes(rtwo, fl)))
+      case (id, fl: FractionalLiteral)                 => GreaterEquals(id.toVariable, evaluate(RealTimes(rtwo, fl)))
+    }.toSeq
+  }
+
+  def toLowerBound(tempModel: Model): Seq[Expr] = {
+    tempModel.map { case (id, z) => GreaterThan(id.toVariable, z) }.toSeq
+  }
+
+  def middleValue(lowerModel: Model, upperModel: Model): Seq[Expr] = {
+    lowerModel.flatMap {
+      case (id, lb: FractionalLiteral) =>
+        val ub = upperModel(id)
+        val currval = floor(evaluate(Times(half, Plus(ub, lb)))) //make sure that curr val is an integer
+        //check if the lowerbound < currval
+        if (evaluateRealPredicate(GreaterEquals(lb, currval))) Seq()
+        else Seq[Expr](GreaterEquals(id.toVariable, currval))
     }.toSeq
   }
 
