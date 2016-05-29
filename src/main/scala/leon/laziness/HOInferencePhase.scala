@@ -26,7 +26,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   val dumpInstrumentedProgram = true
   val debugSolvers = false
   val skipStateVerification = true
-  val skipResourceVerification = false
+  val skipResourceVerification = true
 
   val name = "Higher-order Memoization Verification Phase"
   val description = "Coverts a program that uses lazy construct" +

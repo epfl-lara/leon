@@ -59,7 +59,7 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
       // (b) find all userLevelFunctions that may create a lambda compatible with the types of the application.
       val newRoots = functionCreatingTypes(appTypes)
       // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-      val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).filter(_.hasBody).toSet // ignore uninterpreted functions
+      val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).toSet // .filter(_.hasBody) ignore uninterpreted functions
       //println("nextFunSet: "+nextFunSet.map(_.id))
       newFuns = nextFunSet -- instFuns
       instFuns ++= nextFunSet

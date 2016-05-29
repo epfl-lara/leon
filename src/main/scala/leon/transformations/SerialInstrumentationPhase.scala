@@ -681,11 +681,7 @@ class ExprInstrumenter(ictx: InstruContext) {
 
   def apply(e: Expr, paramMap: Map[Identifier, Identifier]): Expr = {
     import ictx._
-    implicit val currFun = ictx.currFun
-    // Apply transformations
-    /*val newe =
-      if (retainMatches) e
-      else matchToIfThenElse(liftExprInMatch(e))*/
+    implicit val currFun = ictx.currFun    
     val transformed = transform(e)(paramMap)
     val bodyId = createInstVar("bd", transformed.getType)
     val instExprs = instrumenters map { m =>
@@ -694,23 +690,6 @@ class ExprInstrumenter(ictx: InstruContext) {
     Let(bodyId, transformed,
       Tuple(TupleSelect(bodyId.toVariable, 1) +: instExprs))
   }
-
-  /*def liftExprInMatch(ine: Expr): Expr = {
-    def helper(e: Expr): Expr = {
-      e match {
-        case MatchExpr(strut, cases) => strut match {
-          case t: Terminal => e
-          case _ => {
-            val freshid = FreshIdentifier("m", strut.getType, true)
-            Let(freshid, strut, MatchExpr(freshid.toVariable, cases))
-          }
-        }
-        case _ => e
-      }
-    }
-    helper(ine)
-    //else simplePostTransform(helper)(ine)
-  }*/
 }
 
 /**
@@ -748,9 +727,6 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
       }(fd.fullBody)
     }
     (instFuns, instTypes)
-    /*prog.definedFunctions.filter { fd =>
-      (fd.hasPostcondition && exists(inst.isInstCall)(fd.postcondition.get))
-    }.toSet*/
   }
 
   /**

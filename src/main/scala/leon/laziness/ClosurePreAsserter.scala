@@ -41,7 +41,7 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
 
   def closureToLambda(cct: CaseClassType) = {
     val newTarget = lookupOp(cct.classDef) //find the target corresponding to the closure
-    clFactory.lambdaOfClosure(cct.classDef) match {
+    clFactory.lambdaOfClosure(cct.classDef).get match {
       case Lambda(args, FunctionInvocation(_, allargs)) =>
         val argIndices = args.map(_.id).zipWithIndex.toMap
         // mapping from argIndex to the index at which it is used

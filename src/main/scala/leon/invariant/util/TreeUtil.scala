@@ -243,6 +243,12 @@ object ProgramUtil {
           (u.isMainUnit || !(fd.annotations.contains("library") || fd.isInvariant)))
     }
   }
+  
+  def userLevelClasses(program: Program): Seq[ClassDef] = {
+    program.units.flatMap { u =>
+      u.definedClasses.filter(cd => u.isMainUnit || !cd.annotations.contains("library"))
+    }
+  }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
     var funCache = Map[String, Option[FunDef]]()

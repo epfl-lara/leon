@@ -12,11 +12,13 @@ import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import HOMemUtil._
 import purescala.Extractors._
+import ProgramUtil._
 
 /**
- * TODO: Support type instantiations. Note that currently we cannot have functions in the program,
- * where one is an instantiation of the other. To support it we should specialize the dispatchers foreach instantiation.
- * TODO: Make acyclicity an annotation, instead of hard coding it.
+ * TODO: Support type instantiations. Note that currently we cannot have functions/function types in the program,
+ * where one is an instantiation of the other. 
+ * To support it we should specialize the dispatchers foreach instantiation.
+ * TODO: Make finiteness an annotation, and add support for automatically verifying it.
  */
 class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   val debug = false
@@ -25,7 +27,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   /**
    * all lambdas in the program
    */
-  val lambdasList = ProgramUtil.userLevelFunctions(p).flatMap {
+  val lambdasList = userLevelFunctions(p).flatMap {
     case fd if fd.hasBody =>
       def rec(e: Expr): Seq[Lambda] = e match {
         case finv: FunctionInvocation if isIsFun(finv)(prog) =>  Seq() //skip
@@ -37,12 +39,25 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     case _ => Seq[Lambda]()
   }.distinct
 
+  val paramFunTypes = (userLevelFunctions(p) ++ userLevelClasses(p)).flatMap { d =>
+    val params = d match {
+      case cd : ClassDef => cd.fields
+      case fd : FunDef => fd.params
+    }
+    params.collect {
+      case vd if vd.getType.isInstanceOf[FunctionType] => vd.getType.asInstanceOf[FunctionType]
+    }
+  }.distinct
+  
+  val funTypesInProgram = (paramFunTypes ++ lambdasList.map(_.getType.asInstanceOf[FunctionType])).distinct
+
   val memoFuns = p.definedFunctions.collect {
     case fd if fd.hasBody && isMemoized(fd) => fd
   }.distinct
 
   if (debug) {
-    println("Lambda terms found: \n" + lambdasList.mkString("\n"))
+    println("Function types passed as parameters: \n" + paramFunTypes.mkString("\n"))
+    println("Lambda terms found: \n" + lambdasList.mkString("\n"))    
     println("Memoized fundefs found: \n" + memoFuns.map(_.id).mkString("\n"))
   }
 
@@ -91,7 +106,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     override def hashCode = args.size ^ (target.hashCode() << 3)
   }
 
-  def closureParametersAndTParams(l: Lambda) = {
+  def lambdaParametersAndTParams(l: Lambda) = {
     val cvars = capturedVars(l)
     val tparams = cvars.flatMap{ v => getTypeParameters(v.getType) }.distinct
     (cvars, tparams)
@@ -103,45 +118,37 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
    */
   private def closuresForOps = {
     /**
-     * Checks if the types of lambdas are not instantiations of one another.
+     * Checks if there are no function types in program where one is an instantiation of another.
      * This is currently not supported.
-     */
-    lambdasList.groupBy { lop =>
-      /*println(s"Lambdas: $lop type: ${lop.getType}")
-      lop match {
-        case Lambda(_, FunctionInvocation(target, args)) =>
-          println(s"Target: $target Arg types: ${args.map(_.getType).mkString(",")} ret type: ${target.returnType}")
-      }*/
-      val FunctionType(argts, _) = lop.getType
-      argts.size
-    }.foreach {
-      case (_, lambs) =>
-        val reps = lambs.groupBy(l => canonTypeName(l.getType)).map{
-          case (tname, ls) => ls.head
-        }.toArray
-        val fta = reps.map(_.getType)
+     */    
+    funTypesInProgram.groupBy { case FunctionType(argts, _) => argts.size }.foreach {
+      case (_, ftypes) =>
+        val reps = ftypes.groupBy(canonTypeName).map(_._2.head).toArray.distinct
+        //val fta = reps.map(_.getType)
         //println("Distinct types with same number of arguments: "+fta.mkString(","))
-        for (i <- 0 until fta.length)
-          for (j <- i + 1 until fta.length) {
-            if (isTypeInstance(fta(i), fta(j)))
-              throw new IllegalStateException(s"${reps(i)} and ${reps(j)} have insantiatiable types: ${reps(i).getType}, ${reps(j).getType}, which is not supported as of now!")
+        for (i <- 0 until reps.length)
+          for (j <- i + 1 until reps.length) {
+            if (isTypeInstance(reps(i), reps(j)))
+              throw new IllegalStateException(s"${reps(i)} and ${reps(j)} have insantiatiable types, which is not supported as of now!")
           }
     }
-    val tpeToLambda = lambdasList.groupBy(lop => canonTypeName(lop.getType)) // using tpe name below to avoid mismatches due to type parameters
+    val lambMap = lambdasList.groupBy(lop => canonTypeName(lop.getType)) // using tpe name below to avoid mismatches due to type parameters
+    val tpeToLambda = funTypesInProgram.groupBy(canonTypeName).map{ 
+      case (tname, tps) => tname -> (tps.head, lambMap.getOrElse(tname, Seq()))      
+    }.toMap
     if (debug) {
-      println("Type to Lambdas: " + tpeToLambda.map { case (k, v) => s"$k --> ${v.mkString(",")}" }.mkString("\n"))
+      println("Type to Lambdas: " + tpeToLambda.map { case (k, (_, v)) => s"$k --> ${v.mkString(",")}" }.mkString("\n"))
     }
     /**
-     * Another important requirement: the type parameters of the captured variables a
+     * Another important requirement: the type parameters of the captured variables
      * need to be subsumed by the type parameters of the function type.
      * Note: Otherwise, there is not much point in the capturing the variable !
      */
     val tpeToAbsClass = tpeToLambda.map {
-      case (tpename, lams) =>
-        val ft = lams.head.getType
+      case (tpename, (ft, lams)) =>        
         val tpcount = getTypeParameters(ft).size
         lams.foreach { l =>
-          if(closureParametersAndTParams(l)._2.size > tpcount)
+          if(lambdaParametersAndTParams(l)._2.size > tpcount)
             throw new IllegalStateException(s"Type parameters of captured variables of $l are not contained in the type parameters of the type. This is not supported!")
         }
         tpename -> (ft, createAbstractClass(tpename, tpcount))
@@ -157,10 +164,9 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     var opToAdt = Map[CanonLambda, CaseClassDef]()
     var stateUpdatingTypes = Set[String]()
     var stateNeedingTypes = Set[String]()
-    val tpeToADT = tpeToLambda map { case (tpename, lambdas) => // we create a closure for each lambda
-        val baseT = lambdas.head.getType
+    val tpeToADT = tpeToLambda map { case (tpename, (ft, lambdas)) => // we create a closure for each lambda and a closure to represent an uninterpreted argument        
         val absClass = tpeToAbsClass(tpename)._2
-        // create a case class for every lambda (but share them if they invoke the same function)
+        // create a case class for every lambda (but share them if they invoke the same function with same captured vars)
         val canonLambdas = lambdas.map(l => new CanonLambda(l)).distinct
         val cdefs = canonLambdas map (cl => cl.l match {
           case l@Lambda(_, FunctionInvocation(TypedFunDef(target, _), _)) =>
@@ -179,8 +185,9 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
             } else */
             opToAdt += (cl -> cdef)
             cdef
-        })
-        (tpename -> (baseT, absClass, cdefs))
+        }) 
+        val unknownCase = createCaseClass("UnknownL", absClass, Seq()) 
+        (tpename -> (ft, absClass, cdefs, Some(unknownCase).asInstanceOf[Option[CaseClassDef]]))
     }
     // create a case class for each memoized function
     val memoClasses = memoFuns.map { memofun =>
@@ -203,6 +210,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   def functionType(tn: String) = tpeToADT(tn)._1
   def absClosure(tn: String) = tpeToADT(tn)._2
   def concreteClosures(tn: String) = tpeToADT(tn)._3
+  def unknownClosure(tn: String) = tpeToADT(tn)._4
 
   def functionTypeToClosure(t: TypeTree) = {
     t match {
@@ -222,7 +230,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
 
   def uninstantiatedFunctionTypeName(ft: TypeTree) = {
     tpeToADT.collectFirst {
-      case (tpename, (tpe, _, _)) if isTypeInstance(ft, tpe) =>
+      case (tpename, (tpe, _, _, _)) if isTypeInstance(ft, tpe) =>
         tpename
     }
   }
@@ -252,9 +260,12 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
    * Given a closure computes a lambda for the closure by invoking the target function
    */
   val caseClassToOp = opToCaseClass map { case (k, v) => v -> k }
-  def lambdaOfClosure(cl: CaseClassDef) = caseClassToOp(cl).l
-  def targetOfClosure(cl: CaseClassDef) = caseClassToOp(cl).l match {
-    case Lambda(_, FunctionInvocation(tfd, _)) => tfd.fd
+  def lambdaOfClosure(cl: CaseClassDef) = caseClassToOp.get(cl).map(_.l)
+  def targetOfClosure(cl: CaseClassDef) = caseClassToOp.get(cl) match {
+    case Some(canonl) =>
+      val Lambda(_, FunctionInvocation(tfd, _)) = canonl.l
+      Some(tfd.fd)
+    case _ => None
   }
 
   /**
