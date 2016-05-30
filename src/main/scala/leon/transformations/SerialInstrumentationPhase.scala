@@ -174,11 +174,6 @@ class SerialInstrumenter(program: Program,
     def rec(e: Expr)(implicit idMap: Map[Identifier, Identifier]): Expr = e match {
       case _ if instCall(e).isDefined =>
         mapInstCallWithArgs(e, rec)
-      //        val FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(fd, targs), args))) = e // here, e has to be of this form
-      //        val ntargs = targs map instrumentType
-      //        val nargs = args map rec
-      //        val inst = instCall(e).get
-      //        TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
 
       case FunctionInvocation(TypedFunDef(fd, targs), args) =>
         val nfd = funMap.getOrElse(fd, fd)
@@ -388,7 +383,6 @@ class InstruContext(
 }
 
 object ExprInstrumenter {
-  val retainMatches = true
   val instVarContext = newContext
   def createInstVar(name: String, tpe: TypeTree) = createTemp(name, tpe, instVarContext)
   def isInstVar(id: Identifier) = isTemp(id, instVarContext)
@@ -491,11 +485,11 @@ class ExprInstrumenter(ictx: InstruContext) {
     implicit val currFun = ictx.currFun
     f match {
       case fi @ FunctionInvocation(tfd @ TypedFunDef(fd, tps), args) =>
-        // here, selectInst must refer to the tagert function, not the current function
+        // here, selectInst must refer to the target function, not the current function
         val selectInst = serialInst.selectInst(fd) _
         val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
         val newFunInv = FunctionInvocation(newfd, subeVals)
-        //create a variables to store the result of function invocation
+        //create a variable to store the result of function invocation
         if (serialInst.instFuncs(fd)) { //this function is also instrumented
           val funres = Variable(createInstVar("e", newfd.returnType))
           val valexpr = TupleSelect(funres, 1)
@@ -570,18 +564,6 @@ class ExprInstrumenter(ictx: InstruContext) {
     e match {
       case _ if instCall(e).isDefined =>
         serialInst.mapInstCallWithArgs(e, transform)
-      /*val FunctionInvocation(_, Seq(instArg)) = e // here, e has to be of this form
-        val inst = instCall(e).get
-        instArg match {
-          case FunctionInvocation(TypedFunDef(fd, targs), args) =>
-            val ntargs = targs map serialInst.instrumentType
-            val nargs = args map transform
-            TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs),
-              serialInst.instIndex(fd)(inst))
-          case Application(fterm, args) =>
-              val nargs = (fterm +: args) map transform //lambda has to be instrumented here
-              TupleSelect(Application(nargs.head, nargs.tail), serialInst.instIndex(ftype)(inst))
-        }*/
 
       // Matchcases with guards are converted to if-then-else.
       case me @ MatchExpr(scrutinee, matchCases) =>
@@ -702,19 +684,19 @@ class ExprInstrumenter(ictx: InstruContext) {
     import ictx._
     implicit val currFun = ictx.currFun
     // Apply transformations
-    val newe =
+    /*val newe =
       if (retainMatches) e
-      else matchToIfThenElse(liftExprInMatch(e))
-    val transformed = transform(newe)(paramMap)
+      else matchToIfThenElse(liftExprInMatch(e))*/
+    val transformed = transform(e)(paramMap)
     val bodyId = createInstVar("bd", transformed.getType)
     val instExprs = instrumenters map { m =>
-      m.instrumentBody(newe, selectInst(bodyId.toVariable, m.inst))
+      m.instrumentBody(e, selectInst(bodyId.toVariable, m.inst))
     }
     Let(bodyId, transformed,
       Tuple(TupleSelect(bodyId.toVariable, 1) +: instExprs))
   }
 
-  def liftExprInMatch(ine: Expr): Expr = {
+  /*def liftExprInMatch(ine: Expr): Expr = {
     def helper(e: Expr): Expr = {
       e match {
         case MatchExpr(strut, cases) => strut match {
@@ -727,9 +709,9 @@ class ExprInstrumenter(ictx: InstruContext) {
         case _ => e
       }
     }
-    if (retainMatches) helper(ine)
-    else simplePostTransform(helper)(ine)
-  }
+    helper(ine)
+    //else simplePostTransform(helper)(ine)
+  }*/
 }
 
 /**

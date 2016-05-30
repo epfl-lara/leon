@@ -61,7 +61,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
             val instExprs = instrumenters map { m =>
               val lookupCost = InfiniteIntegerLiteral(costOfMemoization(m.inst))
               IfExpr(ElementOfSet(cc, stExpr), lookupCost,
-                Plus(lookupCost, selectInst(instId.toVariable, m.inst)))
+                Plus(lookupCost, selectInst(instId.toVariable, m.inst))) // update cost ?
             }
             Let(instId, instExpr,
               Tuple(TupleSelect(instId.toVariable, 1) +: instExprs))
@@ -81,6 +81,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
         case FunctionInvocation(fd, _) if !fd.hasBody   => 0 // uninterpreted functions
         case FunctionInvocation(fd, args)               => 1
         case t: Terminal                                => 0
+        case _: Let                                     => 0
         case Tuple(Seq(_, s)) if isStateType(s.getType) => 0 // state construction
         case TupleSelect(se, _) => se.getType match {
           case TupleType(Seq(_, stType)) if isStateType(stType) => 0 // state extraction

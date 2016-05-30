@@ -21,10 +21,13 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
     case FunctionInvocation(fd, args)             => 1
     case t: Terminal                              => 0
+    case _: Let                                   => 0 // let itself does not have a cost (so creating temporary variables will not increase the cost)
     case _                                        => 1
   }
 
-  def costOfExpr(e: Expr)(implicit currFun: FunDef) = InfiniteIntegerLiteral(costOf(e))
+  def costOfExpr(e: Expr)(implicit currFun: FunDef) = {
+    InfiniteIntegerLiteral(costOf(e))
+  }
 
   def inst = Time
 

@@ -71,21 +71,32 @@ object MergeAndHammingNumbers {
       if(y <= z) y else z
   }
 
-  @invisibleBody
+  
   /**
    * A three way merge function
    */
+  @invisibleBody
   def merge(a: SCons, b: SCons, c: SCons): SCons = {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
   } ensuring (_ => time <= ?)  // Orb result: 11
+  
+  @invisibleBody
+  def force(a: SCons) = {
+    a.tail
+  } ensuring{_ =>
+    val in = inState[BigInt]
+    if((constTimeArg(a) withState in))
+      time <= ? // Orb result: 223
+    else true
+  }
 
   @invisibleBody
   def mergeSusp(a: SCons, b: SCons, c: SCons): SCons = {
     val m = min(a.x, b.x, c.x)
-    val nexta = if (a.x == m) a.tail else a
-    val nextb = if (b.x == m) b.tail else b
-    val nextc = if (c.x == m) c.tail else c
+    val nexta = if (a.x == m) force(a) else a //.tail
+    val nextb = if (b.x == m) force(b) else b
+    val nextc = if (c.x == m) force(c) else c
     merge(nexta, nextb, nextc)
   } ensuring{_ =>
     val in = inState[BigInt]

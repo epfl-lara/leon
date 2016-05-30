@@ -1,4 +1,4 @@
-/* Copyright 2009-2016 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne
 
 package leon.regression.orb
 import leon.test._
@@ -58,3 +58,4 @@ class LazyEvalRegressionSuite extends LeonRegressionSuite {
     }
   }
 }
+*/
