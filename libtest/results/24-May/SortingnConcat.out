@@ -1,0 +1,596 @@
+[[33mWarning [0m] warning: there was one feature warning; re-run with -feature for details
+[[33mWarning [0m] Inlining recursive functions only once 'size'!
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+instfuncs: kthMin,sort,eval@tLList@,list-mem,concat,pullMin instFuncTypes: 
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for sort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for sort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concat4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concat4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for kthMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call kthMin4(xs, k - BigInt(1), scr._2))' VC for kthMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for kthMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for list-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                   ║
+║ SortingnConcat.concat4   match exhaustiveness                                ?:?  valid  U:smt-z3    0.011 ║
+║ SortingnConcat.concat4   postcondition                                       ?:?  valid  U:smt-z3    0.011 ║
+║ SortingnConcat.kthMin4   match exhaustiveness                                ?:?  valid  U:smt-z3    0.017 ║
+║ SortingnConcat.kthMin4   postcondition                                       ?:?  valid  U:smt-z3    0.062 ║
+║ SortingnConcat.kthMin4   precond. (call kthMin4(xs, k - BigInt(1), scr._2))  ?:?  valid  U:smt-z3    0.025 ║
+║ Stream.list-mem3         postcondition                                       ?:?  valid  U:smt-z3    0.022 ║
+║ SortingnConcat.pullMin4  match exhaustiveness                                ?:?  valid  U:smt-z3    0.022 ║
+║ SortingnConcat.pullMin4  match exhaustiveness                                ?:?  valid  U:smt-z3    0.017 ║
+║ SortingnConcat.pullMin4  postcondition                                       ?:?  valid  U:smt-z3    0.693 ║
+║ LList.size12             match exhaustiveness                                ?:?  valid  U:smt-z3    0.012 ║
+║ LList.size12             postcondition                                       ?:?  valid  U:smt-z3    0.022 ║
+║ SortingnConcat.sort4     match exhaustiveness                                ?:?  valid  U:smt-z3    0.011 ║
+║ SortingnConcat.sort4     postcondition                                       ?:?  valid  U:smt-z3    0.113 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 13     valid: 13     invalid: 0      unknown 0                                                1.038 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+instfuncs:  instFuncTypes: 
+[[34m  Info  [0m] - considering function concat-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-time-->res71._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: concat-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.029s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-time-->res71._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-time-->res71._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: concat-time --> time + BigInt(-7) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function pullMin-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] Constraints reduced to linear !
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-1 * l.size + res72._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.028s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.032s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-12 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.041s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 21
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-61 * l.size + 4 * res72._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 33
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.037s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.023s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-12 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 21
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-61 * l.size + 4 * res72._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.038s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 36
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-12 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 21
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-61 * l.size + 4 * res72._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 37
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->res72._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-12 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 21
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-61 * l.size + 4 * res72._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-51 * l.size + 4 * res72._2) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.058s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 37
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.014s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-14 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.051s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 54
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-16 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-29 * l.size + 2 * res72._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.044s
+[[34m  Info  [0m] Function: pullMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 19 + 71
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.016s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-16 * l.size + res72._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-time-->(-15 * l.size + res72._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] - Found inductive invariant: pullMin-time --> (BigInt(-15) * l.size + time) + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function sort-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] Constraints reduced to linear !
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-17 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 20
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-19 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 31
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.031s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.031s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.006s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.039s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->res69._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-30 * l.size + 32 * res69._2) + -624 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.039s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-16 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: sort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 31
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.015s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-18 * l.size + res69._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-time-->(-15 * l.size + res69._2) + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] - Found inductive invariant: sort-time --> (BigInt(-15) * l.size + time) + BigInt(-10) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function list-mem-time...
+[[34m  Info  [0m] - considering function kthMin-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->0 * k + x$218._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->(-1 * k + 8 * x$218._2) + -87 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 10
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->0 * k + x$218._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.023s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-2 * k + x$218._2) + -1 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 12
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->0 * k + x$218._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->(-2 * k + x$218._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 14
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->(-1 * k + 8 * x$218._2) + -160 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 26
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -160 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -160 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.031s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 23 + 40
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-12 * k + x$218._2) + -20 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 63
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.014s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-40 * k + x$218._2) + -18 * mult(k, l.list-mem-time(uiState)._1._1.size)) + 20 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.038s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 85
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->0 * k + x$218._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.094s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->(-2 * k + x$218._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.066s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 14
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->(-1 * k + 8 * x$218._2) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.082s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 26
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -40 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.087s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 39
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -144 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.102s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 65
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -184 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.037s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-140 * k + 4 * x$218._2) + -7 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.115s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 78
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.014s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -352 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-308 * k + 8 * x$218._2) + -6 * mult(k, l.list-mem-time(uiState)._1._1.size)) + 16 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.108s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 103
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.018s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -168 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.037s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-200 * k + 4 * x$218._2) + -3 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.103s
+[[34m  Info  [0m] Function: kthMin-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 28 + 119
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.02s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-1 * k + 8 * x$218._2) + -168 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -136 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.048s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-time-->((-41 * k + 2 * x$218._2) + -30 * mult(k, l.list-mem-time(uiState)._1._1.size)) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] - Found inductive invariant: kthMin-time --> ((BigInt(-41) * k + BigInt(2) * time) + BigInt(-30) * (k * l.list-mem-time(uiState)._1._1.size)) + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞═════════════════════════════════════════════════════════════════════════════════════════╗
+║ └─────────┘                                                                                         ║
+║ concat-         time <= 7                                                                    0.782  ║
+║ kthMin-         2 * time <= (41 * k + 30 * (k * l.list-mem-time(uiState)._1._1.size)) + 3    17.876 ║
+║ pullMin-        time <= 15 * l.size + 2                                                      2.065  ║
+║ sort-           time <= 15 * l.size + 10                                                     1.346  ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 4     inferred: 4     unknown: 0     time: 22.069                                            ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: SortingnConcat-stats.txt

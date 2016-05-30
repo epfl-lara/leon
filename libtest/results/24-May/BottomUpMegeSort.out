@@ -1,0 +1,691 @@
+[[33mWarning [0m] warning: there were three feature warnings; re-run with -feature for details
+[[33mWarning [0m] Inlining recursive functions only once 'size'!
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+instfuncs: constructMergeTree,mergeSort,merge,eval@tLList@,pairs,ListToStreamList,forceAndMerge,list-mem instFuncTypes: 
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for valid4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for valid4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fullSize4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fullSize4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pairs4(rest, st@))' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree4(pairs4(l, st@), st@))' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pairs4(l, st@))' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ForceAndMergeL@pairsPre1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ForceAndMergeL@mergePre2 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ForceAndMergeL@mergePre3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for ForceAndMergeL@PreMonotone1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for forceAndMerge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call merge4(a, b, dres._2 ++ Set[MemoFuns@](L ...)' VC for forceAndMerge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for forceAndMerge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ListToStreamList4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for ListToStreamList4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree4(ListToStreamList4(l) ...)' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for list-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                     ║
+║ BottomUpMergeSort.ForceAndMergeL@PreMonotone1  tact (postcondition)                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.ForceAndMergeL@mergePre2     postcondition                                                 ?:?  valid  U:smt-z3      0.068 ║
+║ BottomUpMergeSort.ForceAndMergeL@mergePre3     postcondition                                                 ?:?  valid  U:smt-z3      0.052 ║
+║ BottomUpMergeSort.ForceAndMergeL@pairsPre1     postcondition                                                 ?:?  valid  U:smt-z3      0.042 ║
+║ BottomUpMergeSort.ListToStreamList4            match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.008 ║
+║ BottomUpMergeSort.ListToStreamList4            postcondition                                                 ?:?  valid  U:smt-z3      0.268 ║
+║ BottomUpMergeSort.constructMergeTree4          match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.014 ║
+║ BottomUpMergeSort.constructMergeTree4          match exhaustiveness                                          ?:?  valid  U:smt-z3      0.020 ║
+║ BottomUpMergeSort.constructMergeTree4          postcondition                                                 ?:?  valid  U:smt-z3      0.124 ║
+║ BottomUpMergeSort.constructMergeTree4          precond. (call constructMergeTree4(pairs4(l, st@), st@))      ?:?  valid  U:smt-z3      0.056 ║
+║ BottomUpMergeSort.constructMergeTree4          precond. (call pairs4(l, st@))                                ?:?  valid  U:smt-z3      0.013 ║
+║ BottomUpMergeSort.forceAndMerge4               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ BottomUpMergeSort.forceAndMerge4               postcondition                                                 ?:?  valid  U:smt-cvc4    1.580 ║
+║ BottomUpMergeSort.forceAndMerge4               precond. (call merge4(a, b, dres._2 ++ Set[MemoFuns@](L ...)  ?:?  valid  U:smt-z3      0.045 ║
+║ BottomUpMergeSort.fullSize4                    match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.fullSize4                    postcondition                                                 ?:?  valid  U:smt-z3      0.169 ║
+║ Stream.list-mem3                               postcondition                                                 ?:?  valid  U:smt-z3      0.035 ║
+║ BottomUpMergeSort.merge4                       match exhaustiveness                                          ?:?  valid  U:smt-z3      0.017 ║
+║ BottomUpMergeSort.merge4                       match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.merge4                       postcondition                                                 ?:?  valid  U:smt-z3      0.062 ║
+║ BottomUpMergeSort.mergeSort4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.527 ║
+║ BottomUpMergeSort.mergeSort4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ BottomUpMergeSort.mergeSort4                   postcondition                                                 ?:?  valid  U:smt-z3      0.068 ║
+║ BottomUpMergeSort.mergeSort4                   precond. (call constructMergeTree4(ListToStreamList4(l) ...)  ?:?  valid  U:smt-z3      0.043 ║
+║ BottomUpMergeSort.pairs4                       match exhaustiveness                                          ?:?  valid  U:smt-z3      0.012 ║
+║ BottomUpMergeSort.pairs4                       postcondition                                                 ?:?  valid  U:smt-z3      0.766 ║
+║ BottomUpMergeSort.pairs4                       precond. (call pairs4(rest, st@))                             ?:?  valid  U:smt-z3      0.035 ║
+║ LList.size12                                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ LList.size12                                   postcondition                                                 ?:?  valid  U:smt-z3      0.029 ║
+║ BottomUpMergeSort.valid4                       match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.valid4                       postcondition                                                 ?:?  valid  U:smt-cvc4    0.259 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 31     valid: 31     invalid: 0      unknown 0                                                                                  4.397 ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+instfuncs:  instFuncTypes: 
+[[34m  Info  [0m] - considering function pairs-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.043s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.027s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->(-1 * l.size + res81._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.036s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->(-2 * l.size + res81._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.048s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 28 + 10
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.107s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.074s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 34 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.634s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.349s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 36 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.579s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.746s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 37 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 3.127s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 3.491s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.416s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 3.334s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.534s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.703s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 5.394s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->res81._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 7.116s
+[[34m  Info  [0m] Function: pairs-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 31 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->(-17 * l.size + 2 * res81._2) + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.247s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pairs-time-->(-17 * l.size + 2 * res81._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] - Found inductive invariant: pairs-time --> (BigInt(-17) * l.size + BigInt(2) * time) + BigInt(-6) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function merge-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-time-->x$39._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: merge-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-time-->x$39._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.11s
+[[34m  Info  [0m] Function: merge-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-time-->x$39._2 + -22 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-time-->x$39._2 + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] - Found inductive invariant: merge-time --> time + BigInt(-21) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function forceAndMerge-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: forceAndMerge-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] Constraints reduced to linear !
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.006s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] checked VC inst... in 0.099s
+[[34m  Info  [0m] Function: forceAndMerge-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] Constraints reduced to linear !
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.006s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] checked VC inst... in 0.062s
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function list-mem-time...
+[[34m  Info  [0m] - considering function ListToStreamList-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->res82._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: ListToStreamList-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->(-1 * l.size + res82._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: ListToStreamList-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->res82._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: ListToStreamList-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->res82._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: ListToStreamList-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->(-15 * l.size + res82._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ListToStreamList-time-->(-13 * l.size + res82._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] - Found inductive invariant: ListToStreamList-time --> (BigInt(-13) * l.size + time) + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function constructMergeTree-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -1 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.099s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -2 * l.size) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 36 + 10
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -28 * l.size) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 35 + 46
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.261s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.097s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 38 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -37 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.115s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 37 + 47
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.022s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.789s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 43 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -37 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.746s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 42 + 52
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 13.419s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.017s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 15.438s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 41 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -39 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 15.411s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 50
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 12.291s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 20.326s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 41 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -39 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 19.969s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 50
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 6.727s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 13.526s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 41 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -39 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 13.452s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 40 + 50
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 17.439s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->res78._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 28.127s
+[[34m  Info  [0m] Function: constructMergeTree-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 36 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.013s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(res78._2 + -38 * l.size) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.608s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-time-->(2 * res78._2 + -71 * l.size) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.091s
+[[34m  Info  [0m] - Found inductive invariant: constructMergeTree-time --> (BigInt(2) * time + BigInt(-71) * l.size) + BigInt(-6) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function mergeSort-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(res79._2 + -1 * l.size) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(res79._2 + -50 * l.size) + -16 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 20
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.054s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.186s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.062s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.883s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.422s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 3.495s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.126s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 3.207s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.153s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.396s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 1.854s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.387s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 1.854s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 9.754s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->res79._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 11.283s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(res79._2 + -60 * l.size) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.324s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(32 * res79._2 + -56 * l.size) + -1980 <= 0
+[[34m  Info  [0m] checked VC inst... in 4.456s
+[[34m  Info  [0m] Function: mergeSort-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 28 + 23
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(res79._2 + -60 * l.size) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.248s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-time-->(128 * res79._2 + -6268 * l.size) + -1888 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.056s
+[[34m  Info  [0m] - Found inductive invariant: mergeSort-time --> (BigInt(128) * time + BigInt(-6268) * l.size) + BigInt(-1888) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞═══════════════════════════════════════════════════╗
+║ └─────────┘                                                   ║
+║ ListToStreamLi… time <= 13 * l.size + 3               0.218   ║
+║ constructMerge… 2 * time <= 71 * l.size + 6           189.217 ║
+║ merge-          time <= 21                            0.360   ║
+║ mergeSort-      128 * time <= 6268 * l.size + 1888    54.108  ║
+║ pairs-          2 * time <= 17 * l.size + 6           40.595  ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 5     inferred: 5     unknown: 0     time: 284.498     ║
+╚═══════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: BottomUpMegeSort-stats.txt

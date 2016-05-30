@@ -31,14 +31,26 @@ object RunnableCodePhase extends TransformationPhase {
   def apply(ctx: LeonContext, pgm: Program): Program = {
     val debugRunnable = false
 
+    var instFunc = Set[FunDef]() 
     val funMap = pgm.definedFunctions.collect {
       case fd if fd.id.name.contains("-") =>
         val freshId = FreshIdentifier((fd.id.name).replaceAll("-",""), fd.returnType)
         val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        instFunc = instFunc + newfd
         (fd -> newfd)
-      case fd => (fd -> fd)
+      case fd =>
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        (fd -> newfd)
     }.toMap
-
+    
+    val cg =  CallGraphUtil.constructCallGraph(pgm, onlyBody = true)
+    var reachableFunc = instFunc
+    for(i <- instFunc) {
+      reachableFunc = reachableFunc ++ cg.transitiveCallees(i)
+    }
+//    var reachableFunc = cg.transitiveCallees(Seq(instFunc))
+    
     def removeContracts(ine: Expr, fd: FunDef): Expr = simplePostTransform{
       case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
         FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
@@ -63,10 +75,24 @@ object RunnableCodePhase extends TransformationPhase {
       to.fullBody = removeContracts(from.fullBody, from)
       from.flags.foreach(to.addFlag(_)) //copy annotations
     }
-    val newprog = copyProgram(pgm, (defs: Seq[Definition]) => defs.map {
-      case fd: FunDef if funMap.contains(fd) => funMap(fd)
-      case d                                 => d
-    })
+//    val newprog = copyProgram(pgm, (defs: Seq[Definition]) => defs.map {
+//      case fd: FunDef if funMap.contains(fd) => funMap(fd)
+//      case d                                 => d
+//    })
+    def mapdefs(defs: Seq[Definition]): Seq[Definition] = {
+      defs.collect {
+        case fd:FunDef if (reachableFunc contains funMap(fd)) => funMap(fd)
+        case d if !(d.isInstanceOf[FunDef]) => d
+      }
+    }
+    
+    val newprog = pgm.copy(units = pgm.units.collect {
+      case unit if unit.defs.nonEmpty => unit.copy(defs = unit.defs.collect {
+        case module: ModuleDef if module.defs.nonEmpty =>
+          module.copy(defs = mapdefs(module.defs))          
+        case other => other
+      })
+    })   
 
     if (debugRunnable)
       println("After transforming to runnable code: \n" + ScalaPrinter.apply(newprog, purescala.PrinterOptions(printRunnableCode = true)))

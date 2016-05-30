@@ -1,0 +1,624 @@
+[[33mWarning [0m] warning: there were 10 feature warnings; re-run with -feature for details
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+instfuncs: fval-mem,eval@tNumList@,get,incLazy,Pay,inc,incAndPay,incNum instFuncTypes: 
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zeroPrecedesLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zeroPrecedesLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zeroPrecedesSuf4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zeroPrecedesSuf4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concreteUntil4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concreteUntil4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isConcrete4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isConcrete4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for schedulesProperty4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedulesProperty4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedulesProperty4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for strongSchedsProp4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for strongSchedsProp4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushUntilCarry4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushUntilCarry4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for emptyNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for inc4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call incLazy4(xs, scr._2))' VC for inc4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for inc4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazy4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for IncLazyL@incLazyPre1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for IncLazyL@incLazyPre1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for IncLazyL@incLazyPre1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call inc4(w.digs, st@))' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call incLazyLemma4(w.digs, head, res94._2))' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incNum4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call schedMonotone4[<untyped>](st@, a188, rta ...)' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixZeroLemma4[<untyped>](q, head, rhe ...)' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for incAndPay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call incNum4(w, st@))' VC for incAndPay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call Pay4[<untyped>](q, x$217._1._2, x$217._2 ...)' VC for incAndPay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incAndPay4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for firstDigit4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for firstDigit4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call incLazyLemma4(rear, suf, st@))' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call incLazy4(xs, a181._2))' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for incLazyLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for schedMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call schedMonotone4[<untyped>](st1, st2, tail ...)' VC for schedMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilMonotone4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for properSuffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixDisequality4[<untyped>](l, suf))' VC for properSuffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for properSuffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for suffixTrans4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixTrans4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixTrans4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixTrans4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffixDisequality4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixDisequality4[<untyped>](rear, sufR ...)' VC for suffixDisequality4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixDisequality4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for suffixCompose4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixCompose4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteUntilIsSuffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteUntilIsSuffix4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concUntilExtenLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilConcreteExten4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilConcreteExten4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilCompose4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilCompose4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for zeroPredSufConcreteUntilLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for zeroPredSufConcreteUntilLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteZeroPredLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteZeroPredLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffixZeroLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixZeroLemma4[<untyped>](tail, suf, s ...)' VC for suffixZeroLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixZeroLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixZeroLemma4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for getV5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call thiss.fval-mem3(uiState2))' VC for getV5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for getV5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fval-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fval-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fval-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for get8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call thiss.fval-mem3(st@))' VC for get8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for get8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isCached5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isCached5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for valid5 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                       ║
+║ LazyNumericalRep.IncLazyL@incLazyPre1            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.012 ║
+║ LazyNumericalRep.IncLazyL@incLazyPre1            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.018 ║
+║ LazyNumericalRep.IncLazyL@incLazyPre1            postcondition                                                 ?:?  valid  U:smt-z3      0.137 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.019 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.021 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.014 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.119 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.022 ║
+║ LazyNumericalRep.Pay4                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.Pay4                            postcondition                                                 ?:?  valid  U:smt-z3      0.470 ║
+║ LazyNumericalRep.Pay4                            precond. (call schedMonotone4[<untyped>](st@, a188, rta ...)  ?:?  valid  U:smt-z3      0.205 ║
+║ LazyNumericalRep.Pay4                            precond. (call suffixZeroLemma4[<untyped>](q, head, rhe ...)  ?:?  valid  U:smt-z3      0.405 ║
+║ LazyNumericalRep.concUntilCompose4               tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.concUntilCompose4               tact (postcondition)                                          ?:?  valid  U:smt-z3      0.101 ║
+║ LazyNumericalRep.concUntilConcreteExten4         tact (match exhaustiveness)                                   ?:?  valid  U:smt-cvc4    0.009 ║
+║ LazyNumericalRep.concUntilConcreteExten4         tact (postcondition)                                          ?:?  valid  U:smt-z3      0.078 ║
+║ LazyNumericalRep.concUntilExtenLemma4            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ LazyNumericalRep.concUntilExtenLemma4            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.concUntilExtenLemma4            tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.014 ║
+║ LazyNumericalRep.concUntilExtenLemma4            tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.concUntilExtenLemma4            tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.009 ║
+║ LazyNumericalRep.concUntilExtenLemma4            tact (postcondition)                                          ?:?  valid  U:smt-z3      0.079 ║
+║ LazyNumericalRep.concUntilMonotone4              tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.concUntilMonotone4              tact (postcondition)                                          ?:?  valid  U:smt-z3      0.066 ║
+║ LazyNumericalRep.concreteMonotone4               tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.concreteMonotone4               tact (postcondition)                                          ?:?  valid  U:smt-z3      0.106 ║
+║ LazyNumericalRep.concreteUntil4                  match exhaustiveness                                          ?:?  valid  U:smt-z3      0.017 ║
+║ LazyNumericalRep.concreteUntil4                  postcondition                                                 ?:?  valid  U:smt-cvc4    0.021 ║
+║ LazyNumericalRep.concreteUntilIsSuffix4          tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.concreteUntilIsSuffix4          tact (postcondition)                                          ?:?  valid  U:smt-z3      0.077 ║
+║ LazyNumericalRep.concreteZeroPredLemma4          tact (match exhaustiveness)                                   ?:?  valid  U:smt-cvc4    0.009 ║
+║ LazyNumericalRep.concreteZeroPredLemma4          tact (postcondition)                                          ?:?  valid  U:smt-z3      0.078 ║
+║ LazyNumericalRep.emptyNum4                       postcondition                                                 ?:?  valid  U:smt-cvc4    0.013 ║
+║ LazyNumericalRep.firstDigit4                     match exhaustiveness                                          ?:?  valid  U:smt-z3      0.059 ║
+║ LazyNumericalRep.firstDigit4                     postcondition                                                 ?:?  valid  U:smt-z3      0.062 ║
+║ NumStream.fval-mem3                              match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.009 ║
+║ NumStream.fval-mem3                              match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ NumStream.fval-mem3                              postcondition                                                 ?:?  valid  U:smt-z3      0.093 ║
+║ NumStream.get8                                   match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.008 ║
+║ NumStream.get8                                   postcondition                                                 ?:?  valid  U:smt-z3      0.055 ║
+║ NumStream.get8                                   precond. (call thiss.fval-mem3(st@))                          ?:?  valid  U:smt-cvc4    0.009 ║
+║ NumStream.getV5                                  match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ NumStream.getV5                                  postcondition                                                 ?:?  valid  U:smt-z3      0.010 ║
+║ NumStream.getV5                                  precond. (call thiss.fval-mem3(uiState2))                     ?:?  valid  U:smt-z3      0.009 ║
+║ LazyNumericalRep.inc4                            match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.017 ║
+║ LazyNumericalRep.inc4                            postcondition                                                 ?:?  valid  U:smt-z3      0.452 ║
+║ LazyNumericalRep.inc4                            precond. (call incLazy4(xs, scr._2))                          ?:?  valid  U:smt-z3      0.145 ║
+║ LazyNumericalRep.incAndPay4                      match exhaustiveness                                          ?:?  valid  U:smt-z3      0.007 ║
+║ LazyNumericalRep.incAndPay4                      postcondition                                                 ?:?  valid  U:smt-z3      0.531 ║
+║ LazyNumericalRep.incAndPay4                      precond. (call Pay4[<untyped>](q, x$217._1._2, x$217._2 ...)  ?:?  valid  U:smt-z3      0.309 ║
+║ LazyNumericalRep.incAndPay4                      precond. (call incNum4(w, st@))                               ?:?  valid  U:smt-z3      0.052 ║
+║ LazyNumericalRep.incLazy4                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.incLazy4                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.021 ║
+║ LazyNumericalRep.incLazy4                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.021 ║
+║ LazyNumericalRep.incLazy4                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.018 ║
+║ LazyNumericalRep.incLazy4                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.086 ║
+║ LazyNumericalRep.incLazy4                        postcondition                                                 ?:?  valid  U:smt-z3      0.302 ║
+║ LazyNumericalRep.incLazyLemma4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ LazyNumericalRep.incLazyLemma4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ LazyNumericalRep.incLazyLemma4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.incLazyLemma4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.incLazyLemma4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.359 ║
+║ LazyNumericalRep.incLazyLemma4                   postcondition                                                 ?:?  valid  U:smt-z3      0.396 ║
+║ LazyNumericalRep.incLazyLemma4                   precond. (call incLazy4(xs, a181._2))                         ?:?  valid  U:smt-z3      0.288 ║
+║ LazyNumericalRep.incLazyLemma4                   precond. (call incLazyLemma4(rear, suf, st@))                 ?:?  valid  U:smt-z3      0.092 ║
+║ LazyNumericalRep.incNum4                         match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.incNum4                         match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ LazyNumericalRep.incNum4                         match exhaustiveness                                          ?:?  valid  U:smt-z3      0.019 ║
+║ LazyNumericalRep.incNum4                         match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.incNum4                         postcondition                                                 ?:?  valid  U:smt-cvc4    0.893 ║
+║ LazyNumericalRep.incNum4                         precond. (call inc4(w.digs, st@))                             ?:?  valid  U:smt-z3      0.092 ║
+║ LazyNumericalRep.incNum4                         precond. (call incLazyLemma4(w.digs, head, res94._2))         ?:?  valid  U:smt-z3      0.176 ║
+║ NumStream.isCached5                              match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ NumStream.isCached5                              postcondition                                                 ?:?  valid  U:smt-z3      0.009 ║
+║ LazyNumericalRep.isConcrete4                     match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.016 ║
+║ LazyNumericalRep.isConcrete4                     postcondition                                                 ?:?  valid  U:smt-cvc4    0.020 ║
+║ LazyNumericalRep.properSuffix4                   match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ LazyNumericalRep.properSuffix4                   postcondition                                                 ?:?  valid  U:smt-z3      0.094 ║
+║ LazyNumericalRep.properSuffix4                   precond. (call suffixDisequality4[<untyped>](l, suf))         ?:?  valid  U:smt-z3      0.076 ║
+║ LazyNumericalRep.pushUntilCarry4                 match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.pushUntilCarry4                 postcondition                                                 ?:?  valid  U:smt-z3      0.015 ║
+║ LazyNumericalRep.schedMonotone4                  match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.schedMonotone4                  match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.schedMonotone4                  postcondition                                                 ?:?  valid  U:smt-z3      0.171 ║
+║ LazyNumericalRep.schedMonotone4                  precond. (call schedMonotone4[<untyped>](st1, st2, tail ...)  ?:?  valid  U:smt-z3      0.165 ║
+║ LazyNumericalRep.schedulesProperty4              match exhaustiveness                                          ?:?  valid  U:smt-z3      0.018 ║
+║ LazyNumericalRep.schedulesProperty4              match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.schedulesProperty4              postcondition                                                 ?:?  valid  U:smt-cvc4    0.029 ║
+║ LazyNumericalRep.strongSchedsProp4               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.012 ║
+║ LazyNumericalRep.strongSchedsProp4               postcondition                                                 ?:?  valid  U:smt-z3      0.019 ║
+║ LazyNumericalRep.suffix4                         match exhaustiveness                                          ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.suffix4                         postcondition                                                 ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.suffixCompose4                  tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.suffixCompose4                  tact (postcondition)                                          ?:?  valid  U:smt-z3      0.162 ║
+║ LazyNumericalRep.suffixDisequality4              match exhaustiveness                                          ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.suffixDisequality4              postcondition                                                 ?:?  valid  U:smt-z3      0.128 ║
+║ LazyNumericalRep.suffixDisequality4              precond. (call suffixDisequality4[<untyped>](rear, sufR ...)  ?:?  valid  U:smt-z3      0.123 ║
+║ LazyNumericalRep.suffixTrans4                    match exhaustiveness                                          ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.suffixTrans4                    tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.009 ║
+║ LazyNumericalRep.suffixTrans4                    tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.suffixTrans4                    tact (postcondition)                                          ?:?  valid  U:smt-z3      0.098 ║
+║ LazyNumericalRep.suffixZeroLemma4                match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LazyNumericalRep.suffixZeroLemma4                match exhaustiveness                                          ?:?  valid  U:smt-z3      0.010 ║
+║ LazyNumericalRep.suffixZeroLemma4                postcondition                                                 ?:?  valid  U:smt-z3      0.141 ║
+║ LazyNumericalRep.suffixZeroLemma4                precond. (call suffixZeroLemma4[<untyped>](tail, suf, s ...)  ?:?  valid  U:smt-z3      0.116 ║
+║ Number.valid5                                    postcondition                                                 ?:?  valid  U:smt-cvc4    0.009 ║
+║ LazyNumericalRep.zeroPrecedesLazy4               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.024 ║
+║ LazyNumericalRep.zeroPrecedesLazy4               postcondition                                                 ?:?  valid  U:smt-cvc4    0.609 ║
+║ LazyNumericalRep.zeroPrecedesSuf4                match exhaustiveness                                          ?:?  valid  U:smt-cvc4    0.018 ║
+║ LazyNumericalRep.zeroPrecedesSuf4                postcondition                                                 ?:?  valid  U:smt-cvc4    0.030 ║
+║ LazyNumericalRep.zeroPredSufConcreteUntilLemma4  tact (match exhaustiveness)                                   ?:?  valid  U:smt-z3      0.011 ║
+║ LazyNumericalRep.zeroPredSufConcreteUntilLemma4  tact (postcondition)                                          ?:?  valid  U:smt-z3      0.104 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 113    valid: 113    invalid: 0      unknown 0                                                                                    9.298 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+instfuncs:  instFuncTypes: 
+[[34m  Info  [0m] - considering function incLazy-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: incLazy-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.023s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.057s
+[[34m  Info  [0m] Function: incLazy-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.061s
+[[34m  Info  [0m] Function: incLazy-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.006s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.425s
+[[34m  Info  [0m] Function: incLazy-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.016s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 + -27 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.495s
+[[34m  Info  [0m] Function: incLazy-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 + -30 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.054s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incLazy-time-->res96._2 + -29 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] - Found inductive invariant: incLazy-time --> time + BigInt(-29) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function fval-mem-time...
+[[34m  Info  [0m] - considering function get-time...
+[[34m  Info  [0m] - considering function inc-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -15 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 13
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -43 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.031s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 20
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.241s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -13 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.087s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -16 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: inc-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 13
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -44 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] inc-time-->x$129._2 + -43 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] - Found inductive invariant: inc-time --> time + BigInt(-43) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function incNum-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incNum-time-->res99._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: incNum-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incNum-time-->res99._2 + -58 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incNum-time-->res99._2 + -56 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: incNum-time --> time + BigInt(-56) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function Pay-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 13
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 13
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 13
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -52 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -51 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.051s
+[[34m  Info  [0m] Function: Pay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 20
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-time-->res97._2 + -52 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] - Found inductive invariant: Pay-time --> time + BigInt(-52) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function incAndPay-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incAndPay-time-->res98._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: incAndPay-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.007s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incAndPay-time-->res98._2 + -124 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] incAndPay-time-->res98._2 + -122 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: incAndPay-time --> time + BigInt(-122) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞═════════════════════════════════════════════╗
+║ └─────────┘                                             ║
+║ Pay-            time <= 52     0.777                    ║
+║ inc-            time <= 43     1.146                    ║
+║ incAndPay-      time <= 122    0.934                    ║
+║ incLazy-        time <= 29     2.652                    ║
+║ incNum-         time <= 56     0.271                    ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 5     inferred: 5     unknown: 0     time: 5.780 ║
+╚═════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: LazyNumericalRep-stats.txt

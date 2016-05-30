@@ -1,0 +1,95 @@
+Total-Verification-Time: 50.26s
+Total-VCs-Generated: 105
+Z3SolvedVCs: 85
+CVC4SolvedVCs: 20
+procs: 14
+VC-refinement: 23
+disjuncts: 83
+TotalVCCTime: 11.135s
+Total-AxiomChoose-Time: 0.019s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 1.065s
+UneliminatedEqualities: 138
+ElimTime: 0.152s
+Total-Choose-Time: 1.477s
+BinarySearchTime: 0.922s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 1013.4
+Max.CVC4-Time: 20268
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 352.84705882352944
+Max.Z3-Time: 29992
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 170.65217391304347
+Max.VC-size: 480
+Avg.UIF+ADT: 81.56521739130434
+Max.UIF+ADT: 206
+Avg.TemplateIds: 1.3043478260869565
+Max.TemplateIds: 2
+Avg.unflatSize: 19.17391304347826
+Max.unflatSize: 69
+Avg.UnflatTime: 0.008608695652173913s
+Max.UnflatTime: 0.039s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.13415662650602408s
+Max.VC-check-time: 3.617s
+Avg.CallADT-Constraints: 13.421686746987952
+Max.CallADT-Constraints: 89
+Avg.CtrsBeforeElim: 22.50602409638554
+Max.CtrsBeforeElim: 123
+Avg.EliminatedAtoms: 18.83132530120482
+Max.EliminatedAtoms: 107
+Avg.Param-Atoms: 0.7710843373493976
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 3.674698795180723
+Max.NonParam-Atoms: 16
+Avg.Disj-choosing-time: 0.017795180722891567s
+Max.Disj-choosing-time: 0.396s
+Avg.NLsize: 15.951807228915662
+Max.NLsize: 86
+Avg.NL-solving-time: 0.00591566265060241s
+Max.NL-solving-time: 0.035s
+########## Outputs ############
+Invariants for Function: takeLazy-time
+takeLazy-time --> time2 + BigInt(-19) <= BigInt(0)
+
+Invariants for Function: revAppend-time
+revAppend-time --> (BigInt(-17) * l138.size160 + time3) + BigInt(-2) <= BigInt(0)
+
+Invariants for Function: drop-time
+drop-time --> (BigInt(-18) * n29 + time4) + BigInt(-2) <= BigInt(0)
+
+Invariants for Function: take-time
+take-time --> (time5 + BigInt(-21) * n32) + BigInt(-3) <= BigInt(0)
+
+Invariants for Function: rotateRev-time
+rotateRev-time --> time6 + BigInt(-142) <= BigInt(0)
+
+Invariants for Function: rotateDrop-time
+rotateDrop-time --> time7 + BigInt(-189) <= BigInt(0)
+
+Invariants for Function: force-time
+force-time --> time8 + BigInt(-205) <= BigInt(0)
+
+Invariants for Function: forceTwice-time
+forceTwice-time --> time9 + BigInt(-841) <= BigInt(0)
+
+Invariants for Function: createQueue-time
+createQueue-time --> time10 + BigInt(-227) <= BigInt(0)
+
+Invariants for Function: cons-time
+cons-time --> time11 + BigInt(-656) <= BigInt(0)
+
+Invariants for Function: reverse-time
+reverse-time --> time12 + BigInt(-7) <= BigInt(0)
+
+Invariants for Function: tailSub-time
+tailSub-time --> time13 + BigInt(-1097) <= BigInt(0)
+
+Invariants for Function: tail-time
+tail-time --> time14 + BigInt(-1310) <= BigInt(0)
+
+

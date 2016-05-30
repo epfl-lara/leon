@@ -4,12 +4,13 @@
 #runlim -t 1800 ./leon --mem --benchmark --unrollfactor=5 ./testcases/lazy-datastructures/withOrb/LazyNumericalRep.scala  | tee LazyNumericalRep.out # in a few secs
 #runlim -t 1800 ./leon --mem --benchmark --unrollfactor=4 ./testcases/lazy-datastructures/withOrb/Deque.scala | tee Deque.out # takes ~ 2min
 runlim -t 1800 ./leon --mem --benchmark --unrollfactor=3 --vcTimeout=35 ./testcases/lazy-datastructures/withOrb/BottomUpMegeSort.scala | tee BottomUpMegeSort.out	# works in ~ 5 min, but a time bound of a function is manually provided
-runlim -t 1800 ./leon --mem --benchmark --unrollfactor=4 --vcTimeout=35 ./testcases/lazy-datastructures/withOrb/CyclicHammingStream.scala  | tee CyclicHammingStream.out # takes ~ 200s
+runlim -t 1800 ./leon --mem --benchmark --unrollfactor=4 --vcTimeout=10 ./testcases/lazy-datastructures/withOrb/CyclicHammingStream.scala  | tee CyclicHammingStream.out # takes ~ 200s
 #runlim -t 1800 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/Knapsack.scala  | tee Knapsack.out # a few seconds
 #runlim -t 1800 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/WeightedScheduling.scala | tee Sched.out # a few seconds
 #runlim -t 1800 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/LongestCommonSubsequence.scala  | tee LongestCommonSubsequence.out # a few seconds
 #runlim -t 1800 ./leon --mem --benchmark --unrollfactor=4 ./testcases/lazy-datastructures/withOrb/PackratParsing.scala  | tee PackratParsing.out # ~ 1min
 #runlim -t 1800 ./leon --mem --benchmark --unrollfactor=3 ./testcases/lazy-datastructures/withOrb/HammingMemoized.scala | tee HammingMemoized.out   # may take up to 1000s need to optimize
 #runlim -t 1800 ./leon --mem --benchmark ./testcases/lazy-datastructures/withOrb/Haskell-Library/StreamLibrary.scala ./testcases/lazy-datastructures/withOrb/Haskell-Library/LibraryClient.scala | tee StreamLibrary.out
+>>>>>>> dde20f9d4fdccb4286056581521f5cd7ebe3233c
 #./leon --mem --benchmark ./testcases/lazy-datastructures/conc/Conqueue.scala --unfoldFactor=3 | tee Conqueue.out
 

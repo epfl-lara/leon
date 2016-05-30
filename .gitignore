@@ -63,3 +63,7 @@ out-classes
 /scalaz3.lib
 /vcomp100.dll
 /z3.exe
+
+# results
+./libtest/results/*
+

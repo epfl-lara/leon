@@ -399,8 +399,9 @@ object ExprInstrumenter {
   }
   lazy val updateFun = {
     val tparam = TypeParameter.fresh("T")
-    new FunDef(FreshIdentifier("update", Untyped), Seq(TypeParameterDef(tparam)),
+    val ufun = new FunDef(FreshIdentifier("update", Untyped), Seq(TypeParameterDef(tparam)),
       Seq(ValDef(FreshIdentifier("args", anyList.typed)), ValDef(FreshIdentifier("res", tparam))), tparam)
+    ufun
   }
 
   // In the following methods, we use the globalId of the identifier of a function

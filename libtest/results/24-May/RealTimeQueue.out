@@ -1,0 +1,12 @@
+[[33mWarning [0m] warning: there were 5 feature warnings; re-run with -feature for details
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+Warning: Cannot find a non-placeholder in equivalence class Set(P@12) for fundef: 
+ def new@tStreamT00[T11, P@12](cc0 : tStreamT0@0[T11], st@9 : Set[MemoFuns@0[P@12]]): tStreamT0@0[T11] = cc0
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+instfuncs: eval@tStreamT0@,enqueue,dequeue,rotate,tail-mem instFuncTypes: 
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out

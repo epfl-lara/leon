@@ -10,7 +10,7 @@ fork in run := true
 
 //unmanagedJars in Compile += file("lib/macmemo.jar")
 
-javaOptions in run ++= Seq("-Xmx5G", "-Xms3G", "-Xss500M")
+javaOptions in run ++= Seq("-Xmx10G", "-Xms3G", "-Xss500M")
 
 //scalacOptions ++= Seq("-optimise")
 

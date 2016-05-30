@@ -2,6 +2,7 @@ package leon
 package laziness
 
 import invariant.util._
+
 import invariant.structure.FunctionUtils._
 import purescala.ScalaPrinter
 import purescala.Definitions._
@@ -12,6 +13,7 @@ import HOMemVerificationPhase._
 import utils._
 import java.io._
 import invariant.engine.InferenceReport
+import transformations._
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  * TODO: pull all ands and ors up so that  there are not nested ands/ors
@@ -98,8 +100,11 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
     // instrument the program for resources (note: we avoid checking preconditions again here)
     val instrumenter = new MemInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory, funsManager)
     val instProg = instrumenter.apply
-    if (dumpInstrumentedProgram)
+    if (dumpInstrumentedProgram) {
+      val runnProg = RunnableCodePhase.apply(ctx, instProg)
+      prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
+    }
     (progWOInstSpecs, instProg)
   }
 

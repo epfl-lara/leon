@@ -449,11 +449,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     case finv @ FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) =>
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
-          //println("handling function call: "+finv+" new args: "+nargs)
+          val (flatArgs, letCons) = flattenArgs(nargs) // note: this is necessary to prevent measuring time of arguments twice.
+          //println("handling function call: "+finv+" new args: "+nargs+" flatArgs: "+flatArgs)
           val stArgs = if (funsNeedStates(fd)) st.toSeq else Seq()
           val stparams = if (funsNeedStateTps(fd)) stTparams else Seq()
-          val invoke = FunctionInvocation(TypedFunDef(funMap(fd), targs ++ stparams), nargs ++ stArgs)
-          val invokeRes = FreshIdentifier("dres", invoke.getType)
+          val invoke = FunctionInvocation(TypedFunDef(funMap(fd), targs ++ stparams), flatArgs ++ stArgs)
+          val invokeRes = FreshIdentifier("dres", invoke.getType, true)
           //println(s"invoking function $targetFun with args $args")
           val (valPart, currState) =
             if (funsRetStates(fd)) {
@@ -462,9 +463,9 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               (invokeRes.toVariable, st.get) // st should be defined here
             }
           // create a memo closure to mark that the function invocation has been memoized
-          val cc = CaseClass(CaseClassType(closureFactory.memoClasses(fd), stTparams), nargs)
+          val cc = CaseClass(CaseClassType(closureFactory.memoClasses(fd), stTparams), flatArgs)
           val stPart = closureFactory.stateUpdate(cc, currState)
-          Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
+          letCons(Let(invokeRes, invoke, Tuple(Seq(valPart, stPart))))
         }, true))
 
     // Rest: usual language constructs
@@ -630,8 +631,9 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               Tuple(Seq(nbody, stateParam.get))
             else
               nbody
+          //println(s"Body of ${fd.id.name} after conversion:  ${rawBody}")
           nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
-          //println(s"Body of ${fd.id.name} after conversion&simp:  ${nfd.body}")
+
         }
 
         // Important: specifications use memoized semantics but their state changes are ignored after their execution.
