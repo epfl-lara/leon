@@ -9,9 +9,12 @@ import purescala.Extractors._
 import HOMemUtil._
 import ProgramUtil._
 import invariant.datastructure._
+import purescala.Types._
 
 class FunctionsManager(p: Program) {
 
+  val debug = false
+  implicit val prog = p
   /**
    * The call-graph includes only static calls. Indirect calls are anyway treated conservatively based on their types.
    * The graph includes calls made through the specs.
@@ -23,7 +26,7 @@ class FunctionsManager(p: Program) {
   case class WithState() extends Label
   case class Lamb() extends Label
   case class LambWoPre() extends Label
-  case class None() extends Label
+  case class NoLabel() extends Label
 
   val cg = {
     val dg = new DirectedLabeledGraph[FunDef, Label] with CallGraph {} // the labels denote whether a call is made through `star` or not
@@ -52,7 +55,7 @@ class FunctionsManager(p: Program) {
               rec(l)(e)
             case Lambda(_, body) =>
               body match {
-                case FunctionInvocation(tfd, _)  if tfd.fd.hasPrecondition =>
+                case FunctionInvocation(tfd, _) if tfd.fd.hasPrecondition =>
                   rec(Lamb())(body)
                 case FunctionInvocation(tfd, _) =>
                   rec(LambWoPre())(body)
@@ -61,12 +64,49 @@ class FunctionsManager(p: Program) {
               }
             case Operator(args, _) => args map rec(l)
           }
-          rec(None())(body)
+          rec(NoLabel())(body)
       }
     }
     dg
   }
 
+  /**
+   * all lambdas in the program
+   */
+  val lambdasList = userLevelFunctions(p).flatMap {
+    case fd if fd.hasBody =>
+      def rec(e: Expr): Seq[Lambda] = e match {
+        case finv: FunctionInvocation if isIsFun(finv)(prog) => Seq() //skip
+        case finv: FunctionInvocation if isFunMatch(finv)(prog) => Seq() //skip
+        case l: Lambda => Seq(l)
+        case Operator(args, _) => args flatMap rec
+      }
+      rec(fd.body.get)
+    case _ => Seq[Lambda]()
+  }.distinct
+
+  val paramFunTypes = (userLevelFunctions(p) ++ userLevelClasses(p)).flatMap { d =>
+    val params = d match {
+      case cd: ClassDef => cd.fields
+      case fd: FunDef   => fd.params
+    }
+    params.collect {
+      case vd if vd.getType.isInstanceOf[FunctionType] => vd.getType.asInstanceOf[FunctionType]
+    }
+  }.distinct
+
+  val funTypesInProgram = (paramFunTypes ++ lambdasList.map(_.getType.asInstanceOf[FunctionType])).distinct
+
+  val memoFuns = p.definedFunctions.collect {
+    case fd if fd.hasBody && isMemoized(fd) => fd
+  }.distinct
+
+  if (debug) {
+    println("Function types passed as parameters: \n" + paramFunTypes.mkString("\n"))
+    println("Lambda terms found: \n" + lambdasList.mkString("\n"))
+    println("Memoized fundefs found: \n" + memoFuns.map(_.id).mkString("\n"))
+
+  }
   /*
    * Lambdas need not be a part of read roots, because its body needs state, the function creating lambda will be
    * marked as needing state.
@@ -77,7 +117,7 @@ class FunctionsManager(p: Program) {
     var readRoots = Set[FunDef]()
     var updateRoots = Set[FunDef]()
     userLevelFunctions(p).foreach { fd =>
-      if(fd.params.exists(vd => isFunSetType(vd.getType)(p))) // functions that use `stateType` args need `stateParams`
+      if (fd.params.exists(vd => isFunSetType(vd.getType)(p))) // functions that use `stateType` args need `stateParams`
         needTargsRoots += fd
       fd.fullBody match {
         case NoTree(_) =>
@@ -119,7 +159,7 @@ class FunctionsManager(p: Program) {
     }
     //println("Original sucessors of concrete: "+cg.succsWithLabels(node).map{ case (fd, lbs) => fd.id +" label: "+lbs.mkString(",")}.mkString("\n"))
     // `updateCallers` are all functions that transitively call `updateRoots` only through edges labeled `None`
-    val updatefuns = cg.projectOnLabel(None()).reverse.BFSReachables(updateRoots.toSeq)
+    val updatefuns = cg.projectOnLabel(NoLabel()).reverse.BFSReachables(updateRoots.toSeq)
     // `readfuns` are all functions that transitively call `readRoots` not through edges labeled `withState` or `Star`
     val readfuns = cg.removeEdgesWithLabels(Set(WithState(), Star(), LambWoPre())).reverse.BFSReachables(readRoots.toSeq)
     // all functions that call `star` no matter what
