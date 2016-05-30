@@ -3,7 +3,7 @@ import re
 
 fileName = sys.argv[1]
 f = open("../leon.out/" + fileName, "r")
-fw = open("src/main/scala/benchmark/" + fileName, "w")
+fw = open("../leon.out/runnablescript/" + fileName, "w")
 d = f.readlines()
 f.close()
 

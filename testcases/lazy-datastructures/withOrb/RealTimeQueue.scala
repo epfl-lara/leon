@@ -64,7 +64,7 @@ object RealTimeQueue {
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  @invisibleBody
+  // @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>

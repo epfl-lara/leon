@@ -15,7 +15,7 @@ object FibMem {
   case class Cons(x : BigInt, tail : IList) extends IList
   
   case class Nil() extends IList
-  
+
   @memoize
   def fibRectime(n : BigInt): (BigInt, BigInt) = {
     val bd = if (n <= BigInt(2)) {
@@ -41,7 +41,7 @@ object FibMem {
     }
     (bd._1, bd._2)
   }
-
+  
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
@@ -58,7 +58,7 @@ object FibMem {
           fibRectime(input)._2
         }
       }
-      orb :+= {() => 10 * i + 2}
+      orb :+= {() => 9 * i + 2}
     }
     plot(size, ops, orb, "fibmem", "orb")
 

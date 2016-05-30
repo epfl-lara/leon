@@ -116,5 +116,26 @@ plot \\
 		plotout.close()
 
 		val result = s"gnuplot results/plot${function}.gnu" !!
-	}	
+	}
+
+	def dumplogdata(testSize: scalaList[Int], ops: List[() => BigInt], orb: List[() => BigInt], function: String, orbOrInst: String) {
+
+	val orbstream = new FileWriter(s"results/${orbOrInst}${function}.data")
+    val orbout = new BufferedWriter(orbstream)
+		var j = 0
+		for(i <- testSize) {
+		  orbout.write(s"${log(i.doubleValue)/log(2)} ${orb(j)()}\n")
+		  j = j + 1
+		}
+    orbout.close()
+
+    val opsstream = new FileWriter(s"results/ops${function}.data")
+    val opsout = new BufferedWriter(opsstream)
+    j = 0
+		for(i <- testSize) {
+		  opsout.write(s"${scala.math.log(i.doubleValue)/scala.math.log(2)} ${ops(j)()}\n")
+		  j = j + 1
+		}
+		opsout.close()
+	}
 }

@@ -11,5 +11,5 @@ set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
 
 set output "results/instVsActualenqueue.jpg"
 plot \
-"<(sed -n '1,16p' results/instenqueue.data)" using 1:2 t'inst' with linespoints, \
-"<(sed -n '1,16p' results/opsenqueue.data)" using 1:2 t'oper' with linespoints, 
+"<(sed -n '1,11p' results/instenqueue.data)" using 1:2 t'inst' with linespoints, \
+"<(sed -n '1,11p' results/opsenqueue.data)" using 1:2 t'oper' with linespoints, 
