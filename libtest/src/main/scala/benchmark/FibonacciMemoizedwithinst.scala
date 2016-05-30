@@ -17,37 +17,41 @@ object FibMem0 {
   
   case class Nil0() extends IList0
   
-  def fibRecmemtime0(n6 : BigInt, st1 : Set[MemoFuns0]): ((BigInt, Set[MemoFuns0]), BigInt) = {
-    val v6 = if(lookup(101, n6)) 
-	(((get(101, n6), st1), BigInt(1))
-	else { 
- 		val bd0 = if (n6 <= BigInt(2)) {
-      ((BigInt(1), st1), BigInt(2))
+  def fibRecmemtime0(n6 : BigInt): (BigInt, BigInt) = {
+    val bd0 = if (n6 <= BigInt(2)) {
+      (BigInt(1), BigInt(2))
     } else {
-	      val e48 = n6 - BigInt(1)
-	      val e20 = fibRecmemtime0(e48, st1)
-	      val e50 = e20._1
-	      val e52 = n6 - BigInt(2)
-	      val e62 = e50._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(1)))
-	      val e32 = fibRecmemtime0(e52, e62)
-	      val e64 = e32._1
-	      ((e50._1 + e64._1, e64._2 ++ Set[MemoFuns0](FibRecMem(n6 - BigInt(2)))), (BigInt(6) + (if (e62.contains(FibRecMem(e52))) {
-		BigInt(1)
-	      } else {
-		BigInt(4) + e32._2
-	      })) + (if (st1.contains(FibRecMem(e48))) {
-		BigInt(1)
-	      } else {
-		BigInt(3) + e20._2
-	      }))
-	    }
-	    (bd0._1, bd0._2)
-	}
+      val ir4 = n6 - BigInt(1)
+      var opers = BigInt(0)
+      var temp = (BigInt(0), BigInt(0))
+      var res = BigInt(0)
+      if(lookup[BigInt](List(1896, ir4))._1) {
+        val e20 = lookup[BigInt](List(1896, ir4))._2
+        res = res + e20
+        opers = opers + BigInt(1)
+      } else {
+        temp = fibRecmemtime0(ir4)
+        val e20 = temp._1
+        res = res + e20
+        opers = opers + BigInt(3) + temp._2
+        update[BigInt](List(1896, ir4), e20)
+      }
+      val ir8 = n6 - BigInt(2)
+      if(lookup[BigInt](List(1896, ir8))._1) {
+        val e48 = lookup[BigInt](List(1896, ir8))._2
+        res = res + e48
+        opers = opers + BigInt(1)
+      } else {
+        temp = fibRecmemtime0(ir8)
+        val e48 = temp._1
+        res = res + e48
+        opers = opers + BigInt(3) + temp._2
+        update[BigInt](List(1896, ir8), e48)
+      }
+      (res, BigInt(5) + opers)
+    }
+    (bd0._1, bd0._2)
   }
-  
-  abstract class MemoFuns0
-  
-  case class FibRecMem(n5 : BigInt) extends MemoFuns0
   ////////////////////////////////////////
 
   abstract class IList
@@ -81,12 +85,13 @@ object FibMem0 {
     }
     (bd._1, bd._2)
   }
+  
 
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
 
-    val points = (10 to 200 by 10) // can change this
+    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
     val size = points.map(x => BigInt(x)).toList
     
     var ops = List[() => BigInt]()
@@ -99,7 +104,8 @@ object FibMem0 {
         }
       }
       inst :+= {() => 
-          fibRecmemtime0(input, Set[MemoFuns0]())._2
+          leon.mem.clearMemo()
+          fibRecmemtime0(input)._2
       }
     }
     plot(size, ops, inst, "fibmem", "inst")
