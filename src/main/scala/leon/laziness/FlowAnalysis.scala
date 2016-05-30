@@ -10,27 +10,33 @@ import HOMemUtil._
 import ProgramUtil._
 import invariant.datastructure._
 import purescala.Types._
+import purescala.TypeOps._
 
 /**
- * Performs type-level analysis to know which types have their targets 
- * completely within scope. 
+ * Performs type-level analysis to know which types have their targets
+ * completely within scope.
  * TODO: we can extend this with more sophisticated control-flow analysis
  */
 class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
-  
-  val escapingTypes = p.units.filter(_.isMainUnit).flatMap{ md =>
-    val privateFieldTypes = 
-      md.definedClasses.flatMap{ 
-      //case cd : ClassDef => cd.fields. 
-      
+
+  def isPrivate(d: Definition) = {
+    val annots = d match {
+      case cd: ClassDef => cd.annotations.toSeq
+      case fd: FunDef   => fd.annotations.toSeq
+      case _            => Seq()
     }
-    val rootEscapingTypes = (p.definedClasses ++ p.definedFunctions).flatMap { d =>
-      val params = d match {
-        case cd: ClassDef => cd.fields
-        case fd: FunDef   => fd.params
-      }
+    annots.contains("Private")
+  }
+  val escapingTypes = p.units.filter(_.isMainUnit).flatMap { md =>
+    // fields and parameters of public classes and methods are accessible from outside, others are not
+    (p.definedClasses ++ p.definedFunctions).flatMap {
+      case cd: ClassDef if !isPrivate(cd) => cd.typed +: cd.fields.map(_.getType)
+      case fd: FunDef if !isPrivate(fd)   => fd.params.map(_.getType)
     }
   }
-  
-  def isEscapingType(t: FunctionType) = true    
+
+  /**
+   * A function type escapes if it is a **super type** of an escaping type
+   */
+  def isEscapingType(ft: FunctionType) = escapingTypes.exists{ escType => isSubtypeOf(escType, ft)  }
 }

@@ -64,7 +64,7 @@ object RealTimeQueue {
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  @invisibleBody
+  //@invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
@@ -125,7 +125,7 @@ object RealTimeQueue {
     require(!q.isEmpty && q.valid)
     q.f match {
       case c@SCons(x, _) =>
-        createQ(c.tail, q.r, q.s)
+        //createQ(c.tail, q.r, q.s)
     }
   } ensuring{res =>
     funeMonotone(q.f, q.s, inState[T], outState[T]) &&

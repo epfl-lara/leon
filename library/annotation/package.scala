@@ -19,6 +19,8 @@ package object annotation {
   class inline     extends StaticAnnotation
   @ignore
   class internal   extends StaticAnnotation
+  @ignore
+  class Private extends StaticAnnotation // a private annotation until leon supports access modifiers.
 
   // Orb annotations
   @ignore

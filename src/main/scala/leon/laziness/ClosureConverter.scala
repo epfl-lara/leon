@@ -9,6 +9,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import transformations._
 import leon.invariant.util.TypeUtil._
 import HOMemUtil._
 import ProgramUtil._
@@ -467,6 +468,16 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           val stPart = closureFactory.stateUpdate(cc, currState)
           letCons(Let(invokeRes, invoke, Tuple(Seq(valPart, stPart))))
         }, true))
+
+    // (i) handle inst calls with arguments specially.
+    // Time is assumed to ignore state always
+    case finv @ FunctionInvocation(tfd, argFun) if InstUtil.instCall(finv).isDefined =>
+      ((st: Option[Expr]) => {
+        argFun match {
+          case Seq() => finv
+          case Seq(finv) => FunctionInvocation(tfd, Seq(mapExpr(finv)._1(st)))
+        }
+      }, false)
 
     // Rest: usual language constructs
     case finv @ FunctionInvocation(TypedFunDef(fd, targs), args) if funMap.contains(fd) =>
