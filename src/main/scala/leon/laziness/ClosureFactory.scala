@@ -21,45 +21,7 @@ import ProgramUtil._
  * TODO: Make finiteness an annotation, and add support for automatically verifying it.
  */
 class ClosureFactory(p: Program, funsManager: FunctionsManager) {
-  val debug = false
-  implicit val prog = p
-
-  /**
-   * all lambdas in the program
-   */
-  val lambdasList = userLevelFunctions(p).flatMap {
-    case fd if fd.hasBody =>
-      def rec(e: Expr): Seq[Lambda] = e match {
-        case finv: FunctionInvocation if isIsFun(finv)(prog) =>  Seq() //skip
-        case finv: FunctionInvocation if isFunMatch(finv)(prog) => Seq() //skip
-        case l: Lambda => Seq(l)
-        case Operator(args, _) => args flatMap rec
-      }
-      rec(fd.body.get)
-    case _ => Seq[Lambda]()
-  }.distinct
-
-  val paramFunTypes = (userLevelFunctions(p) ++ userLevelClasses(p)).flatMap { d =>
-    val params = d match {
-      case cd : ClassDef => cd.fields
-      case fd : FunDef => fd.params
-    }
-    params.collect {
-      case vd if vd.getType.isInstanceOf[FunctionType] => vd.getType.asInstanceOf[FunctionType]
-    }
-  }.distinct
-  
-  val funTypesInProgram = (paramFunTypes ++ lambdasList.map(_.getType.asInstanceOf[FunctionType])).distinct
-
-  val memoFuns = p.definedFunctions.collect {
-    case fd if fd.hasBody && isMemoized(fd) => fd
-  }.distinct
-
-  if (debug) {
-    println("Function types passed as parameters: \n" + paramFunTypes.mkString("\n"))
-    println("Lambda terms found: \n" + lambdasList.mkString("\n"))    
-    println("Memoized fundefs found: \n" + memoFuns.map(_.id).mkString("\n"))
-  }
+  val debug = false  
 
   def createAbstractClass(tpename: String, tparamCount: Int): AbstractClassDef = {
     val absTParams = (1 to tparamCount).map(i => TypeParameterDef(TypeParameter.fresh("T" + i)))
@@ -76,6 +38,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     cdef
   }
 
+  import funsManager._
   /**
    * Create an abstract class to represent memoized functions
    * Type parameters of the abstract class are a superset of type parameters of all the function

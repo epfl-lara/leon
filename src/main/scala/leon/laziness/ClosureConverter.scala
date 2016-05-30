@@ -157,7 +157,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       } :+ ValDef(FreshIdentifier("st", stType))
       val retTypeWithState = TupleType(Seq(closureFactory.replaceClosureTypes(retTp), stType))
       // the type parameters will be unified later
-      val nfd = new FunDef(FreshIdentifier("unknownF"),
+      val nfd = new FunDef(FreshIdentifier("u"+tname),
         (getTypeParameters(ft) ++ stTparams) map TypeParameterDef,
         params, retTypeWithState)
       (tname -> nfd)
