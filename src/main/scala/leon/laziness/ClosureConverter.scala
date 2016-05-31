@@ -761,7 +761,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         MatchCase(pattern, None, rhs)
       }
       // create a default case to match other cases (esp. the unknown external function)
-      val defaultRhs = if (stateUpdatingTypes(tname)) {
+      val defaultRhs = if (escapingTypes(tname)) {
         val stateParam = evalfd.params.collectFirst { case vd if isStateParam(vd.id) => vd.id.toVariable }
         SubsetOf(stateParam.get, TupleSelect(postres.toVariable, 2))
       } else Util.tru

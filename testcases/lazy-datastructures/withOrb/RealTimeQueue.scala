@@ -35,8 +35,8 @@ object RealTimeQueue {
     }
   }
   // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
-  case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
-  case class SNil[T]() extends Stream[T]
+  private case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
+  private case class SNil[T]() extends Stream[T]
 
   def isConcrete[T](l: Stream[T]): Boolean = {
     l match {
@@ -64,7 +64,7 @@ object RealTimeQueue {
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  //@invisibleBody
+  // @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
@@ -125,7 +125,7 @@ object RealTimeQueue {
     require(!q.isEmpty && q.valid)
     q.f match {
       case c@SCons(x, _) =>
-        //createQ(c.tail, q.r, q.s)
+        createQ(c.tail, q.r, q.s)
     }
   } ensuring{res =>
     funeMonotone(q.f, q.s, inState[T], outState[T]) &&

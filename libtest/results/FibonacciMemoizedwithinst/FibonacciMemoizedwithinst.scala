@@ -21,37 +21,41 @@ object FibMem0 {
     val bd0 = if (n6 <= BigInt(2)) {
       (BigInt(1), BigInt(2))
     } else {
-      val ir4 = n6 - BigInt(1)
+      val e48 = n6 - BigInt(1)
       var opers = BigInt(0)
       var temp = (BigInt(0), BigInt(0))
       var res = BigInt(0)
-      if(lookup[BigInt](List(1896, ir4))._1) {
-        val e20 = lookup[BigInt](List(1896, ir4))._2
+      if(lookup[BigInt](List(1896, e48))._1) {
+        val e20 = lookup[BigInt](List(1896, e48))._2
         res = res + e20
         opers = opers + BigInt(1)
       } else {
-        temp = fibRecmemtime0(ir4)
+        temp = fibRecmemtime0(e48)
         val e20 = temp._1
         res = res + e20
         opers = opers + BigInt(3) + temp._2
-        update[BigInt](List(1896, ir4), e20)
+        update[BigInt](List(1896, e48), e20)
       }
-      val ir8 = n6 - BigInt(2)
-      if(lookup[BigInt](List(1896, ir8))._1) {
-        val e48 = lookup[BigInt](List(1896, ir8))._2
-        res = res + e48
+      val e52 = n6 - BigInt(2)
+      if(lookup[BigInt](List(1896, e52))._1) {
+        val e32 = lookup[BigInt](List(1896, e52))._2
+        res = res + e32
         opers = opers + BigInt(1)
       } else {
-        temp = fibRecmemtime0(ir8)
-        val e48 = temp._1
-        res = res + e48
-        opers = opers + BigInt(3) + temp._2
-        update[BigInt](List(1896, ir8), e48)
+        temp = fibRecmemtime0(e52)
+        val e32 = temp._1
+        res = res + e32
+        opers = opers + BigInt(4) + temp._2
+        update[BigInt](List(1896, e52), e32)
       }
-      (res, BigInt(5) + opers)
+      (res, opers)
     }
     (bd0._1, bd0._2)
   }
+  
+  abstract class MemoFuns0
+  
+  case class FibRecMem(n5 : BigInt) extends MemoFuns0
   ////////////////////////////////////////
 
   abstract class IList
@@ -85,13 +89,12 @@ object FibMem0 {
     }
     (bd._1, bd._2)
   }
-  
 
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
 
-    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
+    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000) // can change this
     val size = points.map(x => BigInt(x)).toList
     
     var ops = List[() => BigInt]()

@@ -34,9 +34,6 @@ class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
       case _ => Seq()
     }
   }
-  // for debugging
-  //println("Escaping types: "+escapingTypes)
-
   /**
    * A function type escapes if it is a **super type** of an escaping type
    */

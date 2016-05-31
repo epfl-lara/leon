@@ -46,21 +46,21 @@ object MergeAndHammingNumbers {
       }
     }
   }
-  case class Val(x: SCons) extends ValOrSusp
-  case class Susp(fun: () => SCons) extends ValOrSusp
+  private case class Val(x: SCons) extends ValOrSusp
+  private case class Susp(fun: () => SCons) extends ValOrSusp
 
   /**
    * A generic lazy higher-order `map` function
    */
   @invisibleBody
-  def map(f: BigInt => BigInt, xs: SCons): SCons = {
+  private def map(f: BigInt => BigInt, xs: SCons): SCons = {
     xs match {
       case SCons(x, _) =>
         SCons(f(x), Susp(() => mapSusp(f, xs)))
     }
   } ensuring(time <= ?) // Orb result: 11
 
-  def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
+  private def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
     map(f, xs.tail)
   }
 
@@ -71,7 +71,6 @@ object MergeAndHammingNumbers {
       if(y <= z) y else z
   }
 
-  
   /**
    * A three way merge function
    */
@@ -80,7 +79,7 @@ object MergeAndHammingNumbers {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
   } ensuring (_ => time <= ?)  // Orb result: 11
-  
+
   @invisibleBody
   def force(a: SCons) = {
     a.tail

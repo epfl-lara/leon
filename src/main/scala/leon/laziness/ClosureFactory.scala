@@ -128,17 +128,13 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     var opToAdt = Map[CanonLambda, CaseClassDef]()
     var stateUpdatingTypes = Set[String]()
     var stateNeedingTypes = Set[String]()
+    var escapingTypes = Set[String]()
     val tpeToADT = tpeToLambda map { case (tpename, (ft, lambdas)) => // we create a closure for each lambda and a closure to represent an uninterpreted argument
         val absClass = tpeToAbsClass(tpename)._2
         // create a case class for every lambda (but share them if they invoke the same function with same captured vars)
         val canonLambdas = lambdas.map(l => new CanonLambda(l)).distinct
         val cdefs = canonLambdas map (cl => cl.l match {
           case l@Lambda(_, FunctionInvocation(TypedFunDef(target, _), _)) =>
-            // collect some info about the traget
-            /*if(funsNeedStates(target))
-              stateNeedingTypes += tpename
-            if(funsRetStates(target))
-              stateUpdatingTypes += tpename*/
             // build closure for the target
             val fieldIds = capturedVars(l)
             val cdef = createCaseClass(target.id.name + "L", absClass, createFields(fieldIds))
@@ -153,6 +149,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
         val ucase = if (typeAnalysis.isEscapingType(ft)) {
           stateNeedingTypes += tpename
           stateUpdatingTypes += tpename
+          escapingTypes += tpename
           val unknownCase = createCaseClass("U" + tpename, absClass, Seq())
           absClass.registerChild(unknownCase)
           Some(unknownCase)
@@ -175,10 +172,12 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     /*tpeToADT.foreach {
       case (k, v) => println(s"$k --> ${ (v._2 +: v._3).mkString("\n\t") }")
     }*/
-    (tpeToADT, opToAdt, memoClasses, stateNeedingTypes, stateUpdatingTypes)
+    (tpeToADT, opToAdt, memoClasses, stateNeedingTypes, stateUpdatingTypes, escapingTypes)
   }
 
-  val (tpeToADT, opToCaseClass, memoClasses, stateNeedingTypes, stateUpdatingTypes) = closuresForOps
+  val (tpeToADT, opToCaseClass, memoClasses, stateNeedingTypes, stateUpdatingTypes, escapingTypes) = closuresForOps
+  println("Escaping types: "+escapingTypes.mkString(",")+"\n")
+
   val closureTypeNames = tpeToADT.keys.toSeq   // this fixes an ordering on clsoure types
   val canonLambdas = opToCaseClass.keySet
   val allClosuresAndParents: Seq[ClassDef] = tpeToADT.values.flatMap(v => (v._2 +: v._3) ++ v._4.toSeq).toSeq
