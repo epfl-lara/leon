@@ -236,6 +236,17 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |        "Config: pushed 0 "
     |    }
     |  }
+    |  
+    |  case class MultipleConfig(i: Int, next: Option[MultipleConfig])
+    |  
+    |  def multipleConfigToString(m: MultipleConfig): String = {
+    |    ???[String]
+    |  } ensuring {
+    |    (res: String) => (m, res) passes {
+    |      case MultipleConfig(0, None()) => "MultipleConfig: 0"
+    |      case MultipleConfig(0, Some(MultipleConfig(1, None()))) => "MultipleConfig: 0\nMultipleConfig: 1"
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
 
@@ -340,6 +351,8 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object ThreadConfig extends CCBuilder("ThreadConfig")
     
     lazy val doubleOptionToString = method("doubleOptionToString")
+    object MultipleConfig  extends CCBuilder("MultipleConfig")
+    lazy val multipleConfigToString = method("multipleConfigToString")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -452,5 +465,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     synthesizeAndTest("doubleOptionToString",
       Seq(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2))) -> "Config: pushed 1 pulled 2"
     )
+  }
+  
+  test("reuse of the same function twice should work") { case (ctx, program) =>
+    synthesizeAndAbstractTest("multipleConfigToString"){ (fd: FunDef, program: Program) =>
+      val numOfMultipleConfig = program.definedFunctions.map(fd => ExprOps.fold[Int]{ case (StringLiteral("MultipleConfig: "), _) => 1 case (e, children) => children.sum }(fd.fullBody)).reduce(_ + _)
+      numOfMultipleConfig should equal(1)
+      Seq()
+    }
   }
 }

@@ -144,7 +144,7 @@ case object StringRender extends Rule("StringRender") {
   
   /** Returns a stream of assignments compatible with input/output examples for the given template */
   def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
-
+    //println(s"finding assignments in program\n$p")
     val e = new AbstractEvaluator(hctx, p)
     
     @tailrec def gatherEquations(s: List[InOutExample], acc: ListBuffer[Equation] = ListBuffer()): Option[SProblem] = s match {
@@ -183,6 +183,7 @@ case object StringRender extends Rule("StringRender") {
           None 
         }
     }
+   
     gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList) match {
       case Some(problem) =>
         StringSolver.solve(problem)
@@ -559,7 +560,7 @@ case object StringRender extends Rule("StringRender") {
         val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
           val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
           //println("Function found: " + fd + "\n" + bodies)
-          (fd, bodies)
+          (fd, bodies/*.map{ b => println("Testing another body for " + fd.id.name + "\n" + b); b}*/)
         }
         
         val inputExprs = grammar.startNonTerminals.zipWithIndex.map{ case (childNt, childIndex) =>
@@ -605,7 +606,7 @@ case object StringRender extends Rule("StringRender") {
     protected def customPrettyPrinters(inputType: TypeTree)(implicit hctx: SearchContext): List[Expr => WithIds[Expr]] = {
       val exprs1s: Stream[(Lambda, Expr => WithIds[Expr])] = (new SelfPrettyPrinter)
         .allowFunction(hctx.functionContext)
-        //.excludeFunction(hctx.functionContext)
+        .excludeFunction(hctx.functionContext)
         .withPossibleParameters.prettyPrintersForType(inputType)(hctx, hctx.program)
         .map{ case (l, identifiers) => (l, (input: Expr) => (application(l, Seq(input)), identifiers)) } // Use already pre-defined pretty printers.
       exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
