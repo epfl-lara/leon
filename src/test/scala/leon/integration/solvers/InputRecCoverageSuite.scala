@@ -107,8 +107,9 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     |    case Cons(a, t) => f(a) + h(t)
     |  }
     |}""".stripMargin)
-    
   
+  // Since InputRecCoverage is not sufficient, we will soon remove these tests.
+  /*
   def haveOneWhich[T](pred: T => Boolean, predStr: String = "")(implicit m: Manifest[Iterable[T]]) =  Matcher { (left: Iterable[T]) =>  
     MatchResult( 
       left exists pred,
@@ -172,5 +173,5 @@ class InputRecCoverageSuite extends LeonTestSuiteWithProgram with Matchers with 
     
     val reccoverage = new InputRecCoverage(h, Set(h, f))
     reccoverage.assertIsRecCovering(reccoverage.result())
-  }
+  }*/
 }
