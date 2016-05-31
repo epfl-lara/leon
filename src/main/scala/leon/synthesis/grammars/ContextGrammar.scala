@@ -63,7 +63,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
   
   /** An expansion which starts with terminals and ends with something like HorizontalRHS or VerticalRHS */
   object AugmentedTerminalsRHS {
-    def apply(t: Seq[Terminal], e: Expansion) = Expansion(t map (x => List(x: Symbol)) toList) ++ e
+    def apply(t: Seq[Terminal], e: Expansion) = Expansion(t.map (x => List(x: Symbol)).toList) ++ e
     def unapply(e: Expansion): Option[(List[Terminal], Expansion)] = e.ls match {
       case Nil => None
       case _::Nil => Some((Nil, e))
@@ -84,7 +84,8 @@ class ContextGrammar[SymbolTag, TerminalData] {
         nt ++ (nt map (g.rules) flatMap (_.symbols) collect { case nt: NonTerminal => nt })
     }, 64)(g.startNonTerminals.toSet)
     val nonReachable = g.nonTerminals.toSet -- reachable
-    g.copy(rules = g.rules -- nonReachable)
+    val res = g.copy(rules = g.rules -- nonReachable)
+    res
   }
   
   /** A grammar here has a start sequence instead of a start symbol */

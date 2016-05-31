@@ -10,7 +10,7 @@ import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Types.{StringType, TypeTree}
 import purescala.Common.Identifier
-import purescala.Definitions.Program
+import purescala.Definitions.{FunDef, Program}
 import purescala.DefOps
 import grammars._
 import solvers.ModelBuilder
@@ -137,7 +137,8 @@ object QuestionBuilder {
 class QuestionBuilder[T <: Expr](
     input: Seq[Identifier],
     solutions: Stream[Solution],
-    filter: (Seq[T], Expr) => Option[T])(implicit c: LeonContext, p: Program) {
+    filter: (Seq[T], Expr) => Option[T],
+    originalFun: Option[FunDef] = None)(implicit c: LeonContext, p: Program) {
   import QuestionBuilder._
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
@@ -164,14 +165,21 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
+    val savedBody = if(originalFun.nonEmpty) { // To test this solution, we suppose that this function's body is the given one.
+      val saved = originalFun.get.body
+      originalFun.get.body = Some(s.term)
+      saved
+    } else None
     val e = new AbstractEvaluator(c, newProgram)
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    for{x <- e.eval(s.term, modelResult).result
+    val res = for{x <- e.eval(s.term, modelResult).result
         res = x._1
         simp = ExprOps.simplifyArithmetic(res)}
       yield simp
+    if(originalFun.nonEmpty) originalFun.get.body = savedBody
+    res
   }
   
   /** Returns a list of input/output questions to ask to the user. */

@@ -204,7 +204,15 @@ case object StringRender extends Rule("StringRender") {
     def computeSolutions(funDefsBodies: Seq[(FunDef, WithIds[Expr])], template: WithIds[Expr]): Stream[Assignment] = {
       val funDefs = for((funDef, body) <- funDefsBodies) yield  { funDef.body = Some(body._1); funDef }
       val newProgram = DefOps.addFunDefs(hctx.program, funDefs, hctx.functionContext)
-      findAssignments(newProgram, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1)
+      
+      val (newProgram2, _, _, _) = DefOps.replaceFunDefs(newProgram){fd => 
+        if(fd == hctx.functionContext) {
+          val newfd = fd.duplicate()
+          newfd.body = Some(template._1)
+          Some(newfd)
+        } else None
+      }
+      findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1)
     }
     
     val tagged_solutions =
@@ -388,7 +396,7 @@ case object StringRender extends Rule("StringRender") {
             booleanSymbol -> TerminalRHS(Terminal(BooleanType)(Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
             stringSymbol -> TerminalRHS(Terminal(StringType)(Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
-      GrammarBasedTemplateGenerator(exhaustive(startGrammar, argsPrettyPrinting), argsInputs, argsPrettyPrinting)
+      GrammarBasedTemplateGenerator(clean(exhaustive(startGrammar, argsPrettyPrinting)), argsInputs, argsPrettyPrinting)
     }
     
     case class GrammarBasedTemplateGenerator(grammar: Grammar, argsInputs: Seq[Expr], argsPrettyPrinting: Seq[Identifier])(implicit hctx: SearchContext) {
@@ -597,7 +605,7 @@ case object StringRender extends Rule("StringRender") {
     protected def customPrettyPrinters(inputType: TypeTree)(implicit hctx: SearchContext): List[Expr => WithIds[Expr]] = {
       val exprs1s: Stream[(Lambda, Expr => WithIds[Expr])] = (new SelfPrettyPrinter)
         .allowFunction(hctx.functionContext)
-        .excludeFunction(hctx.functionContext)
+        //.excludeFunction(hctx.functionContext)
         .withPossibleParameters.prettyPrintersForType(inputType)(hctx, hctx.program)
         .map{ case (l, identifiers) => (l, (input: Expr) => (application(l, Seq(input)), identifiers)) } // Use already pre-defined pretty printers.
       exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
