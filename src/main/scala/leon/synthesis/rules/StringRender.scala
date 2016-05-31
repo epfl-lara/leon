@@ -22,6 +22,7 @@ import solvers.string.StringSolver
 import programsets.DirectProgramSet
 import programsets.JoinProgramSet
 import leon.utils.StreamUtils
+import leon.synthesis.RulePriority
 
 /** A template generator for a given type tree. 
   * Extend this class using a concrete type tree,
@@ -62,6 +63,8 @@ abstract class TypedTemplateGenerator(t: TypeTree) {
  * @author Mikael
  */
 case object StringRender extends Rule("StringRender") {
+  override val priority = RulePriorityNormalizing
+  
   // A type T augmented with a list of identifiers, for examples the free variables inside T
   type WithIds[T] = (T, List[Identifier])
   
@@ -359,7 +362,7 @@ case object StringRender extends Rule("StringRender") {
     } + (if(hContext.nonEmpty) hContext.length.toString else "") + "_s" 
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
-    val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
+    val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = false)
     val argId= FreshIdentifier(typeToConvert.asString(hctx).toLowerCase().dropWhile(c => (c < 'a' || c > 'z') && (c < 'A' || c > 'Z')).headOption.getOrElse("x").toString, typeToConvert)
     val tparams = hctx.functionContext.tparams
     new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_)).toList, StringType) // Empty function.
@@ -888,6 +891,7 @@ case object StringRender extends Rule("StringRender") {
   
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     //hctx.reporter.debug("StringRender:Output variables="+p.xs+", their types="+p.xs.map(_.getType))
+    if(hctx.currentNode.parent.nonEmpty) Nil else
     p.xs match {
       case List(IsTyped(v, StringType)) =>
         val examplesFinder = new ExamplesFinder(hctx, hctx.program)

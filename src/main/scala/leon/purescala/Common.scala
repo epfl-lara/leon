@@ -102,9 +102,10 @@ object Common {
       * @param forceId The forced ID of the identifier
       * @param tpe The type of the identifier
       */
-    def apply(name: String, forceId: Int, tpe: TypeTree): Identifier =
-      new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID =  true)
-
+    object forceId {
+      def apply(name: String, forceId: Int, tpe: TypeTree, alwaysShowUniqueID: Boolean = false): Identifier =
+        new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID)
+    }
   }
 
   def aliased(id1 : Identifier, id2 : Identifier) = {
