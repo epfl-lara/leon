@@ -564,6 +564,9 @@ trait CodeExtraction extends ASTExtractors {
       //println(s"Registering $sym")
       classesToClasses += sym -> cd
       cd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
+      // extract more modifiers here if needed
+      if(sym.isPrivate)
+        cd.addFlag(IsPrivate)
 
       // Register parent
       parent.map(_._1).foreach(_.classDef.registerChild(cd))
@@ -770,6 +773,9 @@ trait CodeExtraction extends ASTExtractors {
       if (sym.isImplicit) {
         fd.addFlag(IsInlined)
       }
+      if(sym.isPrivate)
+        fd.addFlag(IsPrivate)
+      // extract more modifiers here if needed
 
       defsToDefs += sym -> fd
 

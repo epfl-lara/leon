@@ -15,10 +15,10 @@ object SimpleHOListLibrary {
     f(x)
   } ensuring (_ => time <= time(f(x)))
 
- def map[U, T](f: () => T, s: List[U]): List[T] = {
+  def map[U, T](f: () => T, s: List[U]): List[T] = {
     s match {
-      case Nil()       => Nil()
-      case Cons(x, tail)  => Cons(f(), map(f, tail))
+      case Nil()         => Nil()
+      case Cons(x, tail) => Cons(f(), map(f, tail))
     }
   } //ensuring (_ => time <= ?)
 }
