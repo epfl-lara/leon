@@ -13,7 +13,10 @@ object SimpleHOListLibrary {
 
   def app[U, T](f: U => T, x: U): T = {
     f(x)
-  } ensuring (_ => time <= time(f(x)))
+  } ensuring{_ =>
+    val in = inState[Unit]
+    time <= ? * time(f(x) withState in) + ?
+  }
 
   def map[U, T](f: () => T, s: List[U]): List[T] = {
     s match {

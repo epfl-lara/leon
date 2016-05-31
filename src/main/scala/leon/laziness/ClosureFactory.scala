@@ -150,18 +150,21 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
             opToAdt += (cl -> cdef)
             cdef
         })
-        val unknownCase = createCaseClass("UnknownL", absClass, Seq())
-        if(typeAnalysis.isEscapingType(ft)) {
+        val ucase = if (typeAnalysis.isEscapingType(ft)) {
           stateNeedingTypes += tpename
           stateUpdatingTypes += tpename
+          val unknownCase = createCaseClass("U" + tpename, absClass, Seq())
+          absClass.registerChild(unknownCase)
+          Some(unknownCase)
         } else {
-          val targets = canonLambdas.map{_.l.body.asInstanceOf[FunctionInvocation].tfd.fd}
-          if(targets.exists(funsNeedStates))
-              stateNeedingTypes += tpename
-          if(targets.exists(funsRetStates))
+          val targets = canonLambdas.map { _.l.body.asInstanceOf[FunctionInvocation].tfd.fd }
+          if (targets.exists(funsNeedStates))
+            stateNeedingTypes += tpename
+          if (targets.exists(funsRetStates))
             stateUpdatingTypes += tpename
+          None
         }
-        (tpename -> (ft, absClass, cdefs, Some(unknownCase).asInstanceOf[Option[CaseClassDef]]))
+        (tpename -> (ft, absClass, cdefs, ucase))
     }
     // create a case class for each memoized function
     val memoClasses = memoFuns.map { memofun =>
@@ -178,8 +181,16 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   val (tpeToADT, opToCaseClass, memoClasses, stateNeedingTypes, stateUpdatingTypes) = closuresForOps
   val closureTypeNames = tpeToADT.keys.toSeq   // this fixes an ordering on clsoure types
   val canonLambdas = opToCaseClass.keySet
-  val allClosuresAndParents: Seq[ClassDef] = tpeToADT.values.flatMap(v => v._2 +: v._3).toSeq
-  val memoClosures = memoClasses.values.toSet
+  val allClosuresAndParents: Seq[ClassDef] = tpeToADT.values.flatMap(v => (v._2 +: v._3) ++ v._4.toSeq).toSeq
+  val memoClosures = {
+    val cls = memoClasses.values.toSeq
+    if(cls.isEmpty) { // no memoized functin in the program, however there can be  functions coming from outside
+      val defMem = createCaseClass("DMem", memoAbsClass, Seq())
+      memoAbsClass.registerChild(defMem)
+      Seq(memoAbsClass, defMem) // we create a default case just to make things type check
+    }
+    else memoAbsClass +: cls
+  }
 
   def functionType(tn: String) = tpeToADT(tn)._1
   def absClosure(tn: String) = tpeToADT(tn)._2

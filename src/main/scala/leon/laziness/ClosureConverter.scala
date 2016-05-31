@@ -27,6 +27,7 @@ import purescala.TypeOps.bestRealType
 class ClosureConverter(p: Program, ctx: LeonContext,
                        closureFactory: ClosureFactory,
                        funsManager: FunctionsManager) {
+  import closureFactory._
   val debug = false
   // flags
   //val removeRecursionViaEval = false
@@ -35,9 +36,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   val funsNeedStates = funsManager.funsNeedStates
   val funsRetStates = funsManager.funsRetStates
   val funsNeedStateTps = funsManager.funsNeedStateTps
-  val closureTnames = closureFactory.closureTypeNames
-  val stateNeedingTypes = closureFactory.stateNeedingTypes
-  val stateUpdatingTypes = closureFactory.stateUpdatingTypes
+  val closureTnames = closureTypeNames
 
   //println("Functions needing state: "+funsNeedStates.map(_.id))
   /**
@@ -57,19 +56,19 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     val stparams =
       if (funsNeedStateTps(fd)) {
         // create fresh type parameters for the state
-        closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
+        stateTParams.map(_ => TypeParameter.fresh("P@"))
       } else Seq()
     // (a) replace closure types, memoFunTypes in parameters and return values
     val nparams = fd.params map {
       case ValDef(id) if isFunSetType(id.getType)(p) => // replace this with set of memoAbs
-        ValDef(makeIdOfType(id, closureFactory.stateType(stparams)))
+        ValDef(makeIdOfType(id, stateType(stparams)))
       case vd =>
-        ValDef(makeIdOfType(vd.id, closureFactory.replaceClosureTypes(vd.getType)))
+        ValDef(makeIdOfType(vd.id, replaceClosureTypes(vd.getType)))
     }
-    val nretType = closureFactory.replaceClosureTypes(fd.returnType)
+    val nretType = replaceClosureTypes(fd.returnType)
 
     val nfd = if (funsNeedStates(fd)) {
-      val stType = closureFactory.stateType(stparams)
+      val stType = stateType(stparams)
       val stParam = ValDef(FreshIdentifier("st@", stType))
       val retTypeWithState =
         if (funsRetStates(fd))
@@ -138,8 +137,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
    */
   val uninterpretedState = {
     // create a body-less fundef that will return a state
-    val stType = closureFactory.stateType()
-    new FunDef(FreshIdentifier("uiState"), closureFactory.stateTParams.map(TypeParameterDef), Seq(), stType)
+    val stType = stateType()
+    new FunDef(FreshIdentifier("uiState"), stateTParams.map(TypeParameterDef), Seq(), stType)
   }
 
   def uninterpretedStateFor(tparams: Seq[TypeParameter]) = FunctionInvocation(TypedFunDef(uninterpretedState, tparams), Seq())
@@ -147,16 +146,16 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   /**
    * A set of functions that model unknown targets of closures.
    */
-  val unknownTargets = closureFactory.tpeToADT.collect {
+  val unknownTargets = tpeToADT.collect {
     case (tname, (ft @ FunctionType(argTps, retTp), _, _, Some(cdef))) =>
       // create fresh type parameters for the state
-      val stTparams = closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
-      val stType = closureFactory.stateType(stTparams)
+      val stTparams = stateTParams.map(_ => TypeParameter.fresh("P@"))
+      val stType = stateType(stTparams)
       val params = argTps.zipWithIndex.map {
         case (tp, i) =>
-          ValDef(FreshIdentifier("a" + i, closureFactory.replaceClosureTypes(tp)))
+          ValDef(FreshIdentifier("a" + i, replaceClosureTypes(tp)))
       } :+ ValDef(FreshIdentifier("st", stType))
-      val retTypeWithState = TupleType(Seq(closureFactory.replaceClosureTypes(retTp), stType))
+      val retTypeWithState = TupleType(Seq(replaceClosureTypes(retTp), stType))
       // the type parameters will be unified later
       val nfd = new FunDef(FreshIdentifier("u"+tname),
         (getTypeParameters(ft) ++ stTparams) map TypeParameterDef,
@@ -172,19 +171,19 @@ class ClosureConverter(p: Program, ctx: LeonContext,
    * the call-sites.
    */
   val evalFunctions = closureTnames.map { tname =>
-    closureFactory.functionType(tname) match {
+    functionType(tname) match {
       case ft @ FunctionType(argTps, retTp) =>
-        val absdef = closureFactory.absClosure(tname)
-        val cdefs = closureFactory.concreteClosures(tname)
+        val absdef = absClosure(tname)
+        val cdefs = concreteClosures(tname)
         // construct parameters and return types
         val recvTparams = getTypeParameters(ft)
         val recv = FreshIdentifier("cl", AbstractClassType(absdef, recvTparams))
-        val stTparams = closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
-        val stType = closureFactory.stateType(stTparams)
-        val stParam = FreshIdentifier("st", stType)
+        val stTparams = stateTParams.map(_ => TypeParameter.fresh("P@"))
+        val stType = stateType(stTparams)
+        val stParam = FreshIdentifier("st@", stType)
         val otherParams = argTps.zipWithIndex.map {
           case (tp, i) =>
-            FreshIdentifier("a" + i, closureFactory.replaceClosureTypes(tp))
+            FreshIdentifier("a" + i, replaceClosureTypes(tp))
         }
         val withStTparams = recvTparams ++ stTparams
         // TODO: need to handle preconditions on arguments!!
@@ -204,10 +203,10 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               case _         => throw new IllegalStateException(s"Cannot find field of $ctype for captured arg $arg")
             }
           }
-          val srcTarget = closureFactory.targetOfClosure(cdef).get
+          val srcTarget = targetOfClosure(cdef).get
           val targetFun = funMap(srcTarget)
           // construct arguments of the target
-          val targetArgs = closureFactory.lambdaOfClosure(cdef).get match {
+          val targetArgs = lambdaOfClosure(cdef).get match {
             case l @ Lambda(args, FunctionInvocation(TypedFunDef(srcTarget, _), allArgs)) =>
               val argMap = ((args.map(_.id) zip otherParams.map(_.toVariable)) ++ (capturedVars(l).map(a => a -> exprForcapturedArg(a)))).toMap
               allArgs.map {
@@ -233,8 +232,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             val stPart =
               if (isMemoized(srcTarget)) {
                 // create a memo closure to mark that the function invocation has been memoized
-                val cc = CaseClass(CaseClassType(closureFactory.memoClasses(srcTarget), stTparams), targetArgs)
-                closureFactory.stateUpdate(cc, currState)
+                val cc = CaseClass(CaseClassType(memoClasses(srcTarget), stTparams), targetArgs)
+                stateUpdate(cc, currState)
               } else {
                 currState
               }
@@ -245,7 +244,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           MatchCase(pattern, None, rhs)
         }
         val cases = bodyMatchCases ++
-          closureFactory.unknownClosure(tname).map { cdef =>
+          unknownClosure(tname).map { cdef =>
             val rhs = FunctionInvocation(TypedFunDef(unknownTargets(tname), withStTparams),
               (otherParams :+ stParam).map(_.toVariable))
             val pattern = InstanceOfPattern(None, CaseClassType(cdef, recvTparams))
@@ -256,7 +255,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           if (stateNeedingTypes(tname)) ((recv +: otherParams :+ stParam), withStTparams)
           else (recv +: otherParams, recvTparams)
         val retType =
-          if (stateUpdatingTypes(tname)) TupleType(Seq(closureFactory.replaceClosureTypes(retTp), stType))
+          if (stateUpdatingTypes(tname)) TupleType(Seq(replaceClosureTypes(retTp), stType))
           else retTp
         val dfun = new FunDef(FreshIdentifier(evalFunctionName(absdef.id.name)), allTparams map TypeParameterDef,
           params map ValDef, retType)
@@ -300,11 +299,11 @@ class ClosureConverter(p: Program, ctx: LeonContext,
    * simplifies the type inference (which is not full-fledged in Leon)
    */
   val closureCons = closureTnames.map { tname =>
-    val absClass = closureFactory.absClosure(tname)
+    val absClass = absClosure(tname)
     val param1Type = AbstractClassType(absClass, absClass.tparams.map(_.tp))
     val param1 = FreshIdentifier("cc", param1Type)
-    val stTparams = closureFactory.stateTParams.map(_ => TypeParameter.fresh("P@"))
-    val param2 = FreshIdentifier("st@", closureFactory.stateType(stTparams))
+    val stTparams = stateTParams.map(_ => TypeParameter.fresh("P@"))
+    val param2 = FreshIdentifier("st@", stateType(stTparams))
     val tparamdefs = absClass.tparams ++ (stTparams map TypeParameterDef)
     val fun = new FunDef(FreshIdentifier(closureConsName(tname)), tparamdefs,
       Seq(ValDef(param1), ValDef(param2)), param1Type)
@@ -317,14 +316,14 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     // (a) closure construction ?
     case l @ Lambda(_, FunctionInvocation(TypedFunDef(target, _), allArgs)) =>
       ((st: Option[Expr]) => {
-        val caseClassDef = closureFactory.closureOfLambda(l)
+        val caseClassDef = closureOfLambda(l)
         /* Result construction
           // construct a value for the result (an uninterpreted function)
           val resval = FunctionInvocation(TypedFunDef(uiFuncs(argfd)._1, tparams), flatArgs)
         }*/
         val targs = getTypeParameters(l.getType)
         val cc = CaseClass(CaseClassType(caseClassDef, targs), capturedVars(l).map(_.toVariable))
-        val tname = closureFactory.uninstantiatedFunctionTypeName(l.getType).get
+        val tname = uninstantiatedFunctionTypeName(l.getType).get
         if (st.isDefined) { // otherwise the function does not take preconditions that depend on state.
           FunctionInvocation(TypedFunDef(closureCons(tname), targs ++ stTparams), Seq(cc, st.get))
         } else cc
@@ -335,9 +334,9 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       // in this case target should be a memoized function
       if (!isMemoized(target))
         throw new IllegalStateException("Argument of `Mem` should be a memoized function: " + memc)
-      //println("cc: "+closureFactory.memoClasses(target)+" stparams: "+stTparams)
+      //println("cc: "+memoClasses(target)+" stparams: "+stTparams)
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
-        CaseClass(CaseClassType(closureFactory.memoClasses(target), stTparams), nargs)
+        CaseClass(CaseClassType(memoClasses(target), stTparams), nargs)
       }, false)
       mapNAryOperator(args, op)
 
@@ -369,13 +368,13 @@ class ClosureConverter(p: Program, ctx: LeonContext,
                 throw new IllegalStateException(s"Guard of $finv uses variables from the environment: $envVarsInGuard")
               }
               try {
-                val tname = closureFactory.uninstantiatedFunctionTypeName(l.getType).get
-                val uninstType = closureFactory.functionType(tname)
+                val tname = uninstantiatedFunctionTypeName(l.getType).get
+                val uninstType = functionType(tname)
                 val targs = getTypeArguments(l.getType, uninstType).get
                 // here, try to create new types for the binders, they may be needed in type rectification of local variables
                 val capvars = capturedVars(l)
-                val ncapvars = capvars.map { id => makeIdOfType(id, closureFactory.replaceClosureTypes(id.getType)) }
-                val realpat = CaseClassPattern(None, CaseClassType(closureFactory.closureOfLambda(l), targs),
+                val ncapvars = capvars.map { id => makeIdOfType(id, replaceClosureTypes(id.getType)) }
+                val realpat = CaseClassPattern(None, CaseClassType(closureOfLambda(l), targs),
                   ncapvars.map(id => WildcardPattern(Some(id))))
                 MatchCase(realpat, None,
                   replaceFromIDs((capvars zip ncapvars.map(_.toVariable)).toMap, body))
@@ -405,8 +404,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
     // (f) closure invocation
     case Application(lambdaExpr, args) =>
-      val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
-      val uninstType = closureFactory.functionType(tname)
+      val tname = uninstantiatedFunctionTypeName(lambdaExpr.getType).get
+      val uninstType = functionType(tname)
       val dispFun = evalFunctions(tname)
       val targs = getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams
       val op = (nargs: Seq[Expr]) => ((stOpt: Option[Expr]) => {
@@ -422,8 +421,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       val id = (e: Expr) => e
       val (target, targs, args, retCons) = invokeExpr match {
         case Application(lambdaExpr, args) =>
-          val tname = closureFactory.uninstantiatedFunctionTypeName(lambdaExpr.getType).get
-          val uninstType = closureFactory.functionType(tname)
+          val tname = uninstantiatedFunctionTypeName(lambdaExpr.getType).get
+          val uninstType = functionType(tname)
           (computeFunctions.getOrElse(tname, evalFunctions(tname)),
             getTypeArguments(lambdaExpr.getType, uninstType).get ++ stTparams,
             lambdaExpr +: args, id)
@@ -464,8 +463,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               (invokeRes.toVariable, st.get) // st should be defined here
             }
           // create a memo closure to mark that the function invocation has been memoized
-          val cc = CaseClass(CaseClassType(closureFactory.memoClasses(fd), stTparams), flatArgs)
-          val stPart = closureFactory.stateUpdate(cc, currState)
+          val cc = CaseClass(CaseClassType(memoClasses(fd), stTparams), flatArgs)
+          val stPart = stateUpdate(cc, currState)
           letCons(Let(invokeRes, invoke, Tuple(Seq(valPart, stPart))))
         }, true))
 
@@ -574,13 +573,13 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
     // need to reset types in the case of case class constructor calls
     case CaseClass(cct, args) =>
-      val ntype = closureFactory.replaceClosureTypes(cct).asInstanceOf[CaseClassType]
+      val ntype = replaceClosureTypes(cct).asInstanceOf[CaseClassType]
       mapNAryOperator(args,
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => CaseClass(ntype, nargs), false))
 
     // need to reset field ids of case class select
     case CaseClassSelector(cct, clExpr, fieldId) if fieldMap.contains(fieldId) =>
-      val ntype = closureFactory.replaceClosureTypes(cct).asInstanceOf[CaseClassType]
+      val ntype = replaceClosureTypes(cct).asInstanceOf[CaseClassType]
       val nfield = fieldMap(fieldId)
       mapNAryOperator(Seq(clExpr),
         (nargs: Seq[Expr]) => ((st: Option[Expr]) => CaseClassSelector(ntype, nargs.head, nfield), false))
@@ -728,7 +727,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
 
   def assignContractsForEvals = evalFunctions.foreach {
     case (tname, evalfd) =>
-      val cdefs = closureFactory.concreteClosures(tname)
+      val cdefs = concreteClosures(tname)
       val relTparams = evalfd.tparams.collect {
         case tdef if !isPlaceHolderTParam(tdef.tp) => tdef.tp
       }
@@ -736,7 +735,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       val postMatchCases = cdefs map { cdef =>
         // create a body of the match (which asserts that return value equals the uninterpreted function)
         // and also that the result field equals the result
-        val target = closureFactory.targetOfClosure(cdef).get
+        val target = targetOfClosure(cdef).get
         val ctype = CaseClassType(cdef, getTypeParameters(evalfd.params.head.getType))
         val binder = FreshIdentifier("t", ctype)
         val pattern = InstanceOfPattern(Some(binder), ctype)
@@ -761,8 +760,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val rhs = createAnd(clause2.toList)
         MatchCase(pattern, None, rhs)
       }
-      // create a default case to match other cases
-      val default = MatchCase(WildcardPattern(None), None, Util.tru)
+      // create a default case to match other cases (esp. the unknown external function)
+      val defaultRhs = if (stateUpdatingTypes(tname)) {
+        val stateParam = evalfd.params.collectFirst { case vd if isStateParam(vd.id) => vd.id.toVariable }
+        SubsetOf(stateParam.get, TupleSelect(postres.toVariable, 2))
+      } else Util.tru
+      val default = MatchCase(WildcardPattern(None), None, defaultRhs)
       evalfd.postcondition = Some(
         Lambda(Seq(ValDef(postres)),
           MatchExpr(evalfd.params.head.toVariable, postMatchCases :+ default)))
@@ -783,7 +786,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   def transformCaseClasses = p.definedClasses.foreach {
     case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj) if !ccd.flags.contains(Annotation("library", Seq())) =>
       val nfields = ccd.fields.map { fld =>
-        val nt = closureFactory.replaceClosureTypes(fld.getType)
+        val nt = replaceClosureTypes(fld.getType)
         if (nt != fld.getType) {
           //println(s"AbsType: $clType type args: $typeArgs")
           ValDef(copyField(fld.id, nt))
@@ -814,8 +817,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             }
           case d => Seq(d)
         }),
-      Map(mainModule -> (closureFactory.allClosuresAndParents ++
-        (closureFactory.memoAbsClass +: closureFactory.memoClosures.toSeq) ++
+      Map(mainModule -> (allClosuresAndParents ++ memoClosures.toSeq ++
         closureCons.values ++ evalFunctions.values ++ unknownTargets.values ++
         computeFunctions.values :+ uninterpretedState)))
   }
