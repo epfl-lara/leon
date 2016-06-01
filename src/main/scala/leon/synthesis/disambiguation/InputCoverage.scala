@@ -97,7 +97,8 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   
   private def recordMapping(flag: Identifier, expr: Expr): Unit = {
     if(doRecordMapping) {
-      flagMapping.put(expr, flagMapping.getOrDefault(expr, Set()) + flag)
+      val flags: Set[Identifier] = Option(flagMapping.get(expr)).getOrElse(Set()) + flag
+      flagMapping.put(expr, flags)
     }
   }
   
@@ -119,7 +120,8 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   private def recordExample(input: Seq[Expr], flags: Set[Identifier]): Unit = {
     if(doRecordMapping) {
       for{flag <- flags} {
-        recordedMapping.put(flag, recordedMapping.getOrDefault(flag, Set()) + input)
+        val newMappings: Set[Seq[Expr]] = Option(recordedMapping.get(flag)).getOrElse(Set()) + input
+        recordedMapping.put(flag, newMappings)
       }
     }
   }

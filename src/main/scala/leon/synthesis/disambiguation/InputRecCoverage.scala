@@ -151,7 +151,7 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
         println("New mappings:\n" + inputs.map(input => input + "->" + modifiedEvaluator.eval(functionInvocation(fdMap(fd), input)).result.get).mkString("\n"))
         // First, make all its terminals (strings and numbers) unique.
         val covering = inputCoverage.getRecordMapping()
-        val coveringInputs = covering.getOrDefault(stringConcat, Set()).map(x => identifiableInputs.getOrElse(x, x))
+        val coveringInputs = Option(covering.get(stringConcat)).getOrElse(Set()).map(x => identifiableInputs.getOrElse(x, x))
         //println(s"Input that can cover $stringConcat are " + coveringInputs.mkString(", "))
         
         val input = coveringInputs.head
