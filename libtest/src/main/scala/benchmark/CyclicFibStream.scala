@@ -13,7 +13,13 @@ import leon.runtimeDriver._
 
 object ZipWithAndFibStream {
   
-  case class SCons2(x320 : BigInt, tailFun1 : ValOrSusp2)
+  case class SCons2(x320 : BigInt, tailFun1 : ValOrSusp2) {
+    @inline
+    def tail = tailFun1 match {
+      case s@Susp1(f) => s.fun1()._1
+      case Val1(x) => x
+    }
+  }
   
   
   abstract class ValOrSusp2
@@ -119,7 +125,7 @@ object ZipWithAndFibStream {
       case Val1(x325) =>
         (x325, BigInt(5))
     }
-    val e38 = zipWithSusptime((x$3 : BigInt, x$4 : BigInt) => (x$3 + x$4, BigInt(1)), e120, e37._1)
+    val e38 = zipWithFuntime((x$3 : BigInt, x$4 : BigInt) => (x$3 + x$4, BigInt(1)), e120, e37._1)
     (e38._1, (BigInt(3) + e38._2) + e37._2)
   }
   
@@ -170,7 +176,7 @@ object ZipWithAndFibStream {
     }
     (r161._1, BigInt(1) + r161._2)
   }
-
+  
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
@@ -187,10 +193,78 @@ object ZipWithAndFibStream {
           nthFibtime(input)._2
         }
       }
-      orb :+= {() => (43*(input) + 4)}
+      orb :+= {() => (45*(input) + 4)}
       
     }
     plot(size, ops, orb, "nthFib", "orb")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val fibstreamf = fibstreamtime._1
+      val fibstreams = fibstreamf.tail
+      val fibstreamt = fibstreams.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          nthElemAfterThirdtime(input, fibstreamf, fibstreams, fibstreamt)._2
+        }
+      }
+      orb :+= {() => (45*(input) - 87)}
+      
+    }
+    plot(size, ops, orb, "nthElemAfterThirdFib", "orb")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val fibstreamf = fibstreamtime._1
+      val fibstreams = fibstreamf.tail
+      val fibstreamt = fibstreams.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          nexttime(fibstreamf, fibstreams, fibstreamt)._2
+        }
+      }
+      orb :+= {() => (37)}
+      
+    }
+    plot(size, ops, orb, "nextFib", "orb")
+
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val fibstreamf = fibstreamtime._1
+      val fibstreams = fibstreamf.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          zipWithFuntime((x, y) => (x+y,1), fibstreamf, fibstreams)._2
+        }
+      }
+      orb :+= {() => (15)}
+      
+    }
+    plot(size, ops, orb, "zipWithFunFib", "orb")
+
+    // ops = List[() => BigInt]()
+    // orb = List[() => BigInt]()
+    // points.foreach { i =>
+    //   val input = i
+    //   val hamstreamf = hamstreamtime._1
+    //   val hamstreams = hamstreamf.tail
+    //   val hamstreamt = hamstreams.tail
+    //   ops :+= {() => {
+    //       leon.mem.clearMemo()
+    //       mergeSusptime(hamstreamf, hamstreams, hamstreamt)._2
+    //     }
+    //   }
+    //   orb :+= {() => (104)}
+      
+    // }
+    // plot(size, ops, orb, "mergeSuspHam", "orb")
   }
   
 }

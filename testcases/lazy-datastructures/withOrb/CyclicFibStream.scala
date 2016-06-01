@@ -159,7 +159,7 @@ object ZipWithAndFibStream {
   @invisibleBody
   val genNext = {
     val fibs = this.fibstream
-    zipWithSusp(_ + _, fibs, fibs.tail)
+    zipWithFun(_ + _, fibs, fibs.tail)
   } ensuring(_ => time <= ?)
 
   /**

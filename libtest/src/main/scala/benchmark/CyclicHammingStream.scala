@@ -230,7 +230,7 @@ object MergeAndHammingNumbers {
           nthHammingNumbertime(input)._2
         }
       }
-      orb :+= {() => (123*(input) + 4)}
+      orb :+= {() => (129*(input) + 4)}
       
     }
     plot(size, ops, orb, "nthHammingNumber", "orb")
@@ -246,7 +246,7 @@ object MergeAndHammingNumbers {
           nthElemAfterSecondtime(input, hamstreamf, hamstreams)._2
         }
       }
-      orb :+= {() => (123*(input) - 121)}
+      orb :+= {() => (129*(input) - 127)}
       
     }
     plot(size, ops, orb, "nthElemAfterSecondHam", "orb")
@@ -262,7 +262,7 @@ object MergeAndHammingNumbers {
           nexttime(hamstreamf, hamstreams)._2
         }
       }
-      orb :+= {() => (115)}
+      orb :+= {() => (121)}
       
     }
     plot(size, ops, orb, "nextHam", "orb")
@@ -297,7 +297,7 @@ object MergeAndHammingNumbers {
           mergeSusptime(hamstreamf, hamstreams, hamstreamt)._2
         }
       }
-      orb :+= {() => (104)}
+      orb :+= {() => (110)}
       
     }
     plot(size, ops, orb, "mergeSuspHam", "orb")
