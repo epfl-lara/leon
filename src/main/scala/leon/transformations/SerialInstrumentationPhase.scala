@@ -304,7 +304,14 @@ class SerialInstrumenter(program: Program,
                 }
               case _ => None
             })(postCond)
-            Lambda(Seq(ValDef(toResId)), mapExpr(newpost, paramMap))
+            // here, we can introduce additional properties that must hold
+            val instProps = instrumenters(from).flatMap{ m =>
+                m.instProp(TupleSelect(toResId.toVariable, instIndex(from)(m.inst)))(from) match {
+                  case Some(e) => Seq(e)
+                  case None => Seq()
+                }
+            }
+            Lambda(Seq(ValDef(toResId)), createAnd(instProps :+ mapExpr(newpost, paramMap)))
           case _ =>
             mapExpr(pred, paramMap)
         }
@@ -682,7 +689,7 @@ class ExprInstrumenter(ictx: InstruContext) {
 
   def apply(e: Expr, paramMap: Map[Identifier, Identifier]): Expr = {
     import ictx._
-    implicit val currFun = ictx.currFun    
+    implicit val currFun = ictx.currFun
     val transformed = transform(e)(paramMap)
     val bodyId = createInstVar("bd", transformed.getType)
     val instExprs = instrumenters map { m =>
@@ -707,6 +714,8 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
   def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]]
 
   def additionalfunctionsToAdd(): Seq[FunDef]
+
+  def instProp(instExpr: Expr)(fd: FunDef): Option[Expr] = None
 
   def instrumentBody(bodyExpr: Expr, instExpr: Expr)(implicit fd: FunDef): Expr = instExpr
 
