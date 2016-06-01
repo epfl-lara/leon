@@ -7,8 +7,8 @@ package rules
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
-import grammars._
-import grammars.aspects._
+import leon.grammars._
+import leon.grammars.aspects._
 import Witnesses._
 
 case object CEGLESS extends CEGISLike("CEGLESS") {

@@ -10,7 +10,7 @@ import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Types.{StringType, TypeTree}
 import purescala.Common.Identifier
-import purescala.Definitions.Program
+import purescala.Definitions.{FunDef, Program}
 import purescala.DefOps
 import grammars._
 import solvers.ModelBuilder
@@ -81,6 +81,42 @@ object QuestionBuilder {
       case _ => ValueGrammar.computeProductions(t)
     }
   }
+  
+  /** Make all generic values uniquely identifiable among the final string (no value is a substring of another if possible)
+    * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
+  def makeGenericValuesUnique(a: Expr): Expr = {
+    //println("Going to make this value unique:" + a)
+    var genVals = Set[Expr with Terminal](StringLiteral(""))
+    def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
+      case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
+      case StringLiteral(s) =>
+        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val prefix = s.take(i+1)
+        val suffix = s.drop(i+1)
+        Some(StringLiteral(prefix + (if(prefix == "") "$" else "") + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+      case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
+      case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
+      case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
+      case otherLiteral => None
+    }
+    @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
+          if(genVals contains g)
+            freshenValue(g) match {
+              case None => g
+              case Some(v) => freshValue(v)
+            }
+          else {
+            genVals += g
+            g
+          }
+    }
+    ExprOps.postMap{ e => e match {
+      case g:Expr with Terminal =>
+        Some(freshValue(g))
+      case _ => None
+    }}(a)
+  }
+  
 }
 
 /**
@@ -101,7 +137,8 @@ object QuestionBuilder {
 class QuestionBuilder[T <: Expr](
     input: Seq[Identifier],
     solutions: Stream[Solution],
-    filter: (Seq[T], Expr) => Option[T])(implicit c: LeonContext, p: Program) {
+    filter: (Seq[T], Expr) => Option[T],
+    originalFun: Option[FunDef] = None)(implicit c: LeonContext, p: Program) {
   import QuestionBuilder._
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
@@ -128,48 +165,21 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
+    val savedBody = if(originalFun.nonEmpty) { // To test this solution, we suppose that this function's body is the given one.
+      val saved = originalFun.get.body
+      originalFun.get.body = Some(s.term)
+      saved
+    } else None
     val e = new AbstractEvaluator(c, newProgram)
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    for{x <- e.eval(s.term, modelResult).result
+    val res = for{x <- e.eval(s.term, modelResult).result
         res = x._1
         simp = ExprOps.simplifyArithmetic(res)}
       yield simp
-  }
-  
-  /** Make all generic values unique.
-    * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
-  def makeGenericValuesUnique(a: Expr): Expr = {
-    var genVals = Set[Expr with Terminal]()
-    def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
-      case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
-      case StringLiteral(s) =>
-        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
-        val prefix = s.take(i+1)
-        val suffix = s.drop(i+1)
-        Some(StringLiteral(prefix + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
-      case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
-      case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
-      case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
-      case otherLiteral => None
-    }
-    @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
-          if(genVals contains g)
-            freshenValue(g) match {
-              case None => g
-              case Some(v) => freshValue(v)
-            }
-          else {
-            genVals += g
-            g
-          }
-    }
-    ExprOps.postMap{ e => e match {
-      case g:Expr with Terminal =>
-        Some(freshValue(g))
-      case _ => None
-    }}(a)
+    if(originalFun.nonEmpty) originalFun.get.body = savedBody
+    res
   }
   
   /** Returns a list of input/output questions to ask to the user. */

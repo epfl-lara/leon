@@ -1,9 +1,6 @@
 package leon
 package synthesis.disambiguation
 
-import synthesis.RuleClosed
-import synthesis.Solution
-import evaluators.DefaultEvaluator
 import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Constructors._
@@ -12,10 +9,6 @@ import purescala.Types.{TypeTree, TupleType, BooleanType}
 import purescala.Common.{Identifier, FreshIdentifier}
 import purescala.Definitions.{FunDef, Program, TypedFunDef, ValDef}
 import purescala.DefOps
-import grammars.ValueGrammar
-import bonsai.enumerators.MemoizedEnumerator
-import solvers.Model
-import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import leon.LeonContext
 import leon.purescala.Definitions.TypedFunDef
@@ -26,6 +19,9 @@ import scala.concurrent.duration._
 import leon.verification.VCStatus
 import leon.verification.VCResult
 import leon.evaluators.AbstractEvaluator
+import java.util.IdentityHashMap
+import leon.utils.Position
+import scala.collection.JavaConversions._
 
 case class InputNotCoveredException(msg: String, lineExpr: Identifier) extends Exception(msg)
 
@@ -41,38 +37,102 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   /** If set, performs a cleaning up step to cover the whole function */
   var minimizeExamples: Boolean = true
   
+  /** Triggers mapping recording between each expression in the bodies of the functions and the example which triggers its computation. */
+  def recordMapping() = { doRecordMapping = true; this }
+  
+  /** Returns a mapping from the expressions in the source code to the set of inputs that cover them
+   *  Call `.recordMapping()` before calling `.result()` to have it filled. */
+  def getRecordMapping(): IdentityHashMap[Expr, Set[Seq[Expr]]] = {
+    var res = new IdentityHashMap[Expr, Set[Seq[Expr]]]()
+    for((expr, setFlags) <- flagMapping) {
+      res.put(expr, setFlags.flatMap(flag =>
+        if(!recordedMapping.containsKey(flag)) {
+          throw new Exception(s"No expression associated to $flag")
+        } else
+        recordedMapping.get(flag)))
+    }
+    res
+  }
+  
+  /** If true, for each expression in the bodies of the functions, record which example triggers it.*/
+  private var doRecordMapping: Boolean = false
+  
+  /** Mapping from identifiers of lines of code to the input that are covering them.*/
+  private var recordedMapping = new IdentityHashMap[Identifier, Set[Seq[Expr]]]()
+  
+  /** Mapping between every expression and its flag that triggers its computation.*/
+  private var flagMapping = new IdentityHashMap[Expr, Set[Identifier]]()
+  
   /** If the sub-branches contain identifiers, it returns them unchanged.
       Else it creates a new boolean indicating this branch. */
-  def wrapBranch(e: (Expr, Option[Seq[Identifier]])): (Expr, Some[Seq[Identifier]]) = e._2 match {
+  private def wrapBranch(e: (Expr, Option[Seq[Identifier]])): (Expr, Some[Seq[Identifier]]) = e._2 match {
     case None =>
-      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
-      (tupleWrap(Seq(e._1, Variable(b))), Some(Seq(b)))
+      val lineColumnId = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
+      recordMapping(lineColumnId, e._1)
+      (tupleWrap(Seq(e._1, Variable(lineColumnId))), Some(Seq(lineColumnId)))
     case Some(Seq()) =>
-      val b = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
+      val lineColumnId = FreshIdentifier("l" + Math.abs(e._1.getPos.line) + "c" + Math.abs(e._1.getPos.col), BooleanType).copiedFrom(e._1)
       
-      def putInLastBody(e: Expr): Expr = e match {
-        case Tuple(Seq(v, prev_b)) => Tuple(Seq(v, or(prev_b, b.toVariable))).copiedFrom(e)
-        case LetTuple(binders, value, body) => letTuple(binders, value, putInLastBody(body)).copiedFrom(e)
+      def putInLastBody(expr: Expr): Expr = { recordMapping(lineColumnId, expr); expr } match {
+        case Tuple(Seq(v, prev_b)) => Tuple(Seq(v, or(prev_b, lineColumnId.toVariable))).copiedFrom(expr)
+        case LetTuple(binders, value, body) => letTuple(binders, value, putInLastBody(body)).copiedFrom(expr)
         case MatchExpr(scrut, Seq(MatchCase(TuplePattern(optId, binders), None, rhs))) => 
-          MatchExpr(scrut, Seq(MatchCase(TuplePattern(optId, binders), None, putInLastBody(rhs)))).copiedFrom(e)
-        case _ => throw new Exception(s"Unexpected branching case: $e")
-        
+          MatchExpr(scrut, Seq(MatchCase(TuplePattern(optId, binders), None, putInLastBody(rhs)))).copiedFrom(expr)
+        case FunctionInvocation(tfd, args) => 
+          val default_type = tfd.returnType match {
+            case TupleType(Seq(t, BooleanType)) =>
+              t
+            case t => throw new Exception(s"Did not expect function $tfd to return something else than a tuple of a type and a boolean. Got $t")
+          }
+          val arg_id = FreshIdentifier("arg", default_type)
+          val arg_b = FreshIdentifier("bd", BooleanType)
+          letTuple(Seq(arg_id, arg_b), expr, Tuple(Seq(arg_id.toVariable, or(arg_b.toVariable, lineColumnId.toVariable))))
+        case _ => throw new Exception(s"Unexpected branching case: $expr")
       }
-      (putInLastBody(e._1), Some(Seq(b)))
+      (putInLastBody(e._1), Some(Seq(lineColumnId)))
     case e_2: Some[_] =>
       // No need to introduce a new boolean since if one of the child booleans is true, then this IfExpr has been called.
       (e._1, e_2)
   }
   
+  private def recordMapping(flag: Identifier, expr: Expr): Unit = {
+    if(doRecordMapping) {
+      flagMapping.put(expr, flagMapping.getOrDefault(expr, Set()) + flag)
+    }
+  }
+  
+  private def recordMapping(flags: Option[Seq[Identifier]], expr: Expr): Unit = {
+    if(doRecordMapping) {
+      for{flagsC <- flags
+          id <- flagsC} {
+        recordMapping(id, expr)
+      }
+    }
+    expr match {
+      case i: IfExpr =>
+      case m: MatchExpr =>
+      case Operator(es, builder) =>
+        for(e <- es) recordMapping(flags, e)
+    }
+  }
+  
+  private def recordExample(input: Seq[Expr], flags: Set[Identifier]): Unit = {
+    if(doRecordMapping) {
+      for{flag <- flags} {
+        recordedMapping.put(flag, recordedMapping.getOrDefault(flag, Set()) + input)
+      }
+    }
+  }
+  
   /** Returns true if there are some branching to monitor in the expression */
-  def hasConditionals(e: Expr) = {
+  private def hasConditionals(e: Expr) = {
     ExprOps.exists{ case i:IfExpr => true case m: MatchExpr => true case f: FunctionInvocation if fds(f.tfd.fd) || f.tfd.fd == fd => true case _ => false}(e)
   }
   
   /** Merges two set of identifiers.
    *  None means that the attached expression is the original one,
    *  Some(ids) means that it has been augmented with booleans and ids are the "monitoring" boolean flags. */
-  def merge(a: Option[Seq[Identifier]], b: Option[Seq[Identifier]]) = {
+  private def merge(a: Option[Seq[Identifier]], b: Option[Seq[Identifier]]) = {
     (a, b) match {
       case (None, None) => None
       case (a, None) => a
@@ -84,19 +144,24 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   /** For each branch in the expression, adds a boolean variable such that the new type of the expression is (previousType, Boolean)
    *  If no variable is output, then the type of the expression is not changed.
     * If the expression is augmented with a boolean, returns the list of boolean variables which appear in the expression */
-  def markBranches(e: Expr): (Expr, Option[Seq[Identifier]]) =
+  private def markBranches(e: Expr): (Expr, Option[Seq[Identifier]]) =
     if(!hasConditionals(e)) (e, None) else e match {
     case IfExpr(cond, thenn, elze) =>
       val (c1, cv1) = markBranches(cond)
       val (t1, tv1) = wrapBranch(markBranches(thenn))
       val (e1, ev1) = wrapBranch(markBranches(elze))
+      recordMapping(tv1, thenn)
+      recordMapping(ev1, elze)
+      val mergedIds = merge(merge(cv1, tv1), ev1)
+      recordMapping(mergedIds, cond)
+      recordMapping(mergedIds, e)
       cv1 match {
         case None =>
-          (IfExpr(c1, t1, e1).copiedFrom(e), merge(tv1, ev1))
+          (IfExpr(c1, t1, e1).copiedFrom(e), mergedIds)
         case cv1 =>
           val arg_id = FreshIdentifier("arg", BooleanType)
           val arg_b = FreshIdentifier("bc", BooleanType)
-          (letTuple(Seq(arg_id, arg_b), c1, IfExpr(Variable(arg_id), t1, e1).copiedFrom(e)).copiedFrom(e), merge(merge(cv1, tv1), ev1))
+          (letTuple(Seq(arg_id, arg_b), c1, IfExpr(Variable(arg_id), t1, e1).copiedFrom(e)).copiedFrom(e), mergedIds)
       }
     case m@MatchExpr(scrut, cases) =>
       val (c, ids) = markBranches(ExprOps.matchToIfThenElse(m)) // And replace the last error else statement with a dummy flag.
@@ -127,6 +192,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
       val (exprBuilder, children, tmpIds, ids) = (((e: Expr) => e, ListBuffer[Expr](), ListBuffer[Identifier](), None: Option[Seq[Identifier]]) /: lhsrhs) {
         case ((exprBuilder, children, tmpIds, ids), arg) =>
           val (arg1, argv1) = markBranches(arg)
+          recordMapping(argv1, arg)
           if(argv1.nonEmpty || isNewFunCall(arg1)) {
             val arg_id = FreshIdentifier("arg", arg.getType)
             val arg_b = FreshIdentifier("ba", BooleanType)
@@ -136,6 +202,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             (exprBuilder, children += arg, tmpIds, ids)
           }
       }
+      recordMapping(ids, e)
       e match {
         case FunctionInvocation(tfd@TypedFunDef(fd, targs), args) if fds(fd) =>
           val new_fd = wrapFunDef(fd)
@@ -171,7 +238,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   private var booleanFlags = Seq[Identifier]()
   
   /** Augment function definitions which should have boolean markers, leave others untouched. */
-  def wrapFunDef(fd: FunDef): FunDef = {
+  private def wrapFunDef(fd: FunDef): FunDef = {
     if(!(cache contains fd)) {
       if(fds(fd)) {
         val new_fd = fd.duplicate(returnType = TupleType(Seq(fd.returnType, BooleanType)))
@@ -188,7 +255,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   }
   
   /** Returns true if the expression is a function call with a new function already. */
-  def isNewFunCall(e: Expr): Boolean = e match {
+  private def isNewFunCall(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, targs), args) =>
       cache.values.exists { f => f == fd }
     case _ => false
@@ -197,10 +264,12 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   /** Returns a stream of covering inputs for the function `f`,
    *  such that if `f` is evaluated on each of these inputs, all parts of `{ f } U fds` will have been executed at least once.
    *  
-   *  The number of expressions is the same as the number of arguments of `f` */
+   *  The number of expressions in each element is the same as the number of arguments of `f` */
   def result(): Stream[Seq[Expr]] = {
     cache = Map()
     booleanFlags = Seq()
+    recordedMapping = new IdentityHashMap[Identifier, Set[Seq[Expr]]]()
+    flagMapping = new IdentityHashMap[Expr, Set[Identifier]]()
     /* Approximative algorithm Algorithm:
      * In innermost branches, replace each result by (result, bi) where bi is a boolean described later.
      * def f(x: Int, z: Boolean): (Int, Boolean) =
@@ -248,6 +317,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     // For each new counter-example, abstract evaluate the original function to remove booleans which have been reached.
     val covering_examples =
       for(bvar <- booleanFlags.toStream if !coveredBooleans(bvar)) yield {
+        //println(s"finding input for $bvar")
       val (program2, idMap2, fdMap2, cdMap2) = DefOps.replaceFunDefs(program)({
         (f: FunDef) =>
           if(ExprOps.exists(e => e match { case Variable(id) => booleanFlags contains id case _ => false })(f.fullBody)) {
@@ -262,6 +332,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             Some(new_f)
           } else None
       })
+      //println("program: " + program2)
       val start_fd2 = fdMap2.getOrElse(start_fd, start_fd)
       val tfactory = SolverFactory.getFromSettings(c, program2).withTimeout(10.seconds)
       
@@ -272,7 +343,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           val finalExprs = fd.paramIds.map(model)
           val whoIsEvaluated = functionInvocation(start_fd, finalExprs)
           val ae = new AbstractEvaluator(c, p)
-          val coveredBooleansForCE = ae.eval(whoIsEvaluated).result match {
+          val coveredFlagsByCounterExample = ae.eval(whoIsEvaluated).result match {
             case Some((Tuple(Seq(_, booleans)), _)) =>
               val targettedIds = ExprOps.collect(e => e match { case Variable(id) => Set(id) case _ => Set[Identifier]() })(booleans)
               coveredBooleans ++= targettedIds
@@ -280,7 +351,9 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
             case _ =>
               Set(bvar)
           }
-          finalExprs -> coveredBooleansForCE
+          //println(s"Recording the example $finalExprs covering $coveredFlagsByCounterExample")
+          recordExample(finalExprs, coveredFlagsByCounterExample)
+          finalExprs -> coveredFlagsByCounterExample
         case e =>
           throw InputNotCoveredException("Could not find an input to cover the line: " + bvar.getPos.line + " (at col " + bvar.getPos.col + ")\n" + e.getOrElse(""), bvar)
       }

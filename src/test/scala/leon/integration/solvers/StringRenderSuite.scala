@@ -206,6 +206,47 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def nodeToString(n: Node): String = ??? by example
     |  def edgeToString(e: Edge): String = ??? by example
     |  def listEdgeToString(l: List[Edge]): String = ??? by example
+    |  
+    |  // Test if it can infer functions based on sealed classes.
+    |  abstract class ThreadId
+    |  case object T1 extends ThreadId
+    |  case object T2 extends ThreadId
+    |  case object T3 extends ThreadId
+    |  case object T4 extends ThreadId
+    |  case object T5 extends ThreadId
+    |  
+    |  case class ThreadConfig(t: ThreadId, push: Option[Int])
+    |  
+    |  def threadConfigToString(t: ThreadConfig): String = ???[String] ensuring {
+    |    (res: String) => (t, res) passes {
+    |      case ThreadConfig(T1, Some(2)) => "T1: Push 2"
+    |      case ThreadConfig(T2, None()) => "T2: Skip"
+    |    }
+    |  }
+    |  
+    |  def doubleOptionToString(pushed: Option[Int], pulled: Option[Int]): String =  {
+    |    ???[String]
+    |  } ensuring {
+    |    (res : String) => ((pushed, pulled), res) passes {
+    |      case (None(), None()) =>
+    |        "Config: "
+    |      case (None(), Some(0)) =>
+    |        "Config: pulled 0"
+    |      case (Some(0), None()) =>
+    |        "Config: pushed 0 "
+    |    }
+    |  }
+    |  
+    |  case class MultipleConfig(i: Int, next: Option[MultipleConfig])
+    |  
+    |  def multipleConfigToString(m: MultipleConfig): String = {
+    |    ???[String]
+    |  } ensuring {
+    |    (res: String) => (m, res) passes {
+    |      case MultipleConfig(0, None()) => "MultipleConfig: 0"
+    |      case MultipleConfig(0, Some(MultipleConfig(1, None()))) => "MultipleConfig: 0\nMultipleConfig: 1"
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
 
@@ -274,18 +315,20 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object List {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => Nil(types: _*)()
+          case scala.collection.immutable.Nil => Nil(types: _*)()
           case a::b => Cons(types: _*)(a, List(types: _*)(b: _*))
         }
       }
     }
+    object Some extends ParamCCBuilder("Some", "leon.lang.")
+    object None extends ParamCCBuilder("None", "leon.lang.")
     
     object BCons extends ParamCCBuilder("BCons")
     object BNil extends ParamCCBuilder("BNil")
     object BList {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => BNil(types: _*)()
+          case scala.collection.immutable.Nil => BNil(types: _*)()
           case a::b => BCons(types: _*)(a, BList(types: _*)(b: _*))
         }
       }
@@ -303,6 +346,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     lazy val dummy2ToString = method("dummy2ToString")
     lazy val bListToString = method("bListToString")
     object customListToString extends paramMethod("customListToString")
+    lazy val threadConfigToString = method("threadConfigToString")
+    object T3  extends CCBuilder("T3")
+    object ThreadConfig extends CCBuilder("ThreadConfig")
+    
+    lazy val doubleOptionToString = method("doubleOptionToString")
+    object MultipleConfig  extends CCBuilder("MultipleConfig")
+    lazy val multipleConfigToString = method("multipleConfigToString")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -400,6 +450,28 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
           customListToString(Dummy)(listDummy1, lambdaDummyToString)),
           StringLiteral("\n  ")),
           customListToString(Dummy2)(listDummy2, lambdaDummy2ToString)))
+    }
+  }
+  
+  test("Pretty-printing a hierarchy of case object") { case (ctx, program) =>
+    val c= Constructors(program); import c._
+    synthesizeAndTest("threadConfigToString",
+      Seq(c.ThreadConfig(c.T3(), c.Some(Int32Type)(IntLiteral(5)))) -> "T3: Push 5"
+    )
+  }
+  
+  test("Activating horizontal markovization should work") { case (ctx, program) =>
+    val c = Constructors(program); import c._
+    synthesizeAndTest("doubleOptionToString",
+      Seq(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2))) -> "Config: pushed 1 pulled 2"
+    )
+  }
+  
+  test("reuse of the same function twice should work") { case (ctx, program) =>
+    synthesizeAndAbstractTest("multipleConfigToString"){ (fd: FunDef, program: Program) =>
+      val numOfMultipleConfig = program.definedFunctions.map(fd => ExprOps.fold[Int]{ case (StringLiteral("MultipleConfig: "), _) => 1 case (e, children) => children.sum }(fd.fullBody)).reduce(_ + _)
+      numOfMultipleConfig should equal(1)
+      Seq()
     }
   }
 }

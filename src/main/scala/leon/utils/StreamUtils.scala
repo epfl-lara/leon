@@ -111,6 +111,11 @@ object StreamUtils {
       if(continue) Some(tuple.reverse) else None
     }
   }
+  
+  def cartesianMap[K, T](arg: Map[K, Stream[T]]): Stream[Map[K, T]] = {
+    val (k, v) = arg.toSeq.unzip
+    cartesianProduct(v).map(k.zip(_).toMap)
+  }
 
   private def diagCount(dim : Int) : Stream[List[Int]] = diag0(dim, 0)
   private def diag0(dim : Int, nextSum : Int) : Stream[List[Int]] = summingTo(nextSum, dim).append(diag0(dim, nextSum + 1))

@@ -47,8 +47,10 @@ import leon.synthesis.disambiguation.InputCoverage
 import leon.test.helpers.ExpressionsDSLProgram
 import leon.test.helpers.ExpressionsDSLVariables
 import leon.purescala.Extractors._
+import org.scalatest.PrivateMethodTester.PrivateMethod
+import org.scalatest.PrivateMethodTester
 
-class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures with ExpressionsDSLProgram with ExpressionsDSLVariables {
+class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures with ExpressionsDSLProgram with ExpressionsDSLVariables with PrivateMethodTester  {
 
   //override a because it comes from both Matchers and ExpressionsDSLVariables
   override val a = null
@@ -125,13 +127,16 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     |  
     |}""".stripMargin)
     
+  val wrapBranch = PrivateMethod[(Expr, Some[Seq[Identifier]])]('wrapBranch)
+  val markBranches = PrivateMethod[(Expr, Option[Seq[Identifier]])]('markBranches)
+  
   test("wrapBranch should wrap expressions if they are not already containing wrapped calls"){ ctxprogram =>
     implicit val (c, p) = ctxprogram
     val dummy = funDef("InputCoverageSuite.dummy")
     val coverage = new InputCoverage(dummy, Set(dummy))
     val simpleExpr = Plus(IntLiteral(1), b)
-    coverage.wrapBranch((simpleExpr, Some(Seq(p.id, q.id)))) should equal ((simpleExpr, Some(Seq(p.id, q.id))))
-    coverage.wrapBranch((simpleExpr, None)) match {
+    coverage invokePrivate wrapBranch((simpleExpr, Some(Seq(p.id, q.id)))) should equal ((simpleExpr, Some(Seq(p.id, q.id))))
+    coverage invokePrivate wrapBranch((simpleExpr, None)) match {
       case (covered, Some(ids)) =>
         ids should have size 1
         covered should equal (Tuple(Seq(simpleExpr, Variable(ids.head))))
@@ -146,7 +151,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val coverage = new InputCoverage(withIf, Set(withIf))
     val expr = withIf.body.get
     
-    coverage.markBranches(expr) match {
+    coverage invokePrivate markBranches(expr) match {
       case (res, Some(ids)) =>
         ids should have size 2
         expr match {
@@ -165,7 +170,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val coverage = new InputCoverage(withIfInIf, Set(withIfInIf))
     val expr = withIfInIf.body.get
     
-    coverage.markBranches(expr) match {
+    coverage invokePrivate markBranches(expr) match {
       case (res, None) => fail("No ids added")
       case (res, Some(ids)) =>
         ids should have size 4
@@ -186,7 +191,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val coverage = new InputCoverage(withMatch, Set(withMatch))
     val expr = withMatch.body.get
     
-    coverage.markBranches(expr) match {
+    coverage invokePrivate markBranches(expr) match {
       case (res, None) => fail("No ids added")
       case (res, Some(ids)) =>
         withClue(res.toString) {
@@ -202,7 +207,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val coverage = new InputCoverage(withCoveredFun1, Set(withCoveredFun1, withCoveredFun2))
     val expr = withCoveredFun1.body.get
     
-    coverage.markBranches(expr) match {
+    coverage invokePrivate markBranches(expr) match {
       case (res, Some(ids)) if ids.size > 0 =>
         withClue(res.toString) {
           fail(s"Should have not added any ids, but got $ids")
@@ -218,7 +223,7 @@ class InputCoverageSuite extends LeonTestSuiteWithProgram with Matchers with Sca
     val coverage = new InputCoverage(withCoveredFun3, Set(withCoveredFun3, withCoveredFun2))
     val expr = withCoveredFun3.body.get
     
-    coverage.markBranches(expr) match {
+    coverage invokePrivate markBranches(expr) match {
       case (res, None) => fail("No ids added")
       case (res, Some(ids)) =>
     }

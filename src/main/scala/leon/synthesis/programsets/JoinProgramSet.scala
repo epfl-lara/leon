@@ -20,8 +20,8 @@ object JoinProgramSet {
   def apply[T, U](sets: Seq[ProgramSet[U]], recombine: Seq[U] => T): JoinProgramSet[T, U] = {
     new JoinProgramSet(sets, recombine)
   }
-  def direct[U1, U2](sets: (ProgramSet[U1], ProgramSet[U2])): Join2ProgramSet[(U1, U2), U1, U2] = {
-    new Join2ProgramSet(sets, (u1: U1, u2: U2) => (u1, u2))
+  def direct[U1, U2](set1: ProgramSet[U1], set2: ProgramSet[U2]): Join2ProgramSet[(U1, U2), U1, U2] = {
+    new Join2ProgramSet((set1, set2), (u1: U1, u2: U2) => (u1, u2))
   }
   def direct[U](sets: Seq[ProgramSet[U]]): JoinProgramSet[Seq[U], U] = {
     new JoinProgramSet(sets, (id: Seq[U]) => id)

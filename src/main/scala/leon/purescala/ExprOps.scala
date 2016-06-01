@@ -409,8 +409,56 @@ object ExprOps extends GenTreeOps[Expr] {
       case _: Terminal => true
       case _ => false
     }
+    
+    def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): LetDef = {
+      val inlined = fds.filter(x => !toInline(x)).map{fd =>
+        val newFd = fd.duplicate()
+        newFd.fullBody = ExprOps.preMap{
+          case FunctionInvocation(TypedFunDef(f, targs), args) if toInline(f) =>
+            val substs = f.paramIds.zip(args).toMap
+            Some(replaceFromIDs(substs, f.fullBody))
+          case _ => None
+        }(fd.fullBody)
+        fd -> newFd
+      }
+      val inlineMap = inlined.toMap
+      def doInline(e: Expr): Expr = ExprOps.preMap{
+         case fi@FunctionInvocation(tfd@TypedFunDef(f, targs), args) =>
+           inlineMap.get(f).map{ newF =>
+             FunctionInvocation(TypedFunDef(newF, targs).copiedFrom(tfd), args).copiedFrom(fi)
+           }
+          case _ => None
+       }(e)
+      val updatedCalls = inlined.map{ case (f, newF) =>
+       newF.fullBody = doInline(newF.fullBody)
+       newF
+      }
+      val updatedBody = doInline(body)
+      
+      LetDef(updatedCalls, updatedBody)
+    }
 
     def simplerLet(t: Expr): Option[Expr] = t match {
+      case LetDef(fds, body) => // Inline simple functions called only once, or calling another function.
+        def collectCalls(e: Expr): Set[FunDef] = ExprOps.collect[FunDef]{ case FunctionInvocation(TypedFunDef(fd, _), _) => Set(fd) case _ => Set()}(e)
+        val calledGraph = ((for{
+            fd <- fds
+            callee <- collectCalls(fd.fullBody)
+            if fds.contains(callee)
+        } yield ((fd: Tree) -> callee)) ++ collectCalls(body).map((body: Tree) -> _)).groupBy(_._2).mapValues(_.size)
+        
+        val toInline = fds.filter{ fd => fd.fullBody match {
+          case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case IntegerToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case _ :StringLiteral if calledGraph.getOrElse(fd, 0) == 1 => true
+          case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
+          case _ => false
+        }}
+        
+        if(toInline.length > 0) {
+          Some(inlineLetDefs(fds, body, toInline.toSet))
+        } else None
 
       /* Untangle */
       case Let(i1, Let(i2, e2, b2), b1) =>

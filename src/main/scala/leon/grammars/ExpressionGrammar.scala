@@ -39,7 +39,7 @@ abstract class ExpressionGrammar {
     }
   }
 
-  /** Union of grammars */
+  /** Returns the union of two generators. */
   final def ||(that: ExpressionGrammar): ExpressionGrammar = {
     Union(Seq(this, that))
   }
@@ -72,14 +72,14 @@ abstract class ExpressionGrammar {
         printer(s"${lhs}ε")
       } else {
         val rhs = for (g <- gs) yield {
-          val subs = g.subTrees.map { t =>
-            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
-          }
+        val subs = g.subTrees.map { t =>
+          FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+        }
 
           g.builder(subs).asString
-        }
-        printer(lhs + rhs.mkString("\n" + " " * 55))
       }
+        printer(lhs + rhs.mkString("\n" + " " * 55))
     }
+  }
   }
 }

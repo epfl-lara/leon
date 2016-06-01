@@ -238,7 +238,7 @@ sealed abstract class List[T] {
       else rec + 1
   }} ensuring { res =>
     (res >= 0) == content.contains(elem)
-  }
+        }
 
   def init: List[T] = {
     require(!isEmpty)
