@@ -189,4 +189,12 @@ object ZipWithAndFibStream {
       }
     }
   } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n + 6
+
+  @ignore
+  def main(args: List[Any]): Unit = {
+    var points = (1 to 30)
+    points.foreach{i =>
+      println(s"$i ${nthFib(i)}")
+    }
+  }
 }

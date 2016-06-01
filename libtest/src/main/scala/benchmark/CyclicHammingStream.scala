@@ -13,7 +13,13 @@ import leon.runtimeDriver._
 
 object MergeAndHammingNumbers {
   
-  case class SCons2(x321 : BigInt, tailFun1 : ValOrSusp2)
+  case class SCons2(x321 : BigInt, tailFun1 : ValOrSusp2) {
+    @inline
+    def tail = tailFun1 match {
+      case s@Susp1(f) => s.fun1()._1
+      case Val1(x) => x
+    }
+  }
   
   
   abstract class ValOrSusp2
@@ -228,6 +234,73 @@ object MergeAndHammingNumbers {
       
     }
     plot(size, ops, orb, "nthHammingNumber", "orb")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val hamstreamf = hamstreamtime._1
+      val hamstreams = hamstreamf.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          nthElemAfterSecondtime(input, hamstreamf, hamstreams)._2
+        }
+      }
+      orb :+= {() => (123*(input) - 121)}
+      
+    }
+    plot(size, ops, orb, "nthElemAfterSecondHam", "orb")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val hamstreamf = hamstreamtime._1
+      val hamstreams = hamstreamf.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          nexttime(hamstreamf, hamstreams)._2
+        }
+      }
+      orb :+= {() => (115)}
+      
+    }
+    plot(size, ops, orb, "nextHam", "orb")
+
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val hamstreamf = hamstreamtime._1
+      val hamstreams = hamstreamf.tail
+      val hamstreamt = hamstreams.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          mergetime(hamstreamf, hamstreams, hamstreamt)._2
+        }
+      }
+      orb :+= {() => (11)}
+      
+    }
+    plot(size, ops, orb, "mergeHam", "orb")
+
+    ops = List[() => BigInt]()
+    orb = List[() => BigInt]()
+    points.foreach { i =>
+      val input = i
+      val hamstreamf = hamstreamtime._1
+      val hamstreams = hamstreamf.tail
+      val hamstreamt = hamstreams.tail
+      ops :+= {() => {
+          leon.mem.clearMemo()
+          mergeSusptime(hamstreamf, hamstreams, hamstreamt)._2
+        }
+      }
+      orb :+= {() => (104)}
+      
+    }
+    plot(size, ops, orb, "mergeSuspHam", "orb")
   }
   
 }
