@@ -46,21 +46,21 @@ object MergeAndHammingNumbers {
       }
     }
   }
-  case class Val(x: SCons) extends ValOrSusp
-  case class Susp(fun: () => SCons) extends ValOrSusp
+  private case class Val(x: SCons) extends ValOrSusp
+  private case class Susp(fun: () => SCons) extends ValOrSusp
 
   /**
    * A generic lazy higher-order `map` function
    */
   @invisibleBody
-  def map(f: BigInt => BigInt, xs: SCons): SCons = {
+  private def map(f: BigInt => BigInt, xs: SCons): SCons = {
     xs match {
       case SCons(x, _) =>
         SCons(f(x), Susp(() => mapSusp(f, xs)))
     }
   } ensuring(time <= ?) // Orb result: 11
 
-  def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
+  private def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
     map(f, xs.tail)
   }
 
@@ -71,23 +71,34 @@ object MergeAndHammingNumbers {
       if(y <= z) y else z
   }
 
-  @invisibleBody
   /**
    * A three way merge function
    */
+  @invisibleBody
   def merge(a: SCons, b: SCons, c: SCons): SCons = {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
   } ensuring (_ => time <= ?)  // Orb result: 11
 
   @invisibleBody
+  def force(a: SCons) = {
+    a.tail
+  } ensuring{_ =>
+    val in = inState[BigInt]
+    time <= ? 
+  }
+
+  @invisibleBody
   def mergeSusp(a: SCons, b: SCons, c: SCons): SCons = {
     val m = min(a.x, b.x, c.x)
-    val nexta = if (a.x == m) a.tail else a
-    val nextb = if (b.x == m) b.tail else b
-    val nextc = if (c.x == m) c.tail else c
+    val nexta = if (a.x == m) force(a) else a //.tail
+    val nextb = if (b.x == m) force(b) else b
+    val nextc = if (c.x == m) force(c) else c
     merge(nexta, nextb, nextc)
-  } 
+  } ensuring{_ =>
+    val in = inState[BigInt]
+   time <= ? 
+  }
 
   /**
    * Given two elements, computes the next element.
@@ -95,7 +106,7 @@ object MergeAndHammingNumbers {
   @invisibleBody
   def next(f: SCons, s: SCons): SCons = {
     s.tail
-  } 
+  } ensuring(_ => time <= ?) // Orb result: time <= 250
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
@@ -109,7 +120,7 @@ object MergeAndHammingNumbers {
         else
           nthElemAfterSecond(n - 1, s, t)
     }
-  }
+  } ensuring(_ => time <= ? * n + ?) // Orb result: 261 * n - 260
 
    /**
    * A stream generating hamming numbers
@@ -119,7 +130,8 @@ object MergeAndHammingNumbers {
   def hamGen = {
     val hs = this.hamstream
     merge(map(2 * _, hs), map(3 * _, hs), map(5 * _, hs))
-  } 
+  } ensuring(_ => time <= ?) // Orb result: 63
+
 
   /**
    * `nth` hamming number in O(n) time.
@@ -132,5 +144,5 @@ object MergeAndHammingNumbers {
       if(n == 1) second.x
       else nthElemAfterSecond(n, first, second)
     }
-  } 
+  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n + 6
 }
