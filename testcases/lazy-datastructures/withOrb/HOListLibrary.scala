@@ -29,20 +29,23 @@ sealed abstract class List[T] {
    * A function that is the sum of time taken by 'f' when applied over the elements of the list.
    * Note: here `f` can update state.
    */
-  def listTime[R](f: T => R, st: Set[Fun[R]]): BigInt = {
+  def listTime[R](f: T => R): BigInt = {
     this match {
-      case Nil() => 0
+      case Nil() => BigInt(0)
       case Cons(x, t) =>
-        time(f(x) withState st) + t.listTime(f, st)
+        time(f(x)) +
+        (f(x) match {
+          case _ => t.listTime(f)
+        })
     }
-  }
+  } ensuring(_ >= 0)
 
   def map[R](f: T => R): List[R] = { this match {
     case Nil() => Nil[R]()
     case Cons(h, t) => Cons(f(h), t.map(f))
   }} ensuring {
     val in = inState[R]
-    time <= ? * listTime(f, in) + ?
+    time <= ? * (listTime(f) withState in) + ?
   }
 
   /*def foldLeft[R](z: R)(f: (R,T) => R): R = this match {

@@ -104,8 +104,14 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   /**
    * Here, we assume that all match cases of dispatch function take the same cost.
    */
+  import leon.invariant.util._
   class MemTimeInstrumenter(p: Program, si: SerialInstrumenter) extends TimeInstrumenter(p, si) {
     override def costOf(e: Expr)(implicit currFd: FunDef): Int = memTimeCostModel.costOf(e)
+
+    override def instProp(e: Expr)(fd: FunDef) =
+      if (isEvalFunction(fd)) {
+        Some(GreaterEquals(e, Util.zero))
+      } else None
 
     override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
       if (isEvalFunction(fd)) {
