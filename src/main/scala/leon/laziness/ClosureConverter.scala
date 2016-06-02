@@ -388,6 +388,26 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       }
       mapExpr(MatchExpr(cl, ncases))
 
+    // a solitary `is` fun invocation
+    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
+      val envVarsInGuard = (variablesOf(lbody) -- args.map(_.id).toSet)
+      if (!envVarsInGuard.isEmpty) {
+        throw new IllegalStateException(s"Guard of $finv uses variables from the environment: $envVarsInGuard")
+      }
+      try {
+        val tname = uninstantiatedFunctionTypeName(l.getType).get
+        val uninstType = functionType(tname)
+        val targs = getTypeArguments(l.getType, uninstType).get
+        // here, try to create new types for the binders, they may be needed in type rectification of local variables
+        val (nclCons, updatesState) = mapExpr(cl)
+        if(updatesState)
+          throw new IllegalStateException(s"Receiver $cl of `is` function call updates state!")
+        ((st: Option[Expr]) => IsInstanceOf(nclCons(st), CaseClassType(closureOfLambda(l), targs)), false)
+      } catch {
+        case _: NoSuchElementException =>
+          throw new IllegalStateException(s"Error: no Lambda in the program could match $l!")
+      }
+
     // (e) withState construct
     case withst @ FunctionInvocation(_, Seq(recvr, stArg)) if isWithStateFun(withst)(p) =>
       // recvr is a `WithStateCaseClass` and `stArg` could be arbitrary expressions returning a set of memClosures
