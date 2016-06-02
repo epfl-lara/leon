@@ -411,18 +411,22 @@ object ExprOps extends GenTreeOps[Expr] {
     }
     
     def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): LetDef = {
-      val inlined = fds.filter(x => !toInline(x)).map{fd =>
-        val newFd = fd.duplicate()
-        newFd.fullBody = ExprOps.preMap{
+      def inline(e: Expr) = leon.utils.fixpoint(
+        ExprOps.preMap{
           case FunctionInvocation(TypedFunDef(f, targs), args) if toInline(f) =>
             val substs = f.paramIds.zip(args).toMap
             Some(replaceFromIDs(substs, f.fullBody))
           case _ => None
-        }(fd.fullBody)
+        } , 64)(e)
+      
+      val inlined = fds.filter(x => !toInline(x)).map{fd =>
+        val newFd = fd.duplicate()
+        newFd.fullBody = inline(fd.fullBody)
         fd -> newFd
       }
+      val inlined_body = inline(body)
       val inlineMap = inlined.toMap
-      def doInline(e: Expr): Expr = ExprOps.preMap{
+      def useUpdatedFunctions(e: Expr): Expr = ExprOps.preMap{
          case fi@FunctionInvocation(tfd@TypedFunDef(f, targs), args) =>
            inlineMap.get(f).map{ newF =>
              FunctionInvocation(TypedFunDef(newF, targs).copiedFrom(tfd), args).copiedFrom(fi)
@@ -430,11 +434,10 @@ object ExprOps extends GenTreeOps[Expr] {
           case _ => None
        }(e)
       val updatedCalls = inlined.map{ case (f, newF) =>
-       newF.fullBody = doInline(newF.fullBody)
+       newF.fullBody = useUpdatedFunctions(newF.fullBody)
        newF
       }
-      val updatedBody = doInline(body)
-      
+      val updatedBody = useUpdatedFunctions(inlined_body)
       LetDef(updatedCalls, updatedBody)
     }
 
@@ -451,7 +454,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case IntegerToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
-          case _ :StringLiteral if calledGraph.getOrElse(fd, 0) == 1 => true
+          case _ if calledGraph.getOrElse(fd, 0) == 1 => true
           case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
           case _ => false
         }}
