@@ -9,6 +9,8 @@ import leon.instrumentation._
 import leon.invariant._
 import leon.runtimeDriver._
 
+import scala.collection.mutable.{ListBuffer => scalaList}
+
 object FibMem {
   abstract class IList
   
@@ -46,21 +48,18 @@ object FibMem {
     import scala.util.Random
     val rand = Random
 
-    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
-    val size = points.map(x => BigInt(x)).toList
+    val points = (0 to 20 by 10) ++ (100 to 2000 by 100) ++ (1000 to 10000 by 1000)
+    val size = points.map(x => BigInt(x)).to[scalaList]
     
-    var ops = List[() => BigInt]()
-    var orb = List[() => BigInt]()
+    var ops = List[BigInt]()
     points.foreach { i =>
       val input = i
-      ops :+= {() => {
+      ops :+= {
           leon.mem.clearMemo()
           fibRectime(input)._2
-        }
       }
-      orb :+= {() => 9 * i + 2}
     }
-    plot(size, ops, orb, "fibmem", "orb")
 
+    minresults(ops, scalaList(2, 9), List("constant", "i"), List(size), size, "fibmem")
   }  
 }

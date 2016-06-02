@@ -4,6 +4,7 @@ import annotation._
 import lang._
 import collection._
 import scala.collection.immutable.{List => scalaList}
+import scala.collection.mutable.{ListBuffer => scalaListBuffer}
 import scala.language.implicitConversions
 import scala.annotation.StaticAnnotation
 import scala.sys.process._
@@ -62,7 +63,7 @@ plot \\
 """
 	}
 
-	def plot(testSize: scalaList[BigInt], ops: List[() => BigInt], orb: List[() => BigInt], function: String, orbOrInst: String) {
+	def plot(testSize: scalaList[BigInt], ops: List[()=>BigInt], orb: List[() => BigInt], function: String, orbOrInst: String) {
 
 	val orbstream = new FileWriter(s"results/${orbOrInst}${function}.data")
     val orbout = new BufferedWriter(orbstream)
@@ -138,4 +139,83 @@ plot \\
 		}
 		opsout.close()
 	}
+
+	def prettyprint(model: scalaListBuffer[BigInt], id: List[String]): String = {
+		var j = 0
+		var s = ""
+		if(model.size == 1) {
+			s = model(0) + s
+			return s
+		} else {
+			s = s"${model(0)}"
+			s = " + " + s
+			j = 1
+			while(j != model.size - 1) {
+				s = s"${model(j)}*${id(j)}" + s
+				s = " + " + s
+				j = j + 1
+			}
+			s = s"${model(model.size - 1)}*${id(model.size - 1)}" + s
+			return s
+		}
+	}
+
+	def goesThrough(ops: List[BigInt], model: scalaListBuffer[BigInt], subsval: List[scalaListBuffer[BigInt]]): (Boolean, Int)  = {
+		var j = 0
+		while(j != ops.size) {
+			var x = ops(j)
+			var i = 0
+			var y = model(0)
+			i = 1
+			while(i != model.size) {
+				y = y + model(i)*subsval(i - 1)(j)
+				i = i + 1
+			}
+			if(x > y) return (false, j)
+			j = j + 1
+		}
+		return (true, 0)
+	}
+
+	def minreport(ops: List[BigInt], model: scalaListBuffer[BigInt], subsval: List[scalaListBuffer[BigInt]], points: scalaListBuffer[BigInt], here: Int): (scalaListBuffer[BigInt], BigInt) = {
+		var tempmodel = model
+		tempmodel(here) = tempmodel(here) - 1 
+		var res = (model, points(0))
+		var flag = false
+		while(!flag) {
+			val gt = goesThrough(ops, tempmodel, subsval)
+			if(gt._1) {
+				print(s"tempmodel before update $tempmodel\n")
+				tempmodel(here) = tempmodel(here) - 1 
+				print(s"tempmodel after update $tempmodel\n")
+			} else {
+				res = (tempmodel, points(gt._2))
+				flag = true
+			}
+		}
+		return res
+	}
+
+	def minresults(ops: List[BigInt], model: scalaListBuffer[BigInt], id: List[String], subsval: List[scalaListBuffer[BigInt]], points: scalaListBuffer[BigInt], filename: String) {
+		require((model.size == points.size + 1) && (model.size == id.size))
+		var j = 0
+		val restream = new FileWriter(s"results/MINRESULTS${filename}.report")
+    	val resout = new BufferedWriter(restream)
+		resout.write(s"Orb infereed formula: ${prettyprint(model, id)}\n\n")
+		while(j != model.size) {
+			var (x, y) = minreport(ops, model, subsval, points, j)
+			var newmodel = x.clone()
+			newmodel(j) = newmodel(j) + 1
+			
+			print(s"x is $x")
+			print(s"newmodel is $newmodel")
+
+			resout.write(s"Least value of coeff ${j} is ${newmodel(j)}.\nThe formula that goes through is ${prettyprint(newmodel, id)}.\n")
+			resout.write(s"Counter-example for ${prettyprint(x, id)} is at the point ${y}\n\n")
+			j = j + 1
+		}
+		resout.write(s"Minimization report ends here\n\n")
+		resout.close()
+	}
+
 }
