@@ -17,6 +17,7 @@ object ClassBase {
   }
 
 
+
   def encapsulated_match_value(x: Int): Char = x match {
     case x2 if x2 < 10 =>
       x2 match {
@@ -41,6 +42,14 @@ object ClassBase {
 
     if (somme == 'a') 'a' else 'b'
   }
+
+  case class B(x: Int) extends A
+  case class C(x: Int, y: Int) extends A
+  abstract class A
+
+  def class_B(x: Int): B = B(x)
+
+  def class_C(x:Int, y: Int): C = C(x, y)
 
 
 

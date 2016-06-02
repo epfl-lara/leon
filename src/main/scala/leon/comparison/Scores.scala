@@ -1,77 +1,16 @@
 package leon.comparison
 
-import leon.purescala.Expressions._
-import leon.comparison.Utils._
 import leon.purescala.Common.Tree
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
+import leon.purescala.Expressions.{CaseClassPattern, _}
 import leon.purescala.Types.{ClassType, TypeTree}
 
 /**
-  * Created by joachimmuth on 19.05.16.
-  *
-  * This give a score to the biggest common tree found by ClassTree.
-  * A common tree is composed by pair of expression (A, B) which have the same type, but are maybe not perfectly
-  * equivalent.
-  *
-  * ScoreTree take each pair and compute a score for it, then make a geometrical mean over all these scores.
-  * (The mean "balances" the fact that a big tree will always have a poorer score than a little)
-  *
+  * Created by joachimmuth on 02.06.16.
   */
-object ComparatorByScoreTree extends Comparator {
-  override val name: String = "ScoreTree"
+object Scores {
 
 
-
-  def compare(expr_base: Expr, expr: Expr): Double = {
-    val pairOfRoots = ComparatorByClassTree.possibleRoots(expr_base, expr)
-
-    val allPossibleTrees = pairOfRoots.flatMap(ComparatorByClassTree.possibleTrees(_))
-    if (allPossibleTrees == Nil) return 0.0
-    val biggest = allPossibleTrees.sortBy(-_.size).head
-
-    val score: Double = computeScore(biggest)
-    val normalizedScore = normalize(score, biggest.size)
-
-    if (score > 0.0 && ComparisonPhase.debug){
-      println("---------------------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", expr_base, expr)
-      println("---------------------")
-    }
-
-    normalizedScore
-  }
-
-  /**
-    * Geometric mean of obtained score, to balance the difference between small and big tree.
-    *
-    * @param score
-    * @param n: size of tree
-    * @return
-    */
-  def normalize(score: Double, n: Int) = Math.pow(score, 1 / n.toDouble)
-
-
-  /**
-    * Give a score to each pair of expression. In combination with "normalize" function, do a Geometric Mean on this
-    * score. They all have the same weight.
-    *
-    * @param tree
-    * @return
-    */
-  def computeScore(tree: myTree[(Expr, Expr)]): Double = {
-    // we treat each type differently with its proper scorer
-    val score = tree.value match {
-      case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
-      case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
-      case _ => 1.0
-
-    }
-
-    // if tree is a node, recursively travers children. If it is a leaf, just return the score
-    // we process a geometrical mean
-    tree.children.foldLeft(score)( (acc, child) => acc * computeScore(child))
-  }
 
   // TODO
   /**
@@ -207,6 +146,5 @@ object ComparatorByScoreTree extends Comparator {
     case _ if a.hasParent => a.fields.map(_.getType).count(_ == a.parent.get.getType)
     case _ => 0
   }
-
 
 }

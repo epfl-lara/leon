@@ -1,89 +1,82 @@
 package leon.comparison
-
-import leon.purescala.Expressions._
+import leon.purescala.Expressions.{CaseClassPattern, _}
 import leon.comparison.Utils._
-
+import leon.purescala.Common.Tree
+import leon.purescala.Definitions.{CaseClassDef, ClassDef}
+import leon.purescala.Types.{ClassType, TypeTree}
+import leon.comparison.Scores._
 
 /**
-  * Created by joachimmuth on 12.05.16.
+  * Created by joachimmuth on 02.06.16.
   *
-  * Go through two tree in parallel and compare each expression based on its class. Try to find the biggest common tree.
-  * Find all possible pair of roots. Then consider all children of both roots, and check which are
-  * similar. Consider all possible combinations of children and repeate the same operation on them.
+  * Travers in parallel two trees. Instead of comparing Class like in ClassTree, we directly compute a score of the pair
+  * like in ScoreTree. This allow the most flexible comparison.
   *
-  * We end up with a list of all possible similar tree and we pick the biggest one.
+  * Additionally, we will handle holes like "???" of "choose", and try to assign them an expression of the other tree.
   *
-  * The MatchScore is calculated with the size of the common tree, compared with the sizes of both trees.
+  * For practical reasons, we suppose that "base" trees (i.e. tree extracted from examples collection, always first in
+  * function arguments) have no holes. Indeed, these trees are suppose to come from a valid collection with which the
+  * user compare its "draft" tree.
   */
-object ComparatorByClassTree extends Comparator{
-  val name: String = "ClassTree"
+object ComparatorByScoreTreeWithHoles extends Comparator{
+  override val name: String = "ScoreTreeWtHoles"
 
-
-  def compare(expr_base: Expr, expr: Expr): Double = {
+  override def compare(expr_base: Expr, expr: Expr): Double = {
     val roots = possibleRoots(expr_base, expr)
 
-    val trees = roots.flatMap(possibleTrees(_))
-    val exclusives = exclusivesTrees(trees)
-    val sum = exclusives.foldLeft(0)( (acc, tree) => acc + tree.size)
-
-    val listClassesB = collectClass(expr_base)
-    val listClasses = collectClass(expr)
-
-    val score = matchScore(sum, listClassesB.size, listClasses.size)
-
-    if (score > 0.0 && ComparisonPhase.debug){
-      println("---------------------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", expr_base, expr)
-      println("Common Tree: ", exclusives)
-      println("---------------------")
-    }
-
-    score
+    0.0
   }
 
   /**
-    * Extract all non-overlapping trees, in size order
-    * @param trees
-    * @return
-    */
-  def exclusivesTrees(trees: List[myTree[(Expr, Expr)]]): List[myTree[(Expr, Expr)]] = trees match {
-    case Nil => Nil
-    case x :: xs =>
-      val biggest = trees.sortBy(-_.size).head
-      val rest = trees.filter(tree => flatList(tree).intersect( flatList(biggest) ).isEmpty)
-      List(biggest) ++ exclusivesTrees(rest)
-  }
-
-  def flatList(tree: myTree[(Expr, Expr)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
-
-  /**
-    * list of all similar pair of expressions, based on classes.
-    *
+    * All possible root for our common tree, and the score of the pair
     * @param expr_base
     * @param expr
     * @return
     */
-  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr)] = {
+  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
     val expressionsBase = collectExpr(expr_base)
     val expressions = collectExpr(expr)
 
     val pairOfPossibleRoots = for {
       expBase <- expressionsBase
       exp <- expressions
-      if areSimilar(expBase.getClass, exp.getClass)
+      if computeScore(expBase, exp) > 0.0
     } yield {
-      (expBase, exp)
+      (expBase, exp, computeScore(expBase, exp))
     }
 
     pairOfPossibleRoots
+  }
+
+  def computeScore(exprA: Expr, exprB: Expr): Double = (exprA, exprB) match {
+    case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
+    case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
+    case (x, y) if x.getClass == y.getClass =>
+      1.0
+    case _ => 0.0
+  }
+
+
+
+  def computeScore(tree: myTree[(Expr, Expr)]): Double = {
+    // we treat each type differently with its proper scorer, stores in object Scores
+    val score = tree.value match {
+      case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
+      case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
+      case _ => 1.0
+
+    }
+
+    // if tree is a node, recursively travers children. If it is a leaf, just return the score
+    // we process a geometrical mean
+    tree.children.foldLeft(score)( (acc, child) => acc * computeScore(child))
   }
 
 
   /**
     * With a pair of roots, find all children and find all combination of matching children in order to create a list
     * of all possible matching tree. Then recursively call itself on each pair of children.
- *
+    *
     * @param pair of matching root
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
@@ -124,7 +117,7 @@ object ComparatorByClassTree extends Comparator{
     * IMPROVEMENT: Here, it would be possible to already filter some cases.
     * When we do the combination, we try all cases, using one pair of matching, two, three, ... we could only keep the
     * ones using maximum of possible children, as we only want the biggest tree.
- *
+    *
     * @param pairs
     * @return
     */
@@ -134,7 +127,7 @@ object ComparatorByClassTree extends Comparator{
 
   def isSameChildUsedTwice(list: List[(Expr, Expr)]): Boolean = {
     list.map(_._1).distinct.size != list.size ||
-    list.map(_._2).distinct.size != list.size
+      list.map(_._2).distinct.size != list.size
   }
 
   def combine(in: List[(Expr, Expr)]): Seq[List[(Expr, Expr)]] = {
@@ -173,5 +166,6 @@ object ComparatorByClassTree extends Comparator{
   def areSimilar(getClass: Class[_ <: Expr], getClass1: Class[_ <: Expr]) = {
     getClass == getClass1
   }
+
 
 }

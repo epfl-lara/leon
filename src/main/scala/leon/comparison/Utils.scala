@@ -10,72 +10,6 @@ import leon.purescala.Types.{ClassType, TypeTree}
 object Utils {
 
 
-  /**
-    * One hard piece is to compare two case clase, because it cannot be normalized like value
-    *
-    * @return
-    */
-
-  def compareClassDef(classA: ClassDef, classB: ClassDef): Double = {
-    (classA, classB) match {
-      case (a,b) if (a.isAbstract && b.isAbstract) =>
-        if (a.knownCCDescendants.size == b.knownCCDescendants.size) 1.0
-        else 0.0
-      case (a: CaseClassDef, b:CaseClassDef) =>
-        compareCaseClassDef(a,b)
-      case _ =>   0.0
-
-    }
-  }
-
-  def compareTypeTree(typeA: TypeTree, typeB: TypeTree): Double = (typeA, typeB) match {
-    case (a: ClassType, b: ClassType) => compareClassDef(a.classDef, b.classDef)
-    case _ => 0.0
-  }
-
-
-  /**
-    * Combine number of parameter, of parameter of its own type and of the type of its parent
-    * (to be improved for CaseClass without argument, for example match with parent)
-    *
-    * @param a
-    * @param b
-    * @return
-    */
-  def compareCaseClassDef(a: CaseClassDef, b: CaseClassDef): Double = {
-    val ownTypeA: Int = argumentsOfOwnType(a)
-    val ownTypeB: Int = argumentsOfOwnType(b)
-    val parentTypeA : Int = argumentsOfParentType(a)
-    val parentTypeB: Int = argumentsOfParentType(b)
-
-    val percentageMatch: Double = percent(a.fields.size, b.fields.size) *
-      percent(ownTypeA, ownTypeB) * percent(parentTypeA, parentTypeB)
-
-    percentageMatch
-  }
-
-
-  /**
-    * Count how many occurrences of its own type appear in its arguments
-    * (to be improved if multiples types)
-    *
-    * @param a the case class
-    * @return
-    */
-  def argumentsOfOwnType(a: CaseClassDef): Int = {
-    a.fields.map(_.getType).count(a.tparams.map(_.tp.getType).contains(_))
-  }
-
-  /**
-    * Count how many occurrences of its parent type appear in its arguments
-    *
-    * @param a
-    * @return
-    */
-  def argumentsOfParentType(a: CaseClassDef): Int = a match {
-    case _ if a.hasParent => a.fields.map(_.getType).count(_ == a.parent.get.getType)
-    case _ => 0
-  }
 
   def percent(a: Int, b: Int): Double = {
     if(a == 0 && b == 0) 1.0
@@ -86,11 +20,46 @@ object Utils {
   def matchScore(a: Int, option1: Int, option2: Int): Double =
     Math.min(percent(a, option1), percent(a, option2))
 
+
+  /**
+    * Arithmetic means
+    */
   def mean(a: Double): Double = a
   def mean(a: Double, b: Double): Double = (a + b) / 2
   def mean(a: Double, b: Double, c: Double): Double = (a + b + c) / 3
   def mean(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 4
   def mean(list : List[Double]): Double = list.foldLeft(0.0)(_+_) / list.size.toDouble
+
+  /**
+    * Derived from "traverse" function. Traverse all the tree and collect whished information about Expr composing it.
+    * It fixes the "onChildren" function to be recursive and let the "onParent" be the one deciding what information
+    * will be stored
+    *
+    * collectExpr and collectClass collect respectively the Expr and the Class of each element of the tree.
+    *
+    * BEWARE: Expr are complete trees even if we call it "parent". When we compare two Expr, we compare two entire tree.
+    * At the contrary, when we compare to Class, we lose this information and only compare the Class of two parent.
+    * @param expr
+    * @param f
+    * @tparam T
+    * @return
+    */
+  def collect[T](expr: Expr)(f:Expr => List[T]): List[T] = traverse(expr)(f)(expr => collect(expr)(f))
+
+  def collectClass(expr: Expr): List[Class[_ <: Expr]] =
+    collect[Class[_ <: Expr]](expr) (expr => List(expr.getClass))
+
+  def collectExpr(expr: Expr): List[Expr] =
+    collect[Expr](expr) (expr => List(expr))
+
+  /**
+    * Give a list of all children of one parent. Why do we need to use "traverse" function to get them? Because
+    * there is a lot of possible CaseClass extending Expr, and we want to deal with any of them.
+    * @param expr
+    * @return
+    */
+  def getChildren(expr: Expr): List[Expr] =
+    traverse(expr) (expr => Nil) (expr => List(expr))
 
 
   /**
@@ -228,36 +197,7 @@ object Utils {
   }
 
 
-  /**
-    * Derived from "traverse" function. Traverse all the tree and collect whished information about Expr composing it.
-    * It fixes the "onChildren" function to be recursive and let the "onParent" be the one deciding what information
-    * will be stored
-    *
-    * collectExpr and collectClass collect respectively the Expr and the Class of each element of the tree.
-    *
-    * BEWARE: Expr are complete trees even if we call it "parent". When we compare two Expr, we compare two entire tree.
-    * At the contrary, when we compare to Class, we lose this information and only compare the Class of two parent.
-    * @param expr
-    * @param f
-    * @tparam T
-    * @return
-    */
-  def collect[T](expr: Expr)(f:Expr => List[T]): List[T] = traverse(expr)(f)(expr => collect(expr)(f))
 
-  def collectClass(expr: Expr): List[Class[_ <: Expr]] =
-    collect[Class[_ <: Expr]](expr) (expr => List(expr.getClass))
-
-  def collectExpr(expr: Expr): List[Expr] =
-    collect[Expr](expr) (expr => List(expr))
-
-  /**
-    * Give a list of all children of one parent. Why do we need to use "traverse" function to get them? Because
-    * there is a lot of possible CaseClass extending Expr, and we want to deal with any of them.
-    * @param expr
-    * @return
-    */
-  def getChildren(expr: Expr): List[Expr] =
-    traverse(expr) (expr => Nil) (expr => List(expr))
 
 
 }
