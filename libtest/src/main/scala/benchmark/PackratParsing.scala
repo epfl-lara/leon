@@ -47,9 +47,8 @@ object PackratParsing {
     val scr2 = (ir1._1, BigInt(0))
     val r159 = ir1._1 match {
       case Parsed(j) =>
-        val e62 = lookuptime(j)
-        val c28 = BigInt(4) + e62._2
-        val mc5 = if (j > BigInt(0) && e62._1 == Plus()) {
+        val c28 = BigInt(5)
+        val mc5 = if (j > BigInt(0) && lookuptime(j)._1 == Plus()) {
           val e162 = j - BigInt(1)
           val lr4 = lookup[Result](List(4905, e162))
           val scr3 = if (lr4._1) {
@@ -89,9 +88,8 @@ object PackratParsing {
     val scr5 = (ir2._1, BigInt(0))
     val r160 = ir2._1 match {
       case Parsed(j) =>
-        val e81 = lookuptime(j)
-        val c18 = BigInt(4) + e81._2
-        val mc10 = if (j > BigInt(0) && e81._1 == Times()) {
+        val c18 = BigInt(5)
+        val mc10 = if (j > BigInt(0) && lookuptime(j)._1 == Times()) {
           val e118 = j - BigInt(1)
           val lr7 = lookup[Result](List(4906, e118))
           val scr6 = if (lr7._1) {
@@ -143,14 +141,15 @@ object PackratParsing {
         }
         val th3 = scr._1 match {
           case Parsed(rem) =>
-            val e33 = lookuptime(rem)
-            val c26 = BigInt(4) + e33._2
-            val mc = if (rem >= BigInt(0) && e33._1 == Close()) {
+            val c26 = BigInt(5)
+            val mc = if (rem >= BigInt(0) && lookuptime(rem)._1 == Close()) {
               (Parsed(rem - BigInt(1)), BigInt(3) + c26)
-            } else {
+            } 
+            else {
               (NoParse(), BigInt(2) + c26)
             }
             (mc._1, (BigInt(3) + mc._2) + scr._2)
+
           case _ =>
             (NoParse(), BigInt(3) + scr._2)
         }
@@ -224,11 +223,51 @@ object PackratParsing {
     (bd6._1, bd6._2)
   }
 
+  def genString(i: Int): Array[Terminal] = {
+    // var res = new Array[Terminal](4*i + 1) // Array.fill(4*i + 1){Digit()}
+    // var j = 0
+    // while(j != i) {
+    //   res(3*j) = Open() 
+    //   res(3*j + 1) = Digit()
+    //   if(j%2 == 0) {
+    //     res(3*j + 2) = Plus()
+    //   } else {
+    //     res(3*j + 2) = Times()
+    //   }
+    //   j = j + 1
+    // }
+    // res(3*i) = Digit()
+    // j = 0
+    // while(j != i) {
+    //   res(3*i + j + 1) = Close()
+    //   j = j + 1
+    // }
+    // return res
+  
+    import scala.util.Random
+    val rand = Random
+
+    var res = new Array[Terminal](i + 1) // Array.fill(4*i + 1){Digit()}
+    var j = 0
+    while(j != i + 1) {
+      var temp = rand.nextInt(5)
+      temp match {
+        case 0 => res(j) = Open()
+        case 1 => res(j) = Close()
+        case 2 => res(j) = Times()
+        case 3 => res(j) = Plus()
+        case 4 => res(j) = Digit()
+      }
+      j = j + 1
+    }
+    return res
+  }
+
   def main(args: Array[String]): Unit = {
     import scala.util.Random
     val rand = Random
 
-    val points = (10 to 200 by 10) //++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
+    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000)// (1 to 20 by 1) ++ (10 to 200 by 10) ++ (100 to 1000 by 100) //++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
     val size = points.map(x => BigInt(x)).toList
     
     var ops = List[() => BigInt]()
@@ -237,13 +276,11 @@ object PackratParsing {
       val input = i
       ops :+= {() => {
           leon.mem.clearMemo()
-          xstring = Array.fill(i + 1)(Digit())
-          print(s"length of string is ${xstring.size}")
+          xstring = genString(i)
           parsetime(i)._2
         }
       }
-      orb :+= {() => 74 * i + 71
-      }
+      orb :+= {() => 74 * (i) + 71}
     }
     plot(size, ops, orb, "packrat", "orb")
   }  

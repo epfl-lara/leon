@@ -178,7 +178,7 @@ plot \\
 	}
 
 	def minreport(ops: List[BigInt], model: scalaListBuffer[BigInt], subsval: List[scalaListBuffer[BigInt]], points: scalaListBuffer[BigInt], here: Int): (scalaListBuffer[BigInt], BigInt) = {
-		var tempmodel = model
+		var tempmodel = model.clone()
 		tempmodel(here) = tempmodel(here) - 1 
 		var res = (model, points(0))
 		var flag = false
