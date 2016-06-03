@@ -5,6 +5,7 @@ package solvers
 
 import purescala.Types._
 import purescala.Expressions._
+import purescala.Extractors._
 
 // Corresponds to a complete map (SMT Array), not a Leon/Scala array
 // Only used within solvers or SMT for encoding purposes
@@ -15,7 +16,12 @@ case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree {
 }
 
 // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
-case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
+case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr with Extractable {
+
+  //TODO: ???
+  override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] =
+    Some((Seq(), es => RawArrayValue(keyTpe, elems, default)))
+
   val getType = RawArrayType(keyTpe, default.getType)
 
   override def asString(implicit ctx: LeonContext) = {

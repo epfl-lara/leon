@@ -10,5 +10,5 @@ import unrolling._
 import theories._
 
 class Z3UnrollingSolver(context: SolverContext, program: Program, underlying: Z3Solver)
-  extends UnrollingSolver(context, program, underlying, new StringEncoder(context.context, program))
+  extends UnrollingSolver(context, program, underlying, new StringEncoder(context.context, program) >> new ArrayEncoder(context.context, program))
      with Z3Solver
