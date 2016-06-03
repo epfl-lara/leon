@@ -9,21 +9,13 @@ import higherorder._
 import collection._
 import invariant._
 
-object StreamLibrary {
-  /**
-   * A placeholder in a stream is either a Val or a Susp()
-   */
-  sealed abstract class ValOrSusp {
-    // ideally, fval should not be called on `Val` as it would unnecessarily cache it.
-    lazy val fval = {
-      this match {
-        case Susp(f) => f()
-        case Val(x)  => x
-      }
-    }
-  }
-  case class Val(x: LList) extends ValOrSusp
-  case class Susp(fun: () => LList) extends ValOrSusp
+/**
+ * This is a collection of methods of the hashkell stream library.
+ * To prove a running time bound, we fix the input stream as an infinite
+ * stream of natural numbers.
+ * We ignored methods that may be possibly non-terminating.
+ */
+object OldHaskellStreamLibrary {    
 
   /**
    *  An infinite integer stream.
@@ -31,7 +23,7 @@ object StreamLibrary {
    */
   sealed abstract class LList {
     //@inline
-    def tail = {
+    lazy val tail = {
       require(this != SNil())
       val SCons(x, tailFun) = this
       tailFun match {
@@ -73,6 +65,18 @@ object StreamLibrary {
   }
   case class SCons(x: BigInt, tailFun: ValOrSusp) extends LList
   case class SNil() extends LList
+  
+  /*sealed abstract class ValOrSusp {
+    // ideally, fval should not be called on `Val` as it would unnecessarily cache it.
+    lazy val fval = {
+      this match {
+        case Susp(f) => f()
+        case Val(x)  => x
+      }
+    }
+  }
+  case class Val(x: LList) extends ValOrSusp
+  case class Susp(fun: () => LList) extends ValOrSusp*/
   
   /**
    * Get the nth elem from a given stream
