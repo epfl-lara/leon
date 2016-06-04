@@ -23,7 +23,6 @@ object StreamLibrary {
         case SCons(_, tailFun) => tailFun()        
       }
     }
-
     def tailOrNil = {
       this match {
         case SNil() => this
@@ -41,7 +40,6 @@ object StreamLibrary {
     SCons(n, () => genNextNatFrom(n))
   }
   
-  @invisibleBody
   def genNextNatFrom(n: BigInt): LList = {
     val nn = n + 1
     SCons(nn, () => genNextNatFrom(nn))
@@ -81,7 +79,6 @@ object StreamLibrary {
     }
   } ensuring{_ => time <= ?}
 
-  //@invisibleBody
   def mapSusp(f: BigInt => BigInt, s: LList) = {
     require(validNatStream(s) && f.is(constFun1 _))
     map(f, s.tailOrNil)
@@ -142,7 +139,6 @@ object StreamLibrary {
     }
   } ensuring (_ => time <= ?)
 
-   //@invisibleBody
    def takeWhileSusp(p: BigInt => Boolean, s: LList): LList = {
      require(validNatStream(s) && p.is(constFun2 _))
      takeWhile(p, s.tailOrNil)
@@ -166,7 +162,6 @@ object StreamLibrary {
     }
   } ensuring (_ => time <= ?)
 
-  @invisibleBody
   def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
     require(validNatStream(s) && f.is(constFun3 _))
     scan(f, z, s.tailOrNil)
@@ -226,7 +221,6 @@ object StreamLibrary {
     }
    } ensuring(_ => time <= ?)
 
-  //@invisibleBody
   def zipWithSusp(f: (BigInt, BigInt) => BigInt, a: LList, b: LList) = {
     require(validNatStream(a) && validNatStream(b) && f.is(constFun3 _))
     zipWith(f, a.tailOrNil, b.tailOrNil)

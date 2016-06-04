@@ -10,7 +10,7 @@ import collection._
 import invariant._
 import StreamLibrary._
 
-object NatStream {
+object StreamClient {
   def mapClient(n: BigInt) = {
     require(n >= 0)
     nthElemAfterMap(n, map(constFun1, natsFromn(0)))
@@ -160,4 +160,21 @@ object NatStream {
         else nthElemAfterZipWith(n - 1, s.tailOrNil)
     }
   } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  
+  //  @invisibleBody  
+//  def getnthElem(n: BigInt, s: LList): BigInt = {
+//    require(n >= 0) // && isMapStream(s))
+//    s match {
+//      case SNil() => BigInt(0)
+//      case s @ SCons(x, _) =>
+//        if (n == 0) x
+//        else getnthElem(n - 1, s.tailOrNil)
+//    }
+//  }
+  
+
+  /*def nthElemInNatsFromM(n: BigInt, M: BigInt) = {
+    require(n >= 0)
+    getnthElem(n, natsFromn(M))
+  }*/ //ensuring(_ => time <= ? * n + ?) // Orb result: ??
 }
