@@ -5,7 +5,6 @@ import lang._
 import annotation._
 import instrumentation._
 import invariant._
-import leon.collection._
 import mem._
 import higherorder._
 import stats._
@@ -17,6 +16,25 @@ import stats._
  * Needs unrollfactor = 3
  */
 object BottomUpMergeSortPrecise {  
+  
+  @inline
+  def max(x:BigInt, y:BigInt) = if (x >= y) x else y   
+  
+  sealed abstract class List[T] {  
+    def size: BigInt = (this match {
+      case Nil() => BigInt(0)
+      case Cons(h, t) => 1 + t.size
+    }) ensuring (_ >= 0)
+    
+    // length is used in the implementation
+    val length: BigInt = (this match {
+      case Nil() => BigInt(0)
+      case Cons(h, t) => 1 + t.length
+    }) ensuring (_ == size)
+  }
+  case class Cons[T](x: T, tail: List[T]) extends List[T]
+  case class Nil[T]() extends List[T]
+  
   private sealed abstract class LList {
     def size: BigInt = {
       this match {
@@ -31,17 +49,17 @@ object BottomUpMergeSortPrecise {
         case _            => BigInt(0)
       }          
     } ensuring(_ >= 0)
-    
-//    def complete: Boolean = {
-//      this match {
-//        case SCons(_, t) => t.complete
-//        case _            => true
-//      }   
-//    }
-    
+
     def weightBalanced: Boolean = {
       this match {
         case SCons(_, t) => t.weightBalanced
+        case _            => true
+      }
+    }
+    
+    def valid = {
+      this match {
+        case SCons(_, t) => t.valid
         case _            => true
       }
     }
@@ -57,78 +75,32 @@ object BottomUpMergeSortPrecise {
     // adding ensurings to `fmatch` somehow does not work in the typesystem
     def heightSub: BigInt = {     
       lfun fmatch[LList, Stream, BigInt] {
-        case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + b.height
+        case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + max(a.height, b.height)
         case _ => BigInt(1)
       }  
     }     
     def height: BigInt = {
       heightSub
     }ensuring(_ >= 1)
-    
-//    def complete: Boolean = {
-//      lfun fmatch[LList, Stream, Boolean] {
-//        case (a, b) if lfun.is(() => mergeSusp(a, b)) => 
-//          a.height == b.height && a.complete && b.complete
-//        case _ => true
-//      }
-//    }
-    
-    @invisibleBody
+
+    //@invisibleBody
     def weightBalanced: Boolean = {
       lfun fmatch[LList, Stream, Boolean] {
         case (a, b) if lfun.is(() => mergeSusp(a, b)) =>
           val sizeDiff = a.size - b.size
           sizeDiff >= -2 && sizeDiff <= 2 && 
           a.weightBalanced && b.weightBalanced
+        case _ => true //(lfun()*) == SNil()
+      }
+    }
+    
+    def valid: Boolean = {
+      lfun fmatch[LList, Stream, Boolean] {
+        case (a, b) if lfun.is(() => mergeSusp(a, b)) => true          
         case _ => (lfun()*) == SNil()
       }
     }
   }
-
-  /**
-   * (a) Everything until the last tree is complete.
-   * (b) Every tree except the last tree has the same height, and (by implication) size
-   * (c) The last tree is balanced and has smaller size.
-   */
-//  private def valid(sl: List[LList]): Boolean = {
-//    sl match {
-//      case Nil() => true
-//      case Cons(s, Nil()) => 
-//        s.size > 0 && s.balanced 
-//      case Cons(l1, tail@Cons(l2, Nil())) => 
-//        l1.size > 0 && l1.complete && l1.size >= l2.size && valid(tail)  
-//      case Cons(l1, tail@Cons(l2, _)) => 
-//        l1.size > 0 && l1.complete && l1.height == l2.height && 
-//        l1.size == l2.size && valid(tail)
-//    }
-//  }
-
-//  private def fullSize(sl: List[LList]): BigInt = {
-//    sl match {
-//      case Nil()      => BigInt(0)
-//      case Cons(l, t) => l.size + fullSize(t)
-//    }
-//  } ensuring (_ >= 0)    
-
-  /**
-   * A function that given a list of (lazy) sorted lists,
-   * groups them into pairs and invokes the lazy 'merge' function on each pair.
-   * Takes time linear in the size of the input list.
-   */
-//  @invisibleBody
-//  private def pairs(l: List[LList]): List[LList] = {
-//    require(valid(l))
-//    l match {
-//      case Nil()           => Nil[LList]()
-//      case Cons(_, Nil()) => l
-//      case Cons(l1, Cons(l2, rest)) =>
-//        Cons(merge(l1, l2), pairs(rest))
-//    }
-//  } ensuring (res => res.size <= (l.size + 1) / 2 &&
-//    fullSize(l) == fullSize(res) &&
-//    valid(res) &&
-//    time <= 15 * l.size + 3 // 2 * time <= 15 * l.size + 6
-//    )
   
   @inline
   private val nilStream: Stream = Stream(lift(SNil()))
@@ -141,7 +113,7 @@ object BottomUpMergeSortPrecise {
   }
 
   def recSize(l: LList): BigInt = {
-    require(l.weightBalanced)
+    require(l.weightBalanced && l.valid)
     (l match {
       case SNil() => BigInt(0)
       case SCons(_, Stream(lfun)) =>
@@ -150,8 +122,8 @@ object BottomUpMergeSortPrecise {
           case _ => BigInt(1)
         }
     })
-  } ensuring (res => l.size == res)
-    //twopower(l.height) <= ? *res + ?)
+  } ensuring (res => l.size == res) // && 
+      //twopower(l.height) <= ? * res + ?)
 
   /**
    * 
@@ -176,12 +148,14 @@ object BottomUpMergeSortPrecise {
     val (reslist, rest) = res
     reslist.size == range && 
     rest.size == l.size - range  &&
-    reslist.weightBalanced 
-    //&& time <= ? * range + ? // 2 * time <= 15 * l.size + 6
+    reslist.weightBalanced && 
+    reslist.valid &&
+    time <= 57 * range - 44 // 2 * time <= 15 * l.size + 6
   }
 
   @invisibleBody
   private def merge(a: LList, b: LList): LList = {
+    require(a.valid && b.valid)
     b match {
       case SNil() => a
       case SCons(x, xs) =>
@@ -203,43 +177,39 @@ object BottomUpMergeSortPrecise {
    *  Note: the sorted stream of integers may by recursively constructed using merge.
    *  Takes time linear in the size of the streams (non-trivial to prove due to cascading of lazy calls)
    */
-  //@invisibleBody
+  @invisibleBody
   private def mergeSusp(a: LList, b: Stream): LList = {
-    require(a != SNil())
+    require(a != SNil() && a.valid && b.valid)
     merge(a, b.list)
-  } ensuring {res =>    
-    //a.size + b.size == res.size && 
+  } ensuring {res =>        
     res != SNil() &&
-    time <= 22 * b.height + 1 //time <= 24 * rsize + 1/8 // time <= 111 * rsize - 86 
-  }
-  
-  @inline
-  def max(x:BigInt, y:BigInt) = if (x >= y) x else y   
+    res.height <= max(a.height, b.height) + 1 &&
+    time <= 22 * b.height + 1  
+  }  
   
   /**
    * Takes list of integers and returns a sorted stream of integers.
    * Takes time linear in the size of the  input since it sorts lazily.
-   */
+   */  
   @invisibleBody
   private def mergeSort(l: List[BigInt]): LList = {
     l match {
       case Nil() => SNil()
-      case _ =>
-        constructMergeTree(l, 0, l.size - 1)._1 
+      case _ => constructMergeTree(l, 0, l.length - 1)._1 
     }
-  } ensuring (res => l.size == res.size) // && time <= 66 * l.size + 15) // time <= 45 * l.size + 15
+  } ensuring (res => l.size == res.size && time <= 57 * l.size + 3) // time <= 45 * l.size + 15
 
-//  private def kthMinStream(s: Stream, k: BigInt): BigInt = {
-//    require(k >= 0)
-//    s.list match {
-//      case SCons(x, xs) =>
-//        if (k == 0) x
-//        else
-//          kthMinStream(xs, k - 1)
-//      case SNil() => BigInt(0)
-//    }
-//  } ensuring (_ => time <= ? * (k * s.size) + ? * (s.size) + ?) //  time <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
-
+  private def kthMinRec(l: LList, k: BigInt): BigInt = {
+    require(k >= 0)
+    l match {
+      case SCons(x, xs) =>
+        if (k == 0) x
+        else
+          kthMinRec(xs.list, k - 1)
+      case SNil() => BigInt(0)
+    }
+  } ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
+  //? * (l.height) 
   /**
    * A function that accesses the kth element of a list using lazy sorting.
    */
@@ -252,8 +222,7 @@ object BottomUpMergeSortPrecise {
     //import eagerEval.MergeSort
     import scala.util.Random
     import scala.math.BigInt
-    import stats._
-    import collection._
+    import stats._    
 
     println("Running merge sort test...")
     val length = 3000000

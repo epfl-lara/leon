@@ -34,6 +34,7 @@ object HOMemVerificationPhase {
     }
     val newPosts = p.definedFunctions.collect {
       case fd if fd.postcondition.exists { exists(hasInstVar) } =>
+        //println(s"postcondition of ${fd.id}: ${fd.postcondition.get}")
         // remove the conjuncts that use instrumentation vars
         val Lambda(resdef, pbody) = fd.postcondition.get
         val npost = pbody match {

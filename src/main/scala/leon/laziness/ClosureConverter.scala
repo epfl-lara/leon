@@ -660,9 +660,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               nbody
           //println(s"Body of ${fd.id.name} after conversion:  ${rawBody}")
           nfd.body = Some(simplifyLets(replace(paramMap, bodyWithState)))
-
         }
-
         // Important: specifications use memoized semantics but their state changes are ignored after their execution.
         // This guarantees their observational purity/transparency collect class invariants that need to be added.
         if (fd.hasPrecondition) {
@@ -673,21 +671,18 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               Some(TupleSelect(npre, 1)) // ignore state updated by pre
             else Some(npre)
         }
-
         // create a new result variable
         val newres =
           if (fd.hasPostcondition) {
             val Lambda(Seq(ValDef(r)), _) = fd.postcondition.get
             FreshIdentifier(r.name, nfd.returnType) //bodyType.getOrElse(nfd.returnType))
           } else FreshIdentifier("r", nfd.returnType)
-
         // create an output state map
         val outState =
           if (funsRetStates(fd)) { //Old code: bodyUpdatesState == Some(true) || funsRetStates(fd)
             Some(TupleSelect(newres.toVariable, 2))
           } else
             stateParam
-
         // create a specification that relates input-output states
         val stateRel =
           if (funsRetStates(fd)) { // add specs on states
@@ -726,7 +721,6 @@ class ClosureConverter(p: Program, ctx: LeonContext,
               case e if isOutStateCall(e)(p) => outState.get
               case e                         => e
             }(replace(paramMap ++ Map(resid.toVariable -> resval), npostFun(outState)))
-
             val npost =
               if (postUpdatesState) {
                 TupleSelect(tpost, 1) // ignore state updated by post
@@ -736,8 +730,22 @@ class ClosureConverter(p: Program, ctx: LeonContext,
           } else {
             None
           }
-        nfd.postcondition = Some(Lambda(Seq(ValDef(newres)),
-          createAnd(stateRel.toList ++ valRel.toList ++ targetPost.toList)))
+        // try to add to the body of a let (if it exists) so that it is easy to extract the resource spec.
+        val addPosts = stateRel.toList ++ valRel.toList
+        val nfdPost = targetPost match {
+          case Some(post) =>
+            val (letsCons, letsBody) = letStarUnapply(post)
+            letsBody match {
+              case And(args) => letsCons(createAnd(addPosts ++ args))
+              case p =>
+                if (exists(InstUtil.instCall(_).isDefined)(p) && exists(_.isInstanceOf[And])(p)) {
+                  ctx.reporter.warning("Postcondition has resource template in conjunctions which cannot be separated!")
+                }
+                letsCons(createAnd(addPosts :+ p))
+            }
+          case _ => createAnd(addPosts)
+        }
+        nfd.postcondition = Some(Lambda(Seq(ValDef(newres)), nfdPost))
       case _ =>
     }
   }
