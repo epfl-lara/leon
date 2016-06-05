@@ -10,7 +10,10 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import leon.utils._
-import invariant.util.Util._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import TypeUtil._
 
 object allocCostModel {
   def costOf(e: Expr): Int = e match {
@@ -27,11 +30,48 @@ class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
 
   def inst = Alloc
 
-  def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
-    //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody) // ignore uninterpreted functions
-    //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
-    instFunSet.map(x => (x, List(Alloc))).toMap
+  val (funsToInst, funTypesToInst) = {
+    val funToFTypes = userLevelFunctions(p).map { fd =>
+      def rec(e: Expr): Set[CompatibleType] = e match {
+        case NoTree(_) => Set()
+        case l@Lambda(_, b) => rec(b) + new CompatibleType(l.getType)
+        case Ensuring(b, Lambda(_, p)) => rec(b) ++ rec(p)
+        case Operator(args, op) => args.toSet flatMap rec
+      }
+      fd -> rec(fd.fullBody)
+    }.toMap
+
+    def functionCreatingTypes(fts: Set[CompatibleType]) =
+      funToFTypes.collect {
+        case (fd, ftypes) if !ftypes.intersect(fts).isEmpty => fd
+      }
+    var (instFuns, instFunTypes) = getRootFuncs()
+    var newFuns = instFuns ++ functionCreatingTypes(instFunTypes)
+    while(!newFuns.isEmpty) {
+      //println("newfuns: "+newFuns.map(_.id))
+      // (a) find all function types of applications in the nextSets
+      val appTypes = newFuns flatMap {
+        case ifd if ifd.hasBody =>
+          collect[CompatibleType] {
+            case Application(l, _) => Set(new CompatibleType(l.getType))
+            case _ => Set()
+          }(ifd.body.get)
+        case _ => Set[CompatibleType]()
+      }
+      // (b) find all userLevelFunctions that may create a lambda compatible with the types of the application.
+      val newRoots = functionCreatingTypes(appTypes)
+      // (c) find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
+      val nextFunSet = (newFuns ++ newRoots).flatMap(cg.transitiveCallees).toSet
+      //println("nextFunSet: "+nextFunSet.map(_.id))
+      newFuns = nextFunSet -- instFuns
+      instFuns ++= nextFunSet
+      instFunTypes ++= appTypes
+    }
+    (instFuns, instFunTypes)
+  }
+
+  def functionsToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
+    funTypesToInst.map(x => (x, List(Time))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
