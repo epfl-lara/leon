@@ -27,7 +27,7 @@ object Main {
     implicit val randomState = Random.newState
     println("Welcome to Tic Tac Toe!")
 
-    val m = LevelMap(Cell(None()), Cell(None()), Cell(None()),
+    var m = LevelMap(Cell(None()), Cell(None()), Cell(None()),
                      Cell(None()), Cell(None()), Cell(None()), 
                      Cell(None()), Cell(None()), Cell(None()))
 
@@ -41,16 +41,16 @@ object Main {
       (e: dom.MouseEvent) => 
       (1 to 3).foreach { i =>
         (1 to 3).foreach { j =>
-          if(e.clientX <= i * CellWidth && e.clientX > (i - 1) * CellWidth && e.clientY <= j * CellHeight && e.clientY > (j - 1) * CellWidth) {
+          if((e.clientX <= i * CellWidth) && (e.clientX >= (i - 1) * CellWidth) && (e.clientY <= j * CellHeight) && (e.clientY >= (j - 1) * CellWidth)) {
             println(s"at $i, $j")
-            if(playerx && canFillX(m, i, j)) {
-              fillX(m, i, j)
+            if(playerx && m.canFill(j, i)) {
+              m.fill(j, i, 1)
               checkGameEnded(m)
               renderGame(m)(c)
               playerx = false
             }
-            else if(!playerx && canFillO(m, i, j)) {
-              fillO(m, i, j)
+            else if(!playerx && m.canFill(j, i)) {
+              m.fill(j, i, 0)
               checkGameEnded(m)
               renderGame(m)(c)
               playerx = true
@@ -105,7 +105,10 @@ object Main {
     ctx.font = "120px Georgia"
     val cx = (2*x + CellWidth)/2 - 30
     val cy = (2*y + CellHeight)/2 + 40
-    ctx.fillText(c.n.map(_.toString).getOrElse(""), cx, cy)
+    val elem = c.n.map(_.toString).getOrElse("")
+    if(elem == "1") ctx.fillText("X", cx, cy)
+    else if(elem == "0") ctx.fillText("O", cx, cy)
+    else ctx.fillText("", cx, cy)  
   }
 
 }
