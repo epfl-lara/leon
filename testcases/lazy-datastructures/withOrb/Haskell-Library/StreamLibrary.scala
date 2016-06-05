@@ -1,4 +1,4 @@
-package stream
+package haskell
 
 import leon._
 import lang._
@@ -9,141 +9,90 @@ import higherorder._
 import collection._
 import invariant._
 
-object StreamLibrary {
-  /**
-   * A placeholder in a stream is either a Val or a Susp()
-   */
-  sealed abstract class ValOrSusp {
-    // ideally, fval should not be called on `Val` as it would unnecessarily cache it.
-    lazy val fval = {
-      this match {
-        case Susp(f) => f()
-        case Val(x)  => x
-      }
-    }
-  }
-  case class Val(x: LList) extends ValOrSusp
-  case class Susp(fun: () => LList) extends ValOrSusp
-
-  /**
-   *  An infinite integer stream.
-   *  Technically, the data structure is *not* infinite but the tail has a higher-order function.
-   */
+/**
+ * This is a collection of methods translated to Scala from the haskell stream library.
+ * To prove a running time bound, we impose a precondition that the input stream is an infinite
+ * stream of natural numbers, and the higher-order function parameters are constant time functions
+ * We ignored methods that are not guaranteed to terminate on all streams e.g. `filter`, `dropWhile` etc.
+ */
+object StreamLibrary {    
   sealed abstract class LList {
-    //@inline
-    def tail = {
+    lazy val tail = {
       require(this != SNil())
-      val SCons(x, tailFun) = this
-      tailFun match {
-        case s @ Susp(f) => s.fval
-        case Val(x)      => x
+      this match {
+        case SCons(_, tailFun) => tailFun()        
       }
     }
-
     def tailOrNil = {
       this match {
         case SNil() => this
-        case SCons(x, tailFun) =>
-          tailFun match {
-            case s @ Susp(f) => s.fval
-            case Val(x)      => x
-          }
-      }
-    }
-
-    // this will not modify state
-    def tailVal = {
-      require(this != SNil())
-      val SCons(x, tailFun) = this
-      tailFun match {
-        case s @ Susp(f) => s.fval*
-        case Val(x)      => x
-      }
-    }
-
-    //@inline
-    def tailCached = {
-      require(this != SNil())
-      val SCons(x, tailFun) = this
-      tailFun match {
-        case Val(_) => true
-        case s      => s.fval.cached
-      }
-    }
+        case _ => tail
+      }         
+    }   
   }
-  case class SCons(x: BigInt, tailFun: ValOrSusp) extends LList
-  case class SNil() extends LList
+  case class SCons(x: BigInt, tailFun: () => LList) extends LList
+  case class SNil() extends LList  
   
-  /**
-   * Get the nth elem from a given stream
-   */
-  @invisibleBody
-  def getnthElem(n: BigInt, f: LList): BigInt = {
-    require(n >= 0)
-    f match {
-      case SNil() => BigInt(0)
-      case s @ SCons(x, _) =>
-        if (n == 0) x
-        else getnthElem(n - 1, s.tailOrNil)
-    }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: time <=  27 * n + 4
-
   /**
    * Stream for all natural numbers starting from n
    */
-  def natsFromn(n: BigInt) = {
-    SCons(n, Susp(() => genNextNatFrom(n)))
+  def natsFromn(n: BigInt): LList = {
+    SCons(n, () => genNextNatFrom(n))
   }
+  
+  def genNextNatFrom(n: BigInt): LList = {
+    val nn = n + 1
+    SCons(nn, () => genNextNatFrom(nn))
+  } ensuring(_ => time <= ?) // Orb result: ??
 
+  /**
+   * A property that asserts that the a stream is a `natstream`
+   */
   def validNatStream(s: LList): Boolean = {
     s match {
-      case SCons(_, Susp(tailFun)) =>
+      case SCons(_, tailFun) =>
         tailFun fmatch[BigInt, Boolean] {
           case n if tailFun.is(() => genNextNatFrom(n)) => true
           case _ => false
-        }
-      case SCons(_, Val(st)) => validNatStream(st)
+        }      
       case _ => true
     }
-  }
-
-  @invisibleBody
-  def genNextNatFrom(n: BigInt): LList = {
-    val nn = n + 1
-    SCons(nn, Susp(() => genNextNatFrom(nn)))
-  } ensuring(_ => time <= ?) // Orb result: ??
-
-  def nthElemInNatsFromM(n: BigInt, M: BigInt) = {
-    require(n >= 0)
-    getnthElem(n, natsFromn(M))
-  } ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  }    
+  
+  @ignore
+  var array = Array[BigInt]()
+  @extern
+  def constFun1(n: BigInt): BigInt = {
+    array(0)
+  } ensuring (_ => time <= 1)
 
   /**
-   * Apply a function uniformly over all elements of a sequence.
-   */
+   * Apply a function over all elements of a sequence.
+   * Requires that the input is a `nat` stream, and `f` is
+   * constFun1 which is a constant time function.
+   */  
   def map(f: BigInt => BigInt, s: LList): LList = {
-    require(validNatStream(s))
+    require(validNatStream(s) && f.is(constFun1 _))
     s match {
       case SNil()          => SNil()
-      case l @ SCons(x, _) => SCons(f(x), Susp(() => mapSusp(f, s)))
+      case l @ SCons(x, _) => SCons(f(x), () => mapSusp(f, s))
     }
-  } ensuring (_ => time <= ?)
+  } ensuring{_ => time <= ?}
 
-  @invisibleBody
   def mapSusp(f: BigInt => BigInt, s: LList) = {
-    require(validNatStream(s))
+    require(validNatStream(s) && f.is(constFun1 _))
     map(f, s.tailOrNil)
   } ensuring(_ => time <= ?)
 
   /**
-   * The function lazyappend appends a list to a stream,
+   * The function `appendList` appends a stream to a list,
    * returning a stream of all the list elements
    * followed by all the original stream elements.
    */
-  def lazyappend(l: List[BigInt], s: LList): LList = {
+  def appendList(l: List[BigInt], s: LList): LList = {
     l match {
       case Nil()         => s
-      case Cons(x, tail) => SCons(x, Susp(() => lazyappend(tail, s)))
+      case Cons(x, tail) => SCons(x, () => appendList(tail, s))
     }
   } ensuring (_ => time <= ?) // Orb result: ??
 
@@ -153,7 +102,7 @@ object StreamLibrary {
    * integer to itself.
    */
   def repeat(n: BigInt): LList = {
-    SCons(n, Susp(() => repeat(n)))
+    SCons(n, () => repeat(n))
   } ensuring (_ => time <= ?) // Orb result: ??
 
   /**
@@ -165,58 +114,72 @@ object StreamLibrary {
     l match {
       case Nil() => SNil()
       case Cons(x, t) =>
-        SCons(x, Susp(() => lazyappend(t, cycle(l))))
+        SCons(x, () => appendList(t, cycle(l)))
     }
   } ensuring (_ => time <= ?) // Orb result: ??
 
+  @extern
+  def constFun2(n: BigInt): Boolean = {
+    array(0) == 0
+  } ensuring (_ => time <= 1)
+  
   /**
    * 'takeWhile' returns the longest prefix of the stream for which the
    * predicate p holds.
    */
   def takeWhile(p: BigInt => Boolean, s: LList): LList = {
-    require(validNatStream(s))
+    require(validNatStream(s) && p.is(constFun2 _))
     s match {
       case SNil()          => SNil()
-      case l @ SCons(x, _) => {
-        if(p(x)) SCons(x, Susp(() => takeWhileSusp(p, s)))
-        else SNil()
-      }
+      case l @ SCons(x, _) => 
+        if(p(x)) 
+          SCons(x, () => takeWhileSusp(p, s))
+        else 
+          SNil()      
     }
   } ensuring (_ => time <= ?)
 
-   @invisibleBody
    def takeWhileSusp(p: BigInt => Boolean, s: LList): LList = {
-     require(validNatStream(s))
+     require(validNatStream(s) && p.is(constFun2 _))
      takeWhile(p, s.tailOrNil)
    } ensuring(_ => time <= ?)
 
+   @extern
+  def constFun3(n: BigInt, m: BigInt): BigInt = {
+    array(0)
+  } ensuring (_ => time <= 1)
   /**
    * 'scan' yields a stream of successive reduced values from:
    *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
    */
   def scan(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList): LList = {
-    require(validNatStream(s))
+    require(validNatStream(s) && f.is(constFun3 _))
     s match {
       case SNil()          => SNil()
       case l @ SCons(x, _) =>
         val r = f(z, x)
-        SCons(z, Susp(() => scanSusp(f, r, s)))
+        SCons(z, () => scanSusp(f, r, s))
     }
   } ensuring (_ => time <= ?)
 
-  @invisibleBody
   def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
-    require(validNatStream(s))
+    require(validNatStream(s) && f.is(constFun3 _))
     scan(f, z, s.tailOrNil)
   } ensuring(_ => time <= ?)
 
+  @extern
+  def constFun4(n: BigInt): (BigInt, BigInt) = {
+    (array(0), array(0))
+  } ensuring (_ => time <= 1)
+  
   /**
    * The unfold function is similar to the unfold for lists. Note
    * there is no base case: all streams must be infinite.
    */
   def unfold(f: BigInt => (BigInt, BigInt), c: BigInt): LList = {
+    require(f.is(constFun4 _))
     val (x, d) = f(c)
-    SCons(x, Susp(() => unfold(f, d)))
+    SCons(x, () => unfold(f, d))
   } ensuring(_ => time <= ?)
   
   /**
@@ -245,23 +208,21 @@ object StreamLibrary {
    * The elements of two tuples are combined using the function
    * passed as the first argument to 'zipWith'.
    */
-   def zipWith(f: (BigInt, BigInt) => BigInt, a: LList, b: LList): LList = {
-    require(validNatStream(a) && validNatStream(b))
+  def zipWith(f: (BigInt, BigInt) => BigInt, a: LList, b: LList): LList = {
+    require(validNatStream(a) && validNatStream(b) && f.is(constFun3 _))
     a match {
       case SNil()          => SNil()
       case al @ SCons(x, _) =>
         b match {
           case SNil() => SNil()
           case bl @ SCons(y, _) =>
-            SCons(f(x, y), Susp(() => zipWithSusp(f, al, bl)))
+            SCons(f(x, y), () => zipWithSusp(f, al, bl))
         }
     }
    } ensuring(_ => time <= ?)
 
-  @invisibleBody
   def zipWithSusp(f: (BigInt, BigInt) => BigInt, a: LList, b: LList) = {
-    require(validNatStream(a) && validNatStream(b))
+    require(validNatStream(a) && validNatStream(b) && f.is(constFun3 _))
     zipWith(f, a.tailOrNil, b.tailOrNil)
-  } ensuring(_ => time <= ?)
-
+  } ensuring(_ => time <= ?)  
 }

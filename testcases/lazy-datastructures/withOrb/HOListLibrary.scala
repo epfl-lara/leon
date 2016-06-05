@@ -8,15 +8,8 @@ import mem._
 import higherorder._
 import invariant._
 
-/*  def app[U, T](f: U => T, x: U): T = {
-    f(x)
-  } ensuring { _ =>
-    val in = inState[Unit]
-    time <= ? * time(f(x) withState in) + ?
-  }
-*/
 // Higher-order API
-sealed abstract class List[T] {
+sealed abstract class List {
 
   def size: BigInt = (this match {
     case Nil() => BigInt(0)
@@ -29,40 +22,40 @@ sealed abstract class List[T] {
    * A function that is the sum of time taken by 'f' when applied over the elements of the list.
    * Note: here `f` can update state.
    */
-  def listTime[R](f: T => R): BigInt = {
+  def listTime(f: BigInt => BigInt): BigInt = {
     this match {
       case Nil() => BigInt(0)
       case Cons(x, t) =>
-        time(f(x)) +
+        1 + time(f(x)) +
         (f(x) match {
           case _ => t.listTime(f)
         })
     }
   } ensuring(_ >= 0)
 
-  def map[R](f: T => R): List[R] = { this match {
-    case Nil() => Nil[R]()
+  def map(f: BigInt => BigInt): List = { this match {
+    case Nil() => Nil()
     case Cons(h, t) => Cons(f(h), t.map(f))
   }} ensuring {
-    val in = inState[R]
+    val in = inState
     time <= ? * (listTime(f) withState in) + ?
   }
 
-  /*def foldLeft[R](z: R)(f: (R,T) => R): R = this match {
+  /*def foldLeft(z: BigInt)(f: (BigInt,BigInt) => BigInt): BigInt = this match {
     case Nil() => z
     case Cons(h,t) => t.foldLeft(f(z,h))(f)
   }
 
-  def scanLeft[R](z: R)(f: (R,T) => R): List[R] = { this match {
+  def scanLeft(z: BigInt)(f: (BigInt,BigInt) => BigInt): List = { this match {
     case Nil() => z :: Nil()
     case Cons(h,t) => z :: t.scanLeft(f(z,h))(f)
   }} ensuring { !_.isEmpty }
 
-  def flatMap[R](f: T => List[R]): List[R] =
+  def flatMap(f: BigInt => List): List =
     ListOps.flatten(this map f)
 
-  def filter(p: T => Boolean): List[T] = { this match {
-    case Nil() => Nil[T]()
+  def filter(p: BigInt => Boolean): List[BigInt] = { this match {
+    case Nil() => Nil[BigInt]()
     case Cons(h, t) if p(h) => Cons(h, t.filter(p))
     case Cons(_, t) => t.filter(p)
   }} ensuring { res =>
@@ -71,16 +64,35 @@ sealed abstract class List[T] {
     res.forall(p)
   }
 
-  def groupBy[R](f: T => R): Map[R, List[T]] = this match {
-    case Nil() => Map.empty[R, List[T]]
+  def groupBy(f: BigInt => BigInt): Map[BigInt, List[BigInt]] = this match {
+    case Nil() => Map.empty[BigInt, List[BigInt]]
     case Cons(h, t) =>
-      val key: R = f(h)
-      val rest: Map[R, List[T]] = t.groupBy(f)
-      val prev: List[T] = if (rest isDefinedAt key) rest(key) else Nil[T]()
-      (rest ++ Map((key, h :: prev))) : Map[R, List[T]]
+      val key: BigInt = f(h)
+      val rest: Map[BigInt, List[BigInt]] = t.groupBy(f)
+      val prev: List[BigInt] = if (rest isDefinedAt key) rest(key) else Nil[BigInt]()
+      (rest ++ Map((key, h :: prev))) : Map[BigInt, List[BigInt]]
   }*/
 }
 
-case class Cons[T](h: T, t: List[T]) extends List[T]
+case class Cons(h: BigInt, t: List) extends List
 
-case class Nil[T]() extends List[T]
+case class Nil() extends List
+
+object Client {
+
+  def id(x: BigInt): BigInt = x
+
+  /**
+   * listTime reduces to size when given a constant function
+   */
+  @induct
+  def listTimeLemma(l: List, f: BigInt => BigInt): Boolean = {
+    require(f.is(id _))
+    l.listTime(f) <= 2* l.size
+  }
+
+  def client(l: List) = {
+    require(listTimeLemma(l, id _))
+    l.map(id _)
+  } ensuring(_ => time <= ? * l.size + ?)
+}

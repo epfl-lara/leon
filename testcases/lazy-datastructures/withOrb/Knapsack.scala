@@ -70,51 +70,53 @@ object Knapscak {
     }
   } ensuring(_ => time <= ? * items.size + ?)
 
+  @invisibleBody
   def invoke(i: BigInt, items: IList) = {
     require(i == 0 || (i > 0 && deps(i - 1, items)))
     knapSack(i, items)
   } ensuring (res => {
-    (i == 0 || depsMono(i - 1, items, inState[BigInt], outState[BigInt]) && // lemma inst
-        deps(i - 1, items)) &&
+    (i == 0 || depsMono(i - 1, items, inState[BigInt], outState[BigInt])) && // lemma inst
+        deps(i, items) &&
       time <= ? * items.size + ?
   })
 
-  def bottomup(i: BigInt, w: BigInt, items: IList): IList = {
-    require(w >= i && (i == 0 || i > 0 && deps(i - 1, items)))
-    val ri = invoke(i, items)
-    if (i == w)
-      Cons((i,ri), Nil())
+  def bottomup(w: BigInt, items: IList): IList = {
+    require(w >= 0)     
+    if (w == 0)
+      Cons((w, invoke(w, items)), Nil())
     else {
-      val x = bottomup(i + 1, w, items)
-      Cons((i,ri), x)
+      val tail = bottomup(w - 1, items)
+      Cons((w, invoke(w, items)), tail)
     }
-  } ensuring(_ => time <= ? * ((w - i) * items.size) + ? * i)
+  } ensuring{_ =>
+    deps(w, items) &&         
+      time <= ? * (w*items.size) + ? * items.size + ? * w + ?    
+  }
 
   /**
    * Computes the list of optimal solutions of all weights up to 'w'
    */
-  // def knapSackSol(w: BigInt, items: IList) = {
-  //   require(w >= 0) //  the second requirement is only to keep the bounds linear for z3 to work
-  //   bottomup(0, w, items)
-  // } ensuring(_ => time <= ? * (w * items.size) + ?)
+  def knapSackSol(w: BigInt, items: IList) = {
+    require(w >= 0) 
+    bottomup(w, items)
+  } ensuring(_ => time <= ? * (w*items.size) + ? * items.size + ? * w + ?)
 
   /**
    * Lemmas of deps
    */
   // deps is monotonic
-  @traceInduct
+  @invisibleBody
+  @traceInduct  
   def depsMono(i: BigInt, items: IList, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0)
     (st1.subsetOf(st2) && (deps(i, items) withState st1)) ==> (deps(i, items) withState st2)
   } holds
 
-  // forall. x, x <= y && deps(y) => deps(x)
+  // forall. x, x <= y && deps(y) => deps(x)  
   @traceInduct
   def depsLem(x: BigInt, y: BigInt, items: IList) = {
     require(x >= 0 && y >= 0)
     (x <= y && deps(y, items)) ==> deps(x, items)
   } holds
-
-  // @ig
 
 }

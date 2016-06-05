@@ -1,0 +1,65 @@
+Total-Verification-Time: 13.921s
+Total-VCs-Generated: 41
+Z3SolvedVCs: 33
+CVC4SolvedVCs: 8
+procs: 4
+VC-refinement: 8
+disjuncts: 24
+TotalVCCTime: 2.263s
+Total-AxiomChoose-Time: 0.019s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.232s
+UneliminatedEqualities: 18
+ElimTime: 0.075s
+Total-Choose-Time: 0.435s
+BinarySearchTime: 0.149s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 1307.75
+Max.CVC4-Time: 10462
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 104.81818181818181
+Max.Z3-Time: 3459
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 178.875
+Max.VC-size: 417
+Avg.UIF+ADT: 87.625
+Max.UIF+ADT: 192
+Avg.TemplateIds: 1.0
+Max.TemplateIds: 1
+Avg.unflatSize: 26.0
+Max.unflatSize: 67
+Avg.UnflatTime: 0.009125s
+Max.UnflatTime: 0.033s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.09429166666666666s
+Max.VC-check-time: 0.812s
+Avg.CallADT-Constraints: 15.541666666666666
+Max.CallADT-Constraints: 64
+Avg.CtrsBeforeElim: 24.833333333333332
+Max.CtrsBeforeElim: 84
+Avg.EliminatedAtoms: 22.875
+Max.EliminatedAtoms: 80
+Avg.Param-Atoms: 0.75
+Max.Param-Atoms: 1
+Avg.NonParam-Atoms: 1.9583333333333333
+Max.NonParam-Atoms: 6
+Avg.Disj-choosing-time: 0.018125s
+Max.Disj-choosing-time: 0.11s
+Avg.NLsize: 12.958333333333334
+Max.NLsize: 51
+Avg.NL-solving-time: 0.007416666666666667s
+Max.NL-solving-time: 0.035s
+########## Outputs ############
+Invariants for Function: rotate-time
+rotate-time --> time4 + BigInt(-22) <= BigInt(0)
+
+Invariants for Function: dequeue-time
+dequeue-time --> time5 + BigInt(-71) <= BigInt(0)
+
+Invariants for Function: enqueue-time
+enqueue-time --> time6 + BigInt(-39) <= BigInt(0)
+
+

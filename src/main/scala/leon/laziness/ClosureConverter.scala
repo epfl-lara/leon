@@ -157,7 +157,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       } :+ ValDef(FreshIdentifier("st", stType))
       val retTypeWithState = TupleType(Seq(replaceClosureTypes(retTp), stType))
       // the type parameters will be unified later
-      val nfd = new FunDef(FreshIdentifier("u"+tname),
+      val nfd = new FunDef(FreshIdentifier("u" + tname),
         (getTypeParameters(ft) ++ stTparams) map TypeParameterDef,
         params, retTypeWithState)
       (tname -> nfd)
@@ -351,6 +351,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     // (d) Pattern matching on lambdas
     case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), Lambda(_, MatchExpr(_, mcases)))) if isFunMatch(finv)(p) =>
       val ncases = mcases.map {
+        case MatchCase(pat @ WildcardPattern(None), None, body) =>
+          MatchCase(pat, None, body)
         case mc @ MatchCase(pat, Some(guard), body) =>
           val freevars = pat match {
             case TuplePattern(_, subpats) => subpats.collect {
@@ -383,10 +385,25 @@ class ClosureConverter(p: Program, ctx: LeonContext,
                   throw new IllegalStateException(s"Error: no Lambda in the program could match $l!")
               }
           }
-        case MatchCase(pat @ WildcardPattern(None), None, body) =>
-          MatchCase(pat, None, body)
       }
       mapExpr(MatchExpr(cl, ncases))
+
+    // a solitary `is` fun invocation
+    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
+      try {
+        val tname = uninstantiatedFunctionTypeName(l.getType).get
+        val uninstType = functionType(tname)
+        val targs = getTypeArguments(l.getType, uninstType).get
+        val ncapvars = capturedVars(l).map { id => makeIdOfType(id, replaceClosureTypes(id.getType)).toVariable }
+        val (nclCons, updatesState) = mapExpr(cl)
+        if (updatesState)
+          throw new IllegalStateException(s"Receiver $cl of `is` function call updates state!")
+        ((st: Option[Expr]) =>
+          Equals(nclCons(st), CaseClass(CaseClassType(closureOfLambda(l), targs), ncapvars)), false)
+      } catch {
+        case _: NoSuchElementException =>
+          throw new IllegalStateException(s"Error: no Lambda in the program could match $l!")
+      }
 
     // (e) withState construct
     case withst @ FunctionInvocation(_, Seq(recvr, stArg)) if isWithStateFun(withst)(p) =>
@@ -473,7 +490,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
     case finv @ FunctionInvocation(tfd, argFun) if InstUtil.instCall(finv).isDefined =>
       ((st: Option[Expr]) => {
         argFun match {
-          case Seq() => finv
+          case Seq()     => finv
           case Seq(finv) => FunctionInvocation(tfd, Seq(mapExpr(finv)._1(st)))
         }
       }, false)

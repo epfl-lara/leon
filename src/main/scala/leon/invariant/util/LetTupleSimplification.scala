@@ -305,6 +305,10 @@ object LetTupleSimplification {
 
         case t: Terminal => t
 
+        // handle And and Ors differently as they may short circuit like Ifs
+        case And(args) => And(args map pullLetToTop)
+        case Or(args) => Or(args map pullLetToTop)
+
         // Note: it is necessary to handle unary operators specially
         case Operator(Seq(sube), op) =>
           replaceLetBody(pullLetToTop(sube), e => op(Seq(e)))
