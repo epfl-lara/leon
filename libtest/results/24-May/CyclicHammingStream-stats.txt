@@ -1,0 +1,81 @@
+Total-Verification-Time: 5.802s
+Total-VCs-Generated: 50
+Z3SolvedVCs: 42
+CVC4SolvedVCs: 8
+procs: 9
+VC-refinement: 25
+disjuncts: 66
+TotalVCCTime: 172.695s
+Total-AxiomChoose-Time: 0.022s
+Total-TheoryAxiomatization-Time: 0.001s
+Total-ElimUF-Time: 1.608s
+UneliminatedEqualities: 36
+ElimTime: 0.234s
+Total-Choose-Time: 2.159s
+BinarySearchTime: 0.385s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 380.125
+Max.CVC4-Time: 3041
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 65.73809523809524
+Max.Z3-Time: 2761
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 173.88
+Max.VC-size: 484
+Avg.UIF+ADT: 85.72
+Max.UIF+ADT: 242
+Avg.TemplateIds: 1.2
+Max.TemplateIds: 2
+Avg.unflatSize: 21.2
+Max.unflatSize: 62
+Avg.UnflatTime: 0.0072s
+Max.UnflatTime: 0.032s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 2.616590909090909s
+Max.VC-check-time: 35.036s
+Avg.CallADT-Constraints: 39.63636363636363
+Max.CallADT-Constraints: 131
+Avg.CtrsBeforeElim: 45.57575757575758
+Max.CtrsBeforeElim: 147
+Avg.EliminatedAtoms: 43.333333333333336
+Max.EliminatedAtoms: 142
+Avg.Param-Atoms: 0.7878787878787878
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 2.242424242424242
+Max.NonParam-Atoms: 7
+Avg.Disj-choosing-time: 0.03271212121212121s
+Max.Disj-choosing-time: 0.272s
+Avg.NLsize: 15.166666666666666
+Max.NLsize: 59
+Avg.NL-solving-time: 0.007378787878787879s
+Max.NL-solving-time: 0.023s
+########## Outputs ############
+Invariants for Function: map-time
+map-time --> time2 + BigInt(-7) <= BigInt(0)
+
+Invariants for Function: merge-time
+merge-time --> time3 + BigInt(-11) <= BigInt(0)
+
+Invariants for Function: hamGen-time
+hamGen-time --> time4 + BigInt(-44) <= BigInt(0)
+
+Invariants for Function: mergeSusp-time
+mergeSusp-time --> if (constTimeArg18(a182, st@13) && constTimeArg18(b6, st@13) && constTimeArg18(c13, st@13)) {
+  time5 + BigInt(-133) <= BigInt(0)
+} else {
+  true
+}
+
+Invariants for Function: next-time
+next-time --> time6 + BigInt(-144) <= BigInt(0)
+
+Invariants for Function: nthElemAfterSecond-time
+nthElemAfterSecond-time --> (BigInt(-153) * n11 + time7) + BigInt(155) <= BigInt(0)
+
+Invariants for Function: nthHammingNumber-time
+nthHammingNumber-time --> (BigInt(-153) * n15 + time8) + BigInt(-5) <= BigInt(0)
+
+

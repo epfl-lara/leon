@@ -1,9 +1,8 @@
-/* Copyright 2009-2015 EPFL, Lausanne */
+/* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
 
 import scala.annotation.StaticAnnotation
-import scala.language.experimental.macros
 
 package object annotation {
   @ignore
@@ -31,13 +30,13 @@ package object annotation {
   @ignore
   class invstate extends StaticAnnotation
   @ignore
-  class memoize extends StaticAnnotation {    
-    def macroTransform(annottees: Any*): Any = macro com.softwaremill.macmemo.memoizeMacro.impl
-  }
+  class memoize extends StaticAnnotation
   @ignore
   class invisibleBody extends StaticAnnotation // do not unfold the body of the function
   @ignore
   class usePost extends StaticAnnotation // assume the post-condition while proving time bounds
   @ignore
   class unfoldFactor(f: Int=0) extends StaticAnnotation // 0 implies no bound on unfolding
+  @ignore
+  class finite() extends StaticAnnotation // an annotation that says the stream is finite
 }

@@ -1,0 +1,12 @@
+Orb infereed formula: 9*i + 2
+
+Least value of coeff 0 is 2.
+The formula that goes through is 9*i + 2.
+Counter-example for 9*i + 1 is at the point 0
+
+Least value of coeff 1 is 9.
+The formula that goes through is 9*i + 2.
+Counter-example for 8*i + 2 is at the point 20
+
+Minimization report ends here
+

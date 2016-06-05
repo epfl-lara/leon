@@ -299,8 +299,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
     }.toSeq ++ roots.map(replaceFromIDs(blockMap, _))
     val flatRest = disjuncts.toSeq collect {
       case (g, ctrs) if !paramBlockers(g) && !blockMap.contains(g.id) =>
-        //val ng = blockMap.getOrElse(g.id, g)
-        (g, replaceFromIDs(blockMap, createAnd(ctrs.map(_.toExpr))))
+        (g, replaceFromIDs(blockMap, createAnd(ctrs.map(_.prettyExpr))))
     }
     // compute variables used in more than one disjunct
     var sharedVars = (paramPart ++ conjs).flatMap(variablesOf).toSet

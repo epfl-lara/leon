@@ -34,11 +34,12 @@ object ProgramUtil {
    * Here, we exclude empty units that do not have any modules and empty
    * modules that do not have any definitions
    */
-  def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])): Program = {
+  def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition]),
+      newdefs: Map[ModuleDef, Seq[Definition]] = Map()): Program = {
     prog.copy(units = prog.units.collect {
       case unit if unit.defs.nonEmpty => unit.copy(defs = unit.defs.collect {
-        case module: ModuleDef if module.defs.nonEmpty =>
-          module.copy(defs = mapdefs(module.defs))
+        case module: ModuleDef if module.defs.nonEmpty || newdefs.contains(module) =>
+          module.copy(defs = mapdefs(module.defs) ++ newdefs.getOrElse(module, Seq()))
         case other => other
       })
     })
@@ -242,6 +243,12 @@ object ProgramUtil {
           (u.isMainUnit || !(fd.annotations.contains("library") || fd.isInvariant)))
     }
   }
+  
+  def userLevelClasses(program: Program): Seq[ClassDef] = {
+    program.units.flatMap { u =>
+      u.definedClasses.filter(cd => u.isMainUnit || !cd.annotations.contains("library"))
+    }
+  }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
     var funCache = Map[String, Option[FunDef]]()
@@ -288,6 +295,27 @@ object ProgramUtil {
     val resvar = getFunctionReturnVariable(fd)
     val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fd.params.map(_.id.toVariable).zip(call.fi.args)
     argmap
+  }
+}
+
+object ClassExpr {
+  def unapply(e: Expr): Option[(ClassType, Seq[Expr], ClassType => Seq[Expr] => Expr)] = e match {
+    case CaseClass(ct, args) =>
+      Some((ct, args, (nct: ClassType) => CaseClass(nct.asInstanceOf[CaseClassType], _)))
+    case IsInstanceOf(arg, ct) =>
+      Some(ct, Seq(arg), (nct: ClassType) => (nargs: Seq[Expr]) => IsInstanceOf(nargs.head, nct))
+    case CaseClassSelector(ct, arg, index) =>
+      val r: ClassType => Seq[Expr] => Expr = (nt: ClassType) => {
+        val nct = nt.asInstanceOf[CaseClassType]
+        val nindex = nct.classDef.fields.find(_.id.name == index.name).get.id
+        (nargs: Seq[Expr]) => CaseClassSelector(nct, nargs.head, nindex)
+      }
+      Some(ct, Seq(arg), r)
+
+    case AsInstanceOf(arg, ct) =>
+      Some(ct, Seq(arg), (nct: ClassType) => (nargs: Seq[Expr]) =>
+        AsInstanceOf(nargs.head, nct))
+    case _ => None
   }
 }
 
@@ -506,4 +534,14 @@ object PredicateUtil {
       }
     rec(ine)
   }
+
+  // create lets to bind the args to variables
+  def flattenArgs(args: Seq[Expr]): (Seq[Expr], Expr => Expr) = {
+    args.foldRight((Seq[Expr](), (e: Expr) => e)) {
+      case (arg, (fargs, lcons)) => // note: do not optimize this by adding a case for terminals. It will break closureInstrumentation
+        val id = FreshIdentifier("a", arg.getType, true)
+        (id.toVariable +: fargs, e => Let(id, arg, lcons(e)))
+    }
+  }
+
 }

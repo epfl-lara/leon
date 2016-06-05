@@ -48,12 +48,13 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
   // converts qmarks to templates
-  val qMarksRemovedProg = {
+  val (qMarksRemovedProg, progWOTemplate) = {
     val funToTmpl = userLevelFunctions(instrumentedProg).collect {
       case fd if fd.hasTemplate =>
         fd -> fd.getTemplate
     }.toMap
-    assignTemplateAndCojoinPost(funToTmpl, instrumentedProg, Map())
+    (assignTemplateAndCojoinPost(funToTmpl, instrumentedProg, Map()),
+        assignTemplateAndCojoinPost(Map(), instrumentedProg, Map()))
   }
 
   val nlelim = new NonlinearityEliminator(withmult, if (usereals) RealType else IntegerType)
@@ -62,6 +63,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     // convert nonlinearity to recursive functions
     nlelim(if (usereals) (new IntToRealProgram())(qMarksRemovedProg) else qMarksRemovedProg)
   }
+  //println("Infer Program: "+purescala.ScalaPrinter(inferProgram))
 
   // other utilities
   lazy val enumerationRelation = {
@@ -101,8 +103,9 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     else if (abort) false
     else {
       val verifyPipe = VerificationPhase
+      //println("Leon context: "+leonContext) TODO: why aren't we able to use solvers given from command line here ?
       val ctxWithTO = createLeonContext(leonContext, s"--timeout=$vcTimeout", s"--functions=$funName")
-      (true /: verifyPipe.run(ctxWithTO, qMarksRemovedProg)._2.results) {
+      (true /: verifyPipe.run(ctxWithTO, progWOTemplate)._2.results) {
         case (acc, (VC(_, _, vckind), Some(vcRes))) if vcRes.isInvalid =>
           throw new IllegalStateException(s"$vckind invalid for function $funName") // TODO: remove the exception
         case (acc, (VC(_, _, VCKinds.Postcondition), None)) =>

@@ -62,16 +62,18 @@ class ExistentialQuantificationSolver(ctx: InferenceContext, program: Program,
   }
 
   /**
-   * Solves the nonlinear Farkas' constraints
+   * Solves the nonlinear Farkas' constraints.
+   * `hypoCtrs` are constraints that are conjoined while solving but are not persisted.
+   * they are a kind of hypothesis that may or may not hold and hence have to be discarded after solving.
    */
-  def solveConstraints(newctrs: Seq[Expr], oldModel: Model): (Option[Boolean], Model) = {
+  def solveConstraints(newctrs: Seq[Expr], oldModel: Model, hypoCtrs: Seq[Expr] = Seq()): (Option[Boolean], Model) = {
     val newPart = createAnd(newctrs)
-    val newSize = atomNum(newPart)
+    val newSize = atomNum(newPart) + hypoCtrs.size
     val currSize = atomNum(currentCtr)
     Stats.updateCounterStats((newSize + currSize), "NLsize", "disjuncts")
     if (verbose) reporter.info("# of atomic predicates: " + newSize + " + " + currSize)
 
-    val combCtr = And(currentCtr, newPart)
+    val combCtr = And(Seq(currentCtr, newPart) ++ hypoCtrs)
     val (res, newModel) = farkasSolver.solveFarkasConstraints(combCtr)
     res match {
       case _ if ctx.abort =>
@@ -84,7 +86,7 @@ class ExistentialQuantificationSolver(ctx: InferenceContext, program: Program,
         currentCtr = fls
         (Some(false), Model.empty)
       case Some(true) =>
-        currentCtr = combCtr
+        currentCtr = And(currentCtr, newPart)
         //new model may not have mappings for all the template variables, hence, use the mappings from earlier models
         (Some(true), completeWithRefModel(newModel, oldModel))
     }

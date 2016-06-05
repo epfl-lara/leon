@@ -10,7 +10,7 @@ import purescala.Extractors._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
-import LazinessUtil._
+import HOMemUtil._
 import leon.invariant.datastructure.DisjointSets
 import invariant.util.ProgramUtil._
 import leon.utils.Bijection

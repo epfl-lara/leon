@@ -70,8 +70,8 @@ object LazyNumericalRep {
       case _      => fval.cached
     }
   }
-  case class Val(x: NumList) extends NumStream
-  case class Susp(fun: () => NumList) extends NumStream
+  private case class Val(x: NumList) extends NumStream
+  private case class Susp(fun: () => NumList) extends NumStream
 
   /**
    * Checks whether there is a zero before an unevaluated closure

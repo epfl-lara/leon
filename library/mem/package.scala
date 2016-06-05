@@ -4,6 +4,7 @@ package leon
 
 import annotation._
 import lang._
+import collection._
 import scala.language.implicitConversions
 import scala.annotation.StaticAnnotation
 
@@ -59,5 +60,32 @@ package object mem {
   @library
   case class Star[T](f: T) {
     def * = f
+  }
+
+  /**
+   * A predicate that returns true if the input (direct or indirect) argument preserves state.
+   * The argument should be of a function type. Each possible target of the call should then
+   * be annotated invstate
+   */
+  @extern
+  def invstateFun[T](f: T): Boolean  = sys.error("invStateFun method is not executable!")
+
+  /**
+   * methods for running instrumented code using memoization
+   */
+  @ignore
+  var memoTable = Map[List[Any], Any]()
+  @ignore
+  def update[T](args: List[Any], res: T): T = {
+    memoTable += (args -> res)
+    res
+  }
+  @ignore
+  def lookup[T](args:List[Any]): (Boolean, T) = {
+    if(memoTable.contains(args)) {
+      (true, memoTable(args).asInstanceOf[T])
+    } else {
+      (false, null.asInstanceOf[T]) // for ints and bools this will be zero, false
+    }
   }
 }

@@ -9,6 +9,9 @@ import collection._
 import instrumentation._
 import invariant._
 
+/**
+ * Requires unrollfactor=2
+ */
 object RealTimeQueue {
 
   sealed abstract class Stream[T] {
@@ -22,7 +25,7 @@ object RealTimeQueue {
         case SNil()      => BigInt(0)
         case c@SCons(_, _) => 1 + (c.tail*).size
       }
-    } ensuring (_ >= 0)                
+    } ensuring (_ >= 0)
 
     lazy val tail: Stream[T] = {
       require(isCons)
@@ -32,8 +35,8 @@ object RealTimeQueue {
     }
   }
   // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
-  case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
-  case class SNil[T]() extends Stream[T]
+  private case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
+  private case class SNil[T]() extends Stream[T]
 
   def isConcrete[T](l: Stream[T]): Boolean = {
     l match {
@@ -46,7 +49,7 @@ object RealTimeQueue {
   @invisibleBody
   @invstate // says that the function doesn't change state
   def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
-    require(r.size == f.size + 1 && isConcrete(f))  
+    require(r.size == f.size + 1 && isConcrete(f))
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, lift(a)) //  rank: a.rank + 1
@@ -61,7 +64,7 @@ object RealTimeQueue {
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  @invisibleBody
+  // @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>

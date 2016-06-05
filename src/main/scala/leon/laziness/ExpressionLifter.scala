@@ -11,7 +11,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
-import LazinessUtil._
+import HOMemUtil._
 import invariant.util.ProgramUtil._
 import FreeVariableFactory._
 
@@ -45,18 +45,19 @@ object ExpressionLifter {
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
     val fdmap = ProgramUtil.userLevelFunctions(prog).collect {
       case fd if fd.hasBody =>
-        val nname = FreshIdentifier(fd.id.name)
+        val nname =
+          if (fd.flags.contains(IsField(true)) || hasMemAnnotation(fd)) {
+            FreshIdentifier(fd.id.name + "-mem")
+          } else
+            FreshIdentifier(fd.id.name)
         val nfd =
           if (createUniqueIds && needsId(fd)) {
             val idparam = ValDef(FreshIdentifier("id@", fvType))
             new FunDef(nname, fd.tparams, fd.params :+ idparam, fd.returnType)
           } else
             new FunDef(nname, fd.tparams, fd.params, fd.returnType)
-        // treat lazy vals as memoized functions
-        if(fd.flags.contains(IsField(true))){
-          nfd.addFlag(Annotation("memoize", Seq()))
-        }
-        fd.flags.filterNot(_ == IsField(true)).foreach(nfd.addFlag(_))
+        // remove lazy val/memoized annotations and replace them by a new name
+        fd.flags.filterNot(flg => flg == IsField(true) || flg == Annotation("memoize", Seq())).foreach(nfd.addFlag(_))
         (fd -> nfd)
     }.toMap
 

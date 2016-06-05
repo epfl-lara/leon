@@ -2,21 +2,23 @@ package leon
 package laziness
 
 import invariant.util._
+
 import invariant.structure.FunctionUtils._
 import purescala.ScalaPrinter
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import LazinessUtil._
-import LazyVerificationPhase._
+import HOMemUtil._
+import HOMemVerificationPhase._
 import utils._
 import java.io._
 import invariant.engine.InferenceReport
+import transformations._
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
-object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
+object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] {
   val dumpInputProg = false
   val dumpLiftProg = true
   val dumpProgramWithClosures = true
@@ -25,10 +27,10 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
   val debugSolvers = false
-  val skipStateVerification = false
+  val skipStateVerification = true
   val skipResourceVerification = false
 
-  val name = "Laziness Elimination Phase"
+  val name = "Higher-order Memoization Verification Phase"
   val description = "Coverts a program that uses lazy construct" +
     " to a program that does not use lazy constructs"
 
@@ -37,7 +39,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality)
 
-  def apply(ctx: LeonContext, prog: Program): LazyVerificationReport = {
+  def apply(ctx: LeonContext, prog: Program): MemVerificationReport = {
     val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
     val checkCtx = contextForChecks(ctx)
     val stateVeri =
@@ -60,7 +62,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
       pw.close()
     }
     // return a report
-    new LazyVerificationReport(stateVeri, resourceVeri)
+    new MemVerificationReport(stateVeri, resourceVeri)
   }
 
   def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
@@ -96,10 +98,14 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory, funsManager)
-    val instProg = instrumenter.apply
-    if (dumpInstrumentedProgram)
+    // Note: do not inline before instrument, because inlining might change the performance properties
+    val instrumenter = new MemInstrumenter(typeCorrectProg, ctx, closureFactory, funsManager)
+    val instProg = InliningPhase.apply(ctx, instrumenter.apply)
+    if (dumpInstrumentedProgram) {
+      val runnProg = RunnableCodePhase.apply(ctx, instProg)
+      prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
+    }
     (progWOInstSpecs, instProg)
   }
 
@@ -149,8 +155,8 @@ object HOInferencePhase extends SimpleLeonPhase[Program, LazyVerificationReport]
               false
             } else {
               // arguments or return types of memoized functions cannot be lazy because we do not know how to compare them for equality
-              if (isMemoized(fd)) {
-                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(LazinessUtil.isLazyType)
+              if (hasMemAnnotation(fd)) {
+                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(isLazyType)
                 if (argCheckFailed) {
                   failMsg = "Memoized function has a lazy argument or return type: " + fd.id
                   false

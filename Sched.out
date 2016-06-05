@@ -1,0 +1,234 @@
+[[33mWarning [0m] warning: there were two feature warnings; re-run with -feature for details
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+instfuncs: sched-mem,invoke,prevCompatibleJob,jobInfo,schedBU instFuncTypes: 
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for depsEval4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(i - BigInt(1), st@))' VC for depsEval4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for allEval4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(i - BigInt(1), st@))' VC for allEval4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call evalMono-VCTact(i - BigInt(1), st1, st2)))' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call allEval4(i, st1)))' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call allEval4(i, st2)))' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(i, st1))' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(i, st2))' VC for evalMono4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call evalLem-VCTact(x, y - BigInt(1), st@)))' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call allEval4(y, st@)))' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call allEval4(x, st@)))' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(y, st@))' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(x, st@))' VC for evalLem4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for sched-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call evalLem4(prevCompatibleJob3(jobIndex), j ...)' VC for sched-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call sched-mem3(jobIndex - BigInt(1), st@))' VC for sched-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call sched-mem3(prevCompatibleJob3(jobIndex), ...)' VC for sched-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for sched-mem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for invoke4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call sched-mem3(jobIndex, st@))' VC for invoke4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call evalMono4(jobIndex - BigInt(1), st@, res ...)' VC for invoke4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for schedBU4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke4(jobi, st@))' VC for schedBU4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call schedBU4(jobi - BigInt(1), st@))' VC for schedBU4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke4(jobi, tailRes1._2))' VC for schedBU4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call allEval4(jobi, x$55._2))' VC for schedBU4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size7 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                   ║
+║ WeightedSched.allEval4    postcondition                                                    ?:?  valid  U:smt-z3      0.031 ║
+║ WeightedSched.allEval4    precond. (call allEval4(i - BigInt(1), st@))                     ?:?  valid  U:smt-z3      0.024 ║
+║ WeightedSched.depsEval4   postcondition                                                    ?:?  valid  U:smt-cvc4    0.269 ║
+║ WeightedSched.depsEval4   precond. (call allEval4(i - BigInt(1), st@))                     ?:?  valid  U:smt-z3      0.014 ║
+║ WeightedSched.evalLem4    precond. (call allEval4(x, st@))                                 ?:?  valid  U:smt-z3      0.027 ║
+║ WeightedSched.evalLem4    precond. (call allEval4(y, st@))                                 ?:?  valid  U:smt-z3      0.016 ║
+║ WeightedSched.evalLem4    tact (postcondition)                                             ?:?  valid  U:smt-cvc4    0.056 ║
+║ WeightedSched.evalLem4    tact (precond. (call allEval4(x, st@)))                          ?:?  valid  U:smt-z3      0.021 ║
+║ WeightedSched.evalLem4    tact (precond. (call allEval4(y, st@)))                          ?:?  valid  U:smt-cvc4    0.023 ║
+║ WeightedSched.evalLem4    tact (precond. (call evalLem-VCTact(x, y - BigInt(1), st@)))     ?:?  valid  U:smt-z3      0.013 ║
+║ WeightedSched.evalMono4   precond. (call allEval4(i, st1))                                 ?:?  valid  U:smt-z3      0.013 ║
+║ WeightedSched.evalMono4   precond. (call allEval4(i, st2))                                 ?:?  valid  U:smt-cvc4    0.023 ║
+║ WeightedSched.evalMono4   tact (postcondition)                                             ?:?  valid  U:smt-z3      0.122 ║
+║ WeightedSched.evalMono4   tact (precond. (call allEval4(i, st1)))                          ?:?  valid  U:smt-z3      0.025 ║
+║ WeightedSched.evalMono4   tact (precond. (call allEval4(i, st2)))                          ?:?  valid  U:smt-z3      0.021 ║
+║ WeightedSched.evalMono4   tact (precond. (call evalMono-VCTact(i - BigInt(1), st1, st2)))  ?:?  valid  U:smt-z3      0.015 ║
+║ WeightedSched.invoke4     postcondition                                                    ?:?  valid  U:smt-z3      0.036 ║
+║ WeightedSched.invoke4     precond. (call evalMono4(jobIndex - BigInt(1), st@, res ...)     ?:?  valid  U:smt-z3      0.030 ║
+║ WeightedSched.invoke4     precond. (call sched-mem3(jobIndex, st@))                        ?:?  valid  U:smt-z3      0.023 ║
+║ WeightedSched.sched-mem3  match exhaustiveness                                             ?:?  valid  U:smt-z3      0.012 ║
+║ WeightedSched.sched-mem3  postcondition                                                    ?:?  valid  U:smt-z3      0.175 ║
+║ WeightedSched.sched-mem3  precond. (call evalLem4(prevCompatibleJob3(jobIndex), j ...)     ?:?  valid  U:smt-z3      0.025 ║
+║ WeightedSched.sched-mem3  precond. (call sched-mem3(jobIndex - BigInt(1), st@))            ?:?  valid  U:smt-z3      0.054 ║
+║ WeightedSched.sched-mem3  precond. (call sched-mem3(prevCompatibleJob3(jobIndex), ...)     ?:?  valid  U:smt-z3      0.112 ║
+║ WeightedSched.schedBU4    postcondition                                                    ?:?  valid  U:smt-z3      0.090 ║
+║ WeightedSched.schedBU4    precond. (call allEval4(jobi, x$55._2))                          ?:?  valid  U:smt-z3      0.042 ║
+║ WeightedSched.schedBU4    precond. (call invoke4(jobi, st@))                               ?:?  valid  U:smt-z3      0.016 ║
+║ WeightedSched.schedBU4    precond. (call invoke4(jobi, tailRes1._2))                       ?:?  valid  U:smt-z3      0.023 ║
+║ WeightedSched.schedBU4    precond. (call schedBU4(jobi - BigInt(1), st@))                  ?:?  valid  U:smt-cvc4    0.010 ║
+║ IList.size7               match exhaustiveness                                             ?:?  valid  U:smt-z3      0.013 ║
+║ IList.size7               postcondition                                                    ?:?  valid  U:smt-z3      0.021 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 31     valid: 31     invalid: 0      unknown 0                                                                1.395 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+instfuncs:  instFuncTypes: 
+[[34m  Info  [0m] - considering function sched-mem-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.05s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.023s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 + -11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 8
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 + -19 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 19
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 28 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.01s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 + -23 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 29
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.06s
+[[34m  Info  [0m] Function: sched-mem-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 23 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 + -23 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sched-mem-time-->x$46._2 + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] - Found inductive invariant: sched-mem-time --> time + BigInt(-18) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m  Info  [0m] - considering function invoke-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-time-->res67._2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: invoke-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.012s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-time-->res67._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] Function: invoke-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 9
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-time-->res67._2 + -22 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.0s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-time-->res67._2 + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: invoke-time --> time + BigInt(-21) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function schedBU-time...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] schedBU-time-->x$56._2 + 0 * jobi <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: schedBU-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.011s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] schedBU-time-->(x$56._2 + -29 * jobi) + -29 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: schedBU-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 10
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.009s
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] schedBU-time-->x$56._2 + 0 * jobi <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] Function: schedBU-time--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 1
+[[34m  Info  [0m] solving...
+[[34m  Info  [0m] solved... in 0.008s
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] schedBU-time-->(x$56._2 + -32 * jobi) + -32 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] schedBU-time-->(x$56._2 + -29 * jobi) + -29 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: schedBU-time --> (time + BigInt(-29) * jobi) + BigInt(-29) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞══════════════════════════════════════════════╗
+║ └─────────┘                                              ║
+║ invoke-         time <= 21                0.133          ║
+║ sched-mem       time <= 18                16.120         ║
+║ schedBU-        time <= 29 * jobi + 29    0.234          ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 3     inferred: 3     unknown: 0     time: 16.487 ║
+╚══════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: WeightedScheduling-stats.txt

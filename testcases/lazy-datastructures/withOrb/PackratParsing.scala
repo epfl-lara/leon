@@ -11,6 +11,7 @@ import invariant._
  * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
  * The implementation is almost exactly as it was presented in the paper, but
  * here indices are passed around between parse functions, instead of strings.
+ * Proof hint: --unrollfactor = 4
  */
 object PackratParsing {
 

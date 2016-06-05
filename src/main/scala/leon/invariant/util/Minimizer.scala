@@ -164,14 +164,13 @@ class Minimizer(ctx: InferenceContext, program: Program) {
 
     def functionNesting(e: Expr): Int = {
       e match {
-
         case Times(e1, v @ Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          val nestLevel = functionNesting(e1)
+          val nestLevel = functionNesting(e1)  + 1
           updateMax(v, nestLevel)
           nestLevel
         }
         case Times(v @ Variable(id), e2) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          val nestLevel = functionNesting(e2)
+          val nestLevel = functionNesting(e2) + 1
           updateMax(v, nestLevel)
           nestLevel
         }
@@ -180,9 +179,8 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           0
         }
         case FunctionInvocation(_, args) => 1 + args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
+        case IfExpr(c, th, el) =>  1 + functionNesting(c) + functionNesting(th) + functionNesting(el)
         case t: Terminal                 => 0
-        /*case UnaryOperator(arg, _) => functionNesting(arg)
-        case BinaryOperator(a1, a2, _) => functionNesting(a1) + functionNesting(a2)*/
         case Operator(args, _)           => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
       }
     }

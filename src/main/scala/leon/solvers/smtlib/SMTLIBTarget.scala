@@ -758,7 +758,7 @@ trait SMTLIBTarget extends Interruptible {
 
       case (SNumeral(n), Some(RealType)) =>
         FractionalLiteral(n, 1)
-      
+
       case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
         IfExpr(
           fromSMT(cond, Some(BooleanType)),
