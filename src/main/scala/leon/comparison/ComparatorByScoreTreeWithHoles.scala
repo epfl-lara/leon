@@ -1,10 +1,7 @@
 package leon.comparison
-import leon.purescala.Expressions.{CaseClassPattern, _}
-import leon.comparison.Utils._
-import leon.purescala.Common.Tree
-import leon.purescala.Definitions.{CaseClassDef, ClassDef}
-import leon.purescala.Types.{ClassType, TypeTree}
 import leon.comparison.Scores._
+import leon.comparison.Utils._
+import leon.purescala.Expressions._
 
 /**
   * Created by joachimmuth on 02.06.16.
@@ -23,31 +20,94 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
 
   override def compare(expr_base: Expr, expr: Expr): Double = {
     val roots = possibleRoots(expr_base, expr)
-
-    0.0
+    val trees = roots.flatMap(possibleTrees(_))
+    if (trees.isEmpty) {
+      0.0
+    } else {
+      //val exclusive = exclusiveTrees(trees)
+      val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
+      println("Best tree is : ", scores.head)
+      scores.head._2
+    }
   }
 
+
   /**
-    * All possible root for our common tree, and the score of the pair
-    * @param expr_base
-    * @param expr
+    * Define whether a pair of expressions worth be combined (i.e its score is above 0.0%)
+    * This is kind of a local optimization, instead of creating all possibles trees (what would be enormous).
+    * The threshold can be modified.
+    *
+    * @param exprsBase
+    * @param exprs
     * @return
     */
-  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
-    val expressionsBase = collectExpr(expr_base)
-    val expressions = collectExpr(expr)
-
-    val pairOfPossibleRoots = for {
-      expBase <- expressionsBase
-      exp <- expressions
+  def pairOfMatchingExpr(exprsBase: List[Expr], exprs: List[Expr]): List[(Expr, Expr, Double)] = {
+    val pairOfExprs = for {
+        expBase <- exprsBase
+        exp <- exprs
       if computeScore(expBase, exp) > 0.0
     } yield {
       (expBase, exp, computeScore(expBase, exp))
     }
 
-    pairOfPossibleRoots
+    pairOfExprs
   }
 
+  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
+    val exprsBase = collectExpr(expr_base)
+    val exprs = collectExpr(expr)
+
+    pairOfMatchingExpr(exprsBase, exprs)
+  }
+
+  def findPairOfMatchingChildren(childrenBase: List[Expr], children: List[Expr]): List[(Expr, Expr, Double)] =
+    pairOfMatchingExpr(childrenBase, children)
+
+
+
+  /**
+    * With a pair of roots, find all children and find all combination of matching children in order to create a list
+    * of all possible matching tree. Then recursively call itself on each pair of children.
+    *
+    * @param value of root
+    * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
+    */
+  def possibleTrees(value: (Expr, Expr, Double)): List[myTree[(Expr, Expr, Double)]] = {
+    val exprBase = value._1
+    val expr = value._2
+    val childrenBase = getChildren(exprBase)
+    val children = getChildren(expr)
+
+
+    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenBase, children)
+    val combinationOfChildren = combineChildren(pairOfMatchingChildren)
+
+
+    if(pairOfMatchingChildren.isEmpty) {
+      List(myTree(value, List()))
+    } else {
+      combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr, Double)]])(
+      (listOfTrees, children) => listOfTrees ++ treesWithChildCombination(value, children.map(p => possibleTrees(p)))
+      )
+    }
+  }
+
+
+
+  /**
+    * Distributes score computation according to expressions
+    *
+    * Allow some flexibilities, we can even compare two different expressions and give it a non-zero score.
+    * We can also go though some expression to compare deeper proprieties, like:
+    *   - order in if-else statement (TO DO)
+    *   - exclusiveness of MatchCases in a case-match statement (TO DO)
+    *   - value of the expression
+    *   - ...
+    *
+    * @param exprA
+    * @param exprB
+    * @return
+    */
   def computeScore(exprA: Expr, exprB: Expr): Double = (exprA, exprB) match {
     case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
     case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
@@ -58,59 +118,6 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
 
 
 
-  def computeScore(tree: myTree[(Expr, Expr)]): Double = {
-    // we treat each type differently with its proper scorer, stores in object Scores
-    val score = tree.value match {
-      case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
-      case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
-      case _ => 1.0
-
-    }
-
-    // if tree is a node, recursively travers children. If it is a leaf, just return the score
-    // we process a geometrical mean
-    tree.children.foldLeft(score)( (acc, child) => acc * computeScore(child))
-  }
-
-
-  /**
-    * With a pair of roots, find all children and find all combination of matching children in order to create a list
-    * of all possible matching tree. Then recursively call itself on each pair of children.
-    *
-    * @param pair of matching root
-    * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
-    */
-  def possibleTrees(pair: (Expr, Expr)): List[myTree[(Expr, Expr)]] = {
-    val exprBase = pair._1
-    val expr = pair._2
-    val childrenBase = getChildren(exprBase)
-    val children = getChildren(expr)
-
-
-    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenBase, children)
-    val combinationOfChildren = combineChildren(pairOfMatchingChildren)
-
-
-    if(pairOfMatchingChildren.isEmpty) {
-      List(myTree(pair, List()))
-    } else {
-      combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr)]])(
-        (listOfTree, children) => listOfTree ++ treesWithChildCombination(pair, children.map(p => possibleTrees(p)))
-      )
-    }
-  }
-
-
-
-  def findPairOfMatchingChildren(childrenBase: List[Expr], children: List[Expr]): List[(Expr, Expr)] = {
-    for{
-      childBase <- childrenBase
-      child <- children
-      if areSimilar(childBase.getClass, child.getClass)
-    } yield {
-      (childBase, child)
-    }
-  }
 
   /** All possible combination of pairs of children, given the condition that one child can only be used once.
     *
@@ -121,35 +128,37 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
     * @param pairs
     * @return
     */
-  def combineChildren(pairs: List[(Expr, Expr)]): List[List[(Expr, Expr)]] = {
+  def combineChildren(pairs: List[(Expr, Expr, Double)]): List[List[(Expr, Expr, Double)]] = {
     combine(pairs).filterNot(p => isSameChildUsedTwice(p)).toList
   }
 
-  def isSameChildUsedTwice(list: List[(Expr, Expr)]): Boolean = {
+  def isSameChildUsedTwice(list: List[(Expr, Expr, Double)]): Boolean = {
     list.map(_._1).distinct.size != list.size ||
       list.map(_._2).distinct.size != list.size
   }
 
-  def combine(in: List[(Expr, Expr)]): Seq[List[(Expr, Expr)]] = {
+  def combine[T](in: List[T]): Seq[List[T]] = {
     for {
       len <- 1 to in.length
       combinations <- in combinations len
     } yield combinations
   }
 
+
+
   /**
-    * As we recursively call the method, children will create list of possibilities, as the root does. All this possible
-    * combination need to be transformed into a list of complete tree.
+    * Intuition: As we recursively call the method, children will create list of possibilities, as the root does.
+    * All this possible combination need to be transformed into a list of complete tree.
     *
-    * Technically, we have a combination of Children that return each a list of possible trees. So the upper-level tree
+    * Technical: we have a combination of Children that return each a list of possible trees. So the upper-level tree
     * (whom root is named pair) can have all possible combination of theses lists as children.
     *
-    * @param pair
+    * @param value of root, in our case type is : (Expr, Expr, Double) i.e.
     * @param listChildren
     * @return
     */
-  def treesWithChildCombination(pair: (Expr, Expr), listChildren: List[List[myTree[(Expr, Expr)]]]): List[myTree[(Expr, Expr)]] = {
-    def combine(list: List[List[myTree[(Expr, Expr)]]]): List[List[myTree[(Expr, Expr)]]] = list match {
+  def treesWithChildCombination[T](value: T, listChildren: List[List[myTree[T]]]): List[myTree[T]] = {
+    def combine(list: List[List[myTree[T]]]): List[List[myTree[T]]] = list match {
       case Nil => List(Nil)
       case x :: xs =>
         for {
@@ -158,14 +167,33 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
         } yield i :: j
     }
 
-    combine(listChildren).map(children => myTree(pair, children))
+    combine(listChildren).map(children => myTree(value, children))
   }
 
-
-
-  def areSimilar(getClass: Class[_ <: Expr], getClass1: Class[_ <: Expr]) = {
-    getClass == getClass1
+  /**
+    * Extract all non-overlapping trees, in size order
+    *
+    * @param trees
+    * @return
+    */
+  def exclusiveTrees(trees: List[myTree[(Expr, Expr, Double)]]): List[myTree[(Expr, Expr, Double)]] = trees match {
+    case Nil => Nil
+    case x :: xs =>
+      val biggest = trees.sortBy(-_.size).head
+      val rest = trees.filter(tree => flatList(tree).intersect( flatList(biggest) ).isEmpty)
+      List(biggest) ++ exclusiveTrees(rest)
   }
+
+  def flatList(tree: myTree[(Expr, Expr, Double)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
+
+  /**
+    * Geometric mean of all pair scores
+    * "Normalization" in order not to overvalue small trees
+    * @param tree
+    * @return
+    */
+  def scoreTree(tree: myTree[(Expr, Expr, Double)]): Double =
+    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree._3), 1/(tree.size.toDouble))
 
 
 }

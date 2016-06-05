@@ -4,6 +4,7 @@ import leon.purescala.Common.Tree
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
 import leon.purescala.Expressions.{CaseClassPattern, _}
 import leon.purescala.Types.{ClassType, TypeTree}
+import leon.comparison.Utils._
 
 /**
   * Created by joachimmuth on 02.06.16.
