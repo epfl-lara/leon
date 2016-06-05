@@ -1,55 +1,55 @@
 procs: 10
 VC-refinement: 23
-disjuncts: 63
-TotalVCCTime: 33.246s
-Total-AxiomChoose-Time: 0.036s
+disjuncts: 73
+TotalVCCTime: 201.983s
+Total-AxiomChoose-Time: 0.024s
 Total-TheoryAxiomatization-Time: 0.0s
-Total-ElimUF-Time: 2.941s
-UneliminatedEqualities: 54
-ElimTime: 0.262s
-Total-Choose-Time: 3.862s
-BinarySearchTime: 0.551s
-vcTimeouts: 1
+Total-ElimUF-Time: 6.009s
+UneliminatedEqualities: 51
+ElimTime: 0.189s
+Total-Choose-Time: 7.273s
+BinarySearchTime: 0.463s
+vcTimeouts: 12
 ### Statistics for counter: procs ####
 ### Statistics for counter: vcTimeouts ####
 ### Statistics for counter: VC-refinement ####
 Avg.AxiomBlowup: 1.0
 Max.AxiomBlowup: 1
-Avg.VC-size: 127.52173913043478
-Max.VC-size: 580
-Avg.UIF+ADT: 47.69565217391305
-Max.UIF+ADT: 188
+Avg.VC-size: 136.1304347826087
+Max.VC-size: 778
+Avg.UIF+ADT: 52.391304347826086
+Max.UIF+ADT: 296
 Avg.TemplateIds: 1.2173913043478262
 Max.TemplateIds: 2
-Avg.unflatSize: 19.956521739130434
-Max.unflatSize: 101
-Avg.UnflatTime: 0.01017391304347826s
-Max.UnflatTime: 0.052s
+Avg.unflatSize: 21.0
+Max.unflatSize: 125
+Avg.UnflatTime: 0.009739130434782608s
+Max.UnflatTime: 0.042s
 ### Statistics for counter: disjuncts ####
-Avg.VC-check-time: 0.5277142857142857s
-Max.VC-check-time: 15.02s
-Avg.CallADT-Constraints: 33.73015873015873
-Max.CallADT-Constraints: 182
-Avg.CtrsBeforeElim: 37.17460317460318
-Max.CtrsBeforeElim: 180
-Avg.EliminatedAtoms: 35.01587301587302
-Max.EliminatedAtoms: 177
-Avg.Param-Atoms: 0.746031746031746
+Avg.VC-check-time: 2.7668904109589043s
+Max.VC-check-time: 15.922s
+Avg.CallADT-Constraints: 24.19178082191781
+Max.CallADT-Constraints: 173
+Avg.CtrsBeforeElim: 27.383561643835616
+Max.CtrsBeforeElim: 168
+Avg.EliminatedAtoms: 25.684931506849313
+Max.EliminatedAtoms: 166
+Avg.Param-Atoms: 0.6164383561643836
 Max.Param-Atoms: 2
-Avg.NonParam-Atoms: 2.1587301587301586
+Avg.NonParam-Atoms: 1.6986301369863013
 Max.NonParam-Atoms: 7
-Avg.Disj-choosing-time: 0.0613015873015873s
-Max.Disj-choosing-time: 0.798s
-Avg.NLsize: 12.841269841269842
+Avg.Disj-choosing-time: 0.09963013698630137s
+Max.Disj-choosing-time: 4.63s
+Avg.NLsize: 11.698630136986301
 Max.NLsize: 46
-Avg.NL-solving-time: 0.007619047619047619s
-Max.NL-solving-time: 0.045s
+Avg.NL-solving-time: 0.0068219178082191785s
+Max.NL-solving-time: 0.035s
 ########## Outputs ############
-Invariants for Function: map-time
-map-time --> time4 + BigInt(-9) <= BigInt(0)
-
 Invariants for Function: merge-time
-merge-time --> time5 + BigInt(-11) <= BigInt(0)
+merge-time --> time4 + BigInt(-11) <= BigInt(0)
+
+Invariants for Function: map-time
+map-time --> time5 + BigInt(-9) <= BigInt(0)
 
 Invariants for Function: hamGen-time
 hamGen-time --> time6 + BigInt(-49) <= BigInt(0)
@@ -83,6 +83,6 @@ Invariants for Function: nthElemAfterSecond-time
 nthElemAfterSecond-time --> (BigInt(-129) * n11 + time10) + BigInt(127) <= BigInt(0)
 
 Invariants for Function: nthHammingNumber-time
-nthHammingNumber-time --> (time11 + BigInt(-129) * n15) + BigInt(-4) <= BigInt(0)
+nthHammingNumber-time --> (BigInt(-129) * n15 + time11) + BigInt(-4) <= BigInt(0)
 
 

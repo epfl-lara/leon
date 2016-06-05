@@ -57,7 +57,7 @@ object ZipWithAndFibStream {
       case (SCons(x, _), SCons(y, _)) =>
         SCons(f(x, y), Susp(() => zipWithSusp(f, xs, ys)))
     }
-  } ensuring(time <= ?) // Orb result: 17
+  } ensuring(time <= ? && alloc <= ?) // Orb result: 17
 
   private def zipWithSusp(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
     zipWithFun(f, xs.tail, ys.tail)
@@ -135,7 +135,7 @@ object ZipWithAndFibStream {
   def next(f: SCons, s: SCons, t: SCons): SCons = {
     require(firstThreeEval(f, s, t) && argChainingProp(f))
     t.tail
-  } ensuring(_ => time <= ?) // Orb result: time <= 73
+  } ensuring(_ => time <= ? && alloc <= ?) // Orb result: time <= 73
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
@@ -150,7 +150,7 @@ object ZipWithAndFibStream {
         else
           nthElemAfterThird(n - 1, s, t, fourth)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n - 167
+  } ensuring(_ => time <= ? * n + ? && alloc <= ? * n + ?) // Orb result: 84 * n - 167
 
   /**
    * Using a `zipWithFun` function to implement a fibonacci stream.
@@ -160,7 +160,7 @@ object ZipWithAndFibStream {
   val genNext = {
     val fibs = this.fibstream
     zipWithFun(_ + _, fibs, fibs.tail)
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => time <= ? && alloc <= ?) 
 
   /**
    * Establishes that `fibstream` satisfies `argChainedStream` property.
@@ -188,7 +188,7 @@ object ZipWithAndFibStream {
         else nthElemAfterThird(n, first, second, third)
       }
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n + 6
+  } ensuring(_ => time <= ? * n + ? && alloc <= ? * n + ?) // Orb result: 84 * n + 6
 
   @ignore
   def main(args: List[Any]): Unit = {
