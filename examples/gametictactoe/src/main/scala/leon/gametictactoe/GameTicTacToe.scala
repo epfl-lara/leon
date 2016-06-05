@@ -10,7 +10,7 @@ import leon.util.Random
 object GameTicTacToe {
 
   case class Cell(var n: Option[BigInt]) {
-    require(n.forall(v => (v == 0 || v== 1)))
+    require(n.forall(v => v >= 0))
 
     def entryInCell: BigInt = n.getOrElse(0)
 
@@ -44,7 +44,7 @@ object GameTicTacToe {
                                c31.emptyAsInt + c32.emptyAsInt + c33.emptyAsInt
 
     def fill(j: BigInt, i: BigInt, x: BigInt): Unit = {
-      if(j == 1 && 1 == 1) c11 = Cell(Some(x))
+      if(j == 1 && i == 1) c11 = Cell(Some(x))
       else if(j == 1 && i == 2) c12 = Cell(Some(x))
       else if(j == 1 && i == 3) c13 = Cell(Some(x))
       else if(j == 2 && i == 1) c21 = Cell(Some(x))
@@ -57,7 +57,7 @@ object GameTicTacToe {
     }
 
     def canFill(j: BigInt, i: BigInt): Boolean = {
-      if(j == 1 && 1 == 1) c11.isEmpty
+      if(j == 1 && i == 1) c11.isEmpty
       else if(j == 1 && i == 2) c12.isEmpty
       else if(j == 1 && i == 3) c13.isEmpty
       else if(j == 2 && i == 1) c21.isEmpty
@@ -76,14 +76,14 @@ object GameTicTacToe {
   }
 
   def checkGameEnded(map: LevelMap): Boolean = {
-    val r1 = map.c11.containsEntry && map.c12.containsEntry && map.c13.containsEntry && (map.c11.entryInCell == map.c12.entryInCell == map.c13.entryInCell)
-    val r2 = map.c21.containsEntry && map.c22.containsEntry && map.c23.containsEntry && (map.c21.entryInCell == map.c22.entryInCell == map.c23.entryInCell)
-    val r3 = map.c31.containsEntry && map.c32.containsEntry && map.c33.containsEntry && (map.c31.entryInCell == map.c32.entryInCell == map.c33.entryInCell)
-    val c1 = map.c11.containsEntry && map.c21.containsEntry && map.c31.containsEntry && (map.c11.entryInCell == map.c21.entryInCell == map.c31.entryInCell)
-    val c2 = map.c12.containsEntry && map.c22.containsEntry && map.c32.containsEntry && (map.c12.entryInCell == map.c22.entryInCell == map.c32.entryInCell)
-    val c3 = map.c13.containsEntry && map.c23.containsEntry && map.c33.containsEntry && (map.c13.entryInCell == map.c23.entryInCell == map.c33.entryInCell)
-    val d1 = map.c11.containsEntry && map.c22.containsEntry && map.c33.containsEntry && (map.c11.entryInCell == map.c22.entryInCell == map.c33.entryInCell)
-    val d2 = map.c31.containsEntry && map.c22.containsEntry && map.c13.containsEntry && (map.c31.entryInCell == map.c22.entryInCell == map.c13.entryInCell)
+    val r1 = map.c11.containsEntry && map.c12.containsEntry && map.c13.containsEntry && (map.c11.entryInCell == map.c12.entryInCell) && (map.c12.entryInCell == map.c13.entryInCell)
+    val r2 = map.c21.containsEntry && map.c22.containsEntry && map.c23.containsEntry && (map.c21.entryInCell == map.c22.entryInCell) && (map.c22.entryInCell == map.c23.entryInCell)
+    val r3 = map.c31.containsEntry && map.c32.containsEntry && map.c33.containsEntry && (map.c31.entryInCell == map.c32.entryInCell) && (map.c32.entryInCell == map.c33.entryInCell)
+    val c1 = map.c11.containsEntry && map.c21.containsEntry && map.c31.containsEntry && (map.c11.entryInCell == map.c21.entryInCell) && (map.c21.entryInCell == map.c31.entryInCell)
+    val c2 = map.c12.containsEntry && map.c22.containsEntry && map.c32.containsEntry && (map.c12.entryInCell == map.c22.entryInCell) && (map.c22.entryInCell == map.c32.entryInCell)
+    val c3 = map.c13.containsEntry && map.c23.containsEntry && map.c33.containsEntry && (map.c13.entryInCell == map.c23.entryInCell) && (map.c23.entryInCell == map.c33.entryInCell)
+    val d1 = map.c11.containsEntry && map.c22.containsEntry && map.c33.containsEntry && (map.c11.entryInCell == map.c22.entryInCell) && (map.c22.entryInCell == map.c33.entryInCell)
+    val d2 = map.c31.containsEntry && map.c22.containsEntry && map.c13.containsEntry && (map.c31.entryInCell == map.c22.entryInCell) && (map.c22.entryInCell == map.c13.entryInCell)
     r1 || r2 || r3 || c1 || c2 || c3 || d1 || d2 
   }
 
