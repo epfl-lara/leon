@@ -56,13 +56,6 @@ object BottomUpMergeSortPrecise {
         case _            => true
       }
     }
-    
-    def valid = {
-      this match {
-        case SCons(_, t) => t.valid
-        case _            => true
-      }
-    }
   }
   private case class SCons(x: BigInt, tailFun: Stream) extends LList
   private case class SNil() extends LList
@@ -70,18 +63,13 @@ object BottomUpMergeSortPrecise {
     @inline
     def size = (list*).size
     lazy val list: LList = lfun()
-    
-    @inline
-    // adding ensurings to `fmatch` somehow does not work in the typesystem
-    def heightSub: BigInt = {     
-      lfun fmatch[LList, Stream, BigInt] {
-        case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + max(a.height, b.height)
-        case _ => BigInt(1)
-      }  
-    }     
+        
     def height: BigInt = {
-      heightSub
-    }ensuring(_ >= 1)
+      (lfun fmatch[LList, Stream, BigInt] {
+        case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + max(a.height, b.height)
+        case _ => BigInt(0)
+      }): BigInt  
+    }ensuring(_ >= 0)
 
     //@invisibleBody
     def weightBalanced: Boolean = {
@@ -90,40 +78,35 @@ object BottomUpMergeSortPrecise {
           val sizeDiff = a.size - b.size
           sizeDiff >= -2 && sizeDiff <= 2 && 
           a.weightBalanced && b.weightBalanced
-        case _ => true //(lfun()*) == SNil()
-      }
-    }
-    
-    def valid: Boolean = {
-      lfun fmatch[LList, Stream, Boolean] {
-        case (a, b) if lfun.is(() => mergeSusp(a, b)) => true          
-        case _ => (lfun()*) == SNil()
+        case _ => true 
       }
     }
   }
   
   @inline
-  private val nilStream: Stream = Stream(lift(SNil()))
+  private val nilStream: Stream = Stream(() => SNil())
   
-  def twopower(x: BigInt) : BigInt = {
+  @monotonic
+  def log(x: BigInt) : BigInt = {
     require(x >= 0)
-    if(x < 1) 1
+    if(x <= 1) 0
     else
-      2* twopower(x - 1)
+      1 + log(x/2)
+  }
+  
+  @inline
+  def recSizeL(l: LList): BigInt = l match {
+    case SNil() => BigInt(0)
+    case SCons(_, t) => 1 + recSize(t)
   }
 
-  def recSize(l: LList): BigInt = {
-    require(l.weightBalanced && l.valid)
-    (l match {
-      case SNil() => BigInt(0)
-      case SCons(_, Stream(lfun)) =>
-        lfun fmatch[LList, Stream, BigInt] {
-          case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + a.size + b.size
-          case _ => BigInt(1)
-        }
-    })
-  } ensuring (res => l.size == res) // && 
-      //twopower(l.height) <= ? * res + ?)
+  def recSize(l: Stream): BigInt = {
+    require(l.weightBalanced)
+    (l.lfun fmatch[LList, Stream, BigInt] {
+      case (a, b) if l.lfun.is(() => mergeSusp(a, b)) => recSizeL(a) + recSize(b)
+      case _ => BigInt(0)
+    }) : BigInt         
+  } ensuring (res => l.size == res && l.height <= log(res))
 
   /**
    * 
@@ -149,13 +132,13 @@ object BottomUpMergeSortPrecise {
     reslist.size == range && 
     rest.size == l.size - range  &&
     reslist.weightBalanced && 
-    reslist.valid &&
+    //reslist.valid &&
     time <= 57 * range - 44 // 2 * time <= 15 * l.size + 6
   }
 
   @invisibleBody
   private def merge(a: LList, b: LList): LList = {
-    require(a.valid && b.valid)
+    //require(a.valid && b.valid)
     b match {
       case SNil() => a
       case SCons(x, xs) =>
@@ -179,7 +162,7 @@ object BottomUpMergeSortPrecise {
    */
   @invisibleBody
   private def mergeSusp(a: LList, b: Stream): LList = {
-    require(a != SNil() && a.valid && b.valid)
+    require(a != SNil()) // && a.valid && b.valid)
     merge(a, b.list)
   } ensuring {res =>        
     res != SNil() &&
@@ -198,9 +181,9 @@ object BottomUpMergeSortPrecise {
       case _ => constructMergeTree(l, 0, l.length - 1)._1 
     }
   } ensuring (res => l.size == res.size && time <= 57 * l.size + 3) // time <= 45 * l.size + 15
-
+  
   private def kthMinRec(l: LList, k: BigInt): BigInt = {
-    require(k >= 0)
+    require(k >= 0) // && l.valid)
     l match {
       case SCons(x, xs) =>
         if (k == 0) x
@@ -208,8 +191,8 @@ object BottomUpMergeSortPrecise {
           kthMinRec(xs.list, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
-  //? * (l.height) 
+  } ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= 22 * (k * l.height) + 6
+  //TODO Add the ? * (l.height) term if the numbers do not match the runtime estimate 
   /**
    * A function that accesses the kth element of a list using lazy sorting.
    */
