@@ -22,7 +22,8 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     ComparatorByExprList,
     ComparatorByClassList,
     ComparatorByClassTree,
-    ComparatorByScoreTreeWithHoles
+    ComparatorByScoreTree,
+    ComparatorDirectScoreTree
   )
 
   val comparatorsNames = comparators map (_.name)
@@ -44,7 +45,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
     val compared = combinationOfFunDef(listFunDef_base, listFunDef)
 
-    ComparisonReport(comparisonBase, program, comparatorsNames, compared)
+    ComparisonReport(ctx, comparisonBase, program, comparatorsNames, compared)
   }
 
 

@@ -15,8 +15,8 @@ import leon.purescala.Expressions._
   * function arguments) have no holes. Indeed, these trees are suppose to come from a valid collection with which the
   * user compare its "draft" tree.
   */
-object ComparatorByScoreTreeWithHoles extends Comparator{
-  override val name: String = "ScoreTreeWtHoles"
+object ComparatorDirectScoreTree extends Comparator{
+  override val name: String = "DirectScoreTree"
 
   case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)
 
