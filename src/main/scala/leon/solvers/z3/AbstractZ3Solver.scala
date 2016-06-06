@@ -417,6 +417,11 @@ trait AbstractZ3Solver extends Z3Solver {
         val tester = testers.toB(cct)
         tester(rec(e))
 
+      case al @ RawArraySelect(a, i) =>
+        z3.mkSelect(rec(a), rec(i))
+      case al @ RawArrayUpdated(a, i, e) =>
+        z3.mkStore(rec(a), rec(i), rec(e))
+
       case al @ ArraySelect(a, i) =>
         val tpe = normalizeType(a.getType)
 

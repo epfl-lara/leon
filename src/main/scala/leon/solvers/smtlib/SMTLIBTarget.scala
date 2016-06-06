@@ -438,12 +438,18 @@ trait SMTLIBTarget extends Interruptible {
 
         FunctionApplication(selector, Seq(toSMT(a)))
 
+      case al @ RawArraySelect(a, i) =>
+        ArraysEx.Select(toSMT(a), toSMT(i))
+      case al @ RawArrayUpdated(a, i, e) =>
+        ArraysEx.Store(toSMT(a), toSMT(i), toSMT(e))
+
       case al @ ArraySelect(a, i) =>
         val tpe = normalizeType(a.getType)
 
         val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(toSMT(a)))
 
         ArraysEx.Select(scontent, toSMT(i))
+
 
       case al @ ArrayUpdated(a, i, e) =>
         val tpe = normalizeType(a.getType)

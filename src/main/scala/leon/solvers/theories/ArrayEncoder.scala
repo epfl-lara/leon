@@ -6,7 +6,10 @@ package theories
 
 import purescala.Common._
 import purescala.Expressions._
+import purescala.ExprOps._
+import purescala.Extractors._
 import purescala.Constructors._
+import purescala.Types._
 import purescala.Types._
 import purescala.Definitions._
 import leon.utils.Bijection
@@ -15,7 +18,7 @@ import leon.purescala.TypeOps
 class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
 
   private val arrayTypeParam = TypeParameter.fresh("A")
-  val ArrayCaseClass = new CaseClassDef(FreshIdentifier("Array"), Seq(TypeParameterDef(arrayTypeParam)), None, false)
+  val ArrayCaseClass = new CaseClassDef(FreshIdentifier("InternalArray"), Seq(TypeParameterDef(arrayTypeParam)), None, false)
   val rawArrayField = FreshIdentifier("raw", RawArrayType(Int32Type, arrayTypeParam))
   val lengthField = FreshIdentifier("length", Int32Type)
   ArrayCaseClass.setFields(Seq(ValDef(rawArrayField), ValDef(lengthField)))
@@ -60,36 +63,32 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
         val ra = transform(a)
         Some(CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, lengthField))
 
-      //case al @ ArraySelect(a, i) =>
-      //  val tpe = normalizeType(a.getType)
+      case al @ ArraySelect(a, i) =>
+        val ra = transform(a)
+        val ri = transform(i)
+        val raw = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, rawArrayField)
+        Some(RawArraySelect(raw, ri))
 
-      //  val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(toSMT(a)))
+      case al @ ArrayUpdated(a, i, e) =>
+        val ra = transform(a)
+        val ri = transform(i)
+        val re = transform(e)
 
-      //  ArraysEx.Select(scontent, toSMT(i))
+        val length = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, lengthField)
+        val raw = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, rawArrayField)
 
-      //case al @ ArrayUpdated(a, i, e) =>
-      //  val tpe = normalizeType(a.getType)
+        Some(CaseClass(ra.getType.asInstanceOf[CaseClassType], Seq(RawArrayUpdated(raw, ri, re), length)))
 
-      //  val sa = toSMT(a)
-      //  val ssize = FunctionApplication(selectors.toB((tpe, 0)), Seq(sa))
-      //  val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(sa))
+      case a @ FiniteArray(elems, oDef, size) =>
 
-      //  val newcontent = ArraysEx.Store(scontent, toSMT(i), toSMT(e))
+        val tpe @ ArrayType(to) = a.getType
+        val default: Expr = transform(oDef.getOrElse(simplestValue(to)))
 
-      //  val constructor = constructors.toB(tpe)
-      //  FunctionApplication(constructor, Seq(ssize, newcontent))
+        val raw = RawArrayValue(Int32Type, elems.map {
+          case (k, v) => IntLiteral(k) -> transform(v)
+        }, default)
+        Some(CaseClass(ArrayCaseClass.typed(Seq(to)), Seq(raw, transform(size))))
 
-      //case a @ FiniteArray(elems, oDef, size) =>
-      //  val tpe @ ArrayType(to) = normalizeType(a.getType)
-      //  declareSort(tpe)
-
-      //  val default: Expr = oDef.getOrElse(simplestValue(to))
-
-      //  val arr = toSMT(RawArrayValue(Int32Type, elems.map {
-      //    case (k, v) => IntLiteral(k) -> v
-      //  }, default))
-
-      //  FunctionApplication(constructors.toB(tpe), List(toSMT(size), arr))
       case _ => None
     }
 
@@ -123,11 +122,8 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
 
     override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case cc @ CaseClass(cct, args) if cct.classDef == ArrayCaseClass =>
-        println("Hey there!")
         val Seq(rawArray, length) = args
-        println(args)
         val leonArray = fromRaw(rawArray, length)
-        println(leonArray)
         Some(leonArray)
       //  Some(StringLiteral(convertToString(cc)).copiedFrom(cc))
       //case FunctionInvocation(SizeI, Seq(a)) =>
