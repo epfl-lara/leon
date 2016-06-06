@@ -432,37 +432,10 @@ trait SMTLIBTarget extends Interruptible {
         val selector = selectors.toB((tpe, i - 1))
         FunctionApplication(selector, Seq(toSMT(t)))
 
-      case al @ ArrayLength(a) =>
-        val tpe = normalizeType(a.getType)
-        val selector = selectors.toB((tpe, 0))
-
-        FunctionApplication(selector, Seq(toSMT(a)))
-
       case al @ RawArraySelect(a, i) =>
         ArraysEx.Select(toSMT(a), toSMT(i))
       case al @ RawArrayUpdated(a, i, e) =>
         ArraysEx.Store(toSMT(a), toSMT(i), toSMT(e))
-
-      case al @ ArraySelect(a, i) =>
-        val tpe = normalizeType(a.getType)
-
-        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(toSMT(a)))
-
-        ArraysEx.Select(scontent, toSMT(i))
-
-
-      case al @ ArrayUpdated(a, i, e) =>
-        val tpe = normalizeType(a.getType)
-
-        val sa = toSMT(a)
-        val ssize = FunctionApplication(selectors.toB((tpe, 0)), Seq(sa))
-        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(sa))
-
-        val newcontent = ArraysEx.Store(scontent, toSMT(i), toSMT(e))
-
-        val constructor = constructors.toB(tpe)
-        FunctionApplication(constructor, Seq(ssize, newcontent))
-
       case ra @ RawArrayValue(keyTpe, elems, default) =>
         val s = declareSort(ra.getType)
 
@@ -474,18 +447,6 @@ trait SMTLIBTarget extends Interruptible {
         }
 
         res
-
-      case a @ FiniteArray(elems, oDef, size) =>
-        val tpe @ ArrayType(to) = normalizeType(a.getType)
-        declareSort(tpe)
-
-        val default: Expr = oDef.getOrElse(simplestValue(to))
-
-        val arr = toSMT(RawArrayValue(Int32Type, elems.map {
-          case (k, v) => IntLiteral(k) -> v
-        }, default))
-
-        FunctionApplication(constructors.toB(tpe), List(toSMT(size), arr))
 
       /**
        * ===== Map operations =====
