@@ -18,17 +18,17 @@ import leon.purescala.Expressions._
 object ComparatorByScoreTreeWithHoles extends Comparator{
   override val name: String = "ScoreTreeWtHoles"
 
+  case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)
+
   override def compare(expr_base: Expr, expr: Expr): Double = {
     val roots = possibleRoots(expr_base, expr)
     val trees = roots.flatMap(possibleTrees(_))
-    if (trees.isEmpty) {
-      0.0
-    } else {
-      //val exclusive = exclusiveTrees(trees)
-      val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
-      println("Best tree is : ", scores.head)
-      scores.head._2
-    }
+    if (trees.isEmpty) return 0.0
+
+    //val exclusive = exclusiveTrees(trees)
+    //val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
+    val scores = scoreTree(trees.sortBy(-_.size).head)
+    scores
   }
 
 
@@ -53,8 +53,8 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
     pairOfExprs
   }
 
-  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
-    val exprsBase = collectExpr(expr_base)
+  def possibleRoots(exprBase: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
+    val exprsBase = collectExpr(exprBase)
     val exprs = collectExpr(expr)
 
     pairOfMatchingExpr(exprsBase, exprs)

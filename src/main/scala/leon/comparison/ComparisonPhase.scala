@@ -27,7 +27,8 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     //ComparatorByBiggestClassTree,
     //ComparatorByTree,
     ComparatorByClassTree,
-    ComparatorByScoreTree
+    ComparatorByScoreTree,
+    ComparatorByScoreTreeWithHoles
     )
 
   val comparatorsNames = comparators map (_.name)
