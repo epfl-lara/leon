@@ -71,6 +71,12 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     (instFuns, instFunTypes)
   }
 
+
+  def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
+    //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
+    funsToInst.map(x => (x, List(Time))).toMap
+  }
+
   def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
     funTypesToInst.map(x => (x, List(Time))).toMap
   }

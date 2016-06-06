@@ -70,14 +70,19 @@ class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     (instFuns, instFunTypes)
   }
 
-  def functionsToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
-    funTypesToInst.map(x => (x, List(Time))).toMap
+  def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
+    //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
+    funsToInst.map(x => (x, List(Alloc))).toMap
+  }
+
+  def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
+    funTypesToInst.map(x => (x, List(Alloc))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
 
   def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
-    caseExprCost: Expr, scrutineeCost: Expr): Expr = {
+    caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     val costMatch = costOfExpr(me)
     def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
     Plus(costMatch, Plus(caseExprCost, scrutineeCost))
@@ -92,7 +97,7 @@ class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-      thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {    
+      thenInst: Option[Expr], elzeInst: Option[Expr])(implicit currFun: FunDef): (Expr, Expr) = {    
   	val costIf = costOfExpr(e)
     (Plus(costIf, Plus(condInst.get, thenInst.get)),
       Plus(costIf, Plus(condInst.get, elzeInst.get)))
