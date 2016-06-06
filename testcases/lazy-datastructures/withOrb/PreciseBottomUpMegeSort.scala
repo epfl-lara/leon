@@ -15,17 +15,17 @@ import stats._
  * and kth element in O(kn) time.
  * Needs unrollfactor = 3
  */
-object BottomUpMergeSortPrecise {  
-  
+object BottomUpMergeSortPrecise {
+
   @inline
-  def max(x:BigInt, y:BigInt) = if (x >= y) x else y   
-  
-  sealed abstract class List[T] {  
+  def max(x:BigInt, y:BigInt) = if (x >= y) x else y
+
+  sealed abstract class List[T] {
     def size: BigInt = (this match {
       case Nil() => BigInt(0)
       case Cons(h, t) => 1 + t.size
     }) ensuring (_ >= 0)
-    
+
     // length is used in the implementation
     val length: BigInt = (this match {
       case Nil() => BigInt(0)
@@ -34,7 +34,7 @@ object BottomUpMergeSortPrecise {
   }
   case class Cons[T](x: T, tail: List[T]) extends List[T]
   case class Nil[T]() extends List[T]
-  
+
   private sealed abstract class LList {
     def size: BigInt = {
       this match {
@@ -42,12 +42,12 @@ object BottomUpMergeSortPrecise {
         case _            => BigInt(0)
       }
     } ensuring (_ >= 0)
-    
-    def height: BigInt = {     
+
+    def height: BigInt = {
       this match {
         case SCons(_, t) => t.height
         case _            => BigInt(0)
-      }          
+      }
     } ensuring(_ >= 0)
 
     def weightBalanced: Boolean = {
@@ -63,65 +63,110 @@ object BottomUpMergeSortPrecise {
     @inline
     def size = (list*).size
     lazy val list: LList = lfun()
-        
+
     def height: BigInt = {
       (lfun fmatch[LList, Stream, BigInt] {
         case (a, b) if lfun.is(() => mergeSusp(a, b)) => 1 + max(a.height, b.height)
         case _ => BigInt(0)
-      }): BigInt  
+      }): BigInt
     }ensuring(_ >= 0)
 
-    //@invisibleBody
+    @invisibleBody
     def weightBalanced: Boolean = {
       lfun fmatch[LList, Stream, Boolean] {
         case (a, b) if lfun.is(() => mergeSusp(a, b)) =>
-          val sizeDiff = a.size - b.size
-          sizeDiff >= -2 && sizeDiff <= 2 && 
+          val asz = a.size
+          val bsz = b.size
+          asz > 0 && asz >= bsz && (asz - bsz) <= 2 &&
           a.weightBalanced && b.weightBalanced
-        case _ => true 
+        case _ => true
       }
     }
   }
-  
+
   @inline
   private val nilStream: Stream = Stream(() => SNil())
-  
-  @monotonic
+
+  /**
+   * A function that computes 3 + log_2(x).
+   * The function is defined as 1 for negative values, and 2 for zero.
+   */
   def log(x: BigInt) : BigInt = {
-    require(x >= 0)
-    if(x <= 1) BigInt(0)
+    if(x < 0) BigInt(1)
+    else if(x == 0) BigInt(2)
     else
       1 + log(x/2)
-  } ensuring(_ >= 0)
-  
-  //@inline
+  } ensuring(_ >= 1)
+
+  @invisibleBody
+  def logMonotonicity(x: BigInt, y: BigInt): Boolean = {
+    require(x <= y)
+    (if(x <= 0) true
+    else logMonotonicity(x / 2, y / 2)) && log(x) <= log(y)
+  } holds
+
+  @inline
+  def recSizePost(l: Stream, res: BigInt): Boolean = {
+    l.lfun fmatch[LList, Stream, Boolean] {
+      case (a, b) if l.lfun.is(() => mergeSusp(a, b)) =>
+        val asz = recSizeL(a) -2
+        val bsz = recSize(b) - 1
+        logMonotonicity(2 * asz, res - 1) &&
+        logMonotonicity(2 * bsz, res - 1)
+      case _ => true
+    }
+  }
+    // the following facts necessary for proving the logarithmic bounds are automatically inferred, but are stated here for the record
+  /*2 * asz <= res - 1 &&
+  2 * bsz <= res - 1 &&*/
+  /*(if(asz >= 1) {
+    log(asz) + 1 <= log(res - 1)
+  } else
+    a.height <= log(res - 1) - 1) &&
+  (if(bsz >= 1) {
+    log(bsz) + 1 <= log(res - 1)
+  } else
+    b.height <= log(res - 1) - 1)*/
+
+  @inline
   def recSizeL(l: LList): BigInt = {
-    require(l != SNil())
-    l match {  
-      //case SNil() => BigInt(0)
+    l match {
       case SCons(_, t) => 1 + recSize(t)
     }
   }
-  
+
+  @invisibleBody
   def recSize(l: Stream): BigInt = {
     require(l.weightBalanced)
     (l.lfun fmatch[LList, Stream, BigInt] {
       case (a, b) if l.lfun.is(() => mergeSusp(a, b)) => recSizeL(a) + recSize(b)
       case _ => BigInt(0)
-    }) : BigInt         
-  } ensuring (res => l.size == res && 
-      l.height <= ? * log(res) + ?)
+    }) : BigInt
+  } ensuring (res => l.size == res && recSizePost(l, res) && l.height <= log(res - 1))
+
+  @invisibleBody
+  def logHeightProperty(l: LList): Boolean = {
+    require(l.weightBalanced)
+    val lsz = l.size
+    (l match {
+      case SNil() => true
+      case SCons(_, t) =>
+        recSize(t) == t.size
+    }) &&
+    logMonotonicity(lsz - 2, lsz - 1) &&
+    l.height <= log(lsz - 1)
+  } holds
 
   /**
-   * 
+   *
    * this method is a functional implementation of buildheap in linear time.
    */
   @invisibleBody
-  private def constructMergeTree(l: List[BigInt], from: BigInt, to: BigInt): (LList, List[BigInt]) = { 
-    require(from <= to && from >= 0 && (to - from + 1) <= l.size )        
+  private def constructMergeTree(l: List[BigInt], from: BigInt, to: BigInt): (LList, List[BigInt]) = {
+    require(from <= to && from >= 0 && (to - from + 1) <= l.size )
     l match {
       case Nil()           => (SNil(), Nil[BigInt]()) // this case is unreachable
-      case Cons(x, tail)  => 
+      case Cons(x, tail)  =>
         if(from == to) (SCons(x, nilStream), tail)
         else {
           val mid = (from + to) / 2
@@ -130,14 +175,13 @@ object BottomUpMergeSortPrecise {
           (merge(lside, rside), rest)
         }
     }
-  } ensuring{ res =>    
+  } ensuring{ res =>
     val range = to - from + 1
     val (reslist, rest) = res
-    reslist.size == range && 
+    reslist.size == range &&
     rest.size == l.size - range  &&
-    reslist.weightBalanced //&& 
-    //reslist.valid &&
-    //time <= ? * range + ? // 57 * range - 44 TODO: check why making this - fails a requirement
+    reslist.weightBalanced &&
+    time <= ? * range + ? // 56 * to - 56 * from + 12  TODO: check why making the sign of the constant term form plus to minus fails a requirement
   }
 
   @invisibleBody
@@ -154,8 +198,8 @@ object BottomUpMergeSortPrecise {
               SCons(x, Stream(() => mergeSusp(a, xs)))
         }
     }
-  } ensuring{res => a.size + b.size == res.size //&& 
-    //time <= ? // time <= 16
+  } ensuring{res => a.size + b.size == res.size &&
+    time <= ? // time <= 16
   }
 
   /**
@@ -167,26 +211,30 @@ object BottomUpMergeSortPrecise {
   private def mergeSusp(a: LList, b: Stream): LList = {
     require(a != SNil()) // && a.valid && b.valid)
     merge(a, b.list)
-  } ensuring {res =>        
+  } ensuring {res =>
     res != SNil() &&
-    res.height <= max(a.height, b.height) + 1 //&&
-    //time <= ? * b.height + ? // 22 * b.height + 1    
-  }  
-  
+    res.height <= max(a.height, b.height) + 1 &&
+    time <= ? * b.height + ? // 22 * b.height + 23
+  }
+
   /**
    * Takes list of integers and returns a sorted stream of integers.
    * Takes time linear in the size of the  input since it sorts lazily.
-   */  
+   */
   @invisibleBody
   private def mergeSort(l: List[BigInt]): LList = {
     l match {
       case Nil() => SNil()
-      case _ => constructMergeTree(l, 0, l.length - 1)._1 
+      case _ => constructMergeTree(l, 0, l.length - 1)._1
     }
-  } ensuring (res => l.size == res.size )// && time <= ? * l.size + ?) // 57 * l.size + 3
-  
-  private def kthMinRec(l: LList, k: BigInt): BigInt = {
-    require(k >= 0) // && l.valid)
+  } ensuring (res => res.weightBalanced &&
+      logHeightProperty(res) &&
+      l.size == res.size &&
+      res.height <= log(l.size - 1) &&
+      time <= ? * l.size + ?) // 56 * l.size + 3
+
+  private def kthMinRec(l: LList, k: BigInt): BigInt = { // note: making this invisibleBody breaks lemms instantiation, why ?
+    require(k >= 0)
     l match {
       case SCons(x, xs) =>
         if (k == 0) x
@@ -194,21 +242,23 @@ object BottomUpMergeSortPrecise {
           kthMinRec(xs.list, k - 1)
       case SNil() => BigInt(0)
     }
-  } //ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= 22 * (k * l.height) + 6
-  //TODO Add the ? * (l.height) term if the numbers do not match the runtime estimate 
+  } ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= 36 * (k * l.height) + 17
+  //TODO Add the ? * (l.height) term if the numbers do not match the runtime estimate
+
   /**
    * A function that accesses the kth element of a list using lazy sorting.
    */
-//  def kthMin(l: List[BigInt], k: BigInt): BigInt = {
-//    kthMinStream(mergeSort(l), k)
-//  } ensuring(_ => time <= ? * (k * l.size) + ? * (l.size) + ?)
+  def kthMin(l: List[BigInt], k: BigInt): BigInt = {
+    require(k >= 0)
+    kthMinRec(mergeSort(l), k)
+  } ensuring(_ => time <= ? * (k * log(l.size - 1)) + ? * (l.size) + ?) // 36 * (k * log(l.size - 1)) + 56 * l.size + 22
 
   @ignore
   def main(args: Array[String]) {
     //import eagerEval.MergeSort
     import scala.util.Random
     import scala.math.BigInt
-    import stats._    
+    import stats._
 
     println("Running merge sort test...")
     val length = 3000000
