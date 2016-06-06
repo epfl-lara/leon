@@ -88,7 +88,7 @@ object BottomUpMergeSortPrecise {
   private val nilStream: Stream = Stream(() => SNil())
 
   /**
-   * A function that computes 3 + log_2(x).
+   * A function that computes 3 + log_2(x) for x >= 1
    * The function is defined as 1 for negative values, and 2 for zero.
    */
   def log(x: BigInt) : BigInt = {
