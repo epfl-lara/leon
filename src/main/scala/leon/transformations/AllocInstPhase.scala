@@ -15,21 +15,20 @@ import Util._
 import ProgramUtil._
 import TypeUtil._
 
-class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
-
-  def costOf(e: Expr)(implicit currFun: FunDef): Int = e match {
-    case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
-    case FunctionInvocation(fd, args)             => 1
-    case t: Terminal                              => 0
-    case _: Let                                   => 0 // let itself does not have a cost (so creating temporary variables will not increase the cost)
-    case _                                        => 1
+object allocCostModel {
+  def costOf(e: Expr): Int = e match {
+  	case CaseClass(_, _) => 1
+    case t: Terminal => 0
+    case _ => 0
   }
 
-  def costOfExpr(e: Expr)(implicit currFun: FunDef) = {
-    InfiniteIntegerLiteral(costOf(e))
-  }
+  def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
+}
 
-  def inst = Time
+class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
+  import allocCostModel._
+
+  def inst = Alloc
 
   val (funsToInst, funTypesToInst) = {
     val funToFTypes = userLevelFunctions(p).map { fd =>
@@ -71,50 +70,22 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     (instFuns, instFunTypes)
   }
 
-
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
-    funsToInst.map(x => (x, List(Time))).toMap
+    funsToInst.map(x => (x, List(Alloc))).toMap
   }
 
   def functionTypesToInstrument(): Map[CompatibleType, List[Instrumentation]] = {
-    funTypesToInst.map(x => (x, List(Time))).toMap
+    funTypesToInst.map(x => (x, List(Alloc))).toMap
   }
 
   def additionalfunctionsToAdd() = Seq()
 
-  def patternCost(pattern: Pattern, innerPat: Boolean, countLeafs: Boolean): Int = {
-    pattern match {
-      case InstanceOfPattern(_, _) => {
-        if (innerPat) 2 else 1
-      }
-      case WildcardPattern(None) => 0
-      case WildcardPattern(Some(id)) => {
-        if (countLeafs && innerPat) 1
-        else 0
-      }
-      case CaseClassPattern(_, _, subPatterns) => {
-        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-          acc + patternCost(subPat, true, countLeafs))
-      }
-      case TuplePattern(_, subPatterns) => {
-        (if (innerPat) 2 else 1) + subPatterns.foldLeft(0)((acc, subPat) =>
-          acc + patternCost(subPat, true, countLeafs))
-      }
-      case LiteralPattern(_, _) => if (innerPat) 2 else 1
-      case _ =>
-        throw new NotImplementedError(s"Pattern $pattern not handled yet!")
-    }
-  }
-
-  /**
-   * Computes the complete cost of match
-   */
-  def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
+  def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
+    caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     val costMatch = costOfExpr(me)
-    val cumulativeCostOfPattern = me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) +
-        patternCost(mc.pattern, false, true)
-    Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+    def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
+    Plus(costMatch, Plus(caseExprCost, scrutineeCost))
   }
 
   def instrument(e: Expr, subInsts: Seq[Expr], funInvResVar: Option[Variable] = None)
@@ -122,18 +93,12 @@ class TimeInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(
     case t: Terminal => costOfExpr(t)
     case _ =>
       subInsts.foldLeft(costOfExpr(e) : Expr)(
-        (acc: Expr, subeTime: Expr) => Plus(subeTime, acc))
+        (acc: Expr, subeObjAlloc: Expr) => Plus(subeObjAlloc, acc))
   }
 
-  /**
-   * consInst Time taken by condition
-   * thenInst - Time taken by then branch
-   * @return values is a pair. 1st component is time when condition is tru, 2nd component
-   * is time when condition is false.
-   */
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-      thenInst: Option[Expr], elzeInst: Option[Expr])(implicit currFun: FunDef): (Expr, Expr) = {
-    val costIf = costOfExpr(e)
+      thenInst: Option[Expr], elzeInst: Option[Expr])(implicit currFun: FunDef): (Expr, Expr) = {    
+  	val costIf = costOfExpr(e)
     (Plus(costIf, Plus(condInst.get, thenInst.get)),
       Plus(costIf, Plus(condInst.get, elzeInst.get)))
   }
