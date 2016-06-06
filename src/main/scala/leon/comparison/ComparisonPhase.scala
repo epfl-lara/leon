@@ -63,10 +63,10 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     for{
       funDef_base <- funDefs_base
       funDef <- funDefs
-      listPercentage = comparators map (_.compare(funDef_base.body.get, funDef.body.get))
-      if listPercentage.map(_._1) exists (_ > 0.0)
+      scores = comparators map (_.compare(funDef_base.body.get, funDef.body.get))
+      if scores.map(_._1) exists (_ > 0.0)
     } yield {
-      (funDef, funDef_base, listPercentage)
+      (funDef, funDef_base, scores)
     }
   }
 

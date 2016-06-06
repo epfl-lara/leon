@@ -27,9 +27,10 @@ object ComparatorDirectScoreTree extends Comparator{
 
     //val exclusive = exclusiveTrees(trees)
     //val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
-    val scores = scoreTree(trees.sortBy(-_.size).head)
+    val biggest = trees.sortBy(-_.size).head
+    val score = scoreTree(biggest)
 
-    (scores, "coucou")
+    (score, " (" + biggest.size + ")")
   }
 
 
