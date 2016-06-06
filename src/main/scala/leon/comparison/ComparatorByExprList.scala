@@ -23,7 +23,7 @@ object ComparatorByExprList extends Comparator {
     * @param expr
     * @return
     */
-  def compare(expr_base: Expr, expr: Expr): Double = {
+  def compare(expr_base: Expr, expr: Expr)= {
     val listExpr_base = collectExpr(expr_base)
     val listExpr = collectExpr(expr)
 
@@ -39,7 +39,7 @@ object ComparatorByExprList extends Comparator {
       println("---------------------")
     }
 
-    score
+    (score, "")
   }
 
 

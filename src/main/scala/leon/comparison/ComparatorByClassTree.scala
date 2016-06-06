@@ -19,7 +19,7 @@ object ComparatorByClassTree extends Comparator{
   val name: String = "ClassTree"
 
 
-  def compare(expr_base: Expr, expr: Expr): Double = {
+  def compare(expr_base: Expr, expr: Expr) = {
     val roots = possibleRoots(expr_base, expr)
 
     val trees = roots.flatMap(possibleTrees(_))
@@ -39,7 +39,7 @@ object ComparatorByClassTree extends Comparator{
       println("---------------------")
     }
 
-    score
+    (score, "")
   }
 
   /**

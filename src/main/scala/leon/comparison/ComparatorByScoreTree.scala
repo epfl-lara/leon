@@ -22,11 +22,11 @@ object ComparatorByScoreTree extends Comparator {
 
 
 
-  def compare(expr_base: Expr, expr: Expr): Double = {
+  def compare(expr_base: Expr, expr: Expr): (Double, String) = {
     val pairOfRoots = ComparatorByClassTree.possibleRoots(expr_base, expr)
 
     val allPossibleTrees = pairOfRoots.flatMap(ComparatorByClassTree.possibleTrees(_))
-    if (allPossibleTrees == Nil) return 0.0
+    if (allPossibleTrees == Nil) return (0.0, "")
     val biggest = allPossibleTrees.sortBy(-_.size).head
 
     val score: Double = computeScore(biggest)
@@ -39,7 +39,7 @@ object ComparatorByScoreTree extends Comparator {
       println("---------------------")
     }
 
-    normalizedScore
+    (normalizedScore, "")
   }
 
   /**

@@ -20,15 +20,16 @@ object ComparatorByScoreTreeWithHoles extends Comparator{
 
   case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)
 
-  override def compare(expr_base: Expr, expr: Expr): Double = {
+  override def compare(expr_base: Expr, expr: Expr): (Double, String) = {
     val roots = possibleRoots(expr_base, expr)
     val trees = roots.flatMap(possibleTrees(_))
-    if (trees.isEmpty) return 0.0
+    if (trees.isEmpty) return (0.0, "")
 
     //val exclusive = exclusiveTrees(trees)
     //val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
     val scores = scoreTree(trees.sortBy(-_.size).head)
-    scores
+
+    (scores, "coucou")
   }
 
 

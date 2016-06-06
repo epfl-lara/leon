@@ -18,22 +18,16 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
   var debug = false
 
-
-
-
   val comparators: List[Comparator] = List(
     ComparatorByExprList,
     ComparatorByClassList,
-    //ComparatorByBiggestClassTree,
-    //ComparatorByTree,
     ComparatorByClassTree,
-    ComparatorByScoreTree,
     ComparatorByScoreTreeWithHoles
-    )
+  )
 
   val comparatorsNames = comparators map (_.name)
 
-  val print = true
+  val print = false
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
     val debugFlag = ctx.findOption(SharedOptions.optDebug)
@@ -69,7 +63,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
       funDef_base <- funDefs_base
       funDef <- funDefs
       listPercentage = comparators map (_.compare(funDef_base.body.get, funDef.body.get))
-      if listPercentage exists (_ > 0.0)
+      if listPercentage.map(_._1) exists (_ > 0.0)
     } yield {
       (funDef, funDef_base, listPercentage)
     }

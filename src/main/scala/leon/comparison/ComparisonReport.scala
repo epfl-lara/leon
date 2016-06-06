@@ -9,7 +9,7 @@ import leon.utils.ASCIIHelpers._
   *
   */
 case class ComparisonReport(base: ComparisonBase, program : Program, comparatorsName: List[String],
-listFD: List[(FunDef, FunDef, List[Double])]) {
+listFD: List[(FunDef, FunDef, List[(Double, String)])]) {
 
   def summaryString : String = {
     import utils.ASCIIHelpers._
@@ -32,7 +32,7 @@ listFD: List[(FunDef, FunDef, List[Double])]) {
           Cell(fd._1.qualifiedName(program)),
           Cell(fd._2.qualifiedName(base.program))
         ) ++
-        fd._3.map(p => Cell(percentage(p)))
+        fd._3.map(p => Cell(percentage(p._1) + " " + p._2))
       )
     )
 

@@ -7,6 +7,6 @@ import leon.purescala.Expressions.Expr
   */
 trait Comparator {
   val name: String
-  def compare(expr_base: Expr, expr: Expr): Double
+  def compare(expr_base: Expr, expr: Expr): (Double, String)
 
 }

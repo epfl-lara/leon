@@ -15,13 +15,13 @@ import leon.comparison.Utils._
 object ComparatorByBiggestClassTree extends Comparator {
   val name: String = "BiggestClassTree"
 
-  def compare(expr_base: Expr, expr: Expr): Double = {
+  def compare(expr_base: Expr, expr: Expr) = {
     val sizeBiggestTree: Int = biggestSimilarClassTree(expr_base, expr)
 
     val listClassesB = collectClass(expr_base)
     val listClasses = collectClass(expr)
 
-    matchScore(sizeBiggestTree, listClassesB.size, listClasses.size)
+    (matchScore(sizeBiggestTree, listClassesB.size, listClasses.size), "")
   }
 
 
