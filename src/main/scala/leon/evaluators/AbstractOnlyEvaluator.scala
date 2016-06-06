@@ -169,6 +169,9 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program) extends ContextualE
             args(ct.classDef.selectorID2Index(id))
           case TupleSelect(Tuple(args), i) =>
             args(i-1)
+          case Assert(a, error, body) => body
+          case MapApply(FiniteMap(theMap, keyType, valueType), thekey) if theMap contains thekey => 
+            theMap(thekey)
           case e => e
         }
       } else abs_value
