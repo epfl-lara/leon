@@ -27,6 +27,8 @@ listFD: List[(FunDef, FunDef, List[(Double, String)])]) {
       "score next to the size of both function and the size of the tree.")
 
 
+
+    // report table
     var t = Table("Comparison Summary")
 
     t += Row(
