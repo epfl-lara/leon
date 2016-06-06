@@ -78,7 +78,7 @@ class SerialInstrumenter(program: Program,
   }
   val instFuncs = funcInsts.keySet
   val instFuncTypes = ftypeInsts.keySet
-  println(s"instfuncs: ${instFuncs.map(_.id).mkString(",")} instFuncTypes: ${instFuncTypes.mkString(",")}")
+  //println(s"instfuncs: ${instFuncs.map(_.id).mkString(",")} instFuncTypes: ${instFuncTypes.mkString(",")}")
 
   val hasMemoFuns = {
     if (instFuncs.exists { fd => fd.hasLazyFieldFlag || HOMemUtil.hasMemAnnotation(fd) }) {

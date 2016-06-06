@@ -176,7 +176,8 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   }
 
   val (tpeToADT, opToCaseClass, memoClasses, stateNeedingTypes, stateUpdatingTypes, escapingTypes) = closuresForOps
-  println("Escaping types: "+escapingTypes.mkString(",")+"\n")
+  if(debug)
+    println("Escaping types: "+escapingTypes.mkString(",")+"\n")
 
   val closureTypeNames = tpeToADT.keys.toSeq   // this fixes an ordering on clsoure types
   val canonLambdas = opToCaseClass.keySet
