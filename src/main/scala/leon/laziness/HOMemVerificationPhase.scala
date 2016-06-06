@@ -33,15 +33,14 @@ object HOMemVerificationPhase {
       exists(InstUtil.instCall(_).isDefined)(e)
     }
     val newPosts = p.definedFunctions.collect {
-      case fd if fd.postcondition.exists { exists(hasInstVar) } =>
-        //println(s"postcondition of ${fd.id}: ${fd.postcondition.get}")
-        // remove the conjuncts that use instrumentation vars
-        val Lambda(resdef, pbody) = fd.postcondition.get
-        val npost = pbody match {
-          case And(args) =>
+      case fd if fd.hasTemplate || fd.postcondition.exists { exists(hasInstVar) } =>        
+        val Lambda(resdef, _) = fd.postcondition.get
+        //println(s"postcondition of ${fd.id}: ${fd.postcondition.get}, postWoTemplate: ${fd.postWoTemplate}, tmpl: ${fd.template}")
+        val npost = fd.postWoTemplate match {
+          case None => Util.tru
+          case Some(And(args)) =>
             createAnd(args.filterNot(hasInstVar))
-          case l: Let => // checks if the body of the let can be deconstructed as And
-            //println(s"Fist let val: ${l.value} body: ${l.body}")
+          case Some(l: Let) => // checks if the body of the let can be deconstructed as And
             val (letsCons, letsBody) = letStarUnapply(l)
             //println("Let* body: "+letsBody)
             letsBody match {
@@ -49,7 +48,9 @@ object HOMemVerificationPhase {
                 letsCons(createAnd(args.filterNot(hasInstVar)))
               case _ => Util.tru
             }
-          case e => Util.tru
+          case Some(e) =>
+            if(hasInstVar(e))  Util.tru
+            else e
         }
         (fd -> Lambda(resdef, npost))
     }.toMap
@@ -139,11 +140,12 @@ object HOMemVerificationPhase {
    * Note: we also skip verification of uninterpreted functions
    */
   def shouldGenerateVC(fd: FunDef) = {
-    !fd.isInvariant && !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
-      fd.postcondition.exists { post =>
-        val Lambda(Seq(resdef), pbody) = post
-        accessesSecondRes(pbody, resdef.id)
-      }
+    !fd.isInvariant && !fd.isLibrary && (fd.hasTemplate ||
+      (InstUtil.isInstrumented(fd) && fd.hasBody &&
+        fd.postcondition.exists { post =>
+          val Lambda(Seq(resdef), pbody) = post
+          accessesSecondRes(pbody, resdef.id)
+        }))
   }
 
   /**
