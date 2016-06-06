@@ -494,6 +494,7 @@ case object StringRender extends Rule("StringRender") {
               }
               
               terminals.map(_.terminalData).toStream.flatten.map(_.apply(Variable(inputs.head))) #::: Stream((MatchExpr(scrut, matchCases): Expr, Nil: List[Identifier]))
+            case _ => throw new Exception("No toString conversion found for " + nt)
           }
         }
         
@@ -587,6 +588,12 @@ case object StringRender extends Rule("StringRender") {
         val customs = customPrettyPrinters(cct)
         Some(AugmentedTerminalsRHS(Seq(Terminal(cct)(customs.toStream)),
               HorizontalRHS(Terminal(cct)(Stream.empty), flattenedTupleds.map(NonTerminal(_)))))
+      case NonTerminal(otherType, vc, hc) =>
+        val customs = customPrettyPrinters(otherType)
+        if(customs.nonEmpty) {
+          Some(AugmentedTerminalsRHS(Seq(Terminal(otherType)(customs.toStream)),
+              TerminalRHS(Terminal(otherType)(Stream.empty))))
+        } else None
       case _ => None
     }
     /** Used to produce rules such as List => Cons | Nil without context */

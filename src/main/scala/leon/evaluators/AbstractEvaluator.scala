@@ -269,7 +269,7 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
     def matchesPattern(pat: Pattern, expr: Expr, exprFromScrut: Expr): Option[Map[Identifier, (Expr, Expr)]] = (pat, expr) match {
       case (InstanceOfPattern(ob, pct), e) =>
         if (isSubtypeOf(e.getType, pct)) {
-          Some(obind(ob, e, AsInstanceOf(exprFromScrut, pct)))
+          Some(obind(ob, e, /*AsInstanceOf(*/exprFromScrut/*, pct)*/))
         } else {
           None
         }

@@ -247,6 +247,17 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |      case MultipleConfig(0, Some(MultipleConfig(1, None()))) => "MultipleConfig: 0\nMultipleConfig: 1"
     |    }
     |  }
+    |  
+    |  def setToString(in : Set[String]): String =  {
+    |    ???[String]
+    |  } ensuring {
+    |    (res : String) => (in, res) passes {
+    |      case s if s == Set[String]("1", "2", "0") =>
+    |        "{0 | 1 | 2}"
+    |      case s if s == Set[String]() =>
+    |        "{}"
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
 
@@ -473,5 +484,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
       numOfMultipleConfig should equal(1)
       Seq()
     }
+  }
+  
+  test("setToString should be found") { case (ctx, program) =>
+    val c= Constructors(program); import c._
+    synthesizeAndTest("setToString",
+      Seq(FiniteSet(Set(StringLiteral("a"), StringLiteral("c"), StringLiteral("b"), StringLiteral("e")), StringType)) ->
+      "{a | b | c | e}"
+    )
   }
 }
