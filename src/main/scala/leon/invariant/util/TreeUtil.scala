@@ -426,7 +426,7 @@ object PredicateUtil {
     case And(args)         => (args map atomNum).sum
     case Or(args)          => (args map atomNum).sum
     case IfExpr(c, th, el) => atomNum(c) + atomNum(th) + atomNum(el)
-    case Not(arg)          => atomNum(arg)
+    case Not(arg)          => atomNum(arg)    
     case e                 => 1
   }
 
