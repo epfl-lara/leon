@@ -1,11 +1,14 @@
 package conc
 
 import leon._
-import lazyeval._
+import collection._
+import mem._
+import higherorder._
 import lang._
 import math._
 import annotation._
 import instrumentation._
+import invariant._
 
 import ConcTrees._
 
@@ -31,34 +34,76 @@ object ConcTrees {
   case class CC[T](left: Conc[T], right: Conc[T]) extends Conc[T]
 }
 
+/**
+ * This data structure is a queue of ConcTrees.
+ * Here, we prove that enqueing an element into the tree will take constant time.
+ */
 object Conqueue {
 
-  sealed abstract class ConQ[T] {
-    val isSpine: Boolean = this match {
-      case Spine(_, _, _) => true
+  sealed abstract class ConList[T] {
+    @inline
+    val isTip = this match {
+      case _ : Tip[T] => true
       case _ => false
     }
-    val isTip = !isSpine
+    @inline
+    val isSpine: Boolean = !isTip
   }
 
-  case class Tip[T](t: Conc[T]) extends ConQ[T]
-  case class Spine[T](head: Conc[T], createdWithSuspension: Bool, rear: Lazy[ConQ[T]]) extends ConQ[T]
+  case class Tip[T](t: Conc[T]) extends ConList[T]
+  case class Spine[T](head: Conc[T], rear: Stream[T]) extends ConList[T]
 
-  sealed abstract class Bool
-  case class True() extends Bool
-  case class False() extends Bool
+  sealed abstract class Stream[T] {
 
-  /**
+    @inline
+    def isSusp = this match {
+      case _: Susp[T] => true
+      case _       => false
+    }
+
+    lazy val fval = {
+      require(isSusp)
+      this match {
+        case Susp(f) => f()
+      }
+    }
+
+    def get: ConList[T] = {
+      this match {
+        case Susp(f) => fval
+        case Val(x)  => x
+      }
+    }
+
+    def getV = this match {
+      case Susp(f) => fval*
+      case Val(x)  => x
+    }
+
+    def isCached = this match {
+      case _: Val[T] => true
+      case _      => fval.cached
+    }
+  }
+  private case class Val[T](x: ConList[T]) extends Stream[T]
+  private case class Susp[T](fun: () => ConList[T]) extends Stream[T]
+  
+  case class Conqueue[T](trees: Stream[T], schedule: List[Stream[T]]) {
+    def valid = strongSchedsProp(trees, schedule)
+  }
+
+  def emptyNum[T] = Conqueue[T](Val(Tip(Empty[T]())), Nil())
+
+  
+ /**
    * Checks whether there is a zero before an unevaluated closure
    */
-  def zeroPrecedesLazy[T](q: Lazy[ConQ[T]]): Boolean = {
-    if (q.isEvaluated) {
-      q* match {
-        case Spine(Empty(), _, rear) =>
-          true // here we have seen a zero
-        case Spine(h, _, rear) =>
-          zeroPrecedesLazy(rear) //here we have not seen a zero
-        case Tip(_) => true
+  def zeroPrecedesLazy[T](q: Stream[T]): Boolean = {
+    if (q.isCached) {
+      q.getV match {
+        case Spine(Empty(), rear) => true // here we have seen a zero
+        case Spine(_, rear)      => zeroPrecedesLazy(rear) //here we have not seen a zero
+        case Tip(_)               => true
       }
     } else false
   }
@@ -66,13 +111,13 @@ object Conqueue {
   /**
    * Checks whether there is a zero before a given suffix
    */
-  def zeroPrecedesSuf[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  @invisibleBody
+  def zeroPrecedesSuf[T](q: Stream[T], suf: Stream[T]): Boolean = {
     if (q != suf) {
-      q* match {
-        case Spine(Empty(), _, rear) => true
-        case Spine(_, _, rear) =>
-          zeroPrecedesSuf(rear, suf)
-        case Tip(_) => false
+      q.getV match {
+        case Spine(Empty(), rear) => true
+        case Spine(_, rear)      => zeroPrecedesSuf(rear, suf)
+        case Tip(_)               => false
       }
     } else false
   }
@@ -81,140 +126,274 @@ object Conqueue {
    * Everything until suf is evaluated. This
    * also asserts that suf should be a suffix of the list
    */
-  def concreteUntil[T](l: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  @invisibleBody
+  def concreteUntil[T](l: Stream[T], suf: Stream[T]): Boolean = {
     if (l != suf) {
-      l.isEvaluated && (l* match {
-        case Spine(_, cws, tail) =>
-          concreteUntil(tail, suf)
-        case _ =>
-          false
+      l.isCached && (l.getV match {
+        case Spine(_, tail) => concreteUntil(tail, suf)
+        case _              => false
       })
     } else true
   }
 
-  def isConcrete[T](l: Lazy[ConQ[T]]): Boolean = {
-    l.isEvaluated && (l* match {
-      case Spine(_, _, tail) =>
-        isConcrete(tail)
-      case _ => true
+  @invisibleBody
+  def isConcrete[T](l: Stream[T]): Boolean = {
+    l.isCached && (l.getV match {
+      case Spine(_, tail) => isConcrete(tail)
+      case _              => true
     })
   }
 
-  sealed abstract class Scheds[T]
-  case class Cons[T](h: Lazy[ConQ[T]], tail: Scheds[T]) extends Scheds[T]
-  case class Nil[T]() extends Scheds[T]
-
-  def schedulesProperty[T](q: Lazy[ConQ[T]], schs: Scheds[T]): Boolean = {
+  @invisibleBody
+  def schedulesProperty[T](q: Stream[T], schs: List[Stream[T]]): Boolean = {
     schs match {
       case Cons(head, tail) =>
-        head* match {
-          case Spine(Empty(), _, _) =>
-            head.isSuspension(pushLeftLazy[T] _) &&
-              concreteUntil(q, head) &&
+        head match {
+          case Susp(fun) =>
+            concreteUntil(q, head) &&
               schedulesProperty(pushUntilCarry(head), tail)
-          case _ =>
-            false
+          case _ => false
         }
       case Nil() =>
         isConcrete(q)
     }
   }
 
-  def strongSchedsProp[T](q: Lazy[ConQ[T]], schs: Scheds[T]) = {
-    q.isEvaluated && {
-      schs match {
+  @invisibleBody
+  def strongSchedsProp[T](q: Stream[T], schs: List[Stream[T]]) = {
+    q.isCached &&
+      (schs match {
         case Cons(head, tail) =>
           zeroPrecedesSuf(q, head) // zeroPrecedesSuf holds initially
         case Nil() => true
-      }
-    } &&
+      }) &&
       schedulesProperty(q, schs)
   }
 
   /**
-   * Note: if 'q' has a suspension then it would have a carry.
+   * (a) If we push a carry and get back 0 then there is a new carry
+   * (b) If we push a carry and get back 1 then there the carry has been fully pushed
+   * Note that if 'q' has a suspension then it would have a carry.
    */
-  def pushUntilCarry[T](q: Lazy[ConQ[T]]): Lazy[ConQ[T]] = {
-    q* match {
-      case Spine(Empty(), _, rear) => // if we push a carry and get back 0 then there is a new carry
+  @invisibleBody
+  def pushUntilCarry[T](q: Stream[T]): Stream[T] = {
+    q.getV match {
+      case Spine(Empty(), rear) => // if we push a carry and get back 0 then there is a new carry
         pushUntilCarry(rear)
-      case Spine(h, _, rear) => // if we push a carry and get back 1 then there the carry has been fully pushed
+      case Spine(_, rear) => // if we push a carry and get back 1 then there the carry has been fully pushed
         rear
-      case Tip(_) =>
-        q
+      case Tip(_) => q
     }
   }
-
-  case class Queue[T](queue: Lazy[ConQ[T]], schedule: Scheds[T]) {
-    val valid = strongSchedsProp(queue, schedule)
-  }
-
-  def pushLeft[T](ys: Single[T], xs: Lazy[ConQ[T]]): ConQ[T] = {
+  
+  @invisibleBody
+  def pushLeftStream[T](ys: Single[T], xs: Stream[T]): ConList[T] = {
     require(zeroPrecedesLazy(xs))
-    xs.value match {
-      case Tip(CC(_, _)) =>
-        Spine(ys, False(), xs)
-      case Tip(Empty()) =>
+    xs.get match {
+      case Tip(_ : CC[T]) =>
+        Spine(ys, xs)
+      case Tip(Empty()) => 
         Tip(ys)
       case Tip(t @ Single(_)) =>
         Tip(CC(ys, t))
-      case s @ Spine(Empty(), _, rear) =>
-        Spine[T](ys, False(), rear)
-      case s @ Spine(_, _, _) =>
+      case s @ Spine(Empty(), rear) =>
+        Spine(ys,rear)
+      case s @ Spine(_, _) =>
         pushLeftLazy(ys, xs)
     }
-  } ensuring (_ => time <= 70)
-
-  // this procedure does not change state
+  } ensuring (_ => time <= ?)
+  
+  @invisibleBody
   @invstate
-  def pushLeftLazy[T](ys: Conc[T], xs: Lazy[ConQ[T]]): ConQ[T] = {
+  def pushLeftLazy[T](ys: Conc[T], xs: Stream[T]): ConList[T] = {
     require(!ys.isEmpty && zeroPrecedesLazy(xs) &&
-      (xs* match {
-        case Spine(h, _, _) => h != Empty[T]()
-        case _ => false
+      xs.isCached &&
+      (xs.getV match {
+        case Spine(h, rear) => h != Empty[T]() && rear.isCached // xs is a spine and it doesn't start with a zero
+        case _              => false
       }))
-    xs.value match {
-      case Spine(head, _, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedesLazy' invariant
+    xs.get match {
+      case Spine(head, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedeLazy' invariant
         val carry = CC(head, ys) //here, head and ys are of the same level
-        rear.value match {
-          case s @ Spine(Empty(), _, srear) =>
-            val tail: ConQ[T] = Spine(carry, False(), srear)
-            Spine(Empty(), False(), tail)
-
-          case s @ Spine(_, _, _) =>
-            Spine(Empty(), True(), $(pushLeftLazy(carry, rear)))
-
-          case t @ Tip(tree) =>
-            if (tree.level > carry.level) { // can this happen ? this means tree is of level at least two greater than rear ?
-              val y: ConQ[T] = Spine(carry, False(), rear)
-              Spine(Empty(), False(), y)
-            } else { // here tree level and carry level are equal
-              val x: ConQ[T] = Tip(CC(tree, carry))
-              val y: ConQ[T] = Spine(Empty(), False(), x)
-              Spine(Empty(), False(), y)
+        rear.get match {
+          case Tip(tree) =>
+            //Spine(Zero(), Val(Spine(carry, rear)))
+            if (tree.level > carry.level) { // here tree is of level at least two greater than rear ?              
+              Spine(Empty[T](), Val(Spine(carry, rear)))
+            } else { // here tree level and carry level are equal              
+              Spine(Empty[T](), Val(Spine(Empty[T](), Val(Tip(CC(tree, carry))))))
             }
+          case Spine(Empty(), srearfun) =>
+            //Spine(Zero(), Val(Spine(carry, srearfun)))            
+            Spine(Empty[T](), Val(Spine(carry, srearfun)))
+
+          case s =>
+            //Spine(Zero(), Susp(() => incLazy(rear)))
+            Spine(Empty[T](), Susp(() => pushLeftLazy(carry, rear)))            
         }
     }
   } ensuring { res =>
     (res match {
-      case Spine(Empty(), _, rear) =>
-        (!isConcrete(xs) || isConcrete(pushUntilCarry(rear))) &&
-          {
-            val _ = rear.value // this is necessary to assert properties on the state in the recursive invocation (and note this cannot go first)
-            rear.isEvaluated // this is a tautology
-          }
-      case _ =>
-        false
+      case Spine(Empty(), r) =>
+        (r match {
+          case _: Val[T]    => true
+          case Susp(fun) => fun().isSpine // this is necessary to assert properties on the state in the recursive invocation
+        }) &&
+          (!isConcrete(xs) || isConcrete(pushUntilCarry(r)))
+      case _ => false
     }) &&
-      time <= 40
+      time <= ?
+  }  
+  
+  @invisibleBody
+  def pushLeft[T](ys: Single[T], w: Conqueue[T]): (Stream[T], List[Stream[T]]) = {
+    require(w.valid &&
+      // instantiate the lemma that implies zeroPrecedesLazy
+      (w.schedule match {
+        case Cons(h, _) =>
+          zeroPredSufConcreteUntilLemma(w.trees, h)
+        case _ =>
+          concreteZeroPredLemma(w.trees)
+      }))
+    val nq = pushLeftStream(ys, w.trees)
+    val nsched = nq match {
+      case Spine(Empty(), rear: Susp[T]) =>
+        Cons(rear, w.schedule) // this is the only case where we create a new lazy closure
+      case _ =>
+        w.schedule
+    }
+    (Val(nq), nsched)
+  } ensuring { res =>
+    // lemma instantiations
+    (w.schedule match {
+      case Cons(head, tail) =>
+        w.trees.getV match {
+          case Spine(h, _) =>
+            if (h != Empty[T]())
+              pushLeftLazyLemma(ys, w.trees, head)
+            else true
+          case _ => true
+        }
+      case _ => true
+    }) &&
+      schedulesProperty(res._1, res._2) &&
+      time <= ?
   }
+  
+  @invisibleBody
+  def Pay[T](q: Stream[T], scheds: List[Stream[T]]): List[Stream[T]] = {
+    require(schedulesProperty(q, scheds) && q.isCached)
+    scheds match {
+      case c @ Cons(head, rest) =>
+        head.get match {
+          case Spine(Empty(), rear: Susp[T]) => Cons(rear, rest)
+          case _                         => rest
+        }
+      case Nil() => scheds
+    }
+  } ensuring { res =>
+    payPostconditionInst(q, res, scheds, inState[ConList[T]], outState[ConList[T]]) && // properties
+      schedulesProperty(q, res) &&
+      time <= ?
+  }
+  
+   /**
+   * Pushing an element to the left of the queue preserves the data-structure invariants
+   */
+  @invisibleBody
+  def pushLeftAndPay[T](ys: Single[T], w: Conqueue[T]) = {
+    require(w.valid)
+    val (q, scheds) = pushLeft(ys, w)
+    val nscheds = Pay(q, scheds)
+    Conqueue(q, nscheds)
+  } ensuring { res => res.valid && time <= ? }
 
+  def head[T](w: Conqueue[T]): Conc[T] = {    
+    w.trees.get match {
+      case Tip(d) => d
+      case Spine(d, _) => d
+    }
+  }
+  
+  /**
+   * Lemma instantiations (separated into a function for readability)
+   */
+  @inline
+  def payPostconditionInst[T](q: Stream[T], res: List[Stream[T]], scheds: List[Stream[T]], in: Set[Fun[ConList[T]]], out: Set[Fun[ConList[T]]]) = {
+    // instantiations for proving the scheds property
+    (scheds match {
+      case Cons(head, rest) =>
+        concUntilExtenLemma(q, head, in, out) &&
+          (head.getV match {
+            case Spine(Empty(), rear) =>
+              res match {
+                case Cons(rhead, rtail) =>
+                  schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
+                    concUntilMonotone(rear, rhead, in, out) &&
+                    concUntilCompose(q, rear, rhead)
+                case _ =>
+                  concreteMonotone(in, out, rear) &&
+                    concUntilConcreteExten(q, rear)
+              }
+          })
+      case _ => true
+    }) &&
+      // instantiations for zeroPrecedesSuf property
+      (scheds match {
+        case Cons(head, rest) =>
+          (concreteUntilIsSuffix(q, head) withState in) &&
+            (res match {
+              case Cons(rhead, rtail) =>
+                concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
+                  suffixZeroLemma(q, head, rhead) &&
+                  zeroPrecedesSuf(q, rhead)
+              case _ =>
+                true
+            })
+        case _ =>
+          true
+      })
+  }
+  
   /**
    * Lemma:
-   * forall suf. suf*.head != Empty() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
+   * forall suf. suf.getV.head != Empty() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
    */
+  @invisibleBody
   @invstate
-  def pushLeftLazyLemma[T](ys: Conc[T], xs: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def pushLeftLazyLemma[T](ys: Conc[T], xs: Stream[T], suf: Stream[T]): Boolean = {
+    require(!ys.isEmpty && zeroPrecedesSuf(xs, suf) &&
+      (xs.getV match {
+        case Spine(h, _) => h != Empty[T]()
+        case _           => false
+      }) && suf.isSusp && concreteUntil(xs, suf))
+    // induction scheme
+    (xs.getV match {
+      case Spine(head, rear) =>
+        val carry = CC[T](head, ys)
+        rear.getV match {
+          case s @ Spine(h, _) =>
+            if (h != Empty[T]())
+              pushLeftLazyLemma(carry, rear, suf)
+            else true
+          case _ => true
+        }
+    }) &&
+      zeroPredSufConcreteUntilLemma(xs, suf) && // instantiate the lemma that implies zeroPrecedesLazy
+      // property
+      (pushLeftLazy(ys, xs) match {
+        case Spine(Empty(), rear) =>
+          concreteUntil(pushUntilCarry(rear), suf)
+      })
+  }.holds
+
+  /*
+  *//**
+   * Lemma:
+   * forall suf. suf*.head != Empty() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
+   *//*
+  @invstate
+  def pushLeftLazyLemma[T](ys: Conc[T], xs: Lazy[ConList[T]], suf: Lazy[ConList[T]]): Boolean = {
     require(!ys.isEmpty && zeroPrecedesSuf(xs, suf) &&
       (xs* match {
         case Spine(h, _, _) => h != Empty[T]()
@@ -245,110 +424,18 @@ object Conqueue {
             concreteUntil(pushUntilCarry(rear), suf)
         })
       } else false)
-  } holds
+  } holds*/
 
-  def pushLeftWrapper[T](ys: Single[T], w: Queue[T]) = {
-    require(w.valid &&
-      // instantiate the lemma that implies zeroPrecedesLazy
-      (w.schedule match {
-        case Cons(h, _) =>
-          zeroPredSufConcreteUntilLemma(w.queue, h)
-        case _ =>
-          concreteZeroPredLemma(w.queue)
-      }))
-    val nq = pushLeft(ys, w.queue)
-    val nsched = nq match {
-      case Spine(Empty(), createdWithSusp, rear) =>
-        if (createdWithSusp == True())
-          Cons[T](rear, w.schedule) // this is the only case where we create a new lazy closure
-        else
-          w.schedule
-      case _ =>
-        w.schedule
-    }
-    val lq: Lazy[ConQ[T]] = nq
-    (lq, nsched)
-  } ensuring { res =>
-    // lemma instantiations
-    (w.schedule match {
-      case Cons(head, tail) =>
-        w.queue* match {
-          case Spine(h, _, _) =>
-            if (h != Empty[T]())
-              pushLeftLazyLemma(ys, w.queue, head)
-            else true
-          case _ => true
-        }
-      case _ => true
-    }) &&
-      schedulesProperty(res._1, res._2) &&
-      time <= 80
-  }
-
-  def Pay[T](q: Lazy[ConQ[T]], scheds: Scheds[T]): Scheds[T] = {
-    require(schedulesProperty(q, scheds) && q.isEvaluated)
-    scheds match {
-      case c @ Cons(head, rest) =>
-        head.value match {
-          case Spine(Empty(), createdWithSusp, rear) =>
-            if (createdWithSusp == True())
-              Cons(rear, rest)
-            else
-              rest
-        }
-      case Nil() => scheds
-    }
-  } ensuring { res =>
-    {
-      val in = inState[ConQ[T]]
-      val out = outState[ConQ[T]]
-      // instantiations for proving the scheds property
-      (scheds match {
-        case Cons(head, rest) =>
-          concUntilExtenLemma(q, head, in, out) &&
-            (head* match {
-              case Spine(Empty(), _, rear) =>
-                res match {
-                  case Cons(rhead, rtail) =>
-                    schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
-                      concUntilMonotone(rear, rhead, in, out) &&
-                      concUntilCompose(q, rear, rhead)
-                  case _ =>
-                    concreteMonotone(in, out, rear) &&
-                      concUntilConcreteExten(q, rear)
-                }
-            })
-        case _ => true
-      }) &&
-        // instantiations for zeroPrecedesSuf property
-        (scheds match {
-          case Cons(head, rest) =>
-            (concreteUntilIsSuffix(q, head) withState in) &&
-              (res match {
-                case Cons(rhead, rtail) =>
-                  concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
-                    suffixZeroLemma(q, head, rhead) &&
-                    zeroPrecedesSuf(q, rhead)
-                case _ =>
-                  true
-              })
-          case _ =>
-            true
-        })
-    } && // properties
-      schedulesProperty(q, res) &&
-      time <= 70
-  }
-
+  
   // monotonicity lemmas
-  def schedMonotone[T](st1: Set[Lazy[ConQ[T]]], st2: Set[Lazy[ConQ[T]]], scheds: Scheds[T], l: Lazy[ConQ[T]]): Boolean = {
+  def schedMonotone[T](st1: Set[Fun[ConList[T]]], st2: Set[Fun[ConList[T]]], scheds: List[Stream[T]], l: Stream[T]): Boolean = {
     require(st1.subsetOf(st2) &&
       (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'
     //induction scheme
     (scheds match {
       case Cons(head, tail) =>
-        head* match {
-          case Spine(_, _, rear) =>
+        head.getV match {
+          case Spine(_, rear) =>
             concUntilMonotone(l, head, st1, st2) &&
               schedMonotone(st1, st2, tail, pushUntilCarry(head))
           case _ => true
@@ -359,31 +446,31 @@ object Conqueue {
   } holds
 
   @traceInduct
-  def concreteMonotone[T](st1: Set[Lazy[ConQ[T]]], st2: Set[Lazy[ConQ[T]]], l: Lazy[ConQ[T]]): Boolean = {
+  def concreteMonotone[T](st1: Set[Fun[ConList[T]]], st2: Set[Fun[ConList[T]]], l: Stream[T]): Boolean = {
     ((isConcrete(l) withState st1) && st1.subsetOf(st2)) ==> (isConcrete(l) withState st2)
   } holds
 
   @traceInduct
-  def concUntilMonotone[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]], st1: Set[Lazy[ConQ[T]]], st2: Set[Lazy[ConQ[T]]]): Boolean = {
+  def concUntilMonotone[T](q: Stream[T], suf: Stream[T], st1: Set[Fun[ConList[T]]], st2: Set[Fun[ConList[T]]]): Boolean = {
     ((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2)) ==> (concreteUntil(q, suf) withState st2)
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
 
-  def suffix[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def suffix[T](q: Stream[T], suf: Stream[T]): Boolean = {
     if (q == suf) true
     else {
-      q* match {
-        case Spine(_, _, rear) =>
+      q.getV match {
+        case Spine(_, rear) =>
           suffix(rear, suf)
         case Tip(_) => false
       }
     }
   }
 
-  def properSuffix[T](l: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
-    l* match {
-      case Spine(_, _, rear) =>
+  def properSuffix[T](l: Stream[T], suf: Stream[T]): Boolean = {
+    l.getV match {
+      case Spine(_, rear) =>
         suffix(rear, suf)
       case _ => false
     }
@@ -393,9 +480,9 @@ object Conqueue {
    * suf(q, suf) ==> suf(q.rear, suf.rear)
    */
   @traceInduct
-  def suffixTrans[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
-    suffix(q, suf) ==> ((q*, suf*) match {
-      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+  def suffixTrans[T](q: Stream[T], suf: Stream[T]): Boolean = {
+    suffix(q, suf) ==> ((q.getV, suf.getV) match {
+      case (Spine(_, rear), Spine(_, sufRear)) =>
         // 'sufRear' should be a suffix of 'rear1'
         suffix(rear, sufRear)
       case _ => true
@@ -405,11 +492,11 @@ object Conqueue {
   /**
    * properSuf(l, suf) ==> l != suf
    */
-  def suffixDisequality[T](l: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def suffixDisequality[T](l: Stream[T], suf: Stream[T]): Boolean = {
     require(properSuffix(l, suf))
     suffixTrans(l, suf) && // lemma instantiation
-      ((l*, suf*) match { // induction scheme
-        case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+      ((l.getV, suf.getV) match { // induction scheme
+        case (Spine(_, rear), Spine(_, sufRear)) =>
           // 'sufRear' should be a suffix of 'rear1'
           suffixDisequality(rear, sufRear)
         case _ => true
@@ -417,36 +504,36 @@ object Conqueue {
   }.holds
 
   @traceInduct
-  def suffixCompose[T](q: Lazy[ConQ[T]], suf1: Lazy[ConQ[T]], suf2: Lazy[ConQ[T]]): Boolean = {
+  def suffixCompose[T](q: Stream[T], suf1: Stream[T], suf2: Stream[T]): Boolean = {
     (suffix(q, suf1) && properSuffix(suf1, suf2)) ==> properSuffix(q, suf2)
   } holds
 
   // properties of 'concUntil'
 
   @traceInduct
-  def concreteUntilIsSuffix[T](l: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def concreteUntilIsSuffix[T](l: Stream[T], suf: Stream[T]): Boolean = {
     concreteUntil(l, suf) ==> suffix(l, suf)
   }.holds
 
   // properties that extend `concUntil` to larger portions of the queue
 
   @traceInduct
-  def concUntilExtenLemma[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]], st1: Set[Lazy[ConQ[T]]], st2: Set[Lazy[ConQ[T]]]): Boolean = {
-    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==>
-      (suf* match {
-        case Spine(_, _, rear) =>
+  def concUntilExtenLemma[T](q: Stream[T], suf: Stream[T], st1: Set[Fun[ConList[T]]], st2: Set[Fun[ConList[T]]]): Boolean = {
+    (suf.isSusp && (concreteUntil(q, suf) withState st1) && (st2 == st1 ++ Set(Fun(suf.fval)))) ==>
+      (suf.getV match {
+        case Spine(_, rear) =>
           concreteUntil(q, rear) withState st2
         case _ => true
       })
   } holds
 
   @traceInduct
-  def concUntilConcreteExten[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def concUntilConcreteExten[T](q: Stream[T], suf: Stream[T]): Boolean = {
     (concreteUntil(q, suf) && isConcrete(suf)) ==> isConcrete(q)
   } holds
 
   @traceInduct
-  def concUntilCompose[T](q: Lazy[ConQ[T]], suf1: Lazy[ConQ[T]], suf2: Lazy[ConQ[T]]): Boolean = {
+  def concUntilCompose[T](q: Stream[T], suf1: Stream[T], suf2: Stream[T]): Boolean = {
     (concreteUntil(q, suf1) && concreteUntil(suf1, suf2)) ==> concreteUntil(q, suf2)
   } holds
 
@@ -454,28 +541,28 @@ object Conqueue {
   //   - these are used in preconditions to derive the `zeroPrecedesLazy` property
 
   @traceInduct
-  def zeroPredSufConcreteUntilLemma[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]]): Boolean = {
+  def zeroPredSufConcreteUntilLemma[T](q: Stream[T], suf: Stream[T]): Boolean = {
     (zeroPrecedesSuf(q, suf) && concreteUntil(q, suf)) ==> zeroPrecedesLazy(q)
   } holds
 
   @traceInduct
-  def concreteZeroPredLemma[T](q: Lazy[ConQ[T]]): Boolean = {
+  def concreteZeroPredLemma[T](q: Stream[T]): Boolean = {
     isConcrete(q) ==> zeroPrecedesLazy(q)
   } holds
 
   // properties relating `suffix` an `zeroPrecedesSuf`
 
-  def suffixZeroLemma[T](q: Lazy[ConQ[T]], suf: Lazy[ConQ[T]], suf2: Lazy[ConQ[T]]): Boolean = {
-    require(suf* match {
-      case Spine(Empty(), _, _) =>
+  def suffixZeroLemma[T](q: Stream[T], suf: Stream[T], suf2: Stream[T]): Boolean = {
+    require(suf.getV match {
+      case Spine(Empty(), _) =>
         suffix(q, suf) && properSuffix(suf, suf2)
       case _ => false
     })
     suffixCompose(q, suf, suf2) && (
       // induction scheme
       if (q != suf) {
-        q* match {
-          case Spine(_, _, tail) =>
+        q.getV match {
+          case Spine(_, tail) =>
             suffixZeroLemma(tail, suf, suf2)
           case _ =>
             true
@@ -483,16 +570,4 @@ object Conqueue {
       } else true) &&
       zeroPrecedesSuf(q, suf2) // property
   }.holds
-
-  /**
-   * Pushing an element to the left of the queue preserves the data-structure invariants
-   */
-  def pushLeftAndPay[T](ys: Single[T], w: Queue[T]) = {
-    require(w.valid)
-
-    val (q, scheds) = pushLeftWrapper(ys, w)
-    val nscheds = Pay(q, scheds)
-    Queue(q, nscheds)
-
-  } ensuring { res => res.valid && time <= 200 }
 }

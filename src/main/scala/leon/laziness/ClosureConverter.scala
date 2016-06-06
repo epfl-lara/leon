@@ -15,6 +15,7 @@ import HOMemUtil._
 import ProgramUtil._
 import PredicateUtil._
 import purescala.TypeOps.bestRealType
+import LetTupleSimplification._
 
 /**
  * TODO: check argument preconditions of closure (they can be made preconditions of the eval function w.r.t appropriate match conditions)
@@ -734,12 +735,12 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val addPosts = stateRel.toList ++ valRel.toList
         val nfdPost = targetPost match {
           case Some(post) =>
-            val (letsCons, letsBody) = letStarUnapply(post)
+            val (letsCons, letsBody) = letStarUnapply(simplifyLetsAndLetsWithTuples(post))
             letsBody match {
               case And(args) => letsCons(createAnd(addPosts ++ args))
               case p =>
                 if (exists(InstUtil.instCall(_).isDefined)(p) && exists(_.isInstanceOf[And])(p)) {
-                  ctx.reporter.warning("Postcondition has resource template in conjunctions which cannot be separated!")
+                  ctx.reporter.warning(s"Postcondition of ${fd.id} has resource template in conjunctions which cannot be separated!")
                 }
                 letsCons(createAnd(addPosts :+ p))
             }
