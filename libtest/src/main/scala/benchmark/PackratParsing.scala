@@ -31,6 +31,11 @@ object PackratParsing {
   
   var xstring = Array[Terminal]()
 
+  var pAdd = List[BigInt]()
+  var pMul = List[BigInt]()
+  var pPrim = List[BigInt]()
+  var invoke = List[BigInt]()
+
   def lookuptime(i : BigInt): (Terminal, BigInt) = ((xstring(i.toInt), 1): (Terminal, BigInt))
   
   @invisibleBody
@@ -42,6 +47,7 @@ object PackratParsing {
       (lr3._2, BigInt(1))
     } else {
       val e52 = pMultime(i)
+      pMul :+= {e52._2}
       (update[Result](List(4906, i), e52._1), BigInt(3) + e52._2)
     }
     val scr2 = (ir1._1, BigInt(0))
@@ -55,6 +61,7 @@ object PackratParsing {
             (lr4._2, BigInt(2))
           } else {
             val e56 = pAddtime(e162)
+            pAdd :+= {e56._2}
             (update[Result](List(4905, e162), e56._1), BigInt(4) + e56._2)
           }
           val th4 = scr3._1 match {
@@ -83,6 +90,7 @@ object PackratParsing {
       (lr6._2, BigInt(1))
     } else {
       val e71 = pPrimtime(i)
+      pPrim :+= {e71._2}
       (update[Result](List(4907, i), e71._1), BigInt(3) + e71._2)
     }
     val scr5 = (ir2._1, BigInt(0))
@@ -96,6 +104,7 @@ object PackratParsing {
             (lr7._2, BigInt(2))
           } else {
             val e75 = pMultime(e118)
+            pMul :+= {e75._2}
             (update[Result](List(4906, e118), e75._1), BigInt(4) + e75._2)
           }
           val th5 = scr6._1 match {
@@ -137,6 +146,7 @@ object PackratParsing {
           (lr._2, BigInt(2))
         } else {
           val e25 = pAddtime(e136)
+          pAdd :+= {e25._2}
           (update[Result](List(4905, e136), e25._1), BigInt(4) + e25._2)
         }
         val th3 = scr._1 match {
@@ -168,6 +178,7 @@ object PackratParsing {
       (lr1._2, BigInt(1))
     } else {
       val e46 = pPrimtime(i)
+      pPrim :+= {e46._2}
       (update[Result](List(4907, i), e46._1), BigInt(3) + e46._2)
     }
     (bd1._1, bd1._2)
@@ -182,6 +193,7 @@ object PackratParsing {
         (lr5._2, BigInt(1))
       } else {
         val e69 = pMultime(i)
+        pMul :+= {e69._2}
         (update[Result](List(4906, i), e69._1), BigInt(3) + e69._2)
       }
       (mc7._1, (BigInt(2) + mc7._2) + e67._2)
@@ -199,6 +211,7 @@ object PackratParsing {
         (lr2._2, BigInt(1))
       } else {
         val e50 = pAddtime(i)
+        pAdd :+= {e50._2}
         (update[Result](List(4905, i), e50._1), BigInt(3) + e50._2)
       }
       (mc2._1, (BigInt(2) + mc2._2) + e48._2)
@@ -210,12 +223,14 @@ object PackratParsing {
   def parsetime(n : BigInt): (Result, BigInt) = {
     val bd6 = if (n == BigInt(0)) {
       val e86 = invoketime(n)
+      invoke :+= {e86._2}
       (e86._1, BigInt(3) + e86._2)
     } else {
       val e90 = parsetime(n - BigInt(1))
       val el6 = {
         val _ = e90._1
         val e92 = invoketime(n)
+        invoke :+= {e92._2}
         (e92._1, (BigInt(4) + e92._2) + e90._2)
       }
       (el6._1, BigInt(2) + el6._2)
@@ -267,22 +282,27 @@ object PackratParsing {
     import scala.util.Random
     val rand = Random
 
-    val points = (10 to 200 by 10) ++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000)// (1 to 20 by 1) ++ (10 to 200 by 10) ++ (100 to 1000 by 100) //++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
+    val points = (10 to 200 by 10) //++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000)// (1 to 20 by 1) ++ (10 to 200 by 10) ++ (100 to 1000 by 100) //++ (100 to 2000 by 100) ++ (1000 to 20000 by 1000) // can change this
     val size = points.map(x => BigInt(x)).toList
     
     var ops = List[() => BigInt]()
     var orb = List[() => BigInt]()
     points.foreach { i =>
       val input = i
-      ops :+= {() => {
-          leon.mem.clearMemo()
-          xstring = genString(i)
+      // ops :+= {() => {
+      //     leon.mem.clearMemo()
+          xstring = Array.fill[Terminal](i + 1)(Digit())// genString(i)
           parsetime(i)._2
-        }
-      }
+      //   }
+      // }
       orb :+= {() => 74 * (i) + 71}
     }
-    plot(size, ops, orb, "packrat", "orb")
+    // plot(size, ops, orb, "packrat", "orb")
+    // print(pAdd)
+    constplot(pAdd, 16, "pAdd")
+    constplot(pMul, 17, "pMul")
+    constplot(pPrim, 22, "pPrim")
+    constplot(invoke, 68, "invoke")
   }  
   
 }

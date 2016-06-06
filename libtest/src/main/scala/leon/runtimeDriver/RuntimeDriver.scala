@@ -63,6 +63,25 @@ plot \\
 """
 	}
 
+	def generateConstPlotFile(function: String, orbOrInst: String):String = {
+s"""set terminal jpeg
+
+set key left top
+
+set xlabel "n"
+set ylabel "time"
+set title "Plot for ${orbOrInst} vs Runnable code, size ${function}"
+
+set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
+set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
+
+set output "results/${orbOrInst}VsActual${function}10.jpg"
+plot \\
+"results/${orbOrInst}${function}.data" using 1:2 t'${orbOrInst}' with linespoints, \\
+"results/ops${function}.data" using 1:2 t'oper' with linespoints, 
+"""
+	}
+
 	def plot(testSize: scalaList[BigInt], ops: List[()=>BigInt], orb: List[() => BigInt], function: String, orbOrInst: String) {
 
 	val orbstream = new FileWriter(s"results/${orbOrInst}${function}.data")
@@ -114,6 +133,28 @@ plot \\
 		val plotstream = new FileWriter(s"results/plot${function}.gnu")
     val plotout = new BufferedWriter(plotstream)
 	  plotout.write(generateLogPlotFile(function, testSize.size, orbOrInst))
+		plotout.close()
+
+		val result = s"gnuplot results/plot${function}.gnu" !!
+	}
+
+	def constplot(ops: List[BigInt], orb: BigInt, function: String) {
+		val orbstream = new FileWriter(s"results/orb${function}.data")
+    	val orbout = new BufferedWriter(orbstream)
+		val opsstream = new FileWriter(s"results/ops${function}.data")
+    	val opsout = new BufferedWriter(opsstream)
+		var j = 0
+		while(j != ops.size) {
+		  orbout.write(s"$j ${orb}\n")
+		  opsout.write(s"$j ${ops(j)}\n")
+		  j = j + 1
+		}
+    	orbout.close()
+		opsout.close()
+
+		val plotstream = new FileWriter(s"results/plot${function}.gnu")
+    	val plotout = new BufferedWriter(plotstream)
+	  	plotout.write(generateConstPlotFile(function, "orb"))
 		plotout.close()
 
 		val result = s"gnuplot results/plot${function}.gnu" !!
