@@ -21,6 +21,7 @@ object BottomUpMergeSortPrecise {
   def max(x:BigInt, y:BigInt) = if (x >= y) x else y
 
   sealed abstract class List[T] {
+    // size is used in the specs
     def size: BigInt = (this match {
       case Nil() => BigInt(0)
       case Cons(h, t) => 1 + t.size
