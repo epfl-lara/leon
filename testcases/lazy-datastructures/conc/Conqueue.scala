@@ -10,29 +10,7 @@ import annotation._
 import instrumentation._
 import invariant._
 
-import ConcTrees._
-
-object ConcTrees {
-
-  sealed abstract class Conc[T] {
-    def isEmpty: Boolean = {
-      this == Empty[T]()
-    }
-
-    val level: BigInt = {
-      this match {
-        case Empty() => BigInt(0)
-        case Single(x) => BigInt(0)
-        case CC(l, r) =>
-          BigInt(1) + max(l.level, r.level)
-      }
-    } ensuring (_ >= 0)
-  }
-
-  case class Empty[T]() extends Conc[T]
-  case class Single[T](x: T) extends Conc[T]
-  case class CC[T](left: Conc[T], right: Conc[T]) extends Conc[T]
-}
+import conctrees.ConcTrees._
 
 /**
  * This data structure is a queue of ConcTrees.
@@ -386,46 +364,6 @@ object Conqueue {
           concreteUntil(pushUntilCarry(rear), suf)
       })
   }.holds
-
-  /*
-  *//**
-   * Lemma:
-   * forall suf. suf*.head != Empty() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
-   *//*
-  @invstate
-  def pushLeftLazyLemma[T](ys: Conc[T], xs: Lazy[ConList[T]], suf: Lazy[ConList[T]]): Boolean = {
-    require(!ys.isEmpty && zeroPrecedesSuf(xs, suf) &&
-      (xs* match {
-        case Spine(h, _, _) => h != Empty[T]()
-        case _ => false
-      }) &&
-      (suf* match {
-        case Spine(Empty(), _, _) =>
-          concreteUntil(xs, suf)
-        case _ => false
-      }))
-    // induction scheme
-    (xs* match {
-      case Spine(head, _, rear) =>
-        val carry = CC[T](head, ys)
-        rear* match {
-          case s @ Spine(h, _, _) =>
-            if (h != Empty[T]())
-              pushLeftLazyLemma(carry, rear, suf)
-            else true
-          case _ => true
-        }
-    }) &&
-      // instantiate the lemma that implies zeroPrecedesLazy
-      (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
-        // property
-        (pushLeftLazy(ys, xs) match {
-          case Spine(Empty(), _, rear) =>
-            concreteUntil(pushUntilCarry(rear), suf)
-        })
-      } else false)
-  } holds*/
-
   
   // monotonicity lemmas
   def schedMonotone[T](st1: Set[Fun[ConList[T]]], st2: Set[Fun[ConList[T]]], scheds: List[Stream[T]], l: Stream[T]): Boolean = {
@@ -571,3 +509,23 @@ object Conqueue {
       zeroPrecedesSuf(q, suf2) // property
   }.holds
 }
+
+/* Used to simulate real conctrees in debugging
+ * object ConcTrees {
+  sealed abstract class Conc[T] {
+    def isEmpty: Boolean = {
+      this == Empty[T]()
+    }
+    val level: BigInt = {
+      this match {
+        case Empty() => BigInt(0)
+        case Single(x) => BigInt(0)
+        case CC(l, r) =>
+          BigInt(1) + max(l.level, r.level)
+      }
+    } ensuring (_ >= 0)
+  }
+  case class Empty[T]() extends Conc[T]
+  case class Single[T](x: T) extends Conc[T]
+  case class CC[T](left: Conc[T], right: Conc[T]) extends Conc[T]
+}*/

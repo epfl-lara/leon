@@ -159,33 +159,37 @@ object ConcTrees {
     if (diff >= -1 && diff <= 1) CC(xs, ys)
     else if (diff < -1) { // ys is smaller than xs
       xs match {
-        case CC(l, r) if (l.level >= r.level) =>
-          CC(l, concatNonEmpty(r, ys))
         case CC(l, r) =>
-          r match {
-            case CC(rl, rr) =>
-              val nrr = concatNonEmpty(rr, ys)
-              if (nrr.level == xs.level - 3)
-                CC(l, CC(rl, nrr))
-              else
-                CC(CC(l, rl), nrr)
+          if (l.level >= r.level)
+            CC(l, concatNonEmpty(r, ys))
+          else {
+            r match {
+              case CC(rl, rr) =>
+                val nrr = concatNonEmpty(rr, ys)
+                if (nrr.level == xs.level - 3)
+                  CC(l, CC(rl, nrr))
+                else
+                  CC(CC(l, rl), nrr)
+            }
           }
       }
     } else ys match {
-      case CC(l, r) if (r.level >= l.level) =>
-        CC(concatNonEmpty(xs, l), r)
       case CC(l, r) =>
-        l match {
-          case CC(ll, lr) =>
-            val nll = concatNonEmpty(xs, ll)
-            if (nll.level == ys.level - 3)
-              CC(CC(nll, lr), r)
-            else
-              CC(nll, CC(lr, r))
+        if (r.level >= l.level)
+          CC(concatNonEmpty(xs, l), r)
+        else {
+          l match {
+            case CC(ll, lr) =>
+              val nll = concatNonEmpty(xs, ll)
+              if (nll.level == ys.level - 3)
+                CC(CC(nll, lr), r)
+              else
+                CC(nll, CC(lr, r))
+          }
         }
     }
   } ensuring (res =>
-      res.level <= max(xs.level, ys.level) + 1 && // height invariants
+    res.level <= max(xs.level, ys.level) + 1 && // height invariants
       res.level >= max(xs.level, ys.level) &&
       res.valid &&
       appendAssocInst(xs, ys) && // instantiation of an axiom
@@ -236,8 +240,8 @@ object ConcTrees {
     concatCorrectness(res, xs, ys) && // correctness
     time <= ? * abs(xs.level - ys.level) + ?)
 
- @invisibleBody
- def concatCorrectness[T](res: Conc[T], xs: Conc[T], ys: Conc[T]): Boolean =
+  @invisibleBody
+  def concatCorrectness[T](res: Conc[T], xs: Conc[T], ys: Conc[T]): Boolean =
     (res.toList == xs.toList ++ ys.toList)
 
   @invisibleBody
@@ -248,13 +252,14 @@ object ConcTrees {
       case Single(x) =>
         if (i == 0) CC(Single(y), xs)
         else CC(xs, Single(y))
-      case CC(l, r) if i < l.size =>
-        concatNonEmpty(insert(l, i, y), r)
       case CC(l, r) =>
-        concatNonEmpty(l, insert(r, i - l.size, y))
+        if (i < l.size)
+          concatNonEmpty(insert(l, i, y), r)
+        else
+          concatNonEmpty(l, insert(r, i - l.size, y))
     }
   } ensuring (res =>
-      res.valid && // tree invariants
+    res.valid && // tree invariants
       res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree
       !res.isEmpty &&
       insertAppendAxiomInst(xs, i, y) && // instantiation of an axiom
@@ -273,10 +278,9 @@ object ConcTrees {
     l match {
       case Nil() =>
         Cons[T](y, Nil())
-      case _ if i == 0 =>
-        Cons[T](y, l)
       case Cons(x, tail) =>
-        Cons[T](x, insertAtIndex(tail, i - 1, y))
+        if (i == 0) Cons[T](y, l)
+        else Cons[T](x, insertAtIndex(tail, i - 1, y))
     }
   }
 
