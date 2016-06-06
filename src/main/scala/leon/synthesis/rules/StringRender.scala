@@ -94,26 +94,28 @@ case object StringRender extends Rule("StringRender") {
   type AugmentedStringLiteral = List[AugmentedStringChunkRHS]
   
   /** Converts an expression to a stringForm, suitable for StringSolver */
-  def toStringForm(e: Expr, acc: List[AugmentedStringFormToken] = Nil)(implicit hctx: SearchContext): Option[AugmentedStringForm] = e match {
+  def toStringForm(e: Expr, isVariableToLookFor: Identifier => Boolean, acc: List[AugmentedStringFormToken] = Nil)(implicit hctx: SearchContext): Option[AugmentedStringForm] = e match {
     case StringLiteral(s) => 
       Some(RegularStringFormToken(Left(s))::acc)
-    case Variable(id) => Some(RegularStringFormToken(Right(id))::acc)
+    case Variable(id) if isVariableToLookFor(id) => Some(RegularStringFormToken(Right(id))::acc)
+    case v@Variable(id) => Some(OtherStringFormToken(v)::acc)
     case StringConcat(lhs, rhs) => 
-      toStringForm(rhs, acc).flatMap(toStringForm(lhs, _))
+      toStringForm(rhs, isVariableToLookFor, acc).flatMap(toStringForm(lhs, isVariableToLookFor, _))
     case e:Application => Some(OtherStringFormToken(e)::acc)
     case e:FunctionInvocation => Some(OtherStringFormToken(e)::acc)
     case _ => None
   }
   
   /** Returns the string associated to the expression if it is computable */
-  def toStringLiteral(e: Expr): Option[AugmentedStringLiteral] = e match {
+  def toStringLiteral(e: Expr, isVariableToLookFor: Identifier => Boolean): Option[AugmentedStringLiteral] = e match {
     case StringLiteral(s) => Some(List(RegularStringChunk(s)))
     case StringConcat(lhs, rhs) =>
-      toStringLiteral(lhs).flatMap(k => toStringLiteral(rhs).map(l => (k.init, k.last, l) match {
+      toStringLiteral(lhs, isVariableToLookFor).flatMap(k => toStringLiteral(rhs, isVariableToLookFor).map(l => (k.init, k.last, l) match {
         case (kinit, RegularStringChunk(s), RegularStringChunk(sp)::ltail) =>
           kinit ++ (RegularStringChunk(s + sp)::ltail)
         case _ => k ++ l
       }))
+    case e: Variable if(!isVariableToLookFor(e.id)) => Some(List(OtherStringChunk(e)))
     case e: Application => Some(List(OtherStringChunk(e)))
     case e: FunctionInvocation => Some(List(OtherStringChunk(e)))
     case _ => None
@@ -146,7 +148,7 @@ case object StringRender extends Rule("StringRender") {
   }
   
   /** Returns a stream of assignments compatible with input/output examples for the given template */
-  def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
+  def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr, variablesToReplace: Set[Identifier])(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
     //println(s"finding assignments in program\n$p")
     val e = new AbstractEvaluator(hctx, p)
     
@@ -165,8 +167,8 @@ case object StringRender extends Rule("StringRender") {
               None
             case Some((sfExpr, abstractSfExpr)) =>
               //ctx.reporter.debug("Eval = ["+sfExpr+"] (from "+abstractSfExpr+")")
-              val sf = toStringForm(sfExpr)
-              val rhs = toStringLiteral(rhExpr.head)
+              val sf = toStringForm(sfExpr, variablesToReplace)
+              val rhs = toStringLiteral(rhExpr.head, variablesToReplace)
               (sf, rhs) match {
                 case (Some(sfget), Some(rhsget)) =>
                   toEquations(sfget, rhsget) match {
@@ -177,7 +179,7 @@ case object StringRender extends Rule("StringRender") {
                     None
                   }
                 case _ =>
-                  hctx.reporter.info("sf empty or rhs empty ["+sfExpr+"] => ["+sf+"] in ["+rhs+"]")
+                  hctx.reporter.info("sf empty or rhs empty ["+sfExpr+"] = ["+rhExpr+"] => ["+sf+"] == ["+rhs+"]")
                   None
               }
           }
@@ -216,7 +218,8 @@ case object StringRender extends Rule("StringRender") {
           Some(newfd)
         } else None
       }
-      findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1)
+      val variablesToReplace = (template._2 ++ funDefsBodies.flatMap(_._2._2)).toSet
+      findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1, variablesToReplace)
     }
     
     val tagged_solutions =

@@ -410,7 +410,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case _ => false
     }
     
-    def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): LetDef = {
+    def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): Expr = {
       def inline(e: Expr) = leon.utils.fixpoint(
         ExprOps.preMap{
           case FunctionInvocation(TypedFunDef(f, targs), args) if toInline(f) =>
@@ -438,6 +438,9 @@ object ExprOps extends GenTreeOps[Expr] {
        newF
       }
       val updatedBody = useUpdatedFunctions(inlined_body)
+      if(updatedCalls.isEmpty) {
+        updatedBody
+      } else
       LetDef(updatedCalls, updatedBody)
     }
 
@@ -454,7 +457,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case IntegerToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
-          case _ if calledGraph.getOrElse(fd, 0) == 1 => true
+          case _ if calledGraph.getOrElse(fd, 0) <= 1 => true
           case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
           case _ => false
         }}

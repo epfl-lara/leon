@@ -8,7 +8,7 @@ import purescala.Common.Tree
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
 import purescala.PrinterContext
-
+import purescala.Definitions.Program
 import leon.utils.RangePosition
 
 import java.io.File
@@ -92,10 +92,10 @@ class FileInterface(reporter: Reporter) {
   }
 
 
-  def substitute(str: String, fromTree: Tree, toTree: Tree)(implicit ctx: LeonContext): String = {
+  def substitute(str: String, fromTree: Tree, toTree: Tree, optpgm: Option[Program] = None)(implicit ctx: LeonContext): String = {
     substitute(str, fromTree, (indent: Int) => {
       val opts = PrinterOptions.fromContext(ctx)
-      val p = new ScalaPrinter(opts, None)
+      val p = new ScalaPrinter(opts, optpgm)
       p.pp(toTree)(PrinterContext(toTree, Nil, indent, p))
       p.toString
     })
