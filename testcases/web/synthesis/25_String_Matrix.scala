@@ -62,5 +62,5 @@ object Matrix {
     in(2)(1) == in(2)(2) || 
     in(2)(2) == in(2)(0)
   } holds
-}
+
 }
