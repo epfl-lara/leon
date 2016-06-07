@@ -10,6 +10,8 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Types._
 
+import org.apache.commons.lang3.StringEscapeUtils;
+
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTForall, _}
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
@@ -107,7 +109,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         }).toSet, base)
 
       case (SString(v), Some(StringType)) =>
-        StringLiteral(v)
+        StringLiteral(StringEscapeUtils.unescapeJava(v))
         
       case (Strings.Length(a), Some(Int32Type)) =>
         val aa = fromSMT(a)
@@ -172,7 +174,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case SetIntersection(a, b) => Sets.Intersection(toSMT(a), toSMT(b))
     case StringLiteral(v)          =>
         declareSort(StringType)
-        Strings.StringLit(v)
+        Strings.StringLit(StringEscapeUtils.escapeJava(v))
     case StringLength(a)           => Strings.Length(toSMT(a))
     case StringBigLength(a)        => Strings.Length(toSMT(a))
     case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
