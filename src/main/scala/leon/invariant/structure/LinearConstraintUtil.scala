@@ -125,12 +125,18 @@ object LinearConstraintUtil {
   /**
    * This method may have to do all sorts of transformation to make the expressions linear constraints.
    * This assumes that the input expression is an atomic predicate (i.e, without and, or and nots)
-   * This is subjected to constant modification.
+   * Note: It may seem that the following code does not handle all cases of `real valued` trees.
+   * However, Orb uses uses normal expression constructors like Plus/Minus to also handle real arithmetic
+   * operations.
    */
   def makeLinear(atom: Expr): Expr = {
 
-    //pushes the minus inside the arithmetic terms
-    //we assume that inExpr is in linear form
+    /**
+     * pushes the minus inside the arithmetic terms.
+     * we assume that inExpr is in linear form.
+     * This function does not preserve real-valued trees.
+     */
+    //
     def pushMinus(inExpr: Expr): Expr = {
       inExpr match {
         case IntLiteral(v)                       => IntLiteral(-v)
@@ -151,7 +157,10 @@ object LinearConstraintUtil {
       }
     }
 
-    //we assume that ine is in linear form
+    /**
+     * we assume that ine is in linear form.
+     * This function preserves real-valued trees.
+     */
     def pushTimes(mul: Expr, ine: Expr): Expr = {
       val isReal = ine.getType == RealType && mul.getType == RealType
       val timesCons =
@@ -232,7 +241,7 @@ object LinearConstraintUtil {
           newop(finale, zero)
         }
         case Minus(e1, e2)     => Plus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
-        case RealMinus(e1, e2) => RealPlus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
+        case RealMinus(e1, e2) => Plus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
         case UMinus(e1)        => pushMinus(mkLinearRecur(e1))
         case RealUMinus(e1)    => pushMinus(mkLinearRecur(e1))
         case Times(_, _) | RealTimes(_, _) => {

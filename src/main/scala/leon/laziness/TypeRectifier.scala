@@ -35,6 +35,8 @@ import leon.utils.Bijection
  */
 class TypeRectifier(p: Program, clFactory: ClosureFactory) {
 
+  val debug = false
+
   val relfuns = userLevelFunctions(p)
   val memoClasses = clFactory.memoClasses.values.toSet
   val typeClasses = {
@@ -55,16 +57,6 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
                 }
             }
           }
-        /*case ElementOfSet(arg, set) =>
-          // merge the type parameters of `arg` and `set`
-          set.getType match {
-            case SetType(baseT: ClassType) if baseT.classDef == clFactory.memoAbsClass =>
-              println(s"Arg: $arg Arg type: ${arg.getType}")
-              typeInstMap(arg.getType, baseT).get.foreach {
-                case (t1, t2) => tc.union(t1, t2)
-              }
-            case _ =>
-          }*/
         case _ =>
       }(fd.fullBody)
     }
@@ -81,19 +73,6 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
           tparams.groupBy(tp => tc.findOrCreate(tp)) foreach {
             case (_, eqtparams) => merged ||= tc.union(eqtparams.map(paramToArg))
           }
-        //val tparamsToArgs = (fd.tparams.map(_.tp) zip tfd.tps).toMap
-        //            (tfd.params zip args).foreach { x =>
-        //              (x._1.getType, x._2.getType) match {
-        //                case (SetType(ct1: ClassType), SetType(ct2: ClassType)) if ct1 == ct2 && ct1.classDef == clFactory.memoAbsClass =>
-        //                  (ct1.tps zip ct2.tps).foreach { case (t1, t2) => tc.union(t1, t2) }
-        //                case (ct1: ClassType, ct2: ClassType) if clFactory.isClosureType(ct1.classDef) && clFactory.isClosureType(ct1.classDef) =>
-        //                  // both types are newly created closures, so their types can be trusted
-        //                  (ct1.tps zip ct2.tps).foreach { case (t1, t2) => tc.union(t1, t2) }
-        //                case (t1, t2) =>
-        //                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
-        //                    + s"do not match for call: $call")*/
-        //              }
-        //            }
       }
     } while (merged)
     tc
@@ -118,7 +97,8 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
             else if (!candReps.isEmpty)
               candReps.head
             else{
-              println(s"Warning: Cannot find a non-placeholder in equivalence class $tpclass for fundef: \n $fd")
+              if(debug)
+                println(s"Warning: Cannot find a non-placeholder in equivalence class $tpclass for fundef: \n $fd")
               tpclass.head
             }
           tp -> rep

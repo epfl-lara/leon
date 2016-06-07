@@ -51,7 +51,8 @@ object LevenshteinDistance {
     else if(j == 0) i
     else {
       val (xi, yj) = lookup(i, j)
-      val a1 = if (xi == yj) levDist(i - 1, j - 1) else levDist(i - 1, j - 1) + 1
+      val dprev = levDist(i - 1, j - 1)
+      val a1 = if (xi == yj) dprev else dprev + 1
       val a2 = {
         val s1 = levDist(i - 1, j)
         val s2 = levDist(i, j - 1)
