@@ -11,18 +11,26 @@ import purescala.PrinterHelpers._
 
 // Corresponds to a complete map (SMT Array), not a Leon/Scala array
 // Only used within solvers or SMT for encoding purposes
-case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree {
+case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree with PrettyPrintable {
   override def asString(implicit ctx: LeonContext) = {
     s"RawArrayType[${from.asString}, ${to.asString}]"
+  }
+
+  override def printWith(implicit pctx: PrinterContext) = {
+    p"RawArrayType[$from, $to]"
   }
 }
 
 // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
 case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr with Extractable {
 
-  //TODO: ???
-  override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] =
-    Some((Seq(), es => RawArrayValue(keyTpe, elems, default)))
+  override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = {
+    val linearized: Seq[Expr] = elems.toVector.flatMap(p => Seq(p._1, p._2)) :+ default
+    Some((linearized, es => {
+      val freshElems = es.dropRight(1).grouped(2).map(p => p(0) -> p(1)).toMap
+      RawArrayValue(keyTpe, freshElems, es.last)
+    }))
+  }
 
   val getType = RawArrayType(keyTpe, default.getType)
 

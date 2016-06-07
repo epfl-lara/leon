@@ -23,45 +23,12 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   val lengthField = FreshIdentifier("length", Int32Type)
   ArrayCaseClass.setFields(Seq(ValDef(rawArrayField), ValDef(lengthField)))
 
-  
-  //val String     = p.library.lookupUnique[ClassDef]("leon.theories.String").typed
-  //val StringCons = p.library.lookupUnique[CaseClassDef]("leon.theories.StringCons").typed
-  //val StringNil  = p.library.lookupUnique[CaseClassDef]("leon.theories.StringNil").typed
-
-  //val Size   = p.library.lookupUnique[FunDef]("leon.theories.String.size").typed
-  //val Take   = p.library.lookupUnique[FunDef]("leon.theories.String.take").typed
-  //val Drop   = p.library.lookupUnique[FunDef]("leon.theories.String.drop").typed
-  //val Slice  = p.library.lookupUnique[FunDef]("leon.theories.String.slice").typed
-  //val Concat = p.library.lookupUnique[FunDef]("leon.theories.String.concat").typed
-
-  //val SizeI   = p.library.lookupUnique[FunDef]("leon.theories.String.sizeI").typed
-  //val TakeI   = p.library.lookupUnique[FunDef]("leon.theories.String.takeI").typed
-  //val DropI   = p.library.lookupUnique[FunDef]("leon.theories.String.dropI").typed
-  //val SliceI  = p.library.lookupUnique[FunDef]("leon.theories.String.sliceI").typed
-  //
-  //val FromInt      = p.library.lookupUnique[FunDef]("leon.theories.String.fromInt").typed
-  //val FromChar     = p.library.lookupUnique[FunDef]("leon.theories.String.fromChar").typed
-  //val FromBoolean  = p.library.lookupUnique[FunDef]("leon.theories.String.fromBoolean").typed
-  //val FromBigInt   = p.library.lookupUnique[FunDef]("leon.theories.String.fromBigInt").typed
-  
-  //private val stringBijection = new Bijection[String, Expr]()
-  
-  //private def convertToString(e: Expr): String  = stringBijection.cachedA(e)(e match {
-  //  case CaseClass(_, Seq(CharLiteral(c), l)) => c + convertToString(l)
-  //  case CaseClass(_, Seq()) => ""
-  //})
-
-  //private def convertFromString(v: String): Expr = stringBijection.cachedB(v) {
-  //  v.toList.foldRight(CaseClass(StringNil, Seq())){
-  //    case (char, l) => CaseClass(StringCons, Seq(CharLiteral(char), l))
-  //  }
-  //}
-
   val encoder = new Encoder {
     override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case al @ ArrayLength(a) =>
+        val ArrayType(base) = a.getType
         val ra = transform(a)
-        Some(CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, lengthField))
+        Some(CaseClassSelector(ArrayCaseClass.typed(Seq(base)), ra, lengthField))
 
       case al @ ArraySelect(a, i) =>
         val ra = transform(a)
