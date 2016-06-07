@@ -254,14 +254,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * structures and must therefore be synchronized.
     */
   def normalizeStructure(expr: Expr): (Expr, Map[Identifier, Identifier]) = synchronized {
-    val print = false
-
-    if (print) {
-      println("---------")
-      println("NORMALIZE STRUCTURE")
-      println("---------")
-      println("Expr : ", expr)
-    }
 
     val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
@@ -276,10 +268,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       })((acc, seq) => acc ++ seq)
     } (expr).distinct
 
-    if (print) println("allVars : ", allVars)
 
     val grouped : Map[TypeTree, Seq[Identifier]] = allVars.groupBy(_.getType)
-    if (print) println("grouped : ", grouped)
     val subst = grouped.foldLeft(Map.empty[Identifier, Identifier]) { case (subst, (tpe, ids)) =>
       val currentVars = typedIds(tpe)
 
@@ -295,7 +285,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       subst ++ (ids zip typedVars)
     }
 
-    if (print) println("subst : ", subst)
 
     val normalized = postMap {
       case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
@@ -311,7 +300,6 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => None
     } (expr)
 
-    if (print) println("normalized: ", normalized)
 
     (normalized, subst)
   }

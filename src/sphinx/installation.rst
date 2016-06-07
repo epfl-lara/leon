@@ -222,12 +222,16 @@ but instead
 
  package leon.test.myTestPackage
 
+
+
+
+
 Using Leon in IntelliJ
 ----------------------
 
 You can maybe encounter some problems installing Leon, because of the various dependencies needed.
-Here is a step-by-step guide having as a goal to help you installing your first leon project and to be sure that every
-dependencies are present and correctly linked.
+Here is a step-by-step guide having as a goal to help you to install your first Leon project and to be sure that every
+dependency is present and correctly linked.
 
 The advantage of using IntelliJ IDEA is that it provides a Scala plugin which allows you to directly import SBT project
 into it.
@@ -243,7 +247,7 @@ into it.
 **Setup STB in your project:**
 
 Leon requires the Build class, which is a class created by SBT in its folder *target* when you compile your project the
-first time. Also, it will be comfortable to run leon through terminal command, in order to easily specify arguments.
+first time. Also, it will be comfortable to run Leon through terminal command, in order to easily specify arguments.
 We will resolve both of theses things running the command:
 
 .. code-block:: bash
@@ -258,28 +262,28 @@ in terminal ```cat leon``` to realize that.
 **Setup IntelliJ:**
 
 IntelliJ provides a Scala plugin. It will normally offer to install it by its own the first time you load a scala file,
-anyway we suggest you to install it manually before starting. Doing so will allow you to use sbt wizard import
+anyway we suggest you install it manually before starting. Doing so will allow you to use sbt wizard import
 in the next step.
 
 In *Preferences -> Plugins* search for *Scala* and install it.
 
 **Import Leon:**
 
-Use the *New project from existing source...* (*Import project* in welcome window) wizard of IntelliJ to import Leon.
+Use the *New project from existing sources...* (*Import project* in welcome window) wizard of IntelliJ to import Leon.
 Select the *SBT* external model and let
 IntelliJ install it with the default options. Specify the Java SDK 1.8. When choosing the modules to import, only
 select *Leon* and *Leon-build*
-(maybe called *root* and *root-build*), we will import manually the other modules later.
+(maybe called *root* and *root-build*), we will import the other modules later manually.
 
 You would now see only the *Leon* module in the IntelliJ project explorer. If you see *bonsai* or *smt-lib*, just
 delete them.
 
 **Setup dependencies:**
 
-By right-clicking on Leon, choose *Open Module Setting*. Here you will set all the dependencies, in the so named tab. If
+By right-clicking on Leon, choose *Open Module Setting*. Here you will set all the dependencies, in the so-named tab. If
 SBT import tool worked well, you will see all needed dependencies present in your list and we will enable some of them.
 Anyway, if some of them are not present (which happened to me), you can add it by your own clicking
-``` "+" --> Add jar or folder --> ... ```. I will specify the path where you can find each dependencies
+``` "+" --> Add jar or folder --> ... ```. I will specify the path where you can find each dependency.
 
 Enable:
 
@@ -295,9 +299,9 @@ If project has no SDK, add Java Library 1.8 (JDK 1.8)
 The scala-lang:scala-library and scala-lang:scala-compiler must stand for the scala SDK provided by intelliJ, so
 normally you haven't to add it. Anyway, if you encounter some problems, download it at with "+" -> Library -> Global Library
 -> New Library and select the latest *Ivy* available. Ensure you have at least Scala 2.11 and NOT 2.10. Ensure also that
-this added scala SDK are listed BELOW the scala-lang provided by SBT, so it has lower priority.
+this added scala SDK is listed BELOW the scala-lang provided by SBT, so it has lower priority.
 
-*.sbt* and *.ivy2* are folders created by SBT and are place in your home folder.
+*.sbt* and *.ivy2* are folders created by SBT and are placed in your home folder.
 
 If you find that some other modules are required to your project, feel free to add them but keep them below the ones
 described in the priority list.
