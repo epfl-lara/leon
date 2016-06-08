@@ -1,9 +1,9 @@
 package leon.comparison
 
-import leon.purescala.Expressions._
 import leon.comparison.Utils._
 import leon.purescala.Common.Tree
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
+import leon.purescala.Expressions._
 import leon.purescala.Types.{ClassType, TypeTree}
 
 /**

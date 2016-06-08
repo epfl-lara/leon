@@ -1,13 +1,7 @@
 package leon
 package comparison
 
-import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-import leon._
 import leon.purescala.Definitions.{FunDef, Program}
-import leon.purescala.{ExprOps, Expressions}
-import leon.purescala.Expressions.{Let, MatchExpr, Passes, Variable, _}
-import leon.purescala.Types.TypeParameter
-import leon.synthesis.SynthesisSettings
 
 /**
   * Created by joachimmuth on 23.03.16.
@@ -29,8 +23,6 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
   val comparatorsNames = comparators map (_.name)
 
-  val print = false
-
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
     val debugFlag = ctx.findOption(GlobalOptions.optDebug)
     debug = if (debugFlag.isDefined) {
@@ -39,35 +31,37 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     } else false
 
 
-    val comparisonBase = ComparisonBase(ctx, "testcases/comparison/base/")
-    val listFunDef_base = comparisonBase.listFunDef.tail
+    val corpus = ComparisonCorpus(ctx, "testcases/comparison/base/")
+    val listFunDef_corpus = corpus.listFunDef.tail
     val listFunDef = getFunDef(ctx, program).tail
 
 
-    val compared = combinationOfFunDef(listFunDef_base, listFunDef)
+    // contain pair of function compared and score given by each comparator
+    // a space is let for a comment string, for example size of common tree for DirectScoreTree comparator
+    val comparison = combinationOfFunDef(listFunDef_corpus, listFunDef)
 
-    ComparisonReport(ctx, comparisonBase, program, comparatorsNames, compared)
+    ComparisonReport(ctx, program, corpus, comparatorsNames, comparison)
   }
 
 
 
 
   /**
-    * Compare each function from "base program" with "to-compare" program (the one given in argument)
- *
-    * @param funDefs_base
+    * Compare each function from corpus to argument program
+    *
+    * @param funDefs_corpus
     * @param funDefs
     * @return
     */
-  def combinationOfFunDef(funDefs_base: List[FunDef], funDefs: List[FunDef]) = {
+  def combinationOfFunDef(funDefs_corpus: List[FunDef], funDefs: List[FunDef]) = {
 
     for{
-      funDef_base <- funDefs_base
+      funDef_corpus <- funDefs_corpus
       funDef <- funDefs
-      scores = comparators map (_.compare(funDef_base.body.get, funDef.body.get))
+      scores = comparators map (_.compare(funDef_corpus.body.get, funDef.body.get))
       if scores.map(_._1) exists (_ > 0.0)
     } yield {
-      (funDef, funDef_base, scores)
+      (funDef, funDef_corpus, scores)
     }
   }
 
@@ -79,7 +73,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   /**
     * This method derives from VerificationPhase
     * Extract the list of function defined in a program
-    * */
+    */
   def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
     val filterFuns: Option[Seq[String]] = ctx.findOption(GlobalOptions.optFunctions)

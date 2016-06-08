@@ -1,40 +1,45 @@
 package leon.comparison
 
-import leon.purescala.Expressions._
 import leon.comparison.Utils._
+import leon.purescala.Expressions._
 
 
 /**
   * Created by joachimmuth on 12.05.16.
   *
-  * Go through two tree in parallel and compare each expression based on its class. Try to find the biggest common tree.
-  * Find all possible pair of roots. Then consider all children of both roots, and check which are
-  * similar. Consider all possible combinations of children and repeate the same operation on them.
+  * Go through both trees in parallel and compare each expression based on its class. Try to find the biggest
+  * common tree.
   *
-  * We end up with a list of all possible similar tree and we pick the biggest one.
+  * Procedure:
+  *   - Find all possible pair of roots. Then consider all children of both roots, and check which are
+  *   similar.
+  *   - Consider all possible combinations of children and repeat the same operation on them.
+  *   - Pick the biggest tree in the list of all possible similar tree
+  *   - Remove the tree overlapping the one chosen, and search if it exists an other common tree. Repeat.
+  *   - End with all common and exclusive common tree shared by trees A and B
   *
-  * The MatchScore is calculated with the size of the common tree, compared with the sizes of both trees.
+  * The MatchScore is calculated with the size of the common tree, compared with the sizes of trees A and B.
   */
 object ComparatorByClassTree extends Comparator{
   val name: String = "ClassTree"
 
 
-  def compare(expr_base: Expr, expr: Expr) = {
-    val roots = possibleRoots(expr_base, expr)
+  def compare(expr_corpus: Expr, expr: Expr) = {
+    val roots = possibleRoots(expr_corpus, expr)
 
     val trees = roots.flatMap(possibleTrees(_))
     val exclusives = exclusivesTrees(trees)
     val sum = exclusives.foldLeft(0)( (acc, tree) => acc + tree.size)
 
-    val listClassesB = collectClass(expr_base)
-    val listClasses = collectClass(expr)
+    val listClassesA = collectClass(expr_corpus)
+    val listClassesB = collectClass(expr)
 
-    val score = matchScore(sum, listClassesB.size, listClasses.size)
+    val score = matchScore(sum, listClassesA.size, listClassesB.size)
 
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_base, expr)
+      println("Expressions: ", expr_corpus, expr)
       println("Common Tree: ", exclusives)
       println("---------------------")
     }
@@ -60,20 +65,20 @@ object ComparatorByClassTree extends Comparator{
   /**
     * list of all similar pair of expressions, based on classes.
     *
-    * @param expr_base
+    * @param expr_corpus
     * @param expr
     * @return
     */
-  def possibleRoots(expr_base: Expr, expr: Expr): List[(Expr, Expr)] = {
-    val expressionsBase = collectExpr(expr_base)
-    val expressions = collectExpr(expr)
+  def possibleRoots(expr_corpus: Expr, expr: Expr): List[(Expr, Expr)] = {
+    val expressionsA = collectExpr(expr_corpus)
+    val expressionsB = collectExpr(expr)
 
     val pairOfPossibleRoots = for {
-      expBase <- expressionsBase
-      exp <- expressions
-      if areSimilar(expBase.getClass, exp.getClass)
+      exprA <- expressionsA
+      exprB <- expressionsB
+      if areSimilar(exprA.getClass, exprB.getClass)
     } yield {
-      (expBase, exp)
+      (exprA, exprB)
     }
 
     pairOfPossibleRoots
@@ -88,13 +93,13 @@ object ComparatorByClassTree extends Comparator{
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
   def possibleTrees(pair: (Expr, Expr)): List[myTree[(Expr, Expr)]] = {
-    val exprBase = pair._1
-    val expr = pair._2
-    val childrenBase = getChildren(exprBase)
-    val children = getChildren(expr)
+    val exprA = pair._1
+    val exprB = pair._2
+    val childrenA = getChildren(exprA)
+    val childrenB = getChildren(exprB)
 
 
-    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenBase, children)
+    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenA, childrenB)
     val combinationOfChildren = combineChildren(pairOfMatchingChildren)
 
 
@@ -107,15 +112,13 @@ object ComparatorByClassTree extends Comparator{
     }
   }
 
-
-
-  def findPairOfMatchingChildren(childrenBase: List[Expr], children: List[Expr]): List[(Expr, Expr)] = {
+  def findPairOfMatchingChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr)] = {
     for{
-      childBase <- childrenBase
-      child <- children
-      if areSimilar(childBase.getClass, child.getClass)
+      childA <- childrenA
+      childB <- childrenB
+      if areSimilar(childA.getClass, childB.getClass)
     } yield {
-      (childBase, child)
+      (childA, childB)
     }
   }
 
@@ -124,7 +127,7 @@ object ComparatorByClassTree extends Comparator{
     * IMPROVEMENT: Here, it would be possible to already filter some cases.
     * When we do the combination, we try all cases, using one pair of matching, two, three, ... we could only keep the
     * ones using maximum of possible children, as we only want the biggest tree.
- *
+    *
     * @param pairs
     * @return
     */

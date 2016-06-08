@@ -1,8 +1,7 @@
 package leon.comparison
 
-import leon.purescala.ExprOps
-import leon.purescala.Expressions.{CaseClassPattern, _}
 import leon.comparison.Utils._
+import leon.purescala.Expressions.{CaseClassPattern, _}
 
 /**
   * Created by joachimmuth on 25.04.16.

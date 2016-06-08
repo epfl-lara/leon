@@ -1,7 +1,5 @@
 package leon.comparison
 
-import leon.purescala.Expressions.Expr
-
 /**
   * Created by joachimmuth on 12.05.16.
   *

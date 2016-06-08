@@ -1,11 +1,9 @@
 package leon.comparison
 
 import leon.purescala.Common.Identifier
-import leon.purescala.Definitions.{CaseClassDef, ClassDef}
 import leon.purescala.ExprOps
 import leon.purescala.ExprOps._
 import leon.purescala.Expressions._
-import leon.purescala.Types.{ClassType, TypeTree}
 
 /**
   * Created by joachimmuth on 25.04.16.

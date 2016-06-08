@@ -2,8 +2,7 @@ package leon.comparison
 
 import java.io.File
 
-import coursier.Files
-import leon.{LeonContext, Main}
+import leon.LeonContext
 import leon.frontends.scalac.ExtractionPhase
 import leon.purescala.Definitions.{FunDef, Program}
 import leon.utils.PreprocessingPhase
@@ -12,9 +11,10 @@ import leon.utils.PreprocessingPhase
 /**
   * Created by joachimmuth on 24.03.16.
   *
-  * Extract a list of all FunDef existing in the objects of the targeted folder. Typically a folder "comparison-base".
+  * Extract list of all FunDef existing in the objects of the targeted folder.
+  * Typically the folder is "comparison-base" (chosen in ComparisonPhase).
   */
-case class ComparisonBase(ctx: LeonContext, folder: String) {
+case class ComparisonCorpus(ctx: LeonContext, folder: String) {
 
   val program: Program = extraction(recursiveListFilesInString(folder))
   val listFunDef: List[FunDef] = extractListFunDef()
