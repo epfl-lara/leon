@@ -42,7 +42,7 @@ object ComparatorDirectScoreTree extends Comparator{
     * @param exprsB
     * @return
     */
-  def pairOfMatchingExpr(exprsA: List[Expr], exprsB: List[Expr]): List[(Expr, Expr, Double)] = {
+  def pairAndScoreExpr(exprsA: List[Expr], exprsB: List[Expr]): List[(Expr, Expr, Double)] = {
     val pairOfExprs = for {
         exprA <- exprsA
         exprB <- exprsB
@@ -59,11 +59,11 @@ object ComparatorDirectScoreTree extends Comparator{
     val exprsA = collectExpr(exprA)
     val exprsB = collectExpr(exprB)
 
-    pairOfMatchingExpr(exprsA, exprsB)
+    pairAndScoreExpr(exprsA, exprsB)
   }
 
-  def findPairOfMatchingChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr, Double)] =
-    pairOfMatchingExpr(childrenA, childrenB)
+  def matchChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr, Double)] =
+    pairAndScoreExpr(childrenA, childrenB)
 
 
 
@@ -81,7 +81,7 @@ object ComparatorDirectScoreTree extends Comparator{
     val childrenB = getChildren(exprB)
 
 
-    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenA, childrenB)
+    val pairOfMatchingChildren = matchChildren(childrenA, childrenB)
     val combinationOfChildren = combineChildren(pairOfMatchingChildren)
 
 
@@ -89,7 +89,7 @@ object ComparatorDirectScoreTree extends Comparator{
       List(myTree(value, List()))
     } else {
       combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr, Double)]])(
-      (listOfTrees, children) => listOfTrees ++ treesWithChildCombination(value, children.map(p => possibleTrees(p)))
+      (listOfTrees, children) => listOfTrees ++ flatCombination(value, children.map(p => possibleTrees(p)))
       )
     }
   }
@@ -155,7 +155,7 @@ object ComparatorDirectScoreTree extends Comparator{
     * @param listChildren
     * @return
     */
-  def treesWithChildCombination[T](value: T, listChildren: List[List[myTree[T]]]): List[myTree[T]] = {
+  def flatCombination[T](value: T, listChildren: List[List[myTree[T]]]): List[myTree[T]] = {
     def combine(list: List[List[myTree[T]]]): List[List[myTree[T]]] = list match {
       case Nil => List(Nil)
       case x :: xs =>
@@ -187,6 +187,7 @@ object ComparatorDirectScoreTree extends Comparator{
   /**
     * Geometric mean of all pair scores
     * "Normalization" in order not to overvalue small trees
+ *
     * @param tree
     * @return
     */

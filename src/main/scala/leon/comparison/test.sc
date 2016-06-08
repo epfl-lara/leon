@@ -1,13 +1,6 @@
-val list = List(1, 2, 2, 3)
+val x: Option[Char] = None
+val y: Option[Char] = Option('b')
 
-val list2 = List(1, 2)
+val list = List(x, y)
 
-val diff1 = list.diff(list2)
-
-val diff2 = list2.diff(list)
-
-val diff = diff1 ++ diff2
-
-list.diff(diff)
-
-list.intersect(list2)
+list map(_.get)

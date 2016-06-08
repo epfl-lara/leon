@@ -18,16 +18,13 @@ import leon.utils.PreprocessingPhase
 case class ComparisonCorpus(ctx: LeonContext, folder: String) {
 
   val program: Program = extraction(recursiveListFilesInString(folder))
-  val funDefs: List[FunDef] = extractFunDefs()
+  val funDefs: List[FunDef] = ComparisonPhase.getFunDef(ctx, program)
 
   def extraction(files: List[String]): _root_.leon.purescala.Definitions.Program = {
     val extraction =  ExtractionPhase andThen new PreprocessingPhase(false)
     val (_, prog) = extraction.run(ctx, files)
     prog
   }
-
-  def extractFunDefs(): List[FunDef] = ComparisonPhase.getFunDef(ctx, program)
-
 
   def recursiveListFiles(f: File): List[File] = {
     val these = f.listFiles.toList
@@ -43,5 +40,6 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
     val file = new File(f)
     recursiveListFiles(file).map(f => f.getCanonicalPath)
   }
+
 
 }

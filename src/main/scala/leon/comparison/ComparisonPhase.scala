@@ -3,6 +3,7 @@ package comparison
 
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
+import leon.comparison.Utils._
 
 /**
   * Created by joachimmuth on 23.03.16.
@@ -33,15 +34,15 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
 
     val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus/")
-    val funDefs_corpus = corpus.funDefs.tail filter hasBody
-    val funDefs = getFunDef(ctx, program).tail filter hasBody
+    val funDefs_corpus = corpus.funDefs
+    val funDefs = getFunDef(ctx, program)
 
 
     // contain pair of function compared and score given by each comparator
     // a space is let for a comment string, for example size of common tree for DirectScoreTree comparator
     val comparison = combinationOfFunDef(funDefs_corpus, funDefs)
 
-    val autocompletedHole = funDefs filter hasHole map(fun => Completor.suggestHole(fun.body.get, corpus))
+    val autocompletedHole = funDefs filter hasHole map(fun => Completor.suggestCompletion(fun, corpus))
 
     ComparisonReport(ctx, program, corpus, comparatorsNames, comparison)
   }
@@ -60,8 +61,8 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   def combinationOfFunDef(funDefs_corpus: List[FunDef], funDefs: List[FunDef]) = {
 
     for{
-      funDef_corpus <- funDefs_corpus
       funDef <- funDefs
+      funDef_corpus <- funDefs_corpus
       scores = comparators map (_.compare(funDef_corpus.body.get, funDef.body.get))
       if scores.map(_._1) exists (_ > 0.0)
     } yield {
@@ -77,6 +78,8 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   /**
     * This method derives from VerificationPhase
     * Extract the list of function defined in a program
+    *
+    * We ensure that every funDef has a body
     */
   def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
@@ -86,7 +89,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
       filterInclusive(filterFuns.map(fdMatcher(program)), Some(excludeByDefault _))
     }
-    program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
+    program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).tail filter hasBody
   }
 
   def hasBody(funDef: FunDef): Boolean = funDef.body match {
@@ -94,7 +97,5 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     case None => false
   }
 
-  def hasHole(funDef: FunDef): Boolean =
-    Utils.collectExpr(funDef.body.get) exists(e => e.isInstanceOf[Hole] || e.isInstanceOf[Choose])
 
 }

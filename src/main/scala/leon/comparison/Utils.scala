@@ -1,6 +1,7 @@
 package leon.comparison
 
 import leon.purescala.Common.Identifier
+import leon.purescala.Definitions.FunDef
 import leon.purescala.ExprOps
 import leon.purescala.ExprOps._
 import leon.purescala.Expressions._
@@ -9,6 +10,13 @@ import leon.purescala.Expressions._
   * Created by joachimmuth on 25.04.16.
   */
 object Utils {
+
+
+  def hasHole(funDef: FunDef): Boolean =
+    hasHole(funDef.body.get)
+
+  def hasHole(expr: Expr): Boolean =
+    collectExpr(expr) exists(e => e.isInstanceOf[Hole] || e.isInstanceOf[Choose])
 
   /**
     * Method to handle update made recently that changed argument and output of ExprOps.normalizeStructure
