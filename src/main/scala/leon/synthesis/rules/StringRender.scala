@@ -218,8 +218,13 @@ case object StringRender extends Rule("StringRender") {
         } else None
       }
       val newProgram2 = DefOps.transformProgram(transformer, newProgram)
+      val newTemplate = ExprOps.postMap{
+        case FunctionInvocation(TypedFunDef(fd, targs), exprs) =>
+          Some(FunctionInvocation(TypedFunDef(fdMap.getOrElse(fd, fd), targs), exprs))
+        case _ => None
+      }(template._1)
       val variablesToReplace = (template._2 ++ funDefsBodies.flatMap(_._2._2)).toSet
-      findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1, variablesToReplace)
+      findAssignments(newProgram2, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, newTemplate, variablesToReplace)
     }
     
     val tagged_solutions =
@@ -551,12 +556,19 @@ case object StringRender extends Rule("StringRender") {
     }
     
     protected def customPrettyPrinters(inputType: TypeTree)(implicit hctx: SearchContext): List[Expr => WithIds[Expr]] = {
+      val toExclude: Set[FunDef] = 
+        if(hctx.functionContext.paramIds.headOption.map(x => TypeOps.isSubtypeOf(inputType, x.getType)).getOrElse(false))
+          Set(hctx.functionContext)
+        else
+          Set()
       val exprs1s: Stream[(Lambda, Expr => WithIds[Expr])] = (new SelfPrettyPrinter)
         .allowFunction(hctx.functionContext)
-        .excludeFunction(hctx.functionContext)
+        .excludeFunctions(toExclude + hctx.program.library.escape.get)
         .withPossibleParameters.prettyPrintersForType(inputType)(hctx, hctx.program)
         .map{ case (l, identifiers) => (l, (input: Expr) => (application(l, Seq(input)), identifiers)) } // Use already pre-defined pretty printers.
-      exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
+      val e = exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(tfd, _)), _) if tfd.fd == hctx.functionContext => 0 case _ => 1}.map(_._2)
+      println("looking for functions to print " + inputType + ", got " + e)
+      e
     }
     
     def constantPatternMatching(act: AbstractClassType)(implicit hctx: SearchContext): Stream[Expr => WithIds[Expr]] = {

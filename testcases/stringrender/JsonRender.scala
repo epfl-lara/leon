@@ -22,21 +22,6 @@ object JsonRender {
   case class JInt(value: Int) extends JFinalValue
   
   def json_render(j: JValue): String = {
-    ???[String]
-  } ensuring( (res: String) => (j, res) passes {
-      case JString("foo") => "\"foo\""
-      case JBoolean(true) => "true"
-      case JInt(10) => "10"
-      case JArray(Cons(JInt(10), Cons(JInt(21), Nil()))) => "[10, 21]"
-      /*case JDict(Cons(("confid", JInt(10)), Cons(("paper", JDict(Cons(("strings", JInt(20)), Cons(("integers", JInt(32)), Nil())))), Nil()))) =>
-"""{
-  "confid": 10,
-  "paper": {
-    "strings": 20,
-    "integers": 32
+    ???[String] ask j
   }
-}
-"""*/
-    }
-  )
 }
