@@ -66,6 +66,10 @@ class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     (instFuns, instFunTypes)
   }
 
+  override def missCost() = {
+    InfiniteIntegerLiteral(0)
+  } 
+
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //println("Root funs: "+getRootFuncs().map(_.id).mkString(",")+" All funcs: "+ instFunSet.map(_.id).mkString(","))
     funsToInst.map(x => (x, List(Alloc))).toMap

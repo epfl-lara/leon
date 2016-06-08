@@ -182,6 +182,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   val closureTypeNames = tpeToADT.keys.toSeq   // this fixes an ordering on clsoure types
   val canonLambdas = opToCaseClass.keySet
   val allClosuresAndParents: Seq[ClassDef] = tpeToADT.values.flatMap(v => (v._2 +: v._3) ++ v._4.toSeq).toSeq
+  val closureNames = allClosuresAndParents.map(_.id.name).toSet
   val memoClosures = {
     val cls = memoClasses.values.toSeq
     if(cls.isEmpty) { // no memoized functin in the program, however there can be  functions coming from outside
@@ -191,6 +192,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
     }
     else memoAbsClass +: cls
   }
+  
 
   def functionType(tn: String) = tpeToADT(tn)._1
   def absClosure(tn: String) = tpeToADT(tn)._2

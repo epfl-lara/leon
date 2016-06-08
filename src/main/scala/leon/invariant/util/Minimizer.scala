@@ -27,6 +27,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
   val two = FractionalLiteral(2, 1)
   val rzero = FractionalLiteral(0, 1)
   val mone = FractionalLiteral(-1, 1)
+  val minusHundred = FractionalLiteral(-100, 1)
 
   private val leonctx = ctx.leonContext
   val reporter = leonctx.reporter
@@ -69,7 +70,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
       var lowerBound: FractionalLiteral =
         if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar))
           lowerBoundMap(tvar)
-        else realzero
+        else minusHundred
       def updateState(nmodel: Model) = {
         upperBound = nmodel(tvar.id).asInstanceOf[FractionalLiteral]
         currentModel = nmodel
@@ -119,7 +120,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           updateState(newModel)
       }
       //here, we found a best-effort minimum
-      if (lowerBound != realzero) {
+      if (lowerBound != minusHundred) {
         updateLowerBound(tvar, lowerBound)
       }
       And(acc, Equals(tvar, currval))

@@ -514,7 +514,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             val hitCase = Tuple(lookupVal +: hitInstExprs)
 
             val missInstExprs = ictx.instrumenters.map { m =>
-              val luCost = InfiniteIntegerLiteral(2) // lookup/update cost combined
+              val luCost = m.missCost() // lookup/update cost combined
               m.instrument(f, subeInsts.getOrElse(m.inst, List()) :+ Plus(luCost, selectInst(funres, m.inst)),
                 Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
             }
@@ -722,6 +722,10 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
   def instProp(instExpr: Expr)(fd: FunDef): Option[Expr] = None
 
   def instrumentBody(bodyExpr: Expr, instExpr: Expr)(implicit fd: FunDef): Expr = instExpr
+
+  def missCost() = {
+    InfiniteIntegerLiteral(2)
+  }
 
   def getRootFuncs(prog: Program = program): (Set[FunDef], Set[CompatibleType]) = {
     // go over all user-defined functions, and collect those functions with an argument less instCall in the postcondition
