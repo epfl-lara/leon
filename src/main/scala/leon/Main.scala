@@ -2,7 +2,6 @@
 
 package leon
 
-import leon.comparison.ComparisonPhase
 import leon.utils._
 
 object Main {

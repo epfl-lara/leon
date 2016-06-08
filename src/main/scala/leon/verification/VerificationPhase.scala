@@ -50,14 +50,11 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
     val toVerify = program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
-
     for(funDef <- toVerify) {
       if (excludeByDefault(funDef)) {
         reporter.warning("Forcing verification of " + funDef.qualifiedName(program) + " which was assumed verified")
       }
     }
-
-
 
     try {
       val vcs = generateVCs(vctx, toVerify)
