@@ -44,6 +44,7 @@ trait VerificationSuite extends LeonRegressionSuite {
     val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
 
     try {
+      // Here is the extraction exemple i need
       val (_, ast) = extraction.run(ctx, files)
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }

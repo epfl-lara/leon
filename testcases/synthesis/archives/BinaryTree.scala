@@ -8,8 +8,10 @@ object BinaryTree {
   case class Leaf() extends Tree
 
   def content(t : Tree): Set[Int] = t match {
-    case Leaf() => Set.empty[Int]
-    case Node(l, v, r) => content(l) ++ Set(v) ++ content(r)
+    case Leaf() =>
+      Set.empty[Int]
+    case Node(l, v, r) =>
+      content(l) ++ Set(v) ++ content(r)
   }
 
   def delete(in : Tree, v : Int) = choose { (out : Tree) =>

@@ -25,9 +25,12 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
     val timeout:    Option[Long]        = ctx.findOption(GlobalOptions.optTimeout)
 
     val reporter = ctx.reporter
+    println("reporter is", reporter.toString)
 
     // Solvers selection and validation
     val baseSolverF = SolverFactory.getFromSettings(ctx, program)
+    //println("program is ", program.toString)
+    //println("context is ", ctx.toString)
 
     val solverF = timeout match {
       case Some(sec) =>
@@ -42,6 +45,7 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
 
+    println("filter")
     val fdFilter = {
       import OptionsHelpers._
 
@@ -50,13 +54,17 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
     val toVerify = program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
+
     for(funDef <- toVerify) {
       if (excludeByDefault(funDef)) {
         reporter.warning("Forcing verification of " + funDef.qualifiedName(program) + " which was assumed verified")
       }
     }
 
+
+
     try {
+      println("before generate VCs")
       val vcs = generateVCs(vctx, toVerify)
 
       reporter.debug("Checking Verification Conditions...")
