@@ -226,9 +226,10 @@ object HOFDecomp1 {
     ???[List[String]]
   } ensuring {
     out => (in, out) passes {
-      case Cons(Person(a, 0), Cons(Person(b, -1), Cons(Person(c, 3), Cons(Person(d, -2), Nil())))) => Cons(a, Cons(c, Nil()))
-      case Cons(Person(a, -5), Cons(Person(b, 2), Cons(Person(c, -2), Cons(Person(d, 3), Nil()))))  => Cons(b, Cons(d, Nil()))
-      case Nil()                                         => Nil()
+      case Cons(Person(a, 0),  Cons(Person(b, 10), Cons(Person(c, 3),  Cons(Person(d, 5),  Nil())))) => Cons(a, Cons(b, Cons(c, Cons(d, Nil()))))
+      case Cons(Person(a, -5), Cons(Person(b, 2),  Cons(Person(c, -2), Cons(Person(d, 3),  Nil())))) => Cons(b, Cons(d, Nil()))
+      case Cons(Person(a, -2), Cons(Person(b, -1), Cons(Person(c, -3), Cons(Person(d, -2), Nil())))) => Nil()
+      case Nil()                                                                                     => Nil()
     }
   }
 }

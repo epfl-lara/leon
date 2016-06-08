@@ -224,11 +224,26 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           } else {
             // If the input contains free variables, it does not provide concrete examples. 
             // We will instantiate them according to a simple grammar to get them.
-            val dataGen = new GrammarDataGen(evaluator)
 
-            val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
+            val exs = cs.optGuard match {
+              case Some(g) =>
+                // We have a guard constraining the freeVars, we generate them together
+                val theGuard = replace(Map(in -> pattExpr), g)
 
-            dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000).toSeq map { vals =>
+                val dataGen = new GrammarDataGen(evaluator)
+                dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000)
+
+              case None =>
+                // We have no guard, it boils down to generate bunch of values
+                // per types of freevars and building tuples.
+                //println(s"Found simple in/out testcase: $cs")
+                //println("Free: "+freeVars)
+
+                val dataGen = new VaryingGrammarDataGen(evaluator)
+                dataGen.generateFor(freeVars, BooleanLiteral(true), examplesPerCase, examplesPerCase)
+            }
+
+            exs.toSeq map { vals =>
               val inst = freeVars.zip(vals).toMap
               val inR = replaceFromIDs(inst, pattExpr)
               val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
@@ -237,6 +252,11 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           }
         }
       }
+
+      //println("Case: "+cs.asString)
+      //val eb = ExamplesBank(res.map(c => InOutExample(Seq(c._1), Seq(c._2))), Nil)
+      //println(eb.asString("Tests"))
+
       
       if(this.keepAbstractExamples) res.map(expand) else res
     }

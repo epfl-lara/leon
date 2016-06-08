@@ -185,7 +185,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
 
             val cnstr = andJoin(cnstrs)
 
-            println("Constraint: "+cnstr.asString)
+            //println("Constraint: "+cnstr.asString)
 
             val solver = solverf.getNewSolver()
             try {
@@ -193,7 +193,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               solver.check match {
                 case Some(true) =>
                   val model = solver.getModel
-                  println("Model: "+model.asString)
+                  //println("Model: "+model.asString)
 
                   val freeValuations = free.flatMap { id =>
                     model.get(id).map {
@@ -209,6 +209,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                         case (envValuation, FiniteLambda(values, _, _)) =>
                           values.flatMap {
                             case (ins, out) =>
+                              //println("Test:")
+                              //println(s"$ins  --->  $out")
 
                               /* Given a model with Fgen(env*)(X) -> Y,
                                * we check if we can use ''(env*, X) -> Y'' as
@@ -223,6 +225,10 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                               solver2.assertCnstr(not(equality(Application(f, ins), out)))
 
                               val isUnique = solver2.check == Some(false)
+                              //println("IsUnique? "+isUnique)
+                              //if (!isUnique) {
+                              //  println("Alternative: "+solver2.getModel.asString)
+                              //}
                               solverf.reclaim(solver2)
 
                               if (isUnique) {
@@ -232,7 +238,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                               }
                           }
                         }
-                    case _ =>
+                    case res =>
+                      //println("Model of "+fgen+": "+res)
                       Nil
                   }
 
