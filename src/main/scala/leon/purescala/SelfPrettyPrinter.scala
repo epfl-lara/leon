@@ -121,7 +121,7 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
       }
     }
     
-    /** Adds the possibility to have holes in expression */
+    /** How to fill the arguments for user-defined pretty-printers */
     override def getPrintersForType(t: TypeTree)(implicit ctx: LeonContext, program: Program) = t match {
       case FunctionType(Seq(StringType), StringType) => // Should have one argument.
         val s = FreshIdentifier("s", StringType) // verify the type
@@ -129,6 +129,33 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
       case StringType => 
         val const = FreshIdentifier("const", StringType)
         Some(Stream((Variable(const), List(const))))
+      case TupleType(targs) =>
+        def convertPrinters(ts: Seq[TypeTree]): Option[Seq[Stream[(Expressions.Expr, List[Common.Identifier])]]] = {
+          ts match {
+            case Nil => Some(Seq())
+            case t::tail =>
+              getPrintersForType(t).flatMap(current =>
+                convertPrinters(tail).map(remaining =>
+                  current +: remaining))
+          }
+        }
+        convertPrinters(targs) match {
+          case None => None
+          case Some(t) =>
+            val regrouped = leon.utils.StreamUtils.cartesianProduct(t)
+            val result = regrouped.map{lst =>
+              val identifiers = lst.flatMap(_._2)
+              val lambdas = lst.collect{ case (l: Lambda, _) => l}
+              val valdefs = lambdas.flatMap(_.args)
+              val bodies = lst.map{ case (l: Lambda, _) => l.body case (e, _) => e }
+              if(valdefs.isEmpty) {
+                (Tuple(bodies), identifiers)
+              } else {
+                (Lambda(valdefs, Tuple(bodies)), identifiers)
+              }
+            }
+            Some(result)
+        }
       case _ => super.getPrintersForType(t)
     }
     
