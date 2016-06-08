@@ -10,7 +10,7 @@ import solvers.theories._
 import purescala.Definitions.Program
 
 class SMTLIBCVC4Solver(context: SolverContext, program: Program)
-  extends SMTLIBSolver(context, program, new BagEncoder(context.context, program))
+  extends SMTLIBSolver(context, program, new BagEncoder(context.context, program) >> new ArrayEncoder(context.context, program))
      with SMTLIBCVC4Target
      with cvc4.CVC4Solver {
 

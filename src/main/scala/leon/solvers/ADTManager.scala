@@ -127,20 +127,6 @@ class ADTManager(ctx: LeonContext) {
         discovered += (t -> DataType(freshId("Unit"), Seq(Constructor(freshId("Unit"), t, Nil))))
       }
 
-    case at @ ArrayType(base) =>
-      if (!(discovered contains t) && !(defined contains t)) {
-        val sym = freshId("array")
-
-        val c = Constructor(freshId(sym.name), at, List(
-          (freshId("size"), Int32Type),
-          (freshId("content"), RawArrayType(Int32Type, base))
-        ))
-
-        discovered += (at -> DataType(sym, Seq(c)))
-
-        findDependencies(base)
-      }
-
     case tp @ TypeParameter(id) =>
       if (!(discovered contains t) && !(defined contains t)) {
         val sym = freshId(id.name)

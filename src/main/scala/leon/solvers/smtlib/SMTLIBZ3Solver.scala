@@ -16,6 +16,6 @@ import _root_.smtlib.theories.Core.{Equals => _, _}
 import theories._
 
 class SMTLIBZ3Solver(sctx: SolverContext, program: Program)
-  extends SMTLIBSolver(sctx, program, new StringEncoder(sctx.context, program))
+  extends SMTLIBSolver(sctx, program, new StringEncoder(sctx.context, program) >> new ArrayEncoder(sctx.context, program))
      with SMTLIBZ3Target
      with z3.Z3Solver
