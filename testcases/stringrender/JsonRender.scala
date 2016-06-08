@@ -12,16 +12,19 @@ import leon.collection.ListOps._
 import leon.lang.synthesis._
 
 object JsonRender {
-  abstract class JValue
-  abstract class JCompositeValue extends JValue
-  abstract class JFinalValue extends JValue
-  case class JDict(values: List[(String, JValue)]) extends JCompositeValue
-  case class JArray(values: List[JValue]) extends JCompositeValue
+  abstract class JSON
+  abstract class JCompositeValue extends JSON
+  abstract class JFinalValue extends JSON
+  case class JDict(values: List[(String, JSON)]) extends JCompositeValue
+  case class JArray(values: List[JSON]) extends JCompositeValue
   case class JString(value: String) extends JFinalValue
   case class JBoolean(value: Boolean) extends JFinalValue
   case class JInt(value: Int) extends JFinalValue
   
-  def json_render(j: JValue): String = {
+  def JStringToString(j: JString) = "\"" + StrOps.escape(j.value) + "\""
+  
+  /** Synthesize this function by example to have a JSON serializer. */
+  def json_render(j: JSON): String = {
     ???[String] ask j
   }
 }
