@@ -9,19 +9,18 @@ import leon.purescala.Expressions._
   * Travers in parallel two trees. Instead of comparing Class like in ClassTree, we directly compute a score of the pair
   * like in ScoreTree. This allow the most flexible comparison.
   *
-  * Additionally, we will handle holes like "???" of "choose", and try to assign them an expression of the other tree.
+  * Additionally, we will handle holes like "???" or "choose", and try to assign them an expression of the other tree.
   *
-  * For practical reasons, we suppose that "base" trees (i.e. tree extracted from examples collection, always first in
-  * function arguments) have no holes. Indeed, these trees are suppose to come from a valid collection with which the
-  * user compare its "draft" tree.
+  * For practical reasons, we suppose that corpus trees (i.e. tree extracted from examples collection) have no holes.
+  * Indeed, these trees are suppose to come from a valid collection with which the user compare its "draft" tree.
   */
 object ComparatorDirectScoreTree extends Comparator{
   override val name: String = "DirectScoreTree"
 
   case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)
 
-  override def compare(expr_base: Expr, expr: Expr): (Double, String) = {
-    val roots = possibleRoots(expr_base, expr)
+  override def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
+    val roots = possibleRoots(expr_corpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")
 
@@ -39,31 +38,32 @@ object ComparatorDirectScoreTree extends Comparator{
     * This is kind of a local optimization, instead of creating all possibles trees (what would be enormous).
     * The threshold can be modified.
     *
-    * @param exprsBase
-    * @param exprs
+    * @param exprsA
+    * @param exprsB
     * @return
     */
-  def pairOfMatchingExpr(exprsBase: List[Expr], exprs: List[Expr]): List[(Expr, Expr, Double)] = {
+  def pairOfMatchingExpr(exprsA: List[Expr], exprsB: List[Expr]): List[(Expr, Expr, Double)] = {
     val pairOfExprs = for {
-        expBase <- exprsBase
-        exp <- exprs
-      if computeScore(expBase, exp) > 0.0
+        exprA <- exprsA
+        exprB <- exprsB
+        score = computeScore(exprA, exprB)
+      if score > 0.0
     } yield {
-      (expBase, exp, computeScore(expBase, exp))
+      (exprA, exprB, score)
     }
 
     pairOfExprs
   }
 
-  def possibleRoots(exprBase: Expr, expr: Expr): List[(Expr, Expr, Double)] = {
-    val exprsBase = collectExpr(exprBase)
-    val exprs = collectExpr(expr)
+  def possibleRoots(exprA: Expr, exprB: Expr): List[(Expr, Expr, Double)] = {
+    val exprsA = collectExpr(exprA)
+    val exprsB = collectExpr(exprB)
 
-    pairOfMatchingExpr(exprsBase, exprs)
+    pairOfMatchingExpr(exprsA, exprsB)
   }
 
-  def findPairOfMatchingChildren(childrenBase: List[Expr], children: List[Expr]): List[(Expr, Expr, Double)] =
-    pairOfMatchingExpr(childrenBase, children)
+  def findPairOfMatchingChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr, Double)] =
+    pairOfMatchingExpr(childrenA, childrenB)
 
 
 
@@ -75,13 +75,13 @@ object ComparatorDirectScoreTree extends Comparator{
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
   def possibleTrees(value: (Expr, Expr, Double)): List[myTree[(Expr, Expr, Double)]] = {
-    val exprBase = value._1
-    val expr = value._2
-    val childrenBase = getChildren(exprBase)
-    val children = getChildren(expr)
+    val exprA = value._1
+    val exprB = value._2
+    val childrenA = getChildren(exprA)
+    val childrenB = getChildren(exprB)
 
 
-    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenBase, children)
+    val pairOfMatchingChildren = findPairOfMatchingChildren(childrenA, childrenB)
     val combinationOfChildren = combineChildren(pairOfMatchingChildren)
 
 
@@ -122,10 +122,6 @@ object ComparatorDirectScoreTree extends Comparator{
 
 
   /** All possible combination of pairs of children, given the condition that one child can only be used once.
-    *
-    * IMPROVEMENT: Here, it would be possible to already filter some cases.
-    * When we do the combination, we try all cases, using one pair of matching, two, three, ... we could only keep the
-    * ones using maximum of possible children, as we only want the biggest tree.
     *
     * @param pairs
     * @return

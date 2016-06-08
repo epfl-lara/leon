@@ -20,22 +20,19 @@ import leon.purescala.Types.{ClassType, TypeTree}
 object ComparatorByScoreTree extends Comparator {
   override val name: String = "ScoreTree"
 
-
-
-  def compare(expr_base: Expr, expr: Expr): (Double, String) = {
-    val pairOfRoots = ComparatorByClassTree.possibleRoots(expr_base, expr)
-
-    val allPossibleTrees = pairOfRoots.flatMap(ComparatorByClassTree.possibleTrees(_))
+  def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
+    val pairOfRoots = ComparatorByClassTree.possibleRoots(expr_corpus, expr)
+    val allPossibleTrees = pairOfRoots flatMap ComparatorByClassTree.possibleTrees
     if (allPossibleTrees == Nil) return (0.0, "")
-    val biggest = allPossibleTrees.sortBy(-_.size).head
 
+    val biggest = allPossibleTrees.sortBy(-_.size).head
     val score: Double = computeScore(biggest)
     val normalizedScore = normalize(score, biggest.size)
 
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_base, expr)
+      println("Expressions: ", expr_corpus, expr)
       println("---------------------")
     }
 
@@ -73,18 +70,16 @@ object ComparatorByScoreTree extends Comparator {
     tree.children.foldLeft(score)( (acc, child) => acc * computeScore(child))
   }
 
-  // TODO
   /**
-    * compare only the MatchCases conditions, not the returned value, which are compared through main compareExp
-    * function
+    * Compare only the MatchCases conditions
     *
     * @return
     */
   def scoreMatchExpr(x: MatchExpr, y: MatchExpr): Double = {
-    def scoreMatchCase(casesB: Seq[MatchCase], cases: Seq[MatchCase]): Double = {
+    def scoreMatchCase(casesA: Seq[MatchCase], casesB: Seq[MatchCase]): Double = {
+      val mapCasesA = toMap(casesA)
       val mapCasesB = toMap(casesB)
-      val mapCases = toMap(cases)
-      scoreMapMatchCase(mapCasesB, mapCases)
+      scoreMapMatchCase(mapCasesA, mapCasesB)
     }
 
     /**
@@ -97,13 +92,13 @@ object ComparatorByScoreTree extends Comparator {
       *
       * NEXT: take into account invoked expression
       *
+      * @param mapCasesA
       * @param mapCasesB
-      * @param mapCases
       * @return
       */
-    def scoreMapMatchCase(mapCasesB: Map[Tree, Expr], mapCases: Map[Tree, Expr]): Double = {
-      val all = mapCasesB.keys.size + mapCases.keys.size.toDouble
-      val diff = ((mapCasesB.keySet -- mapCases.keySet) ++ (mapCases.keySet -- mapCasesB.keySet)).size.toDouble
+    def scoreMapMatchCase(mapCasesA: Map[Tree, Expr], mapCasesB: Map[Tree, Expr]): Double = {
+      val all = mapCasesA.keys.size + mapCasesB.keys.size.toDouble
+      val diff = ((mapCasesA.keySet -- mapCasesB.keySet) ++ (mapCasesB.keySet -- mapCasesA.keySet)).size.toDouble
       (all - diff) / all
     }
 

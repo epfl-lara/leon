@@ -8,6 +8,8 @@ import leon.purescala.Types.{ClassType, TypeTree}
 
 /**
   * Created by joachimmuth on 02.06.16.
+  *
+  * This object contains all the scoring method to handle different cases
   */
 object Scores {
 

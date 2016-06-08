@@ -6,34 +6,27 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
 /**
   * Created by joachimmuth on 25.04.16.
   *
-  * This way of basic comparison flat both functional tree into lists and compare them in every possible combination.
+  * This way of basic comparison flat both functional trees into lists and compare them in every possible combination.
   *
-  * The easy-to-understand way of working provide a point of comparison for further advanced method.
+  * The easy-to-understand way of working provides a point of comparison for further advanced method.
   *
-  * "foo_base" always represent the item extracted from the base of exemple and is always put in first, in order
-  * to avoid confusion
+  * For clarity, we always pass "corpus function" first in argument
   */
 object ComparatorByExprList extends Comparator {
   val name = "ExprList"
-  /**
-    * Compare two functions using different method
-    *
-    * @param expr_base
-    * @param expr
-    * @return
-    */
-  def compare(expr_base: Expr, expr: Expr)= {
-    val listExpr_base = collectExpr(expr_base)
-    val listExpr = collectExpr(expr)
 
-    val numberOfSimilarExpr: Int = pairsOfSimilarExp(listExpr_base, listExpr)
+  def compare(expr_corpus: Expr, expr: Expr)= {
+    val exprsA = collectExpr(expr_corpus)
+    val exprsB = collectExpr(expr)
 
-    val score = Utils.matchScore(numberOfSimilarExpr, listExpr.size, listExpr_base.size)
+    val numberOfSimilarExpr: Int = pairsOfSimilarExp(exprsA, exprsB)
+
+    val score = Utils.matchScore(numberOfSimilarExpr, exprsA.size, exprsB.size)
 
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_base, expr)
+      println("Expressions: ", expr_corpus, expr)
       println("similar expr: ", numberOfSimilarExpr)
       println("---------------------")
     }
@@ -42,20 +35,23 @@ object ComparatorByExprList extends Comparator {
   }
 
 
-  def pairsOfSimilarExp(listExpr_base: List[Expr], listExpr: List[Expr]): Int = {
-    def helper(listExpr_base: List[Expr], listExpr: List[Expr], acc: Int): Int = listExpr match {
+  def pairsOfSimilarExp(exprs_corpus: List[Expr], exprs: List[Expr]): Int = {
+    def helper(exprs_corpus: List[Expr], exprs: List[Expr], acc: Int): Int = exprs match {
       case Nil => acc
-      case x::xs if listExpr_base.contains(x) => helper(listExpr_base diff List(x), xs, acc + 1)
-      case x::xs => helper(listExpr_base, xs, acc)
+      case x::xs if exprs_corpus.contains(x) => helper(exprs_corpus diff List(x), xs, acc + 1)
+      case x::xs => helper(exprs_corpus, xs, acc)
     }
 
-    val normalizedListExpr_base = listExpr_base.map(normalizeStructure(_))
-    val normalizedListExpr = listExpr.map(normalizeStructure(_))
-    helper(normalizedListExpr_base, normalizedListExpr, 0)
+    val normalizedExprsA = exprs_corpus.map(normalizeStructure(_))
+    val normalizedExprsB = exprs.map(normalizeStructure(_))
+    helper(normalizedExprsA, normalizedExprsB, 0)
   }
 
 
   /**
+    * TO BE DELETED ???
+    * --> used in ScoreTree method ???
+    *
     * Extract a map from a PatternMatch function (match...case) in order to be comparable without caring about the
     * order
     * (waring: this comparison make sense only if the MatchCases are exclusives)
