@@ -1,6 +1,9 @@
 package leon.comparison
 
+import leon.purescala.Common.Identifier
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
+import leon.purescala.ExprOps
+import leon.purescala.ExprOps._
 import leon.purescala.Expressions._
 import leon.purescala.Types.{ClassType, TypeTree}
 
@@ -8,6 +11,28 @@ import leon.purescala.Types.{ClassType, TypeTree}
   * Created by joachimmuth on 25.04.16.
   */
 object Utils {
+
+  /**
+    * Method to handle update made recently that changed argument and output of ExprOps.normalizeStructure
+    * @param expr
+    * @return
+    */
+  def normalizeStructure(expr: Expr): Expr = {
+    val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
+      (expr, idSeqs) => idSeqs.foldLeft(expr match {
+        case Lambda(args, _) => args.map(_.id)
+        case Forall(args, _) => args.map(_.id)
+        case LetDef(fds, _) => fds.flatMap(_.paramIds)
+        case Let(i, _, _) => Seq(i)
+        case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
+        case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
+        case Variable(id) => Seq(id)
+        case _ => Seq.empty[Identifier]
+      })((acc, seq) => acc ++ seq)
+    } (expr).distinct
+
+    ExprOps.normalizeStructure(allVars, expr)._2
+  }
 
 
 

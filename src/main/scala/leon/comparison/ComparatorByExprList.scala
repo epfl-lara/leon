@@ -50,8 +50,8 @@ object ComparatorByExprList extends Comparator {
       case x::xs => helper(listExpr_base, xs, acc)
     }
 
-    val normalizedListExpr_base = listExpr_base.map(ExprOps.normalizeStructure(_)._1)
-    val normalizedListExpr = listExpr.map(ExprOps.normalizeStructure(_)._1)
+    val normalizedListExpr_base = listExpr_base.map(normalizeStructure(_))
+    val normalizedListExpr = listExpr.map(normalizeStructure(_))
     helper(normalizedListExpr_base, normalizedListExpr, 0)
   }
 
@@ -94,8 +94,8 @@ object ComparatorByExprList extends Comparator {
 
   // IDEE: comparer les types plutôt que les pattern complet des match case, et éventuellement oublié les optGuard
   def compareExpr(expr_base: Expr, expr: Expr): Boolean = {
-    val expr_base_norm = ExprOps.normalizeStructure(expr_base)._1
-    val expr_norm = ExprOps.normalizeStructure(expr)._1
+    val expr_base_norm = normalizeStructure(expr_base)
+    val expr_norm = normalizeStructure(expr)
 
 //    (expr_base_norm, expr_norm) match {
 //      case (MatchExpr(_, cases_base), MatchExpr(_, cases)) =>

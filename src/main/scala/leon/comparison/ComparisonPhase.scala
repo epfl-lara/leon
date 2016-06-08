@@ -31,7 +31,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   val print = false
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
-    val debugFlag = ctx.findOption(SharedOptions.optDebug)
+    val debugFlag = ctx.findOption(GlobalOptions.optDebug)
     debug = if (debugFlag.isDefined) {
       ctx.reporter.info("Debug mode")
       true
@@ -81,7 +81,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     * */
   def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
-    val filterFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
+    val filterFuns: Option[Seq[String]] = ctx.findOption(GlobalOptions.optFunctions)
     val fdFilter = {
       import OptionsHelpers._
 
