@@ -417,44 +417,6 @@ trait AbstractZ3Solver extends Z3Solver {
         val tester = testers.toB(cct)
         tester(rec(e))
 
-      case al @ ArraySelect(a, i) =>
-        val tpe = normalizeType(a.getType)
-
-        val sa = rec(a)
-        val content = selectors.toB((tpe, 1))(sa)
-
-        z3.mkSelect(content, rec(i))
-
-      case al @ ArrayUpdated(a, i, e) =>
-        val tpe = normalizeType(a.getType)
-
-        val sa = rec(a)
-        val ssize    = selectors.toB((tpe, 0))(sa)
-        val scontent = selectors.toB((tpe, 1))(sa)
-
-        val newcontent = z3.mkStore(scontent, rec(i), rec(e))
-
-        val constructor = constructors.toB(tpe)
-
-        constructor(ssize, newcontent)
-
-      case al @ ArrayLength(a) =>
-        val tpe = normalizeType(a.getType)
-        val sa = rec(a)
-        selectors.toB((tpe, 0))(sa)
-
-      case arr @ FiniteArray(elems, oDefault, length) =>
-        val at @ ArrayType(base) = normalizeType(arr.getType)
-        typeToSort(at)
-
-        val default = oDefault.getOrElse(simplestValue(base))
-
-        val ar = rec(RawArrayValue(Int32Type, elems.map {
-          case (i, e) => IntLiteral(i) -> e
-        }, default))
-
-        constructors.toB(at)(rec(length), ar)
-
       case f @ FunctionInvocation(tfd, args) =>
         z3.mkApp(functionDefToDecl(tfd), args.map(rec): _*)
 
@@ -505,6 +467,10 @@ trait AbstractZ3Solver extends Z3Solver {
         val withNeg = z3.mkArrayMap(minus, rec(b1), rec(b2))
         z3.mkArrayMap(div, z3.mkArrayMap(plus, withNeg, z3.mkArrayMap(abs, withNeg)), all2)
 
+      case al @ RawArraySelect(a, i) =>
+        z3.mkSelect(rec(a), rec(i))
+      case al @ RawArrayUpdated(a, i, e) =>
+        z3.mkStore(rec(a), rec(i), rec(e))
       case RawArrayValue(keyTpe, elems, default) =>
         val ar = z3.mkConstArray(typeToSort(keyTpe), rec(default))
 

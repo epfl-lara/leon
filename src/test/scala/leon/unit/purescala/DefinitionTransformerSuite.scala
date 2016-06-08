@@ -59,4 +59,75 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
 
   }
 
+
+  test("transforming function invocation update FunDef used in the call only") {
+    val originalFd = fd1
+    val tr1 = new DefinitionTransformer {
+      override def transformType(t: TypeTree): Option[TypeTree] = t match {
+        case IntegerType => Some(BooleanType)
+        case _ => None
+      }
+    }
+
+    val fi = FunctionInvocation(originalFd.typed, Seq(IntLiteral(3)))
+    val nfi = tr1.transform(fi)(Map())
+    nfi match {
+      case FunctionInvocation(nfd, Seq(arg)) => {
+        assert(nfd.fd !== originalFd)
+        assert(nfd.fd.params.size === 1)
+        assert(nfd.fd.params(0).getType === BooleanType) 
+        assert(originalFd.params.size === 1)
+        assert(originalFd.params(0).getType === IntegerType)
+      }
+      case _ => assert(false)
+    }
+    
+    //yes, that is because we didn't specify a mapping for IntLiteral to Booleans. 
+    //The system is expected to not crash, and still perform the transformation.
+    //In practice, one could then perform additional transformation using other means in
+    //order to fix the program
+    assert(nfi.getType === Untyped)
+  }
+
+  private val instanceA = FreshIdentifier("a", classA.typed)
+  private val fd4 = new FunDef(FreshIdentifier("f4"), Seq(), Seq(ValDef(instanceA)), IntegerType)
+  fd4.body = Some(bi(42))
+  private val fd5 = new FunDef(FreshIdentifier("f5"), Seq(), Seq(ValDef(x.id)), IntegerType)
+  fd5.body = Some(FunctionInvocation(fd4.typed, Seq(CaseClass(classA.typed, Seq()))))
+
+  test("transforming function invocation update FunDef and transitive defs") {
+    val tr1 = new DefinitionTransformer {
+      override def transformType(t: TypeTree): Option[TypeTree] = t match {
+        case IntegerType => Some(BooleanType)
+        case _ => None
+      }
+    }
+
+    val fi = FunctionInvocation(fd5.typed, Seq(IntLiteral(3)))
+    val nfi = tr1.transform(fi)(Map())
+    nfi match {
+      case FunctionInvocation(nfd, Seq(arg)) => {
+        assert(nfd.fd !== fd5)
+        assert(nfd.fd.params.size === 1)
+        assert(nfd.fd.params(0).getType === BooleanType) 
+
+        assert(nfd.body.nonEmpty)
+        nfd.fd.body.foreach(bd => bd match {
+          case FunctionInvocation(nfd2, Seq(_)) => {
+            assert(nfd2.fd !== fd4)
+            assert(nfd2.fd.params.size === 1)
+            nfd2.fd.params(0).getType match {
+              case CaseClassType(ccd, Seq()) =>
+                println(ccd)
+                assert(ccd !== classA)
+                assert(ccd.fields.size === 1)
+                assert(ccd.fields(0).getType === BooleanType)
+              case _ => assert(false)
+            }
+          }
+        })
+      }
+      case _ => assert(false)
+    }
+  }
 }
