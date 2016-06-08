@@ -13,9 +13,6 @@ import leon.purescala.Types.{ClassType, TypeTree}
   */
 object Scores {
 
-
-
-  // TODO
   /**
     * compare only the MatchCases conditions, not the returned value, which are compared through main compareExp
     * function

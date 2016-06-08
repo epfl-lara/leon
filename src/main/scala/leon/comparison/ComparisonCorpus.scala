@@ -1,6 +1,7 @@
 package leon.comparison
 
 import java.io.File
+import java.nio.file.{Paths, Files}
 
 import leon.LeonContext
 import leon.frontends.scalac.ExtractionPhase
@@ -17,7 +18,7 @@ import leon.utils.PreprocessingPhase
 case class ComparisonCorpus(ctx: LeonContext, folder: String) {
 
   val program: Program = extraction(recursiveListFilesInString(folder))
-  val listFunDef: List[FunDef] = extractListFunDef()
+  val funDefs: List[FunDef] = extractFunDefs()
 
   def extraction(files: List[String]): _root_.leon.purescala.Definitions.Program = {
     val extraction =  ExtractionPhase andThen new PreprocessingPhase(false)
@@ -25,7 +26,7 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
     prog
   }
 
-  def extractListFunDef(): List[FunDef] = ComparisonPhase.getFunDef(ctx, program)
+  def extractFunDefs(): List[FunDef] = ComparisonPhase.getFunDef(ctx, program)
 
 
   def recursiveListFiles(f: File): List[File] = {
@@ -34,6 +35,11 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
   }
 
   def recursiveListFilesInString(f: String): List[String] = {
+    if(! Files.exists(Paths.get(f))) {
+      ctx.reporter.error("Path of corpus folder doesn't exist: " + f)
+      ctx.reporter.error("Program aborted")
+      java.lang.System.exit(0)
+    }
     val file = new File(f)
     recursiveListFiles(file).map(f => f.getCanonicalPath)
   }

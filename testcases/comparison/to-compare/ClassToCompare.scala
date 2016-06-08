@@ -19,7 +19,7 @@ object ClassToCompare {
 
   def hole_match_value(x:Int): Char = x match {
     case 1 => 'a'
-    case 2 => ???[Char]
+    case 2 => ??? [Char]
   }
 
 

@@ -1,7 +1,8 @@
 package leon
 package comparison
 
-import leon.purescala.Definitions.{FunDef, Program}
+import leon.purescala.Definitions._
+import leon.purescala.Expressions._
 
 /**
   * Created by joachimmuth on 23.03.16.
@@ -31,17 +32,20 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     } else false
 
 
-    val corpus = ComparisonCorpus(ctx, "testcases/comparison/base/")
-    val listFunDef_corpus = corpus.listFunDef.tail
-    val listFunDef = getFunDef(ctx, program).tail
+    val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus/")
+    val funDefs_corpus = corpus.funDefs.tail filter hasBody
+    val funDefs = getFunDef(ctx, program).tail filter hasBody
 
 
     // contain pair of function compared and score given by each comparator
     // a space is let for a comment string, for example size of common tree for DirectScoreTree comparator
-    val comparison = combinationOfFunDef(listFunDef_corpus, listFunDef)
+    val comparison = combinationOfFunDef(funDefs_corpus, funDefs)
+
+    val autocompletedHole = funDefs filter hasHole map(fun => Completor.suggestHole(fun.body.get, corpus))
 
     ComparisonReport(ctx, program, corpus, comparatorsNames, comparison)
   }
+
 
 
 
@@ -84,4 +88,13 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     }
     program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
   }
+
+  def hasBody(funDef: FunDef): Boolean = funDef.body match {
+    case Some(b) => true
+    case None => false
+  }
+
+  def hasHole(funDef: FunDef): Boolean =
+    Utils.collectExpr(funDef.body.get) exists(e => e.isInstanceOf[Hole] || e.isInstanceOf[Choose])
+
 }
