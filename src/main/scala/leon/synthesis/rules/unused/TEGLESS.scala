@@ -27,7 +27,7 @@ case object TEGLESS extends TEGISLike("TEGLESS") {
     }
 
     TegisParams(
-      grammar = Grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p),
       rootLabel = { (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides)) }
     )
   }

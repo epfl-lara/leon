@@ -17,7 +17,7 @@ import bonsai.enumerators._
 
 case object BottomUpTEGIS extends BottomUpTEGISLike("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
-    Grammars.default(sctx, p)
+    grammars.default(sctx, p)
   }
 
   def getRootLabel(tpe: TypeTree): Label = Label(tpe)

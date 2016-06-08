@@ -18,6 +18,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optCostModel    = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
   val optDerivTrees   = LeonFlagOptionDef("derivtrees", "Generate derivation trees", false)
   val optAllowPartial = LeonFlagOptionDef("partial", "Allow partial solutions", true)
+  val optIntroduceRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of CEGIS", true)
 
   // CEGIS options
   val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
@@ -26,8 +27,8 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 7L, "N")
 
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
-    optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo,
-    optCEGISNaiveGrammar, optCEGISMaxSize, optAllowPartial
+    optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls,
+    optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
@@ -56,7 +57,7 @@ object SynthesisPhase extends UnitPhase[Program] {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar)),
+      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar), ctx.findOptionOrDefault(optIntroduceRecCalls)),
       manualSearch = ms,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),

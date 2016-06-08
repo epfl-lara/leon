@@ -34,9 +34,9 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false)
+  def all: List[Rule] = all(false, false)
   /** Returns the list of all available rules for synthesis */
-  def all(naiveGrammar: Boolean): List[Rule] = List[Rule](
+  def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = List[Rule](
     StringRender,
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
@@ -55,12 +55,11 @@ object Rules {
     OptimisticGround,
     GenericTypeEqualitySplit,
     InequalitySplit,
-    IntroduceRecCalls,
     rules.Assert,
     DetupleInput,
     ADTSplit,
     InnerCaseSplit
-  )
+  ) ++ introduceRecCalls.option(IntroduceRecCalls)
 
 }
 

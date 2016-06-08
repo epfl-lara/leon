@@ -6,13 +6,12 @@ package rules
 
 import leon.grammars._
 import leon.grammars.aspects._
-import purescala.Types.TypeTree
 
 /** Basic implementation of CEGIS that uses a naive grammar */
 case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
-      grammar = Grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p),
       rootLabel = Label(_),
       optimizations = false
     )
@@ -25,7 +24,7 @@ case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
 case object CEGIS extends CEGISLike("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     CegisParams(
-      grammar = Grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p),
       rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
       optimizations = true
     )
