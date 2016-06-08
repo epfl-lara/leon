@@ -31,7 +31,8 @@ object Main {
       invariant.engine.InferInvariantsPhase,
       laziness.LazinessEliminationPhase,
       genc.GenerateCPhase,
-      genc.CFileOutputPhase
+      genc.CFileOutputPhase,
+      comparison.ComparisonPhase
     )
   }
 
@@ -211,7 +212,7 @@ object Main {
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
-        else if (comparisonF) ComparisonPhase
+        else if (comparisonF) ComparisonPhase andThen PrintReportPhase
         else {
           verification
         }

@@ -1,15 +1,16 @@
 package leon.comparison
 
 import leon.purescala.Definitions.{FunDef, Program}
-import leon.{LeonContext}
+import leon.LeonContext
 import leon.utils.ASCIIHelpers._
+import leon.utils.Report
 
 /**
   * Created by joachimmuth on 23.03.16.
   *
   */
 case class ComparisonReport(ctx: LeonContext, base: ComparisonBase, program : Program, comparatorsName: List[String],
-listFD: List[(FunDef, FunDef, List[(Double, String)])]) {
+listFD: List[(FunDef, FunDef, List[(Double, String)])]) extends Report {
 
   def summaryString : String = {
 
