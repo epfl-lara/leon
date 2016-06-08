@@ -20,13 +20,25 @@ case object ValueGrammar extends SimpleExpressionGrammar {
       List(
         terminal(IntLiteral(0), Tags.Zero),
         terminal(IntLiteral(1), Tags.One),
-        terminal(IntLiteral(5), Tags.Constant)
+        terminal(IntLiteral(5), Tags.Constant),
+        terminal(IntLiteral(-1), Tags.Constant, 3),
+        terminal(IntLiteral(2),  Tags.Constant, 3),
+        terminal(IntLiteral(3),  Tags.Constant, 3),
+        terminal(IntLiteral(-2), Tags.Constant, 5),
+        terminal(IntLiteral(4),  Tags.Constant, 5),
+        terminal(IntLiteral(10), Tags.Constant, 5)
       )
     case IntegerType =>
       List(
         terminal(InfiniteIntegerLiteral(0), Tags.Zero),
         terminal(InfiniteIntegerLiteral(1), Tags.One),
-        terminal(InfiniteIntegerLiteral(5), Tags.Constant)
+        terminal(InfiniteIntegerLiteral(5), Tags.Constant),
+        terminal(InfiniteIntegerLiteral(-1), Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(2),  Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(3),  Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(-2), Tags.Constant, 5),
+        terminal(InfiniteIntegerLiteral(4),  Tags.Constant, 5),
+        terminal(InfiniteIntegerLiteral(10), Tags.Constant, 5)
       )
     case CharType =>
       List(
@@ -46,7 +58,10 @@ case object ValueGrammar extends SimpleExpressionGrammar {
         terminal(StringLiteral(""), Tags.Constant),
         terminal(StringLiteral("a"), Tags.Constant),
         terminal(StringLiteral("foo"), Tags.Constant),
-        terminal(StringLiteral("bar"), Tags.Constant)
+        terminal(StringLiteral("bar"), Tags.Constant),
+        terminal(StringLiteral("b"), Tags.Constant, 3),
+        terminal(StringLiteral("c"), Tags.Constant, 3),
+        terminal(StringLiteral("d"), Tags.Constant, 3)
       )
 
     case tp: TypeParameter =>
