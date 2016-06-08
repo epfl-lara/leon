@@ -69,19 +69,6 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => time <= 1)
 
-  // deps and it's lemmas
-  // def deps(j: BigInt, K: BigInt): Boolean = {
-  //   require(j >= 0 && K >= 0)
-  //   if(j <= 0) true
-  //   else viterbiCached(0, j - 1, K)
-  // }
-
-  // def viterbiCached(l: BigInt, j: BigInt, K: BigInt): Boolean = {
-  //   require(l >= 0 && j >= 0 && K >= l)
-  //   viterbi(l, j, K).cached && {
-  //   if(l == K) true
-  //   else viterbiCached(l + 1, j, K)} 
-  // }
 
 	def deps(j: BigInt, K: BigInt): Boolean = {
 		require(j >= 0 && K >= 0)
@@ -103,7 +90,7 @@ object Viterbi {
 		if(i <= 0) true
 		else columnCached(i - 1, j, K)
 		}
-   	}
+  }
 
 	@traceInduct
   	def columnMono(i: BigInt, j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
@@ -132,29 +119,6 @@ object Viterbi {
 		(columnMono(K, j, K, st1, st2) && (j <= 0 || columnsCachedfromMono(j - 1, K, st1, st2))) &&
 		((st1.subsetOf(st2) && (columnsCachedfrom(j, K) withState st1)) ==> (columnsCachedfrom(j, K) withState st2))
 	} holds
-
-	/*@traceInduct
-	def depsMono(j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
-		require(j >= 0 && K >= 0)    
-		(j <= 0 ||  columnsCachedfromMono(j - 1, K, st1, st2)) &&
-		(st1.subsetOf(st2) && (deps(j, K) withState st1)) ==> (deps(j, K) withState st2)
-	} holds */
-	
-	/*def depsMono(j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
-		require(j >= 0 && K >= 0)    
-		(j <= 0 ||  viterbiMono(K, j - 1, K, st1, st2)) &&
-		(st1.subsetOf(st2) && (deps(j, K) withState st1)) ==> (deps(j, K) withState st2)
-	} holds*/
-
-   	
-
-  /*@traceInduct
-  def cachedLem(l: BigInt, j: BigInt, K: BigInt): Boolean = {
-    require(j >= 0 && l >= 0 && K >= l)
-    (l <= K && viterbiCached(K, j, K)) ==> viterbiCached(l, j, K)    
-  } holds */
-
-
 
   @invstate
   def fillEntry(l: BigInt, i: BigInt, j: BigInt, K: BigInt): BigInt = {
