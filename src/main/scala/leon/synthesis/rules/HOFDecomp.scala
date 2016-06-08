@@ -79,7 +79,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
 
           var freeVariables = Set[Identifier]()
 
-          val altsPerArgs = tfd.params.map { vd =>
+          val altsPerArgs = tfd.params.zipWithIndex.map { case (vd, i) =>
             if (isHOFParam(vd)) {
               // Only one possibility for the HOF argument
               Seq(hofId)
@@ -87,8 +87,17 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               // For normal arguments, we either map to a free variable (and
               // then ask solver for a model), or to an input
 
-              val free = FreshIdentifier("v", vd.getType, true)
-              freeVariables += free
+              val optFree = if (i > 0) {
+                // Hack: First argument is the most important, we should not
+                // obtain its value from a model. We don't want:
+                // Nil.fold(..)
+
+                Some(FreshIdentifier("v", vd.getType, true))
+              } else {
+                None
+              }
+
+              freeVariables ++= optFree
 
               // Note that this is an over-approximation, since
               // Int <: T and
@@ -100,7 +109,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                 p.as.filter(a => canBeSupertypeOf(vd.getType, a.getType).nonEmpty)
               }
 
-              compatibleInputs :+ free
+              compatibleInputs ++ optFree
             }
           }
 

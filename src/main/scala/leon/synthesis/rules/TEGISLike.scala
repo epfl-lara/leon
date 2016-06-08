@@ -12,6 +12,7 @@ import datagen._
 import evaluators._
 import codegen.CodeGenParams
 import leon.grammars._
+import leon.grammars.aspects.Sized
 import leon.utils.GrowableIterable
 
 import scala.collection.mutable.{HashMap => MutableMap}
@@ -22,8 +23,8 @@ abstract class TEGISLike(name: String) extends Rule(name) {
   case class TegisParams(
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
-    enumLimit: Int = 10000,
-    reorderInterval: Int = 50
+    minSize: Int = 3,
+    maxSize: Int = 3
   )
 
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
@@ -45,6 +46,8 @@ abstract class TEGISLike(name: String) extends Rule(name) {
         } else {
           p.qebFiltered.examples
         }
+
+        ci.reporter.debug(ExamplesBank(baseExamples, Nil).asString("Tests"))
 
         val exampleGenerator: Iterator[Example] = if (p.isTestBased) {
           Iterator.empty
@@ -79,17 +82,20 @@ abstract class TEGISLike(name: String) extends Rule(name) {
 
           val timers = hctx.timers.synthesis.rules.tegis
 
-          val allExprs = enum.iterator(params.rootLabel(targetType))
 
-          var candidate: Option[Expr] = None
+          val streams = for(size <- (params.minSize to params.maxSize).toIterator) yield {
+            println("Size: "+size)
+            val label = params.rootLabel(targetType).withAspect(Sized(size))
 
-          def findNext(): Option[Expr] = {
-            candidate = None
+            val allExprs = enum.iterator(label)
+
             timers.generating.start()
-            allExprs.take(params.enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
+
+            val candidates: Iterator[Expr] = allExprs.flatMap { e =>
               val exprToTest = letTuple(p.xs, e, p.phi)
 
               //sctx.reporter.debug("Got expression "+e.asString)
+
               timers.testing.start()
               if (allExamples().forall{
                 case InExample(ins) =>
@@ -99,20 +105,23 @@ abstract class TEGISLike(name: String) extends Rule(name) {
                   println("Evaluating "+e.asString+" with "+ins.map(_.asString))
                   evaluator.eval(e, p.as.zip(ins).toMap).result == Some(tupleWrap(outs))
               }) {
-                candidate = Some(tupleWrap(Seq(e)))
+                timers.testing.stop()
+                Some(tupleWrap(Seq(e)))
+              } else {
+                timers.testing.stop()
+                None
               }
-              timers.testing.stop()
             }
             timers.generating.stop()
 
-            candidate
+            candidates
           }
 
-          val toStream = Stream.continually(findNext()).takeWhile(_.nonEmpty).map( e =>
-            Solution(BooleanLiteral(true), Set(), e.get, isTrusted = p.isTestBased)
-          )
+          val solutions = streams.flatten.map { e =>
+            Solution(BooleanLiteral(true), Set(), e, isTrusted = p.isTestBased)
+          }
 
-          RuleClosed(toStream)
+          RuleClosed(solutions.toStream)
         } else {
           hctx.reporter.debug("No test available")
           RuleFailed()

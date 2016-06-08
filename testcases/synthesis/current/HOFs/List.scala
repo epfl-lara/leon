@@ -209,20 +209,26 @@ object HOFDecomp1 {
 
   def adultsNames(in: List[Person]): List[String] = {
     // in.filter(_.age >= 18).map(_.name)
+    //
+    // in.collect { p =>
+    //  if (p.age >= 18) Some(p.name) else None
+    //}
     ???[List[String]]
   } ensuring {
     out => (in, out) passes {
-      case Cons(Person("Alice", 17), Cons(Person("Bob", 18), Cons(Person("Jane", 12), Cons(Person("Arnold", 22), Nil())))) => Cons("Bob", Cons("Arnold", Nil()))
-      case Cons(Person("Alice", 22), Cons(Person("Bob", 12), Cons(Person("Jane", 32), Cons(Person("Arnold", 42), Nil())))) => Cons("Alice", Cons("Jane", Cons("Arnold", Nil())))
-
-      case Cons(Person(a, 23), Cons(Person(b, 11), Cons(Person(c, 19), Cons(Person(d, 17), Nil())))) => Cons(a, Cons(c, Nil()))
-      case Cons(Person(a, 9), Cons(Person(b, 18), Cons(Person(c, 15), Cons(Person(d, 25), Nil()))))  => Cons(b, Cons(d, Nil()))
-      case Nil()                                         => Nil()
+      case Cons(Person(a, 18), Cons(Person(b, 19), Cons(Person(c, 42),  Cons(Person(d, 20),  Nil())))) => Cons(a, Cons(b, Cons(c, Cons(d, Nil()))))
+      case Cons(Person(a, -5), Cons(Person(b, 19), Cons(Person(c, 17), Cons(Person(d, 18),  Nil()))))  => Cons(b, Cons(d, Nil()))
+      case Cons(Person(a, -2), Cons(Person(b, 17), Cons(Person(c, 16), Cons(Person(d, 0), Nil()))))    => Nil()
+      case Nil()                                                                                       => Nil()
     }
   }
 
   def posNames(in: List[Person]): List[String] = {
     // in.filter(_.age >= 0).map(_.name)
+    //
+    // in.collect { p =>
+    //  if (p.age >= 0) Some(p.name) else None
+    //}
     ???[List[String]]
   } ensuring {
     out => (in, out) passes {
