@@ -1,4 +1,5 @@
-package leon.comparison
+package leon
+package comparison
 
 import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
 import leon._

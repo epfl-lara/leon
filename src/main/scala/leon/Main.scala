@@ -211,10 +211,8 @@ object Main {
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
-        else if (comparisonF) ComparisonPhase andThen PrintReportPhase
-        else {
-          verification
-        }
+        else if (comparisonF) comparison.ComparisonPhase andThen PrintReportPhase
+        else verification
       }
 
       pipeBegin andThen
