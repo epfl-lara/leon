@@ -10,7 +10,7 @@ import collection._
 import invariant._
 
 /**
- * Hint: requires unrollfactor=4, and vcTimeout=35
+ * Hint: requires unrollfactor=4, and vcallocout=35
  * Implementation obtained from ESOP 2015 paper type-based allocation analysis for co-recursion.
  */
 object MergeAndHammingNumbers {
@@ -58,7 +58,7 @@ object MergeAndHammingNumbers {
       case SCons(x, _) =>
         SCons(f(x), Susp(() => mapSusp(f, xs)))
     }
-  } ensuring(time <= ?) // Orb result: 11
+  } ensuring(alloc <= ?) // Orb result: 11
 
   private def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
     map(f, xs.tail)
@@ -78,14 +78,14 @@ object MergeAndHammingNumbers {
   def merge(a: SCons, b: SCons, c: SCons): SCons = {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
-  } ensuring (_ => time <= ?)  // Orb result: 11
+  } ensuring (_ => alloc <= ?)  // Orb result: 11
 
   @invisibleBody
   def force(a: SCons) = {
     a.tail
   } ensuring{_ =>
     val in = inState[BigInt]
-    time <= ? 
+    alloc <= ? 
   }
 
   @invisibleBody
@@ -97,7 +97,7 @@ object MergeAndHammingNumbers {
     merge(nexta, nextb, nextc)
   } ensuring{_ =>
     val in = inState[BigInt]
-   time <= ? 
+   alloc <= ? 
   }
 
   /**
@@ -106,11 +106,11 @@ object MergeAndHammingNumbers {
   @invisibleBody
   def next(f: SCons, s: SCons): SCons = {
     s.tail
-  } ensuring(_ => time <= ?) // Orb result: time <= 250
+  } ensuring(_ => alloc <= ?) // Orb result: alloc <= 250
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
-   * `argChainedStream` will take only linear time.
+   * `argChainedStream` will take only linear alloc.
    */
   @invisibleBody
   def nthElemAfterSecond(n: BigInt, f: SCons, s: SCons): BigInt = {
@@ -120,7 +120,7 @@ object MergeAndHammingNumbers {
         else
           nthElemAfterSecond(n - 1, s, t)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 261 * n - 260
+  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 261 * n - 260
 
    /**
    * A stream generating hamming numbers
@@ -130,11 +130,11 @@ object MergeAndHammingNumbers {
   def hamGen = {
     val hs = this.hamstream
     merge(map(2 * _, hs), map(3 * _, hs), map(5 * _, hs))
-  } ensuring(_ => time <= ?) // Orb result: 63
+  } ensuring(_ => alloc <= ?) // Orb result: 63
 
 
   /**
-   * `nth` hamming number in O(n) time.
+   * `nth` hamming number in O(n) alloc.
    */
   def nthHammingNumber(n: BigInt) = {
     val first = hamstream
@@ -144,5 +144,5 @@ object MergeAndHammingNumbers {
       if(n == 1) second.x
       else nthElemAfterSecond(n, first, second)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n + 6
+  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 84 * n + 6
 }

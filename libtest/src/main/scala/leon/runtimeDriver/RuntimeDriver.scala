@@ -29,19 +29,22 @@ set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
 
 set output "results/${orbOrInst}VsActual${function}10.jpg"
 plot \\
-"<(sed -n '1,20p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
-"<(sed -n '1,20p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
-
-set output "results/${orbOrInst}VsActual${function}100.jpg"
-plot \\
-"<(sed -n '20,40p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
-"<(sed -n '20,40p' results/ops${function}.data)" using 1:2 t'oper' with linespoints,
-
-set output "results/${orbOrInst}VsActual${function}1000.jpg"
-plot \\
-"<(sed -n '40,50p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
-"<(sed -n '40,50p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
+"results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
+"results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
 """
+// "<(sed -n '1,20p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
+// "<(sed -n '1,20p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
+
+// set output "results/${orbOrInst}VsActual${function}100.jpg"
+// plot \\
+// "<(sed -n '20,40p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
+// "<(sed -n '20,40p' results/ops${function}.data)" using 1:2 t'oper' with linespoints,
+
+// set output "results/${orbOrInst}VsActual${function}1000.jpg"
+// plot \\
+// "<(sed -n '40,50p' results/${orbOrInst}${function}.data)" using 1:2 t'${orbOrInst}' with linespoints, \\
+// "<(sed -n '40,50p' results/ops${function}.data)" using 1:2 t'oper' with linespoints, 
+// """
 	}
 
 	def generateLogPlotFile(function: String, size: Int, orbOrInst: String):String = {
@@ -103,7 +106,7 @@ plot \\
 		opsout.close()
 
 		val plotstream = new FileWriter(s"results/plot${function}.gnu")
-    val plotout = new BufferedWriter(plotstream)
+       val plotout = new BufferedWriter(plotstream)
 	  plotout.write(generatePlotFile(function, orbOrInst))
 		plotout.close()
 
@@ -176,6 +179,27 @@ plot \\
     j = 0
 		for(i <- testSize) {
 		  opsout.write(s"${scala.math.log(i.doubleValue)/scala.math.log(2)} ${ops(j)()}\n")
+		  j = j + 1
+		}
+		opsout.close()
+	}
+
+	def dumpdata(testSize: scalaList[Int], ops: List[() => BigInt], orb: List[() => BigInt], function: String, orbOrInst: String) {
+
+	val orbstream = new FileWriter(s"results/${orbOrInst}${function}.data")
+    val orbout = new BufferedWriter(orbstream)
+		var j = 0
+		for(i <- testSize) {
+		  orbout.write(s"${i} ${orb(j)()}\n")
+		  j = j + 1
+		}
+    orbout.close()
+
+    val opsstream = new FileWriter(s"results/ops${function}.data")
+    val opsout = new BufferedWriter(opsstream)
+    j = 0
+		for(i <- testSize) {
+		  opsout.write(s"${i} ${ops(j)()}\n")
 		  j = j + 1
 		}
 		opsout.close()

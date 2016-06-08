@@ -15,18 +15,14 @@ import Util._
 import ProgramUtil._
 import TypeUtil._
 
-object allocCostModel {
-  def costOf(e: Expr): Int = e match {
-  	case CaseClass(_, _) => 1
+class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
+  def costOf(e: Expr)(implicit currFun: FunDef): Int = e match {
+    case CaseClass(_, _) => 1
     case t: Terminal => 0
     case _ => 0
   }
 
-  def costOfExpr(e: Expr) = InfiniteIntegerLiteral(costOf(e))
-}
-
-class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p, si) {
-  import allocCostModel._
+  def costOfExpr(e: Expr)(implicit currFun: FunDef) = InfiniteIntegerLiteral(costOf(e))
 
   def inst = Alloc
 
