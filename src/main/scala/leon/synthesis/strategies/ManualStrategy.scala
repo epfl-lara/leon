@@ -22,11 +22,13 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   case object Tree extends Command
   case object Tests extends Command
   case object Help extends Command
+  case object Search extends Command
 
   // Manual search state:
   var rootNode: Node    = _
 
-  var path              = List[Int]()
+  var path: List[Int]               = Nil
+  var searchRoot: Option[List[Int]] = None
 
   override def init(n: RootNode) = {
     super.init(n)
@@ -162,6 +164,7 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
                       |$tOpen  b       $tClose  Expand best descendant
                       |$tOpen  p       $tClose  Display the partial solution around the current node
                       |$tOpen  t       $tClose  Display tests
+                      |$tOpen  s       $tClose  Search automatically from current node
                       |$tOpen  q       $tClose  Quit the search
                       |$tOpen  h       $tClose  Display this message
                       |""".stripMargin)
@@ -205,7 +208,22 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
               error("Woot?")
               manualGetNext()
           }
+        case Search =>
+          val continue = searchRoot match {
+            case Some(sPath) =>
+              path.size > sPath.size
+            case None =>
+              println("Searching...")
+              searchRoot = Some(path)
+              true
+          }
 
+          if (continue) {
+            cmdQueue = Best :: Search :: cmdQueue
+          } else {
+            searchRoot = None
+          }
+          manualGetNext()
 
         case Cd(Nil) =>
           error("Woot?")
@@ -271,6 +289,9 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
 
     case "t" :: ts =>
       Tests :: parseCommands(ts)
+
+    case "s" :: ts =>
+      Search :: parseCommands(ts)
 
     case "b" :: ts =>
       Best :: parseCommands(ts)
