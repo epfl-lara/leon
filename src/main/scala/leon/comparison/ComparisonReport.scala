@@ -95,10 +95,6 @@ case class ComparisonReport(
     t.render + stringHole
   }
 
-  def printHole(holes: List[(FunDef, FunDef, Expr)]): String =
-    "AUTOCOMPLETION \n" + holes.map(h => h._1.qualifiedName(program) + "\n")
-
-
   private def percentage(d: Double): String = new java.text.DecimalFormat("#.##").format(d*100) ++ "%"
 
   private def size(f: FunDef): String = "(" + Utils.collectExpr(f.body.get).size + ")"
@@ -109,9 +105,9 @@ case class ComparisonReport(
   }
 
   def printFilledHoles(incompleteFun: FunDef, completedExpr: Expr): String = {
-    "========================\n" +
-      "Incomplete function was:\n" +
-      "========================\n" +
+    "================================================\n" +
+      "Incomplete function " + incompleteFun.qualifiedName(program) +" was:\n" +
+      "================================================\n" +
       incompleteFun.body.get.toString + "\n" +
       "==============================\n" +
       "Function is now completed as :\n" +

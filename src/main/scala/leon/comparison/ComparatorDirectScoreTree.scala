@@ -9,12 +9,8 @@ import leon.purescala.Expressions._
   * Travers in parallel two trees. Instead of comparing Class like in ClassTree, we directly compute a score of the pair
   * like in ScoreTree. This allow the most flexible comparison.
   *
-  * Additionally, we will handle holes like "???" or "choose", and try to assign them an expression of the other tree.
-  *
-  * For practical reasons, we suppose that corpus trees (i.e. tree extracted from examples collection) have no holes.
-  * Indeed, these trees are suppose to come from a valid collection with which the user compare its "draft" tree.
   */
-object ComparatorDirectScoreTree extends Comparator{
+object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
   case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)

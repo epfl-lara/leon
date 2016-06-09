@@ -8,7 +8,17 @@ import leon.comparison.Scores._
 /**
   * Created by joachimmuth on 08.06.16.
   *
-  * Only accept ONE hole for the moment
+  * Consider a holed function and try to find the best match (if there is some!) between this and one of the function
+  * existing in the corpus.
+  *
+  * To do so, we use a similar method as ComparatorDirectScoreTree were we create all possible common tree shared by
+  * two functions. As ComparatorDirectScoreTree creates pair of expression based on their score, we only need to do a
+  * little modification in order to consider the Hole as a possible match, based on their type.
+  * We choose then the function with the common tree having the higher score.
+  *
+  * We use this corpus function to fill the hole, and we replace the hole by the matching expression in the common tree.
+  *
+  * We return the holed function, the corpus function used to complete it, and the completed function (if there is some).
   */
 object Completor {
   case class Suggestion(expr: Option[Expr])
@@ -19,20 +29,8 @@ object Completor {
     val expr = funDef.body.get
     val exprsCorpus = corpus.funDefs map(_.body.get)
 
-    // for each function of corpus, search all roots of common tree
+    // for each function of corpus, search all roots of common tree that include the hole
     val funDefAndRoots = corpus.funDefs map(f => (f, possibleRoots(f, expr)))
-    println("------funDefAndRoots--------")
-    funDefAndRoots map println
-    println("----------------------------")
-
-    println("------possibleTrees--------")
-    funDefAndRoots.head._2 flatMap possibleTrees map println
-    println("----------------------------")
-
-    println("------hasHole--------")
-    funDefAndRoots.head._2 flatMap possibleTrees filter hasHole map println
-    println("----------------------------")
-
 
     // for each function of corpus, search all common tree respective to these roots
     // (filter only the ones containing the hole)
@@ -40,28 +38,17 @@ object Completor {
       (p._1, p._2 flatMap possibleTrees filter hasHole)
     }
 
-    println("------funDefAndTrees--------")
-    funDefAndTrees map println
-    println("----------------------------")
-
+    // if no function match, return None
     if (funDefAndTrees.isEmpty)
       return (funDef, None, None)
 
-    val suggestion = chooseBestSuggestion(funDefAndTrees)
-
-
-    println("------suggestion--------")
-    println(suggestion)
-    println("----------------------------")
-
+    val suggestion = selectBestSuggestion(funDefAndTrees)
 
     suggestion match {
       case None => (funDef, None, None)
       case Some(pair) => (funDef, Some(pair._1), Some(fillHole(expr, pair._2)))
     }
   }
-
-
 
   def possibleRoots(funDef_corpus: FunDef, expr: Expr): List[(Expr, Expr, Double)] =
     ComparatorDirectScoreTree.possibleRoots(funDef_corpus.body.get, expr) filter (e => Utils.hasHole(e._2))
@@ -72,27 +59,29 @@ object Completor {
     tree.toList map(p => p._2) exists (e => e.isInstanceOf[Choose])
   }
 
+  def scoreOptionTree(tree: Option[myTree[(Expr, Expr, Double)]]): Double = tree match {
+    case None => 0.0
+    case Some(t) => ComparatorDirectScoreTree.scoreTree(t)
+  }
 
 
-  def chooseBestSuggestion(funDefAndTrees: List[(FunDef, List[myTree[(Expr, Expr, Double)]])]):
+  /**
+    * select the best suggestion to fill the hole i.e. the common tree having the higher score between all the common
+    * trees and all the function of corpus
+    * @param funDefAndTrees
+    * @return
+    */
+  def selectBestSuggestion(funDefAndTrees: List[(FunDef, List[myTree[(Expr, Expr, Double)]])]):
   Option[(FunDef, Expr)] = {
     val funDefAndBestTree = funDefAndTrees map { p =>
       (p._1, selectBestTree(p._2))
     }
-
-    println("--------funDefAndBestTree----------")
-    println(funDefAndBestTree)
-    println("------------------------------------")
 
     selectBestFun(funDefAndBestTree) match {
       case None => None
       case Some(pair) => Some(pair._1, findPairOfTheHole(pair._2))
     }
   }
-
-  def findPairOfTheHole(tree: myTree[(Expr, Expr, Double)]): Expr =
-    (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
-
 
   def selectBestTree(list: List[myTree[(Expr, Expr, Double)]]): Option[myTree[(Expr, Expr, Double)]] = list match{
     case Nil => None
@@ -110,10 +99,15 @@ object Completor {
     }
   }
 
-  def scoreOptionTree(tree: Option[myTree[(Expr, Expr, Double)]]): Double = tree match {
-    case None => 0.0
-    case Some(t) => ComparatorDirectScoreTree.scoreTree(t)
-  }
+  /**
+    * Find in common tree the value that paired the hole and the expression from the corpus. The hole will be filled
+    * with this hole
+    * @param tree
+    * @return
+    */
+  def findPairOfTheHole(tree: myTree[(Expr, Expr, Double)]): Expr =
+  (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
+
 
   /**
     * Define whether a pair of expressions worth be combined (i.e its score is above 0.0%)
@@ -222,7 +216,16 @@ object Completor {
   }
 
 
-
+  /**
+    * Really really ugly function used to travers recursively the tree until finding the hole and replace it by
+    * the wished expression.
+    *
+    * Probably a better way to perform it, using pre-existing function that I didn't know.
+    *
+    * @param exprToFill
+    * @param corpus
+    * @return
+    */
   def fillHole(exprToFill: Expr, corpus: Expr): Expr = {
     def fill(expr: Expr): Expr = expr match {
       case Require(pred, body) => Require(fill(pred), fill(body))
