@@ -14,9 +14,11 @@ sealed abstract class WebElement extends WebTree
 
 @library
 case class Element(tag: String, sons: leon.collection.List[WebElement], properties: leon.collection.List[WebAttribute], style: leon.collection.List[WebStyle]) extends WebElement {
+  @isabelle.noBody()
   def attr(attributeName: String): Option[String] = {
     (properties.find { we => we.attributeName == attributeName }) map (_.attributeValue)
   }
+  @isabelle.noBody()
   def apply(elems: List[WebTree]): Element = {
     val (sons2, properties2, style2) = leon.webDSL.webBuilding.implicits.extractElements(elems)
     Element(tag, sons ++ sons2, properties ++ properties2, style ++ style2) 

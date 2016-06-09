@@ -1407,12 +1407,6 @@ trait CodeExtraction extends ASTExtractors {
 
         case update @ ExUpdate(lhs, index, newValue) =>
           val lhsRec = extractTree(lhs)
-          lhsRec match {
-            case Variable(_) =>
-            case _ =>
-              outOfSubsetError(tr, "Array update only works on variables")
-          }
-
           val indexRec = extractTree(index)
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)

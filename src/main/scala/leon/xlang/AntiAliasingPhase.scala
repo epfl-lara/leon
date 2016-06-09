@@ -281,8 +281,8 @@ object AntiAliasingPhase extends TransformationPhase {
           modifiedArgs.zipWithIndex.map{ case ((id, expr), index) => {
             val resSelect = TupleSelect(freshRes.toVariable, index + 2)
             expr match {
-              case CaseClassSelector(_, obj, mid) =>
-                Assignment(id, deepCopy(obj, mid, resSelect))
+              case cs@CaseClassSelector(_, obj, mid) =>
+                Assignment(id, deepCopy(cs, resSelect))
               case _ =>
                 Assignment(id, resSelect)
             }
@@ -297,6 +297,7 @@ object AntiAliasingPhase extends TransformationPhase {
       }
     }
 
+    //println("aliased params: " + aliasedParams)
     preMapWithContext[(Set[Identifier], Map[Identifier, Expr], Set[Expr])]((expr, context) => {
       val bindings = context._1
       val rewritings = context._2
@@ -331,11 +332,28 @@ object AntiAliasingPhase extends TransformationPhase {
         }
 
         case up@ArrayUpdate(a, i, v) => {
-          val ra@Variable(id) = a
-          if(bindings.contains(id))
-            (Some(Assignment(id, ArrayUpdated(ra, i, v).setPos(up)).setPos(up)), context)
-          else
-            (None, context)
+          val ra = replaceFromIDs(rewritings, a)
+
+          ra match {
+            case x@Variable(id) =>
+              if(bindings.contains(id))
+                (Some(Assignment(id, ArrayUpdated(x, i, v).setPos(up)).setPos(up)), context)
+              else
+                (None, context)
+            case CaseClassSelector(_, o, id) => //should be a path in an object, with id the array to update in the object
+              findReceiverId(o) match {
+                case None =>
+                  ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
+                case Some(oid) => {
+                  if(bindings.contains(oid))
+                    (Some(Assignment(oid, deepCopy(ArraySelect(ra, i), v).setPos(up))), context)
+                  else
+                    (None, context)
+                }
+              }
+            case _ =>
+              ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
+          }
         }
 
         case as@FieldAssignment(o, id, v) => {
@@ -345,7 +363,7 @@ object AntiAliasingPhase extends TransformationPhase {
               ctx.reporter.fatalError(as.getPos, "Unsupported form of field assignment: " + as)
             case Some(oid) => {
               if(bindings.contains(oid))
-                (Some(Assignment(oid, deepCopy(so, id, v))), context)
+                (Some(Assignment(oid, deepCopy(CaseClassSelector(o.getType.asInstanceOf[CaseClassType], so, id), v))), context)
               else
                 (None, context)
             }
@@ -662,6 +680,7 @@ object AntiAliasingPhase extends TransformationPhase {
     case Variable(id) => Some(id)
     case CaseClassSelector(_, e, _) => findReceiverId(e)
     case AsInstanceOf(e, ct) => findReceiverId(e)
+    case ArraySelect(a, _) => findReceiverId(a)
     case _ => None
   }
 
@@ -679,7 +698,7 @@ object AntiAliasingPhase extends TransformationPhase {
    * Check if expr is mutating variable id
    */
   private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
-    case ArrayUpdate(Variable(a), _, _) => a == id
+    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
     case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
     case Application(callee, args) => {
       val ft@FunctionType(_, _) = callee.getType
@@ -712,12 +731,15 @@ object AntiAliasingPhase extends TransformationPhase {
   //  (res._1, res._2.reverse)
   //}
 
-  private def deepCopy(rec: Expr, id: Identifier, nv: Expr): Expr = {
-    val sub = copy(rec, id, nv)
+
+  def deepCopy(rec: Expr, nv: Expr): Expr = {
     rec match {
-      case CaseClassSelector(_, r, i) =>
-        deepCopy(r, i, sub)
-      case expr => sub
+      case CaseClassSelector(_, r, id) =>
+        val sub = copy(r, id, nv)
+        deepCopy(r, sub)
+      case as@ArraySelect(a, index) =>
+        deepCopy(a, ArrayUpdated(a, index, nv).setPos(as))
+      case expr => nv
     }
   }
 
