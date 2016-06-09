@@ -11,6 +11,7 @@ import leon.purescala.Expressions._
   */
 object Utils {
 
+  case class Value(a: Expr, b: Expr, score: Double)
 
   def hasHole(funDef: FunDef): Boolean =
     hasHole(funDef.body.get)

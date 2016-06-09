@@ -13,8 +13,6 @@ import leon.purescala.Expressions._
 object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
-  case class Value(a: Expr, b: Expr, score: Double)
-
   override def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
     val roots = possibleRoots(expr_corpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
@@ -36,27 +34,27 @@ object ComparatorDirectScoreTree extends Comparator {
     * @param exprsB
     * @return
     */
-  def pairAndScoreExpr(exprsA: List[Expr], exprsB: List[Expr]): List[(Expr, Expr, Double)] = {
+  def pairAndScoreExpr(exprsA: List[Expr], exprsB: List[Expr]): List[Value] = {
     val pairOfExprs = for {
         exprA <- exprsA
         exprB <- exprsB
         score = computeScore(exprA, exprB)
       if score > 0.0
     } yield {
-      (exprA, exprB, score)
+      Value(exprA, exprB, score)
     }
 
     pairOfExprs
   }
 
-  def possibleRoots(exprA: Expr, exprB: Expr): List[(Expr, Expr, Double)] = {
+  def possibleRoots(exprA: Expr, exprB: Expr): List[Value] = {
     val exprsA = collectExpr(exprA)
     val exprsB = collectExpr(exprB)
 
     pairAndScoreExpr(exprsA, exprsB)
   }
 
-  def matchChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr, Double)] =
+  def matchChildren(childrenA: List[Expr], childrenB: List[Expr]): List[Value] =
     pairAndScoreExpr(childrenA, childrenB)
 
 
@@ -68,9 +66,9 @@ object ComparatorDirectScoreTree extends Comparator {
     * @param value of root
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
-  def possibleTrees(value: (Expr, Expr, Double)): List[myTree[(Expr, Expr, Double)]] = {
-    val exprA = value._1
-    val exprB = value._2
+  def possibleTrees(value: Value): List[myTree[Value]] = {
+    val exprA = value.a
+    val exprB = value.b
     val childrenA = getChildren(exprA)
     val childrenB = getChildren(exprB)
 
@@ -82,7 +80,7 @@ object ComparatorDirectScoreTree extends Comparator {
     if(pairOfMatchingChildren.isEmpty) {
       List(myTree(value, List()))
     } else {
-      combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr, Double)]])(
+      combinationOfChildren.foldLeft(List(): List[myTree[Value]])(
       (listOfTrees, children) => listOfTrees ++ flatCombination(value, children.map(p => possibleTrees(p)))
       )
     }
@@ -122,13 +120,13 @@ object ComparatorDirectScoreTree extends Comparator {
     * @param pairs
     * @return
     */
-  def combineChildren(pairs: List[(Expr, Expr, Double)]): List[List[(Expr, Expr, Double)]] = {
+  def combineChildren(pairs: List[Value]): List[List[Value]] = {
     combine(pairs).filterNot(p => isSameChildUsedTwice(p)).toList
   }
 
-  def isSameChildUsedTwice(list: List[(Expr, Expr, Double)]): Boolean = {
-    list.map(_._1).distinct.size != list.size ||
-      list.map(_._2).distinct.size != list.size
+  def isSameChildUsedTwice(list: List[Value]): Boolean = {
+    list.map(_.a).distinct.size != list.size ||
+      list.map(_.b).distinct.size != list.size
   }
 
   def combine[T](in: List[T]): Seq[List[T]] = {
@@ -165,23 +163,6 @@ object ComparatorDirectScoreTree extends Comparator {
   }
 
   /**
-    * Extract all non-overlapping trees, in size order
-    *
-    * @param trees
-    * @return
-    */
-  def exclusiveTrees(trees: List[myTree[(Expr, Expr, Double)]]): List[myTree[(Expr, Expr, Double)]] = trees match {
-    case Nil => Nil
-    case x :: xs =>
-      val biggest = trees.sortBy(-_.size).head
-      val rest = trees.filter(tree => flatList(tree).intersect( flatList(biggest) ).isEmpty)
-      List(biggest) ++ exclusiveTrees(rest)
-  }
-
-  def flatList(tree: myTree[(Expr, Expr, Double)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
-
-
-  /**
     * Normalize a score of the tree
     *
     * Must pay attention to the fact that small trees will always be chosen. To balance that: consider the size of the
@@ -191,7 +172,7 @@ object ComparatorDirectScoreTree extends Comparator {
     * @return
     */
 
-  def normalizedScoreTree(tree: myTree[(Expr, Expr, Double)], exprA: Expr, exprB: Expr): Double = {
+  def normalizedScoreTree(tree: myTree[Value], exprA: Expr, exprB: Expr): Double = {
     val scoreTree = geometricMean(tree)
     val sizeA = collectExpr(exprA).size.toDouble
     val sizeB = collectExpr(exprB).size.toDouble
@@ -200,8 +181,8 @@ object ComparatorDirectScoreTree extends Comparator {
     scoreTree * weight
   }
 
-  def geometricMean(tree: myTree[(Expr, Expr, Double)]): Double =
-    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree._3), 1/ tree.size.toDouble)
+  def geometricMean(tree: myTree[Value]): Double =
+    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1/ tree.size.toDouble)
 
 
 }

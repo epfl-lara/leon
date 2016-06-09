@@ -65,7 +65,7 @@ case class ComparisonReport(
     )
 
     val warningScoreTree: String = "IMPORTANT: ScoreTree scores an already chosen common Tree, coming" +
-      " from ComparatorClassTree. \n" +
+      " from ComparatorClassTree (i.e. the biggest). \n" +
       "A frequent 100% score does not mean that FunDef match at 100%, " +
       "but that the elements of this common Tree match at 100% \n"
 
