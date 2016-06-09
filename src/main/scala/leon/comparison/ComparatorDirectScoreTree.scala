@@ -107,6 +107,8 @@ object ComparatorDirectScoreTree extends Comparator {
     * @return
     */
   def computeScore(exprA: Expr, exprB: Expr): Double = (exprA, exprB) match {
+    case (x, y: Choose) if x.getType == y.getType => 0.1
+    case (x, y: Choose) => 0.0
     case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)
     case (x: CaseClass, y: CaseClass) => scoreCaseClass(x, y)
     case (x, y) if x.getClass == y.getClass =>

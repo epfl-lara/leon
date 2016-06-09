@@ -38,7 +38,7 @@ object ClassToCompare {
     case _ => 'z'
   }
 
-  def hole_how_doesnt_match(x: Int, y: Int): Char ={
+  def hole_that_doesnt_match(x: Int, y: Int): Char ={
     if (x > y) 'x'
     else ??? [Char]
   }
