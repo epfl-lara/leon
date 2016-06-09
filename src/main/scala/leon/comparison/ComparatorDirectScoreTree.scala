@@ -13,7 +13,7 @@ import leon.purescala.Expressions._
 object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
-  case class Value(pair: (Expr, Expr), position: (Int, Int), score: Double)
+  case class Value(a: Expr, b: Expr, score: Double)
 
   override def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
     val roots = possibleRoots(expr_corpus, expr)
