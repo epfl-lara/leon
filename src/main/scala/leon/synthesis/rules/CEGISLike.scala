@@ -319,7 +319,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       private def outerToInner(id: Identifier) = outerToInnerTrans.transform(id)
 
 
-
       private val innerPc  = p.pc map outerToInner
       private val innerPhi = outerToInner(p.phi)
       // Depends on the current solution
@@ -339,47 +338,40 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         // Computes a Seq of functions corresponding to the choices made at each non-terminal of the grammar,
         // and an expression which calls the top-level one.
         def computeCExpr(): (Expr, Seq[FunDef]) = {
-        var cToFd = Map[Identifier, FunDef]()
+          var cToFd = Map[Identifier, FunDef]()
 
-        def exprOf(alt: (Identifier, Seq[Expr] => Expr, Seq[Identifier])): Expr = {
-          val (_, builder, cs) = alt
+          def exprOf(alt: (Identifier, Seq[Expr] => Expr, Seq[Identifier])): Expr = {
+            val (_, builder, cs) = alt
 
-          val e = builder(cs.map { c =>
-            val fd = cToFd(c)
-              fd.applied
-          })
+            val e = builder(cs.map { c =>
+              cToFd(c).applied
+            })
 
-          outerToInner(e)
-        }
-
-        // Define all C-def
-        for ((c, alts) <- cTree) yield {
-          cToFd += c -> new FunDef(FreshIdentifier(c.asString, alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), c.getType)
-        }
-
-        // Fill C-def bodies
-        for ((c, alts) <- cTree) {
-
-            val body = if (alts.nonEmpty) {
-              alts.init.foldLeft(exprOf(alts.last)) {
-              case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
-            }
-          } else {
-            Error(c.getType, s"Empty production rule: $c")
+            outerToInner(e)
           }
 
-          cToFd(c).fullBody = body
+          // Define all C-def
+          for ((c, alts) <- cTree) yield {
+            cToFd += c -> new FunDef(FreshIdentifier(c.asString, alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), c.getType)
+          }
+
+          // Fill C-def bodies
+          for ((c, alts) <- cTree) {
+            val body = if (alts.nonEmpty) {
+              alts.init.foldLeft(exprOf(alts.last)) {
+                case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
+              }
+            } else {
+              Error(c.getType, s"Empty production rule: $c")
+            }
+            cToFd(c).fullBody = body
+          }
+
+          // Top-level expression for rootC
+          val expr = cToFd(rootC).applied
+
+          (expr, cToFd.values.toSeq)
         }
-
-        // Top-level expression for rootC
-        val expr = {
-          val fd = cToFd(rootC)
-            fd.applied
-        }
-
-        (expr, cToFd.values.toSeq)
-      }
-
 
         val (cExpr, newFds) = computeCExpr()
 
@@ -390,7 +382,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         //println("-- "*30)
         //println(programCTree.asString)
         //println(".. "*30)
-        }
+      }
 
       // Tests a candidate solution against an example in the correct environment
       // None -> evaluator error
@@ -424,10 +416,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             case Equals(o1, Not(o2)) => (o1, o2)
             case Equals(o1, o2) => (o1, o2)
             case _ => return false
-        }
-
+          }
           op1 == op2
-      }
+        }
 
         val outerSol = getExpr(bValues)
 
@@ -477,8 +468,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           case EvaluationResults.EvaluatorError(err) =>
             debug("Error testing CE: "+err)
-            //println(s"InnerSol: $innerSol")
-            //println(s"Constr  : $boundCnstr")
+            //println("Program\n" + programCTree)
+            //println("InnerSpec: " + withBindings(innerSpec))
+            //println("InnerEnv" + innerEnv)
             None
         }
 
