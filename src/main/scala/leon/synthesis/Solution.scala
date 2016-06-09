@@ -15,7 +15,7 @@ import leon.utils.Simplifiers
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) extends Printable {
+case class Solution(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean = true) extends Printable {
 
   def asString(implicit ctx: LeonContext) = {
     "⟨ "+pre.asString+" | "+defs.map(_.asString).mkString(" ")+" "+term.asString+" ⟩" 
@@ -32,8 +32,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
   def toExpr = {
-    if(defs.isEmpty) guardedTerm else
-    LetDef(defs.toList, guardedTerm)
+    letDef(defs.toList, guardedTerm)
   }
   
   def ifOnFunDef[T](originalFun: FunDef)(body: => T): T = {
@@ -62,40 +61,28 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     }
   }
 
-
   def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
     Simplifiers.bestEffort(ctx, p)(toExpr, Path(within.precOrTrue))
   }
 }
 
 object Solution {
-  def simplify(e: Expr) = simplifyLets(e)
-
-  def apply(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean = true) = {
-    new Solution(simplify(pre), defs, simplify(term), isTrusted)
-  }
 
   def term(term: Expr, isTrusted: Boolean = true) = {
-    new Solution(BooleanLiteral(true), Set(), simplify(term), isTrusted)
+    Solution(BooleanLiteral(true), Set(), term, isTrusted)
   }
 
-  def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr, Boolean)] = if (s eq null) None else Some((s.pre, s.defs, s.term, s.isTrusted))
-
   def choose(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.phi)))
+    Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.phi)))
   }
 
   def chooseComplete(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.pc and p.phi)))
+    Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.pc and p.phi)))
   }
 
-  // Generate the simplest, wrongest solution, used for complexity lowerbound
-  def basic(p: Problem): Solution = {
-    simplest(p.outType)
-  }
-
+  // Generate the simplest, wrongest solution, used for complexity lower bound
   def simplest(t: TypeTree): Solution = {
-    new Solution(BooleanLiteral(true), Set(), simplestValue(t))
+    Solution(BooleanLiteral(true), Set(), simplestValue(t))
   }
 
   def failed(implicit p: Problem): Solution = {
