@@ -223,8 +223,8 @@ object Completor {
 
 
 
-  def fillHole(expr: Expr, corpus: Expr): Expr = {
-    def fill(expr: Expr): Expr = {
+  def fillHole(exprToFill: Expr, corpus: Expr): Expr = {
+    def fill(expr: Expr): Expr = expr match {
       case Require(pred, body) => Require(fill(pred), fill(body))
       case Ensuring(body, pred) => Ensuring(fill(body), fill(pred))
       case Assert(pred, error, body) => Assert(fill(pred), error, fill(body))
@@ -294,60 +294,64 @@ object Completor {
       /* Real arithmetic */
       case RealPlus(lhs, rhs) =>
         RealPlus(fill(lhs), fill(rhs))
-      case RealMinus(lhs, rhs) => onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
+      case RealMinus(lhs, rhs) =>
+        RealMinus(fill(lhs), fill(rhs))
       case RealDivision(lhs, rhs) =>
-        onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
-      case RealTimes(lhs, rhs) => onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
+        RealDivision(fill(lhs), fill(rhs))
+      case RealTimes(lhs, rhs) =>
+        RealTimes(fill(lhs), fill(rhs))
       case RealUMinus(argExpr) =>
-        onParent(expr) ++ onChild(argExpr)
+        RealUMinus(fill(argExpr))
 
       /* Tuple operations */
-      case Tuple(exprs) => onParent(expr) ++ exprs.flatMap(onChild(_))
-      case TupleSelect(tuple, _) =>
-        onParent(expr) ++ onChild(tuple)
+      case Tuple(exprs) => Tuple(exprs map fill)
+      case TupleSelect(tuple, index) =>
+        TupleSelect(fill(tuple), index)
 
       /* Set operations */
-      case FiniteSet(elements, _) => onParent(expr) ++ elements.flatMap(onChild(_))
+      case FiniteSet(elements, base) => FiniteSet(elements map fill, base)
       case ElementOfSet(element, set) =>
-        onParent(expr) ++ onChild(element) ++ onChild(set)
-      case SetCardinality(set) => onParent(expr) ++ onChild(set)
-      case SubsetOf(set1, set2) => onParent(expr) ++ onChild(set1) ++ onChild(set2)
+        ElementOfSet(fill(element), fill(set))
+      case SetCardinality(set) => SetCardinality(fill(set))
+      case SubsetOf(set1, set2) => SubsetOf(fill(set1), fill(set2))
       case SetIntersection(set1, set2) =>
-        onParent(expr) ++ onChild(set1) ++ onChild(set2)
+        SetIntersection(fill(set1), fill(set2))
       case SetUnion(set1, set2) =>
-        onParent(expr) ++ onChild(set1) ++ onChild(set2)
-      case SetDifference(set1, set2) => onParent(expr) ++ onChild(set1) ++ onChild(set2)
+        SetUnion(fill(set1), fill(set2))
+      case SetDifference(set1, set2) =>
+        SetDifference(fill(set1), fill(set2))
 
       /* Map operations */
-      case FiniteMap(pairs, _, _) =>
-        onParent(expr) ++ pairs.toList.flatMap(t => onChild(t._1) ++ onChild(t._2))
-      case MapApply(map, key) => onParent(expr) ++ onChild(map) ++ onChild(key)
-      case MapUnion(map1, map2) => onParent(expr) ++ onChild(map1) ++ onChild(map2)
-      case MapDifference(map, keys) => onParent(expr) ++ onChild(map) ++ onChild(keys)
-      case MapIsDefinedAt(map, key) => onParent(expr) ++ onChild(map) ++ onChild(key)
+        /*not handled for the moment*/
+      case FiniteMap(pairs, keyType, valueType) =>
+        FiniteMap(pairs, keyType, valueType)
+      case MapApply(map, key) => MapApply(fill(map), fill(key))
+      case MapUnion(map1, map2) => MapUnion(fill(map1), fill(map2))
+      case MapDifference(map, keys) => MapDifference(fill(map), fill(keys))
+      case MapIsDefinedAt(map, key) => MapIsDefinedAt(fill(map), fill(key))
 
       /* Array operations */
-      case ArraySelect(array, index) => onParent(expr) ++ onChild(array) ++ onChild(index)
+      case ArraySelect(array, index) => ArraySelect(fill(array), fill(index))
       case ArrayUpdated(array, index, newValue) =>
-        onParent(expr) ++ onChild(array) ++ onChild(index) ++ onChild(newValue)
-      case ArrayLength(array) => onParent(expr) ++ onChild(array)
-      case NonemptyArray(elems, defaultLength) => onParent(expr) ++ elems.flatMap(t => onChild(t._2))
-      case EmptyArray(_) => onParent(expr)
+        ArrayUpdated(fill(array), fill(index), fill(newValue))
+      case ArrayLength(array) => ArrayLength(fill(array))
+        /*not handled for the moment*/
+      case NonemptyArray(elems, defaultLength) =>
+        NonemptyArray(elems, defaultLength)
+      case EmptyArray(tpe) => EmptyArray(tpe)
 
       /* Holes */
-      case Choose(pred) => onParent(expr)
+      case Choose(pred) => corpus
       //case Hole(_, alts) => onParent(expr) ++ alts.flatMap(onChild(_))
 
 
       // default value for any easy-to-handled or Terminal expression
       // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
       // leave aside (at least for the moment): String Theory, BitVector Operation, Special trees for synthesis (holes, ...)
-      case x if x.isInstanceOf[Expr] => onParent(expr)
-
-      //default value for error handling, should never reach that
-      case _ => Nil
+      case x => x
     }
 
+    fill(exprToFill)
   }
 
 

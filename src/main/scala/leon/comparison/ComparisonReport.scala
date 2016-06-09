@@ -71,6 +71,7 @@ case class ComparisonReport(
     var stringHole: String = ""
 
     if (holes.nonEmpty) {
+      stringHole += "\n"
       var reportHoles: Table = Table("Completion of Holes")
 
       reportHoles += Row(Seq(
@@ -87,7 +88,8 @@ case class ComparisonReport(
         ))
       )
 
-      stringHole += "\n" + reportHoles.render
+      stringHole += reportHoles.render + "\n"
+      stringHole += holes.map(p => printFilledHoles(p._1, p._3.get)).mkString("")
     }
 
     t.render + stringHole
@@ -105,6 +107,18 @@ case class ComparisonReport(
     case Some(funDef) => funDef.qualifiedName(program)
     case None => "no matching funDef found"
   }
+
+  def printFilledHoles(incompleteFun: FunDef, completedExpr: Expr): String = {
+    "========================\n" +
+      "Incomplete function was:\n" +
+      "========================\n" +
+      incompleteFun.body.get.toString + "\n" +
+      "==============================\n" +
+      "Function is now completed as :\n" +
+      "==============================\n" +
+      completedExpr.toString + "\n"
+  }
+
 
 
 }
