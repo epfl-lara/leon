@@ -11,7 +11,7 @@ import purescala.Definitions.{FunDef, Program, TypedFunDef, ValDef}
 import purescala.DefOps
 import scala.collection.mutable.ListBuffer
 import leon.LeonContext
-import leon.purescala.Definitions.TypedFunDef
+import leon.purescala.Definitions._
 import leon.verification.VerificationContext
 import leon.verification.VerificationPhase
 import leon.solvers._
@@ -28,6 +28,9 @@ import leon.datagen.GrammarDataGen
 
 case class PatternNotSupportedException(p: Pattern) extends
   Exception(s"The pattern $p is not supported for coverage.")
+
+case class FunDefNotCoverableException(fd: FunDef, bindings: Map[_, _]) extends
+  Exception(s"The function is not supported for coverage:\n$fd\n under bindings $bindings")
 
 /**
  * @author Mikael
@@ -54,38 +57,41 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       case Some(body) =>
         val mapping = coverExpr(f.paramIds, body, covered + f)
         leon.utils.StreamUtils.cartesianMap(mapping) map { mapping =>
-          f.paramIds.map(i => mapping.getOrElse(i, a(i.getType)))
+          f.paramIds.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
         }
       case None => throw new Exception("empty body")
     }
   }
   
-  private def mergeCoverage(a: Map[Identifier, Stream[Expr]], b: Map[Identifier, Stream[Expr]]):
-    Map[Identifier, Stream[Expr]] = {
+  private def mergeCoverage(a: Map[List[Identifier], Stream[Expr]], b: Map[List[Identifier], Stream[Expr]]):
+    Map[List[Identifier], Stream[Expr]] = {
     if((a.keys.toSet intersect b.keys.toSet).nonEmpty)
       throw new Exception("Variable used twice: " + (a.keys.toSet intersect b.keys.toSet))
     a ++ b
   }
   
   object Reconstructor {
-    def unapply(e: Expr): Option[(Identifier, Expr => Expr)] = e match {
-      case Variable(id) => Some((id, e => e))
-      case CaseClassSelector(cct, Reconstructor(id, f), ccid) if cct.fields.length == 1 =>
-        Some((id, e => CaseClass(cct, Seq(f(e)))))
-      case _ => None
+    def unapply(e: Expr): Option[List[Identifier]] = e match {
+      case Variable(id) => Some(List(id))
+      case CaseClassSelector(cct, Reconstructor(ids), ccid) =>
+        Some(ids :+ ccid)
+      case _ => 
+        None
     }
   }
-    
-  private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered): Map[Identifier, Stream[Expr]] = {
+  
+  /** Map of g.left.symbol to the stream of expressions it could be assigned to */
+  private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered): Map[List[Identifier], Stream[Expr]] = {
+    val res : Map[List[Identifier], Stream[Expr]] = 
     e match {
     case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)
     case MatchExpr(Variable(i), cases) if inputs.headOption == Some(i) =>
       val inputType = i.getType
       val coveringExprs = cases.map(coverMatchCase(inputType, _, covered))
       val interleaved = leon.utils.StreamUtils.interleave[Expr](coveringExprs)
-      Map(i -> interleaved)
-    case FunctionInvocation(tfd@TypedFunDef(fd, targs), Reconstructor(id, builder)+:tail) =>
-      Map(id -> coverFunDef(tfd, covered).map(_.head).map(builder))
+      Map(List(i) -> interleaved)
+    case FunctionInvocation(tfd@TypedFunDef(fd, targs), Reconstructor(ids)+:tail) =>
+      Map(ids -> coverFunDef(tfd, covered).map(_.head))
 
     case Operator(lhsrhs, builder) =>
       if(lhsrhs.length == 0) {
@@ -93,10 +99,11 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       } else {
         lhsrhs.map(child => coverExpr(inputs, child, covered)).reduce(mergeCoverage)
       }
+    }
+    res
   }
-}
   
-  /** Returns an instance of the given type. Make sure maps, lists, sets and bags have at least two elements.*/
+  /** Returns an instance of the given type. Makes sure maps, sets and bags have at least two elements.*/
   private def a(t: TypeTree): Expr = {
     t match {
       case MapType(keyType, valueType) =>
@@ -120,15 +127,29 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     enumerated_inputs.toStream.map(_.head._2)
   }
   
+  def convert(topLevel: List[Identifier])(implicit binders: Map[List[Identifier], Expr]): Option[Expr] = {
+    binders.get(topLevel) match {
+      case None =>
+      topLevel.last.getType match {
+        case cct@CaseClassType(ccd, targs) =>
+          val args = ccd.fieldsIds.map(id =>
+              (convert(topLevel :+ id) match { case Some(e) => e case None => return None }): Expr )
+          return Some(CaseClass(cct, args))
+        case _ => return None
+      }
+      case e => e
+    }
+  }
+  
   // TODO: Take other constraints into account: Missed previous patterns ?
-  private def coverPattern(p: Pattern, inputType: TypeTree, binders: Map[Identifier, Expr], covered: Covered): Expr = p match {
+  private def coverPattern(p: Pattern, inputType: TypeTree, binders: Map[List[Identifier], Expr], covered: Covered): Expr = p match {
     case CaseClassPattern(binder, ct, subs) =>
       if(subs.exists{ case e: WildcardPattern => false case _ => true }) {
         throw PatternNotSupportedException(p)
       }
       val args = subs.collect { case e: WildcardPattern => e }
       CaseClass(ct, args.zipWithIndex.map{
-        case (WildcardPattern(Some(o)), i) if binders contains o => binders(o)
+        case (WildcardPattern(Some(o)), i) => convert(List(o))(binders).getOrElse((throw PatternNotSupportedException(p)): Expr)
         case (WildcardPattern(_), i) => a(ct.fieldsTypes(i))
       })
     case TuplePattern(binder, subs) =>
@@ -137,7 +158,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       }
       val args = subs.collect { case e: WildcardPattern => e }
       Tuple(args.zipWithIndex.map{
-        case (WildcardPattern(Some(o)), i) if binders contains o => binders(o)
+        case (WildcardPattern(Some(o)), i) => convert(List(o))(binders).getOrElse((throw PatternNotSupportedException(p)): Expr)
         case (WildcardPattern(_), i) => 
           inputType match {
             case TupleType(targs) =>
@@ -146,7 +167,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
           }
       })
     case InstanceOfPattern(binder, ct) =>
-      binder.map(b => binders.getOrElse(b, a(ct))).getOrElse(a(ct))
+      binder.map(b => convert(List(b))(binders).getOrElse((throw PatternNotSupportedException(p)): Expr)).getOrElse(a(ct))
     case LiteralPattern(ob, value) => value
     case WildcardPattern(ob) => a(inputType)
     case _ => throw PatternNotSupportedException(p)
