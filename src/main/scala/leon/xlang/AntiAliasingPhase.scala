@@ -297,6 +297,7 @@ object AntiAliasingPhase extends TransformationPhase {
       }
     }
 
+    //println("aliased params: " + aliasedParams)
     preMapWithContext[(Set[Identifier], Map[Identifier, Expr], Set[Expr])]((expr, context) => {
       val bindings = context._1
       val rewritings = context._2
@@ -331,11 +332,26 @@ object AntiAliasingPhase extends TransformationPhase {
         }
 
         case up@ArrayUpdate(a, i, v) => {
-          val ra@Variable(id) = a
-          if(bindings.contains(id))
-            (Some(Assignment(id, ArrayUpdated(ra, i, v).setPos(up)).setPos(up)), context)
-          else
-            (None, context)
+          val ra = replaceFromIDs(rewritings, a)
+
+          ra match {
+            case x@Variable(id) =>
+              if(bindings.contains(id))
+                (Some(Assignment(id, ArrayUpdated(x, i, v).setPos(up)).setPos(up)), context)
+              else
+                (None, context)
+            case CaseClassSelector(_, o, id) => //should be a path in an object, with id the array to update in the object
+              findReceiverId(o) match {
+                case None =>
+                  ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
+                case Some(oid) => {
+                  if(bindings.contains(oid))
+                    (Some(Assignment(oid, deepCopy(o, id, ArrayUpdated(ra, i, v).setPos(up)))), context)
+                  else
+                    (None, context)
+                }
+              }
+          }
         }
 
         case as@FieldAssignment(o, id, v) => {
@@ -679,7 +695,7 @@ object AntiAliasingPhase extends TransformationPhase {
    * Check if expr is mutating variable id
    */
   private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
-    case ArrayUpdate(Variable(a), _, _) => a == id
+    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
     case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
     case Application(callee, args) => {
       val ft@FunctionType(_, _) = callee.getType
