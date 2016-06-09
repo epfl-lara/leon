@@ -252,6 +252,7 @@ We will resolve both of theses things running the command:
 
 .. code-block:: bash
 
+ $ sbt clean compile
  $ sbt package script
 
 This will create the *leon* executable file that you can now use typing ```./leon```. You are not required to recompile

@@ -107,7 +107,7 @@ object Completor {
     */
   def findPairOfTheHole(tree: myTree[(Expr, Expr, Double)]): Expr =
   (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
-  §
+
   /**
     * Really really ugly function used to travers recursively the tree until finding the hole and replace it by
     * the wished expression.
