@@ -351,6 +351,8 @@ object AntiAliasingPhase extends TransformationPhase {
                     (None, context)
                 }
               }
+            case _ =>
+              ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
           }
         }
 
