@@ -16,11 +16,23 @@ object Completor {
 
 
   def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus): (FunDef, Option[FunDef], Option[Expr]) = {
-    val exprsCorpus = corpus.funDefs map(_.body.get)
     val expr = funDef.body.get
+    val exprsCorpus = corpus.funDefs map(_.body.get)
 
     // for each function of corpus, search all roots of common tree
     val funDefAndRoots = corpus.funDefs map(f => (f, possibleRoots(f, expr)))
+    println("------funDefAndRoots--------")
+    funDefAndRoots map println
+    println("----------------------------")
+
+    println("------possibleTrees--------")
+    funDefAndRoots.head._2 flatMap possibleTrees map println
+    println("----------------------------")
+
+    println("------hasHole--------")
+    funDefAndRoots.head._2 flatMap possibleTrees filter hasHole map println
+    println("----------------------------")
+
 
     // for each function of corpus, search all common tree respective to these roots
     // (filter only the ones containing the hole)
@@ -28,26 +40,37 @@ object Completor {
       (p._1, p._2 flatMap possibleTrees filter hasHole)
     }
 
+    println("------funDefAndTrees--------")
+    funDefAndTrees map println
+    println("----------------------------")
+
     if (funDefAndTrees.isEmpty)
       return (funDef, None, None)
 
     val suggestion = chooseBestSuggestion(funDefAndTrees)
 
+
+    println("------suggestion--------")
+    println(suggestion)
+    println("----------------------------")
+
+
     suggestion match {
       case None => (funDef, None, None)
-      case Some(pair) => (funDef, Some(pair._1), Some(pair._2))
+      case Some(pair) => (funDef, Some(pair._1), Some(fillHole(expr, pair._2)))
     }
   }
 
 
 
-  def possibleRoots(funDef: FunDef, expr: Expr): List[(Expr, Expr, Double)] =
-    ComparatorDirectScoreTree.possibleRoots(funDef.body.get, expr) filter (e => Utils.hasHole(e._2))
+  def possibleRoots(funDef_corpus: FunDef, expr: Expr): List[(Expr, Expr, Double)] =
+    ComparatorDirectScoreTree.possibleRoots(funDef_corpus.body.get, expr) filter (e => Utils.hasHole(e._2))
 
   def getBody(funDef: FunDef): Expr = funDef.body.get
 
-  def hasHole(tree: myTree[(Expr, Expr, Double)]): Boolean =
+  def hasHole(tree: myTree[(Expr, Expr, Double)]): Boolean = {
     tree.toList map(p => p._2) exists (e => e.isInstanceOf[Choose])
+  }
 
 
 
@@ -56,6 +79,10 @@ object Completor {
     val funDefAndBestTree = funDefAndTrees map { p =>
       (p._1, selectBestTree(p._2))
     }
+
+    println("--------funDefAndBestTree----------")
+    println(funDefAndBestTree)
+    println("------------------------------------")
 
     selectBestFun(funDefAndBestTree) match {
       case None => None
@@ -69,7 +96,8 @@ object Completor {
 
   def selectBestTree(list: List[myTree[(Expr, Expr, Double)]]): Option[myTree[(Expr, Expr, Double)]] = list match{
     case Nil => None
-    case x::xs => Some(list.sortBy(t => ComparatorDirectScoreTree.scoreTree(t)).head)
+    //case x::xs => Some(list.sortBy(t => -ComparatorDirectScoreTree.scoreTree(t)).head)
+    case x::xs => Some(list.sortBy(-_.size).head)
   }
 
   def selectBestFun(list: List[(FunDef, Option[myTree[(Expr, Expr, Double)]])]):
@@ -100,7 +128,7 @@ object Completor {
     val pairOfExprs = for {
       exprA <- exprsA
       exprB <- exprsB
-      score = ComparatorDirectScoreTree.computeScore(exprA, exprB)
+      score = computeScore(exprA, exprB)
       if score > 0.0
     } yield {
       (exprA, exprB, score)
@@ -194,6 +222,133 @@ object Completor {
   }
 
 
+
+  def fillHole(expr: Expr, corpus: Expr): Expr = {
+    def fill(expr: Expr): Expr = {
+      case Require(pred, body) => Require(fill(pred), fill(body))
+      case Ensuring(body, pred) => Ensuring(fill(body), fill(pred))
+      case Assert(pred, error, body) => Assert(fill(pred), error, fill(body))
+      case Let(binder, value, body) => Let(binder, fill(value), fill(body))
+
+      // how to handle fds (function definition) ??
+      case LetDef(fds, body) => LetDef(fds, fill(body))
+
+      case Application(callee, args) => Application(fill(callee), args map fill)
+      case Lambda(args, body) => Lambda(args, fill(body))
+      case Forall(args, body) => Forall(args, fill(body))
+      case FunctionInvocation(tfd, args) =>
+        FunctionInvocation(tfd, args map fill)
+      case IfExpr(cond, thenn, elze) => IfExpr(fill(cond), fill(thenn), fill(elze))
+
+      // we don't list the scrutinee
+      // method cases.expression return both optGuard and rhs
+      case MatchExpr(scrutinee, cases) =>
+        MatchExpr(fill(scrutinee), cases map{ c =>
+          MatchCase(c.pattern, c.optGuard, fill(c.rhs))
+        })
+
+      case CaseClass(ct, args) => CaseClass(ct, args map fill)
+      case CaseClassSelector(classType, caseClass, selector) =>
+        CaseClassSelector(classType, fill(caseClass), selector)
+      case Equals(lhs, rhs) =>
+        Equals(fill(lhs), fill(rhs))
+
+      /* Propositional logic */
+      case And(exprs) =>
+        And(exprs map fill)
+      case Or(exprs) =>
+        Or(exprs map fill)
+      case Implies(lhs, rhs) =>
+        Implies(fill(lhs), fill(rhs))
+      case Not(argExpr) =>
+        Not(fill(argExpr))
+
+      case IsInstanceOf(argExpr, classType) =>
+        IsInstanceOf(fill(argExpr), classType)
+      case AsInstanceOf(argExpr, tpe) =>
+        AsInstanceOf(fill(argExpr), tpe)
+
+      /* Integer arithmetic */
+      case Plus(lhs, rhs) => Plus(fill(lhs), fill(rhs))
+      case Minus(lhs, rhs) =>
+        Minus(fill(lhs), fill(rhs))
+      case UMinus(argExpr) =>
+        UMinus(fill(argExpr))
+      case Times(lhs, rhs) =>
+        Times(fill(lhs), fill(rhs))
+      case Division(lhs, rhs) =>
+        Division(fill(lhs), fill(rhs))
+      case Remainder(lhs, rhs) =>
+        Remainder(fill(lhs), fill(rhs))
+      case Modulo(lhs, rhs) =>
+        Modulo(fill(lhs), fill(rhs))
+      case GreaterThan(lhs, rhs) =>
+        GreaterThan(fill(lhs), fill(rhs))
+      case GreaterEquals(lhs, rhs) =>
+        GreaterEquals(fill(lhs), fill(rhs))
+      case LessThan(lhs, rhs) =>
+        LessThan(fill(lhs), fill(rhs))
+      case LessEquals(lhs, rhs) =>
+        LessEquals(fill(lhs), fill(rhs))
+
+      /* Real arithmetic */
+      case RealPlus(lhs, rhs) =>
+        RealPlus(fill(lhs), fill(rhs))
+      case RealMinus(lhs, rhs) => onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
+      case RealDivision(lhs, rhs) =>
+        onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
+      case RealTimes(lhs, rhs) => onParent(expr) ++ onChild(lhs) ++ onChild(rhs)
+      case RealUMinus(argExpr) =>
+        onParent(expr) ++ onChild(argExpr)
+
+      /* Tuple operations */
+      case Tuple(exprs) => onParent(expr) ++ exprs.flatMap(onChild(_))
+      case TupleSelect(tuple, _) =>
+        onParent(expr) ++ onChild(tuple)
+
+      /* Set operations */
+      case FiniteSet(elements, _) => onParent(expr) ++ elements.flatMap(onChild(_))
+      case ElementOfSet(element, set) =>
+        onParent(expr) ++ onChild(element) ++ onChild(set)
+      case SetCardinality(set) => onParent(expr) ++ onChild(set)
+      case SubsetOf(set1, set2) => onParent(expr) ++ onChild(set1) ++ onChild(set2)
+      case SetIntersection(set1, set2) =>
+        onParent(expr) ++ onChild(set1) ++ onChild(set2)
+      case SetUnion(set1, set2) =>
+        onParent(expr) ++ onChild(set1) ++ onChild(set2)
+      case SetDifference(set1, set2) => onParent(expr) ++ onChild(set1) ++ onChild(set2)
+
+      /* Map operations */
+      case FiniteMap(pairs, _, _) =>
+        onParent(expr) ++ pairs.toList.flatMap(t => onChild(t._1) ++ onChild(t._2))
+      case MapApply(map, key) => onParent(expr) ++ onChild(map) ++ onChild(key)
+      case MapUnion(map1, map2) => onParent(expr) ++ onChild(map1) ++ onChild(map2)
+      case MapDifference(map, keys) => onParent(expr) ++ onChild(map) ++ onChild(keys)
+      case MapIsDefinedAt(map, key) => onParent(expr) ++ onChild(map) ++ onChild(key)
+
+      /* Array operations */
+      case ArraySelect(array, index) => onParent(expr) ++ onChild(array) ++ onChild(index)
+      case ArrayUpdated(array, index, newValue) =>
+        onParent(expr) ++ onChild(array) ++ onChild(index) ++ onChild(newValue)
+      case ArrayLength(array) => onParent(expr) ++ onChild(array)
+      case NonemptyArray(elems, defaultLength) => onParent(expr) ++ elems.flatMap(t => onChild(t._2))
+      case EmptyArray(_) => onParent(expr)
+
+      /* Holes */
+      case Choose(pred) => onParent(expr)
+      //case Hole(_, alts) => onParent(expr) ++ alts.flatMap(onChild(_))
+
+
+      // default value for any easy-to-handled or Terminal expression
+      // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
+      // leave aside (at least for the moment): String Theory, BitVector Operation, Special trees for synthesis (holes, ...)
+      case x if x.isInstanceOf[Expr] => onParent(expr)
+
+      //default value for error handling, should never reach that
+      case _ => Nil
+    }
+
+  }
 
 
 

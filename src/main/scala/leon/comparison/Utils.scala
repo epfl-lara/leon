@@ -215,6 +215,10 @@ object Utils {
     case NonemptyArray(elems, defaultLength) => onParent(expr) ++ elems.flatMap(t => onChild(t._2))
     case EmptyArray(_) => onParent(expr)
 
+    /* Holes */
+    case Choose(pred) => onParent(expr)
+    //case Hole(_, alts) => onParent(expr) ++ alts.flatMap(onChild(_))
+
 
 
 
