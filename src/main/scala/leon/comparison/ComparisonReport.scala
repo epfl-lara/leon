@@ -64,12 +64,19 @@ case class ComparisonReport(
       )
     )
 
+    val warningScoreTree: String = "IMPORTANT: ScoreTree scores an already chosen common Tree, coming" +
+      " from ComparatorClassTree. \n" +
+      "A frequent 100% score does not mean that FunDef match at 100%, " +
+      "but that the elements of this common Tree match at 100% \n"
+
+    val noteParenthesis: String = "NOTE: In parenthesis are the sizes of trees and the size of common trees in case of" +
+      "DirectScore"
+
 
     // report completion holes
     var stringHole: String = ""
 
     if (holes.nonEmpty) {
-      stringHole += "\n"
       var reportHoles: Table = Table("Completion of Holes")
 
       reportHoles += Row(Seq(
@@ -90,7 +97,7 @@ case class ComparisonReport(
       stringHole += holes.map(p => printFilledHoles(p._1, p._3.get)).mkString("")
     }
 
-    t.render + stringHole
+    t.render + "\n" + warningScoreTree + "\n" + stringHole
   }
 
   private def percentage(d: Double): String = new java.text.DecimalFormat("#.##").format(d * 100) ++ "%"
@@ -103,7 +110,7 @@ case class ComparisonReport(
   }
 
   def printFilledHoles(incompleteFun: FunDef, completedExpr: Expr): String = {
-    "================================================\n" +
+    "\n================================================\n" +
       "Incomplete function " + incompleteFun.qualifiedName(program) + " was:\n" +
       "================================================\n" +
       incompleteFun.body.get.toString + "\n" +

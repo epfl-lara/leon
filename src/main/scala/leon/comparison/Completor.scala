@@ -67,7 +67,7 @@ object Completor {
 
   def scoreOptionTree(tree: Option[myTree[(Expr, Expr, Double)]]): Double = tree match {
     case None => 0.0
-    case Some(t) => ComparatorDirectScoreTree.scoreTree(t)
+    case Some(t) => ComparatorDirectScoreTree.geometricMean(t)
   }
 
 

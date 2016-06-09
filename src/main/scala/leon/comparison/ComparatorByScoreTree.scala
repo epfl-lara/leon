@@ -16,6 +16,9 @@ import leon.purescala.Types.{ClassType, TypeTree}
   * ScoreTree take each pair and compute a score for it, then make a geometrical mean over all these scores.
   * (The mean "balances" the fact that a big tree will always have a poorer score than a little)
   *
+  * IMPORTANT: ScoreTree scores an already chosen common Tree, coming from ComparatorClassTree. A frequent 100% score
+  * doesn't mean that FunDef match at 100%, but that the elements of this common Tree match at 100%
+  *
   */
 object ComparatorByScoreTree extends Comparator {
   override val name: String = "ScoreTree"

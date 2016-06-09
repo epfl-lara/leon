@@ -71,16 +71,13 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     }
   }
 
-
-
-
-
-
   /**
-    * This method derives from VerificationPhase
-    * Extract the list of function defined in a program
-    *
-    * We ensure that every funDef has a body
+    * Method inspired from VerficationPhase
+    * A filter with undesirable FunDef added
+    * Ensure that every FunDef has a body
+    * @param ctx
+    * @param program
+    * @return
     */
   def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
@@ -90,7 +87,14 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
       filterInclusive(filterFuns.map(fdMatcher(program)), Some(excludeByDefault _))
     }
-    program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).tail filter hasBody
+
+    val funDefs = program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).tail
+
+    funDefs filter{f =>
+      f.qualifiedName(program) != "Ensuring.ensuring" &&
+        f.qualifiedName(program) != "WebPage.apply" &&
+        f.qualifiedName(program) != "Style" &&
+        hasBody(f)}
   }
 
   def hasBody(funDef: FunDef): Boolean = funDef.body match {

@@ -20,10 +20,8 @@ object ComparatorDirectScoreTree extends Comparator {
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")
 
-    //val exclusive = exclusiveTrees(trees)
-    //val scores = trees.map(t => (t, scoreTree(t))).sortBy(-_._2)
-    val biggest = trees.sortBy(-_.size).head
-    val score = scoreTree(biggest)
+    val biggest = trees.sortBy(t => -normalizedScoreTree(t, expr_corpus, expr)).head
+    val score = normalizedScoreTree(biggest, expr_corpus, expr)
 
     (score, " (" + biggest.size + ")")
   }
@@ -182,15 +180,28 @@ object ComparatorDirectScoreTree extends Comparator {
 
   def flatList(tree: myTree[(Expr, Expr, Double)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
 
+
   /**
-    * Geometric mean of all pair scores
-    * "Normalization" in order not to overvalue small trees
- *
+    * Normalize a score of the tree
+    *
+    * Must pay attention to the fact that small trees will always be chosen. To balance that: consider the size of the
+    * tree and the size of the compared expression to create a "weight".
+    *
     * @param tree
     * @return
     */
-  def scoreTree(tree: myTree[(Expr, Expr, Double)]): Double =
-    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree._3), 1/(tree.size.toDouble))
+
+  def normalizedScoreTree(tree: myTree[(Expr, Expr, Double)], exprA: Expr, exprB: Expr): Double = {
+    val scoreTree = geometricMean(tree)
+    val sizeA = collectExpr(exprA).size.toDouble
+    val sizeB = collectExpr(exprB).size.toDouble
+    val weight = (1 / Math.max(sizeA, sizeB)) * tree.size.toDouble
+
+    scoreTree * weight
+  }
+
+  def geometricMean(tree: myTree[(Expr, Expr, Double)]): Double =
+    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree._3), 1/ tree.size.toDouble)
 
 
 }
