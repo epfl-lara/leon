@@ -15,7 +15,7 @@ object Completor {
   case class Value(x: Expr, y: Expr, score: Double)
 
 
-  def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus): (FunDef, FunDef, Expr) ={
+  def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus): (FunDef, Option[FunDef], Option[Expr]) = {
     val exprsCorpus = corpus.funDefs map(_.body.get)
     val expr = funDef.body.get
 
@@ -28,11 +28,18 @@ object Completor {
       (p._1, p._2 flatMap possibleTrees filter hasHole)
     }
 
+    if (funDefAndTrees.isEmpty)
+      return (funDef, None, None)
+
     val suggestion = chooseBestSuggestion(funDefAndTrees)
 
-
-    (funDef, suggestion._1, suggestion._2)
+    suggestion match {
+      case None => (funDef, None, None)
+      case Some(pair) => (funDef, Some(pair._1), Some(pair._2))
+    }
   }
+
+
 
   def possibleRoots(funDef: FunDef, expr: Expr): List[(Expr, Expr, Double)] =
     ComparatorDirectScoreTree.possibleRoots(funDef.body.get, expr) filter (e => Utils.hasHole(e._2))
@@ -43,19 +50,42 @@ object Completor {
     tree.toList map(p => p._2) exists (e => e.isInstanceOf[Choose])
 
 
-  def chooseBestSuggestion(funDefAndTrees: List[(FunDef, List[myTree[(Expr, Expr, Double)]])]): (FunDef, Expr) = {
-    val funDefAndBestTree = funDefAndTrees map{p =>
-      (p._1, {p._2 sortBy ComparatorDirectScoreTree.scoreTree}.head)
+
+  def chooseBestSuggestion(funDefAndTrees: List[(FunDef, List[myTree[(Expr, Expr, Double)]])]):
+  Option[(FunDef, Expr)] = {
+    val funDefAndBestTree = funDefAndTrees map { p =>
+      (p._1, selectBestTree(p._2))
     }
 
-    val bestSuggestion = {funDefAndBestTree sortBy (p => ComparatorDirectScoreTree.scoreTree(p._2))}.head
-
-    (bestSuggestion._1, findPairOfTheHole(bestSuggestion._2))
+    selectBestFun(funDefAndBestTree) match {
+      case None => None
+      case Some(pair) => Some(pair._1, findPairOfTheHole(pair._2))
+    }
   }
 
   def findPairOfTheHole(tree: myTree[(Expr, Expr, Double)]): Expr =
     (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
 
+
+  def selectBestTree(list: List[myTree[(Expr, Expr, Double)]]): Option[myTree[(Expr, Expr, Double)]] = list match{
+    case Nil => None
+    case x::xs => Some(list.sortBy(t => ComparatorDirectScoreTree.scoreTree(t)).head)
+  }
+
+  def selectBestFun(list: List[(FunDef, Option[myTree[(Expr, Expr, Double)]])]):
+  Option[(FunDef, myTree[(Expr, Expr, Double)])] = {
+    val (bestFun, bestTree) = ( list sortBy(p => -scoreOptionTree(p._2))  ).head
+
+    bestTree match {
+      case Some(tree) => Some(bestFun, tree)
+      case None => None
+    }
+  }
+
+  def scoreOptionTree(tree: Option[myTree[(Expr, Expr, Double)]]): Double = tree match {
+    case None => 0.0
+    case Some(t) => ComparatorDirectScoreTree.scoreTree(t)
+  }
 
   /**
     * Define whether a pair of expressions worth be combined (i.e its score is above 0.0%)

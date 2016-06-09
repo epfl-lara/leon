@@ -42,9 +42,10 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     // a space is let for a comment string, for example size of common tree for DirectScoreTree comparator
     val comparison = combinationOfFunDef(funDefs_corpus, funDefs)
 
-    val autocompletedHole = funDefs filter hasHole map(fun => Completor.suggestCompletion(fun, corpus))
+    val autocompletedHoles =
+      funDefs filter hasHole map(fun => Completor.suggestCompletion(fun, corpus))
 
-    ComparisonReport(ctx, program, corpus, comparatorsNames, comparison)
+    ComparisonReport(ctx, program, corpus, comparatorsNames, comparison, autocompletedHoles)
   }
 
 
