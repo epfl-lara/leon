@@ -130,4 +130,31 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
       case _ => assert(false)
     }
   }
+
+  test("transforming class to adt with type params") {
+    val typeParam = TypeParameter.fresh("A")
+    val classWithParam = new CaseClassDef(FreshIdentifier("ClassWithParam"), Seq(TypeParameterDef(typeParam)), None, false)
+
+    val classWithArray = new CaseClassDef(FreshIdentifier("A"), Seq(), None, false)
+    val classWithArrayField = FreshIdentifier("t", ArrayType(IntegerType))
+    classWithArray.setFields(Seq(ValDef(classWithArrayField)))
+
+    val invariantThis = FreshIdentifier("this", classWithArray.typed)
+    val simpleInvariant = new FunDef(FreshIdentifier("inv"), Seq(), Seq(ValDef(invariantThis)), BooleanType)
+    simpleInvariant.body = Some(LessEquals(CaseClassSelector(classWithArray.typed, invariantThis.toVariable, classWithArrayField) , bi(0)))
+    classWithArray.setInvariant(simpleInvariant)
+
+    val transformer = new DefinitionTransformer {
+      override def transformType(t: TypeTree): Option[TypeTree] = t match {
+        case ArrayType(base) => Some(classWithParam.typed(Seq(base)))
+        case _ => None
+      }
+    }
+
+    val simpleId = FreshIdentifier("id", classWithArray.typed)
+    println(simpleId)
+    println(transformer.transform(simpleId))
+
+  }
+
 }
