@@ -19,22 +19,26 @@ import leon.comparison.Scores._
   * We use this corpus function to fill the hole, and we replace the hole by the matching expression in the common tree.
   *
   * We return the holed function, the corpus function used to complete it, and the completed function (if there is some).
+  *
+  * IMPORTANT: at the moment the object if implemented to handle one and only one hole
   */
 object Completor {
+
   case class Suggestion(expr: Option[Expr])
+
   case class Value(x: Expr, y: Expr, score: Double)
 
 
   def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus): (FunDef, Option[FunDef], Option[Expr]) = {
     val expr = funDef.body.get
-    val exprsCorpus = corpus.funDefs map(_.body.get)
+    val exprsCorpus = corpus.funDefs map (_.body.get)
 
     // for each function of corpus, search all roots of common tree that include the hole
-    val funDefAndRoots = corpus.funDefs map(f => (f, possibleRoots(f, expr)))
+    val funDefAndRoots = corpus.funDefs map (f => (f, possibleRoots(f, expr)))
 
     // for each function of corpus, search all common tree respective to these roots
     // (filter only the ones containing the hole)
-    val funDefAndTrees = funDefAndRoots map {p =>
+    val funDefAndTrees = funDefAndRoots map { p =>
       (p._1, p._2 flatMap ComparatorDirectScoreTree.possibleTrees filter hasHole)
     }
 
@@ -50,13 +54,15 @@ object Completor {
     }
   }
 
+
+
   def possibleRoots(funDef_corpus: FunDef, expr: Expr): List[(Expr, Expr, Double)] =
     ComparatorDirectScoreTree.possibleRoots(funDef_corpus.body.get, expr) filter (e => Utils.hasHole(e._2))
 
   def getBody(funDef: FunDef): Expr = funDef.body.get
 
   def hasHole(tree: myTree[(Expr, Expr, Double)]): Boolean = {
-    tree.toList map(p => p._2) exists (e => e.isInstanceOf[Choose])
+    tree.toList map (p => p._2) exists (e => e.isInstanceOf[Choose])
   }
 
   def scoreOptionTree(tree: Option[myTree[(Expr, Expr, Double)]]): Double = tree match {
@@ -68,6 +74,7 @@ object Completor {
   /**
     * select the best suggestion to fill the hole i.e. the common tree having the higher score between all the common
     * trees and all the function of corpus
+    *
     * @param funDefAndTrees
     * @return
     */
@@ -83,15 +90,15 @@ object Completor {
     }
   }
 
-  def selectBestTree(list: List[myTree[(Expr, Expr, Double)]]): Option[myTree[(Expr, Expr, Double)]] = list match{
+  def selectBestTree(list: List[myTree[(Expr, Expr, Double)]]): Option[myTree[(Expr, Expr, Double)]] = list match {
     case Nil => None
     //case x::xs => Some(list.sortBy(t => -ComparatorDirectScoreTree.scoreTree(t)).head)
-    case x::xs => Some(list.sortBy(-_.size).head)
+    case x :: xs => Some(list.sortBy(-_.size).head)
   }
 
   def selectBestFun(list: List[(FunDef, Option[myTree[(Expr, Expr, Double)]])]):
   Option[(FunDef, myTree[(Expr, Expr, Double)])] = {
-    val (bestFun, bestTree) = ( list sortBy(p => -scoreOptionTree(p._2))  ).head
+    val (bestFun, bestTree) = (list sortBy (p => -scoreOptionTree(p._2))).head
 
     bestTree match {
       case Some(tree) => Some(bestFun, tree)
@@ -102,15 +109,18 @@ object Completor {
   /**
     * Find in common tree the value that paired the hole and the expression from the corpus. The hole will be filled
     * with this hole
+    *
     * @param tree
     * @return
     */
   def findPairOfTheHole(tree: myTree[(Expr, Expr, Double)]): Expr =
-  (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
+    (tree.toList filter (p => p._2.isInstanceOf[Choose])).head._1
 
   /**
     * Really really ugly function used to travers recursively the tree until finding the hole and replace it by
     * the wished expression.
+    *
+    * see "case Choose(_) => ..."
     *
     * Probably a better way to perform it, using pre-existing function that I didn't know.
     *
@@ -138,7 +148,7 @@ object Completor {
       // we don't list the scrutinee
       // method cases.expression return both optGuard and rhs
       case MatchExpr(scrutinee, cases) =>
-        MatchExpr(fill(scrutinee), cases map{ c =>
+        MatchExpr(fill(scrutinee), cases map { c =>
           MatchCase(c.pattern, c.optGuard, fill(c.rhs))
         })
 
@@ -217,7 +227,7 @@ object Completor {
         SetDifference(fill(set1), fill(set2))
 
       /* Map operations */
-        /*not handled for the moment*/
+      /*not handled for the moment*/
       case FiniteMap(pairs, keyType, valueType) =>
         FiniteMap(pairs, keyType, valueType)
       case MapApply(map, key) => MapApply(fill(map), fill(key))
@@ -230,7 +240,7 @@ object Completor {
       case ArrayUpdated(array, index, newValue) =>
         ArrayUpdated(fill(array), fill(index), fill(newValue))
       case ArrayLength(array) => ArrayLength(fill(array))
-        /*not handled for the moment*/
+      /*not handled for the moment*/
       case NonemptyArray(elems, defaultLength) =>
         NonemptyArray(elems, defaultLength)
       case EmptyArray(tpe) => EmptyArray(tpe)
@@ -248,12 +258,6 @@ object Completor {
 
     fill(exprToFill)
   }
-
-
-
-
-
-
 
 
 }
