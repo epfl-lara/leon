@@ -13,15 +13,15 @@ import leon.purescala.Expressions._
 object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
+
   override def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
     val roots = possibleRoots(expr_corpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")
 
-    val biggest = trees.sortBy(t => -normalizedScoreTree(t, expr_corpus, expr)).head
-    val score = normalizedScoreTree(biggest, expr_corpus, expr)
+    val (bestTree, score) = selectBestTree(trees, expr_corpus, expr)
 
-    (score, " (" + biggest.size + ")")
+    (score, " (" + bestTree.size + ")")
   }
 
 
@@ -183,6 +183,12 @@ object ComparatorDirectScoreTree extends Comparator {
 
   def geometricMean(tree: myTree[Value]): Double =
     Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1/ tree.size.toDouble)
+
+  def selectBestTree(trees: List[myTree[Value]], expr_corpus: Expr, expr: Expr) = {
+    val biggest = trees.sortBy(t => -normalizedScoreTree(t, expr_corpus, expr)).head
+    val score = normalizedScoreTree(biggest, expr_corpus, expr)
+    (biggest, score)
+  }
 
 
 }
