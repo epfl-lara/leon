@@ -156,7 +156,7 @@ class Synthesizer(val context : LeonContext,
         (sol, None)
       } else {
         reporter.error("Solution was invalid:")
-        reporter.error(ScalaPrinter(fd).mkString("\n\n"))
+        reporter.error(ScalaPrinter(fd))
         reporter.error(vcreport.summaryString)
         (new PartialSolution(search.strat, false).getSolutionFor(search.g.root), Some(false))
       }
