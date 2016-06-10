@@ -16,10 +16,10 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   var debug = false
 
   val comparators: List[Comparator] = List(
-    ComparatorByExprList,
-    ComparatorByClassList,
-    ComparatorByClassTree,
-    ComparatorByScoreTree,
+    ComparatorExprList,
+    ComparatorClassList,
+    ComparatorClassTree,
+    ComparatorScoreTree,
     ComparatorDirectScoreTree
   )
 

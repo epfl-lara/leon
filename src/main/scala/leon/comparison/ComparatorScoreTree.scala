@@ -20,12 +20,12 @@ import leon.purescala.Types.{ClassType, TypeTree}
   * doesn't mean that FunDef match at 100%, but that the elements of this common Tree match at 100%
   *
   */
-object ComparatorByScoreTree extends Comparator {
+object ComparatorScoreTree extends Comparator {
   override val name: String = "ScoreTree"
 
   def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
-    val pairOfRoots = ComparatorByClassTree.possibleRoots(expr_corpus, expr)
-    val allPossibleTrees = pairOfRoots flatMap ComparatorByClassTree.possibleTrees
+    val pairOfRoots = ComparatorClassTree.possibleRoots(expr_corpus, expr)
+    val allPossibleTrees = pairOfRoots flatMap ComparatorClassTree.possibleTrees
     if (allPossibleTrees == Nil) return (0.0, "")
 
     val biggest = allPossibleTrees.sortBy(-_.size).head

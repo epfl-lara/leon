@@ -12,7 +12,7 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
   *
   * For clarity, we always pass "corpus function" first in argument
   */
-object ComparatorByExprList extends Comparator {
+object ComparatorExprList extends Comparator {
   val name = "ExprList"
 
   def compare(expr_corpus: Expr, expr: Expr)= {

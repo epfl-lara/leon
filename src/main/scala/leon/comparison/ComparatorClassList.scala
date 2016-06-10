@@ -26,7 +26,7 @@ import leon.purescala.Expressions._
   * ComparatorByList -> similarity 33%
   * ComparatorByListType -> similarity 66%
   */
-object ComparatorByClassList extends Comparator {
+object ComparatorClassList extends Comparator {
   val name = "ClassList"
 
   def compare(expr_corpus: Expr, expr: Expr) = {

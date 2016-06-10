@@ -20,7 +20,7 @@ import leon.purescala.Expressions._
   *
   * The MatchScore is calculated with the size of the common tree, compared with the sizes of trees A and B.
   */
-object ComparatorByClassTree extends Comparator{
+object ComparatorClassTree extends Comparator{
   val name: String = "ClassTree"
 
 
