@@ -13,7 +13,6 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Definitions._
-import evaluators.DefaultEvaluator
 
 /** Abstract data type split. If a variable is typed as an abstract data type, then
   * it will create a match case statement on all known subtypes. */
@@ -85,7 +84,7 @@ case object ADTSplit extends Rule("ADT Split.") {
               val mapping = cct.classDef.fields.zip(args).map {
                 case (f, a) => a -> caseClassSelector(cct, Variable(id), f.id)
               }
-              withSubst.withBindings(mapping).withCond(isInstOf(id.toVariable, cct))
+              withSubst.withCond(isInstOf(id.toVariable, cct)).withBindings(mapping)
             }
           }
           val subWS = subst(id -> whole, p.ws)
