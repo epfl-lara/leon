@@ -11,14 +11,34 @@ import Types._
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
+/** Accumulate dependency information for a program
+  *
+  * As long as the Program does not change, you should reuse the same
+  * DependencyFinder, as it could cache its computation internally. If the program
+  * does change, all bets are off.
+  */
 class DependencyFinder {
   private val deps: MutableMap[Definition, Set[Definition]] = MutableMap.empty
 
+  /** Return all dependencies for a given Definition
+    *
+    * Use a cache internally, so two calls (from the same instance of DependencyFinder)
+    * will return the same Set without re-computing. A dependency for ClassDef `d` is
+    * any ClassDef references by the fields of any class in the hierarch of the `d`, as
+    * well as any class invariants in the hierarchy.
+    *
+    * Dependencies for FunDef are any ClassDef that appear in any types (parameter list,
+    * return value) as well as transitive dependencies via the body (a function invocation
+    * in the body will generate a dependency to the fundef of the call).
+    *
+    * A def does not depend on itself by default. But if it calls itself recursively, or
+    * via some transitive dependencies, then the return set will contain the input def.
+    */
   def apply(d: Definition): Set[Definition] = deps.getOrElse(d, {
     new Finder(d).dependencies
   })
 
-  private class Finder(var current: Definition) extends TreeTraverser {
+  private class Finder(private var current: Definition) extends TreeTraverser {
     val foundDeps: MutableMap[Definition, MutableSet[Definition]] = MutableMap.empty
 
     private def withCurrent[T](d: Definition)(b: => T): T = {

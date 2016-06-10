@@ -118,7 +118,6 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
             assert(nfd2.fd.params.size === 1)
             nfd2.fd.params(0).getType match {
               case CaseClassType(ccd, Seq()) =>
-                println(ccd)
                 assert(ccd !== classA)
                 assert(ccd.fields.size === 1)
                 assert(ccd.fields(0).getType === BooleanType)
@@ -130,4 +129,49 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
       case _ => assert(false)
     }
   }
+
+  test("transforming class to adt with invariants containing selectors") {
+    val dummyClass = new CaseClassDef(FreshIdentifier("Dummy"), Seq(), None, false)
+    val dummyClassTransformer = new CaseClassDef(FreshIdentifier("DummyTransformer"), Seq(), None, false)
+
+    val classWithSimpleField = new CaseClassDef(FreshIdentifier("A"), Seq(), None, false)
+    val simpleField = FreshIdentifier("t", dummyClass.typed)
+    classWithSimpleField.setFields(Seq(ValDef(simpleField)))
+
+    val invariantThis = FreshIdentifier("this", classWithSimpleField.typed)
+    val simpleInvariant = new FunDef(FreshIdentifier("inv"), Seq(), Seq(ValDef(invariantThis)), BooleanType)
+    simpleInvariant.body = Some(LessEquals(CaseClassSelector(classWithSimpleField.typed, invariantThis.toVariable, simpleField) , bi(0)))
+    classWithSimpleField.setInvariant(simpleInvariant)
+
+    val classDefTransformer = new DefinitionTransformer {
+      override def transformClassDef(cd: ClassDef): Option[ClassDef] = cd match {
+        case t if t == dummyClass => Some(dummyClassTransformer)
+        case _ => None
+      }
+    }
+
+    val simpleId = FreshIdentifier("id", classWithSimpleField.typed)
+    val transformedId = classDefTransformer.transform(simpleId)
+    assert(simpleId !== transformedId)
+    assert(simpleId.getType === classWithSimpleField.typed)
+    val transformedIdClassDef: ClassDef = transformedId.getType.asInstanceOf[ClassType].classDef
+    assert(transformedIdClassDef.fields.size === 1)
+    assert(transformedIdClassDef.fields(0).getType === dummyClassTransformer.typed)
+
+
+    val typeTransformer = new DefinitionTransformer {
+      override def transformType(t: TypeTree): Option[TypeTree] = t match {
+        case t if t == dummyClass.typed => Some(dummyClassTransformer.typed)
+        case _ => None
+      }
+    }
+
+    val transformedId2 = typeTransformer.transform(simpleId)
+    assert(simpleId !== transformedId)
+    assert(simpleId.getType === classWithSimpleField.typed)
+    val transformedId2ClassDef: ClassDef = transformedId.getType.asInstanceOf[ClassType].classDef
+    assert(transformedId2ClassDef.fields.size === 1)
+    assert(transformedId2ClassDef.fields(0).getType === dummyClassTransformer.typed)
+  }
+
 }
