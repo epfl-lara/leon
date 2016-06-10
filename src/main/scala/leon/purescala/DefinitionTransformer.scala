@@ -9,7 +9,7 @@ import Expressions._
 import Types._
 
 import utils._
-import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
 class DefinitionTransformer(
   val idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
@@ -69,6 +69,7 @@ class DefinitionTransformer(
   private val dependencies = new DependencyFinder
   private val tmpCdMap = new Bijection[ClassDef, ClassDef]
   private val tmpFdMap = new Bijection[FunDef  , FunDef  ]
+  private val fieldsSet: MutableSet[CaseClassDef] = MutableSet.empty[CaseClassDef]
 
   private def transformDefs(base: Definition): Unit = {
     val (cds, fds) = {
@@ -176,9 +177,14 @@ class DefinitionTransformer(
     for (cd <- cdsToDup ++ cdsToTransform) {
       val newCd = cdMap.toB(cd)
       cd.invariant.foreach(fd => newCd.setInvariant(transform(fd)))
-      (cd, newCd) match {
-        case (ccd: CaseClassDef, newCcd: CaseClassDef) =>
-          newCcd.setFields(newCcd.fields.map(vd => ValDef(transformId(vd.id, false))))
+      newCd match {
+        case (newCcd: CaseClassDef) =>
+          if(!fieldsSet(newCcd)) {
+            //newCcd is duplicated from the original ccd, so it will always have defined fields,
+            //and they will the same as the original ccd fields.
+            newCcd.setFields(newCcd.fields.map(vd => ValDef(transformId(vd.id, true))))
+            fieldsSet += newCcd
+          }
         case _ =>
       }
     }

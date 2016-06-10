@@ -118,7 +118,6 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
             assert(nfd2.fd.params.size === 1)
             nfd2.fd.params(0).getType match {
               case CaseClassType(ccd, Seq()) =>
-                println(ccd)
                 assert(ccd !== classA)
                 assert(ccd.fields.size === 1)
                 assert(ccd.fields(0).getType === BooleanType)
@@ -167,8 +166,12 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
       }
     }
 
-    println("==============================")
-    println(typeTransformer.transform(simpleId))
+    val transformedId2 = typeTransformer.transform(simpleId)
+    assert(simpleId !== transformedId)
+    assert(simpleId.getType === classWithSimpleField.typed)
+    val transformedId2ClassDef: ClassDef = transformedId.getType.asInstanceOf[ClassType].classDef
+    assert(transformedId2ClassDef.fields.size === 1)
+    assert(transformedId2ClassDef.fields(0).getType === dummyClassTransformer.typed)
   }
 
 }
