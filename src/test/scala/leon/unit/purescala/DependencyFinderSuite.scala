@@ -67,5 +67,66 @@ class DependencyFinderSuite extends FunSuite with helpers.ExpressionsDSL {
   }
 
 
-  //TODO: test invariant dependency, and transitive through invariants
+  test("Class depends on its invariant") {
+    val classC = new CaseClassDef(FreshIdentifier("C"), Seq(), None, false)
+    val classCField = FreshIdentifier("x", IntegerType)
+    classC.setFields(Seq(ValDef(classCField)))
+
+    val thisId = FreshIdentifier("this", classC.typed)
+
+    val inv = new FunDef(FreshIdentifier("inv"), Seq(), Seq(ValDef(thisId)), BooleanType)
+    inv.body = Some(BooleanLiteral(true))
+    classC.setInvariant(inv)
+
+    val deps = new DependencyFinder
+    assert(deps(classC) === Set(inv, classC))
+  }
+
+  test("Class depends on invariant of its dependencies") {
+    val classC = new CaseClassDef(FreshIdentifier("C"), Seq(), None, false)
+    val classCField = FreshIdentifier("x", IntegerType)
+    classC.setFields(Seq(ValDef(classCField)))
+    val classD = new CaseClassDef(FreshIdentifier("D"), Seq(), None, false)
+    val classDField = FreshIdentifier("c", classC.typed)
+    classD.setFields(Seq(ValDef(classDField)))
+
+    val thisId = FreshIdentifier("this", classC.typed)
+
+    val inv = new FunDef(FreshIdentifier("inv"), Seq(), Seq(ValDef(thisId)), BooleanType)
+    inv.body = Some(BooleanLiteral(true))
+    classC.setInvariant(inv)
+
+    val deps = new DependencyFinder
+    assert(deps(classD) === Set(inv, classC))
+    assert(deps(classC) === Set(inv, classC))
+  }
+
+  test("Class depends on invariant and transitive deps") {
+    val classC = new CaseClassDef(FreshIdentifier("C"), Seq(), None, false)
+    val classCField = FreshIdentifier("x", IntegerType)
+    classC.setFields(Seq(ValDef(classCField)))
+    val classD = new CaseClassDef(FreshIdentifier("D"), Seq(), None, false)
+    val classDField = FreshIdentifier("c", classC.typed)
+    classD.setFields(Seq(ValDef(classDField)))
+
+    val thisId = FreshIdentifier("this", classC.typed)
+
+    val inv = new FunDef(FreshIdentifier("inv"), Seq(), Seq(ValDef(thisId)), BooleanType)
+    inv.body = Some(FunctionInvocation(fd2.typed, Seq(bi(10))))
+    classC.setInvariant(inv)
+
+    val deps = new DependencyFinder
+    assert(deps(classD) === Set(inv, classC, fd2, fd1))
+  }
+
+  test("Dependencies of mutually recursive functions") {
+    val rec1 = new FunDef(FreshIdentifier("rec1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    val rec2 = new FunDef(FreshIdentifier("rec2"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    rec1.body = Some(FunctionInvocation(rec2.typed, List(bi(1))))
+    rec2.body = Some(FunctionInvocation(rec1.typed, List(bi(1))))
+
+    val deps = new DependencyFinder
+    assert(deps(rec1) === Set(rec1, rec2))
+    assert(deps(rec2) === Set(rec1, rec2))
+  }
 }
