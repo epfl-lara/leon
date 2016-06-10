@@ -220,7 +220,7 @@ case object StringRender extends Rule("StringRender") {
       val newProgram2 = DefOps.transformProgram(transformer, newProgram)
       val newTemplate = ExprOps.postMap{
         case FunctionInvocation(TypedFunDef(fd, targs), exprs) =>
-          Some(FunctionInvocation(TypedFunDef(fdMap.getOrElse(fd, fd), targs), exprs))
+          Some(FunctionInvocation(TypedFunDef(transformer.transform(fd), targs), exprs))
         case _ => None
       }(template._1)
       val variablesToReplace = (template._2 ++ funDefsBodies.flatMap(_._2._2)).toSet
