@@ -65,4 +65,7 @@ class DependencyFinderSuite extends FunSuite with helpers.ExpressionsDSL {
     val deps = new DependencyFinder
     assert(deps(fd) === Set(classB, classA))
   }
+
+
+  //TODO: test invariant dependency, and transitive through invariants
 }
