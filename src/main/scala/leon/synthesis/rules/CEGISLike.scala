@@ -505,13 +505,16 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           // We compute the corresponding expr and replace it in place of the C-tree
           val outerSol = getExpr(bs)
           val innerSol = outerToInner(outerSol)
-          //println(s"Testing $innerSol")
-          //println(innerProgram)
           setSolution(innerSol)
 
           val cnstr = innerPc and letTuple(p.xs map outerToInner, innerSol, Not(innerPhi))
 
-          val eval = new DefaultEvaluator(hctx, innerProgram)
+          //println("Program:")
+          //println(programCTree)
+          //println("Constraint:")
+          //println(cnstr)
+
+          val eval = new DefaultEvaluator(hctx, programCTree)
 
           if (cexs exists (cex => eval.eval(cnstr, p.as.zip(cex).toMap).result == Some(BooleanLiteral(true)))) {
             debug(s"Rejected by CEX: $outerSol")
@@ -519,7 +522,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           } else {
             //println("Solving for: "+cnstr.asString)
 
-            val solverf = SolverFactory.getFromSettings(hctx, innerProgram).withTimeout(cexSolverTo)
+            val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
             val solver = solverf.getNewSolver()
             try {
               debug("Sending candidate to solver...")
@@ -549,7 +552,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                   debug("Found a non-verifiable solution...")
                     // Optimistic valid solution
                   best +:= currentSolution(false)
-                  }
+              }
             } finally {
               solverf.reclaim(solver)
               solverf.shutdown()
