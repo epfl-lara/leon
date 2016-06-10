@@ -732,7 +732,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           List(InExample(p.as.map(a => simplestValue(a.getType))))
         } else {
           val solverf = hctx.solverFactory
-          val solver  = solverf.getNewSolver().setTimeout(exSolverTo)
+          val solver  = solverf.getNewSolver().setTimeout(exSolverTo*2)
 
           solver.assertCnstr(p.pc.toClause)
 
