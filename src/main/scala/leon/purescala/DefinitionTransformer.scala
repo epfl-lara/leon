@@ -178,7 +178,7 @@ class DefinitionTransformer(
       cd.invariant.foreach(fd => newCd.setInvariant(transform(fd)))
       (cd, newCd) match {
         case (ccd: CaseClassDef, newCcd: CaseClassDef) =>
-          newCcd.setFields(ccd.fields.map(vd => ValDef(transformId(vd.id, true))))
+          newCcd.setFields(newCcd.fields.map(vd => ValDef(transformId(vd.id, false))))
         case _ =>
       }
     }
