@@ -749,7 +749,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               case None =>
                 if (!interruptManager.isInterrupted) {
                   warning("Solver could not solve path-condition")
-            }
+                }
                 Nil
                 //return RuleFailed() // This is not necessary though, but probably wanted
             }
