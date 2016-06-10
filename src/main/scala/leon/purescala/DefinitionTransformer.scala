@@ -12,7 +12,7 @@ import utils._
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
 class DefinitionTransformer(
-  val idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
+  idMap: Bijection[Identifier, Identifier] = new Bijection[Identifier, Identifier],
   fdMap: Bijection[FunDef    , FunDef    ] = new Bijection[FunDef    , FunDef    ],
   cdMap: Bijection[ClassDef  , ClassDef  ] = new Bijection[ClassDef  , ClassDef  ]) extends TreeTransformer {
 
