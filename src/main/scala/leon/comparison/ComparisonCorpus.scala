@@ -27,8 +27,18 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
   }
 
   def recursiveListFiles(f: File): List[File] = {
-    val these = f.listFiles.toList
-    these ++ these.filter(_.isDirectory).flatMap(recursiveListFiles)
+    if (! (f.isDirectory || f.isFile)) {
+      ctx.reporter.error("Path " + f + " is neither a file nor a directory.")
+      ctx.reporter.error("Program aborted")
+      java.lang.System.exit(0)
+    }
+
+    if (f.isDirectory) {
+      val (files, dirs) = f.listFiles().toList.partition(_.isFile)
+      files ++ dirs.filter(_.isDirectory).flatMap(recursiveListFiles)
+    } else {
+      List(f)
+    }
   }
 
   def recursiveListFilesInString(f: String): List[String] = {

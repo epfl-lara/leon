@@ -43,5 +43,21 @@ object ClassToCompare {
     else ??? [Char]
   }
 
+  def hole_match_val(x:Int): Char = {
+    val somme: Char = ??? [Char]
+
+    if (somme == 'a') 'a' else 'b'
+  }
+
+  def hole_replace(x: BigInt, list: List[Char], char: Char): List[Char] = {
+    val size = list.size
+    val ret: List[Char] = if (x < 0 || x > size) {
+      list
+    } else {
+      ??? [List[Char]]
+    }
+    ret
+  }
+
 
 }

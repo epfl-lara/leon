@@ -34,13 +34,26 @@ object ClassBase {
     case 4 => 'd'
   }
 
-  def tricky_for_ClassList_match_value(x:Int): Char = {
+  def match_with_val(x:Int): Char = {
     val somme = x match {
       case 1 => 'a'
       case 2 => 'c'
     }
 
     if (somme == 'a') 'a' else 'b'
+  }
+
+  def dummy_replace(x: BigInt, list: List[Char], char: Char): List[Char] = {
+    val size = list.size
+    val ret: List[Char] = if (x < 0 || x > size) {
+      list
+    } else {
+      val before: List[Char] = list.take(x)
+      val after: List[Char] = list.drop(x+1)
+      before ++ List(char) ++ after
+    }
+
+    ret
   }
 
   case class B(x: Int) extends A

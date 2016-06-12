@@ -126,7 +126,7 @@ object Utils {
     case Lambda(_, body) => onParent(expr) ++ onChild(expr)
     case Forall(_, body) => onParent(expr) ++ onChild(body)
     case FunctionInvocation(_ ,args) =>
-      onParent(expr) ++ args.flatMap(onChild(_))
+      onParent(expr)
     case IfExpr(cond, thenn, elze) => onParent(expr) ++ onChild(cond) ++ onChild(thenn) ++ onChild(elze)
 
     // we don't list the scrutinee

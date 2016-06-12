@@ -33,7 +33,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     } else false
 
 
-    val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus/")
+    val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus")
     val funDefs_corpus = corpus.funDefs
     val funDefs = getFunDef(ctx, program)
 

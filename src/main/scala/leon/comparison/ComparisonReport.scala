@@ -94,7 +94,7 @@ case class ComparisonReport(
       )
 
       stringHole += reportHoles.render + "\n"
-      stringHole += holes.map(p => printFilledHoles(p._1, p._3.get)).mkString("")
+      stringHole += holes.map(p => printFilledHoles(p._1, p._3)).mkString("")
     }
 
     t.render + "\n" + warningScoreTree + "\n" + stringHole
@@ -109,15 +109,17 @@ case class ComparisonReport(
     case None => "no matching funDef found"
   }
 
-  def printFilledHoles(incompleteFun: FunDef, completedExpr: Expr): String = {
-    "\n================================================\n" +
-      "Incomplete function " + incompleteFun.qualifiedName(program) + " was:\n" +
-      "================================================\n" +
-      incompleteFun.body.get.toString + "\n" +
-      "==============================\n" +
-      "Function is now completed as :\n" +
-      "==============================\n" +
-      completedExpr.toString + "\n"
+  def printFilledHoles(incompleteFun: FunDef, completedExpr: Option[Expr]): String = completedExpr match {
+    case None => ""
+    case Some(expr) =>
+      "\n================================================\n" +
+        "Incomplete function " + incompleteFun.qualifiedName(program) + " was:\n" +
+        "================================================\n" +
+        incompleteFun.body.get.toString + "\n" +
+        "==============================\n" +
+        "Function is now completed as :\n" +
+        "==============================\n" +
+        expr.toString + "\n"
   }
 
 
