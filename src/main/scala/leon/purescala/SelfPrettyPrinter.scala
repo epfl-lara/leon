@@ -85,8 +85,10 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
   protected var allowedFunctions = Set[FunDef]()
   /* Functions totally excluded from the set of pretty-printer candidates */
   protected var excluded = Set[FunDef]()
-  /** Functions whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
+  /** Function whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
   def allowFunction(fd: FunDef) = { allowedFunctions += fd; this }
+  /** Functions whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
+  def allowFunctions(fds: Set[FunDef]) = { allowedFunctions ++= fds; this }
   /** Functions totally excluded from the set of pretty-printer candidates*/
   def excludeFunctions(fds: Set[FunDef]) = { excluded ++= fds; this }
   /** Function totally excluded from the set of pretty-printer candidates*/

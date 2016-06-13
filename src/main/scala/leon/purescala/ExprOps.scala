@@ -446,13 +446,19 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def simplerLet(t: Expr): Option[Expr] = t match {
       case LetDef(fds, body) => // Inline simple functions called only once, or calling another function.
-        def collectCalls(e: Expr): Set[FunDef] = ExprOps.collect[FunDef]{ case FunctionInvocation(TypedFunDef(fd, _), _) => Set(fd) case _ => Set()}(e)
+        
+        def collectCalls(e: Expr): Set[(FunDef, Int)] = {
+          var i = 1
+          ExprOps.collect[(FunDef, Int)]{
+            case FunctionInvocation(TypedFunDef(fd, _), _) => Set((fd, { i += 1; i}))
+            case _ => Set()}(e)
+        }
         val calledGraph = ((for{
             fd <- fds
-            callee <- collectCalls(fd.fullBody)
+            (callee, id) <- collectCalls(fd.fullBody)
             if fds.contains(callee)
-        } yield ((fd: Tree) -> callee)) ++ collectCalls(body).map((body: Tree) -> _)).groupBy(_._2).mapValues(_.size)
-        
+        } yield ((fd: Tree) -> callee)) ++ collectCalls(body).toSeq.map((body: Tree) -> _._1)).groupBy(_._2).mapValues(_.size)
+
         val toInline = fds.filter{ fd => fd.fullBody match {
           case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
