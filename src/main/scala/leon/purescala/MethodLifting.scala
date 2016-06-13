@@ -34,6 +34,8 @@ object MethodLifting extends TransformationPhase {
           Variable(fBinders(i)).setPos(e)
         case This(`ct`) =>
           Variable(binder).setPos(e)
+        case OldThis(`ct`) =>
+          Old(binder).setPos(e)
         case e =>
           e
       }
@@ -107,6 +109,8 @@ object MethodLifting extends TransformationPhase {
             Variable(fBinders(i)).setPos(e)
           case e @ This(`ct`) =>
             Variable(binder).setPos(e)
+          case e @ OldThis(`ct`) =>
+            Old(binder).setPos(e)
           case e =>
             e
         } (fd.fullBody)
@@ -125,6 +129,7 @@ object MethodLifting extends TransformationPhase {
 
         val newE = simplePreTransform {
           case This(ct) => asInstOf(Variable(binder), ct)
+          case OldThis(ct) => asInstOf(Old(binder), ct)
           case e => e
         } (fd.fullBody)
 
@@ -215,6 +220,8 @@ object MethodLifting extends TransformationPhase {
           def thisToReceiver(e: Expr): Option[Expr] = e match {
             case th @ This(ct) =>
               Some(asInstOf(receiver.toVariable, ct).setPos(th))
+            case th @ OldThis(ct) =>
+              Some(asInstOf(Old(receiver), ct).setPos(th))
             case _ =>
               None
           }

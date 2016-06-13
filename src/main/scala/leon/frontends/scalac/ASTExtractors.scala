@@ -708,9 +708,9 @@ trait ASTExtractors {
     }
 
     object ExOldExpression {
-      def unapply(tree: Apply) : Option[Symbol] = tree match {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
         case a @ Apply(TypeApply(ExSymbol("leon", "lang", "old"), List(tpe)), List(arg)) =>
-          Some(arg.symbol)
+          Some(arg)
         case _ =>
           None
       }

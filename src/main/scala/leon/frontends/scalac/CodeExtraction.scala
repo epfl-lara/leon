@@ -1278,7 +1278,8 @@ trait CodeExtraction extends ASTExtractors {
           val tupleExprs = exprs.map(e => extractTree(e))
           Tuple(tupleExprs)
 
-        case ex@ExOldExpression(sym) if dctx.isVariable(sym) =>
+        case ex@ExOldExpression(t) if dctx.isVariable(t.symbol) =>
+          val sym = t.symbol
           dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
             case Some(builder) =>
               val Variable(id) = builder()
@@ -1286,6 +1287,18 @@ trait CodeExtraction extends ASTExtractors {
             case None =>
               outOfSubsetError(current, "old can only be used with variables")
           }
+        case ex@ExOldExpression(t: This) =>
+          extractType(t) match {
+            case ct: ClassType =>
+              OldThis(ct)
+            case _ =>
+              outOfSubsetError(t, "Invalid usage of `this`")
+          }
+
+        //TODO: could have a case to extract Old of CaseClassSelector and map them to Selectors of OldThis.
+        case ex@ExOldExpression(t) =>
+          outOfSubsetError(t, "Invalid usage of `old` with expression: " + t + ". Only works with variables and `this` keyword")
+
 
         case ExErrorExpression(str, tpt) =>
           Error(extractType(tpt), str)
