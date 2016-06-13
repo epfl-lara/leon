@@ -48,25 +48,35 @@ case class FunDefNotCoverableException(fd: FunDef, bindings: Map[_, _]) extends
  */
 class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program) {
 
-  def result(): Stream[Seq[Expr]] = coverFunDef(fd, Covered(Set()))
+  def result(): Stream[Seq[Expr]] = coverFunDef(fd, Covered(Set(), Set()), None)
 
-  private case class Covered(alreadyCovered: Set[TypedFunDef]) {
+  private case class Covered(alreadyCovered: Set[TypedFunDef], alreadyCoveredLambdas: Set[Lambda]) {
     def apply(t: TypedFunDef) = alreadyCovered(t)
-    def +(t: TypedFunDef) = this.copy(alreadyCovered + t)
+    def apply(l: Lambda) = alreadyCoveredLambdas(l)
+    def +(t: TypedFunDef) = this.copy(alreadyCovered = alreadyCovered + t)
+    def +(l: Lambda) = this.copy(alreadyCoveredLambdas = alreadyCoveredLambdas + l)
   }
   
+  private def coverFunLike(paramIds: Seq[Identifier], body: Expr, args: Option[Seq[Expr]], covered: Covered): Stream[Seq[Expr]] = {
+    val mapping = coverExpr(paramIds, body, covered, args.map(args => paramIds.zip(args).toMap).getOrElse(Map.empty))
+    leon.utils.StreamUtils.cartesianMap(mapping) map { mapping =>
+     paramIds.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
+    }
+  }
   
-  private def coverFunDef(f: TypedFunDef, covered: Covered): Stream[Seq[Expr]] = if(covered(f)) {
+  private def coverFunDef(f: TypedFunDef, covered: Covered, args: Option[Seq[Expr]]): Stream[Seq[Expr]] = if(covered(f)) {
     Stream(f.paramIds.map(x => a(x.getType)))
   } else {
     f.body match {
-      case Some(body) =>
-        val mapping = coverExpr(f.paramIds, body, covered + f)
-        leon.utils.StreamUtils.cartesianMap(mapping) map { mapping =>
-          f.paramIds.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
-        }
-      case None => throw new Exception("empty body")
+      case Some(body) => coverFunLike(f.paramIds, body, args, covered + f)
+      case None => throw new InputPatternCoverageException(s"empty body for function $f")
     }
+  }
+
+  private def coverLambda(l: Lambda, covered: Covered, args: Option[Seq[Expr]]): Stream[Seq[Expr]] = if(covered(l)) {
+    Stream(l.args.map(x => a(x.getType)))
+  } else {
+    coverFunLike(l.args.map(_.id), l.body, args, covered + l)
   }
   
   private def mergeCoverage(a: Map[List[Identifier], Stream[Expr]], b: Map[List[Identifier], Stream[Expr]]):
@@ -86,31 +96,34 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     }
   }
   
+  def compose(oldBindings: Map[Identifier, Expr], newBindings: Seq[Expr]): Seq[Expr] = {
+    newBindings.map { case Variable(id) => oldBindings.getOrElse(id, Variable(id)) case  e => e }
+  }
+  
   /** Map of g.left.symbol to the stream of expressions it could be assigned to */
-  private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered): Map[List[Identifier], Stream[Expr]] = {
+  private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered, bindings: Map[Identifier, Expr]): Map[List[Identifier], Stream[Expr]] = {
     val res : Map[List[Identifier], Stream[Expr]] = 
     e match {
     case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)
     case MatchExpr(Variable(i), cases) if inputs.headOption == Some(i) =>
       val inputType = i.getType
-      val coveringExprs = cases.map(coverMatchCase(inputType, _, covered))
+      val coveringExprs = cases.map(coverMatchCase(inputType, _, covered, bindings))
       val interleaved = leon.utils.StreamUtils.interleave[Expr](coveringExprs)
       Map(List(i) -> interleaved)
-    case FunctionInvocation(tfd@TypedFunDef(fd, targs), Reconstructor(ids)+:tail) =>
-      Map(ids -> coverFunDef(tfd, covered).map(_.head))
+    case FunctionInvocation(tfd@TypedFunDef(fd, targs), args @ (Reconstructor(ids)+:tail)) =>
+      Map(ids -> coverFunDef(tfd, covered, Some(compose(bindings, args))).map(_.head))
       
-    case Application(Variable(f), Reconstructor(ids)+:tail) =>
-      val typicalArgValue = f.getType match {
-        case FunctionType(in+:typeTails, out) => a(in)
-        case e=> throw new InputPatternCoverageException("Wrong type, expected A => B, got  " + e)
+    case Application(Variable(f), args @ (Reconstructor(ids)+:tail)) =>
+      bindings.get(f) match {
+        case Some(l@Lambda(Seq(ValDef(i)), body))=>
+          Map(ids -> coverLambda(l, covered, Some(compose(bindings, args))).map(_.head))
+        case e => throw new InputPatternCoverageException("Wrong callback, expected lambda, got  " + e + " (bindings = " + bindings + ")"  )
       }
-      Map(ids -> Stream(typicalArgValue))
-
     case Operator(lhsrhs, builder) =>
       if(lhsrhs.length == 0) {
         Map()
       } else {
-        lhsrhs.map(child => coverExpr(inputs, child, covered)).reduce(mergeCoverage)
+        lhsrhs.map(child => coverExpr(inputs, child, covered, bindings)).reduce(mergeCoverage)
       }
     }
     res
@@ -187,10 +200,10 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     case _ => throw PatternNotSupportedException(p)
   }
   
-  private def coverMatchCase(inputType: TypeTree, m: MatchCase, covered: Covered) = m match {
+  private def coverMatchCase(inputType: TypeTree, m: MatchCase, covered: Covered, bindings: Map[Identifier, Expr]) = m match {
     case MatchCase(pattern, guard, rhs) =>
       val variables = pattern.binders.toSeq
-      val binders = coverExpr(variables, rhs, covered)
+      val binders = coverExpr(variables, rhs, covered, bindings)
       val cartesian = leon.utils.StreamUtils.cartesianMap(binders)
       cartesian.map(binders => coverPattern(pattern, inputType, binders, covered))
   }
