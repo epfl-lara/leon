@@ -26,11 +26,17 @@ import leon.evaluators.DefaultEvaluator
 import leon.grammars.ValueGrammar
 import leon.datagen.GrammarDataGen
 
+class InputPatternCoverageException(msg: String) extends
+  Exception(msg)
+
 case class PatternNotSupportedException(p: Pattern) extends
-  Exception(s"The pattern $p is not supported for coverage.")
+  InputPatternCoverageException(s"The pattern $p is not supported for coverage.")
+
+case class PatternExtractionErrorException(p: Pattern, msg: String) extends
+  InputPatternCoverageException(s"The pattern $p cause problem during extraction: "+msg)
 
 case class FunDefNotCoverableException(fd: FunDef, bindings: Map[_, _]) extends
-  Exception(s"The function is not supported for coverage:\n$fd\n under bindings $bindings")
+  InputPatternCoverageException(s"The function is not supported for coverage:\n$fd\n under bindings $bindings")
 
 /**
  * @author Mikael
@@ -92,6 +98,13 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       Map(List(i) -> interleaved)
     case FunctionInvocation(tfd@TypedFunDef(fd, targs), Reconstructor(ids)+:tail) =>
       Map(ids -> coverFunDef(tfd, covered).map(_.head))
+      
+    case Application(Variable(f), Reconstructor(ids)+:tail) =>
+      val typicalArgValue = f.getType match {
+        case FunctionType(in+:typeTails, out) => a(in)
+        case e=> throw new InputPatternCoverageException("Wrong type, expected A => B, got  " + e)
+      }
+      Map(ids -> Stream(typicalArgValue))
 
     case Operator(lhsrhs, builder) =>
       if(lhsrhs.length == 0) {
@@ -149,7 +162,8 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       }
       val args = subs.collect { case e: WildcardPattern => e }
       CaseClass(ct, args.zipWithIndex.map{
-        case (WildcardPattern(Some(o)), i) => convert(List(o))(binders).getOrElse((throw PatternNotSupportedException(p)): Expr)
+        case (WildcardPattern(Some(o)), i) =>
+          convert(List(o))(binders).getOrElse((throw PatternExtractionErrorException(p, s"Not able to recover value of ${o}")): Expr)
         case (WildcardPattern(_), i) => a(ct.fieldsTypes(i))
       })
     case TuplePattern(binder, subs) =>
