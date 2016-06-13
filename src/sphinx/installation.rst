@@ -241,7 +241,7 @@ into it.
 * Java SE Development Kit 8 or 7 (as described above)
 * Support for at least one external solver (See :ref:`smt-solvers`)
 
-**Setup STB in your project:**
+**Setup SBT in your project:**
 
 Leon requires the Build class, which is a class created by SBT in its folder *target* when you compile your project the
 first time. Also, it will be comfortable to run Leon through terminal command, in order to easily specify arguments.
@@ -254,8 +254,7 @@ We will resolve both of theses things running the command:
 
 This will create the *leon* executable file that you can now use typing ```./leon```. You are not required to recompile
 this file after modifying your project, because *leon* file is actually a script that modifies the
-scala compiler, giving it the path to Leon, and then compile the file you specified. You can open *leon*
-in terminal ```cat leon``` to realize that.
+scala compiler, giving it the path to Leon, and then compile the file you specified.
 
 **Setup IntelliJ:**
 
