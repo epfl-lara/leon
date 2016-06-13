@@ -102,7 +102,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         forwardMap(replace(reverse, _))
       }
 
-      val substString = subst.map { case (f, t) => f.asString+" -> "+t.asString }
+      val substString = subst.map { case (f, t) => f.asString(hctx)+" -> "+t.asString(hctx) }
 
       List(decomp(List(sub), onSuccess, "Equivalent Inputs ("+substString.mkString(", ")+")"))
     } else {

@@ -65,7 +65,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
           Some(pc, p.copy(pc = p.pc withCond pc))
         } else None
 
-        val eq = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
+        val eq: Option[(Equals, Problem)] = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
           val pc = Equals(v1, v2)
           // Let's see if an input variable is involved
           val (f, t, isInput) = (v1, v2) match {
@@ -106,7 +106,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
             Some(Solution(pre, sols.flatMap(_.defs).toSet, term, sols.forall(_.isTrusted)))
           }
 
-          Some(decomp(subProblems, onSuccess, s"Ineq. Split on '$v1' and '$v2'"))
+          Some(decomp(subProblems, onSuccess, s"Ineq. Split on '${v1.asString(hctx)}' and '${v2.asString(hctx)}'"))
         }
     }
   }
