@@ -37,7 +37,7 @@ class StringEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
   private val stringBijection = new Bijection[String, Expr]()
   
   private def convertToString(e: Expr): String  = stringBijection.cachedA(e)(e match {
-    case CaseClass(_, Seq(CharLiteral(c), l)) => c + convertToString(l)
+    case CaseClass(_, Seq(CharLiteral(c), l)) => (if(c < 31) (c + 97).toChar else c) + convertToString(l)
     case CaseClass(_, Seq()) => ""
   })
 
