@@ -68,7 +68,10 @@ object Utils {
 
 
   /**
-    * Use GenTreeOps.fold to travers tree and collect attribute of their expression
+    * Use GenTreeOps.fold to travers tree and collect attribute of their expression.
+    *
+    * No use of GenTreeOps.collect because we DO want to preserve duplicate element (GenTreeOps.collect return a
+    * Set, which doesn't)
     * @param expr
     * @return
     */
