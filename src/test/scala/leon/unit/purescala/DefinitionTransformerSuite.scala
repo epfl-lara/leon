@@ -32,7 +32,8 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
 
 
   private val classA = new CaseClassDef(FreshIdentifier("A"), Seq(), None, false)
-  classA.setFields(Seq(ValDef(FreshIdentifier("x", IntegerType))))
+  private val classAField = FreshIdentifier("x", IntegerType)
+  classA.setFields(Seq(ValDef(classAField)))
   private val classB = new CaseClassDef(FreshIdentifier("B"), Seq(), None, false)
   classB.setFields(Seq(ValDef(FreshIdentifier("a", classA.typed))))
 
@@ -172,6 +173,33 @@ class DefinitionTransformerSuite extends FunSuite with ExpressionsDSL {
     val transformedId2ClassDef: ClassDef = transformedId.getType.asInstanceOf[ClassType].classDef
     assert(transformedId2ClassDef.fields.size === 1)
     assert(transformedId2ClassDef.fields(0).getType === dummyClassTransformer.typed)
+  }
+
+
+  test("transformClassDef is only called once on each class in program") {
+    //this checks that transformClassDef is only applied once on a class in
+    //the program. The freshClass only record the first fresh class returned,
+    //and in the end we check that the transformation on the classA is equals
+    //to the fresh class. We try to run the transformation on a fundef with
+    //many references to class A to have a non-trivial testcase
+    var freshClass: Option[ClassDef] = None
+    val transformer = new DefinitionTransformer {
+      override def transformClassDef(cd: ClassDef): Option[ClassDef] = cd match {
+        case t if t == classA =>
+          val freshA = classA.duplicate(fields = classA.fields.map(vd => ValDef(vd.id.freshen))) 
+          if(freshClass.isEmpty) freshClass = Some(freshA)
+          Some(freshA)
+        case _ => None
+      }
+    }
+
+   
+    val a = FreshIdentifier("a", classA.typed)
+    val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(a)), classA.typed)
+    fd.body = Some(CaseClassSelector(classA.typed, a.toVariable, classAField))
+
+    transformer.transform(fd)
+    assert(transformer.transform(classA) == freshClass.getOrElse(null))
   }
 
 }

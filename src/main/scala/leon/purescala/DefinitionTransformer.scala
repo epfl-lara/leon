@@ -55,6 +55,23 @@ class DefinitionTransformer(
     })
   }
 
+
+  /** Override this to provide specific ClassDef transform
+    *
+    * It is guaranteed to only be called once per ClassDef accross the whole
+    * program transformation, and won't be applied recursively
+    * to the transformed class.
+    *
+    * This design choice is to allow for a typical use case in which you
+    * want to add a field to every single case classes in your program,
+    * and for obvious reasons you don't want to apply this transformation
+    * recursively on transformed case classes. Another typical case is
+    * to duplicate the whole program, which needs duplicating each case
+    * class by freshening all the fields. Without this specific contract,
+    * client implementation of such functionalities would require the use
+    * of a local map to track which classes are in the program before starting
+    * the transformation, and which classes was already transformed.
+    */
   protected def transformClassDef(cd: ClassDef): Option[ClassDef] = None
   final override def transform(cd: ClassDef): ClassDef = {
     if ((cdMap containsB cd) || (tmpCdMap containsB cd)) cd
