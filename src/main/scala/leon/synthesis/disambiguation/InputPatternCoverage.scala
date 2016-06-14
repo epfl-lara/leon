@@ -54,10 +54,20 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     def +(l: Lambda) = this.copy(alreadyCoveredLambdas = alreadyCoveredLambdas + l)
   }
   
+  private def argsToMap(paramIds: Seq[Identifier], args: Option[Seq[Expr]]) = 
+    args.map(args => paramIds.zip(args).toMap).getOrElse(Map.empty)
+  
   private def coverFunLike(paramIds: Seq[Identifier], body: Expr, args: Option[Seq[Expr]], covered: Covered): Stream[Seq[Expr]] = {
-    val mapping = coverExpr(paramIds, body, covered, args.map(args => paramIds.zip(args).toMap).getOrElse(Map.empty))
+    val mapping = coverExpr(paramIds, body, covered, argsToMap(paramIds, args))
     leon.utils.StreamUtils.cartesianMap(mapping) map { mapping =>
-     paramIds.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
+      paramIds.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
+    }
+  }
+  
+  private def uniqueValueOf(m: Map[List[Identifier], Stream[Expr]], id: Identifier): Expr = {
+    m.get(List(id)) match {
+      case None => throw new InputPatternCoverageException(s"Did not find $id in $m")
+      case Some(s) => s.headOption.getOrElse(throw new InputPatternCoverageException(s"Empty value for $id in $m"))
     }
   }
   
@@ -66,7 +76,46 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
   } else {
     f.body match {
       case Some(body) => coverFunLike(f.paramIds, body, args, covered + f)
-      case None => throw new InputPatternCoverageException(s"empty body for function $f")
+      case None => 
+        if(f.fd == p.library.mapMkString.get) {
+          args match {
+            case Some(Seq(mp, sepk_v, sep_entry, fkey, fvalue)) =>
+              mp.getType match {
+                case MapType(keyType, valueType) =>
+                  val key1 = FreshIdentifier("k", keyType)
+                  val key2 = FreshIdentifier("k", keyType)
+                  val value1 = FreshIdentifier("v", valueType)
+                  val value2 = FreshIdentifier("v", valueType)
+                  val dumbbody =
+                    tupleWrap(Seq(application(fkey, Seq(Variable(key1))),
+                                  application(fkey, Seq(Variable(key2))),
+                                  Variable(f.paramIds(1)),
+                                  Variable(f.paramIds(2)),
+                                  application(fvalue, Seq(Variable(value1))),
+                                  application(fvalue, Seq(Variable(value2)))))
+                  val mapping = coverExpr(f.paramIds, dumbbody, covered + f, argsToMap(f.paramIds, args))
+                  val key1v = uniqueValueOf(mapping, key1)
+                  val key2v = uniqueValueOf(mapping, key2)
+                  val key2vUnique = if(key1v == key2v) {
+                    all(keyType).filter(e => e != key1v).headOption.getOrElse(key2v)
+                  } else key2v
+                  val value1v = uniqueValueOf(mapping, value1)
+                  val value2v = uniqueValueOf(mapping, value2)
+                  val remaining_mapping = mapping - List(key1) - List(key2) - List(value1) - List(value2)
+                  val firstValue = FiniteMap(Map(key1v -> value1v, key2vUnique -> value2v), keyType, valueType)
+                  leon.utils.StreamUtils.cartesianMap(remaining_mapping) map { mapping =>
+                     firstValue +:
+                     f.paramIds.tail.map(i => convert(List(i))(mapping).getOrElse(a(i.getType)))
+                  }
+                case _ => throw new InputPatternCoverageException(s"Wrong usage of $f - no map type")
+              }
+            case _ => throw new InputPatternCoverageException(s"Wrong usage of $f")
+          }
+        }/* else if(f.fd == p.library.bagMkString.get) {
+          
+        } else if(f.fd == p.library.setMkString.get) {
+          
+        } */else throw new InputPatternCoverageException(s"empty body for function $f")
     }
   }
 

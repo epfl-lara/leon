@@ -126,7 +126,12 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
     val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 
-    val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
+    val solverExamples    = try {
+      solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
+    } catch  {
+      case e: leon.Unsupported =>
+        Nil
+    }
 
     ExamplesBank(generatedExamples.toSeq ++ solverExamples.toList, Nil)
   }
