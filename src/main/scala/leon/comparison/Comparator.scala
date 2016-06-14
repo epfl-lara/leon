@@ -1,5 +1,6 @@
 package leon.comparison
 
+import leon.LeonContext
 import leon.purescala.Expressions.Expr
 
 /**
@@ -7,6 +8,6 @@ import leon.purescala.Expressions.Expr
   */
 trait Comparator {
   val name: String
-  def compare(exprCorpus: Expr, expr: Expr): (Double, String)
+  def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext): (Double, String)
 
 }

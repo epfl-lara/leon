@@ -13,8 +13,6 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   override val description: String = "Comparison phase between input program and Leon example suite"
   override val name: String = "Comparison"
 
-  var debug = false
-
   val comparators: List[Comparator] = List(
     ComparatorExprList,
     ComparatorClassList,
@@ -26,11 +24,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   val comparatorsNames = comparators map (_.name)
 
   override def apply(ctx: LeonContext, program: Program): ComparisonReport = {
-    val debugFlag = ctx.findOption(GlobalOptions.optDebug)
-    debug = if (debugFlag.isDefined) {
-      ctx.reporter.info("Debug mode")
-      true
-    } else false
+    implicit val context = ctx
 
 
     val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus")
@@ -59,7 +53,8 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     * @param funDefs
     * @return
     */
-  def combinationOfFunDef(funDefsCorpus: List[FunDef], funDefs: List[FunDef]) = {
+  def combinationOfFunDef(funDefsCorpus: List[FunDef], funDefs: List[FunDef])
+                         (implicit context: LeonContext) = {
 
     for{
       funDef <- funDefs

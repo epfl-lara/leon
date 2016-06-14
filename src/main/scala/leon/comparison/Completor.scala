@@ -1,5 +1,6 @@
 package leon.comparison
 
+import leon.LeonContext
 import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions._
 import leon.comparison.Utils._
@@ -26,7 +27,8 @@ import leon.comparison.ComparatorDirectScoreTree._
     case class Suggestion(expr: Option[Expr])
 
 
-  def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus): (FunDef, Option[FunDef], Option[Expr]) = {
+  def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus)(implicit context: LeonContext):
+  (FunDef, Option[FunDef], Option[Expr]) = {
     val expr = funDef.body.get
 
     // for each function of corpus, search all roots of common tree that include the hole

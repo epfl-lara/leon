@@ -1,5 +1,6 @@
 package leon.comparison
 
+import leon.{GlobalOptions, LeonContext}
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
 
@@ -29,7 +30,7 @@ import leon.purescala.Expressions._
 object ComparatorClassList extends Comparator {
   val name = "ClassList"
 
-  def compare(exprCorpus: Expr, expr: Expr) = {
+  def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
     val listClassesA = collectClass(exprCorpus)
     val listClassesB = collectClass(expr)
 
@@ -37,7 +38,7 @@ object ComparatorClassList extends Comparator {
 
     val score = Utils.matchScore(similarExpr, listClassesA.size, listClassesB.size)
 
-    if (score > 0.0 && ComparisonPhase.debug){
+    if (context.findOption(GlobalOptions.optDebug).isDefined){
       println("-----------")
       println("COMPARATOR " + name)
       println("Expressions: ", expr, exprCorpus)

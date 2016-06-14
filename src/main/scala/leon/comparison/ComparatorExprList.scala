@@ -1,5 +1,6 @@
 package leon.comparison
 
+import leon.{GlobalOptions, LeonContext}
 import leon.comparison.Utils._
 import leon.purescala.Expressions.{CaseClassPattern, _}
 
@@ -15,7 +16,7 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
 object ComparatorExprList extends Comparator {
   val name = "ExprList"
 
-  def compare(exprCorpus: Expr, expr: Expr)= {
+  def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
     val exprsA = collectExpr(exprCorpus)
     val exprsB = collectExpr(expr)
 
@@ -23,7 +24,7 @@ object ComparatorExprList extends Comparator {
 
     val score = Utils.matchScore(numberOfSimilarExpr, exprsA.size, exprsB.size)
 
-    if (score > 0.0 && ComparisonPhase.debug){
+    if (context.findOption(GlobalOptions.optDebug).isDefined){
       println("---------------------")
       println("COMPARATOR " + name)
       println("Expressions: ", exprCorpus, expr)

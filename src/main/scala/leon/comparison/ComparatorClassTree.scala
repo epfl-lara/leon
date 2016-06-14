@@ -1,5 +1,6 @@
 package leon.comparison
 
+import leon.{GlobalOptions, LeonContext}
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
 
@@ -24,7 +25,7 @@ object ComparatorClassTree extends Comparator{
   val name: String = "ClassTree"
 
 
-  def compare(exprCorpus: Expr, expr: Expr) = {
+  def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
     val roots = possibleRoots(exprCorpus, expr)
 
     val trees = roots.flatMap(possibleTrees(_))
@@ -36,7 +37,7 @@ object ComparatorClassTree extends Comparator{
 
     val score = matchScore(sum, listClassesA.size, listClassesB.size)
 
-    if (score > 0.0 && ComparisonPhase.debug){
+    if (context.findOption(GlobalOptions.optDebug).isDefined){
       println("---------------------")
       println("COMPARATOR " + name)
       println("Expressions: ", exprCorpus, expr)

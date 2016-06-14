@@ -1,4 +1,5 @@
 package leon.comparison
+import leon.{GlobalOptions, LeonContext}
 import leon.comparison.Scores._
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
@@ -14,12 +15,20 @@ object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
 
-  override def compare(exprCorpus: Expr, expr: Expr): (Double, String) = {
+  override def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext): (Double, String) = {
     val roots = possibleRoots(exprCorpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")
 
     val (bestTree, score) = selectBestTree(trees, exprCorpus, expr)
+
+    if (context.findOption(GlobalOptions.optDebug).isDefined){
+      println("---------------------")
+      println("COMPARATOR " + name)
+      println("Expressions: ", exprCorpus, expr)
+      println("Common Tree: ", bestTree)
+      println("---------------------")
+    }
 
     (score, " (" + bestTree.size + ")")
   }
