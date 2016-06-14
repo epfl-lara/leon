@@ -31,9 +31,10 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
         Some(CaseClassSelector(ArrayCaseClass.typed(Seq(base)), ra, lengthField))
 
       case al @ ArraySelect(a, i) =>
+        val ArrayType(base) = a.getType
         val ra = transform(a)
         val ri = transform(i)
-        val raw = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, rawArrayField)
+        val raw = CaseClassSelector(transform(a.getType).asInstanceOf[CaseClassType], ra, rawArrayField)
         Some(RawArraySelect(raw, ri))
 
       case al @ ArrayUpdated(a, i, e) =>
@@ -41,10 +42,10 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
         val ri = transform(i)
         val re = transform(e)
 
-        val length = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, lengthField)
-        val raw = CaseClassSelector(ra.getType.asInstanceOf[CaseClassType], ra, rawArrayField)
+        val length = CaseClassSelector(transform(a.getType).asInstanceOf[CaseClassType], ra, lengthField)
+        val raw = CaseClassSelector(transform(a.getType).asInstanceOf[CaseClassType], ra, rawArrayField)
 
-        Some(CaseClass(ra.getType.asInstanceOf[CaseClassType], Seq(RawArrayUpdated(raw, ri, re), length)))
+        Some(CaseClass(transform(a.getType).asInstanceOf[CaseClassType], Seq(RawArrayUpdated(raw, ri, re), length)))
 
       case a @ FiniteArray(elems, oDef, size) =>
 

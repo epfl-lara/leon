@@ -6,6 +6,7 @@ package solvers
 import purescala.Types._
 import purescala.Expressions._
 import purescala.Extractors._
+import purescala.TypeOps._
 import purescala.{PrettyPrintable, PrinterContext}
 import purescala.PrinterHelpers._
 
@@ -45,7 +46,12 @@ case class RawArraySelect(array: Expr, index: Expr) extends Expr with Extractabl
   override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] =
     Some((Seq(array, index), es => RawArraySelect(es(0), es(1))))
 
-  val getType = array.getType.asInstanceOf[RawArrayType].to
+  val getType = array.getType match {
+    case RawArrayType(from, to) if isSubtypeOf(index.getType, from) =>
+      to
+    case _ =>
+      Untyped
+  }
 
   override def asString(implicit ctx: LeonContext) = {
     s"$array($index)"

@@ -11,7 +11,10 @@ object HashTables {
     
 
   case class HashTable(table: Array[List[BigInt]], hashFun: (BigInt) => Int) {
-    require(table.length > 0 && table.length < 6)
+    require(table.length > 0 && table.length < 6 &&
+            forall((i:Int, x: BigInt) => 
+              ((0 <= i && i < table.length) && table(i).content.contains(x)) ==> 
+              (hashing(x) == i)))
 
     def content: Set[BigInt] = {
       def rec(index: Int): Set[BigInt] = {
@@ -39,7 +42,7 @@ object HashTables {
     def insert(x: BigInt): Unit = {
       val index = hashing(x)
       table(index) = (x::table(index))
-    } ensuring(_ => this.content == old(this).content ++ Set(x))
+    } ensuring(_ => table(hashing(x)).contains(x) && this.content == old(this).content ++ Set(x))
 
     def contains(x: BigInt): Boolean = {
       val index = hashing(x)
