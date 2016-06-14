@@ -28,8 +28,10 @@ case object TEGLESS extends TEGISLike("TEGLESS") {
     }
 
     TegisParams(
-      grammar = grammars.default(sctx, p),
-      rootLabel = { (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)) }
+      grammar = Grammars.default(sctx, p),
+      rootLabel = { (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)) },
+      minSize = 1,
+      maxSize = 5
     )
   }
 }

@@ -4,16 +4,15 @@ package leon
 package synthesis
 package rules
 
+import purescala.Types._
 import leon.grammars._
 import leon.grammars.aspects._
 
-case object TEGIS extends TEGISLike("TEGIS") {
+case object BottomUpTEGIS extends BottomUpTEGISLike("BU TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     TegisParams(
       grammar = Grammars.default(sctx, p),
-      rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
-      minSize = 1,
-      maxSize = 5
+      maxExpands = 4
     )
   }
 }
