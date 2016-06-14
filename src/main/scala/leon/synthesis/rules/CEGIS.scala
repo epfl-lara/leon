@@ -13,7 +13,8 @@ case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
     CegisParams(
       grammar = grammars.default(sctx, p),
       rootLabel = Label(_),
-      optimizations = false
+      optimizations = false,
+      sizes = List((1, sctx.settings.cegisMaxSize, sctx.settings.cegisMaxSize))
     )
   }
 }
@@ -23,10 +24,16 @@ case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
   */
 case object CEGIS extends CEGISLike("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
+    val sizes = for (s <- 1 to sctx.settings.cegisMaxSize by 4) yield {
+      (s, s+3, 4*s)
+    }
+
+
     CegisParams(
       grammar = grammars.default(sctx, p),
       rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
-      optimizations = true
+      optimizations = true,
+      sizes = sizes.toList
     )
   }
 }

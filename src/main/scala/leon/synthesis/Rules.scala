@@ -107,7 +107,7 @@ case class SolutionBuilderDecomp(types: Seq[TypeTree], recomp: List[Solution] =>
  * Used by rules expected to close, no decomposition but maybe we already know
  * the solution when instantiating
  */
-case class SolutionBuilderCloser(osol: Option[Solution] = None) extends SolutionBuilder {
+case class SolutionBuilderCloser(osol: Option[Solution] = None, extraCost: Cost = Cost(0)) extends SolutionBuilder {
   val types = Nil
   def apply(sols: List[Solution]) = {
     assert(sols.isEmpty)

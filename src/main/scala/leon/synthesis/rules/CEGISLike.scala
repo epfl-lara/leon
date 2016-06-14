@@ -30,7 +30,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
     optimizations: Boolean,
-    maxSize: Option[Int] = None
+    sizes: List[(Int, Int, Int)]
   )
 
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
@@ -59,11 +59,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     val params = getParams(hctx, p)
 
     // If this CEGISLike forces a maxSize, take it, otherwise find it in the settings
-    val maxSize = params.maxSize.getOrElse(hctx.settings.cegisMaxSize)
+    //val maxSize = params.maxSize.getOrElse(hctx.settings.cegisMaxSize)
 
-    if (maxSize == 0) {
-      return Nil
-    }
+    //if (maxSize == 0) {
+    //  return Nil
+    //}
 
     if (p.isTestBased) {
       return Nil
@@ -723,274 +723,282 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       }
     }
 
-    List(new RuleInstantiation(this.name) {
-      def apply(hctx: SearchContext): RuleApplication = {
-        var result: Option[RuleApplication] = None
+    params.sizes.collect { case (sizeFrom, sizeTo, cost) if sizeFrom <= sizeTo =>
+      val solBuilder = SolutionBuilderCloser(extraCost = Cost(cost))
 
-        val ndProgram = NonDeterministicProgram
-        ndProgram.init()
+      new RuleInstantiation(s"${this.name} ($sizeFrom->$sizeTo)", solBuilder) {
+        def apply(hctx: SearchContext): RuleApplication = {
+          var result: Option[RuleApplication] = None
 
-        implicit val ic = hctx
+          val ndProgram = NonDeterministicProgram
+          ndProgram.init()
 
-        debug("Acquiring initial list of examples")
+          implicit val ic = hctx
 
-        // To the list of known examples, we add an additional one produced by the solver
-        val solverExample = if (p.pc.isEmpty) {
-          List(InExample(p.as.map(a => simplestValue(a.getType))))
-        } else {
-          val solverf = hctx.solverFactory
-          val solver  = solverf.getNewSolver().setTimeout(exSolverTo*2)
+          debug("Acquiring initial list of examples")
 
-          solver.assertCnstr(p.pc.toClause)
+          // To the list of known examples, we add an additional one produced by the solver
+          val solverExample = if (p.pc.isEmpty) {
+            List(InExample(p.as.map(a => simplestValue(a.getType))))
+          } else {
+            val solverf = hctx.solverFactory
+            val solver  = solverf.getNewSolver().setTimeout(exSolverTo*2)
 
-          try {
-            solver.check match {
-              case Some(true) =>
-                val model = solver.getModel
-                List(InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))))
+            solver.assertCnstr(p.pc.toClause)
 
-              case Some(false) =>
-                debug("Path-condition seems UNSAT")
-                return RuleFailed()
+            try {
+              solver.check match {
+                case Some(true) =>
+                  val model = solver.getModel
+                  List(InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))))
 
-              case None =>
-                if (!interruptManager.isInterrupted) {
-                  warning("Solver could not solve path-condition")
-                }
-                Nil
-                //return RuleFailed() // This is not necessary though, but probably wanted
-            }
-          } finally {
-            solverf.reclaim(solver)
-          }
-        }
-
-        val baseExampleInputs = p.qebFiltered.examples ++ solverExample
-
-        ifDebug { debug =>
-          baseExampleInputs.foreach { in =>
-            debug("  - "+in.asString)
-          }
-        }
-
-        /**
-         * We (lazily) generate additional tests for discarding potential programs with a data generator
-         */
-        val nTests = if (p.pc.isEmpty) 50 else 20
-
-        val inputGenerator: Iterator[Example] = {
-          val complicated = exists{
-            case FunctionInvocation(tfd, _) if tfd.fd == hctx.functionContext => true
-            case Choose(_) => true
-            case _ => false
-          }(p.pc.toClause)
-
-          if (complicated) {
-            Iterator()
-        } else {
-            if (useVanuatoo) {
-              new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
-            } else {
-              val evaluator = new DualEvaluator(hctx, hctx.program)
-              new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
-        }
-          }
-        }
-
-        // We keep number of failures per test to pull the better ones to the front
-        val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
-
-        // This is the starting test-base
-        val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
-        def hasInputExamples = gi.nonEmpty
-
-        var n = 1
-
-        try {
-          do {
-            // Run CEGIS for one specific unfolding level
-
-            // Unfold formula
-            ndProgram.unfold()
-
-            val nInitial = ndProgram.prunedPrograms.size
-            debug(s"#Programs: $nInitial")
-
-            def nPassing = ndProgram.prunedPrograms.size
-
-            def programsReduced() = nPassing <= 10 || (nPassing <= 100 && nInitial / nPassing > testReductionRatio)
-            gi.canGrow = programsReduced
-
-        def allInputExamples() = {
-          if (n == 10 || n == 50 || n % 500 == 0) {
-            gi.sortBufferBy(e => -failedTestsStats(e))
-          }
-          n += 1
-          gi.iterator
-        }
-
-            //sctx.reporter.ifDebug{ printer =>
-            //  val limit = 100
-
-            //  for (p <- prunedPrograms.take(limit)) {
-            //    val ps = p.toSeq.sortBy(_.id).mkString(", ")
-            //    printer(f" - $ps%-40s - "+ndProgram.getExpr(p))
-            //  }
-            //  if(nInitial > limit) {
-            //    printer(" - ...")
-            //  }
-            //}
-    
-            debug(s"#Tests: >= ${gi.bufferedCount}")
-            ifDebug{ printer =>
-              val es = allInputExamples()
-              for (e <- es.take(Math.min(gi.bufferedCount, 10))) {
-                printer(" - "+e.asString)
-              }
-              if(es.hasNext) {
-                printer(" - ...")
-              }
-            }
-
-            // We further filter the set of working programs to remove those that fail on known examples
-            if (hasInputExamples) {
-              timers.filter.start()
-              for (bs <- ndProgram.prunedPrograms if !interruptManager.isInterrupted) {
-                val examples = allInputExamples()
-                var badExamples = List[Example]()
-                var stop = false
-                for (e <- examples if !stop && !badExamples.contains(e)) {
-                  ndProgram.testForProgram(bs)(e) match {
-                    case Some(true) => // ok, passes
-                    case Some(false) =>
-                      // Program fails the test
-                      stop = true
-                  failedTestsStats(e) += 1
-                      debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
-                      ndProgram.excludeProgram(bs, true)
-                    case None =>
-                      // Eval. error -> bad example
-                      debug(s" Test $e crashed the evaluator, removing...")
-                      badExamples ::= e
-                }
-                }
-                gi --= badExamples
-              }
-              timers.filter.stop()
-            }
-
-            debug(s"#Programs passing tests: $nPassing out of $nInitial")
-            ifDebug{ printer =>
-              for (p <- ndProgram.prunedPrograms.take(100)) {
-                printer(" - "+ndProgram.getExpr(p).asString)
-              }
-              if(nPassing > 100) {
-                printer(" - ...")
-              }
-            }
-              // CEGIS Loop at a given unfolding level
-            while (result.isEmpty && !interruptManager.isInterrupted && !ndProgram.allProgramsClosed) {
-              debug("Programs left: " + ndProgram.prunedPrograms.size)
-
-              // Phase 0: If the number of remaining programs is small, validate them individually
-              if (programsReduced()) {
-                timers.validate.start()
-                val programsToValidate = ndProgram.prunedPrograms
-                debug(s"Will send ${programsToValidate.size} program(s) to validate individually")
-              ndProgram.validatePrograms(programsToValidate) match {
-                  case Right(sols) =>
-                  // Found solution! Exit CEGIS
-                  result = Some(RuleClosed(sols))
-                  case Left(cexs) =>
-                    debug(s"Found cexs! $cexs")
-                  // Found some counterexamples
-                    // (bear in mind that these will in fact exclude programs within validatePrograms())
-                  val newCexs = cexs.map(InExample)
-                    newCexs foreach (failedTestsStats(_) += 1)
-                    gi ++= newCexs
-                    }
-                debug(s"#Programs after validating individually: ${ndProgram.prunedPrograms.size}")
-                timers.validate.stop()
-                  }
-
-              if (result.isEmpty && !ndProgram.allProgramsClosed) {
-                // Phase 1: Find a candidate program that works for at least 1 input
-                debug("Looking for program that works on at least 1 input...")
-              ndProgram.solveForTentativeProgram() match {
-                case Some(Some(bs)) =>
-                    debug(s"Found tentative model ${ndProgram.getExpr(bs)}, need to validate!")
-                    // Phase 2: Validate candidate model
-                  ndProgram.solveForCounterExample(bs) match {
-                    case Some(Some(inputsCE)) =>
-                        debug("Found counter-example:" + inputsCE)
-                      val ce = InExample(inputsCE)
-                        // Found counterexample! Exclude this program
-                        gi += ce
-                        failedTestsStats(ce) += 1
-                      ndProgram.excludeProgram(bs, false)
-
-                        var bad = false
-                      // Retest whether the newly found C-E invalidates some programs
-                        for (p <- ndProgram.prunedPrograms if !bad) {
-                          ndProgram.testForProgram(p)(ce) match {
-                            case Some(true) =>
-                            case Some(false) =>
-                              debug(f" Program: ${ndProgram.getExpr(p).asString}%-80s failed on: ${ce.asString}")
-                              failedTestsStats(ce) += 1
-                              ndProgram.excludeProgram(p, true)
-                            case None =>
-                              debug(s" Test $ce failed, removing...")
-                              gi -= ce
-                              bad = true
-                      }
-                        }
-
-                    case Some(None) =>
-                      // Found no counter example! Program is a valid solution
-                      val expr = ndProgram.getExpr(bs)
-                      result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
-
-                    case None =>
-                      // We are not sure
-                        debug("Unknown")
-                      if (useOptTimeout) {
-                        // Interpret timeout in CE search as "the candidate is valid"
-                          info("CEGIS could not prove the validity of the resulting expression")
-                        val expr = ndProgram.getExpr(bs)
-                        result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
-                      } else {
-                        // Ok, we failed to validate, exclude this program
-                        ndProgram.excludeProgram(bs, false)
-                          // TODO: Make CEGIS fail early when it times out when verifying 1 program?
-                        // result = Some(RuleFailed())
-                      }
-                  }
-
-                case Some(None) =>
-                    debug("There exists no candidate program!")
-                    ndProgram.closeAllPrograms()
+                case Some(false) =>
+                  debug("Path-condition seems UNSAT")
+                  return RuleFailed()
 
                 case None =>
-                    debug("Timeout while getting tentative program!")
-                    ndProgram.closeAllPrograms()
-                    // TODO: Make CEGIS fail early when it times out when looking for tentative program?
-                    //result = Some(RuleFailed())
+                  if (!interruptManager.isInterrupted) {
+                    warning("Solver could not solve path-condition")
+                  }
+                  return RuleFailed() // This is not necessary though, but probably wanted
+              }
+            } finally {
+              solverf.reclaim(solver)
+            }
+          }
+
+          val baseExampleInputs = p.qebFiltered.examples ++ solverExample
+
+          ifDebug { debug =>
+            baseExampleInputs.foreach { in =>
+              debug("  - "+in.asString)
+            }
+          }
+
+          /**
+           * We (lazily) generate additional tests for discarding potential programs with a data generator
+           */
+          val nTests = if (p.pc.isEmpty) 50 else 20
+
+          val inputGenerator: Iterator[Example] = {
+            val complicated = exists{
+              case FunctionInvocation(tfd, _) if tfd.fd == hctx.functionContext => true
+              case Choose(_) => true
+              case _ => false
+            }(p.pc.toClause)
+
+            if (complicated) {
+              Iterator()
+            } else {
+              if (useVanuatoo) {
+                new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
+              } else {
+                val evaluator = new DualEvaluator(hctx, hctx.program)
+                new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
               }
             }
-            }
+          }
 
-          } while(ndProgram.unfolding < maxSize && result.isEmpty && !interruptManager.isInterrupted)
+          // We keep number of failures per test to pull the better ones to the front
+          val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
-          if (interruptManager.isInterrupted) interruptManager.recoverInterrupt()
-          result.getOrElse(RuleFailed())
+          // This is the starting test-base
+          val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
+          def hasInputExamples = gi.nonEmpty
 
-        } catch {
-          case e: Throwable =>
-            warning("CEGIS crashed: "+e.getMessage)
-            e.printStackTrace()
-            RuleFailed()
+          var n = 1
+
+          for (i <- 1 until sizeFrom) {
+            ndProgram.unfold()
+          }
+
+
+          try {
+            do {
+              // Run CEGIS for one specific unfolding level
+
+              // Unfold formula
+              ndProgram.unfold()
+
+              val nInitial = ndProgram.prunedPrograms.size
+              debug(s"#Programs: $nInitial")
+
+              def nPassing = ndProgram.prunedPrograms.size
+
+              def programsReduced() = nPassing <= 10 || (nPassing <= 100 && nInitial / nPassing > testReductionRatio)
+              gi.canGrow = programsReduced
+
+              def allInputExamples() = {
+                if (n == 10 || n == 50 || n % 500 == 0) {
+                  gi.sortBufferBy(e => -failedTestsStats(e))
+                }
+                n += 1
+                gi.iterator
+              }
+
+              //sctx.reporter.ifDebug{ printer =>
+              //  val limit = 100
+
+              //  for (p <- prunedPrograms.take(limit)) {
+              //    val ps = p.toSeq.sortBy(_.id).mkString(", ")
+              //    printer(f" - $ps%-40s - "+ndProgram.getExpr(p))
+              //  }
+              //  if(nInitial > limit) {
+              //    printer(" - ...")
+              //  }
+              //}
+      
+              debug(s"#Tests: >= ${gi.bufferedCount}")
+              ifDebug{ printer =>
+                val es = allInputExamples()
+                for (e <- es.take(Math.min(gi.bufferedCount, 10))) {
+                  printer(" - "+e.asString)
+                }
+                if(es.hasNext) {
+                  printer(" - ...")
+                }
+              }
+
+              // We further filter the set of working programs to remove those that fail on known examples
+              if (hasInputExamples) {
+                timers.filter.start()
+                for (bs <- ndProgram.prunedPrograms if !interruptManager.isInterrupted) {
+                  val examples = allInputExamples()
+                  var badExamples = List[Example]()
+                  var stop = false
+                  for (e <- examples if !stop && !badExamples.contains(e)) {
+                    ndProgram.testForProgram(bs)(e) match {
+                      case Some(true) => // ok, passes
+                      case Some(false) =>
+                        // Program fails the test
+                        stop = true
+                    failedTestsStats(e) += 1
+                        debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
+                        ndProgram.excludeProgram(bs, true)
+                      case None =>
+                        // Eval. error -> bad example
+                        debug(s" Test $e crashed the evaluator, removing...")
+                        badExamples ::= e
+                  }
+                  }
+                  gi --= badExamples
+                }
+                timers.filter.stop()
+              }
+
+              debug(s"#Programs passing tests: $nPassing out of $nInitial")
+              ifDebug{ printer =>
+                for (p <- ndProgram.prunedPrograms.take(100)) {
+                  printer(" - "+ndProgram.getExpr(p).asString)
+                }
+                if(nPassing > 100) {
+                  printer(" - ...")
+                }
+              }
+                // CEGIS Loop at a given unfolding level
+              while (result.isEmpty && !interruptManager.isInterrupted && !ndProgram.allProgramsClosed) {
+                debug("Programs left: " + ndProgram.prunedPrograms.size)
+
+                // Phase 0: If the number of remaining programs is small, validate them individually
+                if (programsReduced()) {
+                  timers.validate.start()
+                  val programsToValidate = ndProgram.prunedPrograms
+                  debug(s"Will send ${programsToValidate.size} program(s) to validate individually")
+                ndProgram.validatePrograms(programsToValidate) match {
+                    case Right(sols) =>
+                    // Found solution! Exit CEGIS
+                    result = Some(RuleClosed(sols))
+                    case Left(cexs) =>
+                      debug(s"Found cexs! $cexs")
+                    // Found some counterexamples
+                      // (bear in mind that these will in fact exclude programs within validatePrograms())
+                    val newCexs = cexs.map(InExample)
+                      newCexs foreach (failedTestsStats(_) += 1)
+                      gi ++= newCexs
+                      }
+                  debug(s"#Programs after validating individually: ${ndProgram.prunedPrograms.size}")
+                  timers.validate.stop()
+                    }
+
+                if (result.isEmpty && !ndProgram.allProgramsClosed) {
+                  // Phase 1: Find a candidate program that works for at least 1 input
+                  debug("Looking for program that works on at least 1 input...")
+                ndProgram.solveForTentativeProgram() match {
+                  case Some(Some(bs)) =>
+                      debug(s"Found tentative model ${ndProgram.getExpr(bs)}, need to validate!")
+                      // Phase 2: Validate candidate model
+                    ndProgram.solveForCounterExample(bs) match {
+                      case Some(Some(inputsCE)) =>
+                          debug("Found counter-example:" + inputsCE)
+                        val ce = InExample(inputsCE)
+                          // Found counterexample! Exclude this program
+                          gi += ce
+                          failedTestsStats(ce) += 1
+                        ndProgram.excludeProgram(bs, false)
+
+                          var bad = false
+                        // Retest whether the newly found C-E invalidates some programs
+                          for (p <- ndProgram.prunedPrograms if !bad) {
+                            ndProgram.testForProgram(p)(ce) match {
+                              case Some(true) =>
+                              case Some(false) =>
+                                debug(f" Program: ${ndProgram.getExpr(p).asString}%-80s failed on: ${ce.asString}")
+                                failedTestsStats(ce) += 1
+                                ndProgram.excludeProgram(p, true)
+                              case None =>
+                                debug(s" Test $ce failed, removing...")
+                                gi -= ce
+                                bad = true
+                        }
+                          }
+
+                      case Some(None) =>
+                        // Found no counter example! Program is a valid solution
+                        val expr = ndProgram.getExpr(bs)
+                        result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
+
+                      case None =>
+                        // We are not sure
+                          debug("Unknown")
+                        if (useOptTimeout) {
+                          // Interpret timeout in CE search as "the candidate is valid"
+                            info("CEGIS could not prove the validity of the resulting expression")
+                          val expr = ndProgram.getExpr(bs)
+                          result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
+                        } else {
+                          // Ok, we failed to validate, exclude this program
+                          ndProgram.excludeProgram(bs, false)
+                            // TODO: Make CEGIS fail early when it times out when verifying 1 program?
+                          // result = Some(RuleFailed())
+                        }
+                    }
+
+                  case Some(None) =>
+                      debug("There exists no candidate program!")
+                      ndProgram.closeAllPrograms()
+
+                  case None =>
+                      debug("Timeout while getting tentative program!")
+                      ndProgram.closeAllPrograms()
+                      // TODO: Make CEGIS fail early when it times out when looking for tentative program?
+                      //result = Some(RuleFailed())
+                }
+              }
+              }
+
+            } while(ndProgram.unfolding < sizeTo && result.isEmpty && !interruptManager.isInterrupted)
+
+            if (interruptManager.isInterrupted) interruptManager.recoverInterrupt()
+            result.getOrElse(RuleFailed())
+
+          } catch {
+            case e: Throwable =>
+              warning("CEGIS crashed: "+e.getMessage)
+              e.printStackTrace()
+              RuleFailed()
+          }
         }
       }
-    })
+    }
   }
 }
