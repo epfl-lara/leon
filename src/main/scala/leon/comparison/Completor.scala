@@ -5,6 +5,7 @@ import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions._
 import leon.comparison.Utils._
 import leon.comparison.ComparatorDirectScoreTree._
+import leon.purescala.ExprOps
 
 /**
   * Created by joachimmuth on 08.06.16.
@@ -117,146 +118,20 @@ object Completor {
     (tree.toList filter (p => p.b.isInstanceOf[Choose])).head.a
 
   /**
-    * Really really ugly function used to travers recursively the tree until finding the hole and replace it by
+    * Travers recursively the tree until finding the hole and replace it by
     * the wished expression.
-    *
-    * see "case Choose(_) => ..."
-    *
-    * Probably a better way to perform it, using pre-existing function that I didn't know.
     *
     * @param exprToFill
     * @param corpus
     * @return
     */
   def fillHole(exprToFill: Expr, corpus: Expr): Expr = {
-    def fill(expr: Expr): Expr = expr match {
-      case Require(pred, body) => Require(fill(pred), fill(body))
-      case Ensuring(body, pred) => Ensuring(fill(body), fill(pred))
-      case Assert(pred, error, body) => Assert(fill(pred), error, fill(body))
-      case Let(binder, value, body) => Let(binder, fill(value), fill(body))
+    val filledTree = ExprOps.preMap {
+      case Choose(expr) => Some(corpus)
+      case _ => None
+    }(exprToFill)
 
-      // how to handle fds (function definition) ??
-      case LetDef(fds, body) => LetDef(fds, fill(body))
-
-      case Application(callee, args) => Application(fill(callee), args map fill)
-      case Lambda(args, body) => Lambda(args, fill(body))
-      case Forall(args, body) => Forall(args, fill(body))
-      case FunctionInvocation(tfd, args) =>
-        FunctionInvocation(tfd, args map fill)
-      case IfExpr(cond, thenn, elze) => IfExpr(fill(cond), fill(thenn), fill(elze))
-
-      // we don't list the scrutinee
-      // method cases.expression return both optGuard and rhs
-      case MatchExpr(scrutinee, cases) =>
-        MatchExpr(fill(scrutinee), cases map { c =>
-          MatchCase(c.pattern, c.optGuard, fill(c.rhs))
-        })
-
-      case CaseClass(ct, args) => CaseClass(ct, args map fill)
-      case CaseClassSelector(classType, caseClass, selector) =>
-        CaseClassSelector(classType, fill(caseClass), selector)
-      case Equals(lhs, rhs) =>
-        Equals(fill(lhs), fill(rhs))
-
-      /* Propositional logic */
-      case And(exprs) =>
-        And(exprs map fill)
-      case Or(exprs) =>
-        Or(exprs map fill)
-      case Implies(lhs, rhs) =>
-        Implies(fill(lhs), fill(rhs))
-      case Not(argExpr) =>
-        Not(fill(argExpr))
-
-      case IsInstanceOf(argExpr, classType) =>
-        IsInstanceOf(fill(argExpr), classType)
-      case AsInstanceOf(argExpr, tpe) =>
-        AsInstanceOf(fill(argExpr), tpe)
-
-      /* Integer arithmetic */
-      case Plus(lhs, rhs) => Plus(fill(lhs), fill(rhs))
-      case Minus(lhs, rhs) =>
-        Minus(fill(lhs), fill(rhs))
-      case UMinus(argExpr) =>
-        UMinus(fill(argExpr))
-      case Times(lhs, rhs) =>
-        Times(fill(lhs), fill(rhs))
-      case Division(lhs, rhs) =>
-        Division(fill(lhs), fill(rhs))
-      case Remainder(lhs, rhs) =>
-        Remainder(fill(lhs), fill(rhs))
-      case Modulo(lhs, rhs) =>
-        Modulo(fill(lhs), fill(rhs))
-      case GreaterThan(lhs, rhs) =>
-        GreaterThan(fill(lhs), fill(rhs))
-      case GreaterEquals(lhs, rhs) =>
-        GreaterEquals(fill(lhs), fill(rhs))
-      case LessThan(lhs, rhs) =>
-        LessThan(fill(lhs), fill(rhs))
-      case LessEquals(lhs, rhs) =>
-        LessEquals(fill(lhs), fill(rhs))
-
-      /* Real arithmetic */
-      case RealPlus(lhs, rhs) =>
-        RealPlus(fill(lhs), fill(rhs))
-      case RealMinus(lhs, rhs) =>
-        RealMinus(fill(lhs), fill(rhs))
-      case RealDivision(lhs, rhs) =>
-        RealDivision(fill(lhs), fill(rhs))
-      case RealTimes(lhs, rhs) =>
-        RealTimes(fill(lhs), fill(rhs))
-      case RealUMinus(argExpr) =>
-        RealUMinus(fill(argExpr))
-
-      /* Tuple operations */
-      case Tuple(exprs) => Tuple(exprs map fill)
-      case TupleSelect(tuple, index) =>
-        TupleSelect(fill(tuple), index)
-
-      /* Set operations */
-      case FiniteSet(elements, base) => FiniteSet(elements map fill, base)
-      case ElementOfSet(element, set) =>
-        ElementOfSet(fill(element), fill(set))
-      case SetCardinality(set) => SetCardinality(fill(set))
-      case SubsetOf(set1, set2) => SubsetOf(fill(set1), fill(set2))
-      case SetIntersection(set1, set2) =>
-        SetIntersection(fill(set1), fill(set2))
-      case SetUnion(set1, set2) =>
-        SetUnion(fill(set1), fill(set2))
-      case SetDifference(set1, set2) =>
-        SetDifference(fill(set1), fill(set2))
-
-      /* Map operations */
-      /*not handled for the moment*/
-      case FiniteMap(pairs, keyType, valueType) =>
-        FiniteMap(pairs, keyType, valueType)
-      case MapApply(map, key) => MapApply(fill(map), fill(key))
-      case MapUnion(map1, map2) => MapUnion(fill(map1), fill(map2))
-      case MapDifference(map, keys) => MapDifference(fill(map), fill(keys))
-      case MapIsDefinedAt(map, key) => MapIsDefinedAt(fill(map), fill(key))
-
-      /* Array operations */
-      case ArraySelect(array, index) => ArraySelect(fill(array), fill(index))
-      case ArrayUpdated(array, index, newValue) =>
-        ArrayUpdated(fill(array), fill(index), fill(newValue))
-      case ArrayLength(array) => ArrayLength(fill(array))
-      /*not handled for the moment*/
-      case NonemptyArray(elems, defaultLength) =>
-        NonemptyArray(elems, defaultLength)
-      case EmptyArray(tpe) => EmptyArray(tpe)
-
-      /* Holes */
-      case Choose(pred) => corpus
-      //case Hole(_, alts) => onParent(expr) ++ alts.flatMap(onChild(_))
-
-
-      // default value for any easy-to-handled or Terminal expression
-      // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
-      // leave aside (at least for the moment): String Theory, BitVector Operation, Special trees for synthesis (holes, ...)
-      case x => x
-    }
-
-    fill(exprToFill)
+    filledTree
   }
 
 
