@@ -53,149 +53,155 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    val inOutExamples = p.qeb.examples collect {
+      case io: InOutExample => io
+    }
 
-    List(new RuleInstantiation(this.name) {
-      def apply(hctx: SearchContext): RuleApplication = {
-        implicit val ci = hctx
-        val params = getParams(hctx, p)
-        val grammar = params.grammar
+    if (inOutExamples.nonEmpty) {
+      List(new RuleInstantiation(this.name) {
+        def apply(hctx: SearchContext): RuleApplication = {
+          implicit val ci = hctx
+          val params = getParams(hctx, p)
+          val grammar = params.grammar
 
-        val nTests = if (p.pc.isEmpty) 50 else 20
+          val examples = p.qebFiltered.examples.collect { case io: InOutExample => io }.toVector
 
-        val examples = p.qebFiltered.examples.collect { case io: InOutExample => io }.toVector
+          if (examples.nonEmpty) {
 
-        if (examples.nonEmpty) {
-          ci.reporter.debug(ExamplesBank(examples, Nil).asString("Tests"))
+            ci.reporter.debug(ExamplesBank(examples, Nil).asString("Tests"))
 
-          val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
-          val evaluator  = new DualEvaluator(hctx, hctx.program, params = evalParams)
+            val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
+            val evaluator  = new DualEvaluator(hctx, hctx.program, params = evalParams)
 
-          val examplesEnvs = examples.map { case InOutExample(is, os) => (p.as zip is).toMap }
-          val targetSign   = examples.map { case InOutExample(_, os) => tupleWrap(os) }
+            val examplesEnvs = examples.map { case InOutExample(is, os) => (p.as zip is).toMap }
+            val targetSign   = examples.map { case InOutExample(_, os) => tupleWrap(os) }
 
-          //println("Looking for "+debugSig(targetSign))
+            //println("Looking for "+debugSig(targetSign))
 
-          val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
+            val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
 
-          val targetType = tupleTypeWrap(p.xs.map(_.getType))
+            val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
-          val timers = hctx.timers.synthesis.rules.bottomuptegis
+            val timers = hctx.timers.synthesis.rules.bottomuptegis
 
-          var classes = Map[TypeTree, Map[Signature, EqClass]]()
-          var newClasses = classes
+            var classes = Map[TypeTree, Map[Signature, EqClass]]()
+            var newClasses = classes
 
-          def debugClasses() = {
-            for ((tpe, cs) <- classes) {
-              println(s"===== ${tpe.asString} =====")
-              for (c <- cs.values) {
-                println(s" - ${c.asString(Some(targetSign))}")
-              }
-            }
-          }
-
-          def expandAll(): Option[EqClass] = {
-            //println("#"*80)
-            //debugClasses()
-            //println("#"*80)
-
-            for (tpe <- classes.keys) {
-              expand(tpe)
-              if ((tpe == targetType) && (newClasses(tpe) contains targetSign)) {
-                return Some(newClasses(tpe)(targetSign))
+            def debugClasses() = {
+              for ((tpe, cs) <- classes) {
+                println(s"===== ${tpe.asString} =====")
+                for (c <- cs.values) {
+                  println(s" - ${c.asString(Some(targetSign))}")
+                }
               }
             }
 
-            classes = newClasses
+            def expandAll(): Option[EqClass] = {
+              //println("#"*80)
+              //debugClasses()
+              //println("#"*80)
+
+              for (tpe <- classes.keys) {
+                expand(tpe)
+                if ((tpe == targetType) && (newClasses(tpe) contains targetSign)) {
+                  return Some(newClasses(tpe)(targetSign))
+                }
+              }
+
+              classes = newClasses
 
 
-            //println("@"*80)
-            //debugClasses()
-            //println("@"*80)
-            None
-          }
+              //println("@"*80)
+              //debugClasses()
+              //println("@"*80)
+              None
+            }
 
-          def registerClasses(tpe: TypeTree, cs: Seq[EqClass]) = {
-            var existings = newClasses.getOrElse(tpe, Map())
+            def registerClasses(tpe: TypeTree, cs: Seq[EqClass]) = {
+              var existings = newClasses.getOrElse(tpe, Map())
 
-            for (c @ EqClass(sig, cand) <- cs) {
-              if (!(existings contains sig)) {
-                existings += sig -> c
+              for (c @ EqClass(sig, cand) <- cs) {
+                if (!(existings contains sig)) {
+                  existings += sig -> c
+                }
+              }
+
+              newClasses += tpe -> existings
+            }
+
+            def expand(tpe: TypeTree) = {
+              val label = Label(tpe)
+
+              val cs = grammar.getProductions(label).collect {
+                case ProductionRule(subLabels, builder, _, _) if subLabels.nonEmpty =>
+                  compose(subLabels.map(sl => getClasses(sl.getType)), builder)
+              }.flatten
+
+              registerClasses(tpe, cs)
+            }
+
+            def classBuilder(argss: Seq[EqClass], builder: Seq[Expr] => Expr): Option[EqClass] = {
+              try {
+                val sig = examplesEnvs.zipWithIndex.map { case (env, i) =>
+                  val expr = builder(argss.map(_.sig(i)))
+                  evaluator.eval(expr, env).result.get
+                }.toVector
+
+                val cand = builder(argss.map(_.cand))
+
+                Some(EqClass(sig, cand))
+              } catch {
+                case _: RuntimeException => None
               }
             }
 
-            newClasses += tpe -> existings
-          }
-
-          def expand(tpe: TypeTree) = {
-            val label = Label(tpe)
-
-            val cs = grammar.getProductions(label).collect {
-              case ProductionRule(subLabels, builder, _, _) if subLabels.nonEmpty =>
-                compose(subLabels.map(sl => getClasses(sl.getType)), builder)
-            }.flatten
-
-            registerClasses(tpe, cs)
-          }
-
-          def classBuilder(argss: Seq[EqClass], builder: Seq[Expr] => Expr): Option[EqClass] = {
-            try {
-              val sig = examplesEnvs.zipWithIndex.map { case (env, i) =>
-                val expr = builder(argss.map(_.sig(i)))
-                evaluator.eval(expr, env).result.get
-              }.toVector
-
-              val cand = builder(argss.map(_.cand))
-
-              Some(EqClass(sig, cand))
-            } catch {
-              case _: RuntimeException => None
+            def compose(sigss: Seq[Seq[EqClass]], builder: Seq[Expr] => Expr): Seq[EqClass] = {
+              cartesianProduct(sigss).flatMap { asigs =>
+                classBuilder(asigs, builder)
+              }
             }
-          }
 
-          def compose(sigss: Seq[Seq[EqClass]], builder: Seq[Expr] => Expr): Seq[EqClass] = {
-            cartesianProduct(sigss).flatMap { asigs =>
-              classBuilder(asigs, builder)
+            def getClasses(tpe: TypeTree): Seq[EqClass] = {
+              classes.get(tpe) match {
+                case Some(cls) =>
+                  cls.values.toSeq
+                case None =>
+                  initClass(tpe)
+              }
             }
-          }
 
-          def getClasses(tpe: TypeTree): Seq[EqClass] = {
-            classes.get(tpe) match {
-              case Some(cls) =>
-                cls.values.toSeq
-              case None =>
-                initClass(tpe)
+            def initClass(tpe: TypeTree): Seq[EqClass] = {
+              classes += tpe -> Map()
+
+              val prods = grammar.getProductions(Label(tpe))
+
+              val existsTerminals = prods.exists(_.subTrees.isEmpty)
+
+              val res = grammar.getProductions(Label(tpe)).collect {
+                case ProductionRule(subLabels, builder, _, _) if !existsTerminals || subLabels.isEmpty =>
+                  compose(subLabels.map(sl => getClasses(sl.getType)), builder)
+              }.flatten
+
+              registerClasses(tpe, res)
+              classes += tpe -> newClasses(tpe)
+
+              res
             }
+
+            initClass(targetType)
+
+            val sols = (1 to params.maxExpands).toStream.flatMap(i => expandAll().map(_.cand)).map { expr =>
+              Solution(BooleanLiteral(true), Set(), expr, isTrusted = p.isTestBased)
+            }
+            RuleClosed(sols)
+          } else {
+            hctx.reporter.debug("No test available")
+            RuleFailed()
           }
-
-          def initClass(tpe: TypeTree): Seq[EqClass] = {
-            classes += tpe -> Map()
-
-            val prods = grammar.getProductions(Label(tpe))
-
-            val existsTerminals = prods.exists(_.subTrees.isEmpty)
-
-            val res = grammar.getProductions(Label(tpe)).collect {
-              case ProductionRule(subLabels, builder, _, _) if !existsTerminals || subLabels.isEmpty =>
-                compose(subLabels.map(sl => getClasses(sl.getType)), builder)
-            }.flatten
-
-            registerClasses(tpe, res)
-            classes += tpe -> newClasses(tpe)
-
-            res
-          }
-
-          initClass(targetType)
-
-          val sols = (1 to params.maxExpands).toStream.flatMap(i => expandAll().map(_.cand)).map { expr =>
-            Solution(BooleanLiteral(true), Set(), expr, isTrusted = p.isTestBased)
-          }
-          RuleClosed(sols)
-        } else {
-          hctx.reporter.debug("No test available")
-          RuleFailed()
         }
-      }
-    })
+      })
+    } else {
+      Nil
+    }
   }
 }
