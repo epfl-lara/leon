@@ -33,9 +33,9 @@ object GameTicTacToe {
   }
 
   case class LevelMap(
-    var c11: Cell, var c12: Cell, var c13: Cell,
-    var c21: Cell, var c22: Cell, var c23: Cell, 
-    var c31: Cell, var c32: Cell, var c33: Cell
+    c11: Cell, c12: Cell, c13: Cell,
+    c21: Cell, c22: Cell, c23: Cell, 
+    c31: Cell, c32: Cell, c33: Cell
   ) {
     require(totalEntries == totalXEntries + totalOEntries && invariantXAtMostOneMore)
 
@@ -60,20 +60,20 @@ object GameTicTacToe {
                                c31.emptyAsInt + c32.emptyAsInt + c33.emptyAsInt
 
     def fill(j: BigInt, i: BigInt, player: Player): Unit = {
-      require(player match {
+      require((player match {
         case PlayerCross => totalXEntries == totalOEntries
-        case PlayerCircle => totalXEntries == totalOEntries + 1
-      })
+        case PlayerCircle => totalXEntries == totalOEntries +1
+      }) && canFill(j, i, player))
 
-      if     (j == 1 && i == 1) c11 = Cell(Some(player))
-      else if(j == 1 && i == 2) c12 = Cell(Some(player))
-      else if(j == 1 && i == 3) c13 = Cell(Some(player))
-      else if(j == 2 && i == 1) c21 = Cell(Some(player))
-      else if(j == 2 && i == 2) c22 = Cell(Some(player))
-      else if(j == 2 && i == 3) c23 = Cell(Some(player))
-      else if(j == 3 && i == 1) c31 = Cell(Some(player))
-      else if(j == 3 && i == 2) c32 = Cell(Some(player))
-      else if(j == 3 && i == 3) c33 = Cell(Some(player))
+      if     (j == 1 && i == 1) c11.n = Some(player)
+      else if(j == 1 && i == 2) c12.n = Some(player)
+      else if(j == 1 && i == 3) c13.n = Some(player)
+      else if(j == 2 && i == 1) c21.n = Some(player)
+      else if(j == 2 && i == 2) c22.n = Some(player)
+      else if(j == 2 && i == 3) c23.n = Some(player)
+      else if(j == 3 && i == 1) c31.n = Some(player)
+      else if(j == 3 && i == 2) c32.n = Some(player)
+      else if(j == 3 && i == 3) c33.n = Some(player)
       else                      ()
     }
 
