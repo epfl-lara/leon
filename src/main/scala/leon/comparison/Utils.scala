@@ -66,28 +66,28 @@ object Utils {
 
   def mean(list: List[Double]): Double = list.foldLeft(0.0)(_ + _) / list.size.toDouble
 
+
   /**
-    * Derived from "traverse" function. Traverse all the tree and collect whished information about Expr composing it.
-    * It fixes the "onChildren" function to be recursive and let the "onParent" be the one deciding what information
-    * will be stored
-    *
-    * collectExpr and collectClass collect respectively the Expr and the Class of each element of the tree.
-    *
-    * BEWARE: Expr are complete trees even if we call it "parent". When we compare two Expr, we compare two entire tree.
-    * At the contrary, when we compare to Class, we lose this information and only compare the Class of two parent.
-    *
+    * Use GenTreeOps.fold to travers tree and collect attribute of their expression
     * @param expr
-    * @param f
-    * @tparam T
     * @return
     */
-  def collect[T](expr: Expr)(f: Expr => List[T]): List[T] = traverse(expr)(f)(expr => collect(expr)(f))
+  def collectClass(expr: Expr): List[Class[_]] = {
+    val listClass: Seq[Class[_]] = ExprOps.fold{
+      (expr, seq: Seq[Seq[Class[_]]]) => seq.flatten :+ expr.getClass
+    }(expr)
 
-  def collectClass(expr: Expr): List[Class[_ <: Expr]] =
-    collect[Class[_ <: Expr]](expr)(expr => List(expr.getClass))
+    listClass.toList
+  }
 
-  def collectExpr(expr: Expr): List[Expr] =
-    collect[Expr](expr)(expr => List(expr))
+
+  def collectExpr(expr: Expr): List[Expr] = {
+    val listExpr: Seq[Expr] = ExprOps.fold{
+      (expr, seq: Seq[Seq[Expr]]) => seq.flatten :+ expr
+    }(expr)
+
+    listExpr.toList
+  }
 
   /**
     * Give a list of all children of one parent. Why do we need to use "traverse" function to get them? Because

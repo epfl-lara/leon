@@ -51,8 +51,8 @@ object ComparatorClassList extends Comparator {
   }
 
 
-  def pairsOfSimilarExp(listExprCorpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]]): Int = {
-    def helper(listExprCorpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]], acc: Int): Int =
+  def pairsOfSimilarExp(listExprCorpus: List[Class[_]], listExpr: List[Class[_]]): Int = {
+    def helper(listExprCorpus: List[Class[_]], listExpr: List[Class[_]], acc: Int): Int =
       listExpr match {
         case Nil => acc
         case x :: xs if listExprCorpus.contains(x) => helper(listExprCorpus diff List(x), xs, acc + 1)
