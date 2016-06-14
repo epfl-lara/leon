@@ -4,6 +4,7 @@ package comparison
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.comparison.Utils._
+import leon.utils.DebugSection
 
 /**
   * Created by joachimmuth on 23.03.16.

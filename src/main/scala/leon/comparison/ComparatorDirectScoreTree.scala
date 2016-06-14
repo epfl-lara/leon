@@ -1,5 +1,5 @@
 package leon.comparison
-import leon.{GlobalOptions, LeonContext}
+import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Scores._
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
@@ -16,6 +16,7 @@ object ComparatorDirectScoreTree extends Comparator {
 
 
   override def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext): (Double, String) = {
+    implicit val debugSection = utils.DebugSectionComparison
     val roots = possibleRoots(exprCorpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")

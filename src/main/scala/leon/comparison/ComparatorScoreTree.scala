@@ -1,6 +1,6 @@
 package leon.comparison
 
-import leon.{GlobalOptions, LeonContext}
+import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Utils._
 import leon.purescala.Common.Tree
 import leon.purescala.Definitions.{CaseClassDef, ClassDef}
@@ -25,6 +25,7 @@ object ComparatorScoreTree extends Comparator {
   override val name: String = "ScoreTree"
 
   def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext): (Double, String) = {
+    implicit val debugSection = utils.DebugSectionComparison
     val pairOfRoots = ComparatorClassTree.possibleRoots(exprCorpus, expr)
     val allPossibleTrees = pairOfRoots flatMap ComparatorClassTree.possibleTrees
     if (allPossibleTrees == Nil) return (0.0, "")

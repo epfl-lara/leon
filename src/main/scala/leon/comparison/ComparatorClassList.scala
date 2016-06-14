@@ -1,6 +1,6 @@
 package leon.comparison
 
-import leon.{GlobalOptions, LeonContext}
+import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
 
@@ -31,6 +31,7 @@ object ComparatorClassList extends Comparator {
   val name = "ClassList"
 
   def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
+    implicit val debugSection = utils.DebugSectionComparison
     val listClassesA = collectClass(exprCorpus)
     val listClassesB = collectClass(expr)
 

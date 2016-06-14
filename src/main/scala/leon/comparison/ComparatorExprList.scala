@@ -1,6 +1,6 @@
 package leon.comparison
 
-import leon.{GlobalOptions, LeonContext}
+import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Utils._
 import leon.purescala.Expressions.{CaseClassPattern, _}
 
@@ -17,6 +17,7 @@ object ComparatorExprList extends Comparator {
   val name = "ExprList"
 
   def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
+    implicit val debugSection = utils.DebugSectionComparison
     val exprsA = collectExpr(exprCorpus)
     val exprsB = collectExpr(expr)
 
@@ -70,10 +71,7 @@ object ComparatorExprList extends Comparator {
   def extractPatternMatchMap(matchCases: Seq[MatchCase]) = {
     matchCases.map(a => a.pattern match {
       case InstanceOfPattern(_, ct) => (ct.classDef -> a.rhs)
-      case CaseClassPattern(_, ct, _) => {
-        println(a)
-        (ct.classDef -> a.rhs)
-      }
+      case CaseClassPattern(_, ct, _) => (ct.classDef -> a.rhs)
       case _ => (a.pattern -> a.rhs)
     }).toMap
   }

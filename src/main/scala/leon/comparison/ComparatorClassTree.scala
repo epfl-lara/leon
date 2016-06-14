@@ -1,6 +1,6 @@
 package leon.comparison
 
-import leon.{GlobalOptions, LeonContext}
+import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Utils._
 import leon.purescala.Expressions._
 
@@ -26,6 +26,7 @@ object ComparatorClassTree extends Comparator{
 
 
   def compare(exprCorpus: Expr, expr: Expr)(implicit context: LeonContext) = {
+    implicit val debugSection = utils.DebugSectionComparison
     val roots = possibleRoots(exprCorpus, expr)
 
     val trees = roots.flatMap(possibleTrees(_))
