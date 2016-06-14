@@ -39,11 +39,11 @@ object ComparatorClassList extends Comparator {
     val score = Utils.matchScore(similarExpr, listClassesA.size, listClassesB.size)
 
     if (context.findOption(GlobalOptions.optDebug).isDefined){
-      println("-----------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", expr, exprCorpus)
-      println("List of classes: ", listClassesB, listClassesA)
-      println("-----------")
+      context.reporter.debug("-----------")
+      context.reporter.debug("COMPARATOR " + name)
+      context.reporter.debug("Expressions: \n" + expr + exprCorpus)
+      context.reporter.debug("List of classes: \n" + listClassesB + listClassesA)
+      context.reporter.debug("-----------")
     }
 
     (score, "")

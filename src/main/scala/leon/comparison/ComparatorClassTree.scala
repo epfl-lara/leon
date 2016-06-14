@@ -38,11 +38,11 @@ object ComparatorClassTree extends Comparator{
     val score = matchScore(sum, listClassesA.size, listClassesB.size)
 
     if (context.findOption(GlobalOptions.optDebug).isDefined){
-      println("---------------------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", exprCorpus, expr)
-      println("Common Tree: ", exclusives)
-      println("---------------------")
+      context.reporter.debug("---------------------")
+      context.reporter.debug("COMPARATOR " + name)
+      context.reporter.debug("Expressions: \n" + exprCorpus + expr)
+      context.reporter.debug("Common Tree: \n" + exclusives)
+      context.reporter.debug("---------------------")
     }
 
     (score, "")

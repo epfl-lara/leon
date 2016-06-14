@@ -23,11 +23,11 @@ object ComparatorDirectScoreTree extends Comparator {
     val (bestTree, score) = selectBestTree(trees, exprCorpus, expr)
 
     if (context.findOption(GlobalOptions.optDebug).isDefined){
-      println("---------------------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", exprCorpus, expr)
-      println("Common Tree: ", bestTree)
-      println("---------------------")
+      context.reporter.debug("---------------------")
+      context.reporter.debug("COMPARATOR " + name)
+      context.reporter.debug("Expressions: \n" + exprCorpus + expr)
+      context.reporter.debug("Common Tree: \n" + bestTree)
+      context.reporter.debug("---------------------")
     }
 
     (score, " (" + bestTree.size + ")")

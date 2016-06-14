@@ -34,10 +34,12 @@ object ComparatorScoreTree extends Comparator {
     val normalizedScore = normalize(score, biggest.size)
 
     if (context.findOption(GlobalOptions.optDebug).isDefined){
-      println("---------------------")
-      println("COMPARATOR " + name)
-      println("Expressions: ", exprCorpus, expr)
-      println("---------------------")
+      context.reporter.debug("---------------------")
+      context.reporter.debug("COMPARATOR " + name)
+      context.reporter.debug("Expressions: \n" + exprCorpus + "\n" + expr)
+      context.reporter.debug("Biggest: \n" + biggest)
+      context.reporter.debug("Score: \n" + score)
+      context.reporter.debug("---------------------")
     }
 
     (normalizedScore, "")
