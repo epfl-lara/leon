@@ -46,7 +46,7 @@ object Rules {
     CaseSplit,
     IndependentSplit,
     HOFDecomp,
-    TEGIS,
+    //TEGIS,
     BottomUpTEGIS,
     IfSplit,
     InputSplit,
