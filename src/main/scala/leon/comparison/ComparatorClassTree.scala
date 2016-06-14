@@ -24,14 +24,14 @@ object ComparatorClassTree extends Comparator{
   val name: String = "ClassTree"
 
 
-  def compare(expr_corpus: Expr, expr: Expr) = {
-    val roots = possibleRoots(expr_corpus, expr)
+  def compare(exprCorpus: Expr, expr: Expr) = {
+    val roots = possibleRoots(exprCorpus, expr)
 
     val trees = roots.flatMap(possibleTrees(_))
     val exclusives = exclusivesTrees(trees)
     val sum = exclusives.foldLeft(0)( (acc, tree) => acc + tree.size)
 
-    val listClassesA = collectClass(expr_corpus)
+    val listClassesA = collectClass(exprCorpus)
     val listClassesB = collectClass(expr)
 
     val score = matchScore(sum, listClassesA.size, listClassesB.size)
@@ -39,7 +39,7 @@ object ComparatorClassTree extends Comparator{
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_corpus, expr)
+      println("Expressions: ", exprCorpus, expr)
       println("Common Tree: ", exclusives)
       println("---------------------")
     }
@@ -65,12 +65,12 @@ object ComparatorClassTree extends Comparator{
   /**
     * list of all similar pair of expressions, based on classes.
     *
-    * @param expr_corpus
+    * @param exprCorpus
     * @param expr
     * @return
     */
-  def possibleRoots(expr_corpus: Expr, expr: Expr): List[(Expr, Expr)] = {
-    val expressionsA = collectExpr(expr_corpus)
+  def possibleRoots(exprCorpus: Expr, expr: Expr): List[(Expr, Expr)] = {
+    val expressionsA = collectExpr(exprCorpus)
     val expressionsB = collectExpr(expr)
 
     val pairOfPossibleRoots = for {

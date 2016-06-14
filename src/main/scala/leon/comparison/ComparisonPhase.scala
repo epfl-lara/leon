@@ -34,13 +34,13 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
 
     val corpus = ComparisonCorpus(ctx, "testcases/comparison/corpus")
-    val funDefs_corpus = corpus.funDefs
+    val funDefsCorpus = corpus.funDefs
     val funDefs = getFunDef(ctx, program)
 
 
     // contain pair of function compared and score given by each comparator
     // a space is let for a comment string, for example size of common tree for DirectScoreTree comparator
-    val comparison = combinationOfFunDef(funDefs_corpus, funDefs)
+    val comparison = combinationOfFunDef(funDefsCorpus, funDefs)
 
     val autocompletedHoles =
       funDefs filter hasHole map(fun => Completor.suggestCompletion(fun, corpus))
@@ -55,19 +55,19 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   /**
     * Compare each function from corpus to argument program
     *
-    * @param funDefs_corpus
+    * @param funDefsCorpus
     * @param funDefs
     * @return
     */
-  def combinationOfFunDef(funDefs_corpus: List[FunDef], funDefs: List[FunDef]) = {
+  def combinationOfFunDef(funDefsCorpus: List[FunDef], funDefs: List[FunDef]) = {
 
     for{
       funDef <- funDefs
-      funDef_corpus <- funDefs_corpus
-      scores = comparators map (_.compare(funDef_corpus.body.get, funDef.body.get))
+      funDefCorpus <- funDefsCorpus
+      scores = comparators map (_.compare(funDefCorpus.body.get, funDef.body.get))
       if scores.map(_._1) exists (_ > 0.0)
     } yield {
-      (funDef, funDef_corpus, scores)
+      (funDef, funDefCorpus, scores)
     }
   }
 

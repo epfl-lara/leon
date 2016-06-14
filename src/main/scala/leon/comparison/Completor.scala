@@ -52,8 +52,8 @@ import leon.comparison.ComparatorDirectScoreTree._
 
 
 
-  def possibleRootsWithHoles(funDef_corpus: FunDef, expr: Expr): List[Value] =
-    possibleRoots(funDef_corpus.body.get, expr) filter (e => Utils.hasHole(e.b))
+  def possibleRootsWithHoles(funDefCorpus: FunDef, expr: Expr): List[Value] =
+    possibleRoots(funDefCorpus.body.get, expr) filter (e => Utils.hasHole(e.b))
 
   def getBody(funDef: FunDef): Expr = funDef.body.get
 

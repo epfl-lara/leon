@@ -23,8 +23,8 @@ import leon.purescala.Types.{ClassType, TypeTree}
 object ComparatorScoreTree extends Comparator {
   override val name: String = "ScoreTree"
 
-  def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
-    val pairOfRoots = ComparatorClassTree.possibleRoots(expr_corpus, expr)
+  def compare(exprCorpus: Expr, expr: Expr): (Double, String) = {
+    val pairOfRoots = ComparatorClassTree.possibleRoots(exprCorpus, expr)
     val allPossibleTrees = pairOfRoots flatMap ComparatorClassTree.possibleTrees
     if (allPossibleTrees == Nil) return (0.0, "")
 
@@ -35,7 +35,7 @@ object ComparatorScoreTree extends Comparator {
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_corpus, expr)
+      println("Expressions: ", exprCorpus, expr)
       println("---------------------")
     }
 

@@ -15,8 +15,8 @@ import leon.purescala.Expressions.{CaseClassPattern, _}
 object ComparatorExprList extends Comparator {
   val name = "ExprList"
 
-  def compare(expr_corpus: Expr, expr: Expr)= {
-    val exprsA = collectExpr(expr_corpus)
+  def compare(exprCorpus: Expr, expr: Expr)= {
+    val exprsA = collectExpr(exprCorpus)
     val exprsB = collectExpr(expr)
 
     val numberOfSimilarExpr: Int = pairsOfSimilarExp(exprsA, exprsB)
@@ -26,7 +26,7 @@ object ComparatorExprList extends Comparator {
     if (score > 0.0 && ComparisonPhase.debug){
       println("---------------------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr_corpus, expr)
+      println("Expressions: ", exprCorpus, expr)
       println("similar expr: ", numberOfSimilarExpr)
       println("---------------------")
     }
@@ -35,14 +35,14 @@ object ComparatorExprList extends Comparator {
   }
 
 
-  def pairsOfSimilarExp(exprs_corpus: List[Expr], exprs: List[Expr]): Int = {
-    def helper(exprs_corpus: List[Expr], exprs: List[Expr], acc: Int): Int = exprs match {
+  def pairsOfSimilarExp(exprsCorpus: List[Expr], exprs: List[Expr]): Int = {
+    def helper(exprsCorpus: List[Expr], exprs: List[Expr], acc: Int): Int = exprs match {
       case Nil => acc
-      case x::xs if exprs_corpus.contains(x) => helper(exprs_corpus diff List(x), xs, acc + 1)
-      case x::xs => helper(exprs_corpus, xs, acc)
+      case x::xs if exprsCorpus.contains(x) => helper(exprsCorpus diff List(x), xs, acc + 1)
+      case x::xs => helper(exprsCorpus, xs, acc)
     }
 
-    val normalizedExprsA = exprs_corpus.map(normalizeStructure(_))
+    val normalizedExprsA = exprsCorpus.map(normalizeStructure(_))
     val normalizedExprsB = exprs.map(normalizeStructure(_))
     helper(normalizedExprsA, normalizedExprsB, 0)
   }
@@ -68,11 +68,11 @@ object ComparatorExprList extends Comparator {
     *   case x::y::xs => foo(x, y) ++ recursion(xs)
     *   }
     *
-    * @param cases_base
+    * @param matchCases
     * @return
     */
-  def extractPatternMatchMap(cases_base: Seq[MatchCase]) = {
-    cases_base.map(a => a.pattern match {
+  def extractPatternMatchMap(matchCases: Seq[MatchCase]) = {
+    matchCases.map(a => a.pattern match {
       case InstanceOfPattern(_, ct) => (ct.classDef -> a.rhs)
       case CaseClassPattern(_, ct, _) => {
         println(a)
@@ -83,26 +83,16 @@ object ComparatorExprList extends Comparator {
   }
 
 
-  def extractValueMatchMap(cases_base: Seq[MatchCase]) = {
-    cases_base.map(a => a.pattern -> a.rhs).toMap
+  def extractValueMatchMap(matchCases: Seq[MatchCase]) = {
+    matchCases.map(a => a.pattern -> a.rhs).toMap
   }
 
   // IDEE: comparer les types plutôt que les pattern complet des match case, et éventuellement oublié les optGuard
-  def compareExpr(expr_base: Expr, expr: Expr): Boolean = {
-    val expr_base_norm = normalizeStructure(expr_base)
-    val expr_norm = normalizeStructure(expr)
+  def compareExpr(exprA: Expr, exprB: Expr): Boolean = {
+    val normalizedExprA = normalizeStructure(exprA)
+    val normalizedExprB = normalizeStructure(exprB)
 
-//    (expr_base_norm, expr_norm) match {
-//      case (MatchExpr(_, cases_base), MatchExpr(_, cases)) =>
-//        val map_case_base = extractPatternMatchMap(cases_base)
-//        val map_case = extractPatternMatchMap(cases)
-//        map_case_base == map_case
-//
-//      case _ =>
-//        expr_base_norm == expr_norm
-//
-//    }
-  expr_base_norm == expr_norm
+  normalizedExprA == normalizedExprB
   }
 
 }

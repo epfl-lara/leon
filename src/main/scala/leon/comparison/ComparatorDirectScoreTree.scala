@@ -14,12 +14,12 @@ object ComparatorDirectScoreTree extends Comparator {
   override val name: String = "DirectScoreTree"
 
 
-  override def compare(expr_corpus: Expr, expr: Expr): (Double, String) = {
-    val roots = possibleRoots(expr_corpus, expr)
+  override def compare(exprCorpus: Expr, expr: Expr): (Double, String) = {
+    val roots = possibleRoots(exprCorpus, expr)
     val trees = roots.flatMap(possibleTrees(_))
     if (trees.isEmpty) return (0.0, "")
 
-    val (bestTree, score) = selectBestTree(trees, expr_corpus, expr)
+    val (bestTree, score) = selectBestTree(trees, exprCorpus, expr)
 
     (score, " (" + bestTree.size + ")")
   }
@@ -183,9 +183,9 @@ object ComparatorDirectScoreTree extends Comparator {
   def geometricMean(tree: myTree[Value]): Double =
     Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1/ tree.size.toDouble)
 
-  def selectBestTree(trees: List[myTree[Value]], expr_corpus: Expr, expr: Expr) = {
-    val biggest = trees.sortBy(t => -normalizedScoreTree(t, expr_corpus, expr)).head
-    val score = normalizedScoreTree(biggest, expr_corpus, expr)
+  def selectBestTree(trees: List[myTree[Value]], exprCorpus: Expr, expr: Expr) = {
+    val biggest = trees.sortBy(t => -normalizedScoreTree(t, exprCorpus, expr)).head
+    val score = normalizedScoreTree(biggest, exprCorpus, expr)
     (biggest, score)
   }
 

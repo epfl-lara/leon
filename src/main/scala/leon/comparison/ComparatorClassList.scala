@@ -29,8 +29,8 @@ import leon.purescala.Expressions._
 object ComparatorClassList extends Comparator {
   val name = "ClassList"
 
-  def compare(expr_corpus: Expr, expr: Expr) = {
-    val listClassesA = collectClass(expr_corpus)
+  def compare(exprCorpus: Expr, expr: Expr) = {
+    val listClassesA = collectClass(exprCorpus)
     val listClassesB = collectClass(expr)
 
     val similarExpr: Int = pairsOfSimilarExp(listClassesA, listClassesB)
@@ -40,7 +40,7 @@ object ComparatorClassList extends Comparator {
     if (score > 0.0 && ComparisonPhase.debug){
       println("-----------")
       println("COMPARATOR " + name)
-      println("Expressions: ", expr, expr_corpus)
+      println("Expressions: ", expr, exprCorpus)
       println("List of classes: ", listClassesB, listClassesA)
       println("-----------")
     }
@@ -49,15 +49,15 @@ object ComparatorClassList extends Comparator {
   }
 
 
-  def pairsOfSimilarExp(listExpr_corpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]]): Int = {
-    def helper(listExpr_corpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]], acc: Int): Int =
+  def pairsOfSimilarExp(listExprCorpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]]): Int = {
+    def helper(listExprCorpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]], acc: Int): Int =
       listExpr match {
         case Nil => acc
-        case x::xs if listExpr_corpus.contains(x) => helper(listExpr_corpus diff List(x), xs, acc + 1)
-        case x::xs => helper(listExpr_corpus, xs, acc)
+        case x::xs if listExprCorpus.contains(x) => helper(listExprCorpus diff List(x), xs, acc + 1)
+        case x::xs => helper(listExprCorpus, xs, acc)
       }
 
-    helper(listExpr_corpus, listExpr, 0)
+    helper(listExprCorpus, listExpr, 0)
   }
 
 }
