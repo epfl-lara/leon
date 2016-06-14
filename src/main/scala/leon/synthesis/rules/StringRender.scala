@@ -519,6 +519,11 @@ case object StringRender extends Rule("StringRender") {
               val scrut = Variable(idInput)
               val matchCases = nt.tag match {
                 case AbstractClassType(acd, typeArgs) =>
+                  if(acd.id.name == "ThreadId") {
+                    println("terminals for ThreadId:\n"+terminals.length)
+                    println("result")
+                    println(terminals.map(filteredPrintersOf).toStream.flatten.map(_.apply(Variable(inputs.head))))
+                  }
                   acd.knownCCDescendants map { ccd => 
                     children.find(childNt => childNt.tag match {
                       case CaseClassType(`ccd`, `typeArgs`) => true
@@ -545,7 +550,6 @@ case object StringRender extends Rule("StringRender") {
         // We create the bodies of these functions  
         val possible_functions = for((nt, fd) <- funDefs.toSeq) yield {
           val bodies: Stream[WithIds[Expr]] = rulesToBodies(grammar.rules(nt), nt, fd)
-          //println("Function found: " + fd + "\n" + bodies)
           (fd, bodies/*.map{ b => println("Testing another body for " + fd.id.name + "\n" + b); b}*/)
         }
         
@@ -612,6 +616,7 @@ case object StringRender extends Rule("StringRender") {
         case CaseClassType(ccd, tparams2) => ccd.fields.isEmpty
         case _ => false
       }
+      if(act.id.name == "ThreadId") println("For ThreadId, allKnownDescendantsAreCCAndHaveZeroArgs = " + allKnownDescendantsAreCCAndHaveZeroArgs)
       if(allKnownDescendantsAreCCAndHaveZeroArgs) {
         val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
           case (acc, cct @ CaseClassType(ccd, tparams2)) =>
@@ -623,7 +628,10 @@ case object StringRender extends Rule("StringRender") {
             acc += ((MatchCase(pattern, None, rhs), Nil))
           case (acc, e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
         }
-        Stream((x: Expr) => mergeMatchCases(x)(cases))
+        if(act.id.name == "ThreadId") println("For ThreadId, cases = " + cases)
+        if(cases.nonEmpty) {
+          Stream((x: Expr) => mergeMatchCases(x)(cases))
+        } else Stream.Empty
       } else Stream.Empty
     }
     
@@ -639,7 +647,7 @@ case object StringRender extends Rule("StringRender") {
         val customs = (p: Program, fds: Set[FunDef]) => customPrettyPrinters(cct, p, fds).toStream
         Some(AugmentedTerminalsRHS(Seq(Terminal(cct)(customs)),
               HorizontalRHS(Terminal(cct)((prog, fds) => Stream.empty), flattenedTupleds.map(NonTerminal(_)))))
-      case NonTerminal(otherType, vc, hc) =>
+      case NonTerminal(otherType, vc, hc) if !otherType.isInstanceOf[AbstractClassType] =>
         val customs = (p: Program, fds: Set[FunDef]) => customPrettyPrinters(otherType, p, fds).toStream
         //if(customs.nonEmpty) {
           Some(AugmentedTerminalsRHS(Seq(Terminal(otherType)(customs)),
@@ -650,6 +658,7 @@ case object StringRender extends Rule("StringRender") {
     /** Used to produce rules such as List => Cons | Nil without context */
     protected def verticalChildren(n: NonTerminal)(implicit hctx: SearchContext): Option[Expansion] = n match {
       case NonTerminal(act@AbstractClassType(acd: AbstractClassDef, tps), vc, hc) => 
+        if(act.id.name == "ThreadId") println("Creating custom pretty printers for type ThreadId")
         val customs = (p: Program, fds: Set[FunDef]) => constantPatternMatching(act) #::: customPrettyPrinters(act, p, fds).toStream
         Some(AugmentedTerminalsRHS(Seq(Terminal(act)(customs)),
             VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag)))))

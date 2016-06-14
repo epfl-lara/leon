@@ -121,7 +121,7 @@ class InputPatternCoverageSuite extends LeonTestSuiteWithProgram with Matchers w
     d.eval(functionInvocation(f, e)).result.get
   }
   
-  test("InputPatternCoverage should expand covering examples to make them rec-covering."){ ctxprogram =>
+  test("InputPatternCoverage should expand covering examples."){ ctxprogram =>
     implicit val (c, p) = ctxprogram
     val f = funDef("InputPatternCoverageSuite.f")
     val reccoverage = new InputPatternCoverage(f.typed)

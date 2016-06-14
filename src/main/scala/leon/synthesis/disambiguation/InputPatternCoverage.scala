@@ -35,9 +35,6 @@ case class PatternNotSupportedException(p: Pattern) extends
 case class PatternExtractionErrorException(p: Pattern, msg: String) extends
   InputPatternCoverageException(s"The pattern $p cause problem during extraction: "+msg)
 
-case class FunDefNotCoverableException(fd: FunDef, bindings: Map[_, _]) extends
-  InputPatternCoverageException(s"The function is not supported for coverage:\n$fd\n under bindings $bindings")
-
 /**
  * @author Mikael
  * If possible, synthesizes a set of inputs for the function so that they cover all parts of the function.
@@ -112,6 +109,9 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
       Map(List(i) -> interleaved)
     case FunctionInvocation(tfd@TypedFunDef(fd, targs), args @ (Reconstructor(ids)+:tail)) =>
       Map(ids -> coverFunDef(tfd, covered, Some(compose(bindings, args))).map(_.head))
+      
+    case Reconstructor(ids) =>
+      Map(ids -> Stream(a(ids.last.getType)))
       
     case Application(Variable(f), args @ (Reconstructor(ids)+:tail)) =>
       bindings.get(f) match {
