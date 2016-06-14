@@ -43,6 +43,7 @@ trait PrettyPrinterFinder[T, U >: T] {
     }
   }
   
+  /** How to fill the arguments for user-defined pretty-printers */
   def getPrintersForType(t: TypeTree)(implicit ctx: LeonContext, program: Program): Option[Stream[U]] = t match {
     case FunctionType(Seq(in), StringType) => // Should have one argument.
       Some(prettyPrintersForType(in))
@@ -84,8 +85,10 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
   protected var allowedFunctions = Set[FunDef]()
   /* Functions totally excluded from the set of pretty-printer candidates */
   protected var excluded = Set[FunDef]()
-  /** Functions whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
+  /** Function whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
   def allowFunction(fd: FunDef) = { allowedFunctions += fd; this }
+  /** Functions whose name does not need to end with `tostring` or which can be abstract, i.e. which may contain a choose construct.*/
+  def allowFunctions(fds: Set[FunDef]) = { allowedFunctions ++= fds; this }
   /** Functions totally excluded from the set of pretty-printer candidates*/
   def excludeFunctions(fds: Set[FunDef]) = { excluded ++= fds; this }
   /** Function totally excluded from the set of pretty-printer candidates*/
@@ -94,6 +97,7 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
   protected def isExcluded(fd: FunDef): Boolean = top.excluded(fd)
   protected def isAllowed(fd: FunDef): Boolean = top.allowedFunctions(fd)
   
+  /** How to fill the arguments for user-defined pretty-printers */
   override def getPrintersForType(t: TypeTree)(implicit ctx: LeonContext, program: Program): Option[Stream[Lambda]] = t match {
     case FunctionType(Seq(StringType), StringType) => // Should have one argument.
       val s = FreshIdentifier("s", StringType) // verify the type
@@ -116,19 +120,66 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
     /** If the returned identifiers are instantiated, each lambda becomes a pretty-printer.
       * This allows to make use of mkString functions such as for maps */
     def prettyPrintersForTypes(inputType: TypeTree)(implicit ctx: LeonContext, program: Program) = {
-      program.definedFunctions.toStream flatMap { fd =>
+      (program.definedFunctions.toStream flatMap { fd =>
         if(isCandidate(fd)) prettyPrinterFromCandidate(fd, inputType) else Stream.Empty
+      }) #::: {
+        inputType match {
+          case Int32Type =>
+            val i = FreshIdentifier("i", Int32Type)
+            Stream((Lambda(Seq(ValDef(i)), Int32ToString(Variable(i))), List[Identifier]()))
+          case IntegerType =>
+            val i = FreshIdentifier("i", IntegerType)
+            Stream((Lambda(Seq(ValDef(i)), IntegerToString(Variable(i))), List[Identifier]()))
+          case StringType =>
+            val i = FreshIdentifier("i", StringType)
+            Stream((Lambda(Seq(ValDef(i)), Variable(i)), List[Identifier]()))
+          case BooleanType =>
+            val i = FreshIdentifier("i", BooleanType)
+            Stream((Lambda(Seq(ValDef(i)), BooleanToString(Variable(i))), List[Identifier]()))
+          case _ => Stream.empty
+        }
       }
     }
+    import leon.purescala.Extractors._
     
-    /** Adds the possibility to have holes in expression */
+    /** How to fill the arguments for user-defined pretty-printers */
     override def getPrintersForType(t: TypeTree)(implicit ctx: LeonContext, program: Program) = t match {
       case FunctionType(Seq(StringType), StringType) => // Should have one argument.
         val s = FreshIdentifier("s", StringType) // verify the type
         Some(Stream((Lambda(Seq(ValDef(s)), Variable(s)), List())) ++ super.getPrintersForType(t).getOrElse(Stream.empty) )
+      case FunctionType(Seq(t@ WithStringconverter(converter)), StringType) => // Should have one argument.
+        val s = FreshIdentifier("s", t) // verify the type
+        Some(Stream((Lambda(Seq(ValDef(s)), converter(Variable(s))), List())) ++ super.getPrintersForType(t).getOrElse(Stream.empty) )
       case StringType => 
         val const = FreshIdentifier("const", StringType)
         Some(Stream((Variable(const), List(const))))
+      case TupleType(targs) =>
+        def convertPrinters(ts: Seq[TypeTree]): Option[Seq[Stream[(Expressions.Expr, List[Common.Identifier])]]] = {
+          ts match {
+            case Nil => Some(Seq())
+            case t::tail =>
+              getPrintersForType(t).flatMap(current =>
+                convertPrinters(tail).map(remaining =>
+                  current +: remaining))
+          }
+        }
+        convertPrinters(targs) match {
+          case None => None
+          case Some(t) =>
+            val regrouped = leon.utils.StreamUtils.cartesianProduct(t)
+            val result = regrouped.map{lst =>
+              val identifiers = lst.flatMap(_._2)
+              val lambdas = lst.collect{ case (l: Lambda, _) => l}
+              val valdefs = lambdas.flatMap(_.args)
+              val bodies = lst.map{ case (l: Lambda, _) => l.body case (e, _) => e }
+              if(valdefs.isEmpty) {
+                (Tuple(bodies), identifiers)
+              } else {
+                (Lambda(valdefs, Tuple(bodies)), identifiers)
+              }
+            }
+            Some(result)
+        }
       case _ => super.getPrintersForType(t)
     }
     

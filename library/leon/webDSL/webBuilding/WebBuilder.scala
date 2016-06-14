@@ -117,7 +117,7 @@ object ^ {
   
   val borderCollapse = CssAcceptor[String]("border-collapse")
   val textAlign = CssAcceptor[String]("text-align")
-  val width = CssAcceptor[String]("border")
+  val width = CssAcceptor[String]("width")
   val height = CssAcceptor[String]("height")
   val color = CssAcceptor[String]("color")
   val background = CssAcceptor[String]("background")
@@ -141,6 +141,8 @@ object ^ {
   val borderTop = CssAcceptor[String]("border-top")
   val borderBottom = CssAcceptor[String]("border-bottom")
   val border = CssAcceptor[String]("border")
+  val borderColor = CssAcceptor[String]("border-color")
+  val borderRadius = CssAcceptor[String]("border-radius")
   
   val fontSize = CssAcceptor[String]("font-size")
   val lineHeight = CssAcceptor[String]("line-height")

@@ -67,18 +67,21 @@ class ADTManager(ctx: LeonContext) {
     }
   }
 
-  def forEachType(t: TypeTree)(f: TypeTree => Unit): Unit = t match {
+  def forEachType(t: TypeTree, alreadyDone: Set[TypeTree] = Set())(f: TypeTree => Unit): Unit = if(!alreadyDone(t)) {
+    t match {
     case NAryType(tps, builder) =>
       f(t)
+      val alreadyDone2 = alreadyDone + t
       // note: each of the tps could be abstract classes in which case we need to
       // lock their dependencies, transitively.
       tps.foreach {
         case ct: ClassType =>
           val (root, sub) = getHierarchy(ct)
-          (root +: sub).flatMap(_.fields.map(_.getType)).foreach(subt => forEachType(subt)(f))
+          (root +: sub).flatMap(_.fields.map(_.getType)).foreach(subt => forEachType(subt, alreadyDone2)(f))
         case othert =>
-          forEachType(othert)(f)
+          forEachType(othert, alreadyDone2)(f)
       }
+    }
   }
 
   protected def findDependencies(t: TypeTree): Unit = t match {

@@ -35,6 +35,14 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     if(defs.isEmpty) guardedTerm else
     LetDef(defs.toList, guardedTerm)
   }
+  
+  def ifOnFunDef[T](originalFun: FunDef)(body: => T): T = {
+    val saved = originalFun.body
+    originalFun.body = Some(term)
+    val res = body
+    originalFun.body = saved
+    res
+  }
 
   // Projects a solution (ignore several output variables)
   // 

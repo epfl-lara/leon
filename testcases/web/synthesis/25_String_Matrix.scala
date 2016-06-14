@@ -1,7 +1,8 @@
 import leon.lang._
 import leon.annotation._
 import synthesis._
-
+import leon.collection._
+  
 object Matrix { 
   case class CList[T](head: T, tail: Option[CList[T]]) {
     def +:(el: T) = CList(el, Some(this))
@@ -24,24 +25,23 @@ object Matrix {
         a + "," + b + "\n" + c + "," + d
     }
   }
-  
-  import leon.collection._
+
   
   /** Shows how to use built-in function to pretty print a list of a list as a 2D matrix. */
-  def matrixToString(in : List[List[String]]): String =  {
+  def matrixToString(in : List[List[Int]]): String =  {
     ???[String]
   } ensuring {
     (res : String) => (in, res) passes {
       case x if x == List(
-        List("1", "2"),  
-        List("3", "4")
+        List(2, 3),  
+        List(4, 5)
       ) =>
-"""<table border="1"><tr><td>1</td><td>2</td></tr>
-<tr><td>3</td><td>4</td></tr></table>"""
+"""<table border="1"><tr><td>2</td><td>3</td></tr>
+<tr><td>4</td><td>5</td></tr></table>"""
     }
   }
   
-  def isMatrix(in: List[List[String]], width: BigInt, height: BigInt): Boolean = {
+  def isMatrix(in: List[List[Int]], width: BigInt, height: BigInt): Boolean = {
     in match {
       case Nil() if height == 0 => true
       case Cons(row, remaining) => row.length == width && isMatrix(remaining, width, height - 1)
@@ -50,7 +50,7 @@ object Matrix {
   }
   
   
-  def wrongMatrixConjecture(in: List[List[String]]) = {
+  def wrongMatrixConjecture(in: List[List[Int]]) = {
     require(isMatrix(in, 3, 3))
     in(0)(0) == in(0)(1) || 
     in(0)(1) == in(0)(2) || 

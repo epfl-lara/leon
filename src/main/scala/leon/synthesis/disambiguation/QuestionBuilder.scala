@@ -143,10 +143,11 @@ class QuestionBuilder[T <: Expr](
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
   private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
-  private var solutionsToTake = 30
-  private var expressionsToTake = 30
+  private var solutionsToTake = 15
+  private var expressionsToTake = 15 // TODO: At least cover the program !
   private var keepEmptyAlternativeQuestions: T => Boolean = Set()
   private var value_enumerator: ExpressionGrammar = ValueGrammar
+  private var expressionsToTestFirst: Option[Stream[Seq[Expr]]] = None
 
   /** Sets the way to sort questions. See [[QuestionSortingType]] */
   def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
@@ -162,6 +163,8 @@ class QuestionBuilder[T <: Expr](
   def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
   /** Sets the way to enumerate expressions */
   def setValueEnumerator(v: ExpressionGrammar) = value_enumerator = v
+  /** Sets the expressions to test first */
+  def setExpressionsToTestFirst(s: Option[Stream[Seq[Expr]]]) = expressionsToTestFirst = s
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
@@ -182,6 +185,24 @@ class QuestionBuilder[T <: Expr](
     res
   }
   
+  /** Given an input, the current output, a list of alternative programs, compute a question if there is any. */
+  def computeQuestion(possibleInput: Seq[(Identifier, Expr)], currentOutput: T, alternatives: List[Solution]): Option[Question[T]] = {
+    val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
+      run(alternative, possibleInput) match {
+        case Some(alternative_output) if alternative_output != currentOutput =>
+          filter(prev, alternative_output) match {
+            case Some(alternative_output_filtered) =>
+              prev += alternative_output_filtered
+            case _ => prev
+          }
+        case _ => prev
+      }
+    }.drop(1).toList.distinct
+    if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
+      Some(Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0)))
+    } else None
+  }
+  
   /** Returns a list of input/output questions to ask to the user. */
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
@@ -195,25 +216,30 @@ class QuestionBuilder[T <: Expr](
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
     val questions = ListBuffer[Question[T]]()
-    for {
-      possibleInput            <- enumerated_inputs
-      currentOutputNonFiltered <- run(solution, possibleInput)
-      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
-    } {
-      
-      val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
-        run(alternative, possibleInput) match {
-          case Some(alternative_output) if alternative_output != currentOutput =>
-            filter(prev, alternative_output) match {
-              case Some(alternative_output_filtered) =>
-                prev += alternative_output_filtered
-              case _ => prev
-            }
-          case _ => prev
-        }
-      }.drop(1).toList.distinct
-      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
-        questions += Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
+    expressionsToTestFirst match  {
+      case Some(inputs) =>
+        val inputs_generics = inputs.map(y => y.map(x => makeGenericValuesUnique(x)))
+        (for {
+          possibleInput            <- inputs_generics.map(in => input zip in)
+          if questions.isEmpty
+          currentOutputNonFiltered <- run(solution, possibleInput)
+          if questions.isEmpty
+          currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+          if questions.isEmpty
+          question <- computeQuestion(possibleInput, currentOutput, alternatives)
+        } yield {
+          questions += question
+        }).take(1)
+      case None =>
+    }
+    if(questions.isEmpty) {
+      for {
+        possibleInput            <- enumerated_inputs
+        currentOutputNonFiltered <- run(solution, possibleInput)
+        currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+        question <- computeQuestion(possibleInput, currentOutput, alternatives)
+      } {
+        questions += question
       }
     }
     questions.toList.sortBy(_questionSorMethod(_))

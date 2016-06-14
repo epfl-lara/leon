@@ -239,20 +239,20 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
   private var booleanFlags = Seq[Identifier]()
   
   /** Augment function definitions which should have boolean markers, leave others untouched. */
-  private def wrapFunDef(fd: FunDef): FunDef = {
-    if(!(cache contains fd)) {
-      if(fds(fd)) {
-        val new_fd = fd.duplicate(returnType = TupleType(Seq(fd.returnType, BooleanType)))
+  private def wrapFunDef(f: FunDef): FunDef = {
+    if(!(cache contains f)) {
+      if(fds(f) || f == fd) {
+        val new_fd = f.duplicate(returnType = TupleType(Seq(f.returnType, BooleanType)))
         new_fd.body = None
-        cache += fd -> new_fd
-        val (new_body, bvars) = wrapBranch(markBranches(fd.body.get)) // Recursive call.
+        cache += f -> new_fd
+        val (new_body, bvars) = wrapBranch(markBranches(f.body.get)) // Recursive call.
         new_fd.body = Some(new_body) // TODO: Handle post-condition if they exist.
         booleanFlags ++= bvars.get
       } else {
-        cache += fd -> fd
+        cache += f -> f
       }
     }
-    cache(fd)
+    cache(f)
   }
   
   /** Returns true if the expression is a function call with a new function already. */
@@ -296,7 +296,7 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
     
     val transformer = DefOps.funDefReplacer({
       (f: FunDef) =>
-        if((fds contains   f) || f == fd) {
+        if((fds contains f) || f == fd) {
           val new_fd = wrapFunDef(f)
           if(f == fd) {
             val h = FreshIdentifier("h", TupleType(Seq(fd.returnType, BooleanType)), false)
@@ -325,9 +325,9 @@ class InputCoverage(fd: FunDef, fds: Set[FunDef])(implicit c: LeonContext, p: Pr
           if(ExprOps.exists { case Variable(id) => booleanFlags contains id case _ => false }(f.fullBody)) {
             val new_f = f.duplicate()
             new_f.fullBody = ExprOps.preMap {
-              case Variable(id) if id == bvar => Some(BooleanLiteral(true))
-              case Variable(id) if booleanFlags contains id => Some(BooleanLiteral(false))
-              case _ => None
+                case Variable(id) if id == bvar => Some(BooleanLiteral(true))
+                case Variable(id) if booleanFlags contains id => Some(BooleanLiteral(false))
+                case _ => None
             }(f.fullBody)
             Some(new_f)
           } else None

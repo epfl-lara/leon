@@ -99,6 +99,11 @@ package object lang {
       }
     }
   }
+  
+  @library
+  def tupleToString[A, B](t: (A, B), mid: String, f: A => String, g: B => String) = {
+    f(t._1) + mid + g(t._2)
+  }
 
   @extern @library
   def print(x: String): Unit = {
