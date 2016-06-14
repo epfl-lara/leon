@@ -157,6 +157,7 @@ object HOFDecomp1 {
       case (Leaf(), 10)                                     => false
       case (Node(10, Leaf(), Leaf()), 10)                   => true
       case (Node(11, Leaf(), Leaf()), 10)                   => false
+      case (Node(9, Leaf(), Leaf()), 10)                    => false
       case (Node(11, Node(10, Leaf(), Leaf()), Leaf()), 10) => true
       case (Node(11, Leaf(), Node(10, Leaf(), Leaf())), 10) => true
       case (Node(11, Node(12, Leaf(), Leaf()), Leaf()), 10) => false

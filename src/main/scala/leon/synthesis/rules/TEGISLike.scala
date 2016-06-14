@@ -23,8 +23,8 @@ abstract class TEGISLike(name: String) extends Rule(name) {
   case class TegisParams(
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
-    minSize: Int = 3,
-    maxSize: Int = 3
+    minSize: Int,
+    maxSize: Int
   )
 
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
