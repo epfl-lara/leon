@@ -37,15 +37,10 @@ object ComparatorExprList extends Comparator {
 
 
   def pairsOfSimilarExp(exprsCorpus: List[Expr], exprs: List[Expr]): Int = {
-    def helper(exprsCorpus: List[Expr], exprs: List[Expr], acc: Int): Int = exprs match {
-      case Nil => acc
-      case x::xs if exprsCorpus.contains(x) => helper(exprsCorpus diff List(x), xs, acc + 1)
-      case x::xs => helper(exprsCorpus, xs, acc)
-    }
-
     val normalizedExprsA = exprsCorpus.map(normalizeStructure(_))
     val normalizedExprsB = exprs.map(normalizeStructure(_))
-    helper(normalizedExprsA, normalizedExprsB, 0)
+
+    normalizedExprsA.intersect(normalizedExprsB).size
   }
 
 
