@@ -1,4 +1,5 @@
 package leon.comparison
+
 import leon.{GlobalOptions, LeonContext, utils}
 import leon.comparison.Scores._
 import leon.comparison.Utils._
@@ -23,7 +24,7 @@ object ComparatorDirectScoreTree extends Comparator {
 
     val (bestTree, score) = selectBestTree(trees, exprCorpus, expr)
 
-    if (context.findOption(GlobalOptions.optDebug).isDefined){
+    if (context.findOption(GlobalOptions.optDebug).isDefined) {
       context.reporter.debug("---------------------")
       context.reporter.debug("COMPARATOR " + name)
       context.reporter.debug("Expressions: \n" + exprCorpus + expr)
@@ -46,9 +47,9 @@ object ComparatorDirectScoreTree extends Comparator {
     */
   def pairAndScoreExpr(exprsA: List[Expr], exprsB: List[Expr]): List[Value] = {
     val pairOfExprs = for {
-        exprA <- exprsA
-        exprB <- exprsB
-        score = computeScore(exprA, exprB)
+      exprA <- exprsA
+      exprB <- exprsB
+      score = computeScore(exprA, exprB)
       if score > 0.0
     } yield {
       Value(exprA, exprB, score)
@@ -66,7 +67,6 @@ object ComparatorDirectScoreTree extends Comparator {
 
   def matchChildren(childrenA: List[Expr], childrenB: List[Expr]): List[Value] =
     pairAndScoreExpr(childrenA, childrenB)
-
 
 
   /**
@@ -87,15 +87,14 @@ object ComparatorDirectScoreTree extends Comparator {
     val combinationOfChildren = combineChildren(pairOfMatchingChildren)
 
 
-    if(pairOfMatchingChildren.isEmpty) {
+    if (pairOfMatchingChildren.isEmpty) {
       List(myTree(value, List()))
     } else {
       combinationOfChildren.foldLeft(List(): List[myTree[Value]])(
-      (listOfTrees, children) => listOfTrees ++ flatCombination(value, children.map(p => possibleTrees(p)))
+        (listOfTrees, children) => listOfTrees ++ flatCombination(value, children.map(p => possibleTrees(p)))
       )
     }
   }
-
 
 
   /**
@@ -103,10 +102,10 @@ object ComparatorDirectScoreTree extends Comparator {
     *
     * Allow some flexibilities, we can even compare two different expressions and give it a non-zero score.
     * We can also go though some expression to compare deeper proprieties, like:
-    *   - order in if-else statement (TO DO)
-    *   - exclusiveness of MatchCases in a case-match statement (TO DO)
-    *   - value of the expression
-    *   - ...
+    * - order in if-else statement (TO DO)
+    * - exclusiveness of MatchCases in a case-match statement (TO DO)
+    * - value of the expression
+    * - ...
     *
     * @param exprA
     * @param exprB
@@ -120,8 +119,6 @@ object ComparatorDirectScoreTree extends Comparator {
       1.0
     case _ => 0.0
   }
-
-
 
 
   /** All possible combination of pairs of children, given the condition that one child can only be used once.
@@ -144,7 +141,6 @@ object ComparatorDirectScoreTree extends Comparator {
       combinations <- in combinations len
     } yield combinations
   }
-
 
 
   /**
@@ -191,7 +187,7 @@ object ComparatorDirectScoreTree extends Comparator {
   }
 
   def geometricMean(tree: myTree[Value]): Double =
-    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1/ tree.size.toDouble)
+    Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1 / tree.size.toDouble)
 
   def selectBestTree(trees: List[myTree[Value]], exprCorpus: Expr, expr: Expr) = {
     val biggest = trees.sortBy(t => -normalizedScoreTree(t, exprCorpus, expr)).head

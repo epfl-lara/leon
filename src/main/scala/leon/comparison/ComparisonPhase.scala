@@ -38,13 +38,10 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     val comparison = combinationOfFunDef(funDefsCorpus, funDefs)
 
     val autocompletedHoles =
-      funDefs filter hasHole map(fun => Completor.suggestCompletion(fun, corpus))
+      funDefs filter hasHole map (fun => Completor.suggestCompletion(fun, corpus))
 
     ComparisonReport(ctx, program, corpus, comparatorsNames, comparison, autocompletedHoles)
   }
-
-
-
 
 
   /**
@@ -57,7 +54,7 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
   def combinationOfFunDef(funDefsCorpus: List[FunDef], funDefs: List[FunDef])
                          (implicit context: LeonContext) = {
 
-    for{
+    for {
       funDef <- funDefs
       funDefCorpus <- funDefsCorpus
       scores = comparators map (_.compare(funDefCorpus.body.get, funDef.body.get))
@@ -71,11 +68,12 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
     * Method inspired from VerficationPhase
     * A filter with undesirable FunDef added
     * Ensure that every FunDef has a body
+    *
     * @param ctx
     * @param program
     * @return
     */
-  def getFunDef(ctx : LeonContext, program: Program): List[FunDef] = {
+  def getFunDef(ctx: LeonContext, program: Program): List[FunDef] = {
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
     val filterFuns: Option[Seq[String]] = ctx.findOption(GlobalOptions.optFunctions)
     val fdFilter = {
@@ -86,11 +84,12 @@ object ComparisonPhase extends SimpleLeonPhase[Program, ComparisonReport] {
 
     val funDefs = program.definedFunctions.filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).tail
 
-    funDefs filter{f =>
+    funDefs filter { f =>
       f.qualifiedName(program) != "Ensuring.ensuring" &&
         f.qualifiedName(program) != "WebPage.apply" &&
         f.qualifiedName(program) != "Style" &&
-        hasBody(f)}
+        hasBody(f)
+    }
   }
 
   def hasBody(funDef: FunDef): Boolean = funDef.body match {

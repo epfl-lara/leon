@@ -25,7 +25,7 @@ object ComparatorExprList extends Comparator {
 
     val score = Utils.matchScore(numberOfSimilarExpr, exprsA.size, exprsB.size)
 
-    if (context.findOption(GlobalOptions.optDebug).isDefined){
+    if (context.findOption(GlobalOptions.optDebug).isDefined) {
       context.reporter.debug("---------------------")
       context.reporter.debug("COMPARATOR " + name)
       context.reporter.debug("Expressions: \n" + exprCorpus + "\n" + expr)
@@ -54,16 +54,16 @@ object ComparatorExprList extends Comparator {
     * (waring: this comparison make sense only if the MatchCases are exclusives)
     *
     * e.g : list match {
-    *   case x::y::xs => foo(x, y) ++ recursion(xs)
-    *   case x::xs => Nil
-    *   }
+    * case x::y::xs => foo(x, y) ++ recursion(xs)
+    * case x::xs => Nil
+    * }
     *
     * is not equal to:
     *
-    *   list match {
-    *   case x::xs => Nil
-    *   case x::y::xs => foo(x, y) ++ recursion(xs)
-    *   }
+    * list match {
+    * case x::xs => Nil
+    * case x::y::xs => foo(x, y) ++ recursion(xs)
+    * }
     *
     * @param matchCases
     * @return
@@ -86,7 +86,7 @@ object ComparatorExprList extends Comparator {
     val normalizedExprA = normalizeStructure(exprA)
     val normalizedExprB = normalizeStructure(exprB)
 
-  normalizedExprA == normalizedExprB
+    normalizedExprA == normalizedExprB
   }
 
 }

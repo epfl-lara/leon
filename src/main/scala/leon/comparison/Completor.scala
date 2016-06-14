@@ -5,6 +5,7 @@ import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions._
 import leon.comparison.Utils._
 import leon.comparison.ComparatorDirectScoreTree._
+
 /**
   * Created by joachimmuth on 08.06.16.
   *
@@ -15,16 +16,16 @@ import leon.comparison.ComparatorDirectScoreTree._
   * two functions. As ComparatorDirectScoreTree creates pair of expression based on their score, we only need to do a
   * little modification in order to consider the Hole as a possible match, based on their type.
   * We choose then the function with the common tree having the higher score.
-    *
+  *
   * We use this corpus function to fill the hole, and we replace the hole by the matching expression in the common tree.
-    *
+  *
   * We return the holed function, the corpus function used to complete it, and the completed function (if there is some).
-    *
+  *
   * IMPORTANT: at the moment the object if implemented to handle one and only one hole
-    */
-  object Completor {
+  */
+object Completor {
 
-    case class Suggestion(expr: Option[Expr])
+  case class Suggestion(expr: Option[Expr])
 
 
   def suggestCompletion(funDef: FunDef, corpus: ComparisonCorpus)(implicit context: LeonContext):
@@ -51,7 +52,6 @@ import leon.comparison.ComparatorDirectScoreTree._
       case Some(pair) => (funDef, Some(pair._1), Some(fillHole(expr, pair._2)))
     }
   }
-
 
 
   def possibleRootsWithHoles(funDefCorpus: FunDef, expr: Expr): List[Value] =
@@ -93,7 +93,7 @@ import leon.comparison.ComparatorDirectScoreTree._
 
     listWithScore match {
       case Nil => None
-      case x::xs => {
+      case x :: xs => {
         val best = listWithScore.sortBy(p => -p._2.get._2).head
         Some(best._1, best._2.get._1)
       }

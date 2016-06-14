@@ -21,13 +21,13 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
   val funDefs: List[FunDef] = ComparisonPhase.getFunDef(ctx, program)
 
   def extraction(files: List[String]): _root_.leon.purescala.Definitions.Program = {
-    val extraction =  ExtractionPhase andThen new PreprocessingPhase(false)
+    val extraction = ExtractionPhase andThen new PreprocessingPhase(false)
     val (_, prog) = extraction.run(ctx, files)
     prog
   }
 
   def recursiveListFiles(f: File): List[File] = {
-    if (! (f.isDirectory || f.isFile)) {
+    if (!(f.isDirectory || f.isFile)) {
       ctx.reporter.error("Path " + f + " is neither a file nor a directory.")
       ctx.reporter.error("Program aborted")
       java.lang.System.exit(0)
@@ -42,7 +42,7 @@ case class ComparisonCorpus(ctx: LeonContext, folder: String) {
   }
 
   def recursiveListFilesInString(f: String): List[String] = {
-    if(! Files.exists(Paths.get(f))) {
+    if (!Files.exists(Paths.get(f))) {
       ctx.reporter.error("Path of corpus folder doesn't exist: " + f)
       ctx.reporter.error("Program aborted")
       java.lang.System.exit(0)

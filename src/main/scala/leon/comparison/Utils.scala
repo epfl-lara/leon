@@ -17,15 +17,16 @@ object Utils {
     hasHole(funDef.body.get)
 
   def hasHole(expr: Expr): Boolean =
-    collectExpr(expr) exists(e => e.isInstanceOf[Hole] || e.isInstanceOf[Choose])
+    collectExpr(expr) exists (e => e.isInstanceOf[Hole] || e.isInstanceOf[Choose])
 
   /**
     * Method to handle update made recently that changed argument and output of ExprOps.normalizeStructure
+    *
     * @param expr
     * @return
     */
   def normalizeStructure(expr: Expr): Expr = {
-    val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
+    val allVars: Seq[Identifier] = fold[Seq[Identifier]] {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
         case Lambda(args, _) => args.map(_.id)
         case Forall(args, _) => args.map(_.id)
@@ -36,17 +37,16 @@ object Utils {
         case Variable(id) => Seq(id)
         case _ => Seq.empty[Identifier]
       })((acc, seq) => acc ++ seq)
-    } (expr).distinct
+    }(expr).distinct
 
     ExprOps.normalizeStructure(allVars, expr)._2
   }
 
 
-
   def percent(a: Int, b: Int): Double = {
-    if(a == 0 && b == 0) 1.0
+    if (a == 0 && b == 0) 1.0
     else if (a == 0 || b == 0) 0.0
-    else Math.min(a.toDouble/b.toDouble, b.toDouble/a.toDouble)
+    else Math.min(a.toDouble / b.toDouble, b.toDouble / a.toDouble)
   }
 
   def matchScore(a: Int, option1: Int, option2: Int): Double =
@@ -57,10 +57,14 @@ object Utils {
     * Arithmetic means
     */
   def mean(a: Double): Double = a
+
   def mean(a: Double, b: Double): Double = (a + b) / 2
+
   def mean(a: Double, b: Double, c: Double): Double = (a + b + c) / 3
+
   def mean(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 4
-  def mean(list : List[Double]): Double = list.foldLeft(0.0)(_+_) / list.size.toDouble
+
+  def mean(list: List[Double]): Double = list.foldLeft(0.0)(_ + _) / list.size.toDouble
 
   /**
     * Derived from "traverse" function. Traverse all the tree and collect whished information about Expr composing it.
@@ -71,27 +75,29 @@ object Utils {
     *
     * BEWARE: Expr are complete trees even if we call it "parent". When we compare two Expr, we compare two entire tree.
     * At the contrary, when we compare to Class, we lose this information and only compare the Class of two parent.
+    *
     * @param expr
     * @param f
     * @tparam T
     * @return
     */
-  def collect[T](expr: Expr)(f:Expr => List[T]): List[T] = traverse(expr)(f)(expr => collect(expr)(f))
+  def collect[T](expr: Expr)(f: Expr => List[T]): List[T] = traverse(expr)(f)(expr => collect(expr)(f))
 
   def collectClass(expr: Expr): List[Class[_ <: Expr]] =
-    collect[Class[_ <: Expr]](expr) (expr => List(expr.getClass))
+    collect[Class[_ <: Expr]](expr)(expr => List(expr.getClass))
 
   def collectExpr(expr: Expr): List[Expr] =
-    collect[Expr](expr) (expr => List(expr))
+    collect[Expr](expr)(expr => List(expr))
 
   /**
     * Give a list of all children of one parent. Why do we need to use "traverse" function to get them? Because
     * there is a lot of possible CaseClass extending Expr, and we want to deal with any of them.
+    *
     * @param expr
     * @return
     */
   def getChildren(expr: Expr): List[Expr] =
-    traverse(expr) (expr => Nil) (expr => List(expr))
+    traverse(expr)(expr => Nil)(expr => List(expr))
 
 
   /**
@@ -104,12 +110,12 @@ object Utils {
     *
     * As we can see, this function allow to do a lot of things and can be used in the future to test new configuration
     *
-    * @param expr the parent of the tree we want to traverse. Never forget, we use the term "parent" but expr contains
-    *             all the tree
+    * @param expr     the parent of the tree we want to traverse. Never forget, we use the term "parent" but expr contains
+    *                 all the tree
     * @param onParent function applied to this parent. It can neglect it (expr => Nil), store it (expr => List(expr))
     *                 or store one of its parameter (expr => List(expr.getClass))
-    * @param onChild function applied to the children expression of "expr". It can be recursive (as in "collect"
-    *                function) or can store some information about it (as in "getChildren)
+    * @param onChild  function applied to the children expression of "expr". It can be recursive (as in "collect"
+    *                 function) or can store some information about it (as in "getChildren)
     * @tparam T the type of the returned list we want to get after traversing the tree
     * @return a list containing all the chosen values stored by both function "onParent" and "onChildren"
     */
@@ -125,14 +131,14 @@ object Utils {
     case Application(callee, args) => onParent(expr) ++ onChild(callee) ++ args.flatMap(onChild(_))
     case Lambda(_, body) => onParent(expr) ++ onChild(expr)
     case Forall(_, body) => onParent(expr) ++ onChild(body)
-    case FunctionInvocation(_ ,args) =>
+    case FunctionInvocation(_, args) =>
       onParent(expr)
     case IfExpr(cond, thenn, elze) => onParent(expr) ++ onChild(cond) ++ onChild(thenn) ++ onChild(elze)
 
     // we don't list the scrutinee
     // method cases.expression return both optGuard and rhs
     case MatchExpr(scrutinee, cases) =>
-      onParent(expr)  ++ cases.flatMap(m => m.expressions.flatMap(e => onChild(e)))
+      onParent(expr) ++ cases.flatMap(m => m.expressions.flatMap(e => onChild(e)))
 
     case CaseClass(_, args) => onParent(expr) ++ args.flatMap(onChild(_))
     case CaseClassSelector(_, caseClass, _) =>
@@ -189,7 +195,7 @@ object Utils {
       onParent(expr) ++ onChild(tuple)
 
     /* Set operations */
-    case FiniteSet(elements, _ ) => onParent(expr) ++ elements.flatMap(onChild(_))
+    case FiniteSet(elements, _) => onParent(expr) ++ elements.flatMap(onChild(_))
     case ElementOfSet(element, set) =>
       onParent(expr) ++ onChild(element) ++ onChild(set)
     case SetCardinality(set) => onParent(expr) ++ onChild(set)
@@ -221,8 +227,6 @@ object Utils {
     //case Hole(_, alts) => onParent(expr) ++ alts.flatMap(onChild(_))
 
 
-
-
     // default value for any easy-to-handled or Terminal expression
     // including: NoTree, Error, Variable, MethodInvocation, This, all Literal, ConverterToString
     // leave aside (at least for the moment): String Theory, BitVector Operation, Special trees for synthesis (holes, ...)
@@ -231,9 +235,6 @@ object Utils {
     //default value for error handling, should never reach that
     case _ => Nil
   }
-
-
-
 
 
 }

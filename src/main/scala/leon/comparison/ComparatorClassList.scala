@@ -12,16 +12,16 @@ import leon.purescala.Expressions._
   * two expressions (i.e. tree) we will extract the type of each expression.
   *
   * x match {
-  *   case 1 => 'a'
-  *   case 2 => 'b'
+  * case 1 => 'a'
+  * case 2 => 'b'
   * }
   *
   * ComparatorByList -> {complete match, leaf(a), leaf(b)}
   * ComparatorByListType -> {node(match), leaf(a), leaf(b)}
   *
   * x match {
-  *   case 1 => 'a'
-  *   case 2 => 'c'
+  * case 1 => 'a'
+  * case 2 => 'c'
   * }
   *
   * ComparatorByList -> similarity 33%
@@ -39,7 +39,7 @@ object ComparatorClassList extends Comparator {
 
     val score = Utils.matchScore(similarExpr, listClassesA.size, listClassesB.size)
 
-    if (context.findOption(GlobalOptions.optDebug).isDefined){
+    if (context.findOption(GlobalOptions.optDebug).isDefined) {
       context.reporter.debug("-----------")
       context.reporter.debug("COMPARATOR " + name)
       context.reporter.debug("Expressions: \n" + expr + exprCorpus)
@@ -55,8 +55,8 @@ object ComparatorClassList extends Comparator {
     def helper(listExprCorpus: List[Class[_ <: Expr]], listExpr: List[Class[_ <: Expr]], acc: Int): Int =
       listExpr match {
         case Nil => acc
-        case x::xs if listExprCorpus.contains(x) => helper(listExprCorpus diff List(x), xs, acc + 1)
-        case x::xs => helper(listExprCorpus, xs, acc)
+        case x :: xs if listExprCorpus.contains(x) => helper(listExprCorpus diff List(x), xs, acc + 1)
+        case x :: xs => helper(listExprCorpus, xs, acc)
       }
 
     helper(listExprCorpus, listExpr, 0)

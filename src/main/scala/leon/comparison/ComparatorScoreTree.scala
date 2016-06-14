@@ -34,7 +34,7 @@ object ComparatorScoreTree extends Comparator {
     val score: Double = computeScore(biggest)
     val normalizedScore = normalize(score, biggest.size)
 
-    if (context.findOption(GlobalOptions.optDebug).isDefined){
+    if (context.findOption(GlobalOptions.optDebug).isDefined) {
       context.reporter.debug("---------------------")
       context.reporter.debug("COMPARATOR " + name)
       context.reporter.debug("Expressions: \n" + exprCorpus + "\n" + expr)
@@ -50,7 +50,7 @@ object ComparatorScoreTree extends Comparator {
     * Geometric mean of obtained score, to balance the difference between small and big tree.
     *
     * @param score
-    * @param n: size of tree
+    * @param n : size of tree
     * @return
     */
   def normalize(score: Double, n: Int) = Math.pow(score, 1 / n.toDouble)
@@ -74,7 +74,7 @@ object ComparatorScoreTree extends Comparator {
 
     // if tree is a node, recursively travers children. If it is a leaf, just return the score
     // we process a geometrical mean
-    tree.children.foldLeft(score)( (acc, child) => acc * computeScore(child))
+    tree.children.foldLeft(score)((acc, child) => acc * computeScore(child))
   }
 
   /**
@@ -93,8 +93,8 @@ object ComparatorScoreTree extends Comparator {
       * Compare the map containing the MatchCases
       * NOW: just check how many similar key they have
       * NEXT: take into account the order; some MatchCase can be non exclusive, meaning that it "eats" the next one:
-      *   case x if x < 4 => ...
-      *   case x if x < 10 => ...
+      * case x if x < 4 => ...
+      * case x if x < 10 => ...
       * doesn't have the same meaning if inverted.
       *
       * NEXT: take into account invoked expression
@@ -129,12 +129,12 @@ object ComparatorScoreTree extends Comparator {
 
   def scoreClassDef(classA: ClassDef, classB: ClassDef): Double = {
     (classA, classB) match {
-      case (a,b) if (a.isAbstract && b.isAbstract) =>
+      case (a, b) if (a.isAbstract && b.isAbstract) =>
         if (a.knownCCDescendants.size == b.knownCCDescendants.size) 1.0
         else 0.0
-      case (a: CaseClassDef, b:CaseClassDef) =>
-        scoreCaseClassDef(a,b)
-      case _ =>   0.0
+      case (a: CaseClassDef, b: CaseClassDef) =>
+        scoreCaseClassDef(a, b)
+      case _ => 0.0
 
     }
   }
@@ -151,9 +151,9 @@ object ComparatorScoreTree extends Comparator {
 
   /**
     * Compare two CaseClass definition taking into account different parameter:
-    *   - the number of arguments of it's own type
-    *   - the number of arguments of it's parent type
-    *   - the other arguments of primitive types
+    * - the number of arguments of it's own type
+    * - the number of arguments of it's parent type
+    * - the other arguments of primitive types
     *
     * NEXT: take into account matching between parents
     * NEXT: take into account others parameters ?
@@ -167,7 +167,7 @@ object ComparatorScoreTree extends Comparator {
     val ownTypeB: Int = argumentsOfOwnType(b)
     val scoreOwnType = percent(ownTypeA, ownTypeB)
 
-    val parentTypeA : Int = argumentsOfParentType(a)
+    val parentTypeA: Int = argumentsOfParentType(a)
     val parentTypeB: Int = argumentsOfParentType(b)
     val scoreParentType = percent(parentTypeA, parentTypeB)
 
@@ -180,7 +180,6 @@ object ComparatorScoreTree extends Comparator {
 
     score
   }
-
 
 
   def scoreSeqType(a: Seq[TypeTree], b: Seq[TypeTree]): Double = {

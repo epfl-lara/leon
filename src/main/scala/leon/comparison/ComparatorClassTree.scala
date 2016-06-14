@@ -12,16 +12,16 @@ import leon.purescala.Expressions._
   * common tree.
   *
   * Procedure:
-  *   - Find all possible pair of roots. Then consider all children of both roots, and check which are
-  *   similar.
-  *   - Consider all possible combinations of children and repeat the same operation on them.
-  *   - Pick the biggest tree in the list of all possible similar tree
-  *   - Remove the tree overlapping the one chosen, and search if it exists an other common tree. Repeat.
-  *   - End with all common and exclusive common tree shared by trees A and B
+  * - Find all possible pair of roots. Then consider all children of both roots, and check which are
+  * similar.
+  * - Consider all possible combinations of children and repeat the same operation on them.
+  * - Pick the biggest tree in the list of all possible similar tree
+  * - Remove the tree overlapping the one chosen, and search if it exists an other common tree. Repeat.
+  * - End with all common and exclusive common tree shared by trees A and B
   *
   * The MatchScore is calculated with the size of the common tree, compared with the sizes of trees A and B.
   */
-object ComparatorClassTree extends Comparator{
+object ComparatorClassTree extends Comparator {
   val name: String = "ClassTree"
 
 
@@ -31,14 +31,14 @@ object ComparatorClassTree extends Comparator{
 
     val trees = roots.flatMap(possibleTrees(_))
     val exclusives = exclusivesTrees(trees)
-    val sum = exclusives.foldLeft(0)( (acc, tree) => acc + tree.size)
+    val sum = exclusives.foldLeft(0)((acc, tree) => acc + tree.size)
 
     val listClassesA = collectClass(exprCorpus)
     val listClassesB = collectClass(expr)
 
     val score = matchScore(sum, listClassesA.size, listClassesB.size)
 
-    if (context.findOption(GlobalOptions.optDebug).isDefined){
+    if (context.findOption(GlobalOptions.optDebug).isDefined) {
       context.reporter.debug("---------------------")
       context.reporter.debug("COMPARATOR " + name)
       context.reporter.debug("Expressions: \n" + exprCorpus + expr)
@@ -51,6 +51,7 @@ object ComparatorClassTree extends Comparator{
 
   /**
     * Extract all non-overlapping trees, in size order
+    *
     * @param trees
     * @return
     */
@@ -58,7 +59,7 @@ object ComparatorClassTree extends Comparator{
     case Nil => Nil
     case x :: xs =>
       val biggest = trees.sortBy(-_.size).head
-      val rest = trees.filter(tree => flatList(tree).intersect( flatList(biggest) ).isEmpty)
+      val rest = trees.filter(tree => flatList(tree).intersect(flatList(biggest)).isEmpty)
       List(biggest) ++ exclusivesTrees(rest)
   }
 
@@ -90,7 +91,7 @@ object ComparatorClassTree extends Comparator{
   /**
     * With a pair of roots, find all children and find all combination of matching children in order to create a list
     * of all possible matching tree. Then recursively call itself on each pair of children.
- *
+    *
     * @param pair of matching root
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
@@ -105,7 +106,7 @@ object ComparatorClassTree extends Comparator{
     val combinationOfChildren = combineChildren(pairOfMatchingChildren)
 
 
-    if(pairOfMatchingChildren.isEmpty) {
+    if (pairOfMatchingChildren.isEmpty) {
       List(myTree(pair, List()))
     } else {
       combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr)]])(
@@ -115,7 +116,7 @@ object ComparatorClassTree extends Comparator{
   }
 
   def findPairOfMatchingChildren(childrenA: List[Expr], childrenB: List[Expr]): List[(Expr, Expr)] = {
-    for{
+    for {
       childA <- childrenA
       childB <- childrenB
       if areSimilar(childA.getClass, childB.getClass)
@@ -139,7 +140,7 @@ object ComparatorClassTree extends Comparator{
 
   def isSameChildUsedTwice(list: List[(Expr, Expr)]): Boolean = {
     list.map(_._1).distinct.size != list.size ||
-    list.map(_._2).distinct.size != list.size
+      list.map(_._2).distinct.size != list.size
   }
 
   def combine(in: List[(Expr, Expr)]): Seq[List[(Expr, Expr)]] = {
@@ -172,7 +173,6 @@ object ComparatorClassTree extends Comparator{
 
     combine(listChildren).map(children => myTree(pair, children))
   }
-
 
 
   def areSimilar(getClass: Class[_ <: Expr], getClass1: Class[_ <: Expr]) = {

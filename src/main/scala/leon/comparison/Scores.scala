@@ -30,8 +30,8 @@ object Scores {
       * Compare the map containing the MatchCases
       * NOW: just check how many similar key they have
       * NEXT: take into account the order; some MatchCase can be non exclusive, meaning that it "eats" the next one:
-      *   case x if x < 4 => ...
-      *   case x if x < 10 => ...
+      * case x if x < 4 => ...
+      * case x if x < 10 => ...
       * doesn't have the same meaning if inverted.
       *
       * NEXT: take into account invoked expression
@@ -66,12 +66,12 @@ object Scores {
 
   def scoreClassDef(classA: ClassDef, classB: ClassDef): Double = {
     (classA, classB) match {
-      case (a,b) if (a.isAbstract && b.isAbstract) =>
+      case (a, b) if (a.isAbstract && b.isAbstract) =>
         if (a.knownCCDescendants.size == b.knownCCDescendants.size) 1.0
         else 0.0
-      case (a: CaseClassDef, b:CaseClassDef) =>
-        scoreCaseClassDef(a,b)
-      case _ =>   0.0
+      case (a: CaseClassDef, b: CaseClassDef) =>
+        scoreCaseClassDef(a, b)
+      case _ => 0.0
 
     }
   }
@@ -88,9 +88,9 @@ object Scores {
 
   /**
     * Compare two CaseClass definition taking into account different parameter:
-    *   - the number of arguments of it's own type
-    *   - the number of arguments of it's parent type
-    *   - the other arguments of primitive types
+    * - the number of arguments of it's own type
+    * - the number of arguments of it's parent type
+    * - the other arguments of primitive types
     *
     * NEXT: take into account matching between parents
     * NEXT: take into account others parameters ?
@@ -104,7 +104,7 @@ object Scores {
     val ownTypeB: Int = argumentsOfOwnType(b)
     val scoreOwnType = percent(ownTypeA, ownTypeB)
 
-    val parentTypeA : Int = argumentsOfParentType(a)
+    val parentTypeA: Int = argumentsOfParentType(a)
     val parentTypeB: Int = argumentsOfParentType(b)
     val scoreParentType = percent(parentTypeA, parentTypeB)
 
@@ -117,7 +117,6 @@ object Scores {
 
     score
   }
-
 
 
   def scoreSeqType(a: Seq[TypeTree], b: Seq[TypeTree]): Double = {
@@ -146,7 +145,6 @@ object Scores {
     case _ if a.hasParent => a.fields.map(_.getType).count(_ == a.parent.get.getType)
     case _ => 0
   }
-
 
 
 }
