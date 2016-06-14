@@ -6,7 +6,7 @@ package leon.comparison
   * Basic class just to allow easy store of expressions-tree
   */
 
-case class myTree[T](value: T, children: List[myTree[T]]) {
+case class FuncTree[T](value: T, children: List[FuncTree[T]]) {
   def isLeaf: Boolean = children.isEmpty
 
   def isNode: Boolean = !isLeaf

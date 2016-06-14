@@ -63,7 +63,7 @@ object ComparatorScoreTree extends Comparator {
     * @param tree
     * @return
     */
-  def computeScore(tree: myTree[(Expr, Expr)]): Double = {
+  def computeScore(tree: FuncTree[(Expr, Expr)]): Double = {
     // we treat each type differently with its proper scorer
     val score = tree.value match {
       case (x: MatchExpr, y: MatchExpr) => scoreMatchExpr(x, y)

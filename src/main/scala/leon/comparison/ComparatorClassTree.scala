@@ -55,7 +55,7 @@ object ComparatorClassTree extends Comparator {
     * @param trees
     * @return
     */
-  def exclusivesTrees(trees: List[myTree[(Expr, Expr)]]): List[myTree[(Expr, Expr)]] = trees match {
+  def exclusivesTrees(trees: List[FuncTree[(Expr, Expr)]]): List[FuncTree[(Expr, Expr)]] = trees match {
     case Nil => Nil
     case x :: xs =>
       val biggest = trees.sortBy(-_.size).head
@@ -63,7 +63,7 @@ object ComparatorClassTree extends Comparator {
       List(biggest) ++ exclusivesTrees(rest)
   }
 
-  def flatList(tree: myTree[(Expr, Expr)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
+  def flatList(tree: FuncTree[(Expr, Expr)]): List[Expr] = tree.toList.flatMap(p => List(p._1, p._2))
 
   /**
     * list of all similar pair of expressions, based on classes.
@@ -95,7 +95,7 @@ object ComparatorClassTree extends Comparator {
     * @param pair of matching root
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
-  def possibleTrees(pair: (Expr, Expr)): List[myTree[(Expr, Expr)]] = {
+  def possibleTrees(pair: (Expr, Expr)): List[FuncTree[(Expr, Expr)]] = {
     val exprA = pair._1
     val exprB = pair._2
     val childrenA = getChildren(exprA)
@@ -107,9 +107,9 @@ object ComparatorClassTree extends Comparator {
 
 
     if (pairOfMatchingChildren.isEmpty) {
-      List(myTree(pair, List()))
+      List(FuncTree(pair, List()))
     } else {
-      combinationOfChildren.foldLeft(List(): List[myTree[(Expr, Expr)]])(
+      combinationOfChildren.foldLeft(List(): List[FuncTree[(Expr, Expr)]])(
         (listOfTree, children) => listOfTree ++ treesWithChildCombination(pair, children.map(p => possibleTrees(p)))
       )
     }
@@ -161,8 +161,8 @@ object ComparatorClassTree extends Comparator {
     * @param listChildren
     * @return
     */
-  def treesWithChildCombination(pair: (Expr, Expr), listChildren: List[List[myTree[(Expr, Expr)]]]): List[myTree[(Expr, Expr)]] = {
-    def combine(list: List[List[myTree[(Expr, Expr)]]]): List[List[myTree[(Expr, Expr)]]] = list match {
+  def treesWithChildCombination(pair: (Expr, Expr), listChildren: List[List[FuncTree[(Expr, Expr)]]]): List[FuncTree[(Expr, Expr)]] = {
+    def combine(list: List[List[FuncTree[(Expr, Expr)]]]): List[List[FuncTree[(Expr, Expr)]]] = list match {
       case Nil => List(Nil)
       case x :: xs =>
         for {
@@ -171,7 +171,7 @@ object ComparatorClassTree extends Comparator {
         } yield i :: j
     }
 
-    combine(listChildren).map(children => myTree(pair, children))
+    combine(listChildren).map(children => FuncTree(pair, children))
   }
 
 

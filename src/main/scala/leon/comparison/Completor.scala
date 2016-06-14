@@ -59,7 +59,7 @@ object Completor {
 
   def getBody(funDef: FunDef): Expr = funDef.body.get
 
-  def hasHole(tree: myTree[Value]): Boolean = {
+  def hasHole(tree: FuncTree[Value]): Boolean = {
     tree.toList map (p => p.b) exists (e => e.isInstanceOf[Choose])
   }
 
@@ -71,7 +71,7 @@ object Completor {
     * @param funDefAndTrees
     * @return
     */
-  def selectBestSuggestion(expr: Expr, funDefAndTrees: List[(FunDef, List[myTree[Value]])]):
+  def selectBestSuggestion(expr: Expr, funDefAndTrees: List[(FunDef, List[FuncTree[Value]])]):
   Option[(FunDef, Expr)] = {
     val funDefAndBestTree = funDefAndTrees map { p =>
       (p._1, selectBestTreeOption(p._2, expr, getBody(p._1)))
@@ -83,12 +83,12 @@ object Completor {
     }
   }
 
-  def selectBestTreeOption(list: List[myTree[Value]], exprA: Expr, exprB: Expr): Option[(myTree[Value], Double)] = list match {
+  def selectBestTreeOption(list: List[FuncTree[Value]], exprA: Expr, exprB: Expr): Option[(FuncTree[Value], Double)] = list match {
     case Nil => None
     case x :: xs => Some(selectBestTree(list, exprA, exprB))
   }
 
-  def selectBestFun(list: List[(FunDef, Option[(myTree[Value], Double)])]): Option[(FunDef, myTree[Value])] = {
+  def selectBestFun(list: List[(FunDef, Option[(FuncTree[Value], Double)])]): Option[(FunDef, FuncTree[Value])] = {
     val listWithScore = list filterNot (p => p._2.isEmpty)
 
     listWithScore match {
@@ -100,7 +100,7 @@ object Completor {
     }
   }
 
-  def scoreOptionTree(tree: Option[myTree[Value]]): Double = tree match {
+  def scoreOptionTree(tree: Option[FuncTree[Value]]): Double = tree match {
     case None => 0.0
     case Some(t) => geometricMean(t)
   }
@@ -113,7 +113,7 @@ object Completor {
     * @param tree
     * @return
     */
-  def findPairOfTheHole(tree: myTree[Value]): Expr =
+  def findPairOfTheHole(tree: FuncTree[Value]): Expr =
     (tree.toList filter (p => p.b.isInstanceOf[Choose])).head.a
 
   /**

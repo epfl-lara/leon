@@ -76,7 +76,7 @@ object ComparatorDirectScoreTree extends Comparator {
     * @param value of root
     * @return ether a Leaf or a List of all possible similar trees starting with this pair of roots
     */
-  def possibleTrees(value: Value): List[myTree[Value]] = {
+  def possibleTrees(value: Value): List[FuncTree[Value]] = {
     val exprA = value.a
     val exprB = value.b
     val childrenA = getChildren(exprA)
@@ -88,9 +88,9 @@ object ComparatorDirectScoreTree extends Comparator {
 
 
     if (pairOfMatchingChildren.isEmpty) {
-      List(myTree(value, List()))
+      List(FuncTree(value, List()))
     } else {
-      combinationOfChildren.foldLeft(List(): List[myTree[Value]])(
+      combinationOfChildren.foldLeft(List(): List[FuncTree[Value]])(
         (listOfTrees, children) => listOfTrees ++ flatCombination(value, children.map(p => possibleTrees(p)))
       )
     }
@@ -154,8 +154,8 @@ object ComparatorDirectScoreTree extends Comparator {
     * @param listChildren
     * @return
     */
-  def flatCombination[T](value: T, listChildren: List[List[myTree[T]]]): List[myTree[T]] = {
-    def combine(list: List[List[myTree[T]]]): List[List[myTree[T]]] = list match {
+  def flatCombination[T](value: T, listChildren: List[List[FuncTree[T]]]): List[FuncTree[T]] = {
+    def combine(list: List[List[FuncTree[T]]]): List[List[FuncTree[T]]] = list match {
       case Nil => List(Nil)
       case x :: xs =>
         for {
@@ -164,7 +164,7 @@ object ComparatorDirectScoreTree extends Comparator {
         } yield i :: j
     }
 
-    combine(listChildren).map(children => myTree(value, children))
+    combine(listChildren).map(children => FuncTree(value, children))
   }
 
   /**
@@ -177,7 +177,7 @@ object ComparatorDirectScoreTree extends Comparator {
     * @return
     */
 
-  def normalizedScoreTree(tree: myTree[Value], exprA: Expr, exprB: Expr): Double = {
+  def normalizedScoreTree(tree: FuncTree[Value], exprA: Expr, exprB: Expr): Double = {
     val scoreTree = geometricMean(tree)
     val sizeA = collectExpr(exprA).size.toDouble
     val sizeB = collectExpr(exprB).size.toDouble
@@ -186,10 +186,10 @@ object ComparatorDirectScoreTree extends Comparator {
     scoreTree * weight
   }
 
-  def geometricMean(tree: myTree[Value]): Double =
+  def geometricMean(tree: FuncTree[Value]): Double =
     Math.pow(tree.toList.foldLeft(1.0)((acc, tree) => acc * tree.score), 1 / tree.size.toDouble)
 
-  def selectBestTree(trees: List[myTree[Value]], exprCorpus: Expr, expr: Expr) = {
+  def selectBestTree(trees: List[FuncTree[Value]], exprCorpus: Expr, expr: Expr) = {
     val biggest = trees.sortBy(t => -normalizedScoreTree(t, exprCorpus, expr)).head
     val score = normalizedScoreTree(biggest, exprCorpus, expr)
     (biggest, score)
