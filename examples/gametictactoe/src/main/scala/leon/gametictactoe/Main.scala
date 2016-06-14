@@ -33,7 +33,7 @@ object Main {
 
     renderGame(m, "Start game with X")(c)
 
-    var playerx = true
+    var player: Player = PlayerCross
 
     // Mouse click for tictactoe
 
@@ -43,23 +43,25 @@ object Main {
         (1 to 3).foreach { j =>
           if((e.clientX <= i * CellWidth) && (e.clientX > (i - 1) * CellWidth) && (e.clientY <= j * CellHeight) && (e.clientY > (j - 1) * CellHeight)) {
             println(s"at $i, $j")
-            if(playerx && m.canFill(j, i)) {
-              m.fill(j, i, 1)
+            if(player.isCross && m.canFill(j, i, player)) {
+              println("placing cross")
+              m.fill(j, i, player)
               if(checkGameEnded(m)) {
                 renderGameOver("X")(c)
               } else {
                 renderGame(m, "O's turn")(c)  
               }
-              playerx = false
+              player = PlayerCircle
             }
-            else if(!playerx && m.canFill(j, i)) {
-              m.fill(j, i, 0)
+            else if(player.isCircle && m.canFill(j, i, player)) {
+              println("placing circle")
+              m.fill(j, i, player)
               if(checkGameEnded(m)) {
                 renderGameOver("O")(c)
               } else {
                 renderGame(m, "X's turn")(c)  
               }
-              playerx = true
+              player = PlayerCross
             }
           }
         }
@@ -132,11 +134,12 @@ object Main {
     ctx.font = "120px Georgia"
     val cx = (2*x + CellWidth)/2 - 30
     val cy = (2*y + CellHeight)/2 + 40
-    val elem = c.n.map(_.toString).getOrElse("")
-    if(elem == "1") ctx.fillText("X", cx, cy)
-    else if(elem == "0") ctx.fillText("O", cx, cy)
-    else ctx.fillText("", cx, cy)  
-    // ctx.fillText(c.n.map(_.toString).getOrElse(""), cx, cy)
+    val elem = c.n match {
+      case Some(PlayerCross) => "X"
+      case Some(PlayerCircle) => "O"
+      case None() => ""
+    }
+    ctx.fillText(elem, cx, cy)
   }
 
 }
