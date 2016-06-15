@@ -557,8 +557,8 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy.run(p, Map())
-    /*if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
-      println("Problem:\n"+renderProblem(p))
+    /*println("Problem:\n"+renderProblem(p))
+    if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
       println("Solutions:\n"+realProblem.get._2)
       println("Real problem:\n"+renderProblem(realProblem.get._1))
     }*/
@@ -661,21 +661,22 @@ object StringSolver {
   /** For each variable from `ifVariable`, if it occurs only once, it will do nothing.
    *  If it occurs at least twice, it will first duplicate the problem with every but 1 occurrence of this variable set to its initialMapping.*/
   def keepEachOccurenceSeparatlyAndThenAllOfThem(p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Problem] = {
-    ifVariable.foldLeft(Stream(p)){
-      case (problems, v) =>
+    ifVariable.foldLeft(Stream.empty[Problem]){
+      case (leftovers, v) =>
         val c = count(s => s == Right(v))(p)
         if(c == 1) {
-          problems
+          leftovers
         } else {
           val originalValue = initialMapping(v)
-          for{p <- problems
+          leftovers #::: (
+          for{p <- (p #:: leftovers)
               i <- (1 to c).toStream} yield {
             var index = 0
             map{ case r@Right(`v`) =>
               index += 1
               if(index != i) Left(originalValue) else r
             case e => e}(p)
-          }
+          })
         }
     }
   }
@@ -705,10 +706,14 @@ object StringSolver {
     val initKeys = initialMapping.keys.toSeq
     for{
       i <- (0 to initialMapping.size).toStream
+      replaceAllButOneOccurence <- Seq(false, true) // If false, does not modify the equation. If true, replaces every but one occurence of each variable with its original value.
       toReplace <- take(i, initKeys)
       ifVariable = toReplace.toSet
-      newProblems = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
-      newProblem <- keepEachOccurenceSeparatlyAndThenAllOfThem(newProblems, ifVariable, initialMapping)
+      newProblemReduced = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
+      newProblemsMixed = if(replaceAllButOneOccurence)
+        keepEachOccurenceSeparatlyAndThenAllOfThem(newProblemReduced, ifVariable, initialMapping)
+        else Stream(newProblemReduced)
+      newProblem <- newProblemsMixed
       solution <- minimizeChanges(solve(newProblem), newProblem, ifVariable, initialMapping: Assignment)
     } yield solution
   }
