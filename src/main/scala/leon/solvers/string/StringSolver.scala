@@ -658,27 +658,10 @@ object StringSolver {
     }
   }
   
-  /** For each variable from `ifVariable`, if it occurs only once, it will do nothing.
-   *  If it occurs at least twice, it will first duplicate the problem with every but 1 occurrence of this variable set to its initialMapping.*/
-  def keepEachOccurenceSeparatlyAndThenAllOfThem(p: Problem, ifVariable: Set[Identifier], initialMapping: Assignment): Stream[Problem] = {
-    ifVariable.foldLeft(Stream.empty[Problem]){
-      case (leftovers, v) =>
-        val c = count(s => s == Right(v))(p)
-        if(c == 1) {
-          leftovers
-        } else {
-          val originalValue = initialMapping(v)
-          leftovers #::: (
-          for{p <- (p #:: leftovers)
-              i <- (1 to c).toStream} yield {
-            var index = 0
-            map{ case r@Right(`v`) =>
-              index += 1
-              if(index != i) Left(originalValue) else r
-            case e => e}(p)
-          })
-        }
-    }
+  /** Keeps only partial assignments which completely differ from the initial mapping. */
+  def removeRedundancies(s: Stream[Assignment], initialMapping: Assignment): Stream[Assignment] = {
+    s.filter(m =>
+      m.keys forall (key => initialMapping(key) != m(key)))
   }
   
   /** If the stream is not empty and there are more than two variables,
@@ -706,15 +689,12 @@ object StringSolver {
     val initKeys = initialMapping.keys.toSeq
     for{
       i <- (0 to initialMapping.size).toStream
-      replaceAllButOneOccurence <- Seq(false, true) // If false, does not modify the equation. If true, replaces every but one occurence of each variable with its original value.
       toReplace <- take(i, initKeys)
       ifVariable = toReplace.toSet
-      newProblemReduced = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
-      newProblemsMixed = if(replaceAllButOneOccurence)
-        keepEachOccurenceSeparatlyAndThenAllOfThem(newProblemReduced, ifVariable, initialMapping)
-        else Stream(newProblemReduced)
-      newProblem <- newProblemsMixed
-      solution <- minimizeChanges(solve(newProblem), newProblem, ifVariable, initialMapping: Assignment)
+      newProblem = reduceProblem(initialMapping filterKeys (x => !ifVariable(x)))(p)
+      newSolutions = solve(newProblem)
+      newSolutions_nonredundant = removeRedundancies(newSolutions, initialMapping)
+      solution <- minimizeChanges(newSolutions_nonredundant, newProblem, ifVariable, initialMapping: Assignment)
     } yield solution
   }
 }
