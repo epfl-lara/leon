@@ -10,19 +10,22 @@ object HashTables {
   } ensuring(res => res >= 0 && res < length)
     
 
-  case class HashTable(table: Array[List[BigInt]], hashFun: (BigInt) => Int) {
+  case class HashTable(table: Array[List[BigInt]], hashFun: (BigInt) => Int, var content: Set[BigInt]) {
     require(table.length > 0 && table.length < 6 &&
             forall((i:Int, x: BigInt) => 
-              ((0 <= i && i < table.length) && table(i).content.contains(x)) ==> 
-              (hashing(x) == i)))
+              ((0 <= i && i < table.length && table(i).content.contains(x)) ==> (hashing(x) == i)))
+            //this extra forall makes the unrolling step too slow
+            //forall((x: BigInt) => 
+                //content.contains(x) ==> table(hashing(x)).content.contains(x))
+    )
 
-    def content: Set[BigInt] = {
-      def rec(index: Int): Set[BigInt] = {
-        require(index >= 0 && index <= table.length)
-        if(index == table.length) Set() else table(index).content ++ rec(index+1)
-      }
-      rec(0)
-    }
+    //def content: Set[BigInt] = {
+    //  def rec(index: Int): Set[BigInt] = {
+    //    require(index >= 0 && index <= table.length)
+    //    if(index == table.length) Set() else table(index).content ++ rec(index+1)
+    //  }
+    //  rec(0)
+    //}
 
     //this has issues, first the % sometimes return negative number. If we
     //try to fix by annotating with @extern, the method gets lifted to a
@@ -42,12 +45,13 @@ object HashTables {
     def insert(x: BigInt): Unit = {
       val index = hashing(x)
       table(index) = (x::table(index))
+      content += x
     } ensuring(_ => table(hashing(x)).contains(x) && this.content == old(this).content ++ Set(x))
 
     def contains(x: BigInt): Boolean = {
       val index = hashing(x)
       table(index).contains(x)
-    }
+    } ensuring(res => res == this.content.contains(x))
   }
 
   def test(ht: HashTable): Boolean = {
