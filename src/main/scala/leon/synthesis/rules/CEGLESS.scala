@@ -27,7 +27,7 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
     }
 
     CegisParams(
-      grammar = grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p, guides),
       rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides)),
       optimizations = false,
       maxSize = Some((0 +: guides.map(depth(_) + 1)).max)
