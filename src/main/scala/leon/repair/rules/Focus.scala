@@ -12,7 +12,6 @@ import purescala.ExprOps._
 import purescala.Constructors._
 import purescala.Extractors._
 
-import utils.fixpoint
 import evaluators._
 
 import synthesis._
@@ -28,12 +27,11 @@ case object Focus extends PreprocessingRule("Focus") {
       case Some(_) =>
         return None;
       case _ =>
-        
+        // We proceed as usual
     }
 
     val qeb = p.qebFiltered
 
-    val fd      = hctx.functionContext
     val program = hctx.program
 
     val evaluator = new DefaultEvaluator(hctx, program)
@@ -74,8 +72,6 @@ case object Focus extends PreprocessingRule("Focus") {
         }
       }
     }
-
-    
 
     val TopLevelAnds(clauses) = p.ws
 
@@ -124,7 +120,7 @@ case object Focus extends PreprocessingRule("Focus") {
 
                 val onSuccess: List[Solution] => Option[Solution] = { 
                   case List(s1, s2) =>
-                    Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(c, s1.term, s2.term)))
+                    Some(Solution(or(and(c, s1.pre), and(not(c), s2.pre)), s1.defs++s2.defs, IfExpr(c, s1.term, s2.term)))
                   case _ =>
                     None
                 }
@@ -207,40 +203,34 @@ case object Focus extends PreprocessingRule("Focus") {
 
         // Is there at least one subproblem?
         if (casesInfos.exists(_._2._1.isDefined)) {
-          val infosP = casesInfos.collect {
-            case (c, (Some(p), pc)) => (c, (p, pc))
+          val (cases, nps, pcs) = casesInfos.collect {
+            case (c, (Some(p), pc)) => (c, p, pc)
+          }.unzip3
+
+          val restPcs = casesInfos.collect {
+            case (_, (None, pc)) => pc.toClause
           }
 
-          val nps = infosP.map(_._2._1).toList
-
-          val appName = s"Focus on match-cases ${infosP.map(i => "'"+i._1.pattern.asString+"'").mkString(", ")}"
+          val appName = s"Focus on match-cases ${cases.map(c => "'"+c.pattern.asString+"'").mkString(", ")}"
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case ss =>
-              val matchSols = (infosP zip ss).map { case ((c, (pc)), s) => (c, (pc, s)) }
-
-              val pres = matchSols.map {
-                case (_, (pc, s)) =>
-                  if(s.pre == BooleanLiteral(true)) {
-                    BooleanLiteral(true)
-                  } else {
-                    p.pc and s.pre
-                  }
+              val pres = (pcs zip cases zip ss).map {
+                case ((pc, cse), s) =>
+                  pc and replaceFromIDs(mapForPattern(scrut, cse.pattern), s.pre)
               }
-
-              val solsMap = matchSols.toMap
-
+              val solsMap = (cases zip ss).toMap
               val expr = MatchExpr(scrut, casesInfos.map { case (c, _) => solsMap.get(c) match {
-                case Some((pc, s)) =>
+                case Some(s) =>
                   c.copy(rhs = s.term)
                 case None =>
                   c
               }})
 
-              Some(Solution(orJoin(pres), ss.map(_.defs).reduceLeft(_ ++ _), expr))
+              Some(Solution(orJoin(restPcs ++ pres), ss.map(_.defs).reduceLeft(_ ++ _), expr))
           }
 
-          Some(decomp(nps, onSuccess, appName)(p))
+          Some(decomp(nps.toList, onSuccess, appName)(p))
         } else {
           None
         }
