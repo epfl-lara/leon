@@ -50,12 +50,12 @@ trait HasAbstractOnlyRecContext extends ContextualEvaluator {
 /** The evaluation returns only the abstract value compared to the other implementation of [[leon.evaluators.AbstractEvaluator AbstractEvaluator]]
  *  It also supposes that everything can be computed else (i.e. not possible to add non-bound variables)
  *  @returns the way the expression has been evaluated. */
-class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasAbstractOnlyRecContext {
-  lazy val scalaEv = new ScalacEvaluator(underlying, ctx, prog)
-  
+class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 150000) extends ContextualEvaluator(ctx, prog, maxSteps) with HasDefaultGlobalContext with HasAbstractOnlyRecContext {
   /** Evaluates resuts which can be evaluated directly
     * For example, concatenation of two string literals */
-  val underlying = new DefaultEvaluator(ctx, prog)
+  val underlying = new RecursiveEvaluator(ctx, prog, new EvaluationBank, maxSteps)
+     with HasDefaultGlobalContext
+     with HasDefaultRecContext
   underlying.setEvaluationFailOnChoose(true)
   override type Value = Expr
 
@@ -124,7 +124,7 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program) extends ContextualE
             e(body)(frame, gctx)
           } catch {
             case e: Throwable => 
-              //println("Error during execution of " + expr + ": " + e)
+              //println("Error during execution of " + expr + ": " + e + ", " + e.getMessage)
               //println(e.getStackTrace.map(_.toString).mkString("\n"))
               functionInvocation(tfd.fd, evArgsOrigin)
           }
