@@ -493,6 +493,15 @@ object AntiAliasingPhase extends TransformationPhase {
     })(body, (aliasedParams.toSet, Map(), Set()))
   }
 
+  /*
+   * TODO: All the effect analysis code should be factored out into
+   *       some re-usable class, probably a EffectsFinder that would
+   *       be instantiated on a program/definitions and would keep an
+   *       internal state of effects computed for all definitions.
+   *       Similar to DependencyFinder in the design.
+   *       That would let us do a bunch of unit tests just to make sure
+   *       functions that perform side-effects are well identified.
+   */
   //for each fundef, the set of modified params (by index)
   private type Effects = Map[FunDef, Set[Int]]
 
@@ -703,8 +712,8 @@ object AntiAliasingPhase extends TransformationPhase {
     case Application(callee, args) => {
       val ft@FunctionType(_, _) = callee.getType
       val effects = functionTypeEffects(ft)
-      args.zipWithIndex.exists{
-        case (Variable(argId), index) => argId == id && effects.contains(index)
+      args.map(findReceiverId(_)).zipWithIndex.exists{
+        case (Some(argId), index) => argId == id && effects.contains(index)
         case _ => false
       }
     }
