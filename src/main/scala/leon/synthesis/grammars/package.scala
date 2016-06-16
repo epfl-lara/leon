@@ -15,14 +15,17 @@ package object grammars {
     val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
     val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
     val exclude = sctx.settings.functionsToIgnore
-    val recCalls = if (sctx.findOptionOrDefault(SynthesisPhase.optIntroduceRecCalls)) Empty() else SafeRecursiveCalls(sctx.program, p.ws, p.pc)
+    val recCalls = {
+      if (sctx.findOptionOrDefault(SynthesisPhase.optIntroduceRecCalls)) Empty()
+      else SafeRecursiveCalls(sctx.program, p.ws, p.pc)
+    }
 
     BaseGrammar ||
-      Closures ||
-      EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }) ||
-      OneOf(inputs) ||
-      Constants(sctx.functionContext.fullBody) ||
-      FunctionCalls(sctx.program, sctx.functionContext, inputs.map(_.getType), exclude) ||
-      recCalls
+    Closures ||
+    EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }) ||
+    OneOf(inputs) ||
+    Constants(sctx.functionContext.fullBody) ||
+    FunctionCalls(sctx.program, sctx.functionContext, inputs.map(_.getType), exclude) ||
+    recCalls
   }
 }
