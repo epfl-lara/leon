@@ -3,12 +3,13 @@ import leon.util.Random
 
 object GlobalMutableField1 {
 
-  val seed: Random.State = Random.State(0)
+  case class A(var x: BigInt)
 
-  val t = T(Random.nextBigInt(seed))
+  val a: A = A(10)
 
-  case class T(n:BigInt) {
-    require(n >= 0)
+
+  def update(): Unit = {
+    a.x = a.x + 1
   }
 
 }

@@ -631,7 +631,7 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     if(fd.canBeField && isMutableType(fd.returnType))
-      ctx.reporter.fatalError(fd.getPos, "Mutable objects cannot be global fields.")
+      ctx.reporter.fatalError(fd.getPos, "A global field cannot refer to a mutable object")
     
     fd.body.foreach(bd => {
       val params = fd.params.map(_.id).toSet
