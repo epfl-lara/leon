@@ -770,7 +770,7 @@ object AntiAliasingPhase extends TransformationPhase {
       case v@Variable(_) => !isMutableType(v.getType)
       case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg))
 
-      case FiniteArray(_, _, _) => true //TODO: variable values + test
+      case FiniteArray(elems, default, _) => elems.forall(p => isExpressionFresh(p._2)) && default.forall(isExpressionFresh)
 
       //function invocation always return a fresh expression, by hypothesis (global assumption)
       case FunctionInvocation(_, _) => true
