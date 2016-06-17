@@ -95,6 +95,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
             bh.write()
           }
 
+          val prePath = Path(fd.precOrTrue)
+
           reporter.ifDebug { printer =>
             import java.text.SimpleDateFormat
             import java.util.Date
@@ -130,7 +132,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
-                val solExpr = sol.toSimplifiedExpr(ctx, program, fd)
+                val solExpr = sol.toSimplifiedExpr(ctx, program, prePath)
                 val totalSolSize = formulaSize(solExpr)
                 (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
               case _ =>
@@ -160,7 +162,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
             reporter.info(ASCIIHelpers.title("Repair successful:"))
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
-              val expr = sol.toSimplifiedExpr(ctx, synth.program, fd)
+              val expr = sol.toSimplifiedExpr(ctx, synth.program, prePath)
               reporter.info(expr.asString(program)(ctx))
             }
           }

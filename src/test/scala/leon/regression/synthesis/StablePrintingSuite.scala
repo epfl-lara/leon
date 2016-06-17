@@ -112,7 +112,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
                   case RuleExpanded(sub) =>
                     a.onSuccess(sub.map(Solution.choose)) match {
                       case Some(sol) =>
-                        val result = sol.toSimplifiedExpr(ctx, pgm, ci.fd)
+                        val result = sol.toSimplifiedExpr(ctx, pgm, ci.problem.pc)
 
                         val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.source, (indent: Int) => {
                           val p = new ScalaPrinter(PrinterOptions(), Some(pgm))
