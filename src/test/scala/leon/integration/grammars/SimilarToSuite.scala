@@ -5,14 +5,11 @@ package leon.integration.grammars
 import leon._
 import leon.test._
 import leon.test.helpers._
-import leon.purescala.Path
-import leon.purescala.Common._
+import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Definitions._
 import leon.purescala.Constructors._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-import leon.codegen._
-import synthesis._
 import bonsai.enumerators._
 import leon.grammars._
 import leon.grammars.aspects.SimilarTo
@@ -139,9 +136,10 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
     for ((vs, from, exp) <- tests) {
       // SimilarTo(<from>) should produce <exp>
 
+      val fd = ofd.getOrElse(new FunDef(FreshIdentifier("bogus"), Nil, Nil, Untyped))
       val g = OneOf(vs)
       val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](g.getProductions)
-      val exprs = enum.iterator(Label(exp.getType).withAspect(SimilarTo(Seq(from))))
+      val exprs = enum.iterator(Label(exp.getType).withAspect(SimilarTo(Seq(from), fd)))
 
       //println(s"SimilarTo(${from.asString}):")
 
