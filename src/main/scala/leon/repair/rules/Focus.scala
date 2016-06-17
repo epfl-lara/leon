@@ -107,12 +107,20 @@ case object Focus extends PreprocessingRule("Focus") {
             forAllTests(c, Map(), evaluator) match {
               case Some(true) =>
                 val np = Problem(p.as, ws(thn), p.pc withCond c, p.phi, p.xs, qeb.filterIns(c))
+                val onSuccess: List[Solution] => Option[Solution] = {
+                  case List(s1) =>
+                    Some(Solution(or(and(s1.pre, c), not(c)), s1.defs, IfExpr(c, s1.term, els)))
+                }
+                Some(decomp(List(np), onSuccess, s"Focus on if-then")(p))
 
-                Some(decomp(List(np), termWrap(IfExpr(c, _, els), c), s"Focus on if-then")(p))
               case Some(false) =>
                 val np = Problem(p.as, ws(els), p.pc withCond not(c), p.phi, p.xs, qeb.filterIns(not(c)))
+                val onSuccess: List[Solution] => Option[Solution] = {
+                  case List(s1) =>
+                    Some(Solution(or(c, and(s1.pre, not(c))), s1.defs, IfExpr(c, thn, s1.term)))
+                }
+                Some(decomp(List(np), onSuccess, s"Focus on if-else")(p))
 
-                Some(decomp(List(np), termWrap(IfExpr(c, thn, _), not(c)), s"Focus on if-else")(p))
               case None =>
                 // We split
                 val sub1 = p.copy(ws = ws(thn), pc = p.pc map (replace(Map(g -> thn), _)) withCond     c , eb = qeb.filterIns(c))
