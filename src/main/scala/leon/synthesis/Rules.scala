@@ -33,7 +33,7 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false, false)
+  def all: List[Rule] = all(false, true)
   /** Returns the list of all available rules for synthesis */
   def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = List[Rule](
     StringRender,
