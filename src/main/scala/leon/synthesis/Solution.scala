@@ -61,8 +61,8 @@ case class Solution(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean
     }
   }
 
-  def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
-    Simplifiers.bestEffort(ctx, p)(toExpr, Path(within.precOrTrue))
+  def toSimplifiedExpr(ctx: LeonContext, p: Program, pc: Path): Expr = {
+    Simplifiers.bestEffort(ctx, p)(toExpr, pc)
   }
 }
 
