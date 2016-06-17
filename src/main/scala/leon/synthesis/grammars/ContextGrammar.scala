@@ -156,47 +156,91 @@ class ContextGrammar[SymbolTag, TerminalData] {
       markovize_vertical_filtered(_ => true)
     }
     
-    /** Perform horizontal markovization only on the provided non-terminals. */
-    def markovize_horizontal_filtered(pred: NonTerminal => Boolean): Grammar = {
+    class MarkovizationContext(pred: NonTerminal => Boolean) {
       val nts = nonTerminals
       val rulesSeq = rules.toSeq
-      def newHorizontalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
-        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
-        else List(vContext)
-      }
-      
-      object Mapping extends NonTerminalMapping {
-        def updateMapping(nt: NonTerminal, leftContext: List[Symbol]): NonTerminal = {
-          if(pred(nt)) {
-            val res = nt.copy(hcontext = leftContext)
-            mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-            res
-          } else nt
+      /** Set of abstract non-terminals */
+      val ants = (nts filter { nt => 
+        rules(nt) match {
+          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) => pred(nt)
+          case _ => false
         }
-      }
-      
-      /** Add to each symbol its left context */
-      def processSequence(sq: Seq[Symbol]): Seq[Symbol] = {
-        sq.foldLeft(List[Symbol]()) {
-          case (leftContext, nt@NonTerminal(tag, vc, Nil)) =>
-            leftContext :+ Mapping.updateMapping(nt, leftContext)
-          case (leftContext, e) => leftContext :+ e
+      }).toSet
+      /** Set of case class non-terminals */
+      val cnts = (nts filter { nt => // case class non terminals
+        rules(nt) match {
+          case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, sons)) => true
+          case _ => false
         }
-      }
-      val newStart = processSequence(start)
-      // Add the context to each symbol in each rule.
-      val newRules =
-        (for{nt <- nts} yield {
-          val expansion = rules(nt)
-          nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
-            s match {
-              case nt@NonTerminal(tag, vc, Nil) => Mapping.updateMapping(nt, l)
-              case e => e
+      }).toSet
+      var getAnts = Map[NonTerminal, NonTerminal]()
+      var getDesc = Map[NonTerminal, Set[NonTerminal]]()
+      nts foreach { nt =>
+        rules(nt) match {
+          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) =>
+            sons.foreach{ son =>
+              getAnts += son -> nt
             }
+            getDesc += nt -> sons.toSet
+          case _ => false
+        }
+      }
+      def getTopmostANT(nt: NonTerminal): NonTerminal = if(getAnts contains(nt)) getTopmostANT(getAnts(nt)) else nt
+      def getAncestors(nt: NonTerminal): Set[NonTerminal] = getAnts.get(nt).map(getAncestors).getOrElse(Set.empty[NonTerminal]) + nt
+      val startANT = startNonTerminals.map(getTopmostANT).toSet
+      def getDescendants(nt: NonTerminal): Set[NonTerminal] = getDesc.get(nt).map((x: Set[NonTerminal]) =>
+        x.flatMap((y: NonTerminal) => getDescendants(y) + y)).getOrElse(Set.empty[NonTerminal])
+    }
+    
+    /** Perform horizontal markovization only on the provided non-terminals and their descendants. */
+    def markovize_horizontal_filtered(pred: NonTerminal => Boolean): Grammar = {
+      val c = new MarkovizationContext(pred) {
+        var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
+        def process_sequence(ls: Seq[Symbol]): List[Symbol] = {
+          val (_, res) = ((ListBuffer[Symbol](), ListBuffer[Symbol]()) /: ls) {
+            case ((lbold, lbnew), nt: NonTerminal) if pred(nt) =>
+              val context_version = nt.copy(hcontext = lbold.toList)
+              toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set.empty[NonTerminal]) + context_version)
+              for(descendant <- getDescendants(nt)) {
+                val descendant_context_version = descendant.copy(hcontext = lbold.toList)
+                toDuplicate += descendant -> (toDuplicate.getOrElse(descendant, Set.empty[NonTerminal]) + descendant_context_version)
+              }
+              (lbold += nt, lbnew += context_version)
+            case ((lbold, lbnew), s) =>
+              (lbold += s, lbnew += s)
           }
-        }).toMap
-      val newRules2 =Mapping.mapKeys(newRules)
-      Grammar(newStart, newRules2.toMap)
+          res.toList
+        }
+        
+        val newStart = process_sequence(start)
+        val newRules = rules.map{ case (k, expansion) =>
+          k -> (expansion match {
+            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
+              expansion
+            case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
+              val children_new = process_sequence(t +: children)
+              AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children_new.tail.asInstanceOf[List[NonTerminal]])) 
+            case _ => 
+              expansion
+          })
+        }
+        
+        val newRules2 = for{
+            (k, v) <- newRules
+            kp <- (toDuplicate.getOrElse(k, Set(k)) + k)
+        } yield {
+          v match {
+            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
+              val newChildren = children.map(child => child.copy(hcontext = kp.hcontext))
+              kp -> AugmentedTerminalsRHS(terminals, VerticalRHS(newChildren))
+            case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
+              kp -> v
+            case _ => kp -> v
+          }
+        }
+      }
+      import c._
+      clean(Grammar(newStart, newRules2.toMap))
     }
     
     /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
@@ -210,96 +254,74 @@ class ContextGrammar[SymbolTag, TerminalData] {
       * @param pred The top-most non-terminals to consider (i.e. abstract ones)
       */
     def markovize_abstract_vertical_filtered(pred: NonTerminal => Boolean): Grammar = {
-      val nts = nonTerminals
-      val rulesSeq = rules.toSeq
-      val ants = (nts filter { nt => // Abstract non terminals
-        rules(nt) match {
-          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) => pred(nt)
-          case _ => false
+      val c = new MarkovizationContext(pred) {
+        var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
+        for(t <- startNonTerminals) {
+          val topAnt = getTopmostANT(t)
+          toDuplicate += topAnt -> Set(topAnt)
         }
-      }).toSet
-      val cnts = (nts filter { nt => // case class non terminals
-        rules(nt) match {
-          case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, sons)) => true
-          case _ => false
-        }
-      }).toSet
-      var getAnts = Map[NonTerminal, NonTerminal]()
-      nts foreach { nt =>
-        rules(nt) match {
-          case AugmentedTerminalsRHS(terminals, VerticalRHS(sons)) => sons.foreach(son => getAnts += son -> nt)
-          case _ => false
-        }
-      }
-      def getTopmostANT(nt: NonTerminal): NonTerminal = if(getAnts contains(nt)) getTopmostANT(getAnts(nt)) else nt
-      def getAncestors(nt: NonTerminal): Set[NonTerminal] = getAnts.get(nt).map(getAncestors).getOrElse(Set.empty[NonTerminal]) + nt
-      val startANT = startNonTerminals.map(getTopmostANT).toSet
-      
-      var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
-      for(t <- startNonTerminals) {
-        val topAnt = getTopmostANT(t)
-        toDuplicate += topAnt -> Set(topAnt)
-      }
-      val newRules = rules.map{ case (k, expansion) =>
-        k -> expansion.map{
-          case nt: NonTerminal => 
-            if(ants(nt)) {
-              val antp = getTopmostANT(k)
-              val ancestors = getAncestors(nt)
-              val ancestorTop = getTopmostANT(nt)
-              if(antp == ancestorTop && !startANT(antp)) nt else {
-                for(ancestor <- ancestors) {
-                  val ancestorCopy = ancestor.copy(vcontext = List(antp))
-                  getAnts += ancestorCopy -> ancestor
-                  toDuplicate += ancestor -> (toDuplicate.getOrElse(ancestor, Set()) + ancestorCopy)
+        val newRules = rules.map{ case (k, expansion) =>
+          k -> expansion.map{
+            case nt: NonTerminal => 
+              if(ants(nt)) {
+                val antp = getTopmostANT(k)
+                val ancestors = getAncestors(nt)
+                val ancestorTop = getTopmostANT(nt)
+                if(antp == ancestorTop && !startANT(antp)) nt else {
+                  for(ancestor <- ancestors) {
+                    val ancestorCopy = ancestor.copy(vcontext = List(antp))
+                    getAnts += ancestorCopy -> ancestor
+                    toDuplicate += ancestor -> (toDuplicate.getOrElse(ancestor, Set()) + ancestorCopy)
+                  }
+                  nt.copy(vcontext = List(antp))
                 }
-                nt.copy(vcontext = List(antp))
-              }
-            } else nt
-          case s => s
-        }
-      }
-      val newRules2 = for{
-          (k, v) <- newRules
-          kp <- (toDuplicate.getOrElse(k, Set(k)) + k)
-      } yield {
-        kp -> v
-      }
-      //println("newRules2 = " + grammarToString(Grammar(start, newRules2)))
-      
-      def reportVContext(nt: NonTerminal, parentNt: NonTerminal, rules: Map[NonTerminal, Expansion]): NonTerminal = {
-        if((nt.vcontext.isEmpty || (getTopmostANT(parentNt) == getTopmostANT(nt) && parentNt.vcontext.nonEmpty)) && pred(getTopmostANT(nt))) {
-          val thecopy = nt.copy(vcontext = parentNt.vcontext)
-          if(!(rules contains thecopy)) {
-            getAnts += thecopy -> nt
-            toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set()) + nt + thecopy)
+              } else nt
+            case s => s
           }
-          thecopy
-        } else nt
-      }
-      val newRules3 = leon.utils.fixpoint((newRules: Map[NonTerminal, Expansion]) => {
-        toDuplicate = Map()
-        val  res = for{
-        (k, v) <- newRules
-      } yield {
-        v match {
-          case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
-            k -> AugmentedTerminalsRHS(terminals, VerticalRHS(children.map(x => reportVContext(x, k, newRules))))
-          case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
-            k -> AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children.map(x => reportVContext(x, k, newRules))))
-          case _ => k -> v
         }
+        val newRules2 = for{
+            (k, v) <- newRules
+            kp <- (toDuplicate.getOrElse(k, Set(k)) + k)
+        } yield {
+          kp -> v
+        }
+        //println("newRules2 = " + grammarToString(Grammar(start, newRules2)))
+        
+        def reportVContext(nt: NonTerminal, parentNt: NonTerminal, rules: Map[NonTerminal, Expansion]): NonTerminal = {
+          if((nt.vcontext.isEmpty || (getTopmostANT(parentNt) == getTopmostANT(nt) && parentNt.vcontext.nonEmpty)) && pred(getTopmostANT(nt))) {
+            val thecopy = nt.copy(vcontext = parentNt.vcontext)
+            if(!(rules contains thecopy)) {
+              getAnts += thecopy -> nt
+              toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set()) + nt + thecopy)
+            }
+            thecopy
+          } else nt
+        }
+        val newRules3 = leon.utils.fixpoint((newRules: Map[NonTerminal, Expansion]) => {
+          toDuplicate = Map()
+          val  res = for{
+          (k, v) <- newRules
+        } yield {
+          v match {
+            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
+              k -> AugmentedTerminalsRHS(terminals, VerticalRHS(children.map(x => reportVContext(x, k, newRules))))
+            case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
+              k -> AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children.map(x => reportVContext(x, k, newRules))))
+            case _ => k -> v
+          }
+        }
+        //println("newRules3 = " + grammarToString(Grammar(start, res)))
+        //println("toDuplicate = " + toDuplicate.map{ case (k, v) => symbolToString(k) + "->" + v.map(symbolToString)})
+        val res2 = for{
+            (k, v) <- res
+            kp <- toDuplicate.getOrElse(k, Set(k))
+        } yield {
+          kp -> v
+        }
+        //println("newRules4 = " + grammarToString(Grammar(start, res2)))
+        res2}, 64)(newRules2)
       }
-      //println("newRules3 = " + grammarToString(Grammar(start, res)))
-      //println("toDuplicate = " + toDuplicate.map{ case (k, v) => symbolToString(k) + "->" + v.map(symbolToString)})
-      val res2 = for{
-          (k, v) <- res
-          kp <- toDuplicate.getOrElse(k, Set(k))
-      } yield {
-        kp -> v
-      }
-      //println("newRules4 = " + grammarToString(Grammar(start, res2)))
-      res2}, 64)(newRules2)
+      import c._
       
       clean(Grammar(start, newRules3))
     }

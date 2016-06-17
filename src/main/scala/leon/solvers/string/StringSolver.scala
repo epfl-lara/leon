@@ -162,12 +162,12 @@ object StringSolver {
     res
   }
   
-  def prioritizedPositions(s: String): Stream[Int] = {
-    val separations = "\\b".r.findAllMatchIn(s).map(m => m.start).toList
-    separations.toStream #::: {
-      val done = separations.toSet
-      for( i <- (0 to s.length).toStream if !done(i)) yield i
-    }
+  /** Returns a stream of prioritary positions and another of remaining positions */
+  def prioritizedPositions(s: String): (Stream[Int], Stream[Int])= {
+    val separations = "\\b".r.findAllMatchIn(s).map(m => m.start).toStream
+    val done = separations.toSet
+    val remaining = for( i <- (0 to s.length).toStream if !done(i)) yield i
+    (separations, remaining)
   }
   
   
@@ -435,54 +435,54 @@ object StringSolver {
           case (s@Some((x, i, ws)), y) => val yi = statistics(y)
             if (i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
         }.get
-        val pos = prioritizedPositions(rhs)
+        val (prioritaryPos, remainingPos) = prioritizedPositions(rhs)
         val numBestVars = ids.count { x => x == bestVar }
 
         if(worstScore == bestScore) {
           for{
-            i <- pos // Prioritization on positions which are separators.
+            i <- (prioritaryPos append remainingPos) // Prioritization on positions which are separators.
             xvalue = rhs.substring(0, i)
             rvalue = rhs.substring(i)
-            remaining_splits = simpleSplit(ys, rvalue)
-            remaining_split <- remaining_splits
+            remaining_split <- simpleSplit(ys, rvalue)
             if !remaining_split.contains(x) || remaining_split(x) == xvalue
           } yield (remaining_split + (x -> xvalue))
         } else { // A variable appears more than others in the same equation, so its changes are going to propagate more.
           val indexBestVar = ids.indexOf(bestVar)
           val strings = if(indexBestVar == 0) { // Test only string prefixes or empty string
+             ((for{j <- (rhs.length to 1 by -1).toStream
+                  if prioritaryPos contains j} yield rhs.substring(0, j)) append
+              Stream("") append
              (for{j <- (rhs.length to 1 by -1).toStream
-                  if pos contains j} yield rhs.substring(0, j)) #:::
-             (for{j <- (rhs.length to 1 by -1).toStream
-                  if !(pos contains j)} yield rhs.substring(0, j)) #:::
-              Stream("")
+                  if remainingPos contains j} yield rhs.substring(0, j)))
           } else {
             val lastIndexBestVar = ids.lastIndexOf(bestVar)
             if(lastIndexBestVar == ids.length - 1) {
+               val pos = prioritaryPos append remainingPos
                (for{ i <- pos.toStream // Try to maximize the size of the string from the start
                      if i != rhs.length
                } yield rhs.substring(i)) #:::
                Stream("")
             } else { // Inside, can be anything.
-              (for{ i <- pos.toStream // Try to maximize the size of the string from the start
-               if i != rhs.length
-               j <- rhs.length to (i+1) by -1
-               if pos contains j} yield rhs.substring(i, j)) #:::
-               (for{ i <- pos.toStream
-               if i != rhs.length
-               j <- rhs.length to (i+1) by -1
-               if !(pos contains j)} yield rhs.substring(i, j)) #:::
-               Stream("")
+              def substrings(startPos: Stream[Int], endPos: Stream[Int]): Stream[String] = {
+                for{ i <- startPos.toStream
+                     if i != rhs.length
+                     j <- rhs.length to (i+1) by -1
+                     if endPos contains j} yield rhs.substring(i, j)
+              }
+              (substrings(prioritaryPos, prioritaryPos) append
+               Stream("") append
+               substrings(prioritaryPos, remainingPos) append
+               substrings(remainingPos, prioritaryPos) append
+               substrings(remainingPos, remainingPos))
             }
           }
-          //println("Best variable:" + bestVar + " going to test " + strings.toList)
-          
-          for (str <- strings.distinct
+          for {str <- strings.distinct
                if java.util.regex.Pattern.quote(str).r.findAllMatchIn(rhs).length >= numBestVars
-          ) yield {
+          } yield {
             Map(bestVar -> str)
           }
         }
-    }
+      }
   }
   
   @tailrec def statsStringForm(e: StringForm, acc: Map[Identifier, Int] = Map()): Map[Identifier, Int] = e match {
@@ -557,11 +557,11 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy.run(p, Map())
-    /*println("Problem:\n"+renderProblem(p))
+    println("Problem:\n"+renderProblem(p))
     if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
       println("Solutions:\n"+realProblem.get._2)
       println("Real problem:\n"+renderProblem(realProblem.get._1))
-    }*/
+    }
     
     realProblem match {
       case None => 

@@ -72,35 +72,36 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   
   test("Horizontal Markovization Simple")  {
     val xA = A.copy(hcontext = List(x))
-    val grammar1 = 
-      Grammar(List(A), Map(A -> Expansion(List(List(x, A), List(y)))))
-    val grammar2 =
-      Grammar(List(A),
-          Map(A -> Expansion(List(List(x, xA), List(y))),
-              xA -> Expansion(List(List(x, xA), List(y)))))
-        
-    grammar1.markovize_horizontal() should equalGrammar (grammar2)
-    grammar2.markovize_horizontal() should equalGrammar (grammar2)
-  }
-  test("Horizontal Markovization Double")  {
-    val BA = A.copy(hcontext = List(B))
+    val xB = B.copy(hcontext = List(x))
+    val xC = C.copy(hcontext = List(x))
+    val xAA = A.copy(hcontext = List(x, A))
+    val xAB = B.copy(hcontext = List(x, A))
+    val xAC = C.copy(hcontext = List(x, A))
+    val AA = A.copy(hcontext = List(A))
     val AB = B.copy(hcontext = List(A))
+    val AC = C.copy(hcontext = List(A))
     
     val grammar1 = 
-      Grammar(List(A, B),
-          Map(A -> Expansion(List(List(B, A), List(y))),
-              B -> Expansion(List(List(x)))
-              ))
-    val grammar2 =
-      Grammar(List(A, AB),
-          Map(A -> Expansion(List(List(B, BA), List(y))),
-              B -> Expansion(List(List(x))),
-              AB -> Expansion(List(List(x))),
-              BA -> Expansion(List(List(B, BA), List(y)))
-              ))
+      Grammar(List(A, A), Map(A -> VerticalRHS(Seq(B, C)),
+                           B -> HorizontalRHS(x, Seq(A, A)),
+                           C -> HorizontalRHS(y, Nil)))
 
+    val grammar2 =
+      Grammar(List(A, AA), Map(A -> VerticalRHS(Seq(B, C)),
+                               B -> HorizontalRHS(x, Seq(xA, xAA)),
+                               C -> HorizontalRHS(y, Nil),
+                               xA -> VerticalRHS(Seq(xB, xC)),
+                               xB -> HorizontalRHS(x, Seq(xA, xAA)),
+                               xC -> HorizontalRHS(y, Nil),
+                               AA -> VerticalRHS(Seq(AB, AC)),
+                               AB -> HorizontalRHS(x, Seq(xA, xAA)),
+                               AC -> HorizontalRHS(y, Nil),
+                               xAA -> VerticalRHS(Seq(xAB, xAC)),
+                               xAB -> HorizontalRHS(x, Seq(xA, xAA)),
+                               xAC -> HorizontalRHS(y, Nil)
+                           ))
+        
     grammar1.markovize_horizontal() should equalGrammar (grammar2)
-    grammar2.markovize_horizontal() should equalGrammar (grammar2)
   }
   
   test("Horizontal Markovization filtered")  {
