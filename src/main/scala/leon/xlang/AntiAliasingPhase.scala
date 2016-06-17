@@ -304,7 +304,7 @@ object AntiAliasingPhase extends TransformationPhase {
       val toIgnore = context._3
       expr match {
 
-        case l@Let(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
+        case l@Let(id, v, b) if isMutableType(id.getType) => {
           val varDecl = LetVar(id, v, b).setPos(l)
           (Some(varDecl), (bindings + id, rewritings, toIgnore))
         }
