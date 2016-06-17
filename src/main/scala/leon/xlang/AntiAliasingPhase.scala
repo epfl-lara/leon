@@ -25,6 +25,10 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, program: Program): Program = {
 
+    //we need to perform this now, because as soon as we apply the def transformer
+    //some types will become Untyped and the checkAliasing won't be reliable anymore
+    allFunDefs(program).foreach(fd => checkAliasing(fd)(ctx))
+
     //mapping for case classes that needs to be replaced
     //var ccdMap: Map[CaseClassDef, CaseClassDef] =
     //  (for {
@@ -58,7 +62,6 @@ object AntiAliasingPhase extends TransformationPhase {
     //println(pgm)
 
     val fds = allFunDefs(pgm)
-    fds.foreach(fd => checkAliasing(fd)(ctx))
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
