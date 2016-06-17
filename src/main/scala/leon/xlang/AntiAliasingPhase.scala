@@ -632,23 +632,13 @@ object AntiAliasingPhase extends TransformationPhase {
       checkReturnValue(bd, params)
       preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
         case l@Let(id, v, b) if isMutableType(v.getType) => {
-          v match {
-            case FiniteArray(_, _, _) => ()
-            case FunctionInvocation(_, _) => ()
-            case ArrayUpdated(_, _, _) => ()
-            case CaseClass(_, _) => ()
-            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          }
+          if(!isExpressionFresh(v))
+            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           (None, bindings + id)
         }
         case l@LetVar(id, v, b) if isMutableType(v.getType) => {
-          v match {
-            case FiniteArray(_, _, _) => ()
-            case FunctionInvocation(_, _) => ()
-            case ArrayUpdated(_, _, _) => ()
-            case CaseClass(_, _) => ()
-            case _ => ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          }
+          if(!isExpressionFresh(v))
+            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           (None, bindings + id)
         }
         case l@LetDef(fds, body) => {
@@ -761,6 +751,37 @@ object AntiAliasingPhase extends TransformationPhase {
         CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
     )
     CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
+  }
+
+
+  /*
+   * A fresh expression is an expression that is newly created
+   * and does not share memory with existing values and variables.
+   *
+   * If the expression is made of existing immutable variables (Int or
+   * immutable case classes), it is considered fresh as we consider all
+   * non mutable objects to have a value-copy semantics.
+   *
+   * It turns out that an expression of non-mutable type is always fresh,
+   * as it can not contains reference to a mutable object, by definition
+   */
+  private def isExpressionFresh(expr: Expr): Boolean = {
+    !isMutableType(expr.getType) || (expr match {
+      case v@Variable(_) => !isMutableType(v.getType)
+      case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg))
+
+      case FiniteArray(_, _, _) => true //TODO: variable values + test
+
+      //function invocation always return a fresh expression, by hypothesis (global assumption)
+      case FunctionInvocation(_, _) => true
+
+      //ArrayUpdated returns a mutable array, which by definition is a clone of the original
+      case ArrayUpdated(_, _, _) => true
+
+      //any other expression is conservately assumed to be non-fresh if
+      //any sub-expression is non-fresh (i.e. an if-then-else with a reference in one branch)
+      case Operator(args, _) => args.forall(arg => isExpressionFresh(arg))
+    })
   }
 
 }
