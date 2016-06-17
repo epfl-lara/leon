@@ -463,6 +463,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
           case IntegerToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case Variable(id) if fd.paramIds.headOption == Some(id) => true
           case _ if calledGraph.getOrElse(fd, 0) <= 1 => true
           case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
           case _ => false

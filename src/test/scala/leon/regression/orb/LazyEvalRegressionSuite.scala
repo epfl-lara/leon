@@ -43,7 +43,7 @@ class LazyEvalRegressionSuite extends LeonRegressionSuite {
           fail(s"Resource verification failed for functions ${fails.map(_.fd).mkString("\n")}")
     }
   }
-
+/*
   forEachFileIn("regression/orb/lazy/withconst") { f =>
     test("Lazy evaluation w/o Orb: " + f.getName) {
       testLazyVerification(f, createLeonContext("--lazy", "--silent", "--timeout=30"))
@@ -54,5 +54,5 @@ class LazyEvalRegressionSuite extends LeonRegressionSuite {
     test("Lazy evaluation with Orb: " + f.getName) {
       testLazyVerification(f, createLeonContext("--lazy", "--useOrb", "--silent", "--vcTimeout=15", "--timeout=30"))
     }
-  }
+  }*/
 }
