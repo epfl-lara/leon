@@ -99,7 +99,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
       val onSuccess = {
         val reverse = subst.map(_.swap).mapValues(_.toVariable)
-        forwardMap(replace(reverse, _))
+        simpleWrap(replace(reverse, _))
       }
 
       val substString = subst.map { case (f, t) => f.asString(hctx)+" -> "+t.asString(hctx) }
