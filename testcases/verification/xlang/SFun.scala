@@ -12,8 +12,7 @@ object SFuns {
 
 
   def counter(init: BigInt): SFun = {
-    val state = State(init)
-    val closure = SFun(state, (_, s) => { //TODO: should reject `state` in constructor, shared reference!
+    val closure = SFun(State(init), (_, s) => {
       s.x += 1
       (s.x - 1)
     })
