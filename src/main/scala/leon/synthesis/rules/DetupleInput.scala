@@ -136,7 +136,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         }
       }
      
-      Some(decomp(List(sub), forwardMap(s), s"Detuple ${as.map(_.asString(hctx)).mkString(", ")}"))
+      Some(decomp(List(sub), simpleWrap(s), s"Detuple ${as.map(_.asString(hctx)).mkString(", ")}"))
     } else {
       None
     }

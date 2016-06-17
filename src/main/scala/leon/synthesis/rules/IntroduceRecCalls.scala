@@ -36,7 +36,7 @@ case object IntroduceRecCalls extends NormalizingRule("Introduce rec. calls") {
       eb = p.eb
     )
 
-    val onSuccess = forwardMap { e =>
+    val onSuccess = simpleWrap { e =>
       recs.zip(calls).foldRight(e) {
         case ( (id, call), bd) =>
           Let(id, call, bd)
