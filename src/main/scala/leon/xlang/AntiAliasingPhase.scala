@@ -65,8 +65,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
-    val effects = effectsAnalysis(pgm)
-    //println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
+    val effectsAnalysis = new EffectsAnalysis(pgm)
 
     //for each fun def, all the vars the the body captures. Only
     //mutable types.
@@ -86,14 +85,14 @@ object AntiAliasingPhase extends TransformationPhase {
     for {
       fd <- fds
     } {
-      updatedFunctions += (fd -> updateFunDef(fd, effects)(ctx))
+      updatedFunctions += (fd -> updateFunDef(fd, effectsAnalysis)(ctx))
     }
     //println(updatedFunctions.filter(p => p._1.id != p._2.id).mkString("\n"))
 
     for {
       fd <- fds
     } {
-      updateBody(fd, effects, updatedFunctions, varsInScope)(ctx)
+      updateBody(fd, effectsAnalysis, updatedFunctions, varsInScope)(ctx)
     }
 
     replaceDefsInProgram(pgm)(updatedFunctions, Map[ClassDef, ClassDef]())
@@ -124,7 +123,7 @@ object AntiAliasingPhase extends TransformationPhase {
    * about the effect they could perform (returning any mutable type that
    * they receive).
    */
-  private def updateFunDef(fd: FunDef, effects: Effects)(ctx: LeonContext): FunDef = {
+  private def updateFunDef(fd: FunDef, effects: EffectsAnalysis)(ctx: LeonContext): FunDef = {
 
     val ownEffects = effects(fd)
     val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
@@ -188,7 +187,7 @@ object AntiAliasingPhase extends TransformationPhase {
   //  for
   //}
 
-  private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef], 
+  private def updateBody(fd: FunDef, effects: EffectsAnalysis, updatedFunDefs: Map[FunDef, FunDef], 
                          varsInScope: Map[FunDef, Set[Identifier]])
                         (ctx: LeonContext): Unit = {
     //println("updating: " + fd)
@@ -259,7 +258,7 @@ object AntiAliasingPhase extends TransformationPhase {
   //We turn all local val of mutable objects into vars and explicit side effects
   //using assignments. We also make sure that no aliasing is being done.
   private def makeSideEffectsExplicit
-                (body: Expr, originalFd: FunDef, aliasedParams: Seq[Identifier], effects: Effects, 
+                (body: Expr, originalFd: FunDef, aliasedParams: Seq[Identifier], effects: EffectsAnalysis, 
                  updatedFunDefs: Map[FunDef, FunDef], varsInScope: Map[FunDef, Set[Identifier]])
                 (ctx: LeonContext): Expr = {
 
@@ -427,7 +426,7 @@ object AntiAliasingPhase extends TransformationPhase {
             case None => (None, context)
             case Some(nfd) => {
               val nfi = FunctionInvocation(nfd.typed(fd.tps), args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(fi)
-              val fiEffects = effects.getOrElse(fd.fd, Set())
+              val fiEffects = effects(fd.fd)
               (Some(mapApplication(args, nfi, nfd.typed(fd.tps).returnType, fiEffects, rewritings)), context)
             }
           }
@@ -496,92 +495,6 @@ object AntiAliasingPhase extends TransformationPhase {
     })(body, (aliasedParams.toSet, Map(), Set()))
   }
 
-  /*
-   * TODO: All the effect analysis code should be factored out into
-   *       some re-usable class, probably a EffectsFinder that would
-   *       be instantiated on a program/definitions and would keep an
-   *       internal state of effects computed for all definitions.
-   *       Similar to DependencyFinder in the design.
-   *       That would let us do a bunch of unit tests just to make sure
-   *       functions that perform side-effects are well identified.
-   */
-  //for each fundef, the set of modified params (by index)
-  private type Effects = Map[FunDef, Set[Int]]
-
-  /*
-   * compute effects for each function in the program, including any nested
-   * functions (LetDef).
-   */
-  private def effectsAnalysis(pgm: Program): Effects = {
-
-    //currently computed effects (incremental)
-    var effects: Map[FunDef, Set[Int]] = Map()
-    //missing dependencies for a function for its effects to be complete
-    var missingEffects: Map[FunDef, Set[FunctionInvocation]] = Map()
-
-    def effectsFullyComputed(fd: FunDef): Boolean = !missingEffects.isDefinedAt(fd)
-
-    for {
-      fd <- allFunDefs(pgm)
-    } {
-      fd.body match {
-        case None =>
-          effects += (fd -> Set())
-        case Some(body) => {
-          val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
-          val localAliases: Map[ValDef, Set[Identifier]] = mutableParams.map(vd => (vd, computeLocalAliases(vd.id, body))).toMap
-          val mutatedParams = mutableParams.filter(vd => exists(expr => localAliases(vd).exists(id => isMutationOf(expr, id)))(body))
-          val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
-            case (vd, i) if mutatedParams.contains(vd) => Some(i)
-            case _ => None
-          }.toSet
-          effects = effects + (fd -> mutatedParamsIndices)
-
-          val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
-          if(missingCalls.nonEmpty)
-            missingEffects += (fd -> missingCalls)
-        }
-      }
-    }
-
-    def rec(): Unit = {
-      val previousMissingEffects = missingEffects
-
-      for{ (fd, calls) <- missingEffects } {
-        var newMissingCalls: Set[FunctionInvocation] = calls
-        for(fi <- calls) {
-          val mutatedArgs = invocEffects(fi)
-          val mutatedFunParams: Set[Int] = fd.params.zipWithIndex.flatMap{
-            case (vd, i) if mutatedArgs.contains(vd.id) => Some(i)
-            case _ => None
-          }.toSet
-          effects += (fd -> (effects(fd) ++ mutatedFunParams))
-
-          if(effectsFullyComputed(fi.tfd.fd)) {
-            newMissingCalls -= fi
-          }
-        }
-        if(newMissingCalls.isEmpty)
-          missingEffects = missingEffects - fd
-        else
-          missingEffects += (fd -> newMissingCalls)
-      }
-
-      if(missingEffects != previousMissingEffects) {
-        rec()
-      }
-    }
-
-    def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
-      //TODO: the require should be fine once we consider nested functions as well
-      //require(effects.isDefinedAt(fi.tfd.fd)
-      val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
-      functionInvocationEffects(fi, mutatedParams).toSet
-    }
-
-    rec()
-    effects
-  }
 
   //convert a function type with mutable parameters, into a function type
   //that returns the mutable parameters. This makes explicit all possible
