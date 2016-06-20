@@ -12,6 +12,11 @@ object GameTicTacToe {
   abstract class Player {
     def isCross: Boolean = this == PlayerCross
     def isCircle: Boolean = this == PlayerCircle
+
+    def opponent: Player = this match {
+      case PlayerCross => PlayerCircle
+      case PlayerCircle => PlayerCross
+    }
   }
   case object PlayerCross extends Player
   case object PlayerCircle extends Player
@@ -60,11 +65,7 @@ object GameTicTacToe {
                                c31.emptyAsInt + c32.emptyAsInt + c33.emptyAsInt
 
     def fill(j: BigInt, i: BigInt, player: Player): Unit = {
-      require((player match {
-        case PlayerCross => totalXEntries == totalOEntries
-        case PlayerCircle => totalXEntries == totalOEntries +1
-      }) && canFill(j, i, player))
-
+      require(canPlay(player) && canFill(j, i, player))
       if     (j == 1 && i == 1) c11.n = Some(player)
       else if(j == 1 && i == 2) c12.n = Some(player)
       else if(j == 1 && i == 3) c13.n = Some(player)
@@ -77,23 +78,36 @@ object GameTicTacToe {
       else                      ()
     }
 
-    def canFill(j: BigInt, i: BigInt, player: Player): Boolean = {
-      (player match {
-        case PlayerCross => totalXEntries == totalOEntries
-        case PlayerCircle => totalXEntries == totalOEntries + 1
-      }) && (
-          if     (j == 1 && i == 1) c11.isEmpty
-          else if(j == 1 && i == 2) c12.isEmpty
-          else if(j == 1 && i == 3) c13.isEmpty
-          else if(j == 2 && i == 1) c21.isEmpty
-          else if(j == 2 && i == 2) c22.isEmpty
-          else if(j == 2 && i == 3) c23.isEmpty
-          else if(j == 3 && i == 1) c31.isEmpty
-          else if(j == 3 && i == 2) c32.isEmpty
-          else if(j == 3 && i == 3) c33.isEmpty
-          else                      false  
-      )
+    def canFill(j: BigInt, i: BigInt, player: Player): Boolean = canPlay(player) && isFree(j, i)
+
+    def isFree(j: BigInt, i: BigInt): Boolean =
+      if     (j == 1 && i == 1) c11.isEmpty
+      else if(j == 1 && i == 2) c12.isEmpty
+      else if(j == 1 && i == 3) c13.isEmpty
+      else if(j == 2 && i == 1) c21.isEmpty
+      else if(j == 2 && i == 2) c22.isEmpty
+      else if(j == 2 && i == 3) c23.isEmpty
+      else if(j == 3 && i == 1) c31.isEmpty
+      else if(j == 3 && i == 2) c32.isEmpty
+      else if(j == 3 && i == 3) c33.isEmpty
+      else                      false  
+
+    def canPlay(player: Player): Boolean = player match {
+      case PlayerCross => totalXEntries == totalOEntries
+      case PlayerCircle => totalXEntries == totalOEntries + 1
     }
+
+  }
+
+  case class Game(map: LevelMap, var currentPlayer: Player) {
+    //require(map.canPlay(currentPlayer))
+
+
+    def doPlay(j: BigInt, i: BigInt): Unit = {
+      require(map.canFill(j, i, currentPlayer) )
+      map.fill(j, i, currentPlayer)
+      currentPlayer = currentPlayer.opponent
+    } ensuring(_ => map.canPlay(currentPlayer))
 
   }
 

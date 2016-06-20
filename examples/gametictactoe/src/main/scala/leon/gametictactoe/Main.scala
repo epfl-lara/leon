@@ -27,41 +27,39 @@ object Main {
     implicit val randomState = Random.newState
     println("Welcome to Tic Tac Toe!")
 
-    var m = LevelMap(Cell(None()), Cell(None()), Cell(None()),
-                     Cell(None()), Cell(None()), Cell(None()), 
-                     Cell(None()), Cell(None()), Cell(None()))
+    val game = Game(
+      LevelMap(Cell(None()), Cell(None()), Cell(None()),
+               Cell(None()), Cell(None()), Cell(None()), 
+               Cell(None()), Cell(None()), Cell(None())),
+      PlayerCross)
 
-    renderGame(m, "Start game with X")(c)
-
-    var player: Player = PlayerCross
+    renderGame(game.map, "Start game with X")(c)
 
     // Mouse click for tictactoe
-
     c.onmousedown = {
       (e: dom.MouseEvent) => 
       (1 to 3).foreach { i =>
         (1 to 3).foreach { j =>
           if((e.clientX <= i * CellWidth) && (e.clientX > (i - 1) * CellWidth) && (e.clientY <= j * CellHeight) && (e.clientY > (j - 1) * CellHeight)) {
             println(s"at $i, $j")
-            if(player.isCross && m.canFill(j, i, player)) {
-              println("placing cross")
-              m.fill(j, i, player)
-              if(checkGameEnded(m)) {
-                renderGameOver("X")(c)
+            if(game.map.isFree(j, i)) {
+              val player = game.currentPlayer
+              game.doPlay(j, i)
+              if(player.isCross) {
+                println("placing cross")
+                if(checkGameEnded(game.map)) {
+                  renderGameOver("X")(c)
+                } else {
+                  renderGame(game.map, "O's turn")(c)  
+                }
               } else {
-                renderGame(m, "O's turn")(c)  
+                println("placing circle")
+                if(checkGameEnded(game.map)) {
+                  renderGameOver("O")(c)
+                } else {
+                  renderGame(game.map, "X's turn")(c)  
+                }
               }
-              player = PlayerCircle
-            }
-            else if(player.isCircle && m.canFill(j, i, player)) {
-              println("placing circle")
-              m.fill(j, i, player)
-              if(checkGameEnded(m)) {
-                renderGameOver("O")(c)
-              } else {
-                renderGame(m, "X's turn")(c)  
-              }
-              player = PlayerCross
             }
           }
         }
