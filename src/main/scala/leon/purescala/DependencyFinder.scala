@@ -34,7 +34,7 @@ class DependencyFinder {
     * A def does not depend on itself by default. But if it calls itself recursively, or
     * via some transitive dependencies, then the return set will contain the input def.
     */
-  def apply(d: Definition): Set[Definition] = deps.getOrElse(d, {
+  def apply(d: Definition): Set[Definition] = deps.getOrElseUpdate(d, {
     new Finder(d).dependencies
   })
 
