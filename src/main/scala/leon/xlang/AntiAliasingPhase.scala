@@ -65,7 +65,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
-    val effectsAnalysis = new EffectsAnalysis(pgm)
+    val effectsAnalysis = new EffectsAnalysis
 
     //for each fun def, all the vars the the body captures. Only
     //mutable types.

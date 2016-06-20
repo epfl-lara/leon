@@ -37,7 +37,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
                          true)))
 
   test("Pure functions have no effects") {
-    val effects = new EffectsAnalysis(simplePgm(List(fd1, fd2, rec1)))
+    val effects = new EffectsAnalysis
     assert(effects(fd1) === Set())
     assert(effects(fd2) === Set())
     assert(effects(rec1) === Set())
@@ -54,7 +54,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
   mfd1.body = Some(FieldAssignment(classAInstance, classAField, bi(15)))
 
   test("Simple function that mutates its param has an effect") {
-    val effects = new EffectsAnalysis(simplePgm(List(fd1, classA, mfd1)))
+    val effects = new EffectsAnalysis
     assert(effects(mfd1) === Set(0))
     assert(effects(fd1) === Set())
   }
@@ -63,7 +63,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(x.id), ValDef(classAInstanceId)), UnitType)
     fd.body = Some(FieldAssignment(classAInstance, classAField, bi(15)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, fd)))
+    val effects = new EffectsAnalysis
     assert(effects(fd) === Set(1))
   }
 
@@ -71,7 +71,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classAInstanceId)), UnitType)
     fd.body = Some(UnitLiteral())
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, fd)))
+    val effects = new EffectsAnalysis
     assert(effects(fd) === Set())
   }
 
@@ -80,7 +80,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classAInstanceId)), UnitType)
     fd.body = Some(FunctionInvocation(mfd1.typed, Seq(classAInstance)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(fd1, classA, mfd1, fd)))
+    val effects = new EffectsAnalysis
     assert(effects(fd) === Set(0))
     assert(effects(mfd1) === Set(0))
     assert(effects(fd1) === Set())
@@ -91,7 +91,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val nfd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classAInstanceId)), UnitType)
     nfd.body = Some(FunctionInvocation(fd.typed, Seq(classAInstance)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, mfd1, fd, nfd)))
+    val effects = new EffectsAnalysis
     assert(effects(nfd) === Set(0))
     assert(effects(fd) === Set(0))
     assert(effects(mfd1) === Set(0))
@@ -107,7 +107,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classBInstanceId), ValDef(classAInstanceId)), UnitType)
     fd.body = Some(FieldAssignment(classAInstance, classAField, bi(15)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, fd)))
+    val effects = new EffectsAnalysis
     assert(effects(fd) === Set(1))
   }
 
@@ -117,7 +117,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     rfd1.body = Some(FunctionInvocation(rfd2.typed, Seq(classAInstance, classBInstance)))
     rfd2.body = Some(FunctionInvocation(rfd1.typed, Seq(classAInstance, classBInstance)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, classB, rfd1, rfd2)))
+    val effects = new EffectsAnalysis
     assert(effects(rfd1) === Set())
     assert(effects(rfd2) === Set())
   }
@@ -128,7 +128,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     rfd1.body = Some(Block(Seq(FieldAssignment(classAInstance, classAField, bi(10))), FunctionInvocation(rfd2.typed, Seq(classAInstance, classBInstance))))
     rfd2.body = Some(FunctionInvocation(rfd1.typed, Seq(classAInstance, classBInstance)))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, classB, rfd1, rfd2)))
+    val effects = new EffectsAnalysis
     assert(effects(rfd1) === Set(0))
     assert(effects(rfd2) === Set(0))
   }
@@ -139,7 +139,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     rfd1.body = Some(Block(Seq(FieldAssignment(classAInstance, classAField, bi(10))), FunctionInvocation(rfd2.typed, Seq(classAInstance, classBInstance))))
     rfd2.body = Some(Block(Seq(FieldAssignment(classBInstance, classBField, bi(12))), FunctionInvocation(rfd1.typed, Seq(classAInstance, classBInstance))))
 
-    val effects = new EffectsAnalysis(simplePgm(List(classA, classB, rfd1, rfd2)))
+    val effects = new EffectsAnalysis
     assert(effects(rfd1) === Set(0,1))
     assert(effects(rfd2) === Set(0,1))
   }
@@ -151,7 +151,7 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
 
 
   test("Function that takes higher-order function applied to a mutable param has effects") {
-    val effects = new EffectsAnalysis(simplePgm(List(mfd2, classA)))
+    val effects = new EffectsAnalysis
     assert(effects(mfd2) === Set(0))
   }
 }

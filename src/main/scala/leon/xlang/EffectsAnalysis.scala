@@ -7,6 +7,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.DependencyFinder
 import xlang.Expressions._
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
@@ -47,54 +48,62 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * it will be detected as an effect by the EffectsAnalysis. 
   * TODO: maybe we could have "conditional effects", effects depending on the effects of the lambda.
   */
-class EffectsAnalysis(pgm: Program) {
+class EffectsAnalysis {
+
+  private val dependencies = new DependencyFinder
 
 
   //for each fundef, the set of modified params (by index)
-  private val effects: MutableMap[FunDef, Set[Int]] = MutableMap.empty
+  //once set, the value is final and won't be modified further
+  private val cachedEffects: MutableMap[FunDef, Set[Int]] = MutableMap.empty
 
-  def apply(fd: FunDef): Set[Int] = effects.getOrElseUpdate(fd, {
-    Set()//default case for functions added in the middle of transformation. It's a hack that will get cleaned up when doing incremental analysis
+  def apply(fd: FunDef): Set[Int] = cachedEffects.getOrElseUpdate(fd, {
+    effectsAnalysis(fd)
   })
 
-  //contrary to the documentation above, we don't do anything incremental for now.
-  //this is as a way to quickly get a working implementation (out of the existing code)
-  //and add unit tests. Then we will refactor it, probably using DependencyFinder as well
-  effects ++= effectsAnalysis(pgm) 
-  //println("effects: " + effects.filter(e => e._2.size > 0).map(e => (e._1.id, e._2)))
-
   /*
-   * compute effects for each function in the program, including any nested
+   * compute effects for each function that from depends on, including any nested
    * functions (LetDef).
+   * While computing effects for from, it might have to compute transitive effects
+   * of dependencies. It will update the global effects map while doing so.
    */
-  private def effectsAnalysis(pgm: Program): Map[FunDef, Set[Int]] = {
+  private def effectsAnalysis(from: FunDef): Set[Int] = {
+
+    //all the FunDef to consider to compute the effects of from
+    val fds: Set[FunDef] = dependencies(from).collect{ case (fd: FunDef) => fd } + from
+
     //currently computed effects (incremental)
-    var effects: Map[FunDef, Set[Int]] = Map()
+    var effects: Map[FunDef, Set[Int]] = Map()//cachedEffects.filterKeys(fds.contains)
     //missing dependencies for a function for its effects to be complete
     var missingEffects: Map[FunDef, Set[FunctionInvocation]] = Map()
 
     def effectsFullyComputed(fd: FunDef): Boolean = !missingEffects.isDefinedAt(fd)
 
     for {
-      fd <- allFunDefs(pgm)
+      fd <- fds
     } {
-      fd.body match {
+      cachedEffects.get(fd) match {
+        case Some(efcts) =>
+          effects += (fd -> efcts)
         case None =>
-          effects += (fd -> Set())
-        case Some(body) => {
-          val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
-          val localAliases: Map[ValDef, Set[Identifier]] = mutableParams.map(vd => (vd, computeLocalAliases(vd.id, body))).toMap
-          val mutatedParams = mutableParams.filter(vd => exists(expr => localAliases(vd).exists(id => isMutationOf(expr, id)))(body))
-          val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
-            case (vd, i) if mutatedParams.contains(vd) => Some(i)
-            case _ => None
-          }.toSet
-          effects = effects + (fd -> mutatedParamsIndices)
+          fd.body match {
+            case None =>
+              effects += (fd -> Set())
+            case Some(body) => {
+              val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
+              val localAliases: Map[ValDef, Set[Identifier]] = mutableParams.map(vd => (vd, computeLocalAliases(vd.id, body))).toMap
+              val mutatedParams = mutableParams.filter(vd => exists(expr => localAliases(vd).exists(id => isMutationOf(expr, id)))(body))
+              val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
+                case (vd, i) if mutatedParams.contains(vd) => Some(i)
+                case _ => None
+              }.toSet
+              effects = effects + (fd -> mutatedParamsIndices)
 
-          val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
-          if(missingCalls.nonEmpty)
-            missingEffects += (fd -> missingCalls)
-        }
+              val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
+              if(missingCalls.nonEmpty)
+                missingEffects += (fd -> missingCalls)
+            }
+          }
       }
     }
 
@@ -134,7 +143,10 @@ class EffectsAnalysis(pgm: Program) {
     }
 
     rec()
-    effects
+
+    effects.foreach{ case (fd, efcts) => if(!cachedEffects.isDefinedAt(fd)) cachedEffects(fd) = efcts }
+
+    effects(from)
   }
 
   //convert a function type with mutable parameters, into a function type
