@@ -61,6 +61,18 @@ class EffectsAnalysis {
     effectsAnalysis(fd)
   })
 
+
+  /** Effects at the level of types for a function
+    *
+    * This disregards the actual implementation of a function, and considers only
+    * its type to determine a conservative abstraction of its effects.
+    */
+  def functionTypeEffects(ft: FunctionType): Set[Int] = {
+    ft.from.zipWithIndex.flatMap{ case (vd, i) =>
+      if(isMutableType(vd.getType)) Some(i) else None
+    }.toSet
+  }
+
   /*
    * compute effects for each function that from depends on, including any nested
    * functions (LetDef).
@@ -149,25 +161,6 @@ class EffectsAnalysis {
     effects(from)
   }
 
-  //convert a function type with mutable parameters, into a function type
-  //that returns the mutable parameters. This makes explicit all possible
-  //effects of the function. This should be used for higher order functions
-  //declared as parameters.
-  def makeFunctionTypeExplicit(tpe: FunctionType): FunctionType = {
-    val newReturnTypes = tpe.from.filter(t => isMutableType(t))
-    if(newReturnTypes.isEmpty)
-      tpe
-    else {
-      FunctionType(tpe.from, TupleType(tpe.to +: newReturnTypes))
-    }
-  }
-
-  def functionTypeEffects(ft: FunctionType): Set[Int] = {
-    ft.from.zipWithIndex.flatMap{ case (vd, i) =>
-      if(isMutableType(vd.getType)) Some(i) else None
-    }.toSet
-  }
-
   //for a given id, compute the identifiers that alias it or some part of the object refered by id
   def computeLocalAliases(id: Identifier, body: Expr): Set[Identifier] = {
     def pre(expr: Expr, ids: Set[Identifier]): Set[Identifier] = expr match {
@@ -182,69 +175,6 @@ class EffectsAnalysis {
     val res = preFoldWithContext(pre, combiner)(body, Set(id))
     res
   }
-
-
-  def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
-    def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
-      getReturnedExpr(body).foreach{
-        case expr if isMutableType(expr.getType) => 
-          findReceiverId(expr).foreach(id =>
-            if(bindings.contains(id))
-              ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
-          )
-        case _ => ()
-      }
-    }
-
-    if(fd.canBeField && isMutableType(fd.returnType))
-      ctx.reporter.fatalError(fd.getPos, "A global field cannot refer to a mutable object")
-    
-    fd.body.foreach(bd => {
-      val params = fd.params.map(_.id).toSet
-      checkReturnValue(bd, params)
-      preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
-        case l@Let(id, v, b) if isMutableType(v.getType) => {
-          if(!isExpressionFresh(v))
-            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          (None, bindings + id)
-        }
-        case l@LetVar(id, v, b) if isMutableType(v.getType) => {
-          if(!isExpressionFresh(v))
-            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          (None, bindings + id)
-        }
-        case l@LetDef(fds, body) => {
-          fds.foreach(fd => fd.body.foreach(bd => checkReturnValue(bd, bindings)))
-          (None, bindings)
-        }
-
-        case _ => (None, bindings)
-      })(bd, params)
-    })
-  }
-
-  /*
-   * A bit hacky, but not sure of the best way to do something like that
-   * currently.
-   */
-  private def getReturnedExpr(expr: Expr): Seq[Expr] = expr match {
-    case Let(_, _, rest) => getReturnedExpr(rest)
-    case LetVar(_, _, rest) => getReturnedExpr(rest)
-    case Block(_, rest) => getReturnedExpr(rest)
-    case IfExpr(_, thenn, elze) => getReturnedExpr(thenn) ++ getReturnedExpr(elze)
-    case MatchExpr(_, cses) => cses.flatMap{ cse => getReturnedExpr(cse.rhs) }
-    case e => Seq(expr)
-  }
-
-
-  /*
-   * returns all fun def in the program, including local definitions inside
-   * other functions (LetDef).
-   */
-  private def allFunDefs(pgm: Program): Seq[FunDef] =
-      pgm.definedFunctions.flatMap(fd => 
-        fd.body.toSet.flatMap((bd: Expr) =>
-          nestedFunDefsOf(bd)) + fd)
 
 
   private def findReceiverId(o: Expr): Option[Identifier] = o match {
@@ -289,71 +219,6 @@ class EffectsAnalysis {
       case (Some(id), i) if effects.contains(i) => Some(id)
       case _ => None
     }
-  }
-
-  //private def extractFieldPath(o: Expr): (Expr, List[Identifier]) = {
-  //  def rec(o: Expr): List[Identifier] = o match {
-  //    case CaseClassSelector(_, r, i) =>
-  //      val res = toFieldPath(r)
-  //      (res._1, i::res)
-  //    case expr => (expr, Nil)
-  //  }
-  //  val res = rec(o)
-  //  (res._1, res._2.reverse)
-  //}
-
-
-  def deepCopy(rec: Expr, nv: Expr): Expr = {
-    rec match {
-      case CaseClassSelector(_, r, id) =>
-        val sub = copy(r, id, nv)
-        deepCopy(r, sub)
-      case as@ArraySelect(a, index) =>
-        deepCopy(a, ArrayUpdated(a, index, nv).setPos(as))
-      case expr => nv
-    }
-  }
-
-  private def copy(cc: Expr, id: Identifier, nv: Expr): Expr = {
-    val ct@CaseClassType(ccd, _) = cc.getType
-    val newFields = ccd.fields.map(vd =>
-      if(vd.id == id)
-        nv
-      else
-        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
-    )
-    CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
-  }
-
-
-  /*
-   * A fresh expression is an expression that is newly created
-   * and does not share memory with existing values and variables.
-   *
-   * If the expression is made of existing immutable variables (Int or
-   * immutable case classes), it is considered fresh as we consider all
-   * non mutable objects to have a value-copy semantics.
-   *
-   * It turns out that an expression of non-mutable type is always fresh,
-   * as it can not contains reference to a mutable object, by definition
-   */
-  private def isExpressionFresh(expr: Expr): Boolean = {
-    !isMutableType(expr.getType) || (expr match {
-      case v@Variable(_) => !isMutableType(v.getType)
-      case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg))
-
-      case FiniteArray(elems, default, _) => elems.forall(p => isExpressionFresh(p._2)) && default.forall(isExpressionFresh)
-
-      //function invocation always return a fresh expression, by hypothesis (global assumption)
-      case FunctionInvocation(_, _) => true
-
-      //ArrayUpdated returns a mutable array, which by definition is a clone of the original
-      case ArrayUpdated(_, _, _) => true
-
-      //any other expression is conservately assumed to be non-fresh if
-      //any sub-expression is non-fresh (i.e. an if-then-else with a reference in one branch)
-      case Operator(args, _) => args.forall(arg => isExpressionFresh(arg))
-    })
   }
 
 }
