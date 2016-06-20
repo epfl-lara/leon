@@ -46,7 +46,8 @@ class TreeNormalizationsSuite extends LeonTestSuite with helpers.WithLikelyEq wi
     checkLikelyEq(ctx)(toSum(expandedForm(e4)), e4)
   }
 
-  test("linearArithmeticForm") { ctx =>
+  //TODO: a tad slow for a unit test
+  ignore("linearArithmeticForm") { ctx =>
     val xsOrder = Array(x.id, y.id)
 
     val aa = FreshIdentifier("aa", IntegerType).toVariable
