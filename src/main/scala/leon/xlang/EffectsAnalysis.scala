@@ -38,8 +38,17 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * if we do end up supporting global variables, it is likely that we will rely on another
   * phase to introduce that global state explicitly into the list of parameters of functions
   * that make use of it.
+  *
+  * An effect is detected by a FieldAssignment to one of the parameters that are mutable. It 
+  * can come from transitively calling a function that perform a field assignment as well. 
+  * If the function uses higher-order functions that take mutable types as parameters, they
+  * will be conservatively assumed to perform an effect as well. A function type is not by itself
+  * a mutable type, but if it is applied on a mutable type that is taken as a parameter as well,
+  * it will be detected as an effect by the EffectsAnalysis. 
+  * TODO: maybe we could have "conditional effects", effects depending on the effects of the lambda.
   */
 class EffectsAnalysis(pgm: Program) {
+
 
   //for each fundef, the set of modified params (by index)
   private val effects: MutableMap[FunDef, Set[Int]] = MutableMap.empty
@@ -59,7 +68,6 @@ class EffectsAnalysis(pgm: Program) {
    * functions (LetDef).
    */
   private def effectsAnalysis(pgm: Program): Map[FunDef, Set[Int]] = {
-
     //currently computed effects (incremental)
     var effects: Map[FunDef, Set[Int]] = Map()
     //missing dependencies for a function for its effects to be complete
