@@ -85,6 +85,17 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(effects(mfd1) === Set(0))
     assert(effects(fd1) === Set())
   }
+  test("Function that mutates param via multiple transitive call has effects") {
+    val fd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classAInstanceId)), UnitType)
+    fd.body = Some(FunctionInvocation(mfd1.typed, Seq(classAInstance)))
+    val nfd = new FunDef(FreshIdentifier("f"), Seq(), Seq(ValDef(classAInstanceId)), UnitType)
+    nfd.body = Some(FunctionInvocation(fd.typed, Seq(classAInstance)))
+
+    val effects = new EffectsAnalysis(simplePgm(List(classA, mfd1, fd, nfd)))
+    assert(effects(nfd) === Set(0))
+    assert(effects(fd) === Set(0))
+    assert(effects(mfd1) === Set(0))
+  }
 
   private val classB = new CaseClassDef(FreshIdentifier("B"), Seq(), None, false)
   private val classBField = FreshIdentifier("y", IntegerType)
@@ -122,7 +133,6 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(effects(rfd2) === Set(0))
   }
 
-
   test("Mutually recursives functions with multiple effects are transitively detected") {
     val rfd1 = new FunDef(FreshIdentifier("rf1"), Seq(), Seq(ValDef(classAInstanceId), ValDef(classBInstanceId)), UnitType)
     val rfd2 = new FunDef(FreshIdentifier("rf2"), Seq(), Seq(ValDef(classAInstanceId), ValDef(classBInstanceId)), UnitType)
@@ -134,4 +144,14 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(effects(rfd2) === Set(0,1))
   }
 
+
+  private val lambdaId = FreshIdentifier("lambda", FunctionType(Seq(classA.typed), UnitType))
+  private val mfd2 = new FunDef(FreshIdentifier("mf2"), Seq(), Seq(ValDef(classAInstanceId), ValDef(lambdaId)), UnitType)
+  mfd2.body = Some(Application(lambdaId.toVariable, Seq(classAInstance)))
+
+
+  test("Function that takes higher-order function applied to a mutable param has effects") {
+    val effects = new EffectsAnalysis(simplePgm(List(mfd2, classA)))
+    assert(effects(mfd2) === Set(0))
+  }
 }
