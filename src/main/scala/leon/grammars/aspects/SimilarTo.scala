@@ -132,9 +132,9 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect {
           Nil
       }
 
-      val self = Seq(term(e))
+      //val self = Seq(term(e))
 
-      swaps ++ subs ++ typeVariations ++ ccVariations ++ self
+      swaps ++ subs ++ typeVariations ++ ccVariations //++ self
     }
 
     ps ++ similarProds

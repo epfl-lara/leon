@@ -17,8 +17,8 @@ class AngelicEvaluator(underlying: NDEvaluator)
   val bank = new EvaluationBank
 
   def eval(expr: Expr, model: Model): EvaluationResult = underlying.eval(expr, model) match {
-    case Successful(Stream(h, _*)) =>
-      Successful(h)
+    case Successful(s) if s.nonEmpty =>
+      Successful(s.head)
     case Successful(Stream()) =>
       RuntimeError("Underlying ND-evaluator returned no solution")
     case other@(RuntimeError(_) | EvaluatorError(_)) =>

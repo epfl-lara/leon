@@ -45,7 +45,7 @@ object Helpers {
     * @param tpe The expected type for the returned function calls. If absent, all types are permitted.
     * @return A list of pairs (safe function call, holes),
     *         where holes stand for the rest of the arguments of the function.
-   */
+    */
   def terminatingCalls(prog: Program, ws: Expr, pc: Path, tpe: Option[TypeTree], introduceHoles: Boolean): List[(FunctionInvocation, Option[Set[Identifier]])] = {
 
     val TopLevelAnds(wss) = ws
