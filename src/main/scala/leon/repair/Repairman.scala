@@ -14,7 +14,6 @@ import purescala.Constructors._
 import evaluators._
 import solvers._
 import utils._
-import codegen._
 import verification._
 import datagen.GrammarDataGen
 
