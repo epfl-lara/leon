@@ -143,7 +143,6 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       ctx.reporter.debug("Executing forall!")
 
       val mapping = variablesOf(f).map(id => id -> rctx.mappings(id)).toMap
-      val context = mapping.toSeq.sortBy(_._1.uniqueName).map(_._2)
 
       val tStart = System.currentTimeMillis
 
@@ -183,7 +182,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
                 }
               }
 
-              val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
+              val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.flatMap(_._2))
               andJoin(domainMap.toSeq.map { case (id, dom) =>
                 orJoin(dom.toSeq.map { case (path, value) =>
                   // @nv: Note that equality is allowed here because of first-order quantifiers.
@@ -239,10 +238,6 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       val solver  = solverf.getNewSolver()
 
       try {
-        val eqs = p.as.map {
-          case id => Equals(Variable(id), rctx.mappings(id))
-        }
-
         val cnstr = p.pc withBindings p.as.map(id => id -> rctx.mappings(id)) and p.phi
         solver.assertCnstr(cnstr)
 
@@ -622,10 +617,10 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     )) =>
       FiniteBag(
         (els1.keys ++ els2.keys).map(k => k -> {
-          ((els1.getOrElse(k, InfiniteIntegerLiteral(0)), els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
+          (els1.getOrElse(k, InfiniteIntegerLiteral(0)), els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
             case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
             case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
-          })
+          }
         }).toMap,
         leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bu, tpe)))
       )

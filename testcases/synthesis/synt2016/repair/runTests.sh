@@ -46,7 +46,7 @@ echo "=====================================================================" >> 
 ./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=sum      testcases/synthesis/synt2016/repair/List/List11.scala          | tee -a $fullLog
 ./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=-        testcases/synthesis/synt2016/repair/List/List12.scala          | tee -a $fullLog
 ./leon --debug=report --repair --timeout=60                       --functions=drop     testcases/synthesis/synt2016/repair/List/List4.scala           | tee -a $fullLog
-./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=drop     testcases/synthesis/synt2016/repair/List/List13.scala          | tee -a $fullLog
+#./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=drop     testcases/synthesis/synt2016/repair/List/List13.scala          | tee -a $fullLog
 
 ./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=power    testcases/synthesis/synt2016/repair/Numerical/Numerical1.scala | tee -a $fullLog
 ./leon --debug=report --repair --timeout=60 --solvers=fairz3,enum --functions=moddiv   testcases/synthesis/synt2016/repair/Numerical/Numerical3.scala | tee -a $fullLog
