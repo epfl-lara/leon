@@ -49,8 +49,8 @@ abstract class ExpressionGrammar {
       val l1 = lp1._1
       val l2 = lp2._1
 
-      val os1 = l1.aspects.collectFirst { case aspects.Sized(size) => size }
-      val os2 = l2.aspects.collectFirst { case aspects.Sized(size) => size }
+      val os1 = l1.aspects.collectFirst { case aspects.Sized(size, _) => size }
+      val os2 = l2.aspects.collectFirst { case aspects.Sized(size, _) => size }
 
       (os1, os2) match {
         case (Some(s1), Some(s2)) =>
