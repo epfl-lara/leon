@@ -363,9 +363,15 @@ case object StringRender extends Rule("StringRender") {
       
       /** Mark all occurrences of a given type so that we can differentiate its usage according to its rank from the left.*/
       def markovize_horizontal_nonterminal() = {
-        //println("markovize_horizontal_nonterminal...")
         val selectedNt = getDuplicateCallsInSameRule()
-        copy(grammar=grammar.markovize_horizontal_filtered(selectedNt))
+        //println("markovize_horizontal_nonterminal with "+selectedNt.map(symbolToString)+"...")
+        copy(grammar=grammar.markovize_horizontal_filtered(selectedNt, false))
+      }
+      /** Mark all occurrences of a given type so that we can differentiate its usage according to its rank from the left.*/
+      def markovize_horizontal_recursive_nonterminal() = {
+        val selectedNt = getDuplicateCallsInSameRule()
+        //println("markovize_horizontal_nonterminal with "+selectedNt.map(symbolToString)+"...")
+        copy(grammar=grammar.markovize_horizontal_filtered(selectedNt, true))
       }
       
       /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
@@ -564,10 +570,9 @@ case object StringRender extends Rule("StringRender") {
         
         startExprStream.map(i => (i, possible_functions)) #:::                 // 1) Expressions without markovizations
           (if(markovizations) {
-            this.
-              markovize_horizontal_nonterminal().buildFunDefTemplateAndContinue( _.
+              Stream(markovize_horizontal_recursive_nonterminal(), markovize_horizontal_nonterminal()).flatMap(grammar => grammar.buildFunDefTemplateAndContinue( _.
                 markovize_abstract_vertical_nonterminal().buildFunDefTemplateAndContinue( _.
-                  markovize_vertical_nonterminal().buildFunDefTemplate(false)))
+                  markovize_vertical_nonterminal().buildFunDefTemplate(false))))
           } else Stream.empty)
         // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
         // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.

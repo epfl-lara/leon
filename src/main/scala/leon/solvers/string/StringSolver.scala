@@ -557,11 +557,11 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy.run(p, Map())
-    println("Problem:\n"+renderProblem(p))
+    /*println("Problem:\n"+renderProblem(p))
     if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
       println("Solutions:\n"+realProblem.get._2)
       println("Real problem:\n"+renderProblem(realProblem.get._1))
-    }
+    }*/
     
     realProblem match {
       case None => 

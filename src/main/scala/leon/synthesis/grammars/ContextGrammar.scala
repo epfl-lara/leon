@@ -192,18 +192,30 @@ class ContextGrammar[SymbolTag, TerminalData] {
         x.flatMap((y: NonTerminal) => getDescendants(y) + y)).getOrElse(Set.empty[NonTerminal])
     }
     
-    /** Perform horizontal markovization only on the provided non-terminals and their descendants. */
-    def markovize_horizontal_filtered(pred: NonTerminal => Boolean): Grammar = {
+    /** Perform horizontal markovization only on the provided non-terminals and their descendants.
+     *  @param pred The predicate checking if non-terminals are concerned.
+     *  @param recursive If the horizontal context is propagated to ancestors if they are on the RHS of their children.
+     */
+    def markovize_horizontal_filtered(pred: NonTerminal => Boolean, recursive: Boolean): Grammar = {
+      var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
+      var originals = Map[NonTerminal, NonTerminal]()
+      def getOriginal(nt: NonTerminal): NonTerminal = originals.get(nt).map(getOriginal).getOrElse(nt)
       val c = new MarkovizationContext(pred) {
-        var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
         def process_sequence(ls: Seq[Symbol]): List[Symbol] = {
           val (_, res) = ((ListBuffer[Symbol](), ListBuffer[Symbol]()) /: ls) {
             case ((lbold, lbnew), nt: NonTerminal) if pred(nt) =>
               val context_version = nt.copy(hcontext = lbold.toList)
               toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set.empty[NonTerminal]) + context_version)
+              originals += context_version -> nt
               for(descendant <- getDescendants(nt)) {
                 val descendant_context_version = descendant.copy(hcontext = lbold.toList)
                 toDuplicate += descendant -> (toDuplicate.getOrElse(descendant, Set.empty[NonTerminal]) + descendant_context_version)
+                originals += descendant_context_version -> descendant
+              }
+              for(ascendant <- getAncestors(nt)) {
+                val acendant_context_version = ascendant.copy(hcontext = lbold.toList)
+                toDuplicate += ascendant -> (toDuplicate.getOrElse(ascendant, Set.empty[NonTerminal]) + acendant_context_version)
+                originals += acendant_context_version -> ascendant
               }
               (lbold += nt, lbnew += context_version)
             case ((lbold, lbnew), s) =>
@@ -213,12 +225,12 @@ class ContextGrammar[SymbolTag, TerminalData] {
         }
         
         val newStart = process_sequence(start)
-        val newRules = rules.map{ case (k, expansion) =>
+        private val newRules = rules.map{ case (k, expansion) =>
           k -> (expansion match {
             case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
               expansion
             case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
-              val children_new = process_sequence(t +: children)
+              val children_new = process_sequence(t +: children) // Identifies duplicates and differentiates them.
               AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children_new.tail.asInstanceOf[List[NonTerminal]])) 
             case _ => 
               expansion
@@ -227,15 +239,27 @@ class ContextGrammar[SymbolTag, TerminalData] {
         
         val newRules2 = for{
             (k, v) <- newRules
-            kp <- (toDuplicate.getOrElse(k, Set(k)) + k)
+            kp <- (toDuplicate.getOrElse(k, Set()) + k)
         } yield {
           v match {
-            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) =>
+            case AugmentedTerminalsRHS(terminals, VerticalRHS(children)) if toDuplicate.getOrElse(k, Set.empty).nonEmpty =>
               val newChildren = children.map(child => child.copy(hcontext = kp.hcontext))
               kp -> AugmentedTerminalsRHS(terminals, VerticalRHS(newChildren))
             case AugmentedTerminalsRHS(terminals, HorizontalRHS(t, children)) =>
-              kp -> v
-            case _ => kp -> v
+              // Transmit the left context to all ancestors of this node.
+              val new_rhs = if(recursive) {
+                val ancestors = getAncestors(k)
+                val newChildren = children.map(child =>
+                  child match { case nt: NonTerminal if ancestors(getOriginal(nt)) => 
+                      nt.copy(hcontext = kp.hcontext)
+                    case _ => child
+                  }
+                )
+                HorizontalRHS(t, newChildren)
+              } else v
+              kp -> new_rhs
+            case _ =>
+               kp -> v
           }
         }
       }
@@ -246,7 +270,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
     /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
       * Is idempotent. */
     def markovize_horizontal(): Grammar = {
-      markovize_horizontal_filtered(_ => true)
+      markovize_horizontal_filtered(_ => true, true)
     }
     
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy". Top-level nodes count as a different hierarchy.
