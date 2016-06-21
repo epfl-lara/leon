@@ -25,9 +25,11 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, program: Program): Program = {
 
+    val effectsAnalysis = new EffectsAnalysis
+
     //we need to perform this now, because as soon as we apply the def transformer
     //some types will become Untyped and the checkAliasing won't be reliable anymore
-    allFunDefs(program).foreach(fd => checkAliasing(fd)(ctx))
+    allFunDefs(program).foreach(fd => checkAliasing(fd, effectsAnalysis)(ctx))
 
     //mapping for case classes that needs to be replaced
     //var ccdMap: Map[CaseClassDef, CaseClassDef] =
@@ -49,7 +51,7 @@ object AntiAliasingPhase extends TransformationPhase {
     //}).toMap
     val transformer = new DefinitionTransformer {
       override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
-        case (ft: FunctionType) => Some(makeFunctionTypeExplicit(ft))
+        case (ft: FunctionType) => Some(makeFunctionTypeExplicit(ft, effectsAnalysis))
         case _ => None
       }
       //override def transformClassDef(cd: ClassDef): Option[ClassDef] = ccdBijection.getB(cd)
@@ -65,8 +67,6 @@ object AntiAliasingPhase extends TransformationPhase {
 
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
-    val effectsAnalysis = new EffectsAnalysis
-
     //for each fun def, all the vars the the body captures. Only
     //mutable types.
     val varsInScope: Map[FunDef, Set[Identifier]] = (for {
@@ -74,7 +74,7 @@ object AntiAliasingPhase extends TransformationPhase {
     } yield {
       val allFreeVars = fd.body.map(bd => variablesOf(bd)).getOrElse(Set())
       val freeVars = allFreeVars -- fd.params.map(_.id)
-      val mutableFreeVars = freeVars.filter(id => isMutableType(id.getType))
+      val mutableFreeVars = freeVars.filter(id => effectsAnalysis.isMutableType(id.getType))
       (fd, mutableFreeVars)
     }).toMap
 
@@ -306,7 +306,7 @@ object AntiAliasingPhase extends TransformationPhase {
       val toIgnore = context._3
       expr match {
 
-        case l@Let(id, v, b) if isMutableType(id.getType) => {
+        case l@Let(id, v, b) if effects.isMutableType(id.getType) => {
           val varDecl = LetVar(id, v, b).setPos(l)
           (Some(varDecl), (bindings + id, rewritings, toIgnore))
         }
@@ -318,11 +318,11 @@ object AntiAliasingPhase extends TransformationPhase {
         //  (Some(Let(freshId, v, freshBody).copiedFrom(l)), context)
         //}
 
-        case l@LetVar(id, IsTyped(v, tpe), b) if isMutableType(tpe) => {
+        case l@LetVar(id, IsTyped(v, tpe), b) if effects.isMutableType(tpe) => {
           (None, (bindings + id, rewritings, toIgnore))
         }
 
-        case m@MatchExpr(scrut, cses) if isMutableType(scrut.getType) => {
+        case m@MatchExpr(scrut, cses) if effects.isMutableType(scrut.getType) => {
 
           val tmp: Map[Identifier, Expr] = cses.flatMap{ case MatchCase(pattern, guard, rhs) => {
             mapForPattern(scrut, pattern)
@@ -383,7 +383,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
         case lambda@Lambda(params, body) => {
           val ft@FunctionType(_, _) = lambda.getType
-          val ownEffects = functionTypeEffects(ft)
+          val ownEffects = effects.functionTypeEffects(ft)
           val aliasedParams: Seq[Identifier] = params.zipWithIndex.flatMap{
             case (vd, i) if ownEffects.contains(i) => Some(vd)
             case _ => None
@@ -436,9 +436,9 @@ object AntiAliasingPhase extends TransformationPhase {
           if(toIgnore(app)) (None, context) else {
             val ft@FunctionType(_, to) = callee.getType
             to match {
-              case TupleType(tps) if isMutableType(tps.last) => {
+              case TupleType(tps) if effects.isMutableType(tps.last) => {
                 val nfi = Application(callee, args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
-                val fiEffects = functionTypeEffects(ft)
+                val fiEffects = effects.functionTypeEffects(ft)
                 (Some(mapApplication(args, nfi, to, fiEffects, rewritings)), (bindings, rewritings, toIgnore + nfi))
               }
               case _ => (None, context)
@@ -500,8 +500,8 @@ object AntiAliasingPhase extends TransformationPhase {
   //that returns the mutable parameters. This makes explicit all possible
   //effects of the function. This should be used for higher order functions
   //declared as parameters.
-  def makeFunctionTypeExplicit(tpe: FunctionType): FunctionType = {
-    val newReturnTypes = tpe.from.filter(t => isMutableType(t))
+  private def makeFunctionTypeExplicit(tpe: FunctionType, effects: EffectsAnalysis): FunctionType = {
+    val newReturnTypes = tpe.from.filter(t => effects.isMutableType(t))
     if(newReturnTypes.isEmpty)
       tpe
     else {
@@ -509,32 +509,11 @@ object AntiAliasingPhase extends TransformationPhase {
     }
   }
 
-  def functionTypeEffects(ft: FunctionType): Set[Int] = {
-    ft.from.zipWithIndex.flatMap{ case (vd, i) =>
-      if(isMutableType(vd.getType)) Some(i) else None
-    }.toSet
-  }
 
-  //for a given id, compute the identifiers that alias it or some part of the object refered by id
-  def computeLocalAliases(id: Identifier, body: Expr): Set[Identifier] = {
-    def pre(expr: Expr, ids: Set[Identifier]): Set[Identifier] = expr match {
-      case l@Let(i, Variable(v), _) if ids.contains(v) => ids + i
-      case m@MatchExpr(Variable(v), cses) if ids.contains(v) => {
-        val newIds = cses.flatMap(mc => mc.pattern.binders)
-        ids ++ newIds
-      }
-      case e => ids
-    }
-    def combiner(e: Expr, ctx: Set[Identifier], ids: Seq[Set[Identifier]]): Set[Identifier] = ctx ++ ids.toSet.flatten + id
-    val res = preFoldWithContext(pre, combiner)(body, Set(id))
-    res
-  }
-
-
-  def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
+  private def checkAliasing(fd: FunDef, effects: EffectsAnalysis)(ctx: LeonContext): Unit = {
     def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
       getReturnedExpr(body).foreach{
-        case expr if isMutableType(expr.getType) => 
+        case expr if effects.isMutableType(expr.getType) => 
           findReceiverId(expr).foreach(id =>
             if(bindings.contains(id))
               ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
@@ -543,20 +522,20 @@ object AntiAliasingPhase extends TransformationPhase {
       }
     }
 
-    if(fd.canBeField && isMutableType(fd.returnType))
+    if(fd.canBeField && effects.isMutableType(fd.returnType))
       ctx.reporter.fatalError(fd.getPos, "A global field cannot refer to a mutable object")
     
     fd.body.foreach(bd => {
       val params = fd.params.map(_.id).toSet
       checkReturnValue(bd, params)
       preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
-        case l@Let(id, v, b) if isMutableType(v.getType) => {
-          if(!isExpressionFresh(v))
+        case l@Let(id, v, b) if effects.isMutableType(v.getType) => {
+          if(!isExpressionFresh(v, effects))
             ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           (None, bindings + id)
         }
-        case l@LetVar(id, v, b) if isMutableType(v.getType) => {
-          if(!isExpressionFresh(v))
+        case l@LetVar(id, v, b) if effects.isMutableType(v.getType) => {
+          if(!isExpressionFresh(v, effects))
             ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
           (None, bindings + id)
         }
@@ -602,41 +581,6 @@ object AntiAliasingPhase extends TransformationPhase {
     case _ => None
   }
 
-
-  private def isMutableType(tpe: TypeTree, abstractClasses: Set[ClassType] = Set()): Boolean = tpe match {
-    case (ct: ClassType) if abstractClasses.contains(ct) => false
-    case (arr: ArrayType) => true
-    case ct@CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType, abstractClasses + ct))
-    case (ct: ClassType) => ct.knownDescendants.exists(c => isMutableType(c, abstractClasses + ct))
-    case _ => false
-  }
-
-
-  /*
-   * Check if expr is mutating variable id
-   */
-  private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
-    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
-    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
-    case Application(callee, args) => {
-      val ft@FunctionType(_, _) = callee.getType
-      val effects = functionTypeEffects(ft)
-      args.map(findReceiverId(_)).zipWithIndex.exists{
-        case (Some(argId), index) => argId == id && effects.contains(index)
-        case _ => false
-      }
-    }
-    case _ => false
-  }
-
-  //return the set of modified variables arguments to a function invocation,
-  //given the effect of the fun def invoked.
-  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
-    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
-      case (Some(id), i) if effects.contains(i) => Some(id)
-      case _ => None
-    }
-  }
 
   //private def extractFieldPath(o: Expr): (Expr, List[Identifier]) = {
   //  def rec(o: Expr): List[Identifier] = o match {
@@ -684,12 +628,12 @@ object AntiAliasingPhase extends TransformationPhase {
    * It turns out that an expression of non-mutable type is always fresh,
    * as it can not contains reference to a mutable object, by definition
    */
-  private def isExpressionFresh(expr: Expr): Boolean = {
-    !isMutableType(expr.getType) || (expr match {
-      case v@Variable(_) => !isMutableType(v.getType)
-      case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg))
+  private def isExpressionFresh(expr: Expr, effects: EffectsAnalysis): Boolean = {
+    !effects.isMutableType(expr.getType) || (expr match {
+      case v@Variable(_) => !effects.isMutableType(v.getType)
+      case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg, effects))
 
-      case FiniteArray(elems, default, _) => elems.forall(p => isExpressionFresh(p._2)) && default.forall(isExpressionFresh)
+      case FiniteArray(elems, default, _) => elems.forall(p => isExpressionFresh(p._2, effects)) && default.forall(e => isExpressionFresh(e, effects))
 
       //function invocation always return a fresh expression, by hypothesis (global assumption)
       case FunctionInvocation(_, _) => true
@@ -699,7 +643,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
       //any other expression is conservately assumed to be non-fresh if
       //any sub-expression is non-fresh (i.e. an if-then-else with a reference in one branch)
-      case Operator(args, _) => args.forall(arg => isExpressionFresh(arg))
+      case Operator(args, _) => args.forall(arg => isExpressionFresh(arg, effects))
     })
   }
 

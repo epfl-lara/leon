@@ -47,11 +47,16 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * a mutable type, but if it is applied on a mutable type that is taken as a parameter as well,
   * it will be detected as an effect by the EffectsAnalysis. 
   * TODO: maybe we could have "conditional effects", effects depending on the effects of the lambda.
+  *
+  * The EffectsAnalysis also provides functions to analyze the the mutability of a type and expression.
+  * The isMutableType function need to perform a graph traversal (explore all the fields recursively
+  * to find if one is mutable)
   */
 class EffectsAnalysis {
 
-  private val dependencies = new DependencyFinder
 
+  private val dependencies = new DependencyFinder
+  private var mutableTypes: MutableMap[TypeTree, Boolean] = MutableMap.empty
 
   //for each fundef, the set of modified params (by index)
   //once set, the value is final and won't be modified further
@@ -61,6 +66,26 @@ class EffectsAnalysis {
     effectsAnalysis(fd)
   })
 
+
+
+  /** Determine if the type is mutable
+    *
+    * In Leon, we classify types as either mutable or immutable. Immutable
+    * type can be referenced freely, while mutable types must be treated with
+    * care. This function uses a cache, so make sure to not update your class
+    * def and use the same instance of EffectsAnalysis. It is fine to add
+    * new ClassDef types on the fly, granted that they use fresh identifiers.
+    */
+  def isMutableType(tpe: TypeTree): Boolean = {
+    def rec(tpe: TypeTree, abstractClasses: Set[ClassType]): Boolean = mutableTypes.getOrElseUpdate(tpe, tpe match {
+      case (ct: ClassType) if abstractClasses.contains(ct) => false
+      case (arr: ArrayType) => true
+      case ct@CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || rec(vd.getType, abstractClasses + ct))
+      case (ct: ClassType) => ct.knownDescendants.exists(c => rec(c, abstractClasses + ct))
+      case _ => false
+    })
+    rec(tpe, Set())
+  }
 
   /** Effects at the level of types for a function
     *
@@ -72,6 +97,27 @@ class EffectsAnalysis {
       if(isMutableType(vd.getType)) Some(i) else None
     }.toSet
   }
+
+  /*
+   * Check if expr is mutating variable id. This only checks if the expression
+   * is the mutation operation, and will not perform expression traversal to
+   * see if a sub-expression mutates something.
+   * TODO: clarify this with a function that look at the whole expression
+   */
+  def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
+    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
+    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
+    case Application(callee, args) => {
+      val ft@FunctionType(_, _) = callee.getType
+      val effects = functionTypeEffects(ft)
+      args.map(findReceiverId(_)).zipWithIndex.exists{
+        case (Some(argId), index) => argId == id && effects.contains(index)
+        case _ => false
+      }
+    }
+    case _ => false
+  }
+
 
   /*
    * compute effects for each function that from depends on, including any nested
@@ -162,7 +208,7 @@ class EffectsAnalysis {
   }
 
   //for a given id, compute the identifiers that alias it or some part of the object refered by id
-  def computeLocalAliases(id: Identifier, body: Expr): Set[Identifier] = {
+  private def computeLocalAliases(id: Identifier, body: Expr): Set[Identifier] = {
     def pre(expr: Expr, ids: Set[Identifier]): Set[Identifier] = expr match {
       case l@Let(i, Variable(v), _) if ids.contains(v) => ids + i
       case m@MatchExpr(Variable(v), cses) if ids.contains(v) => {
@@ -183,33 +229,6 @@ class EffectsAnalysis {
     case AsInstanceOf(e, ct) => findReceiverId(e)
     case ArraySelect(a, _) => findReceiverId(a)
     case _ => None
-  }
-
-
-  private def isMutableType(tpe: TypeTree, abstractClasses: Set[ClassType] = Set()): Boolean = tpe match {
-    case (ct: ClassType) if abstractClasses.contains(ct) => false
-    case (arr: ArrayType) => true
-    case ct@CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || isMutableType(vd.getType, abstractClasses + ct))
-    case (ct: ClassType) => ct.knownDescendants.exists(c => isMutableType(c, abstractClasses + ct))
-    case _ => false
-  }
-
-
-  /*
-   * Check if expr is mutating variable id
-   */
-  private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
-    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
-    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
-    case Application(callee, args) => {
-      val ft@FunctionType(_, _) = callee.getType
-      val effects = functionTypeEffects(ft)
-      args.map(findReceiverId(_)).zipWithIndex.exists{
-        case (Some(argId), index) => argId == id && effects.contains(index)
-        case _ => false
-      }
-    }
-    case _ => false
   }
 
   //return the set of modified variables arguments to a function invocation,
