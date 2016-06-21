@@ -77,7 +77,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       val grammar = params.grammar
 
-      def rootLabel = params.rootLabel(targetType).withAspect(TypeDepthBound(depth(targetType) + 1)).withAspect(Sized(termSize))
+      def rootLabel = params.rootLabel(targetType).withAspect(TypeDepthBound(depth(targetType) + 1)).withAspect(Sized(termSize, params.optimizations))
 
       def init(): Unit = {
         updateCTree()
