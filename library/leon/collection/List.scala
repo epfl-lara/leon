@@ -573,6 +573,13 @@ object List {
     else Cons[T](x, fill[T](n-1)(x))
   } ensuring(res => (res.content == (if (n <= BigInt(0)) Set.empty[T] else Set(x))) &&
                     res.size == (if (n <= BigInt(0)) BigInt(0) else n))
+           
+  /* Range from start (inclusive) to until (exclusive) */
+  @library
+  def range(start: BigInt, until: BigInt): List[BigInt] = {
+    require(start <= until)
+    if(until <= start) Nil[BigInt]() else Cons(start, range(start + 1, until))
+  } ensuring{(res: List[BigInt]) => res.size == until - start }
   
   @library
   def mkString[A](l: List[A], mid: String, f : A => String) = {
