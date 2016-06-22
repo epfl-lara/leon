@@ -406,7 +406,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     case Times(l,r) =>
       (e(l), e(r)) match {
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
-          if (i1.toString.length > 40 || i2.toString.length > 40) throw RuntimeError("Too large BigInt")
           InfiniteIntegerLiteral(i1 * i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
