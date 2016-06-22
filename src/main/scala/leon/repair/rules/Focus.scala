@@ -4,6 +4,7 @@ package leon
 package repair
 package rules
 
+import purescala.Definitions.Program
 import purescala.Path
 import purescala.Expressions._
 import purescala.Common._
@@ -19,6 +20,25 @@ import Witnesses._
 import graph.AndNode
 
 case object Focus extends PreprocessingRule("Focus") {
+
+  // This evaluator does two things:
+  // 1) Treats nd like a non-deterministic value
+  // 2) Unless it is wrapped in a Not, in which case it is treated normally.
+  //    This is because when we call it to evaluate the condition we want the first call to be negated
+  //    deterministically, because the test is minimized and nd will always fail at top-level
+  private class RepairNDEvaluator(ctx: LeonContext, prog: Program, nd: Expr) extends StreamEvaluator(ctx, prog) {
+    override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Stream[Expr] = expr match {
+      case Not(c) if c eq nd =>
+        // This is a hack: We know the only way nd is wrapped within a Not is if it is NOT within
+        // a recursive call. So we need to treat it deterministically at this point...
+        super.e(c) collect { case BooleanLiteral(b) => BooleanLiteral(!b) }
+      case c if c eq nd =>
+        valuesOf(c.getType)
+      case other =>
+        super.e(other)
+    }
+  }
+
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     hctx.parentNode match {
@@ -86,15 +106,14 @@ case object Focus extends PreprocessingRule("Focus") {
 
     def ws(g: Expr) = andJoin(Guide(g) +: wss)
 
-    def testCondition(guide: IfExpr) = {
-      val IfExpr(cond, thenn, elze) = guide
-      val spec = letTuple(p.xs, IfExpr(Not(cond), thenn, elze), p.phi)
-      forAllTests(spec, Map(), new AngelicEvaluator(new RepairNDEvaluator(hctx, program, cond)))
-    }
-
     guides.flatMap {
       case g @ IfExpr(c, thn, els) =>
-        testCondition(g) match {
+        val spec = letTuple(p.xs, IfExpr(Not(c), thn, els), p.phi)
+        // Try to focus on condition:
+        //   Does there exists path for non-deterministic 'c' which satisfies phi?
+        //   (Top-level is deterministically negated, because we know test is minimized)
+        val condTesting = forAllTests(spec, Map(), new AngelicEvaluator(new RepairNDEvaluator(hctx, program, c)))
+        condTesting match {
           case Some(true) =>
             val cx = FreshIdentifier("cond", BooleanType)
             // Focus on condition
@@ -160,7 +179,7 @@ case object Focus extends PreprocessingRule("Focus") {
             }).toMap
 
             if (substAs.nonEmpty) {
-              val subst = replaceFromIDs(substAs, (_:Expr))
+              val subst = replaceFromIDs(substAs, _: Expr)
               // FIXME intermediate binders??
               val newAs = (p.as diff substAs.keys.toSeq) ++ vars
               val newPc = (p.pc merge prevPCSoFar) map subst
