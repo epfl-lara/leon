@@ -69,7 +69,7 @@ object ExpressionLifter {
           expr
         case lmb @ Lambda(args, body) => // seen a lambda
           body match {
-            case FunctionInvocation(_, fargs) if fargs.forall(_.isInstanceOf[Variable]) =>
+            case FunctionInvocation(tfd, fargs) if fargs.forall(_.isInstanceOf[Terminal]) =>
               lmb.getType match { case FunctionType(argts, rett) =>
                   (rett +: argts).foreach {
                     case t: ClassType if t.parent.isDefined =>
@@ -77,7 +77,14 @@ object ExpressionLifter {
                     case _ =>
                   }
               }
-              lmb
+              // here, we lift terminals in arguments outside.
+              val (nvars, lcons) = fargs.foldRight((Seq[Variable](), (e: Expr) => e)) {
+                case (v: Variable, (nids, lcons)) => (v +: nids, lcons)
+                case (t, (nids, lcons)) =>
+                  val id = FreshIdentifier("a", t.getType, true)
+                  (id.toVariable +: nids,  e => Let(id, t, lcons(e)))
+              }
+              lcons(Lambda(args, FunctionInvocation(tfd, nvars)))
             case _ =>
               val argvars = args.map(_.id)
               val capturedvars = (variablesOf(body) -- argvars).toList

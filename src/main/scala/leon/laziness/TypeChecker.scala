@@ -25,7 +25,7 @@ object TypeChecker {
      * Note this method has side-effects
      */
     def makeIdOfType(oldId: Identifier, tpe: TypeTree): Identifier = {
-      if (oldId.getType != tpe) {
+      if (tpe.isInstanceOf[ClassType] || oldId.getType != tpe) { // note: class fields are mutated so they need to referesh to avoid unintended side-effects.
         val freshid = FreshIdentifier(oldId.name, tpe, true)
         idmap += (oldId -> freshid)
         gamma += (oldId -> tpe)
@@ -74,6 +74,7 @@ object TypeChecker {
                       throw new IllegalStateException(s"Cannot find subtype of $expType with name: ${ict.classDef.id.toString}")
                     val cct = ntype.get.asInstanceOf[CaseClassType]
                     val nbopt = bopt.map(makeIdOfType(_, cct))
+                    //println(s"Type of the identifier $nbopt : "+nbopt.map(_.getType)+" FieldTypes: "+nbopt.map {_.getType.asInstanceOf[CaseClassType].fieldsTypes})
                     val npats = (subpats zip cct.fieldsTypes).map {
                       case (p, t) =>
                         //println(s"Subpat: $p expected type: $t")
@@ -194,7 +195,7 @@ object TypeChecker {
       newType match {
         case AbstractClassType(absClass, tps) if absClass.knownCCDescendants.contains(oldType.classDef) =>
           //here oldType.classDef <: absClass
-          Some(CaseClassType(oldType.classDef.asInstanceOf[CaseClassDef], tps))
+          Some(CaseClassType(oldType.classDef.asInstanceOf[CaseClassDef], tps)) // note: class fields are mutated so they need to referesh to avoid unintended side-effects.
         case cct: CaseClassType =>
           Some(cct)
         case _ =>
