@@ -195,7 +195,12 @@ class AliasAnalysis {
 
       //we consider that any other operation not handled above essentially wrap the
       //expression into a new fresh value, so will not have any alias
-      case Operator(_, _) => Set()
+      //we still have to run rec to the sub-expressions, to properly update the
+      //local aliasing with assignments.
+      case Operator(es, _) => {
+        es.foreach(rec)
+        Set()
+      }
     }
 
     rec(expr)

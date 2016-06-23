@@ -111,4 +111,9 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.expressionAliasing(Block(Seq(Assignment(y.id, x)), x)) === Set(x.id, y.id))
   }
 
+  test("Assignment burried in expressions should still be taken into account for aliasing") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(Let(x.id, Plus(bi(10), Block(Seq(Assignment(y.id, z)), bi(12))), y)) === Set(y.id, z.id))
+  }
+
 }
