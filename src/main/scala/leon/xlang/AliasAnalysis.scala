@@ -179,7 +179,19 @@ class AliasAnalysis {
         fiAliases
       }
 
-      //TODO: var assignments, Block, Case class constructors, arrays constructor
+      //this case only makes sense to update the localAliases map
+      case Assignment(id, v) => {
+        val vAliases = rec(v)
+        vAliases.foreach(alias => localAliases.addAlias(id, alias))
+        Set()
+      }
+      case Block(es, e) => {
+        //this takes advantage of mutability of the local aliasing for assignments
+        es.foreach(rec)
+        rec(e)
+      }
+
+      //TODO: Case class constructors, arrays constructor
 
       //we consider that any other operation not handled above essentially wrap the
       //expression into a new fresh value, so will not have any alias

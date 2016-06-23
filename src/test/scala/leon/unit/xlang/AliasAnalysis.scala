@@ -70,6 +70,12 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.expressionAliasing(Let(classAInstance2Id, AsInstanceOf(classAInstance1, classA.typed), AsInstanceOf(classAInstance2, classA.typed))) === Set(classAInstance1Id, classAInstance2Id))
   }
 
+  test("IfExpr can alias with both branches") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(IfExpr(BooleanLiteral(true), x, y)) === Set(x.id, y.id))
+    assert(aliasAnalysis.expressionAliasing(IfExpr(BooleanLiteral(true), x, bi(13))) === Set(x.id))
+  }
+
   test("Pattern matching introduce aliases") {
     val aliasAnalysis = new AliasAnalysis
     val m1 = MatchExpr(x, Seq(MatchCase(WildcardPattern(Some(y.id)), None, y)))
@@ -90,6 +96,19 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
       MatchCase(CaseClassPattern(Some(classAInstance3Id), classA.typed, Seq(WildcardPattern(Some(y.id)))), None, y)
     ))
     assert(aliasAnalysis.expressionAliasing(m6) === Set(x.id, y.id, classAInstance1Id, classAInstance2Id, classAInstance3Id))
+  }
+
+  test("Block can return alias in last expressions") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(Block(Seq(), x)) === Set(x.id))
+  }
+  test("Only last expression of a block is an alias") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(Block(Seq(y), x)) === Set(x.id))
+  }
+  test("Assignments in blocks can modify aliasing in the end") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(Block(Seq(Assignment(y.id, x)), x)) === Set(x.id, y.id))
   }
 
 }
