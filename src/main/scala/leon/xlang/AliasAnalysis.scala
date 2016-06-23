@@ -108,7 +108,15 @@ class AliasAnalysis {
       aliases(alias) = aliases.getOrElse(alias, Set(alias)) + id
     }
 
+    def addAliases(aliases: Set[Identifier]): Unit = {
+      for(a1 <- aliases)
+        for(a2 <- aliases)
+          addAlias(a1, a2)
+    }
+
     def apply(id: Identifier): Set[Identifier] = aliases.getOrElse(id, Set(id))
+
+    override def toString: String = aliases.toString
 
     //TODO: need a notion of alias in only one direction, for when an id points to a field of an object.
   }
@@ -150,8 +158,9 @@ class AliasAnalysis {
       }
       case MatchExpr(e, cses) => {
         val eas = rec(e)
-        val newIds = cses.flatMap(mc => mc.pattern.binders)
-        eas.foreach(ea => newIds.foreach(nid => localAliases.addAlias(ea, nid)))
+        val subBinders = cses.flatMap(mc => mc.pattern.binders).toSet
+        localAliases.addAliases(subBinders) //all binders are aliases to each other
+        eas.foreach(ea => subBinders.foreach(nid => localAliases.addAlias(ea, nid)))
         cses.toSet.flatMap((cse: MatchCase) => rec(cse.rhs))
       }
       case IfExpr(c, t, e) => {
@@ -161,7 +170,16 @@ class AliasAnalysis {
       case AsInstanceOf(e, _) => rec(e)
 
 
-      case FunctionInvocation(tfd, args) => ???
+      case FunctionInvocation(tfd, args) => {
+        val fdAliases: Set[Identifier] = currentAliases.getOrElse(tfd.fd, Set())
+        val fiAliases: Set[Identifier] = fdAliases.flatMap(fdAlias => {
+          val aliasedArg = args(tfd.fd.params.indexWhere(_.id == fdAlias))
+          rec(aliasedArg)
+        })
+        fiAliases
+      }
+
+      //TODO: var assignments, Block, Case class constructors, arrays constructor
 
       //we consider that any other operation not handled above essentially wrap the
       //expression into a new fresh value, so will not have any alias
