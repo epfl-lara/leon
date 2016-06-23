@@ -143,7 +143,6 @@ class AliasAnalysis {
   ): Set[Identifier] = {
   
     def rec(e: Expr): Set[Identifier] = e match {
-
       //if localAliases contains an id, it automatically maps it to itself at least
       case Variable(v) => localAliases(v)
       case Let(id, e, b) => {
@@ -164,12 +163,10 @@ class AliasAnalysis {
         cses.toSet.flatMap((cse: MatchCase) => rec(cse.rhs))
       }
       case IfExpr(c, t, e) => {
+        rec(c)
         rec(t) ++ rec(e)
       }
-
       case AsInstanceOf(e, _) => rec(e)
-
-
       case FunctionInvocation(tfd, args) => {
         val fdAliases: Set[Identifier] = currentAliases.getOrElse(tfd.fd, Set())
         val fiAliases: Set[Identifier] = fdAliases.flatMap(fdAlias => {
@@ -178,7 +175,6 @@ class AliasAnalysis {
         })
         fiAliases
       }
-
       //this case only makes sense to update the localAliases map
       case Assignment(id, v) => {
         val vAliases = rec(v)
@@ -190,10 +186,16 @@ class AliasAnalysis {
         es.foreach(rec)
         rec(e)
       }
+      case CaseClass(_, args) => {
+        args.toSet.flatMap((arg: Expr) => rec(arg))
+      }
+      case FiniteArray(elems, default, length) => {
+        rec(length)
+        val es: Seq[Expr] = elems.values.toSeq ++ default
+        es.flatMap(rec).toSet
+      }
 
-      //TODO: Case class constructors, arrays constructor
-
-      //we consider that any other operation not handled above essentially wrap the
+      //we consider that any other operation not handled above essentially wraps the
       //expression into a new fresh value, so will not have any alias
       //we still have to run rec to the sub-expressions, to properly update the
       //local aliasing with assignments.
