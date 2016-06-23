@@ -73,24 +73,41 @@ class AliasAnalysis {
     *       cannot be assigned to top level vals, we can ignore this problem
     *       for now.
     */
-  def functionAliasing(fd: FunDef): Set[Identifier] = {
-    ???
-  }
+  def functionAliasing(fd: FunDef): Set[Identifier] = fdsAliases.getOrElseUpdate(fd, {
+    computeFunctionAliasing(fd)
+    fdsAliases(fd)
+  })
 
 
   private def computeFunctionAliasing(from: FunDef): Set[Identifier] = {
     val fds: Set[FunDef] = dependencies(from).collect{ case (fd: FunDef) => fd } + from
 
     val aliases: MutableMap[FunDef, Set[Identifier]] = MutableMap.empty
-    var missingAliases: MutableMap[FunDef, Set[FunctionInvocation]] = MutableMap.empty
+    //var missingAliases: MutableMap[FunDef, Set[FunctionInvocation]] = MutableMap.empty
 
-    def aliasesFullyComputed(fd: FunDef): Boolean = !missingAliases.isDefinedAt(fd)
+    //def aliasesFullyComputed(fd: FunDef): Boolean = !missingAliases.isDefinedAt(fd)
 
-    for(fd <- fds) {
-      ???
+    var aliasesSnapshot = aliases.toMap
+    do {
+      aliasesSnapshot = aliases.toMap
+      //could optimize by keeping a call graph dependency, and only re-run on dependencies
+      for(fd <- fds) {
+        fd.body match {
+          case None => {
+            //not sure what to do? maybe we just over-approximate by aliasing all parameters?
+            aliases(fd) = fd.params.map(_.id).toSet
+          }
+          case Some(body) => {
+            aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph)
+          }
+        }
+      }
+    } while(aliases != aliasesSnapshot)
+
+    aliases.foreach{
+      case (fd, aliases) => fdsAliases(fd) = aliases
     }
-
-    ???
+    fdsAliases(from)
   }
 
   def expressionAliasing(expr: Expr): Set[Identifier] = currentExpressionAliasing(expr, MutableMap.empty, new AliasingGraph)

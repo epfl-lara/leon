@@ -15,16 +15,6 @@ import leon.xlang.Expressions._
 import leon.xlang.ExprOps._
 
 class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
-
-  private val fd1 = new FunDef(FreshIdentifier("f1"), Seq(), Seq(ValDef(x.id)), IntegerType)
-  fd1.body = Some(x)
-
-  private val fd2 = new FunDef(FreshIdentifier("f2"), Seq(), Seq(ValDef(x.id)), IntegerType)
-  fd2.body = Some(FunctionInvocation(fd1.typed, List(bi(1))))
-
-  private val rec1 = new FunDef(FreshIdentifier("rec1"), Seq(), Seq(ValDef(x.id)), IntegerType)
-  rec1.body = Some(FunctionInvocation(rec1.typed, List(x)))
-
   private val classA = new CaseClassDef(FreshIdentifier("A"), Seq(), None, false)
   private val classAField = FreshIdentifier("x", IntegerType)
   classA.setFields(Seq(ValDef(classAField).setIsVar(true)))
@@ -116,4 +106,34 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.expressionAliasing(Let(x.id, Plus(bi(10), Block(Seq(Assignment(y.id, z)), bi(12))), y)) === Set(y.id, z.id))
   }
 
+
+  private val fd1 = new FunDef(FreshIdentifier("f1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+  fd1.body = Some(x)
+
+  private val fd2 = new FunDef(FreshIdentifier("f2"), Seq(), Seq(ValDef(y.id)), IntegerType)
+  fd2.body = Some(FunctionInvocation(fd1.typed, List(y)))
+
+  private val rec1 = new FunDef(FreshIdentifier("rec1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+  rec1.body = Some(FunctionInvocation(rec1.typed, List(x)))
+
+  test("simple function aliases its returned value") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
+  }
+  test("simple function that returns literal has no aliases") {
+    val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd.body = Some(bi(42))
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd) === Set())
+  }
+  test("function aliases with transitive call") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
+  }
+  test("function that calls an aliased function with a literal should not alias") {
+    val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd.body = Some(FunctionInvocation(fd.typed, List(bi(42))))
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd) === Set())
+  }
 }
