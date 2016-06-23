@@ -319,4 +319,14 @@ class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert(preMapWithContext(op4, true)(expr4, Map()) === Plus(bi(2), bi(4)))
   }
 
+  private val fd1 = new FunDef(FreshIdentifier("f1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+  fd1.body = Some(x)
+  private val fd2 = new FunDef(FreshIdentifier("f2"), Seq(), Seq(ValDef(y.id)), IntegerType)
+  fd2.body = Some(FunctionInvocation(fd1.typed, List(y)))
+
+  test("definitionsOf") { ctx =>
+    assert(definitionsOf(FunctionInvocation(fd1.typed, Seq(bi(10)))) === Set(fd1))
+    assert(definitionsOf(FunctionInvocation(fd2.typed, Seq(bi(10)))) === Set(fd2)) //no transitive defs
+  }
+
 }
