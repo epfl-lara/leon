@@ -47,12 +47,18 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * returns a field of the object, it will consider that it aliases the original object (the variable
   * that pointed to the root). We could try to refine it in the future by introduction the notion
   * of path in memory: variable + sequence of fields.
+  *
+  * The analysis here is independent of the transformation phases in Leon. Throughout the Leon pipeline,
+  * we make the assumption that very little aliasing is actually done. Typically, functions should
+  * never return a reference to a parameter, in order to avoid the creation of multiple reference in a
+  * local scope. This AliasAnalysis can be used to check such properties. It does not make any assumption,
+  * it computes conservatively aliases created by function invocation and in expressions.
   */
 class AliasAnalysis {
 
   private val dependencies = new DependencyFinder
   //incremental cache, once a value is set, it is final
-  private var fdsAliases: MutableMap[FunDef, Set[Identifier]] = MutableMap.empty
+  private val fdsAliases: MutableMap[FunDef, Set[Identifier]] = MutableMap.empty
 
   def aliases(id: Identifier, expr: Expr): Set[Identifier] = {
     ???
@@ -78,14 +84,35 @@ class AliasAnalysis {
     fdsAliases(fd)
   })
 
+  def expressionAliasing(expr: Expr): Set[Identifier] = {
+    val fds: Set[FunDef] = dependencies(expr).collect{ case (fd: FunDef) => fd }
+    fds.foreach(fd => functionAliasing(fd)) //make sure each fd is in the fdSAliases map
+    currentExpressionAliasing(expr, fdsAliases, new AliasingGraph)
+  }
+
+
+  /** abstraction for function without body
+    *
+    * This is the abstraction used in the analysis for a function that does
+    * not have an implementation (HOF or external function). You can override
+    * to choose the abstraction that suits you the best.
+    * 
+    * The default abstraction is to conservatively assume a function invocation with
+    * unknown implementation can alias any of its parameters.
+    * In Leon, with the global assumption of non-aliasing, this is too conservative, and
+    * you can use the LeonAliasAnalysis class that override this behaviour with a less
+    * conservative approach that assumes no aliasing.
+    *
+    * This default choice is made as this enables a correct alias analysis, while the abstraction
+    * used by Leon relies on systematically checking and restricting aliasing everywhere.
+    */
+  def functionAbstraction(ft: FunctionType): Seq[Int] = ft.from.zipWithIndex.map(_._2)
+
 
   private def computeFunctionAliasing(from: FunDef): Set[Identifier] = {
     val fds: Set[FunDef] = dependencies(from).collect{ case (fd: FunDef) => fd } + from
 
-    val aliases: MutableMap[FunDef, Set[Identifier]] = MutableMap.empty
-    //var missingAliases: MutableMap[FunDef, Set[FunctionInvocation]] = MutableMap.empty
-
-    //def aliasesFullyComputed(fd: FunDef): Boolean = !missingAliases.isDefinedAt(fd)
+    val aliases: MutableMap[FunDef, Set[Identifier]] = fdsAliases.map(p => p)//essentially cloning
 
     var aliasesSnapshot = aliases.toMap
     do {
@@ -94,8 +121,9 @@ class AliasAnalysis {
       for(fd <- fds) {
         fd.body match {
           case None => {
-            //not sure what to do? maybe we just over-approximate by aliasing all parameters?
-            aliases(fd) = fd.params.map(_.id).toSet
+            val ft: FunctionType = fd.typed.functionType
+            val ftAliases: Seq[Int] = functionAbstraction(ft)
+            aliases(fd) = fd.params.zipWithIndex.filter(p => ftAliases.contains(p._2)).map(_._1.id).toSet
           }
           case Some(body) => {
             aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph)
@@ -110,13 +138,11 @@ class AliasAnalysis {
     fdsAliases(from)
   }
 
-  def expressionAliasing(expr: Expr): Set[Identifier] = currentExpressionAliasing(expr, MutableMap.empty, new AliasingGraph)
-
 
   /*
    * Graph for local aliasing inside an expression/function body
    */
-  class AliasingGraph {
+  private class AliasingGraph {
     private val aliases: MutableMap[Identifier, Set[Identifier]] = MutableMap.empty
     
     /* add an alias, bidirectional */
@@ -192,6 +218,10 @@ class AliasAnalysis {
         })
         fiAliases
       }
+
+      //TODO
+      //case Application
+
       //this case only makes sense to update the localAliases map
       case Assignment(id, v) => {
         val vAliases = rec(v)
@@ -241,5 +271,19 @@ class AliasAnalysis {
   //  res
   //}
 
+}
 
+/** Leon specific alias analysis
+  *
+  * This override the AliasAnalysis behaviour to apply
+  * in the case of Leon. That means, with global assumption
+  * that functions have no aliasing effects. We still do proper
+  * alias analysis of function bodies, but function without known
+  * implementation are considered as alias-free, and function
+  * invocation are not followed (assuming no-aliasing as well).
+  */
+class LeonAliasAnalysis extends AliasAnalysis {
+  override def functionAbstraction(ft: FunctionType): Seq[Int] = Seq()
+
+  //TODO: find a way to override the behaviour to not go inter-modular (return empty set of dependencies for function invocations)
 }

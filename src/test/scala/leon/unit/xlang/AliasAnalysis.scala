@@ -136,4 +136,19 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val aliasAnalysis = new AliasAnalysis
     assert(aliasAnalysis.functionAliasing(fd) === Set())
   }
+  test("Alias analysis state is consistent") {
+    //basically, we check that mutliple calls are fine
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
+    assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
+    assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
+    assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
+    assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
+
+    val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd.body = Some(bi(42))
+    assert(aliasAnalysis.functionAliasing(fd) === Set())
+    assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
+    assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
+  }
 }
