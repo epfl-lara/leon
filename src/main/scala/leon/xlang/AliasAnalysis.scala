@@ -219,8 +219,13 @@ class AliasAnalysis {
         fiAliases
       }
 
-      //TODO
-      //case Application
+      case Application(lambda, args) => {
+        val ft: FunctionType = lambda.getType.asInstanceOf[FunctionType]
+        val ftAliases: Seq[Int] = functionAbstraction(ft)
+        val aliasedArgs: Set[Expr] = args.zipWithIndex.filter(p => ftAliases.contains(p._2)).map(_._1).toSet
+        rec(lambda)
+        aliasedArgs.flatMap(rec)
+      }
 
       //this case only makes sense to update the localAliases map
       case Assignment(id, v) => {

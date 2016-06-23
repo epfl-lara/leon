@@ -10,7 +10,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.TypeOps.isSubtypeOf
 import leon.purescala.Definitions._
-import leon.xlang.AliasAnalysis
+import leon.xlang.{AliasAnalysis, LeonAliasAnalysis}
 import leon.xlang.Expressions._
 import leon.xlang.ExprOps._
 
@@ -151,4 +151,19 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
     assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
   }
+
+
+  val hof = FreshIdentifier("f", FunctionType(Seq(IntegerType), IntegerType)).toVariable
+  val fd3 = new FunDef(FreshIdentifier("f3"), Seq(), Seq(ValDef(x.id), ValDef(hof.id)), IntegerType)
+  fd3.body = Some(Application(hof, Seq(x)))
+
+  test("higher order function could alias any parameters") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd3) === Set(x.id))
+  }
+  test("higher order function does not alias with leon alias analysis") {
+    val aliasAnalysis = new LeonAliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd3) === Set())
+  }
+
 }
