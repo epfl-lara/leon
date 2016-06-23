@@ -199,20 +199,22 @@ class ContextGrammar[SymbolTag, TerminalData] {
     def markovize_horizontal_filtered(pred: NonTerminal => Boolean, recursive: Boolean): Grammar = {
       var toDuplicate = Map[NonTerminal, Set[NonTerminal]]()
       var originals = Map[NonTerminal, NonTerminal]()
-      def getOriginal(nt: NonTerminal): NonTerminal = originals.get(nt).map(getOriginal).getOrElse(nt)
+      def getOriginal(nt: NonTerminal): NonTerminal = {
+        originals.get(nt).map(nt2 => if(nt2 != nt) getOriginal(nt2) else nt2).getOrElse(nt)
+      }
       val c = new MarkovizationContext(pred) {
         def process_sequence(ls: Seq[Symbol]): List[Symbol] = {
           val (_, res) = ((ListBuffer[Symbol](), ListBuffer[Symbol]()) /: ls) {
             case ((lbold, lbnew), nt: NonTerminal) if pred(nt) =>
               val context_version = nt.copy(hcontext = lbold.toList)
               toDuplicate += nt -> (toDuplicate.getOrElse(nt, Set.empty[NonTerminal]) + context_version)
-              originals += context_version -> nt
-              for(descendant <- getDescendants(nt)) {
+              if(context_version != nt) originals += context_version -> nt
+              for(descendant <- getDescendants(nt) if descendant != nt) {
                 val descendant_context_version = descendant.copy(hcontext = lbold.toList)
                 toDuplicate += descendant -> (toDuplicate.getOrElse(descendant, Set.empty[NonTerminal]) + descendant_context_version)
                 originals += descendant_context_version -> descendant
               }
-              for(ascendant <- getAncestors(nt)) {
+              for(ascendant <- getAncestors(nt) if ascendant != nt) {
                 val acendant_context_version = ascendant.copy(hcontext = lbold.toList)
                 toDuplicate += ascendant -> (toDuplicate.getOrElse(ascendant, Set.empty[NonTerminal]) + acendant_context_version)
                 originals += acendant_context_version -> ascendant
@@ -270,7 +272,7 @@ class ContextGrammar[SymbolTag, TerminalData] {
     /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
       * Is idempotent. */
     def markovize_horizontal(): Grammar = {
-      markovize_horizontal_filtered(_ => true, true)
+      markovize_horizontal_filtered(_ => true, false)
     }
     
     /** Same as vertical markovization, but we add in the vertical context only the nodes coming from a "different abstract hierarchy". Top-level nodes count as a different hierarchy.

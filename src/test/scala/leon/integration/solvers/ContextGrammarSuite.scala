@@ -120,8 +120,8 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               AB -> Expansion(List(List(x)))
               ))
 
-    grammar1.markovize_horizontal_filtered(_.tag == "B") should equalGrammar (grammar2)
-    grammar2.markovize_horizontal_filtered(_.tag == "B") should equalGrammar (grammar2)
+    grammar1.markovize_horizontal_filtered(_.tag == "B", false) should equalGrammar (grammar2)
+    grammar2.markovize_horizontal_filtered(_.tag == "B", false) should equalGrammar (grammar2)
   }
   
   test("Vertical Markovization simple") {
