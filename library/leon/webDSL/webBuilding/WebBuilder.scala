@@ -164,9 +164,9 @@ object ^ {
   val whiteSpace = CssAcceptor[String]("whiteSpace")
   val overflow = CssAcceptor[String]("overflow")
   
-  def apply(name: String)  = Acceptor[String]("name")
+  def apply(name: String)  = Acceptor[String](name)
   
-  def css(name: String) = CssAcceptor[String]("name")
+  def css(name: String) = CssAcceptor[String](name)
 }
 /*
 object svg {
