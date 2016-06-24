@@ -126,7 +126,7 @@ class AliasAnalysis {
             aliases(fd) = fd.params.zipWithIndex.filter(p => ftAliases.contains(p._2)).map(_._1.id).toSet
           }
           case Some(body) => {
-            aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph)
+            aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph).filter(fd.params.map(_.id).contains _)
           }
         }
       }

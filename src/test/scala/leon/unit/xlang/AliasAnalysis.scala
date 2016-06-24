@@ -151,6 +151,12 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
     assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
   }
+  test("function with internal aliases still return aliasing to its parameter") {
+    val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd.body = Some(Let(y.id, x, y))
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(fd) === Set(x.id))
+  }
 
 
   val hof = FreshIdentifier("f", FunctionType(Seq(IntegerType), IntegerType)).toVariable
