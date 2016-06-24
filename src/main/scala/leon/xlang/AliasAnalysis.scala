@@ -68,16 +68,15 @@ class AliasAnalysis {
     *
     * This analyzes the body of the function and determines the set of
     * identifiers that the value taken by the function can alias to.
-    * The set of ids is a subset of the function parameters, as we assume
-    * method lifting has already been performed.
+    * The set of ids is a subset of the function parameters + any global
+    * (or in enclosing scope, for nested defs) vals.
+    *
+    * We assume method lifting has already been performed, so any field access
+    * is done via the root object, and the root object is part of the parameters.
     * TODO: maybe we can handle method invoc as well?
     *
     * This needs to transitively checks function invocations as well, and
     * perform some fixpoint computation due to mutually recursive functions.
-    *
-    * TODO: we need to consider global vals as well, but since mutable type
-    *       cannot be assigned to top level vals, we can ignore this problem
-    *       for now.
     */
   def functionAliasing(fd: FunDef): Set[Identifier] = fdsAliases.getOrElseUpdate(fd, {
     computeFunctionAliasing(fd)
@@ -126,7 +125,10 @@ class AliasAnalysis {
             aliases(fd) = fd.params.zipWithIndex.filter(p => ftAliases.contains(p._2)).map(_._1.id).toSet
           }
           case Some(body) => {
-            aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph).filter(fd.params.map(_.id).contains _)
+            val freeVars = variablesOf(body)
+            val paramIds = fd.params.map(_.id)
+            val aliasesSuperset = freeVars ++ paramIds.toSet
+            aliases(fd) = currentExpressionAliasing(body, aliases, new AliasingGraph).filter(aliasesSuperset.contains _)
           }
         }
       }

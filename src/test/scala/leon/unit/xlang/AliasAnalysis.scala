@@ -151,11 +151,28 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(aliasAnalysis.functionAliasing(fd1) === Set(x.id))
     assert(aliasAnalysis.functionAliasing(fd2) === Set(y.id))
   }
-  test("function with internal aliases still return aliasing to its parameter") {
+  test("function with internal aliases only return aliasing to its parameter") {
     val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
     fd.body = Some(Let(y.id, x, y))
     val aliasAnalysis = new AliasAnalysis
     assert(aliasAnalysis.functionAliasing(fd) === Set(x.id))
+  }
+  test("function with alias to external id returns it") {
+    val aliasAnalysis = new AliasAnalysis
+
+    val f1 = new FunDef(FreshIdentifier("f1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    f1.body = Some(y)
+    assert(aliasAnalysis.functionAliasing(f1) === Set(y.id))
+
+    val f2 = new FunDef(FreshIdentifier("f2"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    f2.body = Some(Let(y.id, z, y))
+    assert(aliasAnalysis.functionAliasing(f2) === Set(z.id))
+  }
+  test("function with assignment to external id returns correctly the alias") {
+    val f1 = new FunDef(FreshIdentifier("f1"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    f1.body = Some(Block(Seq(Assignment(y.id, x)), x))
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.functionAliasing(f1) === Set(x.id, y.id))
   }
 
 

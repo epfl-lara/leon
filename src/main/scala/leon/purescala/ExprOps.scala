@@ -89,6 +89,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case LetDef(fds, _) => subvs -- fds.flatMap(_.params.map(_.id))
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i
+          case Assignment(i, _) => subvs + i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Passes(_, _, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Lambda(args, _) => subvs -- args.map(_.id)
