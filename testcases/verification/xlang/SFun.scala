@@ -1,5 +1,6 @@
 import leon.lang._
 import leon.annotation._
+import leon.collection._
 
 object SFuns {
 
@@ -53,5 +54,21 @@ object SFuns {
     val x4 = gen(2)
     assert(x4 == 5)
   }
+
+
+  def foreach[S](l: List[BigInt], sf: SFun[BigInt, Unit, S]): Unit = l match {
+    case x::xs => 
+      sf(x)
+      foreach(xs, sf)
+    case Nil() => ()
+  }
+
+  def testForeach(): Unit = {
+    val l = List[BigInt](1,2,3,4,5)
+    val closure = SFun(State[BigInt](0), (n: BigInt, s: State[BigInt]) => { s.x += n })
+    foreach(l, closure)
+    assert(closure.state.x == 15)
+  }
+
 
 }
