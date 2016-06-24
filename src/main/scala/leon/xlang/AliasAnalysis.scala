@@ -244,6 +244,9 @@ class AliasAnalysis {
       case CaseClass(_, args) => {
         args.toSet.flatMap((arg: Expr) => rec(arg))
       }
+      case CaseClassSelector(_, obj, _) => {
+        rec(obj)
+      }
       case FiniteArray(elems, default, length) => {
         rec(length)
         val es: Seq[Expr] = elems.values.toSeq ++ default

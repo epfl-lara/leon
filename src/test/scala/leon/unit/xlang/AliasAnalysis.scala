@@ -17,13 +17,19 @@ import leon.xlang.ExprOps._
 class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
   private val classA = new CaseClassDef(FreshIdentifier("A"), Seq(), None, false)
   private val classAField = FreshIdentifier("x", IntegerType)
-  classA.setFields(Seq(ValDef(classAField).setIsVar(true)))
+  classA.setFields(Seq(ValDef(classAField)))
   private val classAInstance1Id = FreshIdentifier("a1", classA.typed)
   private val classAInstance1 = classAInstance1Id.toVariable
   private val classAInstance2Id = FreshIdentifier("a2", classA.typed)
   private val classAInstance2 = classAInstance2Id.toVariable
   private val classAInstance3Id = FreshIdentifier("a3", classA.typed)
   private val classAInstance3 = classAInstance3Id.toVariable
+
+  private val classB = new CaseClassDef(FreshIdentifier("B"), Seq(), None, false)
+  private val classBField = FreshIdentifier("a", classA.typed)
+  classB.setFields(Seq(ValDef(classBField)))
+  private val classBInstance1Id = FreshIdentifier("b1", classB.typed)
+  private val classBInstance1 = classBInstance1Id.toVariable
 
 
   test("expression with no variable has no alias") {
@@ -86,6 +92,12 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
       MatchCase(CaseClassPattern(Some(classAInstance3Id), classA.typed, Seq(WildcardPattern(Some(y.id)))), None, y)
     ))
     assert(aliasAnalysis.expressionAliasing(m6) === Set(x.id, y.id, classAInstance1Id, classAInstance2Id, classAInstance3Id))
+  }
+
+  test("expression to field of class aliases to root class") {
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(CaseClassSelector(classB.typed, classBInstance1, classBField)) === Set(classBInstance1Id))
+    assert(aliasAnalysis.expressionAliasing(Let(classAInstance1Id, CaseClassSelector(classB.typed, classBInstance1, classBField), classAInstance1)) === Set(classAInstance1Id, classBInstance1Id))
   }
 
   test("Block can return alias in last expressions") {
@@ -196,5 +208,4 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val aliasAnalysis = new LeonAliasAnalysis
     assert(aliasAnalysis.functionAliasing(fd3) === Set())
   }
-
 }
