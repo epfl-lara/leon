@@ -214,11 +214,12 @@ class AliasAnalysis {
       case AsInstanceOf(e, _) => rec(e)
       case FunctionInvocation(tfd, args) => {
         val fdAliases: Set[Identifier] = currentAliases.getOrElse(tfd.fd, Set())
-        val fiAliases: Set[Identifier] = fdAliases.flatMap(fdAlias => {
+        val (paramAliases, externalAliases) = fdAliases.partition(alias => tfd.fd.params.exists(_.id == alias))
+        val fiAliases: Set[Identifier] = paramAliases.flatMap(fdAlias => {
           val aliasedArg = args(tfd.fd.params.indexWhere(_.id == fdAlias))
           rec(aliasedArg)
         })
-        fiAliases
+        fiAliases ++ externalAliases
       }
 
       case Application(lambda, args) => {

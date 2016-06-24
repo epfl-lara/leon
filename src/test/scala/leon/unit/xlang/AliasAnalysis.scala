@@ -176,6 +176,14 @@ class AliasAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
   }
 
 
+  test("invocation of a function with global aliasing should consider both argument and global value in aliasing") {
+    val fd = new FunDef(FreshIdentifier("fd"), Seq(), Seq(ValDef(x.id)), IntegerType)
+    fd.body = Some(Block(Seq(Assignment(y.id, x)), x)) //returned value aliases to param x and global y
+    val aliasAnalysis = new AliasAnalysis
+    assert(aliasAnalysis.expressionAliasing(FunctionInvocation(fd.typed, Seq(z))) === Set(z.id, y.id))
+  }
+
+
   val hof = FreshIdentifier("f", FunctionType(Seq(IntegerType), IntegerType)).toVariable
   val fd3 = new FunDef(FreshIdentifier("f3"), Seq(), Seq(ValDef(x.id), ValDef(hof.id)), IntegerType)
   fd3.body = Some(Application(hof, Seq(x)))
