@@ -203,24 +203,31 @@ class QuestionBuilder[T <: Expr](
     } else None
   }
   
-  /** Returns a list of input/output questions to ask to the user. */
-  def result(): List[Question[T]] = {
-    if(solutions.isEmpty) return Nil
-
+  def getExpressionsToTestFirst(): Option[Stream[Seq[(Identifier, Expr)]]] = expressionsToTestFirst map { inputs =>
+    val inputs_generics = inputs.map(y => y.map(x => makeGenericValuesUnique(x)))
+    inputs_generics.map(in => input zip in)
+  }
+  
+  def getAllPossibleInputs(expressionsToTake: Int): Stream[Seq[(Identifier, Expr)]]= {
     val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
     val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake)
     .map(inputs =>
       inputs.map(id_expr =>
-        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toList
+        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toStream
+    enumerated_inputs
+  }
+  
+  /** Returns a list of input/output questions to ask to the user. */
+  def result(): List[Question[T]] = {
+    if(solutions.isEmpty) return Nil
 
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
     val questions = ListBuffer[Question[T]]()
-    expressionsToTestFirst match  {
-      case Some(inputs) =>
-        val inputs_generics = inputs.map(y => y.map(x => makeGenericValuesUnique(x)))
+    getExpressionsToTestFirst() match  {
+      case Some(inputs_generics) =>
         (for {
-          possibleInput            <- inputs_generics.map(in => input zip in)
+          possibleInput            <- inputs_generics
           if questions.isEmpty
           currentOutputNonFiltered <- run(solution, possibleInput)
           if questions.isEmpty
@@ -232,7 +239,10 @@ class QuestionBuilder[T <: Expr](
         }).take(1)
       case None =>
     }
+    
     if(questions.isEmpty) {
+      val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
+
       for {
         possibleInput            <- enumerated_inputs
         currentOutputNonFiltered <- run(solution, possibleInput)
