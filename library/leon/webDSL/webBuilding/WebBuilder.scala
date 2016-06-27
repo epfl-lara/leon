@@ -105,7 +105,7 @@ object ^ {
   val forid = Acceptor[String]("for")
   val cellpadding  = Acceptor[String]("cellpadding")
   val cellspacing  = Acceptor[String]("cellspacing")
-  val colspan = Acceptor[String]("colspan")
+  val colspan = Acceptor[String]("colSpan")
   val href = Acceptor[String]("href")
   val tabindex = Acceptor[String]("tabindex")
   val title = Acceptor[String]("title")

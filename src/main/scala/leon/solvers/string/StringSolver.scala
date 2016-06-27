@@ -404,8 +404,7 @@ object StringSolver {
   
   /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
   val simplifyProblem: ProblemSimplicationPhase = {
-    loopUntilConvergence(DistinctEquation andThen
-    MergeConstants andThen
+    loopUntilConvergence(MergeConstants andThen
     SimplifyConstants andThen
     PropagateAssignments)
   }
@@ -417,7 +416,13 @@ object StringSolver {
   
   /** Composition of simplifyProblem and noLeftRightConstants */
   val forwardStrategy =
-    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants andThen PropagateEquations)
+    loopUntilConvergence(
+        simplifyProblem andThen
+        noLeftRightConstants andThen
+        PropagateMiddleConstants andThen
+        DistinctEquation andThen
+        PropagateEquations
+    )
   
   
   /** Solves the equation   x1x2x3...xn = CONSTANT
