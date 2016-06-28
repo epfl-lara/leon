@@ -33,4 +33,8 @@ class GrowableIterable[T](init: Seq[T], growth: Iterator[T]) extends Iterable[T]
   def sortBufferBy[B](f: T => B)(implicit ord: math.Ordering[B]) = {
     buffer = buffer.sortBy(f)
   }
+
+  def map[B](f: T => B): GrowableIterable[B] = {
+    new GrowableIterable(buffer.map(f), growth.map(f))
+  }
 }

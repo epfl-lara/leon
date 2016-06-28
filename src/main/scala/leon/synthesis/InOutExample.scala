@@ -18,7 +18,17 @@ sealed abstract class Example extends Printable {
       case InOutExample(ins, outs) => esToStr(ins)+" ~> "+esToStr(outs)
     }
   }
+
+  def map(f: Expr => Expr): Example
 }
 
-case class InOutExample(ins: Seq[Expr], outs: Seq[Expr]) extends Example
-case class InExample(ins: Seq[Expr]) extends Example
+case class InOutExample(ins: Seq[Expr], outs: Seq[Expr]) extends Example {
+  override def map(f: Expr => Expr) : InOutExample = {
+    InOutExample(ins.map(f), outs.map(f))
+  }
+}
+case class InExample(ins: Seq[Expr]) extends Example {
+  override def map(f: Expr => Expr) : InExample = {
+    InExample(ins.map(f))
+  }
+}
