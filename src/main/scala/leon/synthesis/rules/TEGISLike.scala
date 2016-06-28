@@ -85,7 +85,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
 
           val streams = for(size <- (params.minSize to params.maxSize).toIterator) yield {
             println("Size: "+size)
-            val label = params.rootLabel(targetType).withAspect(Sized(size))
+            val label = params.rootLabel(targetType).withAspect(Sized(size, true))
 
             val allExprs = enum.iterator(label)
 
