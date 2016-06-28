@@ -4,6 +4,7 @@ import leon.lang._
 import leon.annotation._
 
 package object webDescription {
+  @library
   val Style = StyleSheet(Nil())
   
   @library

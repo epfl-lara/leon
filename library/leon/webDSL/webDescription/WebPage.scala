@@ -10,6 +10,7 @@ case class StyleRule(target: String, rules: List[WebStyle])
 
 @library
 case class StyleSheet(elems: List[StyleRule]) {
+  @library
   def apply(l: List[StyleRule]): StyleSheet = {
     StyleSheet(elems ++ l)
   }
@@ -23,7 +24,8 @@ case class StyleSheet(elems: List[StyleRule]) {
   }
 }
 
-object WebPage { 
+object WebPage {
+  @library
   def apply(main: WebElement): WebPage = {
     WebPage(main, StyleSheet(Nil()))
   }
