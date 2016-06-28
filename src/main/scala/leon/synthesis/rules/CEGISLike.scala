@@ -12,6 +12,7 @@ import purescala.ExprOps._
 import purescala.TypeOps.depth
 import purescala.DefOps._
 import purescala.Constructors._
+import collection.mutable.ArrayBuffer
 
 import utils.MutableExpr
 import solvers._
@@ -339,6 +340,54 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       // Updates the program with the C tree after recalculating all relevant FunDef's
       private def setCExpr(): Expr = {
 
+        def computeCExpr2(): Expr = {
+          var visited = Set[Identifier]()
+          val lets = new ArrayBuffer[(Identifier, Expr)]()
+
+          def exprOf(alt: (Identifier, Seq[Expr] => Expr, Seq[Identifier])): Expr = {
+            val (_, builder, cs) = alt
+
+            builder(cs.map { c => c.toVariable })
+          }
+
+          def traverse(c: Identifier): Unit = {
+            if (!visited(c)) {
+              visited += c
+
+              val alts = cTree(c)
+
+              for ((_, _, cs) <- alts; c <- cs) {
+                traverse(c)
+              }
+
+              val body = if (alts.nonEmpty) {
+                alts.init.foldLeft(exprOf(alts.last)) {
+                  case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
+                }
+              } else {
+                Error(c.getType, s"Empty production rule: $c")
+              }
+
+              lets += c -> body
+
+            }
+          }
+
+          traverse(rootC)
+
+          /*
+          for ((id, rhs) <- lets) {
+            println(s"$id - > $rhs")
+          }
+          */
+
+          val res = lets.foldRight(rootC.toVariable: Expr) {
+            case ((id, rhs), body) => Let(id, rhs, body)
+          }
+
+          outerToInner(simplifyLets(res))
+        }
+
         // Computes a Seq of functions corresponding to the choices made at each non-terminal of the grammar,
         // and an expression which calls the top-level one.
         def computeCExpr(): (Expr, Seq[FunDef]) = {
@@ -377,15 +426,21 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           (expr, cToFd.values.toSeq)
         }
 
-        val (cExpr, newFds) = computeCExpr()
 
-        programCTree = addFunDefs(innerProgram, newFds, outerToInner(hctx.functionContext))
+        val cExpr = computeCExpr2()
+        //val (cExpr, newFds) = computeCExpr()
+
+        //programCTree = addFunDefs(innerProgram, newFds, outerToInner(hctx.functionContext))
+        programCTree = innerProgram
+
         evaluator = new DefaultEvaluator(hctx, programCTree)
 
-        cExpr
+        //setSolution(cExpr)
         //println("-- "*30)
         //println(programCTree.asString)
         //println(".. "*30)
+
+        cExpr
       }
 
       // Tests a candidate solution against an example in the correct environment
