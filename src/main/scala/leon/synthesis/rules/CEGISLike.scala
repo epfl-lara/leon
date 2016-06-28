@@ -605,6 +605,10 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         updateCTree()
       }
 
+      def setTermSize(size: Int) = {
+        termSize = size
+      }
+
       /**
        * First phase of CEGIS: discover potential programs (that work on at least one input)
        */
@@ -808,10 +812,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           var n = 1
 
-          for (i <- 1 until sizeFrom) {
-            ndProgram.unfold()
-          }
-
+          ndProgram.setTermSize(sizeFrom-1);
 
           try {
             do {

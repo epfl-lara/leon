@@ -31,23 +31,15 @@ class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false)(implic
           solveWith(on.parent, sol)
 
         case Some(an: AndNode) =>
-          println("Solving AN:"+an.asString)
-
           val ssols = for (d <- an.descendants) yield {
             if (d == n) {
               sol
             } else {
-              println("Solving Desc: "+d.asString)
               getSolutionFor(d)
             }
           }
 
-          println("Calling onSuccess for "+an.ri.asString)
-          println(" - ssols:"+ssols.map(_.asString))
-          println(" result=>:"+an.ri.onSuccess(ssols))
-
           an.ri.onSuccess(ssols).flatMap { nsol =>
-            println("Solution for sub is: "+nsol.asString)
             solveWith(an.parent, nsol)
           }
       }

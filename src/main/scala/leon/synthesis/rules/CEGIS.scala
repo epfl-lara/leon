@@ -24,9 +24,13 @@ case object NaiveCEGIS extends CEGISLike("Naive CEGIS") {
   */
 case object CEGIS extends CEGISLike("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
-    val sizes = for (s <- 1 to sctx.settings.cegisMaxSize by 4) yield {
-      (s, s+3, 4*s)
+    val maxSize = sctx.settings.cegisMaxSize
+
+    val sizes0 = for (s <- 1 to maxSize by 3) yield {
+      (s, Math.min(s+2, maxSize), 4*s)
     }
+
+    val sizes = List((1, maxSize, 0));
 
 
     CegisParams(
