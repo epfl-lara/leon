@@ -32,15 +32,11 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
   type Signature = Vector[Expr]
 
   case class EqClass(sig: Signature, cand: Expr) {
-    def asString(target: Option[Signature] = None)(implicit ctx: LeonContext): String = {
+    def asString(implicit ctx: LeonContext): String = {
 
       val hash = Integer.toHexString(sig.hashCode)
 
-      val isMatch = Some(sig) == target
-
-      val okSign = if (isMatch) "OK" else "  "
-
-      f"${cand.asString}%-50s <- "+okSign+" "+debugSig(sig)
+      f"${cand.asString}%-50s <- "+debugSig(sig)
     }
   }
 
@@ -76,8 +72,6 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
             val examplesEnvs = examples.map { case InOutExample(is, os) => (p.as zip is).toMap }
             val targetSign   = examples.map { case InOutExample(_, os) => tupleWrap(os) }
 
-            //println("Looking for "+debugSig(targetSign))
-
             val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
 
             val targetType = tupleTypeWrap(p.xs.map(_.getType))
@@ -91,9 +85,13 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
               for ((tpe, cs) <- classes) {
                 println(s"===== ${tpe.asString} =====")
                 for (c <- cs.values) {
-                  println(s" - ${c.asString(Some(targetSign))}")
+                  println(s" - ${c.asString}")
                 }
               }
+            }
+
+            def findTargetSign(classes: Map[Signature, EqClass]): Option[EqClass] = {
+              classes.get(targetSign)
             }
 
             def expandAll(): Option[EqClass] = {
@@ -103,8 +101,11 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
 
               for (tpe <- classes.keys) {
                 expand(tpe)
-                if ((tpe == targetType) && (newClasses(tpe) contains targetSign)) {
-                  return Some(newClasses(tpe)(targetSign))
+                if (tpe == targetType) {
+                  findTargetSign(newClasses(tpe)) match {
+                    case Some(cl) => return Some(cl)
+                    case None =>
+                  }
                 }
               }
 

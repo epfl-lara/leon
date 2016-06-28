@@ -26,12 +26,11 @@ case object CEGIS extends CEGISLike("CEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     val maxSize = sctx.settings.cegisMaxSize
 
-    val sizes0 = for (s <- 1 to maxSize by 3) yield {
-      (s, Math.min(s+2, maxSize), 4*s)
+    val sizesNew = for (s <- 1 to maxSize by 3) yield {
+      (s, Math.min(s+2, maxSize), s+2)
     }
 
     val sizes = List((1, maxSize, 0));
-
 
     CegisParams(
       grammar = grammars.default(sctx, p),

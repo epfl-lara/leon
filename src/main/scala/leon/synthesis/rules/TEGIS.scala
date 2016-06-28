@@ -10,7 +10,7 @@ import leon.grammars.aspects._
 case object TEGIS extends TEGISLike("TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     TegisParams(
-      grammar = Grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p),
       rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
       minSize = 1,
       maxSize = 5
