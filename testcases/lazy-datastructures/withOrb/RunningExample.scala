@@ -10,9 +10,7 @@ import invariant._
 import collection._
 
 /**
- * TODO: try to treat two lambdas structurally equivalent if
- * the arguments to the functions are primitive operations or constants that
- * can be lifted outside without much problems.
+ * The running examples used in the paper
  */
 object RunningExample {
 
@@ -21,7 +19,6 @@ object RunningExample {
   case class False() extends Bool
 
   sealed abstract class Stream
-
   private case class SCons(x: (BigInt, Bool), tailFun: () => Stream) extends Stream {
     lazy val tail = tailFun()
   }
@@ -95,5 +92,4 @@ object RunningExample {
      case _ => true
    }
  }
-
 }
