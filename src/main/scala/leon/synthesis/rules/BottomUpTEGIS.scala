@@ -11,7 +11,7 @@ import leon.grammars.aspects._
 case object BottomUpTEGIS extends BottomUpTEGISLike("BU TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     TegisParams(
-      grammar = Grammars.default(sctx, p),
+      grammar = grammars.default(sctx, p),
       maxExpands = 4
     )
   }
