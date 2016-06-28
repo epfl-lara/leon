@@ -6,7 +6,7 @@ object SFuns {
 
   case class State[A](var x: A)
 
-  case class SFun[A, B, S](state: State[S], f: (A, State[S]) => B) {
+  case class SFun[A, S, B](state: State[S], f: (A, State[S]) => B) {
     def apply(x: A): B = f(x, state)
   }
 
@@ -31,7 +31,7 @@ object SFuns {
   }
 
 
-  def window2(init: (BigInt, BigInt)): SFun[BigInt, BigInt, (BigInt, BigInt)] = {
+  def window2(init: (BigInt, BigInt)): SFun[BigInt, (BigInt, BigInt), BigInt] = {
 
     //state is used to remember last 2 numbers seen, and return sum of last 3
     val closure = (n: BigInt, s: State[(BigInt, BigInt)]) => {
@@ -56,7 +56,7 @@ object SFuns {
   }
 
 
-  def foreach[S](l: List[BigInt], sf: SFun[BigInt, Unit, S]): Unit = l match {
+  def foreach[A, S](l: List[A], sf: SFun[A, S, Unit]): Unit = l match {
     case x::xs => 
       sf(x)
       foreach(xs, sf)
@@ -68,6 +68,19 @@ object SFuns {
     val closure = SFun(State[BigInt](0), (n: BigInt, s: State[BigInt]) => { s.x += n })
     foreach(l, closure)
     assert(closure.state.x == 15)
+  }
+
+
+  def makeCounter: SFun[Unit, BigInt, BigInt] = {
+    SFun(State(0), 
+         (_: Unit, s: State[BigInt]) => { s.x += 1; s.x })
+  }
+  def testCounter(): Unit = {
+    val counter = makeCounter
+    val x1 = counter(())
+    assert(x1 == 1)
+    val x2 = counter(())
+    assert(x2 == 2)
   }
 
 
