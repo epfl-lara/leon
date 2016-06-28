@@ -455,7 +455,7 @@ object ExprOps extends GenTreeOps[Expr] {
         }
         val calledGraph = ((for{
             fd <- fds
-            (callee, id) <- collectCalls(fd.fullBody)
+            (callee, id) <- collectCalls(fd.fullBody).toSeq
             if fds.contains(callee)
         } yield ((fd: Tree) -> callee)) ++ collectCalls(body).toSeq.map((body: Tree) -> _._1)).groupBy(_._2).mapValues(_.size)
 
