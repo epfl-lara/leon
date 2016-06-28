@@ -71,7 +71,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     }
 
     // Represents a non-deterministic program
-    object NonDeterministicProgram {
+    class NonDeterministicProgram {
 
       // Current synthesized term size
       private var termSize = 0
@@ -84,8 +84,26 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       def rootLabel = params.rootLabel(targetType).withAspect(TypeDepthBound(depth(targetType) + 1)).withAspect(Sized(termSize, params.optimizations))
 
+      var oldBody: Option[Expr] = None;
+
       def init(): Unit = {
+        val fd = hctx.functionContext;
+
+        oldBody = Some(fd.fullBody);
+
+        fd.fullBody = postMap {
+          case src if src eq hctx.source =>
+            Some(solutionAround.term)
+          case _ => None
+        }(fd.fullBody)
+
         updateCTree()
+      }
+
+      def terminate(): Unit = {
+        oldBody.foreach { b =>
+          hctx.functionContext.fullBody = b;
+        }
       }
 
       /**
@@ -283,59 +301,16 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       private val solutionBox = MutableExpr(NoTree(p.outType))
       private def setSolution(e: Expr) = solutionBox.underlying = e
 
-      // The program with the body of the current function replaced by the current partial solution
-      private val (outerToInnerTrans, innerProgram) = {
-
-        val outerSolution = {
-          new PartialSolution(hctx.search.strat, true)
-            .solutionAround(hctx.currentNode)(solutionBox)
-            .getOrElse(fatalError("Unable to get outer solution"))
-        }
-
-        val program0 = addFunDefs(hctx.program, outerSolution.defs, hctx.functionContext)
-
-        val t = funDefReplacer{
-          case fd if fd == hctx.functionContext =>
-            val nfd = fd.duplicate()
-
-            nfd.fullBody = postMap {
-              case src if src eq hctx.source =>
-                Some(outerSolution.term)
-
-              case _ => None
-            }(nfd.fullBody)
-
-            Some(nfd)
-
-          case fd =>
-            Some(fd.duplicate())
-        }
-        (t, transformProgram(t, program0))
+      private val solutionAround = {
+        new PartialSolution(hctx.search.strat, true)
+          .solutionAround(hctx.currentNode)(solutionBox)
+          .getOrElse(fatalError("Unable to get outer solution"))
       }
 
-      /**
-        * Since CEGIS works with a copy of the program, it needs to map outer
-        * function calls to inner function calls and vice-versa. 'inner' refers
-        * to the CEGIS-specific program, 'outer' refers to the actual program on
-        * which we do synthesis.
-        */
-      private def outerToInner(e: Expr) = outerToInnerTrans.transform(e)(Map.empty)
-      private def outerToInner(fd: FunDef) = outerToInnerTrans.transform(fd)
-      private def outerToInner(id: Identifier) = outerToInnerTrans.transform(id)
-
-
-      private val innerPc  = p.pc map outerToInner
-      private val innerPhi = outerToInner(p.phi)
-      // Depends on the current solution
-      private val innerSpec = outerToInner(
-        letTuple(p.xs, solutionBox, p.phi)
-      )
-
+      private val spec = letTuple(p.xs, solutionBox, p.phi)
 
       // The program with the c-tree functions
-      private var programCTree: Program = _
-
-      private var evaluator: DefaultEvaluator = _
+      private val evaluator: DefaultEvaluator = new DefaultEvaluator(hctx, hctx.program)
 
       // Updates the program with the C tree after recalculating all relevant FunDef's
       private def setCExpr(): Expr = {
@@ -385,11 +360,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             case ((id, rhs), body) => Let(id, rhs, body)
           }
 
-          outerToInner(simplifyLets(res))
+          simplifyLets(res)
         }
 
         // Computes a Seq of functions corresponding to the choices made at each non-terminal of the grammar,
         // and an expression which calls the top-level one.
+        /*
         def computeCExpr(): (Expr, Seq[FunDef]) = {
           var cToFd = Map[Identifier, FunDef]()
 
@@ -424,16 +400,16 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           val expr = cToFd(rootC).applied
 
           (expr, cToFd.values.toSeq)
-        }
+        }*/
 
 
         val cExpr = computeCExpr2()
         //val (cExpr, newFds) = computeCExpr()
 
         //programCTree = addFunDefs(innerProgram, newFds, outerToInner(hctx.functionContext))
-        programCTree = innerProgram
+        //programCTree = innerProgram
 
-        evaluator = new DefaultEvaluator(hctx, programCTree)
+        //evaluator = new DefaultEvaluator(hctx, programCTree)
 
         //setSolution(cExpr)
         //println("-- "*30)
@@ -479,40 +455,37 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           op1 == op2
         }
 
-        val outerSol = getExpr(bValues)
+        val solExpr = getExpr(bValues)
 
         val redundancyCheck = false
 
         // This program contains a simplifiable expression,
         // which means it is equivalent to a simpler one
         // Deactivated for now, since it does not seem to help
-        if (redundancyCheck && params.optimizations && exists(redundant)(outerSol)) {
+        if (redundancyCheck && params.optimizations && exists(redundant)(solExpr)) {
           excludeProgram(bs, true)
           return Some(false)
         }
 
-        val innerSol = outerToInner(outerSol)
-
         def withBindings(e: Expr) = p.pc.bindings.foldRight(e){
-          case ((id, v), bd) => let(outerToInner(id), outerToInner(v), bd)
+          //case ((id, v), bd) => let(outerToInner(id), outerToInner(v), bd)
+          case ((id, v), bd) => let(id, v, bd)
         }
 
-        setSolution(innerSol)
+        setSolution(solExpr)
 
         timers.testForProgram.start()
 
-        val innerEnv =  p.as.zip(ex.ins).map{ case (id, v) =>
-          (outerToInner(id), outerToInner(v))
-        }.toMap
+        val env = p.as.zip(ex.ins).toMap
 
         val res = ex match {
           case InExample(ins) =>
-            evaluator.eval(withBindings(innerSpec),innerEnv)
+            evaluator.eval(withBindings(spec), env)
 
           case InOutExample(ins, outs) =>
             evaluator.eval(
-              withBindings(equality(innerSol, tupleWrap(outs))),
-              innerEnv
+              withBindings(equality(spec, tupleWrap(outs))),
+              env
             )
         }
         timers.testForProgram.stop()
@@ -562,34 +535,36 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         for (bs <- bss.toSeq) {
           // We compute the corresponding expr and replace it in place of the C-tree
-          val outerSol = getExpr(bs)
-          val innerSol = outerToInner(outerSol)
-          setSolution(innerSol)
+          val solExpr = getExpr(bs)
+          //val innerSol = outerToInner(outerSol)
+          setSolution(solExpr)
 
-          val cnstr = innerPc and letTuple(p.xs map outerToInner, innerSol, Not(innerPhi))
+          //val cnstr = innerPc and letTuple(p.xs map outerToInner, innerSol, Not(innerPhi))
+          val cnstr = p.pc and letTuple(p.xs, solExpr, Not(p.phi))
 
           //println("Program:")
           //println(programCTree)
           //println("Constraint:")
           //println(cnstr)
 
-          val eval = new DefaultEvaluator(hctx, programCTree)
+          //val eval = new DefaultEvaluator(hctx, hctx.program)
+          val eval = evaluator
 
           if (cexs exists (cex => eval.eval(cnstr, p.as.zip(cex).toMap).result == Some(BooleanLiteral(true)))) {
-            debug(s"Rejected by CEX: $outerSol")
+            debug(s"Rejected by CEX: $solExpr")
             excludeProgram(bs, true)
           } else {
             //println("Solving for: "+cnstr.asString)
 
-            val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
+            val solverf = SolverFactory.getFromSettings(hctx, hctx.program).withTimeout(cexSolverTo)
             val solver = solverf.getNewSolver()
             try {
               debug("Sending candidate to solver...")
-              def currentSolution(trusted: Boolean) = Solution(BooleanLiteral(true), Set(), outerSol, isTrusted = trusted)
+              def currentSolution(trusted: Boolean) = Solution(BooleanLiteral(true), Set(), solExpr, isTrusted = trusted)
               solver.assertCnstr(cnstr)
               solver.check match {
                 case Some(true) =>
-                  debug(s"Proven invalid: $outerSol")
+                  debug(s"Proven invalid: $solExpr")
                   excludeProgram(bs, true)
                   val model = solver.getModel
                   //println("Found counter example: ")
@@ -669,7 +644,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
        */
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
         timers.tentative.start()
-        val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(exSolverTo)
+        val solverf = SolverFactory.getFromSettings(hctx, hctx.program).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
 
         //println("Program: ")
@@ -677,7 +652,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         //println(programCTree.asString)
 
         setSolution(cExpr)
-        val toFind = innerPc and innerSpec
+        val toFind = p.pc and spec
         //println(" --- Constraints ---")
         //println(" - "+toFind.asString)
         try {
@@ -745,13 +720,13 @@ abstract class CEGISLike(name: String) extends Rule(name) {
        */
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
         timers.cex.start()
-        val solverf = SolverFactory.getFromSettings(hctx, programCTree).withTimeout(cexSolverTo)
+        val solverf = SolverFactory.getFromSettings(hctx, hctx.program).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
 
         try {
           setSolution(cExpr)
           solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
-          solver.assertCnstr(innerPc and not(innerSpec))
+          solver.assertCnstr(p.pc and not(spec))
 
           //println("*"*80)
           //println(Not(cnstr))
@@ -788,9 +763,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       new RuleInstantiation(s"${this.name} ($sizeFrom->$sizeTo)", solBuilder) {
         def apply(hctx: SearchContext): RuleApplication = {
           var result: Option[RuleApplication] = None
-
-          val ndProgram = NonDeterministicProgram
-          ndProgram.init()
 
           implicit val ic = hctx
 
@@ -857,6 +829,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               }
             }
           }
+
+          val ndProgram = new NonDeterministicProgram
+          ndProgram.init()
 
           // We keep number of failures per test to pull the better ones to the front
           val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
@@ -928,14 +903,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                       case Some(false) =>
                         // Program fails the test
                         stop = true
-                    failedTestsStats(e) += 1
+                        failedTestsStats(e) += 1
                         debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
                         ndProgram.excludeProgram(bs, true)
                       case None =>
                         // Eval. error -> bad example
                         debug(s" Test $e crashed the evaluator, removing...")
                         badExamples ::= e
-                  }
+                    }
                   }
                   gi --= badExamples
                 }
@@ -1052,6 +1027,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               warning("CEGIS crashed: "+e.getMessage)
               e.printStackTrace()
               RuleFailed()
+          } finally {
+            ndProgram.terminate()
           }
         }
       }
