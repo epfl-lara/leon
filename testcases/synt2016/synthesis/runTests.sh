@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=60 --synt2016 --partial=off --cegis:naive $1"
+    cmd="./leon --debug=report --timeout=60 --synthesis --partial=off $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
