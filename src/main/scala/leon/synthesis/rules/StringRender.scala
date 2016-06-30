@@ -381,6 +381,11 @@ case object StringRender extends Rule("StringRender") {
         copy(grammar=grammar.markovize_abstract_vertical_filtered(selectedNt))
       }
       
+      /** Computes all possible variants of the grammar, from the simplest to the most complex.*/
+      def allMarkovizations(): Stream[GrammarBasedTemplateGenerator] = {
+        Stream.from(1).flatMap(i => grammar.markovize_all(i).map(g => copy(grammar=g)))
+      }
+      
       /** Mark all occurrences of a given type so that we can differentiate its usage depending from where it was taken from.*/
       def markovize_vertical_nonterminal() = {
         //println("markovize_vertical_nonterminal...")
@@ -438,9 +443,12 @@ case object StringRender extends Rule("StringRender") {
         toSet
       }
       
+      def buildAllFunDefTemplates(): Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])] = {
+        allMarkovizations().flatMap(_.buildFunDefTemplate(false))
+      }
+      
       /** Builds a set of fun defs out of the grammar */
-      // TODO: The set of fundefs might even be a stream; Interleave other possibilities like markovize certain types
-      def buildFunDefTemplate(markovizations: Boolean = true): (Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])]) = {
+      def buildFunDefTemplate(markovizations: Boolean = true): Stream[(WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])])] = {
         // Collects all non-terminals. One non-terminal => One function. May regroup pattern matching in a separate simplifying phase.
         val nts = grammar.nonTerminals
         // Fresh function name generator.
@@ -463,7 +471,8 @@ case object StringRender extends Rule("StringRender") {
             (m + ((nt: NonTerminal) -> createEmptyFunDef(genctx, vct, hct, tp)), genctx)
         }
         // Look for default ways to pretty-print non-trivial functions.
-        val (newProg, newFuns) = if(markovizations) {
+        val (newProg, newFuns) = //if(markovizations)
+          {
           val functionsToAdd = funDefs.values.filter(fd =>
             fd.paramIds.headOption.map(x =>
               x.getType match {
@@ -474,7 +483,7 @@ case object StringRender extends Rule("StringRender") {
             ).getOrElse(false)
           ).toSet
           (DefOps.addFunDefs(hctx.program, functionsToAdd, hctx.functionContext), functionsToAdd)
-        } else (hctx.program, Set[FunDef]())
+        } //else (hctx.program, Set[FunDef]())
         //println("In the following program: " + newProg)
         
         def rulesToBodies(e: Expansion, nt: NonTerminal, fd: FunDef): Stream[WithIds[Expr]] = {
@@ -570,9 +579,11 @@ case object StringRender extends Rule("StringRender") {
         
         startExprStream.map(i => (i, possible_functions)) #:::                 // 1) Expressions without markovizations
           (if(markovizations) {
-              Stream(markovize_horizontal_recursive_nonterminal(), markovize_horizontal_nonterminal()).flatMap(grammar => grammar.buildFunDefTemplateAndContinue( _.
-                markovize_abstract_vertical_nonterminal().buildFunDefTemplateAndContinue( _.
-                  markovize_vertical_nonterminal().buildFunDefTemplate(false))))
+              Stream(markovize_horizontal_recursive_nonterminal(), markovize_horizontal_nonterminal())
+              .flatMap(grammar => grammar.buildFunDefTemplateAndContinue(
+                  gtg => gtg.allMarkovizations().flatMap(m => m.buildFunDefTemplate(false))))
+                //markovize_abstract_vertical_nonterminal().buildFunDefTemplateAndContinue( _.
+                  //markovize_vertical_nonterminal().buildFunDefTemplate(false))))
           } else Stream.empty)
         // The Stream[WithIds[Expr]] is given thanks to the first formula with the start symbol.
         // The FunDef are computed by recombining vertical rules into one pattern matching, and each expression using the horizontal children.
@@ -747,7 +758,7 @@ case object StringRender extends Rule("StringRender") {
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         val originalInputs = inputVariables.map(Variable)
         ruleInstantiations += RuleInstantiation("String conversion") {
-          val synthesisResult = FunDefTemplateGenerator(originalInputs, functionVariables).buildFunDefTemplate()
+          val synthesisResult = FunDefTemplateGenerator(originalInputs, functionVariables).buildFunDefTemplate(true)
           
           findSolutions(examples, synthesisResult)
         }

@@ -217,41 +217,32 @@ class QuestionBuilder[T <: Expr](
     enumerated_inputs
   }
   
-  /** Returns a list of input/output questions to ask to the user. */
-  def result(): List[Question[T]] = {
-    if(solutions.isEmpty) return Nil
-
+  def inputsToQuestions(solution: Stream[Solution], inputs: Stream[Seq[(Identifier, Expr)]]): Stream[Question[T]] = {
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
-    val questions = ListBuffer[Question[T]]()
-    getExpressionsToTestFirst() match  {
-      case Some(inputs_generics) =>
-        (for {
-          possibleInput            <- inputs_generics
-          if questions.isEmpty
-          currentOutputNonFiltered <- run(solution, possibleInput)
-          if questions.isEmpty
-          currentOutput            <- filter(Seq(), currentOutputNonFiltered)
-          if questions.isEmpty
-          question <- computeQuestion(possibleInput, currentOutput, alternatives)
-        } yield {
-          questions += question
-        }).take(1)
-      case None =>
+    for {
+      possibleInput            <- inputs
+      currentOutputNonFiltered <- run(solution, possibleInput)
+      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+      question <- computeQuestion(possibleInput, currentOutput, alternatives)
+    } yield question
+  }
+  
+  /** Returns a list of input/output questions to ask to the user. */
+  def resultAsStream(): Stream[Question[T]] = {
+    if(solutions.isEmpty) return Stream.empty
+
+    getExpressionsToTestFirst() foreach  { inputs_generics =>
+      val res = inputsToQuestions(solutions, inputs_generics)
+      if(res.nonEmpty) return res
     }
     
-    if(questions.isEmpty) {
-      val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
-
-      for {
-        possibleInput            <- enumerated_inputs
-        currentOutputNonFiltered <- run(solution, possibleInput)
-        currentOutput            <- filter(Seq(), currentOutputNonFiltered)
-        question <- computeQuestion(possibleInput, currentOutput, alternatives)
-      } {
-        questions += question
-      }
-    }
-    questions.toList.sortBy(_questionSorMethod(_))
+    val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
+    val questions = inputsToQuestions(solutions, enumerated_inputs)
+    questions
+  }
+  
+  def result(): List[Question[T]] = {
+    resultAsStream().toList.sortBy(_questionSorMethod(_))
   }
 }

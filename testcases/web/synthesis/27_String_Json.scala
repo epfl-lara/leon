@@ -15,7 +15,7 @@ object JsonRender {
   abstract class JSON
   abstract class JCompositeValue extends JSON
   abstract class JFinalValue extends JSON
-  case class JDict(values: List[(String, JSON)]) extends JCompositeValue
+  case class JDict(values: Map[String, JSON]) extends JCompositeValue
   case class JArray(values: List[JSON]) extends JCompositeValue
   case class JString(value: String) extends JFinalValue
   case class JBoolean(value: Boolean) extends JFinalValue
@@ -23,8 +23,8 @@ object JsonRender {
   
   def JStringToString(j: JString) = "\"" + StrOps.escape(j.value) + "\""
   
+  def test = json_render(JDict(Map("title" -> JString("\"test\""), "flags" -> JArray(List(JInt(1), JBoolean(true))))))
+ 
   /** Synthesize this function by example to have a JSON serializer. */
-  def json_render(j: JSON): String = {
-    ???[String] ask j
-  }
+  def json_render(j: JSON): String = ???[String]
 }

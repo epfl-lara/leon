@@ -47,6 +47,8 @@ class TrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvalua
   }
   
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+    case SpecializedFunctionInvocation(res) => res
+    
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
         throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
@@ -82,7 +84,7 @@ class TrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvalua
       }
 
       if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-        throw EvalError("Evaluation of function with unknown implementation.")
+        throw EvalError("Tracking Evaluation of function with unknown implementation.")
       }
 
       val body = tfd.body.getOrElse(rctx.mappings(tfd.id))

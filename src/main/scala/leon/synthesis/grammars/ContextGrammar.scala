@@ -359,6 +359,54 @@ class ContextGrammar[SymbolTag, TerminalData] {
       markovize_abstract_vertical_filtered(_ => true)
     }
     
+    /** More general form of markovization, which is similar to introducing states in a top-down tree transducer
+     *  We duplicate all m non-terminals n times, and we replace each of them by one of their n variants.
+     *  n == 0 yields nothing.
+     *  n == 1 yields the original grammar
+     *  n == 2 yield all grammars obtained from the original by duplicating each non-terminals and trying all variants.
+     **/
+    def markovize_all(n: Int): Stream[Grammar] = {
+      def variant(nt: NonTerminal, i: Int) = {
+        nt.copy(vcontext =  nt.vcontext ++ List.fill(i)(nt))
+      }
+      val nonTerminalsRHS: Seq[NonTerminal] = {
+        (startNonTerminals ++
+            (for{(lhs, rhs) <- rules
+                  s <-rhs.symbols.collect{ case k: NonTerminal => k } } yield s))
+      }
+      val nonTerminalsRHSNew: Seq[NonTerminal] = {
+        (startNonTerminals ++
+            (for{i <- 0 until n // 0 keeps non-terminals the same.
+                 (lhs, rhs) <- rules
+                  s <-rhs.symbols.collect{ case k: NonTerminal => k } } yield s))
+      }
+      val nonTerminalsRHSSet = nonTerminalsRHS.toSet
+      val variants = nonTerminalsRHSSet.map(nt =>
+        nt -> (0 until n).toStream.map(i => variant(nt, i))
+      ).toMap
+      
+      val variantMap = nonTerminalsRHSNew.zipWithIndex.map(nti => nti -> variants(nti._1)).toMap
+      val assignments = leon.utils.StreamUtils.cartesianMap(variantMap)
+      for(assignment <- assignments) yield {
+        var i = 0
+        def indexed[T](f: Int => T): T = {
+          val res = f(i)
+          i += 1
+          res
+        }
+        def copyOfNt(nt: NonTerminal): NonTerminal = indexed { i => assignment((nt, i)) }
+        def copy(t: Symbol): Symbol = t match {
+          case nt: NonTerminal => copyOfNt(nt)
+          case e => e
+        }
+        val newStart = this.start.map(copy)
+        val newRules = for{i <- 0 until n
+          (lhs, expansion) <- this.rules
+          new_expansion = expansion.map(copy)
+        } yield (variant(lhs, i) -> new_expansion)
+        Grammar(newStart, newRules.toMap)
+      }
+    }
   }
   
   def symbolToString(symbol: Symbol): String = {

@@ -128,7 +128,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
   private def mergeCoverage(a: Map[List[Identifier], Stream[Expr]], b: Map[List[Identifier], Stream[Expr]]):
     Map[List[Identifier], Stream[Expr]] = {
     if((a.keys.toSet intersect b.keys.toSet).nonEmpty)
-      throw new Exception("Variable used twice: " + (a.keys.toSet intersect b.keys.toSet))
+      throw new InputPatternCoverageException("Variable used twice: " + (a.keys.toSet intersect b.keys.toSet)+"\n"+a+"\n"+b)
     a ++ b
   }
   
@@ -148,6 +148,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
   
   /** Map of g.left.symbol to the stream of expressions it could be assigned to */
   private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered, bindings: Map[Identifier, Expr]): Map[List[Identifier], Stream[Expr]] = {
+    println(s"Covering expr (inputs = $inputs, bindings = $bindings): \n$e")
     val res : Map[List[Identifier], Stream[Expr]] = 
     e match {
     case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)

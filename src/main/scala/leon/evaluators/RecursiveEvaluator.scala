@@ -21,6 +21,7 @@ import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
+import leon.purescala.TypeOps
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: EvaluationBank, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
@@ -41,6 +42,61 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
   /** Sets the flag if when encountering a Choose, it should fail instead of solving it. */
   def setEvaluationFailOnChoose(b: Boolean) = { this.evaluationFailsOnChoose = b; this }
 
+  protected[evaluators] object SpecializedFunctionInvocation {
+    def unapply(expr: Expr)(implicit rctx: RC, gctx: GC): Option[Expr] = expr match {
+    case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
+       e(input) match {
+         case StringLiteral(s) => 
+           Some(StringLiteral(StringEscapeUtils.escapeJava(s)))
+         case _ => throw EvalError(typeErrorMsg(input, StringType))
+       }
+
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta, tb)), Seq(mp, inkv, betweenkv, fk, fv)) if fd == program.library.mapMkString.get =>
+      println("invkv")
+      val inkv_str = e(inkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inkv, StringType)) }
+      println(s"invkv_str = $inkv_str")
+      val betweenkv_str = e(betweenkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(betweenkv, StringType)) }
+      println(s"betweenkv_str = $betweenkv_str")
+      val mp_map = e(mp) match { case FiniteMap(theMap, keyType, valueType) => theMap case _ => throw EvalError(typeErrorMsg(mp, MapType(ta, tb))) }
+      println(s"mp_map = $mp_map")
+      
+      val res = mp_map.map{ case (k, v) =>
+        (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
+        inkv_str +
+        (v match {
+          case CaseClass(some, Seq(v)) if some == program.library.Some.get.typed(Seq(tb)) =>
+            (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
+          case CaseClass(t, _) if TypeOps.isSubtypeOf(t, tb) =>
+            (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
+          case _ => throw EvalError(typeErrorMsg(v, program.library.Some.get.typed(Seq(tb))))
+        })}.toList.sorted.mkString(betweenkv_str)
+      
+      Some(StringLiteral(res))
+        
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.setMkString.get =>
+      val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
+      val mp_set = e(mp) match { case FiniteSet(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
+      
+      val res = mp_set.map{ case v =>
+        e(application(f, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(v, StringType)) } }.toList.sorted.mkString(inf_str)
+      
+      Some(StringLiteral(res))
+        
+    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.bagMkString.get =>
+      val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
+      val mp_bag = e(mp) match { case FiniteBag(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
+      
+      val res = mp_bag.flatMap{ case (k, v) =>
+        val fk = (e(application(f, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
+        val times = (e(v)) match { case InfiniteIntegerLiteral(i) => i case _ => throw EvalError(typeErrorMsg(k, IntegerType)) }
+        List.range(1, times.toString.toInt).map(_ => fk)
+      }.toList.sorted.mkString(inf_str)
+        
+      Some(StringLiteral(res))
+    case _ => None
+    }
+  }
+  
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
@@ -104,49 +160,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
       els.foldRight(nil)(mkCons)
 
-    case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
-       e(input) match {
-         case StringLiteral(s) => 
-           StringLiteral(StringEscapeUtils.escapeJava(s))
-         case _ => throw EvalError(typeErrorMsg(input, StringType))
-       }
-
-    case FunctionInvocation(TypedFunDef(fd, Seq(ta, tb)), Seq(mp, inkv, betweenkv, fk, fv)) if fd == program.library.mapMkString.get =>
-      val inkv_str = e(inkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inkv, StringType)) }
-      val betweenkv_str = e(betweenkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(betweenkv, StringType)) }
-      val mp_map = e(mp) match { case FiniteMap(theMap, keyType, valueType) => theMap case _ => throw EvalError(typeErrorMsg(mp, MapType(ta, tb))) }
-      
-      val res = mp_map.map{ case (k, v) =>
-        (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
-        inkv_str +
-        (v match {
-          case CaseClass(some, Seq(v)) if some == program.library.Some.get.typed(Seq(tb)) =>
-            (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
-          case _ => throw EvalError(typeErrorMsg(v, program.library.Some.get.typed(Seq(tb))))
-        })}.toList.sorted.mkString(betweenkv_str)
-      
-      StringLiteral(res)
-        
-    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.setMkString.get =>
-      val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
-      val mp_set = e(mp) match { case FiniteSet(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
-      
-      val res = mp_set.map{ case v =>
-        e(application(f, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(v, StringType)) } }.toList.sorted.mkString(inf_str)
-      
-      StringLiteral(res)
-        
-    case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.bagMkString.get =>
-      val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
-      val mp_bag = e(mp) match { case FiniteBag(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
-      
-      val res = mp_bag.flatMap{ case (k, v) =>
-        val fk = (e(application(f, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
-        val times = (e(v)) match { case InfiniteIntegerLiteral(i) => i case _ => throw EvalError(typeErrorMsg(k, IntegerType)) }
-        List.range(1, times.toString.toInt).map(_ => fk)
-      }.toList.sorted.mkString(inf_str)
-        
-      StringLiteral(res)
+    case SpecializedFunctionInvocation(result) => result
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
@@ -175,7 +189,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         scalaEv.call(tfd, evArgs)
       } else {
         if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-          throw EvalError("Evaluation of function with unknown implementation.")
+          throw EvalError("Evaluation of function with unknown implementation." + expr)
         }
 
         val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
