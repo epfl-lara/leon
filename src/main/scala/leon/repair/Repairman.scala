@@ -60,6 +60,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
         reporter.info(f" - Minimal Failing Set Size: ${eb2.invalids.size}%3d")
         val mtSize = eb2.invalids.size
 
+        reporter.info(f" - Minimization ${ctx.files.head}%40s $tSize%3s -> $mtSize%3s")
+
         reporter.ifDebug { printer =>
           printer(eb2.asString("Minimal Failing Tests"))
         }
