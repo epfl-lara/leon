@@ -29,10 +29,12 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
   // Used by leon-web, please do not delete
   var lastGC: Option[GC] = None
 
+  def timers = ctx.timers.evaluators.get(name)
+
   def eval(ex: Expr, model: Model) = {
     try {
       lastGC = Some(initGC(model, check = true))
-      ctx.timers.evaluators.recursive.runtime.start()
+      timers.runtime.start()
       EvaluationResults.Successful(e(ex)(initRC(model.toMap), lastGC.get))
     } catch {
       case EvalError(msg) =>
@@ -48,7 +50,7 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
       case jre: java.lang.RuntimeException =>
         EvaluationResults.RuntimeError(jre.getMessage)
     } finally {
-      ctx.timers.evaluators.recursive.runtime.stop()
+      timers.runtime.stop()
     }
   }
 
