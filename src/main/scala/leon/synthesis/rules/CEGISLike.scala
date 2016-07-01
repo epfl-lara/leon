@@ -615,17 +615,26 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         setSolution(solExpr)
 
-        //solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
         solver.assertCnstr(p.pc and not(spec))
+        println("Solution: "+solExpr.asString);
+        println("Solution: "+solutionBox.asString);
+
+        //println("@ "*80)
+        //println("-- "*30)
+        //println(program.asString)
+        //println(".. "*30)
+        //println("$ "*80)
 
         solver.check match {
           case Some(true) =>
             val model = solver.getModel
-            val cex = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
+            val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
 
             // Found counterexample! Exclude this program
             innerExamples += cex
             failedExamplesStats(cex) += 1
+
+            debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${cex.asString}")
 
             discardCandidate(bs, false)
 
