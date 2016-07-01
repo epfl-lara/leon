@@ -19,34 +19,28 @@ class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false)(implic
   }
 
   def solutionAround(n: Node): Expr => Option[Solution] = {
-    def solveWith(optn: Option[Node], sol: Solution): Option[Solution] = optn match {
+    def solveWith(optn: Option[Node], from: Node, sol: Solution): Option[Solution] = optn match {
       case None =>
         Some(sol)
 
-      case Some(n) => n.parent match {
-        case None =>
-          Some(sol)
+      case Some(on: OrNode) =>
+        solveWith(on.parent, on, sol)
 
-        case Some(on: OrNode) =>
-          solveWith(on.parent, sol)
-
-        case Some(an: AndNode) =>
-          val ssols = for (d <- an.descendants) yield {
-            if (d == n) {
-              sol
-            } else {
-              getSolutionFor(d)
-            }
+      case Some(an: AndNode) =>
+        val ssols = for (d <- an.descendants) yield {
+          if (d == from) {
+            sol
+          } else {
+            getSolutionFor(d)
           }
+        }
 
-          an.ri.onSuccess(ssols).flatMap { nsol =>
-            solveWith(an.parent, nsol)
-          }
-      }
+        an.ri.onSuccess(ssols).flatMap { nsol =>
+          solveWith(an.parent, an, nsol)
+        }
     }
 
-    e : Expr => solveWith(Some(n), Solution(BooleanLiteral(true), Set(), e))
-
+    e : Expr => solveWith(n.parent, n, Solution(BooleanLiteral(true), Set(), e))
   }
 
   def getSolutionFor(n: Node): Solution = {
@@ -80,11 +74,14 @@ class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false)(implic
         }
 
         if (n.isExpanded) {
+          println("AN:"+an.toString)
           an.ri.onSuccess(n.descendants.map(getSolutionFor)) match {
             case Some(sol) =>
+              println("Sol!")
               sol
 
             case None =>
+              println("No Sol!")
               completeProblem(an.ri.problem)
           }
         } else {

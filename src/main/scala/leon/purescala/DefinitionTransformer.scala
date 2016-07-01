@@ -55,6 +55,19 @@ class DefinitionTransformer(
     })
   }
 
+  def inverse = {
+    def inverse[T](bi1: Bijection[T, T]): Bijection[T, T] = {
+      val bi2 = new Bijection[T, T]();
+
+      for ((a, b) <- bi1) {
+        bi2 += b -> a;
+      }
+
+      bi2
+    }
+    new DefinitionTransformer(inverse(idMap), inverse(fdMap), inverse(cdMap))
+  }
+
 
   /** Override this to provide specific ClassDef transform
     *

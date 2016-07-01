@@ -32,7 +32,7 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
       grammar = grammars.default(sctx, p, guides),
       rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)),
       optimizations = true,
-      sizes = List((1, maxSize, maxSize))
+      sizes = List((1, maxSize, 0))
     )
   }
 }

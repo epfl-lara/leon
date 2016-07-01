@@ -71,6 +71,9 @@ object PrinterHelpers {
             case p: Printable =>
               p.print(nctx)
 
+            case null =>
+              sb.append("<<NULL>>")
+
             case e =>
               sb.append(e.toString)
           }
