@@ -418,11 +418,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       timers.testCandidate.start()
 
       val testExpr = ex match {
-        case InExample(ins) =>
+        case InExample(_) =>
           spec
 
-        case InOutExample(ins, outs) =>
-          equality(spec, tupleWrap(outs))
+        case InOutExample(_, outs) =>
+          equality(expr, tupleWrap(outs))
       }
 
       val res = evaluator.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
