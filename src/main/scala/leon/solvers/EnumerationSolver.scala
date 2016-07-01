@@ -6,6 +6,8 @@ package solvers
 import utils._
 import purescala.Common._
 import purescala.Definitions._
+import evaluators._
+import grammars._
 import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
@@ -52,7 +54,9 @@ class EnumerationSolver(val sctx: SolverContext, val program: Program) extends S
   def check: Option[Boolean] = {
     val timer = context.timers.solvers.enum.check.start()
     val res = try {
-      datagen = Some(new VanuatooDataGen(context, program, sctx.bank))
+      val evaluator = new DefaultEvaluator(context, program);
+      //datagen = Some(new VanuatooDataGen(context, program, sctx.bank))
+      datagen = Some(new GrammarDataGen(evaluator, ValueGrammar))
       if (interrupted) {
         None
       } else {
