@@ -20,7 +20,7 @@ function run {
   cmd="./leon --debug=report --timeout=60 --repair --introreccalls=off --solvers=fairz3,enum --functions=$1 $2"
   echo "Running " $cmd
   echo "------------------------------------------------------------------------------------------------------------------"
-  $cmd;
+  $cmd | tee -a $fullLog
 }
 
 echo "=====================================================================" >> repair-report.txt
