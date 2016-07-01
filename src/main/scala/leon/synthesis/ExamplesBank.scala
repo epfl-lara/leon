@@ -185,9 +185,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     QualifiedExamplesBank(nas, xs, eb flatMapIns { (in: Seq[Expr]) => List(toKeep.map(in)) })
   }
 
-  def evalIns: QualifiedExamplesBank = copy( eb = flatMapIns { mapping =>
+  def evalAndDiscardIns: QualifiedExamplesBank = copy( eb = flatMapIns { mapping =>
     val evalAs = evaluator.evalEnv(mapping)
-    List(as map evalAs)
+    try {
+      List(as map evalAs)
+    } catch {
+      case _: NoSuchElementException =>
+        Nil
+    }
   })
 
   /** Filter inputs through expr which is an expression evaluating to a boolean */
