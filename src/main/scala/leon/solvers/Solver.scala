@@ -49,12 +49,14 @@ trait Solver extends Interruptible {
   protected def unsupported(t: Tree): Nothing = {
     val err = SolverUnsupportedError(t, this, None)
     context.reporter.warning(err.getMessage)
+    err.printStackTrace()
     throw err
   }
 
   protected def unsupported(t: Tree, str: String): Nothing = {
     val err = SolverUnsupportedError(t, this, Some(str))
     //leonContext.reporter.warning(str)
+    err.printStackTrace()
     throw err
   }
 
