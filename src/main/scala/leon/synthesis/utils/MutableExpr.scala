@@ -11,7 +11,7 @@ case class MutableExpr(var underlying: Expr) extends Expr with Extractable with 
 
   def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = Some(
     Seq(underlying),
-    { case Seq(e) => underlying = e; this }
+    { case Seq(e) => new MutableExpr(e) }
   )
 
   override def printWith(implicit pctx: PrinterContext): Unit = {
