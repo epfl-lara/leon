@@ -614,10 +614,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         val solExpr = getExpr(bs)
 
         setSolution(solExpr)
-
         solver.assertCnstr(p.pc and not(spec))
-        println("Solution: "+solExpr.asString);
-        println("Solution: "+solutionBox.asString);
+        setSolution(solExpr)
 
         //println("@ "*80)
         //println("-- "*30)
@@ -884,9 +882,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                       result = Some(RuleClosed(sols))
 
                     case None =>
+                      debug(s"#Candidates after validating individually: ${ndProgram.nPassing}")
                   }
 
-                  debug(s"#Candidates after validating individually: ${ndProgram.nPassing}")
                   timers.validate.stop()
                 }
 
