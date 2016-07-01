@@ -191,7 +191,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
 
     val soptions = so0.copy(
       functionsToIgnore = so0.functionsToIgnore + fd,
-      rules = Seq(Focus, CEGLESS) ++ (so0.rules diff Seq(IntroduceRecCalls))
+      rules = Seq(Focus, CEGLESS) ++ so0.rules
     )
 
     new Synthesizer(ctx, program, ci, soptions)

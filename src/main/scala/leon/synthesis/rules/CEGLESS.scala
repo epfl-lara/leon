@@ -26,7 +26,7 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
       }
     }
 
-    val maxSize = (0 +: guides.map(depth(_) + 1)).max
+    val maxSize = Math.min((0 +: guides.map(depth(_) + 2)).max, 5)
 
     CegisParams(
       grammar = grammars.default(sctx, p, guides),
