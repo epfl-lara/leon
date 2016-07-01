@@ -27,6 +27,745 @@ import scala.collection.mutable.{HashMap => MutableMap}
 
 abstract class CEGISLike(name: String) extends Rule(name) {
 
+  class NonDeterministicProgram(
+    interruptManager: InterruptManager,
+    outerCtx: SearchContext,
+    outerP: Problem,
+    initSize: Int,
+    outerExamples: Seq[Example]
+  ) {
+    type Candidate = Set[Identifier]
+
+    import outerCtx.reporter._
+
+    // Track non-deterministic candidates up to 100'000 expressions, or give up
+    val nCandidatesLimit = 100000
+
+    // The factor by which programs need to be reduced by testing before we validate them individually
+    val testReductionRatio = 10
+
+    // Timeout to find a candidate program
+    val exSolverTo  = 500L
+
+    // Timeout to find a counter example to a candidate program
+    val cexSolverTo = 3000L
+
+    val timers = outerCtx.timers.synthesis.applications.CEGIS
+
+    // CEGIS Flags to activate or deactivate features
+    val useOptTimeout = outerCtx.settings.cegisUseOptTimeout
+    val useVanuatoo   = outerCtx.settings.cegisUseVanuatoo
+
+    // This represents the current solution of the synthesis problem.
+    // It should be set to the solution you want to check at each time.
+    // Usually it will either be cExpr or a concrete solution.
+    private val solutionBox = MutableExpr(NoTree(outerP.outType))
+    private def setSolution(e: Expr) = solutionBox.underlying = e
+
+    // Create a fresh solution function with the best solution around the
+    // current CEGIS as body
+    val fd = {
+      val fd = outerCtx.functionContext.duplicate()
+
+      fd.fullBody = postMap {
+        case src if src eq outerCtx.source =>
+          val body = new PartialSolution(outerCtx.search.strat, true)(outerCtx)
+                      .solutionAround(outerCtx.currentNode)(solutionBox)
+                      .getOrElse(fatalError("Unable to get outer solution"))
+                      .term
+
+          Some(body)
+        case _ =>
+          None
+      } (fd.fullBody)
+
+      fd
+    }
+
+    // Create a program replacing the synthesis source by the fresh solution
+    // function
+    val (outerToInner, innerToOuter, program) = {
+      val t = funDefReplacer {
+        case fd2 if fd2 == outerCtx.functionContext =>
+          Some(fd)
+
+        case fd2 =>
+          Some(fd2.duplicate())
+      }
+
+      val innerProgram = transformProgram(t, outerCtx.program)
+
+      (t, t.inverse, innerProgram)
+    }
+
+    implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program)
+
+    val p = {
+      implicit val bindings = Map[Identifier, Identifier]()
+
+      Problem(
+        as  = outerP.as.map(outerToInner.transform),
+        ws  = outerToInner.transform(outerP.ws),
+        pc  = outerP.pc.map(outerToInner.transform),
+        phi = outerToInner.transform(outerP.phi),
+        xs  = outerP.xs.map(outerToInner.transform)
+      )
+    }
+
+    private val spec = letTuple(p.xs, solutionBox, p.phi)
+
+    val params = getParams(sctx, p)
+
+    val evaluator = new DefaultEvaluator(sctx, program)
+
+    // Current synthesized term size
+    private var termSize_ = 0
+
+    def termSize = termSize_
+
+    private val grammar = params.grammar
+
+    def rootLabel = {
+      val targetType = tupleTypeWrap(p.xs.map(_.getType))
+
+      params.rootLabel(targetType)
+        .withAspect(TypeDepthBound(depth(targetType) + 1))
+        .withAspect(Sized(termSize, params.optimizations))
+    }
+
+
+    val cexSolverF = SolverFactory.getFromSettings(sctx, program).withTimeout(cexSolverTo)
+    val exSolverF  = SolverFactory.getFromSettings(sctx, program).withTimeout(exSolverTo)
+
+    /**
+     * We (lazily) generate additional tests for discarding potential programs with a data generator
+     */
+    val innerExamplesGenerator: Iterator[Example] = {
+      val nTests = if (p.pc.isEmpty) 50 else 20
+
+      val complicated = exists {
+        case FunctionInvocation(tfd, _) if tfd.fd == fd => true
+        case Choose(_) => true
+        case _ => false
+      }(p.pc.toClause)
+
+      if (complicated) {
+        Iterator()
+      } else {
+        if (useVanuatoo) {
+          new VanuatooDataGen(sctx, program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
+        } else {
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
+        }
+      }
+    }
+
+    /**
+     * Different view of the tree of expressions:
+     *
+     * Case used to illustrate the different views, assuming encoding:
+     *
+     *   b1 => c1 == F(c2, c3)
+     *   b2 => c1 == G(c4, c5)
+     *   b3 => c6 == H(c4, c5)
+     *
+     * c1 -> Seq(
+     *         (b1, F(_, _), Seq(c2, c3))
+     *         (b2, G(_, _), Seq(c4, c5))
+     *       )
+     * c6 -> Seq(
+     *         (b3, H(_, _), Seq(c7, c8))
+     *       )
+     */
+    private var cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]] = Map()
+
+    // cTree in expression form
+    private var cExpr: Expr = _
+
+    // Top-level C identifiers corresponding to innerP.xs
+    private var rootC: Identifier          = _
+
+    // Blockers
+    private var bs: Set[Identifier]        = Set()
+
+    private var bsOrdered: Seq[Identifier] = Seq()
+
+    // Generator of fresh cs that minimizes labels
+    class CGenerator {
+      private var buffers = Map[Label, Stream[Identifier]]()
+
+      private var slots = Map[Label, Int]().withDefaultValue(0)
+
+      private def streamOf(t: Label): Stream[Identifier] = Stream.continually(
+        FreshIdentifier(t.asString, t.getType, true)
+      )
+
+      def rewind(): Unit = {
+        slots = Map[Label, Int]().withDefaultValue(0)
+      }
+
+      def getNext(t: Label) = {
+        if (!(buffers contains t)) {
+          buffers += t -> streamOf(t)
+        }
+
+        val n = slots(t)
+        slots += t -> (n+1)
+
+        buffers(t)(n)
+      }
+    }
+
+    // Candidates we have manually discarded
+    var discardedCandidates = Set[Candidate]()
+    // Still viable candidates (allCandidates -- discardedCandidates)
+    var viableCandidates   = Set[Candidate]()
+
+    // Update the c-tree after an increase in termsize
+    def updateCTree(): Unit = {
+      timers.updateCTree.start()
+      def freshB() = {
+        val id = FreshIdentifier("B", BooleanType, true)
+        bs += id
+        id
+      }
+
+      def defineCTreeFor(l: Label, c: Identifier): Unit = {
+        if (!(cTree contains c)) {
+          val cGen = new CGenerator()
+
+          val alts = grammar.getProductions(l)
+
+          val cTreeData = alts flatMap { gen =>
+
+            // Optimize labels
+            cGen.rewind()
+
+            val subCs = for (sl <- gen.subTrees) yield {
+              val subC = cGen.getNext(sl)
+              defineCTreeFor(sl, subC)
+              subC
+            }
+            
+            if (subCs.forall(sc => cTree(sc).nonEmpty)) {
+              val b = freshB()
+              Some((b, gen.builder, subCs))
+            } else None
+          }
+
+          cTree += c -> cTreeData
+        }
+      }
+
+      val cGen = new CGenerator()
+
+      rootC = {
+        val c = cGen.getNext(rootLabel)
+        defineCTreeFor(rootLabel, c)
+        c
+      }
+
+      ifDebug { printer =>
+        printer("Grammar so far:")
+        grammar.printProductions(printer)
+        printer("")
+      }
+
+      bsOrdered = bs.toSeq.sorted
+
+      discardedCandidates = Set()
+      viableCandidates = allCandidates().toSet
+
+      setCExpr()
+
+      timers.updateCTree.stop()
+    }
+
+    // Returns a count of all possible programs
+    val allCandidatesCount: () => Int = {
+      var nAltsCache = Map[Label, Int]()
+
+      def countAlternatives(l: Label): Int = {
+        if (!(nAltsCache contains l)) {
+          val count = grammar.getProductions(l).map { gen =>
+            gen.subTrees.map(countAlternatives).product
+          }.sum
+          nAltsCache += l -> count
+        }
+        nAltsCache(l)
+      }
+
+      () => countAlternatives(rootLabel)
+    }
+
+    /**
+     * Returns all possible assignments to Bs in order to enumerate all possible programs
+     */
+    def allCandidates(): Traversable[Candidate] = {
+
+      var cache = Map[Identifier, Seq[Candidate]]()
+
+      val c = allCandidatesCount()
+
+      if (c > nCandidatesLimit) {
+        debug(s"Exceeded program limit: $c > $nCandidatesLimit")
+        return Seq()
+      }
+
+      def allCandidatesFor(c: Identifier): Seq[Candidate] = {
+          if (!(cache contains c)) {
+          val subs = for ((b, _, subcs) <- cTree(c)) yield {
+              if (subcs.isEmpty) {
+                Seq(Set(b))
+              } else {
+              val subPs = subcs map (s => allCandidatesFor(s))
+              val combos = SeqUtils.cartesianProduct(subPs).map(_.flatten.toSet)
+              combos map (_ + b)
+                }
+              }
+            cache += c -> subs.flatten
+          }
+          cache(c)
+        }
+
+      allCandidatesFor(rootC)
+    }
+
+    private def debugCTree(cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]],
+                           markedBs: Set[Identifier] = Set()): Unit = {
+      println(" -- -- -- -- -- ")
+      for ((c, alts) <- cTree) {
+        println()
+        println(f"$c%-4s :=")
+        for ((b, builder, cs) <- alts ) {
+          val markS   = if (markedBs(b)) Console.GREEN else ""
+          val markE   = if (markedBs(b)) Console.RESET else ""
+
+          val ex = builder(cs.map(_.toVariable)).asString
+
+          println(f"      $markS  ${b.asString}%-4s => $ex%-40s [${cs.map(_.asString).mkString(", ")}]$markE")
+        }
+      }
+    }
+
+    /**
+     * Computes an expression comprised of several Let(..) and If-Then-Else
+     * to represent the current cTree.
+     */
+    private def setCExpr(): Unit = {
+      var visited = Set[Identifier]()
+      val lets = new ArrayBuffer[(Identifier, Expr)]()
+
+      def exprOf(alt: (Identifier, Seq[Expr] => Expr, Seq[Identifier])): Expr = {
+        val (_, builder, cs) = alt
+
+        builder(cs.map { c => c.toVariable })
+      }
+
+      def traverse(c: Identifier): Unit = {
+        if (!visited(c)) {
+          visited += c
+
+          val alts = cTree(c)
+
+          for ((_, _, cs) <- alts; c <- cs) {
+            traverse(c)
+          }
+
+          val body = if (alts.nonEmpty) {
+            alts.init.foldLeft(exprOf(alts.last)) {
+              case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
+            }
+          } else {
+            Error(c.getType, s"Empty production rule: $c")
+          }
+
+          lets += c -> body
+
+        }
+      }
+
+      traverse(rootC)
+
+      cExpr = simplifyLets(lets.foldRight(rootC.toVariable: Expr) {
+        case ((id, rhs), body) => Let(id, rhs, body)
+      })
+
+      setSolution(cExpr)
+
+      ifDebug { printer =>
+        printer("-- "*30)
+        printer(program.asString)
+        printer(".. "*30)
+      }
+    }
+
+    // Tests a candidate solution against an example in the correct environment
+    def testCandidate(bValues: Candidate)(ex: Example): Option[Boolean] = {
+
+      val expr = getExpr(bValues)
+
+      def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
+        case ((id, v), bd) => let(id, v, bd)
+      }
+
+      setSolution(expr)
+
+      timers.testCandidate.start()
+
+      val testExpr = ex match {
+        case InExample(ins) =>
+          spec
+
+        case InOutExample(ins, outs) =>
+          equality(spec, tupleWrap(outs))
+      }
+
+      val res = evaluator.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+
+      timers.testCandidate.stop()
+
+      res match {
+        case EvaluationResults.Successful(res) =>
+          Some(res == BooleanLiteral(true))
+
+        case EvaluationResults.RuntimeError(err) =>
+          debug("RE testing CE: "+err)
+          Some(false)
+
+        case EvaluationResults.EvaluatorError(err) =>
+          debug("Error testing CE: "+err)
+          None
+      }
+
+    }
+
+    // Returns the inner expression corresponding to a B-valuation
+    def getExpr(bValues: Candidate): Expr = {
+
+      def getCValue(c: Identifier): Expr = {
+        cTree(c).find(i => bValues(i._1)).map {
+          case (b, builder, cs) =>
+            builder(cs.map(getCValue))
+        }.getOrElse {
+          Error(c.getType, "Impossible assignment of bs")
+        }
+      }
+
+      getCValue(rootC)
+    }
+
+    def getOuterExpr(bValues: Candidate): Expr = {
+      val innerExpr = getExpr(bValues)
+
+      innerToOuter.transform(innerExpr)(Map())
+    }
+
+    /**
+     * Individually validate all candidates
+     */
+    def validateAllCandidates(): Option[Stream[Solution]] = {
+
+      var untrusted: List[Solution] = Nil
+
+      while(viableCandidates.nonEmpty) {
+        val bs = viableCandidates.head
+
+        validateCandidate(bs) match {
+          case Some(sol) =>
+            if (sol.isTrusted) {
+              // We immediately have a good solution
+              return Some(Stream(sol))
+            } else {
+              discardCandidate(bs, true)
+              untrusted ::= sol
+            }
+
+          case None =>
+            discardCandidate(bs, true)
+        }
+      }
+
+      if (useOptTimeout && untrusted.nonEmpty) {
+        info(s"CEGIS could not prove the validity of the resulting ${untrusted.size} expression(s)")
+        Some(untrusted.toStream)
+      } else {
+        None
+      }
+    }
+
+    def hasViableCandidates = viableCandidates.nonEmpty
+
+    def discardAllCandidates() = {
+      discardedCandidates ++= viableCandidates
+      viableCandidates = Set()
+    }
+
+    // Explicitly remove candidate computed by bValues from the search space
+    //
+    // If the bValues comes from models, we make sure the bValues we exclude
+    // are minimal we make sure we exclude only Bs that are used.
+    def discardCandidate(bs: Candidate, isMinimal: Boolean): Unit = {
+
+      def filterBTree(c: Identifier): Set[Identifier] = {
+        val (b, _, subcs) = cTree(c).find(sub => bs(sub._1)).get
+        subcs.flatMap(filterBTree).toSet + b
+      }
+
+      val bvs = if (isMinimal) {
+        bs
+      } else {
+        filterBTree(rootC)
+      }
+
+      discardedCandidates += bvs
+      viableCandidates    -= bvs
+    }
+
+    def unfold() = {
+      termSize_ += 1
+      updateCTree()
+    }
+
+    /**
+     * First phase of CEGIS: discover potential candidates (that work on at least one input)
+     * Can return one of tree values:
+     *  1) Some(Some(bs)) => Found a candidate program bs
+     *  2) Some(None)     => We know for sure that no candidate exists
+     *  3) None           => We don't now
+     */
+    def discoverCandidate(): Option[Option[Candidate]] = {
+      timers.tentative.start()
+      val solver  = exSolverF.getNewSolver()
+
+      try {
+        setSolution(cExpr)
+
+        val toFind = p.pc and spec
+
+        println(toFind.asString)
+
+        solver.assertCnstr(toFind)
+
+        for ((c, alts) <- cTree) {
+
+          val bs = alts.map(_._1)
+
+          val either = for (a1 <- bs; a2 <- bs if a1 < a2) yield {
+            Or(Not(a1.toVariable), Not(a2.toVariable))
+          }
+
+          if (bs.nonEmpty) {
+            //println(" - "+andJoin(either).asString)
+            solver.assertCnstr(andJoin(either))
+
+            val oneOf = orJoin(bs.map(_.toVariable))
+            //println(" - "+oneOf.asString)
+            solver.assertCnstr(oneOf)
+          }
+        }
+
+        //println(" -- Discarded:")
+        for (ex <- discardedCandidates) {
+          val notThisCandidate = Not(andJoin(ex.map(_.toVariable).toSeq))
+
+          solver.assertCnstr(notThisCandidate)
+        }
+
+        solver.check match {
+          case Some(true) =>
+            val model = solver.getModel
+
+            val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
+
+            //println("Tentative model: "+model.asString)
+            //println("Tentative model: "+bModel.filter(isBActive).map(_.asString).toSeq.sorted)
+            //println("Tentative expr: "+getExpr(bModel))
+          
+            Some(Some(bModel))
+
+          case Some(false) =>
+            //println("UNSAT!")
+            Some(None)
+
+          case None =>
+            /**
+             * If the remaining candidates are all infeasible, it
+             * might timeout instead of returning Some(false). We might still
+             * benefit from unfolding further
+             */
+            None
+        }
+      } finally {
+        timers.tentative.stop()
+        exSolverF.reclaim(solver)
+      }
+    }
+
+    /**
+     * Second phase of CEGIS: verify a given candidate by looking for CEX inputs.
+     * Returns the potential solution and whether it is to be trusted.
+     */
+    def validateCandidate(bs: Candidate, potentialCExamples: Seq[InExample] = Nil): Option[Solution] = {
+      timers.cex.start()
+      val solver  = cexSolverF.getNewSolver()
+
+      try {
+        val solExpr = getExpr(bs)
+
+        setSolution(solExpr)
+
+        //solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
+        solver.assertCnstr(p.pc and not(spec))
+
+        solver.check match {
+          case Some(true) =>
+            val model = solver.getModel
+            val cex = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
+
+            // Found counterexample! Exclude this program
+            innerExamples += cex
+            failedExamplesStats(cex) += 1
+
+            discardCandidate(bs, false)
+
+            // Retest whether the newly found C-E invalidates some programs
+            var isBadExample = false
+
+            for (bs2 <- viableCandidates if !isBadExample && bs2 != bs) {
+              testCandidate(bs2)(cex) match {
+                case Some(true) =>
+                  // No-op
+
+                case Some(false) =>
+                  debug(f" Program: ${getExpr(bs2).asString}%-80s failed on: ${cex.asString}")
+                  failedExamplesStats(cex) += 1
+                  discardCandidate(bs2, true)
+
+                case None =>
+                  debug(s" Test $cex failed, removing...")
+                  innerExamples -= cex
+                  isBadExample = true
+              }
+            }
+
+            None
+
+          case Some(false) =>
+            Some(Solution(BooleanLiteral(true), Set(), getOuterExpr(bs), true))
+
+          case None =>
+            if (useOptTimeout) {
+              info("CEGIS could not prove the validity of the resulting expression")
+              // Interpret timeout in CE search as "the candidate is valid"
+              Some(Solution(BooleanLiteral(true), Set(), getOuterExpr(bs), false))
+
+            } else {
+              discardCandidate(bs, false)
+
+              // TODO: Make CEGIS fail early when it times out when verifying 1 program?
+              None
+            }
+        }
+      } finally {
+        timers.cex.stop()
+        cexSolverF.reclaim(solver)
+      }
+    }
+
+    // We keep number of failures per test to pull the better ones to the front
+    val failedExamplesStats = new MutableMap[Example, Int]().withDefaultValue(0)
+
+    val innerExamples = {
+      val baseInnerExamples = outerExamples.map{ ex => ex.map(outerToInner.transform(_)(Map.empty)) }
+
+      new GrowableIterable(baseInnerExamples, innerExamplesGenerator)
+    }
+
+    var nRequests = 1
+
+    def getInnerExamples() = {
+      if (nRequests == 10 || nRequests == 50 || nRequests % 500 == 0) {
+        innerExamples.sortBufferBy(e => -failedExamplesStats(e))
+      }
+
+      nRequests += 1
+      innerExamples.iterator
+    }
+
+    def nPassing = viableCandidates.size
+
+
+    def filterWithExamples(): Boolean = {
+      val nInitial = nPassing
+      debug(s"#Candidates: $nInitial")
+
+      debug(s"#Tests: >= ${innerExamples.bufferedCount}")
+
+      ifDebug{ printer =>
+        val es = getInnerExamples()
+        for (e <- es.take(Math.min(innerExamples.bufferedCount, 10))) {
+          printer(" - "+e.asString)
+        }
+        if(es.hasNext) {
+          printer(" - ...")
+        }
+      }
+
+      def filteredEnough() = {
+        nPassing <= 10 || (nPassing <= 100 && nInitial / nPassing > testReductionRatio)
+      }
+
+      innerExamples.canGrow = filteredEnough
+
+      // We further filter the set of working programs to remove those that fail on known examples
+      if (innerExamples.nonEmpty) {
+        timers.filter.start()
+        for (bs <- viableCandidates if !interruptManager.isInterrupted) {
+
+          var badExamples = Set[Example]()
+          var stop = false
+
+          for (e <- getInnerExamples() if !stop && !badExamples.contains(e)) {
+            testCandidate(bs)(e) match {
+              case Some(true) => // ok, passes
+              case Some(false) =>
+                // Program fails the test
+                stop = true
+                failedExamplesStats(e) += 1
+                debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${e.asString}")
+                discardCandidate(bs, true)
+
+              case None =>
+                // Eval. error -> bad example
+                debug(s" Test $e crashed the evaluator, removing...")
+                badExamples += e
+            }
+          }
+
+          innerExamples --= badExamples
+        }
+
+        timers.filter.stop()
+      }
+
+      debug(s"#Candidates passing tests: $nPassing out of $nInitial")
+
+      ifDebug{ printer =>
+        for (p <- viableCandidates.take(100)) {
+          printer(" - "+getExpr(p).asString)
+        }
+        if(nPassing > 100) {
+          printer(" - ...")
+        }
+      }
+
+      filteredEnough
+    }
+
+    updateCTree()
+  }
+
   case class CegisParams(
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
@@ -40,711 +779,15 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
     import hctx.reporter._
 
-    val exSolverTo  = 500L
-    val cexSolverTo = 3000L
-
-    // Track non-deterministic programs up to 100'000 programs, or give up
-    val nProgramsLimit = 100000
-
-    val timers = hctx.timers.synthesis.applications.CEGIS
-
-    // CEGIS Flags to activate or deactivate features
-    val useOptTimeout = hctx.settings.cegisUseOptTimeout
-    val useVanuatoo   = hctx.settings.cegisUseVanuatoo
-
-    // The factor by which programs need to be reduced by testing before we validate them individually
-    val testReductionRatio = 10
-
     val interruptManager = hctx.interruptManager
+
+    // Timeout to solve the pc for at least one valid input
+    val pcSolverTo = 1000L
 
     if (p.isTestBased) {
       return Nil
     }
 
-    // Represents a non-deterministic program
-    class NonDeterministicProgram(
-      initSize: Int,
-      outerExamples: GrowableIterable[Example]
-    ) {
-
-      // This represents the current solution of the synthesis problem.
-      // It is within the image of hctx.functionContext in innerProgram.
-      // It should be set to the solution you want to check at each time.
-      // Usually it will either be cExpr or a concrete solution.
-      private val solutionBox = MutableExpr(NoTree(p.outType))
-      private def setSolution(e: Expr) = solutionBox.underlying = e
-
-      private val outerFdBody = {
-        new PartialSolution(hctx.search.strat, true)
-          .solutionAround(hctx.currentNode)(solutionBox)
-          .getOrElse(fatalError("Unable to get outer solution"))
-      }.term
-
-      val innerFd = {
-        val fd = hctx.functionContext.duplicate()
-
-        fd.fullBody = postMap {
-          case src if src eq hctx.source =>
-            Some(outerFdBody)
-          case _ =>
-            None
-          } (fd.fullBody)
-        fd
-      }
-
-      val outerProgram = hctx.program
-
-      val (outerToInner, innerProgram) = {
-        val t = funDefReplacer {
-          case fd2 if fd2 == hctx.functionContext =>
-            Some(innerFd)
-
-          case fd =>
-            Some(fd.duplicate())
-        }
-
-        (t, transformProgram(t, hctx.program))
-      }
-
-      val innerSctx = new SynthesisContext(hctx, hctx.settings, innerFd, innerProgram)
-
-      val innerP = {
-        p
-      }
-
-      private val innerSpec = letTuple(innerP.xs, solutionBox, innerP.phi)
-
-      val params = getParams(innerSctx, innerP)
-
-      val evaluator = new DefaultEvaluator(innerSctx, innerProgram)
-
-      // Current synthesized term size
-      private var termSize_ = 0
-
-      def termSize = termSize_
-
-      private val grammar = params.grammar
-
-      def rootLabel = {
-        val targetType = tupleTypeWrap(innerP.xs.map(_.getType))
-
-        params.rootLabel(targetType)
-          .withAspect(TypeDepthBound(depth(targetType) + 1))
-          .withAspect(Sized(termSize, params.optimizations))
-      }
-
-      def solverF()  = SolverFactory.getFromSettings(innerSctx, innerProgram)
-
-      val cexSolverF = solverF().withTimeout(cexSolverTo)
-      val exSolverF  = solverF().withTimeout(exSolverTo)
-
-      /**
-       * Different view of the tree of expressions:
-       *
-       * Case used to illustrate the different views, assuming encoding:
-       *
-       *   b1 => c1 == F(c2, c3)
-       *   b2 => c1 == G(c4, c5)
-       *   b3 => c6 == H(c4, c5)
-       *
-       * c1 -> Seq(
-       *         (b1, F(_, _), Seq(c2, c3))
-       *         (b2, G(_, _), Seq(c4, c5))
-       *       )
-       * c6 -> Seq(
-       *         (b3, H(_, _), Seq(c7, c8))
-       *       )
-       */
-      private var cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]] = Map()
-
-      // cTree in expression form
-      private var cExpr: Expr = _
-
-      // Top-level C identifiers corresponding to innerP.xs
-      private var rootC: Identifier          = _
-
-      // Blockers
-      private var bs: Set[Identifier]        = Set()
-
-      private var bsOrdered: Seq[Identifier] = Seq()
-
-      // Generator of fresh cs that minimizes labels
-      class CGenerator {
-        private var buffers = Map[Label, Stream[Identifier]]()
-
-        private var slots = Map[Label, Int]().withDefaultValue(0)
-
-        private def streamOf(t: Label): Stream[Identifier] = Stream.continually(
-          FreshIdentifier(t.asString, t.getType, true)
-        )
-
-        def rewind(): Unit = {
-          slots = Map[Label, Int]().withDefaultValue(0)
-        }
-
-        def getNext(t: Label) = {
-          if (!(buffers contains t)) {
-            buffers += t -> streamOf(t)
-          }
-
-          val n = slots(t)
-          slots += t -> (n+1)
-
-          buffers(t)(n)
-        }
-      }
-
-      // Programs we have manually excluded
-      var excludedPrograms = Set[Set[Identifier]]()
-      // Still live programs (allPrograms -- excludedPrograms)
-      var prunedPrograms   = Set[Set[Identifier]]()
-
-      // Update the c-tree after an increase in termsize
-      def updateCTree(): Unit = {
-        timers.updateCTree.start()
-        def freshB() = {
-          val id = FreshIdentifier("B", BooleanType, true)
-          bs += id
-          id
-        }
-
-        def defineCTreeFor(l: Label, c: Identifier): Unit = {
-          if (!(cTree contains c)) {
-            val cGen = new CGenerator()
-
-            val alts = grammar.getProductions(l)
-
-            val cTreeData = alts flatMap { gen =>
-
-              // Optimize labels
-              cGen.rewind()
-
-              val subCs = for (sl <- gen.subTrees) yield {
-                val subC = cGen.getNext(sl)
-                defineCTreeFor(sl, subC)
-                subC
-              }
-              
-              if (subCs.forall(sc => cTree(sc).nonEmpty)) {
-                val b = freshB()
-                Some((b, gen.builder, subCs))
-              } else None
-            }
-
-            cTree += c -> cTreeData
-          }
-        }
-
-        val cGen = new CGenerator()
-
-        rootC = {
-          val c = cGen.getNext(rootLabel)
-          defineCTreeFor(rootLabel, c)
-          c
-        }
-
-        ifDebug { printer =>
-          printer("Grammar so far:")
-          grammar.printProductions(printer)
-          printer("")
-        }
-
-        bsOrdered = bs.toSeq.sorted
-
-        excludedPrograms = Set()
-        prunedPrograms = allPrograms().toSet
-
-        timers.updateCTree.stop()
-      }
-
-      // Returns a count of all possible programs
-      val allProgramsCount: () => Int = {
-        var nAltsCache = Map[Label, Int]()
-
-        def countAlternatives(l: Label): Int = {
-          if (!(nAltsCache contains l)) {
-            val count = grammar.getProductions(l).map { gen =>
-              gen.subTrees.map(countAlternatives).product
-            }.sum
-            nAltsCache += l -> count
-          }
-          nAltsCache(l)
-        }
-
-        () => countAlternatives(rootLabel)
-      }
-
-      /**
-       * Returns all possible assignments to Bs in order to enumerate all possible programs
-       */
-      def allPrograms(): Traversable[Set[Identifier]] = {
-
-        var cache = Map[Identifier, Seq[Set[Identifier]]]()
-
-        val c = allProgramsCount()
-
-        if (c > nProgramsLimit) {
-          debug(s"Exceeded program limit: $c > $nProgramsLimit")
-          return Seq()
-        }
-
-        def allProgramsFor(c: Identifier): Seq[Set[Identifier]] = {
-            if (!(cache contains c)) {
-            val subs = for ((b, _, subcs) <- cTree(c)) yield {
-                if (subcs.isEmpty) {
-                  Seq(Set(b))
-                } else {
-                val subPs = subcs map (s => allProgramsFor(s))
-                val combos = SeqUtils.cartesianProduct(subPs).map(_.flatten.toSet)
-                combos map (_ + b)
-                  }
-                }
-              cache += c -> subs.flatten
-            }
-            cache(c)
-          }
-
-        allProgramsFor(rootC)
-      }
-
-      private def debugCTree(cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]],
-                             markedBs: Set[Identifier] = Set()): Unit = {
-        println(" -- -- -- -- -- ")
-        for ((c, alts) <- cTree) {
-          println()
-          println(f"$c%-4s :=")
-          for ((b, builder, cs) <- alts ) {
-            val markS   = if (markedBs(b)) Console.GREEN else ""
-            val markE   = if (markedBs(b)) Console.RESET else ""
-
-            val ex = builder(cs.map(_.toVariable)).asString
-
-            println(f"      $markS  ${b.asString}%-4s => $ex%-40s [${cs.map(_.asString).mkString(", ")}]$markE")
-          }
-        }
-      }
-
-      /**
-       * Computes an expression comprised of several Let(..) and If-Then-Else
-       * to represent the current cTree.
-       */
-      private def setCExpr(): Unit = {
-        var visited = Set[Identifier]()
-        val lets = new ArrayBuffer[(Identifier, Expr)]()
-
-        def exprOf(alt: (Identifier, Seq[Expr] => Expr, Seq[Identifier])): Expr = {
-          val (_, builder, cs) = alt
-
-          builder(cs.map { c => c.toVariable })
-        }
-
-        def traverse(c: Identifier): Unit = {
-          if (!visited(c)) {
-            visited += c
-
-            val alts = cTree(c)
-
-            for ((_, _, cs) <- alts; c <- cs) {
-              traverse(c)
-            }
-
-            val body = if (alts.nonEmpty) {
-              alts.init.foldLeft(exprOf(alts.last)) {
-                case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
-              }
-            } else {
-              Error(c.getType, s"Empty production rule: $c")
-            }
-
-            lets += c -> body
-
-          }
-        }
-
-        traverse(rootC)
-
-        cExpr = simplifyLets(lets.foldRight(rootC.toVariable: Expr) {
-          case ((id, rhs), body) => Let(id, rhs, body)
-        })
-
-        setSolution(cExpr)
-
-        println("-- "*30)
-        println(innerProgram.asString)
-        println(".. "*30)
-      }
-
-      // Tests a candidate solution against an example in the correct environment
-      def testForProgram(bValues: Set[Identifier])(ex: Example): Option[Boolean] = {
-
-        val expr = getExpr(bValues)
-
-        def withBindings(e: Expr) = innerP.pc.bindings.foldRight(e) {
-          case ((id, v), bd) => let(id, v, bd)
-        }
-
-        setSolution(expr)
-
-        timers.testForProgram.start()
-
-        val testExpr = ex match {
-          case InExample(ins) =>
-            innerSpec
-
-          case InOutExample(ins, outs) =>
-            equality(innerSpec, tupleWrap(outs))
-        }
-
-        val res = evaluator.eval(withBindings(testExpr), innerP.as.zip(ex.ins).toMap)
-
-        timers.testForProgram.stop()
-
-        res match {
-          case EvaluationResults.Successful(res) =>
-            Some(res == BooleanLiteral(true))
-
-          case EvaluationResults.RuntimeError(err) =>
-            debug("RE testing CE: "+err)
-            Some(false)
-
-          case EvaluationResults.EvaluatorError(err) =>
-            debug("Error testing CE: "+err)
-            None
-        }
-
-      }
-
-      // Returns the inner expression corresponding to a B-valuation
-      def getExpr(bValues: Set[Identifier]): Expr = {
-
-        def getCValue(c: Identifier): Expr = {
-          cTree(c).find(i => bValues(i._1)).map {
-            case (b, builder, cs) =>
-              builder(cs.map(getCValue))
-          }.getOrElse {
-            Error(c.getType, "Impossible assignment of bs")
-          }
-        }
-
-        getCValue(rootC)
-      }
-
-      /**
-       * Here we check the validity of a (small) number of programs in isolation.
-       * We keep track of CEXs generated by invalid programs and preemptively filter the rest of the programs with them.
-       */
-      def validatePrograms(bss: Set[Set[Identifier]]): Option[Stream[Solution]] = {
-
-        var cexs = Seq[Seq[Expr]]()
-
-        var untrusted: List[Solution] = Nil
-
-        for (bs <- bss.toSeq) {
-          // We compute the corresponding expr and replace it in place of the C-tree
-          val expr = getExpr(bs)
-
-          setSolution(expr)
-
-          val cnstr = innerP.pc and letTuple(innerP.xs, expr, Not(innerP.phi))
-
-          if (cexs exists (cex => evaluator.eval(cnstr, innerP.as.zip(cex).toMap).result == Some(BooleanLiteral(true)))) {
-            debug(s"Rejected by CEX: $expr")
-            excludeProgram(bs, true)
-          } else {
-            val solver = cexSolverF.getNewSolver()
-
-            try {
-              debug("Sending candidate to solver...")
-
-              solver.assertCnstr(cnstr)
-              solver.check match {
-                case Some(true) =>
-                  debug(s"Proven invalid: $expr")
-                  excludeProgram(bs, true)
-
-                  val model = solver.getModel
-                  //println("Found counter example: ")
-                  //for ((s, v) <- model) {
-                  //  println(" "+s.asString+" -> "+v.asString)
-                  //}
-
-                  innerExamples += InExample(innerP.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
-
-                case Some(false) =>
-                  // UNSAT, valid program
-                  debug("Found valid program!")
-                  return Some(Stream(Solution(BooleanLiteral(true), Set(), expr, true)))
-
-                case None =>
-                  debug("Found a non-verifiable solution...")
-                  // Optimistic valid solution
-                  untrusted +:= Solution(BooleanLiteral(true), Set(), expr, false)
-              }
-            } finally {
-              cexSolverF.reclaim(solver)
-            }
-          }
-        }
-
-        if (useOptTimeout && untrusted.nonEmpty) {
-          // Interpret timeout in CE search as "the candidate is valid"
-          info(s"CEGIS could not prove the validity of the resulting ${untrusted.size} expression(s)")
-          Some(untrusted.toStream)
-        } else {
-          None
-        }
-      }
-
-      def allProgramsClosed = prunedPrograms.isEmpty
-
-      def closeAllPrograms() = {
-        excludedPrograms ++= prunedPrograms
-        prunedPrograms = Set()
-      }
-
-      // Explicitly remove program computed by bValues from the search space
-      //
-      // If the bValues comes from models, we make sure the bValues we exclude
-      // are minimal we make sure we exclude only Bs that are used.
-      def excludeProgram(bs: Set[Identifier], isMinimal: Boolean): Unit = {
-
-        def filterBTree(c: Identifier): Set[Identifier] = {
-          val (b, _, subcs) = cTree(c).find(sub => bs(sub._1)).get
-          subcs.flatMap(filterBTree).toSet + b
-        }
-
-        val bvs = if (isMinimal) {
-          bs
-        } else {
-          filterBTree(rootC)
-        }
-
-        excludedPrograms += bvs
-        prunedPrograms   -= bvs
-      }
-
-      def unfold() = {
-        termSize_ += 1
-        updateCTree()
-      }
-
-      /**
-       * First phase of CEGIS: discover potential programs (that work on at least one input)
-       */
-      def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
-        timers.tentative.start()
-        val solver  = exSolverF.getNewSolver()
-
-        setSolution(cExpr)
-
-        val toFind = innerP.pc and innerSpec
-
-        try {
-          solver.assertCnstr(toFind)
-
-          for ((c, alts) <- cTree) {
-
-            val bs = alts.map(_._1)
-
-            val either = for (a1 <- bs; a2 <- bs if a1 < a2) yield {
-              Or(Not(a1.toVariable), Not(a2.toVariable))
-            }
-
-            if (bs.nonEmpty) {
-              //println(" - "+andJoin(either).asString)
-              solver.assertCnstr(andJoin(either))
-
-              val oneOf = orJoin(bs.map(_.toVariable))
-              //println(" - "+oneOf.asString)
-              solver.assertCnstr(oneOf)
-            }
-          }
-
-          //println(" -- Excluded:")
-          for (ex <- excludedPrograms) {
-            val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
-
-            solver.assertCnstr(notThisProgram)
-          }
-
-          solver.check match {
-            case Some(true) =>
-              val model = solver.getModel
-
-              val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
-
-              //println("Tentative model: "+model.asString)
-              //println("Tentative model: "+bModel.filter(isBActive).map(_.asString).toSeq.sorted)
-              //println("Tentative expr: "+getExpr(bModel))
-            
-              Some(Some(bModel))
-
-            case Some(false) =>
-              //println("UNSAT!")
-              Some(None)
-
-            case None =>
-              /**
-               * If the remaining tentative programs are all infeasible, it
-               * might timeout instead of returning Some(false). We might still
-               * benefit from unfolding further
-               */
-              None
-          }
-        } finally {
-          timers.tentative.stop()
-          exSolverF.reclaim(solver)
-        }
-      }
-
-      /**
-       * Second phase of CEGIS: verify a given program by looking for CEX inputs
-       */
-      def solveForCounterExample(bs: Set[Identifier]): Option[Option[InExample]] = {
-        timers.cex.start()
-        val solver  = cexSolverF.getNewSolver()
-
-        try {
-          setSolution(cExpr)
-
-          solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
-          solver.assertCnstr(innerP.pc and not(innerSpec))
-
-          solver.check match {
-            case Some(true) =>
-              val model = solver.getModel
-              val cex = InExample(innerP.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
-
-              // Found counterexample! Exclude this program
-              innerExamples += cex
-              failedExamplesStats(cex) += 1
-
-              excludeProgram(bs, false)
-
-
-              // Retest whether the newly found C-E invalidates some programs
-              var isBadExample = false
-
-              for (bs2 <- prunedPrograms if !isBadExample && bs2 != bs) {
-                testForProgram(bs2)(cex) match {
-                  case Some(true) =>
-                    // No-op
-
-                  case Some(false) =>
-                    debug(f" Program: ${getExpr(bs2).asString}%-80s failed on: ${cex.asString}")
-                    failedExamplesStats(cex) += 1
-                    excludeProgram(bs2, true)
-
-                  case None =>
-                    debug(s" Test $cex failed, removing...")
-                    innerExamples -= cex
-                    isBadExample = true
-                }
-              }
-
-              Some(Some(cex))
-
-            case Some(false) =>
-              Some(None)
-
-            case None =>
-              None
-          }
-        } finally {
-          timers.cex.stop()
-          cexSolverF.reclaim(solver)
-        }
-      }
-
-      // We keep number of failures per test to pull the better ones to the front
-      val failedExamplesStats = new MutableMap[Example, Int]().withDefaultValue(0)
-
-      val innerExamples = outerExamples.map[Example] { ex => ex.map(outerToInner.transform(_)(Map.empty)) }
-
-      var nRequests = 1
-
-
-      def getInnerExamples() = {
-        if (nRequests == 10 || nRequests == 50 || nRequests % 500 == 0) {
-          innerExamples.sortBufferBy(e => -failedExamplesStats(e))
-        }
-
-        nRequests += 1
-        innerExamples.iterator
-      }
-
-      def nPassing = prunedPrograms.size
-
-
-      def filterWithExamples(): Boolean = {
-        val nInitial = nPassing
-        debug(s"#Programs: $nInitial")
-
-        debug(s"#Tests: >= ${innerExamples.bufferedCount}")
-
-        ifDebug{ printer =>
-          val es = getInnerExamples()
-          for (e <- es.take(Math.min(innerExamples.bufferedCount, 10))) {
-            printer(" - "+e.asString)
-          }
-          if(es.hasNext) {
-            printer(" - ...")
-          }
-        }
-
-        def filteredEnough() = {
-          nPassing <= 10 || (nPassing <= 100 && nInitial / nPassing > testReductionRatio)
-        }
-
-        innerExamples.canGrow = filteredEnough
-
-        // We further filter the set of working programs to remove those that fail on known examples
-        if (innerExamples.nonEmpty) {
-          timers.filter.start()
-          for (bs <- prunedPrograms if !interruptManager.isInterrupted) {
-
-            var badExamples = Set[Example]()
-            var stop = false
-
-            for (e <- getInnerExamples() if !stop && !badExamples.contains(e)) {
-              testForProgram(bs)(e) match {
-                case Some(true) => // ok, passes
-                case Some(false) =>
-                  // Program fails the test
-                  stop = true
-                  failedExamplesStats(e) += 1
-                  debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${e.asString}")
-                  excludeProgram(bs, true)
-
-                case None =>
-                  // Eval. error -> bad example
-                  debug(s" Test $e crashed the evaluator, removing...")
-                  badExamples += e
-              }
-            }
-
-            innerExamples --= badExamples
-          }
-
-          timers.filter.stop()
-        }
-
-        debug(s"#Programs passing tests: $nPassing out of $nInitial")
-
-        ifDebug{ printer =>
-          for (p <- prunedPrograms.take(100)) {
-            printer(" - "+getExpr(p).asString)
-          }
-          if(nPassing > 100) {
-            printer(" - ...")
-          }
-        }
-
-        filteredEnough
-      }
-
-      updateCTree()
-    }
 
     val sizes = getParams(hctx, p).sizes
 
@@ -755,6 +798,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         def apply(hctx: SearchContext): RuleApplication = {
           var result: Option[RuleApplication] = None
 
+          val timers = hctx.timers.synthesis.applications.CEGIS
+
           implicit val ic = hctx
 
           debug("Acquiring initial list of examples")
@@ -764,7 +809,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             List(InExample(p.as.map(a => simplestValue(a.getType))))
           } else {
             val solverf = hctx.solverFactory
-            val solver  = solverf.getNewSolver().setTimeout(exSolverTo*2)
+            val solver  = solverf.getNewSolver().setTimeout(pcSolverTo)
 
             solver.assertCnstr(p.pc.toClause)
 
@@ -797,34 +842,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             }
           }
 
-          /**
-           * We (lazily) generate additional tests for discarding potential programs with a data generator
-           */
-          val nTests = if (p.pc.isEmpty) 50 else 20
 
-          val inputGenerator: Iterator[Example] = {
-            val complicated = exists{
-              case FunctionInvocation(tfd, _) if tfd.fd == hctx.functionContext => true
-              case Choose(_) => true
-              case _ => false
-            }(p.pc.toClause)
-
-            if (complicated) {
-              Iterator()
-            } else {
-              if (useVanuatoo) {
-                new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
-              } else {
-                val evaluator = new DualEvaluator(hctx, hctx.program)
-                new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
-              }
-            }
-          }
-
-
+          // Represents a non-deterministic program
           val ndProgram = new NonDeterministicProgram(
+            interruptManager = interruptManager,
+            outerCtx = hctx,
+            outerP   = p,
             initSize = sizeFrom - 1,
-            outerExamples = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
+            outerExamples = baseExampleInputs
           )
 
           try {
@@ -832,21 +857,19 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               // Run CEGIS for one specific unfolding level
               ndProgram.unfold()
 
-              val nInitial = ndProgram.prunedPrograms.size
-
               val filteredEnough = ndProgram.filterWithExamples()
 
                 // CEGIS Loop at a given unfolding level
-              while (result.isEmpty && !interruptManager.isInterrupted && !ndProgram.allProgramsClosed) {
-                debug("Programs left: " + ndProgram.prunedPrograms.size)
+              while (result.isEmpty && !interruptManager.isInterrupted && ndProgram.hasViableCandidates) {
+                debug("Candidates left: " + ndProgram.viableCandidates.size)
 
                 // Phase 0: If the number of remaining programs is small, validate them individually
                 if (filteredEnough) {
                   timers.validate.start()
-                  val programsToValidate = ndProgram.prunedPrograms
-                  debug(s"Will send ${programsToValidate.size} program(s) to validate individually")
 
-                  ndProgram.validatePrograms(programsToValidate) match {
+                  debug(s"Will send ${ndProgram.nPassing} program(s) to validate individually")
+
+                  ndProgram.validateAllCandidates() match {
                     case Some(sols) =>
                       // Found solution! Exit CEGIS
                       result = Some(RuleClosed(sols))
@@ -854,51 +877,34 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                     case None =>
                   }
 
-                  debug(s"#Programs after validating individually: ${ndProgram.nPassing}")
+                  debug(s"#Candidates after validating individually: ${ndProgram.nPassing}")
                   timers.validate.stop()
                 }
 
-                if (result.isEmpty && !ndProgram.allProgramsClosed) {
+                if (result.isEmpty && ndProgram.hasViableCandidates) {
                   // Phase 1: Find a candidate program that works for at least 1 input
                   debug("Looking for program that works on at least 1 input...")
 
-                  ndProgram.solveForTentativeProgram() match {
+                  ndProgram.discoverCandidate() match {
                     case Some(Some(bs)) =>
-                      debug(s"Found tentative model ${ndProgram.getExpr(bs)}, need to validate!")
-                      // Phase 2: Validate candidate model
-                      ndProgram.solveForCounterExample(bs) match {
-                        case Some(Some(cex)) =>
-                            debug("Found counter-example: "+cex.asString)
+                      debug(s"Found candidate: ${ndProgram.getExpr(bs)}")
 
-                        case Some(None) =>
-                          // Found no counter example! Program is a valid solution
-                          val expr = ndProgram.getExpr(bs)
-                          result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
+                      // Phase 2: Validate candidate model
+                      ndProgram.validateCandidate(bs) match {
+                        case Some(sol) =>
+                          result = Some(RuleClosed(sol))
 
                         case None =>
-                          // We are not sure
-                          debug("Unknown")
 
-                          if (useOptTimeout) {
-                            // Interpret timeout in CE search as "the candidate is valid"
-                            info("CEGIS could not prove the validity of the resulting expression")
-                            val expr = ndProgram.getExpr(bs)
-                            result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
-                          } else {
-                            // Ok, we failed to validate, exclude this program
-                            ndProgram.excludeProgram(bs, false)
-                            // TODO: Make CEGIS fail early when it times out when verifying 1 program?
-                            // result = Some(RuleFailed())
-                          }
                       }
 
                     case Some(None) =>
                       debug("There exists no candidate program!")
-                      ndProgram.closeAllPrograms()
+                      ndProgram.discardAllCandidates()
 
                     case None =>
                       debug("Timeout while getting tentative program!")
-                      ndProgram.closeAllPrograms()
+                      ndProgram.discardAllCandidates()
                       // TODO: Make CEGIS fail early when it times out when looking for tentative program?
                       //result = Some(RuleFailed())
                   }
