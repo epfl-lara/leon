@@ -13,6 +13,8 @@ import purescala.ExprOps._
 import purescala.Constructors._
 import purescala.Extractors._
 
+import collection.mutable.ArrayBuffer
+
 import evaluators._
 
 import synthesis._
@@ -56,10 +58,14 @@ case object Focus extends PreprocessingRule("Focus") {
 
     val evaluator = new DefaultEvaluator(hctx, program)
 
+    val timers = hctx.timers.synthesis.instantiations.Focus
+
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
     //  - returns Some(false) if for all tests e evaluates to false
     //  - returns None otherwise
+    var invalids = qeb.invalids
+
     def forAllTests(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
       var soFar: Option[Boolean] = None
 
@@ -84,14 +90,32 @@ case object Focus extends PreprocessingRule("Focus") {
       soFar
     }
 
-    def existsFailing(e: Expr, env: Map[Identifier, Expr], evaluator: DeterministicEvaluator): Boolean = {
-      qeb.invalids.exists { ex =>
-        evaluator.eval(e, (p.as zip ex.ins).toMap ++ env).result match {
-          case Some(BooleanLiteral(b)) => b
-          case _ => true
+    def existsFailing(e: Expr, env: Map[Identifier, Expr], evaluator: DeterministicEvaluator, last: Boolean): Boolean = {
+      var foundOne = false;
+      var newInvalids = new ArrayBuffer[Example]();
+
+      for (ex <- invalids) {
+        val res = evaluator.eval(e, (p.as zip ex.ins).toMap ++ env).result match {
+          case Some(BooleanLiteral(b)) =>
+            b
+          case _ =>
+            true
+        }
+
+        if (res) {
+          foundOne = true;
+          if (last) {
+            return true;
+          }
+        } else {
+          newInvalids += ex
         }
       }
+
+      invalids = newInvalids
+      foundOne
     }
+
 
     val TopLevelAnds(clauses) = p.ws
 
@@ -108,6 +132,8 @@ case object Focus extends PreprocessingRule("Focus") {
 
     guides.flatMap {
       case g @ IfExpr(c, thn, els) =>
+        timers.If.timed{
+
         val spec = letTuple(p.xs, IfExpr(Not(c), thn, els), p.phi)
         // Try to focus on condition:
         //   Does there exists path for non-deterministic 'c' which satisfies phi?
@@ -149,10 +175,12 @@ case object Focus extends PreprocessingRule("Focus") {
                 Some(decomp(List(sub1, sub2), onSuccess, s"Focus on both branches of '${c.asString}'"))
             }
         }
+        }
 
       case MatchExpr(scrut, cases) =>
         var pcSoFar = Path.empty
 
+        timers.Match.start()
         // Generate subproblems for each match-case that fails at least one test.
         var casesInfos = for (c <- cases) yield {
           val map  = mapForPattern(scrut, c.pattern)
@@ -162,7 +190,7 @@ case object Focus extends PreprocessingRule("Focus") {
           val cond = pcSoFar merge thisCond
           pcSoFar = pcSoFar merge thisCond.negate
 
-          val subP = if (existsFailing(cond.toClause, map, evaluator)) {
+          val subP = if (existsFailing(cond.toClause, map, evaluator, false)) {
 
             val vars = map.keys.toSeq
 
@@ -179,6 +207,7 @@ case object Focus extends PreprocessingRule("Focus") {
             }).toMap
 
             if (substAs.nonEmpty) {
+              timers.Match.filterIns.start()
               val subst = replaceFromIDs(substAs, _: Expr)
               // FIXME intermediate binders??
               val newAs = (p.as diff substAs.keys.toSeq) ++ vars
@@ -192,12 +221,15 @@ case object Focus extends PreprocessingRule("Focus") {
                 eval.result.map(r => insWithout ++ unwrapTuple(r, vars.size)).toList
               }
               val newEb = eb2.flatMapIns(ebF)
+              timers.Match.filterIns.stop()
               Some(Problem(newAs, newWs, newPc, newPhi, p.xs, newEb))
             } else {
+              timers.Match.filterIns.start()
               // Filter tests by the path-condition
               val eb2 = qeb.filterIns(cond.toClause)
 
               val newPc = cond withBindings vars.map(id => id -> map(id))
+              timers.Match.filterIns.stop()
 
               Some(Problem(p.as, ws(c.rhs), p.pc merge newPc, p.phi, p.xs, eb2))
             }
@@ -212,7 +244,7 @@ case object Focus extends PreprocessingRule("Focus") {
         // goes to no defined cases)
         val elsePc = pcSoFar
 
-        if (existsFailing(elsePc.toClause, Map(), evaluator)) {
+        if (existsFailing(elsePc.toClause, Map(), evaluator, true)) {
           val newCase    = MatchCase(WildcardPattern(None), None, NoTree(scrut.getType))
 
           val qeb2 = qeb.filterIns(elsePc.toClause)
@@ -221,6 +253,8 @@ case object Focus extends PreprocessingRule("Focus") {
 
           casesInfos :+= (newCase -> (Some(newProblem), elsePc))
         }
+
+        timers.Match.stop()
 
         // Is there at least one subproblem?
         if (casesInfos.exists(_._2._1.isDefined)) {

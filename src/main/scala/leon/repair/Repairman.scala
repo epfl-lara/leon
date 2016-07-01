@@ -51,11 +51,14 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
           printer(eb.asString("Discovered Tests"))
         }
 
+        val tSize = eb.invalids.size
+
         reporter.info(ASCIIHelpers.title("2. Minimizing tests"))
         val eb2 = eb.minimizeInvalids(fd, ctx, program)
 
         // We exclude redundant failing tests, and only select the minimal tests
         reporter.info(f" - Minimal Failing Set Size: ${eb2.invalids.size}%3d")
+        val mtSize = eb2.invalids.size
 
         reporter.ifDebug { printer =>
           printer(eb2.asString("Minimal Failing Tests"))
@@ -143,7 +146,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
             val fw = new java.io.FileWriter("repair-report.txt", true)
 
             try {
-              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
+              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $tSize%4d & $mtSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%3.1f &  ${timeSynth/1000.0}%3.1f & $proof%7s \\\\\n")
             } finally {
               fw.close()
             }
