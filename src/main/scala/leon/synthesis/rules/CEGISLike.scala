@@ -56,11 +56,6 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     val useOptTimeout = outerCtx.settings.cegisUseOptTimeout
     val useVanuatoo   = outerCtx.settings.cegisUseVanuatoo
 
-    // This represents the current solution of the synthesis problem.
-    // It should be set to the solution you want to check at each time.
-    // Usually it will either be cExpr or a concrete solution.
-    private val solutionBox = MutableExpr(NoTree(outerP.outType))
-    private def setSolution(e: Expr) = solutionBox.underlying = e
 
     // Create a fresh solution function with the best solution around the
     // current CEGIS as body
@@ -70,7 +65,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       fd.fullBody = postMap {
         case src if src eq outerCtx.source =>
           val body = new PartialSolution(outerCtx.search.strat, true)(outerCtx)
-                      .solutionAround(outerCtx.currentNode)(solutionBox)
+                      .solutionAround(outerCtx.currentNode)(MutableExpr(NoTree(outerP.outType)))
                       .getOrElse(fatalError("Unable to get outer solution"))
                       .term
 
@@ -84,7 +79,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
     // Create a program replacing the synthesis source by the fresh solution
     // function
-    val (outerToInner, innerToOuter, program) = {
+    val (outerToInner, innerToOuter, solutionBox, program) = {
       val t = funDefReplacer {
         case fd2 if fd2 == outerCtx.functionContext =>
           Some(fd)
@@ -95,8 +90,17 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       val innerProgram = transformProgram(t, outerCtx.program)
 
-      (t, t.inverse, innerProgram)
+      val solutionBox = collect[MutableExpr] {
+        case me: MutableExpr => Set(me)
+        case _ => Set()
+      }(fd.fullBody).head
+
+      (t, t.inverse, solutionBox, innerProgram)
     }
+
+    // It should be set to the solution you want to check at each time.
+    // Usually it will either be cExpr or a concrete solution.
+    private def setSolution(e: Expr) = solutionBox.underlying = e
 
     implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program)
 
