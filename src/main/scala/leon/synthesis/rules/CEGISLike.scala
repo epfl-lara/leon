@@ -317,20 +317,20 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       }
 
       def allCandidatesFor(c: Identifier): Seq[Candidate] = {
-          if (!(cache contains c)) {
+        if (!(cache contains c)) {
           val subs = for ((b, _, subcs) <- cTree(c)) yield {
-              if (subcs.isEmpty) {
-                Seq(Set(b))
-              } else {
+            if (subcs.isEmpty) {
+              Seq(Set(b))
+            } else {
               val subPs = subcs map (s => allCandidatesFor(s))
               val combos = SeqUtils.cartesianProduct(subPs).map(_.flatten.toSet)
               combos map (_ + b)
-                }
-              }
-            cache += c -> subs.flatten
+            }
           }
-          cache(c)
+          cache += c -> subs.flatten
         }
+        cache(c)
+      }
 
       allCandidatesFor(rootC)
     }
