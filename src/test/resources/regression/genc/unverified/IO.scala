@@ -1,7 +1,7 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 import leon.annotation._
-import leon.io.{ FileOutputStream => FOS }
+import leon.io.{ FileOutputStream => FOS, FileInputStream => FIS }
 import leon.io.{ StdIn, StdOut }
 
 object Print {
@@ -15,7 +15,7 @@ object Print {
       out.write(x)
       out.write(sep)
       out.write(c)
-      out.close()
+      out.close
     } else {
       StdOut.print("CANNOT PRINT ")
       StdOut.print(x)
@@ -23,6 +23,7 @@ object Print {
       StdOut.print(c)
       StdOut.print(" TO FILE ")
       StdOut.print(filename)
+      StdOut.print("\n")
     }
   }
 
@@ -31,6 +32,36 @@ object Print {
     StdOut.print("ECHOING...")
     val x = StdIn.readInt
     StdOut.print(x)
+    StdOut.print("\n")
+  }
+
+  def slowEcho(): Unit = {
+    implicit val state = leon.io.newState
+
+    val message = 58
+
+    val out = FOS.open("echo.txt")
+    if (out.isOpen) {
+      out.write(message)
+      out.close
+
+      ()
+    } else {
+      StdOut.print("Couldn't write message\n")
+    }
+
+    val in = FIS.open("echo.txt")
+    if (in.isOpen) {
+      val x = in.readInt
+      in.close
+
+      if (x == message) {
+        StdOut.print("The echo was slow but successful!\n")
+      } else
+        StdOut.print("The echo was slow and buggy! :-(\n")
+    } else {
+      StdOut.print("Couldn't read message\n")
+    }
   }
 
   def _main() = {
@@ -48,6 +79,7 @@ object Print {
     printX(42, '*', " <--> ")
 
     echo()
+    slowEcho()
 
     0
   }
