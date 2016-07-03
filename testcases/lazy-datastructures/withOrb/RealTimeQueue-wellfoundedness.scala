@@ -48,7 +48,7 @@ object RealTimeQueueFinite {
       }
     }
   }
-  case class SCons[T](x: T, tailFun: () => Stream[T], r: BigInt) extends Stream[T]
+  case class SCons[T](x: T, tailFun: () => Stream[T], rank: BigInt) extends Stream[T]
   case class SNil[T]() extends Stream[T]
 
   def isConcrete[T](l: Stream[T]): Boolean = {

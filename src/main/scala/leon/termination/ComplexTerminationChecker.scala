@@ -51,9 +51,9 @@ class ComplexTerminationChecker(context: LeonContext, initProgram: Program) exte
     new RelationProcessor(this, modulesBV),
     new RelationProcessor(this, modules),
     new RelationProcessor(this, modulesLexicographic),
-    new ChainProcessor(this, modules),
-    new SelfCallsProcessor(this),
-    new LoopProcessor(this, modules)
+    //new ChainProcessor(this, modules),
+    new SelfCallsProcessor(this) //,
+    //new LoopProcessor(this, modules)
   )
 
 }

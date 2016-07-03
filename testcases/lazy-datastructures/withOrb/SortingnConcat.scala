@@ -46,7 +46,7 @@ object SortingnConcat {
         // here, x is the minimum
         SCons(x, Stream(() => sort(xs))) // sorts lazily only if needed
       case _ =>
-        SNil()
+        SNil()        
     }
   } ensuring (res => res.size == l.size && time <= ? * l.size + ?)
 
