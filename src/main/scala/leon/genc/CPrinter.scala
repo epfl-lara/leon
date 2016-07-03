@@ -147,7 +147,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case Break => c"break;"
     case Return(stmt) => c"return $stmt;"
 
-    case IfElse(cond, thn, elze) =>
+    case IfElse(cond, thn: Compound, elze: Compound) =>
       c"""|if ($cond)
           |{
           |  $thn
@@ -157,6 +157,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |  $elze
           |}
           |"""
+
+    case IfElse(cond, thn: Compound, elze) => pp(IfElse(cond, thn, Compound(Seq(elze))))
+    case IfElse(cond, thn, elze: Compound) => pp(IfElse(cond, Compound(Seq(thn)), elze))
+    case IfElse(cond, thn, elze) => pp(IfElse(cond, Compound(Seq(thn)), Compound(Seq(elze))))
 
     case While(cond, body) =>
       c"""|while ($cond)
