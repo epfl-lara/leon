@@ -5,12 +5,10 @@ package leon.io
 import leon.annotation._
 import leon.lang.Option
 
-// FIXME Importing leon.lang.Option doesn't mean it is imported, why?
-//
-// FIXME I couldn't use java.io.FileOutputStream as a field of FileOutputStream... Leon doesn't
-//       accept it. Instead, the stream is opened and closed everytime an operation is
-//       carried out. Not efficient but better than nothing. The C99 implementation doesn't
-//       suffer from this issue.
+// NOTE I couldn't use java.io.FileOutputStream as a field of FileOutputStream... Leon doesn't
+//      accept it. Instead, the stream is opened and closed everytime an operation is
+//      carried out. Not efficient but better than nothing. The C99 implementation doesn't
+//      suffer from this issue.
 //
 // NOTE Don't attempt to create a FileOutputStream directly. Use FileOutputStream.open instead.
 //
@@ -34,6 +32,7 @@ object FileOutputStream {
     """
   )
   def open(filename: String): FileOutputStream = {
+    // FIXME Importing leon.lang.Option doesn't mean it is imported, why?
     new FileOutputStream(
       try {
         // Check whether the stream can be opened or not (and empty the file)
@@ -84,9 +83,8 @@ case class FileOutputStream(var filename: Option[String]) {
     |}
     """
   )
-  // We assume the stream to be opened if and only if the filename is defined;
-  // see FileStream.open factory method.
-  def isOpen() = filename.isDefined
+  // We assume the stream to be opened if and only if the filename is defined.
+  def isOpen(): Boolean = filename.isDefined
 
   /**
    * Append an integer to the stream and return `true` on success.

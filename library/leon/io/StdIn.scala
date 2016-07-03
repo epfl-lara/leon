@@ -8,7 +8,7 @@ import leon.annotation._
  * NOTEs for GenC:
  * --------------
  *
- *  - `State` should be completely ignored as it is an artefact for verification
+ *  - `leon.io.State` should be completely ignored as it is an artefact for verification
  *    proofs. TODO It might be interesting to completely drop it from the C code
  *    instead of aliasing it to void* and the null pointer.
  *
@@ -19,6 +19,15 @@ import leon.annotation._
  *  - Currently, GenC doesn't support `BigInt` which implies that `readBigInt` is
  *    dropped as well.
  *
+ *  - In order to handle errors (e.g. EOF or invalid formatting), the API has to be
+ *    updated. One solution would be to return `Option`s. Another would be to use
+ *    exception, however this is probably trickier to translate to C.
+ *
+ *  - Decisions regarding those issues should be applied to FileInputStream as well.
+ *
+ *
+ * FIXME Using the `scala.io.StdIn.read*` methods has a major shortcomming:
+ *       the data is read from a entire line!
  */
 
 object StdIn {
