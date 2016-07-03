@@ -1,6 +1,6 @@
 import leon.lang._
 import leon.lang.xlang._
-import leon.io.{ StdIn, StdOut }
+import leon.io.{ State, StdIn, StdOut }
 
 import leon.annotation._
 
@@ -13,7 +13,7 @@ object GuessNumberC {
     bot + (top - bot) / 2
   } ensuring(res => res >= bot && res <= top)
 
-  def guessNumber()(implicit state: StdIn.State): Int = {
+  def guessNumber()(implicit state: State): Int = {
     var bot: Int = 0
     var top: Int = 10
 
@@ -36,7 +36,7 @@ object GuessNumberC {
     bot
   }
 
-  def isSmaller(guess: Int)(implicit state: StdIn.State): Boolean = {
+  def isSmaller(guess: Int)(implicit state: State): Boolean = {
     /*
      * NOTE: Pattern matching not supported by GenC
      * isSmallerImpl(guess, choice) match {
@@ -48,7 +48,7 @@ object GuessNumberC {
     answer == 1
   }
 
-  def isSmallerImpl(guess: Int)(implicit state: StdIn.State): Int = {
+  def isSmallerImpl(guess: Int)(implicit state: State): Int = {
     // NOTE: scanning boolean is not yet supported by GenC
     // NOTE: string manipulation is not yet supported by GenC
     // StdOut.print("Is it (strictly) greater than " + guess + " [0 = false, 1 = true]: ")
@@ -67,7 +67,7 @@ object GuessNumberC {
   def _main() = {
     StdOut.println("Think of a number between 0 and 10...")
     StdOut.println("Leon will try to guess it...")
-    implicit val ioState = StdIn.newState
+    implicit val ioState = leon.io.newState
     val answer = guessNumber()
     StdOut.print("Found: ")
     StdOut.println(answer)

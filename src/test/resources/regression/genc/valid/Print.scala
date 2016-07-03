@@ -27,7 +27,7 @@ object Print {
   }
 
   def echo(): Unit = {
-    implicit val state = StdIn.newState
+    implicit val state = leon.io.newState
     StdOut.print("ECHOING...")
     val x = StdIn.readInt
     StdOut.print(x)

@@ -33,14 +33,6 @@ import leon.annotation._
 object StdIn {
 
   @library
-  @cCode.typedef(alias = "void*")
-  case class State(var seed: BigInt)
-
-  @library
-  @cCode.function(code = "void* __FUNCTION__(void) { return NULL; }")
-  def newState: State = State(0)
-
-  @library
   @cCode.function(code = """
     |int32_t __FUNCTION__(void* unused) {
     |  int32_t x;
