@@ -59,7 +59,7 @@ object Knapscak {
         } else oldMax
       case Nil() => BigInt(0)
     }
-  } ensuring(_ => time <= ? * currList.size + ?) // interchanging currList and items in the bound will produce a counter-example
+  } ensuring(_ => steps <= ? * currList.size + ?) // interchanging currList and items in the bound will produce a counter-example
 
   @memoize
   def knapSack(w: BigInt, items: IList): BigInt = {
@@ -68,7 +68,7 @@ object Knapscak {
     else {
       maxValue(items, w, items)
     }
-  } ensuring(_ => time <= ? * items.size + ?)
+  } ensuring(_ => steps <= ? * items.size + ?)
 
   @invisibleBody
   def invoke(i: BigInt, items: IList) = {
@@ -77,7 +77,7 @@ object Knapscak {
   } ensuring (res => {
     (i == 0 || depsMono(i - 1, items, inState[BigInt], outState[BigInt])) && // lemma inst
         deps(i, items) &&
-      time <= ? * items.size + ?
+      steps <= ? * items.size + ?
   })
 
   def bottomup(w: BigInt, items: IList): IList = {
@@ -90,7 +90,7 @@ object Knapscak {
     }
   } ensuring{_ =>
     deps(w, items) &&         
-      time <= ? * (w*items.size) + ? * items.size + ? * w + ?    
+      steps <= ? * (w*items.size) + ? * items.size + ? * w + ?    
   }
 
   /**
@@ -99,7 +99,7 @@ object Knapscak {
   def knapSackSol(w: BigInt, items: IList) = {
     require(w >= 0) 
     bottomup(w, items)
-  } ensuring(_ => time <= ? * (w*items.size) + ? * items.size + ? * w + ?)
+  } ensuring(_ => steps <= ? * (w*items.size) + ? * items.size + ? * w + ?)
 
   /**
    * Lemmas of deps

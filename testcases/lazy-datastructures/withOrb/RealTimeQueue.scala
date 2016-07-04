@@ -59,7 +59,7 @@ object RealTimeQueue {
         val rot = () => rotate(ftail, r1, newa)
         SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
     }
-  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && time <= ?) // Orb results: time <= 31
+  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && steps <= ?) // Orb results: steps <= 31
 
   /**
    * Returns the first element of the stream whose tail is not evaluated.
@@ -111,15 +111,15 @@ object RealTimeQueue {
     q.f match {
       case SCons(x, _) => x
     }
-  } //ensuring (res => res.valid && time <= ?)
+  } //ensuring (res => res.valid && steps <= ?)
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring { res =>
     funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-    res.valid && time <= ?
-  } // Orb results: time <= 62
+    res.valid && steps <= ?
+  } // Orb results: steps <= 62
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -129,8 +129,8 @@ object RealTimeQueue {
     }
   } ensuring{res =>
     funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-    res.valid && time <= ?
-  } // Orb results: time <= 119
+    res.valid && steps <= ?
+  } // Orb results: steps <= 119
 
    // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
   /**
