@@ -64,7 +64,7 @@ object BottomUpMergeSort {
   } ensuring (res => res.size <= (l.size + 1) / 2 &&
     fullSize(l) == fullSize(res) &&
     valid(res) &&
-    time <= ? * l.size + ? // 2 * time <= 15 * l.size + 6
+    steps <= ? * l.size + ? // 2 * steps <= 15 * l.size + 6
     )
 
   /**
@@ -88,12 +88,12 @@ object BottomUpMergeSort {
       case _ => true
     }) &&
     valid(res) &&
-    time <=  ? * l.size + ? // 32 * l.size + 3
+    steps <=  ? * l.size + ? // 32 * l.size + 3
   }
 
   // @invisibleBody
   private def merge(a: Stream, b: Stream): LList = {
-    require((a.list.cached && b.list.cached))
+    require((cached(a.list) && cached(b.list)))
     b.list match {
       case SNil() => a.list
       case SCons(x, xs) =>
@@ -106,7 +106,7 @@ object BottomUpMergeSort {
               SCons(x, Stream(() => forceAndMerge(a, xs)))
         }
     }
-  } ensuring(_ => time <= ?) // time <= 21
+  } ensuring(_ => steps <= ?) // steps <= 21
 
   /**
    *  A function that merges two sorted streams of integers.
@@ -119,8 +119,8 @@ object BottomUpMergeSort {
     require {
       val alist = (a.list*)
       val blist = (b.list*)
-      (alist != SNil() || b.list.cached) && // if one of the arguments is Nil then the other is evaluated
-        (blist != SNil() || a.list.cached) &&
+      (alist != SNil() || cached(b.list)) && // if one of the arguments is Nil then the other is evaluated
+        (blist != SNil() || cached(a.list)) &&
         (alist != SNil() || blist != SNil()) // at least one of the arguments is not Nil
     }
     (a.list, b.list) match {
@@ -129,7 +129,7 @@ object BottomUpMergeSort {
   } ensuring {res =>
     val rsize = res.size
     a.size + b.size == rsize && rsize >= 1 &&
-    time <= 123 * rsize - 86 // time <= 111 * rsize - 86 // Orb cannot infer this due to issues with CVC4 set solving !
+    steps <= 123 * rsize - 86 // steps <= 111 * rsize - 86 // Orb cannot infer this due to issues with CVC4 set solving !
   }
 
   /**
@@ -149,7 +149,7 @@ object BottomUpMergeSort {
     fullSize(res) == l.size &&
       res.size == l.size &&
       valid(res) &&
-      time <= ? * l.size + ? // time <= 13 * l.size + 3
+      steps <= ? * l.size + ? // steps <= 13 * l.size + 3
   }
 
   /**
@@ -165,7 +165,7 @@ object BottomUpMergeSort {
           case Cons(r, Nil()) => r
         }
     }
-  } ensuring (res => l.size == res.size && time <= ? * l.size + ?) // time <= 45 * l.size + 15
+  } ensuring (res => l.size == res.size && steps <= ? * l.size + ?) // steps <= 45 * l.size + 15
 
   private def kthMinStream(s: Stream, k: BigInt): BigInt = {
     require(k >= 0)
@@ -176,14 +176,14 @@ object BottomUpMergeSort {
           kthMinStream(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * s.size) + ? * (s.size) + ?) //  time <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
+  } ensuring (_ => steps <= ? * (k * s.size) + ? * (s.size) + ?) //  steps <= (123 * (k * s.list-mem-time(uiState)._1._1.size) + 123 * s.list-mem-time(uiState)._1._1.size) + 9
 
   /**
    * A function that accesses the kth element of a list using lazy sorting.
    */
   def kthMin(l: List[BigInt], k: BigInt): BigInt = {
     kthMinStream(mergeSort(l), k)
-  } ensuring(_ => time <= ? * (k * l.size) + ? * (l.size) + ?)
+  } ensuring(_ => steps <= ? * (k * l.size) + ? * (l.size) + ?)
 
   @ignore
   def main(args: Array[String]) {

@@ -30,7 +30,7 @@ object Knapscak {
 
   def deps(i: BigInt, items: IList): Boolean = {
     require(i >= 0)
-    knapSack(i, items).cached && // if we have the cached check only along the else branch, we would get a counter-example.
+    cached(knapSack(i, items)) && // if we have the cached check only along the else branch, we would get a counter-example.
       (if (i <= 0) true
       else {
         deps(i - 1, items)
@@ -75,7 +75,7 @@ object Knapscak {
     require(i == 0 || (i > 0 && deps(i - 1, items)))
     knapSack(i, items)
   } ensuring (res => {
-    (i == 0 || depsMono(i - 1, items, inState[BigInt], outState[BigInt])) && // lemma inst
+    (i == 0 || depsMono(i - 1, items, inSt[BigInt], outSt[BigInt])) && // lemma inst
         deps(i, items) &&
       steps <= ? * items.size + ?
   })
@@ -109,7 +109,7 @@ object Knapscak {
   @traceInduct  
   def depsMono(i: BigInt, items: IList, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0)
-    (st1.subsetOf(st2) && (deps(i, items) withState st1)) ==> (deps(i, items) withState st2)
+    (st1.subsetOf(st2) && (deps(i, items) in st1)) ==> (deps(i, items) in st2)
   } holds
 
   // forall. x, x <= y && deps(y) => deps(x)  

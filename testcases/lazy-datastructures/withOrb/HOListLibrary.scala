@@ -37,8 +37,8 @@ sealed abstract class List {
     case Nil() => Nil()
     case Cons(h, t) => Cons(f(h), t.map(f))
   }} ensuring {
-    val in = inState
-    time <= ? * (listTime(f) withState in) + ?
+    val in = inSt
+    steps <= ? * (listTime(f) in in) + ?
   }
 
   /*def foldLeft(z: BigInt)(f: (BigInt,BigInt) => BigInt): BigInt = this match {
@@ -94,5 +94,5 @@ object Client {
   def client(l: List) = {
     require(listTimeLemma(l, id _))
     l.map(id _)
-  } ensuring(_ => time <= ? * l.size + ?)
+  } ensuring(_ => steps <= ? * l.size + ?)
 }

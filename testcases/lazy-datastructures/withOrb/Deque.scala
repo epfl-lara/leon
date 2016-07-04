@@ -52,7 +52,7 @@ object RealTimeDeque {
     @inline
     def tailCached: Boolean = {
       this match {
-        case SCons(_, f: Fun[T]) => f.get.cached
+        case SCons(_, f: Fun[T]) => cached(f.get)
         case _                   => true
       }
     }
@@ -94,7 +94,7 @@ object RealTimeDeque {
         }
     }
   } ensuring (res => res.size == n && res.isCons &&
-    time <= ?)
+    steps <= ?)
 
   @invstate
   def revAppend[T](l1: Stream[T], l2: Stream[T]): Stream[T] = {
@@ -107,7 +107,7 @@ object RealTimeDeque {
   } ensuring (res => res.size == l1.size + l2.size &&
     isConcrete(res) &&
     (l1.size >= 1 ==> res.isCons) &&
-    time <= ? * l1.size + ?)
+    steps <= ? * l1.size + ?)
 
   @invstate
   def drop[T](n: BigInt, l: Stream[T]): Stream[T] = {
@@ -121,7 +121,7 @@ object RealTimeDeque {
     }
   } ensuring (res => isConcrete(res) &&
     res.size == l.size - n &&
-    time <= ? * n + ?)
+    steps <= ? * n + ?)
 
   @invstate
   def take[T](n: BigInt, l: Stream[T]): Stream[T] = {
@@ -136,7 +136,7 @@ object RealTimeDeque {
     }
   } ensuring (res => isConcrete(res) &&
     res.size == n &&
-    time <= ? * n + ?)
+    steps <= ? * n + ?)
 
   @invstate
   def rotateRev[T](r: Stream[T], f: Stream[T], a: Stream[T]): Stream[T] = {
@@ -156,7 +156,7 @@ object RealTimeDeque {
     } // here, it doesn't matter whether 'f' has i elements or not, what we want is |drop(2,f)| + |take(2,f)| == |f|
   } ensuring (res => res.size == r.size + f.size + a.size &&
     res.isCons &&
-    time <= ?)
+    steps <= ?)
 
   @invstate
   def rotateDrop[T](r: Stream[T], i: BigInt, f: Stream[T]): Stream[T] = {
@@ -178,7 +178,7 @@ object RealTimeDeque {
       }
     }
   } ensuring (res => res.size == r.size + f.size - i &&
-    res.isCons && time <= ?)
+    res.isCons && steps <= ?)
 
   def firstUneval[T](l: Stream[T]): Stream[T] = {
     l match {
@@ -242,7 +242,7 @@ object RealTimeDeque {
     } else
       Queue(f, lenf, sf, r, lenr, sr)
   } ensuring (res => res.valid &&
-    time <= ?)
+    steps <= ?)
 
   @invisibleBody
   def funeEqual[T](s1: Stream[T], s2: Stream[T]) = firstUneval(s1) == firstUneval(s2)
@@ -259,8 +259,8 @@ object RealTimeDeque {
     }
   } ensuring (res => {
     //lemma instantiations
-    val in = inState[T]
-    val out = outState[T]
+    val in = inSt[T]
+    val out = outSt[T]
     funeMonotone(tar, htar, in, out) &&
       funeMonotone(other, hother, in, out) && {
         //properties
@@ -268,7 +268,7 @@ object RealTimeDeque {
         firstUneval(htar) == firstUneval(res) && // follows from post of fune
           firstUneval(other) == firstUneval(hother) &&
           (rsize == 0 || rsize == tar.size - 1)
-      } && time <= ?
+      } && steps <= ?
   })
 
   /**
@@ -280,7 +280,7 @@ object RealTimeDeque {
     val nsf = force(force(q.sf, q.f, q.r, q.sr), q.f, q.r, q.sr) // forces q.sf twice
     val nsr = force(force(q.sr, q.r, q.f, nsf), q.r, q.f, nsf) // forces q.sr twice
     (nsf, nsr)
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
   // the following properties are ensured, but need not be stated
   /*ensuring (res => {
     val nsf = res._1
@@ -289,7 +289,7 @@ object RealTimeDeque {
       firstUneval(q.r) == firstUneval(nsr) &&
       (ssize(nsf) == 0 || ssize(nsf) == ssize(q.sf) - 2) &&
       (ssize(nsr) == 0 || ssize(nsr) == ssize(q.sr) - 2) &&
-      time <= 1500
+      steps <= 1500
   })*/
 
   def empty[T] = {
@@ -314,7 +314,7 @@ object RealTimeDeque {
     val nsf = force(q.sf, q.f, q.r, q.sr)
     val nsr = force(q.sr, q.r, q.f, nsf)
     createQueue(SCons[T](x, Val(q.f)), q.lenf + 1, nsf, q.r, q.lenr, nsr)
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid && steps <= ?)
 
   /**
    * Removing the element at the front, and returning the tail
@@ -325,7 +325,7 @@ object RealTimeDeque {
       case _ =>
         tailSub(q)
     }
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid && steps <= ?)
 
   def tailSub[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid && q.f.tailCached)
@@ -338,7 +338,7 @@ object RealTimeDeque {
         // in this case 'r' will have only one element by invariant
         empty[T]
     }
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid && steps <= ?)
 
   /**
    * Reversing a list. Takes constant time.
@@ -347,7 +347,7 @@ object RealTimeDeque {
   def reverse[T](q: Queue[T]): Queue[T] = {
     require(q.valid)
     Queue(q.r, q.lenr, q.sr, q.f, q.lenf, q.sf)
-  } ensuring (_ => q.valid && time <= ?)
+  } ensuring (_ => q.valid && steps <= ?)
 
   def snoc[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
@@ -362,7 +362,7 @@ object RealTimeDeque {
   def funeCompose[T](l1: Stream[T], st1: Set[mem.Fun[T]], st2: Set[mem.Fun[T]]): Boolean = {
     require(st1.subsetOf(st2))
     // property
-    (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
+    (firstUneval(l1) in st2) == (firstUneval(firstUneval(l1) in st1) in st2)
   } holds
 
   /**
@@ -372,11 +372,11 @@ object RealTimeDeque {
    * it doesn't require (st2 \ st1) to be disjoint from la and lb.
    */
   def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[mem.Fun[T]], st2: Set[mem.Fun[T]]): Boolean = {
-    require((firstUneval(l1) withState st1) == (firstUneval(l2) withState st1) &&
+    require((firstUneval(l1) in st1) == (firstUneval(l2) in st1) &&
       st1.subsetOf(st2))
     funeCompose(l1, st1, st2) && // lemma instantiations
       funeCompose(l2, st1, st2) &&
-      (firstUneval(l1) withState st2) == (firstUneval(l2) withState st2) // property
+      (firstUneval(l1) in st2) == (firstUneval(l2) in st2) // property
   } holds
 
   @ignore
