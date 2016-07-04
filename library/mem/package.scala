@@ -15,10 +15,7 @@ package object mem {
    * This should be applied only over a function invocation or lambda application.
    */
   @library
-  case class Fun[T](v: T) {
-    @extern
-    def cached: Boolean = sys.error("not implemented!")
-  }
+  case class Fun[T](v: T) 
 
   @library
   @extern
