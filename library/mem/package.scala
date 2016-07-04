@@ -20,6 +20,10 @@ package object mem {
     def cached: Boolean = sys.error("not implemented!")
   }
 
+  /*@library
+  @extern
+  def cached[T](f: Fun[T]): Boolean = sys.error("not implemented!")*/
+
   @library
   @inline
   implicit def toMem[T](x: T) = new Fun(x)
