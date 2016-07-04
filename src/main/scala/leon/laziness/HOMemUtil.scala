@@ -78,7 +78,7 @@ object HOMemUtil {
   def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inState")
+      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inSt")
     case _ =>
       false
   }
@@ -86,7 +86,7 @@ object HOMemUtil {
   def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outState")
+      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outSt")
     case _ =>
       false
   }
@@ -140,7 +140,7 @@ object HOMemUtil {
     case FunctionInvocation(TypedFunDef(fd, _), _) =>
       val fn = fullName(fd)(p)
       (fn == "leon.lazyeval.WithState.withState" ||
-          fn == "leon.mem.memWithState.withState")
+          fn == "leon.mem.memWithState.in")
     case _ => false
   }
 

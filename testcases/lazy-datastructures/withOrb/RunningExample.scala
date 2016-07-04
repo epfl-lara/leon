@@ -33,19 +33,19 @@ object RunningExample {
     if(i == 1) True()
     else if((n / i) * i == n) False()
     else isPrimeRec(i - 1, n)
-  } ensuring(_ => time <= ? * i + ?)
+  } ensuring(_ => steps <= ? * i + ?)
 
   def isPrimeNum(n: BigInt): Bool = {
     require(n >= 2)
     isPrimeRec(n -1, n)
-  } ensuring(r => time <= ? * n + ?)
+  } ensuring(r => steps <= ? * n + ?)
 
   def nextElem(i: BigInt): Stream = {
     require(i >= 2)
     val x = (i, isPrimeNum(i))
     val y = i+1
     SCons(x, () => nextElem(y))
-  } ensuring(r => time <= ? * i + ?)
+  } ensuring(r => steps <= ? * i + ?)
 
   def isPrimeS(s: Stream, i: BigInt): Boolean = {
     require(i >= 2)
@@ -58,10 +58,10 @@ object RunningExample {
     require(n >= 2)
     takeRec(0, n - 2, primeStream)
   } ensuring {r => concUntil(primeStream, n - 2) &&
-      (if(concUntil(primeStream, n - 2) withState inState[BigInt])
-        time <= ? * n + ?
+      (if(concUntil(primeStream, n - 2) in inSt[BigInt])
+        steps <= ? * n + ?
       else
-        time <= ? * (n * n) + ?)
+        steps <= ? * (n * n) + ?)
   }
 
  def takeRec(i: BigInt, n: BigInt, s: Stream): List[BigInt] = {
@@ -78,10 +78,10 @@ object RunningExample {
    case _ => Nil[BigInt]()
   }
  } ensuring{r => concUntil(s, n - i) &&
-     (if(concUntil(s, n - i) withState inState[BigInt])
-        time <= ? * (n - i) + ?
+     (if(concUntil(s, n - i) in inSt[BigInt])
+        steps <= ? * (n - i) + ?
      else
-       time <= ? * (n * (n-i)) + ?)
+       steps <= ? * (n * (n-i)) + ?)
   }
 
  def concUntil(s: Stream, i: BigInt): Boolean = {
