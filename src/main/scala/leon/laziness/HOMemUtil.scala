@@ -93,7 +93,7 @@ object HOMemUtil {
 
   def cachedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.Fun.cached"
+      fullName(fd)(p) == "leon.mem.cached"
     case _ => false
   }
 
