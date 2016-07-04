@@ -234,16 +234,6 @@ case object StringRender extends Rule("StringRender") {
     
     solutionStreamToRuleApplication(p, leon.utils.StreamUtils.interleave(tagged_solutions))(hctx.program)
   }
-  
-  /** Find ambiguities not containing _edit_me_ to ask to the user */
-  def askQuestion(input: List[Identifier], r: RuleClosed)(implicit c: LeonContext, p: Program): List[disambiguation.Question[StringLiteral]] = {
-    //if !s.contains(EDIT_ME)
-    val qb = new disambiguation.QuestionBuilder(input, r.solutions, (seq: Seq[Expr], expr: Expr) => expr match {
-      case s @ StringLiteral(slv) if !contains_EDIT_ME(slv) => Some(s)
-      case _ => None
-    })
-    qb.result()
-  }
 
   /** Converts the stream of solutions to a RuleApplication */
   def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)])(implicit program: Program): RuleApplication = {

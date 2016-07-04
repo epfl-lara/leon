@@ -8,7 +8,7 @@ import synthesis.Solution
 import evaluators.DefaultEvaluator
 import purescala.Expressions._
 import purescala.ExprOps
-import purescala.Types.{StringType, TypeTree}
+import purescala.Types._
 import purescala.Common.Identifier
 import purescala.Definitions.{FunDef, Program}
 import purescala.DefOps
@@ -17,6 +17,8 @@ import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import evaluators.AbstractEvaluator
 import scala.annotation.tailrec
+import leon.evaluators.EvaluationResults
+import leon.purescala.Common
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -90,10 +92,18 @@ object QuestionBuilder {
     def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
       case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
       case StringLiteral(s) =>
-        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val newS = if(s == "") "a" else s
+        val i = s.lastIndexWhere { c => c < 'a' || c > 'z' }
         val prefix = s.take(i+1)
         val suffix = s.drop(i+1)
-        Some(StringLiteral(prefix + (if(prefix == "") "$" else "") + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+        val res = if(suffix.forall { _ == 'z' }) {
+          prefix + "a" + ("a" * suffix.length)
+        } else {
+          val last = suffix.reverse.prefixLength { _ == 'z' }
+          val digit2increase = suffix(suffix.length - last - 1)
+          prefix + (digit2increase.toInt + 1).toChar + ("a" * last)
+        }
+        Some(StringLiteral(res))
       case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
       case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
       case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
@@ -149,7 +159,7 @@ class QuestionBuilder[T <: Expr](
   private var value_enumerator: ExpressionGrammar = ValueGrammar
   private var expressionsToTestFirst: Option[Stream[Seq[Expr]]] = None
 
-  /** Sets the way to sort questions. See [[QuestionSortingType]] */
+  /** Sets the way to sort questions during enumeration. Not used at this moment. See [[QuestionSortingType]] */
   def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
   /** Sets the way to sort alternatives. See [[AlternativeSortingType]] */
   def setSortAlternativesBy(alternativeSortMethod: AlternativeSortingType[T]) = { _alternativeSortMethod = alternativeSortMethod; this }
@@ -168,21 +178,17 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-    val savedBody = if(originalFun.nonEmpty) { // To test this solution, we suppose that this function's body is the given one.
-      val saved = originalFun.get.body
-      originalFun.get.body = Some(s.term)
-      saved
-    } else None
-    val e = new AbstractEvaluator(c, newProgram)
-    val model = new ModelBuilder
-    model ++= elems
-    val modelResult = model.result()
-    val res = for{x <- e.eval(s.term, modelResult).result
-        res = x._1
-        simp = ExprOps.simplifyArithmetic(res)}
-      yield simp
-    if(originalFun.nonEmpty) originalFun.get.body = savedBody
-    res
+    s.ifOnFunDef(originalFun.getOrElse(new FunDef(Common.FreshIdentifier("useless"), Nil, Nil, UnitType))){
+      val e = new AbstractEvaluator(c, newProgram)
+      val model = new ModelBuilder
+      model ++= elems
+      val modelResult = model.result()
+      val evaluation = e.eval(s.term, modelResult)
+      for{x <- evaluation.result
+          res = x._1
+          simp = ExprOps.simplifyArithmetic(res)}
+        yield simp
+    }
   }
   
   /** Given an input, the current output, a list of alternative programs, compute a question if there is any. */
@@ -200,7 +206,9 @@ class QuestionBuilder[T <: Expr](
     }.drop(1).toList.distinct
     if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
       Some(Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0)))
-    } else None
+    } else {
+      None
+    }
   }
   
   def getExpressionsToTestFirst(): Option[Stream[Seq[(Identifier, Expr)]]] = expressionsToTestFirst map { inputs =>
@@ -240,9 +248,9 @@ class QuestionBuilder[T <: Expr](
     val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
     val questions = inputsToQuestions(solutions, enumerated_inputs)
     questions
-  }
+  }/*
   
   def result(): List[Question[T]] = {
     resultAsStream().toList.sortBy(_questionSorMethod(_))
-  }
+  }*/
 }
