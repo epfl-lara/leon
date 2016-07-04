@@ -36,7 +36,7 @@ object PackratParsing {
   @extern
   def lookup(i: BigInt): Terminal = {
     string(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
   sealed abstract class Result {
     /**
@@ -57,7 +57,7 @@ object PackratParsing {
   @invstate
   def pAdd(i: BigInt): Result = {
     require {
-      if (depsEval(i) && pMul(i).cached && pPrim(i).cached)
+      if (depsEval(i) && cached(pMul(i)) && cached(pPrim(i)))
         resEval(i, pMul(i)) // lemma inst
       else false
     }
@@ -76,14 +76,14 @@ object PackratParsing {
       case _ =>
         mulRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 35
+  } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 35
 
   @invisibleBody
   @memoize
   @invstate
   def pMul(i: BigInt): Result = {
     require{
-      if (depsEval(i) && pPrim(i).cached)
+      if (depsEval(i) && cached(pPrim(i)))
         resEval(i, pPrim(i)) // lemma inst
       else false
     }
@@ -102,7 +102,7 @@ object PackratParsing {
       case _ =>
         primRes
     }
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 35
+  } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 35
 
   @invisibleBody
   @memoize
@@ -124,7 +124,7 @@ object PackratParsing {
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && time <= ?) // time <= 32
+  } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 32
 
   //@inline
   def depsEval(i: BigInt) =
@@ -134,7 +134,7 @@ object PackratParsing {
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    (pPrim(i).cached && pMul(i).cached && pAdd(i).cached) && (
+    (cached(pPrim(i)) && cached(pMul(i)) && cached(pAdd(i))) && (
       if (i == 0) true
       else allEval(i - 1))
   }
@@ -142,7 +142,7 @@ object PackratParsing {
   @traceInduct
   def evalMono(i: BigInt, st1: Set[Fun[Result]], st2: Set[Fun[Result]]) = {
     require(i >= 0)
-    (st1.subsetOf(st2) && (allEval(i) withState st1)) ==> (allEval(i) withState st2)
+    (st1.subsetOf(st2) && (allEval(i) in st1)) ==> (allEval(i) in st2)
   } holds
 
   @traceInduct
@@ -169,19 +169,19 @@ object PackratParsing {
     require(i == 0 || (i > 0 && allEval(i - 1)))
     (pPrim(i), pMul(i), pAdd(i))
   } ensuring (res => {
-    val in = inState[Result]
-    val out = outState[Result]
+    val in = inSt[Result]
+    val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      time <= ?
+      steps <= ?
   })*/
 
   def invokePrim(i: BigInt): Result = {
     require(depsEval(i))
     pPrim(i)
   } ensuring { res =>
-    val in = inState[Result]
-    val out = outState[Result]
+    val in = inSt[Result]
+    val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true)
   }
 
@@ -191,8 +191,8 @@ object PackratParsing {
       case _ => pMul(i)
     }
   } ensuring { res =>
-    val in = inState[Result]
-    val out = outState[Result]
+    val in = inSt[Result]
+    val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true)
   }
 
@@ -203,11 +203,11 @@ object PackratParsing {
       case _ => pAdd(i)
     }
   } ensuring { res =>
-    val in = inState[Result]
-    val out = outState[Result]
+    val in = inSt[Result]
+    val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      time <= ? // 136
+      steps <= ? // 136
   }
 
   /**
@@ -226,7 +226,7 @@ object PackratParsing {
       }
     }
   } ensuring (_ => allEval(n) &&
-    time <= ? * n + ?) // 145 * n + 139
+    steps <= ? * n + ?) // 145 * n + 139
 
   @ignore
   def main(args: Array[String]) {

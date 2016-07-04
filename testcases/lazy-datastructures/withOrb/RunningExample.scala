@@ -87,7 +87,7 @@ object RunningExample {
  def concUntil(s: Stream, i: BigInt): Boolean = {
    s match {
      case c: SCons =>
-       if(i > 0) c.tail.cached && concUntil(c.tail*, i - 1)
+       if(i > 0) cached(c.tail) && concUntil(c.tail*, i - 1)
        else true
      case _ => true
    }

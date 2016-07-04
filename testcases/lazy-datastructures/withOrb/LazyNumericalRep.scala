@@ -67,7 +67,7 @@ object LazyNumericalRep {
 
     def isCached = this match {
       case _: Val => true
-      case _      => fval.cached
+      case _      => cached(fval)
     }
   }
   private case class Val(x: NumList) extends NumStream
@@ -181,7 +181,7 @@ object LazyNumericalRep {
       case s @ Spine(_, _) =>
         incLazy(xs)
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
   @invisibleBody
   @invstate
@@ -216,7 +216,7 @@ object LazyNumericalRep {
           (!isConcrete(xs) || isConcrete(pushUntilCarry(r)))
       case _ => false
     }) &&
-      time <= ?
+      steps <= ?
   }
 
   @invisibleBody
@@ -251,7 +251,7 @@ object LazyNumericalRep {
       case _ => true
     }) &&
       schedulesProperty(res._1, res._2) &&
-      time <= ?
+      steps <= ?
   }
 
   @invisibleBody
@@ -266,9 +266,9 @@ object LazyNumericalRep {
       case Nil() => scheds
     }
   } ensuring { res =>
-    payPostconditionInst(q, res, scheds, inState[NumList], outState[NumList]) && // properties
+    payPostconditionInst(q, res, scheds, inSt[NumList], outSt[NumList]) && // properties
       schedulesProperty(q, res) &&
-      time <= ?
+      steps <= ?
   }
 
   /**
@@ -281,7 +281,7 @@ object LazyNumericalRep {
     val nscheds = Pay(q, scheds)
     Number(q, nscheds)
 
-  } ensuring { res => res.valid && time <= ? }
+  } ensuring { res => res.valid && steps <= ? }
 
   def firstDigit(w: Number): Digit = {
     require(!w.digs.getV.isTip)
@@ -316,7 +316,7 @@ object LazyNumericalRep {
       // instantiations for zeroPrecedesSuf property
       (scheds match {
         case Cons(head, rest) =>
-          (concreteUntilIsSuffix(q, head) withState in) &&
+          (concreteUntilIsSuffix(q, head) in in) &&
             (res match {
               case Cons(rhead, rtail) =>
                 concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
@@ -364,7 +364,7 @@ object LazyNumericalRep {
   // monotonicity lemmas
   def schedMonotone[T](st1: Set[Fun[NumList]], st2: Set[Fun[NumList]], scheds: List[NumStream], l: NumStream): Boolean = {
     require(st1.subsetOf(st2) &&
-      (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'
+      (schedulesProperty(l, scheds) in st1)) // here the input state is fixed as 'st1'
     //induction scheme
     (scheds match {
       case Cons(head, tail) =>
@@ -376,17 +376,17 @@ object LazyNumericalRep {
         }
       case Nil() =>
         concreteMonotone(st1, st2, l)
-    }) && (schedulesProperty(l, scheds) withState st2) //property
+    }) && (schedulesProperty(l, scheds) in st2) //property
   } holds
 
   @traceInduct
   def concreteMonotone[T](st1: Set[Fun[NumList]], st2: Set[Fun[NumList]], l: NumStream): Boolean = {
-    ((isConcrete(l) withState st1) && st1.subsetOf(st2)) ==> (isConcrete(l) withState st2)
+    ((isConcrete(l) in st1) && st1.subsetOf(st2)) ==> (isConcrete(l) in st2)
   } holds
 
   @traceInduct
   def concUntilMonotone[T](q: NumStream, suf: NumStream, st1: Set[Fun[NumList]], st2: Set[Fun[NumList]]): Boolean = {
-    ((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2)) ==> (concreteUntil(q, suf) withState st2)
+    ((concreteUntil(q, suf) in st1) && st1.subsetOf(st2)) ==> (concreteUntil(q, suf) in st2)
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
@@ -453,10 +453,10 @@ object LazyNumericalRep {
 
   @traceInduct
   def concUntilExtenLemma[T](q: NumStream, suf: NumStream, st1: Set[Fun[NumList]], st2: Set[Fun[NumList]]): Boolean = {
-    (suf.isSusp && (concreteUntil(q, suf) withState st1) && (st2 == st1 ++ Set(Fun(suf.fval)))) ==>
+    (suf.isSusp && (concreteUntil(q, suf) in st1) && (st2 == st1 ++ Set(Fun(suf.fval)))) ==>
       (suf.getV match {
         case Spine(_, rear) =>
-          concreteUntil(q, rear) withState st2
+          concreteUntil(q, rear) in st2
         case _ => true
       })
   } holds

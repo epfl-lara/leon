@@ -41,7 +41,7 @@ object RealTimeQueue {
   def isConcrete[T](l: Stream[T]): Boolean = {
     l match {
       case c@SCons(_, _) =>
-        c.tail.cached && isConcrete(c.tail*)
+        cached(c.tail) && isConcrete(c.tail*)
       case _ => true
     }
   }
@@ -68,7 +68,7 @@ object RealTimeQueue {
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
-        if (c.tail.cached)
+        if (cached(c.tail))
           firstUnevaluated(c.tail*)
         else l
       case _           => l
@@ -117,7 +117,7 @@ object RealTimeQueue {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
   } // Orb results: steps <= 62
 
@@ -128,7 +128,7 @@ object RealTimeQueue {
         createQ(c.tail, q.r, q.s)
     }
   } ensuring{res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
   } // Orb results: steps <= 119
 
@@ -140,16 +140,16 @@ object RealTimeQueue {
   def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require(st1.subsetOf(st2))
     // property
-    (firstUnevaluated(l1) withState st2) == (firstUnevaluated(firstUnevaluated(l1) withState st1) withState st2)
+    (firstUnevaluated(l1) in st2) == (firstUnevaluated(firstUnevaluated(l1) in st1) in st2)
   } holds
 
   @invisibleBody
   def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
-    require((firstUnevaluated(l1) withState st1) == (firstUnevaluated(l2) withState st1) &&
+    require((firstUnevaluated(l1) in st1) == (firstUnevaluated(l2) in st1) &&
         st1.subsetOf(st2))
      funeCompose(l1, st1, st2) &&  // implies: fune(l1, st2) == fune(fune(l1,st1), st2)
      funeCompose(l2, st1, st2) &&  // implies: fune(l2, st2) == fune(fune(l2,st1), st2)
-      (firstUnevaluated(l1) withState st2) == (firstUnevaluated(l2) withState st2) // property
+      (firstUnevaluated(l1) in st2) == (firstUnevaluated(l2) in st2) // property
   } holds
 
   @ignore

@@ -27,14 +27,14 @@ object Viterbi {
   @extern
   def O(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /**
    * State space, S
    */
   @extern
   def S(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /** 
    * Let K be the size of the state space. Then the transition matrix
    * A of size K * K such that A_{ij} stores the transition probability 
@@ -43,7 +43,7 @@ object Viterbi {
   @extern
   def A(i: BigInt, j: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /**
    * Let N be the size of the observation space. Emission matrix B of 
    * size K * N such that B_{ij} stores the probability of observing o_j 
@@ -52,7 +52,7 @@ object Viterbi {
   @extern
   def B(i: BigInt, j: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /**
    * An array of initial probabilities C of size K such that C_i stores 
    * the probability that x_1 == s_i 
@@ -60,14 +60,14 @@ object Viterbi {
   @extern
   def C(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /**
    * Generated observations, Y
    */
   @extern
   def Y(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
 
 	def deps(j: BigInt, K: BigInt): Boolean = {
@@ -86,7 +86,7 @@ object Viterbi {
 
 	def columnCached(i: BigInt, j: BigInt, K: BigInt): Boolean = {
 		require(i >= 0 && j >= 0 && K >= i)
-		viterbi(i, j, K).cached && {
+		cached(viterbi(i, j, K)) && {
 		if(i <= 0) true
 		else columnCached(i - 1, j, K)
 		}
@@ -95,7 +95,7 @@ object Viterbi {
 	@traceInduct
   	def columnMono(i: BigInt, j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     	require(i >= 0 && j >= 0 && K >= i)    
-    	(st1.subsetOf(st2) && (columnCached(i, j, K) withState st1)) ==> (columnCached(i, j, K) withState st2)
+    	(st1.subsetOf(st2) && (columnCached(i, j, K) in st1)) ==> (columnCached(i, j, K) in st2)
   	} holds
 
   	@traceInduct
@@ -117,7 +117,7 @@ object Viterbi {
 	def columnsCachedfromMono(j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]): Boolean = {
 		require(j >= 0 && K >= 0)    
 		(columnMono(K, j, K, st1, st2) && (j <= 0 || columnsCachedfromMono(j - 1, K, st1, st2))) &&
-		((st1.subsetOf(st2) && (columnsCachedfrom(j, K) withState st1)) ==> (columnsCachedfrom(j, K) withState st2))
+		((st1.subsetOf(st2) && (columnsCachedfrom(j, K) in st1)) ==> (columnsCachedfrom(j, K) in st2))
 	} holds
 
   @invstate
@@ -129,7 +129,7 @@ object Viterbi {
       val a2 = fillEntry(l + 1, i, j, K) // have a look at the algo again @Sumith
       if(a1 > a2) a1 else a2
     }
-  } ensuring(time <= ? * (K - l) + ?)
+  } ensuring(steps <= ? * (K - l) + ?)
 
   @invstate
   @memoize
@@ -140,17 +140,17 @@ object Viterbi {
     } else {
       fillEntry(0, i, j, K)
     }
-  } ensuring(time <= ? * K + ?)
+  } ensuring(steps <= ? * K + ?)
 
   def invoke(i: BigInt, j: BigInt, K: BigInt): BigInt = {
     require(i >= 0 && j >= 0 && K >= i && deps(j, K) && (i == 0 || i > 0 && columnCached(i - 1, j, K)))
     viterbi(i, j, K)
   } ensuring(res => {
-    val in = inState[BigInt]
-    val out = outState[BigInt]
+    val in = inSt[BigInt]
+    val out = outSt[BigInt]
     (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) && 
     (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) && 
-    time <= ? * K + ?
+    steps <= ? * K + ?
   }) 
 
   def fillColumn(i: BigInt, j: BigInt, K: BigInt): List[BigInt] = {
@@ -167,7 +167,7 @@ object Viterbi {
   } ensuring(res => {
   	columnLem(j, K) && 
   	deps(j + 1, K) && 
-  	time <= ? * ((K - i) * K) + ? * K + ?
+  	steps <= ? * ((K - i) * K) + ? * K + ?
   })
 
   @invisibleBody
@@ -181,11 +181,11 @@ object Viterbi {
       val tail = fillTable(j + 1, T, K)
       Cons(x, tail)
     }
-  } ensuring(res => deps(T + 1, K) && time <= ? *((K * K) * (T - j)) + ? * ((T - j)*K) + ? * (T - j) + ? * (K*K) + ? * K + ?)
+  } ensuring(res => deps(T + 1, K) && steps <= ? *((K * K) * (T - j)) + ? * ((T - j)*K) + ? * (T - j) + ? * (K*K) + ? * K + ?)
 
   def viterbiSols(T: BigInt, K: BigInt): List[List[BigInt]] = {
     require(T >= 0 && K >= 0)
     fillTable(0, T, K)
-  } ensuring(res => deps(T + 1, K) && time <= ? * ((K * K) * T) + ? * ((T)*K) + ? * T + ? * (K*K) + ? * K + ?)
+  } ensuring(res => deps(T + 1, K) && steps <= ? * ((K * K) * T) + ? * ((T)*K) + ? * T + ? * (K*K) + ? * K + ?)
 
 }

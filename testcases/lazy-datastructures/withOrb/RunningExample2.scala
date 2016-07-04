@@ -22,7 +22,7 @@ object RunningExample2 {
     l match {
       case c @ SCons(_, _) =>
         if (i > 0){
-          c.tail.cached && concUntil(c.tail, i - 1) // replacing `t` by `l` will produce a counter-example
+          cached(c.tail) && concUntil(c.tail, i - 1) // replacing `t` by `l` will produce a counter-example
         } else true
       case _ => true
     }
@@ -39,5 +39,5 @@ object RunningExample2 {
         } else SNil()
       case _ => SNil()
     }
-  } ensuring (res => time <= ?)
+  } ensuring (res => steps <= ?)
 }
