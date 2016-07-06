@@ -293,6 +293,9 @@ class PrettyPrinter(opts: PrinterOptions,
       case Application(caller, args) =>
         p"$caller($args)"
 
+      case Lambda(Seq(ValDef(id)), FunctionInvocation(TypedFunDef(fd, Seq()), Seq(Variable(idArg)))) if id == idArg =>
+        printNameWithPath(fd)
+        
       case Lambda(args, body) =>
         optP { p"($args) => $body" }
 
