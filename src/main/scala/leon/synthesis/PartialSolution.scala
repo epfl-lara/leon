@@ -74,14 +74,14 @@ class PartialSolution(strat: Strategy, includeUntrusted: Boolean = false)(implic
         }
 
         if (n.isExpanded) {
-          println("AN:"+an.toString)
+          //println("AN:"+an.toString)
           an.ri.onSuccess(n.descendants.map(getSolutionFor)) match {
             case Some(sol) =>
-              println("Sol!")
+              //println("Sol!")
               sol
 
             case None =>
-              println("No Sol!")
+              //println("No Sol!")
               completeProblem(an.ri.problem)
           }
         } else {
