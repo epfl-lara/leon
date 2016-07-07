@@ -20,6 +20,12 @@ package object annotation {
   @ignore
   class internal   extends StaticAnnotation
 
+  // Interactive theorem proving annotations
+  @ignore
+  class manual(proof: String) extends StaticAnnotation
+  @ignore
+  class proof extends StaticAnnotation
+
   // Orb annotations
   @ignore
   class monotonic  extends StaticAnnotation
