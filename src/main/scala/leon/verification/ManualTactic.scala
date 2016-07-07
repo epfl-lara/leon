@@ -8,7 +8,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Types._
-import utils.Library
+import theorem.Library
 
 class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   import vctx.reporter
@@ -76,7 +76,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     
     val theoremType = CaseClassType(library.Theorem.get, Seq())
     val identifierType = CaseClassType(library.Identifier.get, Seq())
-    val formulaType = AbstractClassType(library.Formula.get, Seq())
+    val termType = AbstractClassType(library.Term.get, Seq())
 
     val fdParams = fd.params
     val proofFdParams = proofFd.params
@@ -108,10 +108,10 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
       throw new Exception(errorMsg)
     }
 
-    // The last parameter should be the post condition, of type Formula.
-    if (proofFdParams(n + 1).getType != formulaType) {
+    // The last parameter should be the post condition, of type Term.
+    if (proofFdParams(n + 1).getType != termType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
-        " should take a postcondition leon.theorem.Formula as last argument."
+        " should take a postcondition leon.theorem.Term as last argument."
       reporter.error(errorMsg)
       throw new Exception(errorMsg)
     }
