@@ -184,7 +184,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
     val origBody = fd.body.get
 
     val term  = Terminating(fd.applied)
-    val guide = Guide(origBody)
+    val guide = Guide(simplifyLets(simplifyLets(origBody)))
     val pre   = fd.precOrTrue
 
     val prob = Problem.fromSpec(fd.postOrTrue, Path(Seq(pre, guide, term)), eb, Some(fd))

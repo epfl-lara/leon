@@ -403,6 +403,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def freeComputable(e: Expr) = e match {
       case TupleSelect(Variable(_), _) => true
+      case Tuple(es) if es.forall(_.isInstanceOf[Variable]) => true
       case CaseClassSelector(_, Variable(_), _) => true
       case FiniteSet(els, _) => els.isEmpty
       case FiniteMap(els, _, _) => els.isEmpty
