@@ -17,8 +17,8 @@ case class Or(left: Term, right: Term) extends Term
 case class Implies(left: Term, right: Term) extends Term
 case class Iff(left: Term, right: Term) extends Term
 case class Not(formula: Term) extends Term
-case class Forall(identifier: Identifier, formula: Identifier => Term) extends Term
-case class Exists(identifier: Identifier, formula: Identifier => Term) extends Term
+case class Forall(formula: Identifier => Term) extends Term
+case class Exists(formula: Identifier => Term) extends Term
 case class Equals(left: Term, right: Term) extends Term
 
 case class Theorem private (formula: Term)
