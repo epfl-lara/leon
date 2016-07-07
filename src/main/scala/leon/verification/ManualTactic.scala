@@ -70,16 +70,17 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
     val fdParams = fd.params
     val proofFdParams = proofFd.params
+    val n = fdParams.size
 
-    if (proofFdParams.size != fdParams.size + 2) {
+    // The size of the arguments should be n + 2.
+    if (proofFdParams.size != n + 2) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) + 
         " has wrong number of parameters."
       reporter.error(errorMsg)
       throw new Exception(errorMsg)
     }
 
-    val n = fdParams.size
-
+    // The first n parameters should all be of type Identifier.
     for (i <- 0 until n) {
       if (proofFdParams(i).getType != identifierType) {
         val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
@@ -89,6 +90,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
       }
     }
 
+    // The next parameters should be the precondition, of type Theorem.
     if (proofFdParams(n).getType != theoremType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should take a precondition leon.theorem.Theorem as second-last argument."
@@ -96,6 +98,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
       throw new Exception(errorMsg)
     }
 
+    // The last parameter should be the post condition, of type Formula.
     if (proofFdParams(n + 1).getType != formulaType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should take a postcondition leon.theorem.Formula as last argument."
@@ -103,6 +106,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
       throw new Exception(errorMsg)
     }
 
+    // The return type should be a Theorem.
     if (proofFd.returnType != theoremType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should return a value of type leon.theorem.Theorem."
