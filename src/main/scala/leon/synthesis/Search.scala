@@ -34,16 +34,17 @@ class Search(val ctx: LeonContext, ci: SourceInfo, val strat: Strategy) extends 
     }
   }
 
+  final def expand(n: Node, sctx: SynthesisContext) = {
+    strat.beforeExpand(n)
+    doExpand(n, sctx)
+    strat.afterExpand(n)
+  }
+
   @tailrec
   final def searchFrom(sctx: SynthesisContext, from: Node): Boolean = {
     strat.getNextToExpand(from) match {
       case Some(n) =>
-        strat.beforeExpand(n)
-
-        doExpand(n, sctx)
-
-        strat.afterExpand(n)
-
+        expand(n, sctx)
         if (from.isSolved) {
           true
         } else if (interrupted.get) {
