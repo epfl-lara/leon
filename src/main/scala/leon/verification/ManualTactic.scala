@@ -17,6 +17,14 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
   override def generatePostconditions(fd: FunDef): Seq[VC] = {
 
+    // Handling the case when the function has not post-condition.
+    if (!fd.hasPostcondition) {
+      reporter.warning("Function " + fd.qualifiedName(vctx.program) + " has no postcondition.")
+      return Seq()
+    }
+
+    assert(fd.hasBody)
+
     // Getting the name of the proof from the annotation.
     val optProofName = for {
       optArgs <- fd.extAnnotations.get("manual")
@@ -58,7 +66,9 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     // Verification of the signature of the proof function.
     checkSignature(fd, proofFd)
 
-    Seq()
+    val vc = generateProofImplVC(fd, proofFd)
+
+    Seq(vc)
   }
 
   def checkSignature(fd: FunDef, proofFd: FunDef): Unit = {
@@ -113,5 +123,16 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
       reporter.error(errorMsg)
       throw new Exception(errorMsg)
     }
+  }
+
+  def generateProofImplVC(fd: FunDef, proofFd: FunDef): VC = {
+
+    val evaluatedTheorem = BooleanLiteral(true) // TODO: Change this.
+
+    val exprVC = implies(
+      and(fd.precOrTrue, evaluatedTheorem),
+      application(fd.postcondition.get, Seq(fd.body.get)))
+    
+    VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd)
   }
 }
