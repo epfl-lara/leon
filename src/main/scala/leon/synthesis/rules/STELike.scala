@@ -4,6 +4,8 @@ package leon
 package synthesis
 package rules
 
+import scala.util.control.Breaks._
+
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Definitions._
@@ -736,33 +738,34 @@ abstract class STELike(name: String) extends Rule(name) {
         for (bs <- viableCandidates if !interruptManager.isInterrupted) {
 
           var badExamples = Set[Example]()
-          var stop = false
 
-          for (e <- getInnerExamples() if !stop && !badExamples.contains(e)) {
-            testCandidate(bs)(e) match {
-              case Some(true) => // ok, passes
-              case Some(false) =>
-                // Program fails the test
-                stop = true
-                failedExamplesStats(e) += 1
-                totalFailed += 1;
-                debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${e.asString}")
-                discardCandidate(bs, true)
+          breakable {
+            for (e <- getInnerExamples() if !badExamples.contains(e)) {
+              testCandidate(bs)(e) match {
+                case Some(true) => // ok, passes
+                case Some(false) =>
+                  // Program fails the test
+                  failedExamplesStats(e) += 1
+                  totalFailed += 1;
+                  debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${e.asString}")
+                  discardCandidate(bs, true)
 
-                if (totalFailed > 100) {
-                  debug(f" Shrinking example pool")
-                  val toDiscard = innerExamples.buffer.filterNot(failedExamplesStats.keySet)
+                  if (totalFailed > 100) {
+                    debug(f" Shrinking example pool")
+                    val toDiscard = innerExamples.buffer.filterNot(failedExamplesStats.keySet)
 
-                  innerExamples --= toDiscard
-                  debug(f" Discarded "+toDiscard.size+" examples")
-                  //innerExamples ++= toDiscard
-                  totalFailed = 0;
-                }
+                    innerExamples --= toDiscard
+                    debug(f" Discarded "+toDiscard.size+" examples")
+                    //innerExamples ++= toDiscard
+                    totalFailed = 0;
+                  }
+                  break;
 
-              case None =>
-                // Eval. error -> bad example
-                debug(s" Test $e crashed the evaluator, removing...")
-                badExamples += e
+                case None =>
+                  // Eval. error -> bad example
+                  debug(s" Test $e crashed the evaluator, removing...")
+                  badExamples += e
+              }
             }
           }
 
