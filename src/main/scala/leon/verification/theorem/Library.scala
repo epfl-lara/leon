@@ -14,6 +14,7 @@ case class Library(program: Program) {
   lazy val Variable = lookup("leon.theorem.Variable").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val Application = lookup("leon.theorem.Application").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val BooleanLiteral = lookup("leon.theorem.BooleanLiteral").collectFirst { case ccd : CaseClassDef => ccd }
+  lazy val CharLiteral = lookup("leon.theorem.CharLiteral").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val StringLiteral = lookup("leon.theorem.StringLiteral").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val IntLiteral = lookup("leon.theorem.IntLiteral").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val BigIntLiteral = lookup("leon.theorem.BigIntLiteral").collectFirst { case ccd : CaseClassDef => ccd }

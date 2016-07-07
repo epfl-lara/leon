@@ -10,6 +10,7 @@ case class Variable(name: Identifier) extends Term
 case class Application(function: String, arguments: List[Term]) extends Term
 case class BooleanLiteral(value: Boolean) extends Term
 case class StringLiteral(value: String) extends Term
+case class CharLiteral(value: Char) extends Term
 case class IntLiteral(value: Int) extends Term
 case class BigIntLiteral(value: BigInt) extends Term
 case class And(left: Term, right: Term) extends Term
