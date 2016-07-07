@@ -52,13 +52,11 @@ case object Focus extends PreprocessingRule("Focus") {
         // We proceed as usual
     }
 
-    val qeb = p.qebFiltered
+    val qeb = p.qeb
 
     val program = hctx.program
 
     val evaluator = new DefaultEvaluator(hctx, program)
-
-    val timers = hctx.timers.synthesis.instantiations.Focus
 
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
@@ -69,7 +67,7 @@ case object Focus extends PreprocessingRule("Focus") {
     def forAllTests(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
       var soFar: Option[Boolean] = None
 
-      qeb.invalids.foreach { ex =>
+      invalids.foreach { ex =>
         evaluator.eval(e, (p.as zip ex.ins).toMap ++ env) match {
           case EvaluationResults.Successful(BooleanLiteral(b)) => 
             soFar match {
@@ -132,13 +130,12 @@ case object Focus extends PreprocessingRule("Focus") {
 
     guides.flatMap {
       case g @ IfExpr(c, thn, els) =>
-        timers.If.timed{
-
         val spec = letTuple(p.xs, IfExpr(Not(c), thn, els), p.phi)
         // Try to focus on condition:
         //   Does there exists path for non-deterministic 'c' which satisfies phi?
         //   (Top-level is deterministically negated, because we know test is minimized)
         val condTesting = forAllTests(spec, Map(), new AngelicEvaluator(new RepairNDEvaluator(hctx, program, c)))
+
         condTesting match {
           case Some(true) =>
             val cx = FreshIdentifier("cond", BooleanType)
@@ -175,12 +172,10 @@ case object Focus extends PreprocessingRule("Focus") {
                 Some(decomp(List(sub1, sub2), onSuccess, s"Focus on both branches of '${c.asString}'"))
             }
         }
-        }
 
       case MatchExpr(scrut, cases) =>
         var pcSoFar = Path.empty
 
-        timers.Match.start()
         // Generate subproblems for each match-case that fails at least one test.
         var casesInfos = for (c <- cases) yield {
           val map  = mapForPattern(scrut, c.pattern)
@@ -207,29 +202,35 @@ case object Focus extends PreprocessingRule("Focus") {
             }).toMap
 
             if (substAs.nonEmpty) {
-              timers.Match.filterIns.start()
               val subst = replaceFromIDs(substAs, _: Expr)
               // FIXME intermediate binders??
               val newAs = (p.as diff substAs.keys.toSeq) ++ vars
               val newPc = (p.pc merge prevPCSoFar) map subst
               val newWs = subst(ws(c.rhs))
               val newPhi = subst(p.phi)
+
               val eb2 = qeb.filterIns(cond.toClause)
+
+              val toEval = replaceFromIDs(map, tupleWrap(vars.map(_.toVariable)))
+              val idsWithout = p.as.filterNot(substAs.keySet)
+
               val ebF: Seq[(Identifier, Expr)] => List[Seq[Expr]] = { (ins: Seq[(Identifier, Expr)]) =>
-                val eval = evaluator.eval(tupleWrap(vars map Variable), map ++ ins)
-                val insWithout = ins.collect{ case (id, v) if !substAs.contains(id) => v }
+                val insMap = ins.toMap
+
+                val eval = evaluator.eval(toEval, ins.toMap)
+                val insWithout = idsWithout.map(insMap)
+
                 eval.result.map(r => insWithout ++ unwrapTuple(r, vars.size)).toList
               }
+
               val newEb = eb2.flatMapIns(ebF)
-              timers.Match.filterIns.stop()
+
               Some(Problem(newAs, newWs, newPc, newPhi, p.xs, newEb))
             } else {
-              timers.Match.filterIns.start()
               // Filter tests by the path-condition
               val eb2 = qeb.filterIns(cond.toClause)
 
               val newPc = cond withBindings vars.map(id => id -> map(id))
-              timers.Match.filterIns.stop()
 
               Some(Problem(p.as, ws(c.rhs), p.pc merge newPc, p.phi, p.xs, eb2))
             }
@@ -253,8 +254,6 @@ case object Focus extends PreprocessingRule("Focus") {
 
           casesInfos :+= (newCase -> (Some(newProblem), elsePc))
         }
-
-        timers.Match.stop()
 
         // Is there at least one subproblem?
         if (casesInfos.exists(_._2._1.isDefined)) {

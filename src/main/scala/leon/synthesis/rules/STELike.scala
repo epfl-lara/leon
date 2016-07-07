@@ -50,7 +50,7 @@ abstract class STELike(name: String) extends Rule(name) {
     // Timeout to find a counter example to a candidate program
     val cexSolverTo = 3000L
 
-    val timers = outerCtx.timers.synthesis.applications.STE
+    val timers = outerCtx.timers.synthesis.applications.get(name)
 
     // STE Flags to activate or deactivate features
     val useOptTimeout = outerCtx.settings.steUseOptTimeout
@@ -728,6 +728,7 @@ abstract class STELike(name: String) extends Rule(name) {
       }
 
       innerExamples.canGrow = filteredEnough
+      var totalFailed = 0;
 
       // We further filter the set of working programs to remove those that fail on known examples
       if (innerExamples.nonEmpty) {
@@ -744,8 +745,19 @@ abstract class STELike(name: String) extends Rule(name) {
                 // Program fails the test
                 stop = true
                 failedExamplesStats(e) += 1
+                totalFailed += 1;
                 debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${e.asString}")
                 discardCandidate(bs, true)
+
+                if (totalFailed > 100) {
+                  debug(f" Shrinking example pool")
+                  val toDiscard = innerExamples.buffer.filterNot(failedExamplesStats.keySet)
+
+                  innerExamples --= toDiscard
+                  debug(f" Discarded "+toDiscard.size+" examples")
+                  //innerExamples ++= toDiscard
+                  totalFailed = 0;
+                }
 
               case None =>
                 // Eval. error -> bad example
@@ -809,7 +821,7 @@ abstract class STELike(name: String) extends Rule(name) {
         def apply(hctx: SearchContext): RuleApplication = {
           var result: Option[RuleApplication] = None
 
-          val timers = hctx.timers.synthesis.applications.STE
+          val timers = hctx.timers.synthesis.applications.get(name)
 
           implicit val ic = hctx
 

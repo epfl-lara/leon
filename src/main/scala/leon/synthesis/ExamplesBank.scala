@@ -197,7 +197,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
 
   /** Filter inputs through expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): QualifiedExamplesBank = {
-    filterIns(m => evaluator.eval(expr, m).result.contains(BooleanLiteral(true)))
+    filterIns(m => evaluator.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
