@@ -8,6 +8,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Types._
+import utils.Library
 
 class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   import vctx.reporter
@@ -61,27 +62,11 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   }
 
   def checkSignature(fd: FunDef, proofFd: FunDef): Unit = {
+    val library = Library(vctx.program)
     
-    // Resolving the type of Theorem.
-    val optTheoremClass = vctx.program.lookupCaseClass("leon.theorem.Theorem")
-    if (optTheoremClass.isEmpty) {
-      throw new Exception("Case class leon.theorem.Theorem not found.")
-    }
-    val theoremType = CaseClassType(optTheoremClass.get, Seq())
-
-    // Resolving the type of Identifier.
-    val optIdentifierClass = vctx.program.lookupCaseClass("leon.theorem.Identifier")
-    if (optIdentifierClass.isEmpty) {
-      throw new Exception("Case class leon.theorem.Identifier not found.")
-    }
-    val identifierType = CaseClassType(optIdentifierClass.get, Seq())
-
-    // Resolving the type of Formula.
-    val optFormulaClass = vctx.program.lookupAbstractClass("leon.theorem.Formula")
-    if (optFormulaClass.isEmpty) {
-      throw new Exception("Abstract class leon.theorem.Formula not found.")
-    }
-    val formulaType = AbstractClassType(optFormulaClass.get, Seq())
+    val theoremType = CaseClassType(library.Theorem.get, Seq())
+    val identifierType = CaseClassType(library.Identifier.get, Seq())
+    val formulaType = AbstractClassType(library.Formula.get, Seq())
 
     val fdParams = fd.params
     val proofFdParams = proofFd.params
