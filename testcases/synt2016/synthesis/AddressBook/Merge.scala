@@ -2,7 +2,7 @@ import leon.annotation._
 import leon.lang._
 import leon.lang.synthesis._
 
-object AddressBookMake {
+object AddressBookMerge {
 
   case class Address[A](info: A, priv: Boolean)
 

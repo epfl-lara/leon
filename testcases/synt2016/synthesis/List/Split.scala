@@ -4,7 +4,7 @@ import leon.annotation._
 import leon.lang._
 import leon.lang.synthesis._
 
-object Complete {
+object Split {
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
   case object Nil extends List
