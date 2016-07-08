@@ -136,7 +136,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
     reporter.info("Starting execution of the proof function " + proofFd.qualifiedName(vctx.program))
 
-    val mapping = for (vd <- fd.params) yield (vd.id -> tc.makeIdentifier("fresh" + vd.id))  // TODO: Change this.
+    val mapping = for (vd <- fd.params) yield (vd.id -> tc.makeIdentifier(vd.id.uniqueName))
 
     val env: Map[Identifier, Expr] = mapping.toMap
 
@@ -167,12 +167,14 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     val backEnv: Map[Expr, Identifier] = mapping.map(swap).toMap
     val pureScalaTheorem = tc.toPureScala(evaluatedTheorem, backEnv)
 
-    println(pureScalaTheorem)
+    val proofVCs = evaluator.getVCExprs.map {
+      case e: Expr => VC(tc.toPureScala(e, backEnv), fd, VCKinds.ProveInvocation).setPos(proofFd)
+    }
 
     val exprVC = implies(
       and(fd.precOrTrue, pureScalaTheorem),
       application(fd.postcondition.get, Seq(fd.body.get)))
     
-    Seq(VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd))
+    VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd) +: proofVCs
   }
 }

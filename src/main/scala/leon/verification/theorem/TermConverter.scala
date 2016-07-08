@@ -22,7 +22,7 @@ class TermConverter(vctx: VerificationContext) {
     case Variable(identifier) => caseClass(library.Variable, env(identifier))
     case Let(binder, value, body) => {
       val v = fromPureScala(value, env)
-      val fresh = makeIdentifier("fresh")
+      val fresh = makeIdentifier(binder.uniqueName)
       val b = fromPureScala(body, env.updated(binder, fresh))
       caseClass(library.Let, fresh, v, b)
     }
@@ -173,6 +173,13 @@ class TermConverter(vctx: VerificationContext) {
     }
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.BigIntLiteral.get) => v
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.Variable.get) => Variable(env(v))
+    case CaseClass(ct, Seq(i, v, b)) if (ct.classDef == library.Let.get) => {
+      val CaseClass(_, Seq(StringLiteral(s))) = i
+      val pv = toPureScala(v, env)
+      val freshId = FreshIdentifier(s, pv.getType, true)
+      val pb = toPureScala(b, env.updated(i, freshId))
+      let(freshId, pv, pb)
+    }
     case _ => throw new Exception("Unsupported expression.")
   }
 }

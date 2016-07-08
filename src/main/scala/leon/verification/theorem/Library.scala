@@ -32,7 +32,9 @@ case class Library(program: Program) {
   lazy val Equals = lookup("leon.theorem.Equals").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val BinOp = lookup("leon.theorem.BinOp").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val UnOp = lookup("leon.theorem.UnOp").collectFirst { case ccd : CaseClassDef => ccd }
-  
+
+  lazy val prove = lookup("leon.theorem.prove").collectFirst { case fd : FunDef => fd }
+
   def lookup(name: String): Seq[Definition] = {
     program.lookupAll(name)
   }
