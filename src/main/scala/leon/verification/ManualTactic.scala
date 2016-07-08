@@ -3,15 +3,20 @@
 package leon
 package verification
 
+import purescala.Common._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Types._
-import theorem.Library
+import theorem._
+import evaluators.ProofEvaluator
+import evaluators.EvaluationResults._
 
 class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   import vctx.reporter
+
+  val library = Library(vctx.program)
 
   override val description = "Manual proof verification condition generation approach"
 
@@ -66,13 +71,12 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     // Verification of the signature of the proof function.
     checkSignature(fd, proofFd)
 
-    val vc = generateProofImplVC(fd, proofFd)
+    val vcs = generateProofVCs(fd, proofFd)
 
-    Seq(vc)
+    vcs
   }
 
   def checkSignature(fd: FunDef, proofFd: FunDef): Unit = {
-    val library = Library(vctx.program)
     
     val theoremType = CaseClassType(library.Theorem.get, Seq())
     val identifierType = CaseClassType(library.Identifier.get, Seq())
@@ -125,14 +129,50 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     }
   }
 
-  def generateProofImplVC(fd: FunDef, proofFd: FunDef): VC = {
+  def generateProofVCs(fd: FunDef, proofFd: FunDef): Seq[VC] = {
 
-    val evaluatedTheorem = BooleanLiteral(true) // TODO: Change this.
+    val tc = new TermConverter(vctx)
+    val evaluator = new ProofEvaluator(vctx, vctx.program)
+
+    reporter.info("Starting execution of the proof function " + proofFd.qualifiedName(vctx.program))
+
+    val mapping = for (vd <- fd.params) yield (vd.id -> tc.makeIdentifier("fresh" + vd.id))  // TODO: Change this.
+
+    val env: Map[Identifier, Expr] = mapping.toMap
+
+    val postExpr = tc.fromPureScala(application(fd.postcondition.get, Seq(fd.body.get)), env)
+    val preExpr = tc.caseClass(library.Theorem, tc.fromPureScala(fd.precondition.get, env))
+
+    val proofFunctionExpr = functionInvocation(proofFd, mapping.map(_._2) ++ Seq(preExpr, postExpr))
+    println(proofFunctionExpr)
+
+    val evaluatedTheorem = evaluator.eval(proofFunctionExpr) match {
+      case Successful(CaseClass(_, Seq(expr))) => {
+        reporter.info("Proof function " + proofFd.qualifiedName(vctx.program) +
+          " evaluates to expression: " + expr)
+        expr
+      }
+      case EvaluatorError(msg) => {
+        reporter.error(msg)
+        throw new Exception(msg)
+      }
+      case RuntimeError(msg) => {
+        reporter.error(msg)
+        throw new Exception(msg)
+      }
+    }
+
+    def swap[A, B](t: (A, B)): (B, A) = (t._2, t._1)
+
+    val backEnv: Map[Expr, Identifier] = mapping.map(swap).toMap
+    val pureScalaTheorem = tc.toPureScala(evaluatedTheorem, backEnv)
+
+    println(pureScalaTheorem)
 
     val exprVC = implies(
-      and(fd.precOrTrue, evaluatedTheorem),
+      and(fd.precOrTrue, pureScalaTheorem),
       application(fd.postcondition.get, Seq(fd.body.get)))
     
-    VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd)
+    Seq(VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd))
   }
 }
