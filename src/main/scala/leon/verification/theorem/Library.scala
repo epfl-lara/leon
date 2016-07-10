@@ -5,6 +5,7 @@ package theorem
 
 import purescala.Definitions._
 
+/** Contains the symbols of the leon.theorem library. */
 case class Library(program: Program) {
   
   lazy val Theorem = lookup("leon.theorem.Theorem").collectFirst { case ccd : CaseClassDef => ccd }

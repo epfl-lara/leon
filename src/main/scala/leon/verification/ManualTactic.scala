@@ -12,23 +12,43 @@ import purescala.Types._
 import theorem._
 import evaluators.ProofEvaluator
 import evaluators.EvaluationResults._
+import utils.DebugSection
+import utils.DebugSectionProof
 
+/** Tactic used for functions with explicit proof functions. */
 class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   import vctx.reporter
 
-  val library = Library(vctx.program)
+  private implicit val debugSection: DebugSection = DebugSectionProof
+  private val library = Library(vctx.program)
 
   override val description = "Manual proof verification condition generation approach"
 
   override def generatePostconditions(fd: FunDef): Seq[VC] = {
 
-    // Handling the case when the function has not post-condition.
+    // Handling the case when the function has no post-condition.
     if (!fd.hasPostcondition) {
       reporter.warning("Function " + fd.qualifiedName(vctx.program) + " has no postcondition.")
       return Seq()
     }
 
-    assert(fd.hasBody)
+    // Handling the case when the function has no body.
+    if (!fd.hasBody) {
+      reporter.fatalError("Function " + fd.qualifiedName(vctx.program) + " has an empty body.")
+    }
+
+    // Gets the proof function.
+    val proofFd = getProofFd(fd)
+
+    // Verification of the signature of the proof function.
+    checkSignature(fd, proofFd)
+
+    // Execute the proofs and generates verification conditions.
+    executeProof(fd, proofFd)
+  }
+
+  /** Looks up the proof function. */
+  private def getProofFd(fd: FunDef): FunDef = {
 
     // Getting the name of the proof from the annotation.
     val optProofName = for {
@@ -40,20 +60,19 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
     // Handling the case when the proof name is not specified.
     if (optProofName.isEmpty) {
-      val errorMsg = "Proof function not specified in the @manual annotation of " + fd.qualifiedName(vctx.program) + "."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      val errorMsg = "Proof function not specified in the " + 
+        "@manual annotation of " + fd.qualifiedName(vctx.program) + "."
+      reporter.fatalError(errorMsg)
     }
 
     val proofName = optProofName.get
-
     val optProofFd = vctx.program.lookupFunDef(proofName)
 
     // Handling the case when the proof function can not be found.
     if (optProofFd.isEmpty) {
-      val errorMsg = "Proof function not found for " + fd.qualifiedName(vctx.program) + "."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      val errorMsg = "Proof function not found for " + 
+        fd.qualifiedName(vctx.program) + "."
+      reporter.fatalError(errorMsg)
     }
 
     val proofFd = optProofFd.get
@@ -64,19 +83,21 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
         fd.qualifiedName(vctx.program) + ", " + 
         proofFd.qualifiedName(vctx.program) +
         ", does not have the @proof annotation."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      reporter.fatalError(errorMsg)
     }
 
-    // Verification of the signature of the proof function.
-    checkSignature(fd, proofFd)
-
-    val vcs = generateProofVCs(fd, proofFd)
-
-    vcs
+    proofFd
   }
 
-  def checkSignature(fd: FunDef, proofFd: FunDef): Unit = {
+  /** Checks that the proof function has the correct signature.
+    *
+    * For a function of n arguments, the proof function must
+    * have n consecutive arguments of type Identifier followed by
+    * an argument of type Theorem (the precondition), and finally an
+    * argument of type Term (the postconsition to be proven).
+    * The proof function must return a Theorem.
+    */
+  private def checkSignature(fd: FunDef, proofFd: FunDef): Unit = {
     
     val theoremType = CaseClassType(library.Theorem.get, Seq())
     val identifierType = CaseClassType(library.Identifier.get, Seq())
@@ -90,17 +111,16 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     if (proofFdParams.size != n + 2) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) + 
         " has wrong number of parameters."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      reporter.fatalError(errorMsg)
     }
 
     // The first n parameters should all be of type Identifier.
     for (i <- 0 until n) {
       if (proofFdParams(i).getType != identifierType) {
         val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
-          " should take a leon.theorem.Identifier as its argument at position " + (i + 1) + "."
-        reporter.error(errorMsg)
-        throw new Exception(errorMsg)
+          " should take a leon.theorem.Identifier as its argument at position " + 
+          (i + 1) + "."
+        reporter.fatalError(errorMsg)
       }
     }
 
@@ -108,75 +128,82 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     if (proofFdParams(n).getType != theoremType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should take a precondition leon.theorem.Theorem as second-last argument."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      reporter.fatalError(errorMsg)
     }
 
     // The last parameter should be the post condition, of type Term.
     if (proofFdParams(n + 1).getType != termType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should take a postcondition leon.theorem.Term as last argument."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      reporter.fatalError(errorMsg)
     }
 
     // The return type should be a Theorem.
     if (proofFd.returnType != theoremType) {
       val errorMsg = "Proof function " + proofFd.qualifiedName(vctx.program) +
         " should return a value of type leon.theorem.Theorem."
-      reporter.error(errorMsg)
-      throw new Exception(errorMsg)
+      reporter.fatalError(errorMsg)
     }
   }
 
-  def generateProofVCs(fd: FunDef, proofFd: FunDef): Seq[VC] = {
+  /** Evaluates the proof function and generates VCs. */
+  def executeProof(fd: FunDef, proofFd: FunDef): Seq[VC] = {
 
     val encoder = new ExprEncoder(vctx)
     val evaluator = new ProofEvaluator(vctx, vctx.program)
 
-    reporter.info("Starting execution of the proof function " + proofFd.qualifiedName(vctx.program))
+    reporter.debug("Starting execution of the proof function " + proofFd.qualifiedName(vctx.program) + 
+      " for function " + fd.qualifiedName(vctx.program))
 
-    val mapping = for (vd <- fd.params) yield (vd.id -> encoder.makeIdentifier(vd.id.uniqueName))
+    // Creating user-world identifiers for each parameter of the function.
+    val mapping = for (vd <- fd.params) yield (vd.id -> encoder.identifier(vd.id.uniqueName))
 
     val env: Map[Identifier, Expr] = mapping.toMap
 
+    // Encoding the postcondition and precondition.
     val postExpr = encoder.encodeExpr(application(fd.postcondition.get, Seq(fd.body.get)), env)
     val preExpr = encoder.caseClass(library.Theorem, encoder.encodeExpr(fd.precondition.get, env))
 
+    // Creating the proof function invocation.
     val proofFunctionExpr = functionInvocation(proofFd, mapping.map(_._2) ++ Seq(preExpr, postExpr))
-    println(proofFunctionExpr)
+    reporter.debug("Proof function invocation: " + proofFunctionExpr)
 
+    // Evaluating the proof function.
     val evaluatedTheorem = evaluator.eval(proofFunctionExpr) match {
-      case Successful(CaseClass(_, Seq(expr))) => {
-        reporter.info("Proof function " + proofFd.qualifiedName(vctx.program) +
+      case Successful(CaseClass(ct, Seq(expr))) => {
+        // The returned value should be of type theorem.
+        assert(ct.classDef == library.Theorem.get)
+
+        reporter.debug("Proof function " + proofFd.qualifiedName(vctx.program) +
           " evaluates to expression: " + expr)
         expr
       }
       case EvaluatorError(msg) => {
-        reporter.error(msg)
-        throw new Exception(msg)
+        reporter.fatalError(msg)
       }
       case RuntimeError(msg) => {
-        reporter.error(msg)
-        throw new Exception(msg)
+        reporter.fatalError(msg)
       }
     }
 
+    // Converting back the encoded Expr to a PureScala Expr.
     def swap[A, B](t: (A, B)): (B, A) = (t._2, t._1)
-
     val backEnv: Map[Expr, Identifier] = mapping.map(swap).toMap
     val pureScalaTheorem = encoder.decodeExpr(evaluatedTheorem, backEnv)
 
-    val proofVCs = evaluator.getVCExprs.map {
+    // Gettings the set of verification conditions from the evaluator.
+    val proofVCs = evaluator.popVCExprs.map {
       case e: Expr => VC(encoder.decodeExpr(e, backEnv), fd, VCKinds.ProveInvocation).setPos(proofFd)
     }
 
-    reporter.info("Corresponding vcs : " + proofVCs.map(_.condition))  
+    reporter.debug("Corresponding vcs : " + proofVCs.map(_.condition).mkString(", "))  
 
+    // Creation of the VC that ensures that the proof implies the postcondition.
     val exprVC = implies(
       and(fd.precOrTrue, pureScalaTheorem),
       application(fd.postcondition.get, Seq(fd.body.get)))
     
+    // Returning all VCs.
     VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd) +: proofVCs
   }
 }
