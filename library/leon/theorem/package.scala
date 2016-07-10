@@ -91,12 +91,13 @@ package object theorem {
   implicit def unitLiteral(value: Unit): Term = UnitLiteral()
 
   @library
-  case class Theorem(formula: Term) {
-    def &&(other: Theorem): Theorem = Theorem(And(this.formula, other.formula))
-    def ||(other: Theorem): Theorem = Theorem(Or(this.formula, other.formula))
+  case class Theorem private (formula: Term) {
+    def &&(other: Theorem): Theorem = toTheorem(And(this.formula, other.formula))
+    def ||(other: Theorem): Theorem = toTheorem(Or(this.formula, other.formula))
   }
 
-  private def toTheorem(formula: Term): Theorem = Theorem(formula)
+  @library
+  private def toTheorem(formula: Term): Theorem = toTheorem(formula)
 
   @library
   def fresh(name: String): Identifier = fresh(name)

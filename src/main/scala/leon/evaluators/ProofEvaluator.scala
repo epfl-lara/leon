@@ -60,6 +60,12 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
       ctx.reporter.debug("Generated contract for " + fd.qualifiedName(ctx.program) + ": " + contract)
       contract
     }
+    // Invocation of toTheorem.
+    case FunctionInvocation(TypedFunDef(fd, Seq()), Seq(arg)) if (fd == library.toTheorem.get) => {
+      ctx.reporter.debug("Called toTheorem.")
+      val evaluatedArg = e(arg)
+      encoder.caseClass(library.Theorem, evaluatedArg)
+    }
     // Any other expressions.
     case _ => super.e(expr)
   }
