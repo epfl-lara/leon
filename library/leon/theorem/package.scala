@@ -129,6 +129,10 @@ package object theorem {
   }
 
   @library
+  def hypothesis(term: Term, conclusion: Theorem => Theorem): Theorem = 
+    toTheorem(Implies(term, conclusion(toTheorem(term)).formula))
+
+  @library
   private def go(current: Term, steps: List[Step]): Term = steps match {
     case Nil() => current
     case Cons(Step(next, proof), rest) => {
