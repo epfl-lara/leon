@@ -108,15 +108,13 @@ package object theorem {
   def contract(function: String): Theorem = contract(function)
 
   @library
-  def modusPonens(pq: Theorem, r: Theorem): Option[Theorem] = pq.formula match {
-    case Implies(p, q) if (p == r.formula) => Some(toTheorem(q))
-    case _ => None()
+  def modusPonens(pq: Theorem, r: Theorem): Theorem = pq.formula match {
+    case Implies(p, q) if (p == r.formula) => toTheorem(q)
   }
 
   @library
-  def instanciate(fa: Theorem, i: Identifier): Option[Theorem] = fa.formula match {
-    case Forall(j, tpe, body) => Some(Theorem(body.rename(j, i)))
-    case _ => None()
+  def instanciate(fa: Theorem, i: Identifier): Theorem = fa.formula match {
+    case Forall(j, tpe, body) => toTheorem(body.rename(j, i))
   }
 
   @library
