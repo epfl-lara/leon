@@ -202,6 +202,8 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     val exprVC = implies(
       and(fd.precOrTrue, pureScalaTheorem),
       application(fd.postcondition.get, Seq(fd.body.get)))
+
+    reporter.debug("Proof implication VC: " + exprVC)
     
     // Returning all VCs.
     VC(exprVC, fd, VCKinds.ProofImplication).setPos(fd) +: proofVCs
