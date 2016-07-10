@@ -111,7 +111,7 @@ package object theorem {
   }
 
   @library
-  def instanciate(fa: Theorem, i: Identifier): Theorem = fa.formula match {
+  def instantiate(fa: Theorem, i: Identifier): Theorem = fa.formula match {
     case Forall(j, tpe, body) => toTheorem(body.rename(j, i))
   }
 
