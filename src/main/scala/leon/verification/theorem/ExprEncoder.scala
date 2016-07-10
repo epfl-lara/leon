@@ -275,7 +275,9 @@ class ExprEncoder(vctx: VerificationContext) {
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.CharLiteral.get) => v
     case CaseClass(ct, Seq()) if (ct.classDef == library.UnitLiteral.get) => UnitLiteral()
     // Bindings
-    case CaseClass(ct, Seq(v)) if (ct.classDef == library.Variable.get) => Variable(env(v))
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.Variable.get) => Variable(env.getOrElse(v, {
+      vctx.reporter.fatalError("Unknown leon.theorem.Identifier: " + v)
+    }))
     case CaseClass(ct, Seq(i, v, b)) if (ct.classDef == library.Let.get) => {
       val CaseClass(_, Seq(StringLiteral(s))) = i
       val pv = decodeExpr(v, env)
