@@ -3,6 +3,7 @@ package leon
 package evaluators
 
 import purescala.Common._
+import purescala.Constructors._
 import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Types._
@@ -46,6 +47,17 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
     case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if (fd == library.getType.get) => {
       ctx.reporter.debug("Called getType.")
       encoder.caseClass(library.Type, StringLiteral(encoder.encodeType(tp)))
+    }
+    // Invocation of contract.
+    case FunctionInvocation(TypedFunDef(fd, Seq()), Seq(arg)) if (fd == library.contract.get) => {
+      ctx.reporter.debug("Called contract.")
+      val StringLiteral(name) = e(arg)
+      val fd = ctx.program.lookupFunDef(name).getOrElse {
+        ctx.reporter.fatalError("Called contract on unknown function: " + name)
+      }
+      val expr = Forall(fd.params, implies(fd.precOrTrue, application(fd.postcondition.get, Seq(fd.body.get))))
+      ctx.reporter.info("Expr: " + expr)
+      encoder.caseClass(library.Theorem, encoder.encodeExpr(expr, Map()))
     }
     // Any other expressions.
     case _ => super.e(expr)

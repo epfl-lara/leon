@@ -38,6 +38,7 @@ case class Library(program: Program) {
   lazy val prove = lookup("leon.theorem.prove").collectFirst { case fd : FunDef => fd }
   lazy val getType = lookup("leon.theorem.getType").collectFirst { case fd : FunDef => fd }
   lazy val fresh = lookup("leon.theorem.fresh").collectFirst { case fd : FunDef => fd }
+  lazy val contract = lookup("leon.theorem.contract").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     program.lookupAll(name)

@@ -19,6 +19,40 @@ package object theorem {
     def ||(other: Term) = Or(this, other)
 
     def by(proof: Theorem): Step = Step(this, proof)
+
+    def rename(from: Identifier, to: Identifier): Term = this match {
+      case Variable(id) if (from == id) => Variable(to)
+      case Let(binder, value, body) => {
+        assert(binder != from && binder != to)
+
+        Let(binder, value.rename(from, to), body.rename(from, to))
+      }
+      case Application(function, arguments) => 
+        Application(function.rename(from, to), arguments.map(_.rename(from, to)))
+      case FunctionInvocation(function, arguments) =>
+        FunctionInvocation(function, arguments.map(_.rename(from, to)))
+      case MethodInvocation(obj, clss, arguments) =>
+        MethodInvocation(obj.rename(from, to), clss, arguments.map(_.rename(from, to)))
+      case And(left, right) => And(left.rename(from, to), right.rename(from, to))
+      case Or(left, right) => Or(left.rename(from, to), right.rename(from, to))
+      case Implies(left, right) => Implies(left.rename(from, to), right.rename(from, to))
+      case Iff(left, right) => Iff(left.rename(from, to), right.rename(from, to))
+      case Not(formula) => Not(formula.rename(from, to))
+      case Forall(binder, tpe, body) => {
+        assert(binder != from && binder != to)
+
+        Forall(binder, tpe, body.rename(from, to))
+      }
+      case Exists(binder, tpe, body) => {
+        assert(binder != from && binder != to)
+
+        Exists(binder, tpe, body.rename(from, to))
+      }
+      case Equals(left, right) => Equals(left.rename(from, to), right.rename(from, to))
+      case BinOp(op, left, right) => BinOp(op, left.rename(from, to), right.rename(from, to))
+      case UnOp(op, expr) => UnOp(op, expr.rename(from, to))
+      case _ => this
+    }
   }
 
   case class Type private (name: String)
@@ -71,8 +105,17 @@ package object theorem {
   def prove(formula: Term): Theorem = toTheorem(formula)
 
   @library
+  def contract(function: String): Theorem = contract(function)
+
+  @library
   def modusPonens(pq: Theorem, r: Theorem): Option[Theorem] = pq.formula match {
     case Implies(p, q) if (p == r.formula) => Some(toTheorem(q))
+    case _ => None()
+  }
+
+  @library
+  def instanciate(fa: Theorem, i: Identifier): Option[Theorem] = fa.formula match {
+    case Forall(j, tpe, body) => Some(Theorem(body.rename(j, i)))
     case _ => None()
   }
 
