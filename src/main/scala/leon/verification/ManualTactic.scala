@@ -131,17 +131,17 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
   def generateProofVCs(fd: FunDef, proofFd: FunDef): Seq[VC] = {
 
-    val tc = new TermConverter(vctx)
+    val encoder = new ExprEncoder(vctx)
     val evaluator = new ProofEvaluator(vctx, vctx.program)
 
     reporter.info("Starting execution of the proof function " + proofFd.qualifiedName(vctx.program))
 
-    val mapping = for (vd <- fd.params) yield (vd.id -> tc.makeIdentifier(vd.id.uniqueName))
+    val mapping = for (vd <- fd.params) yield (vd.id -> encoder.makeIdentifier(vd.id.uniqueName))
 
     val env: Map[Identifier, Expr] = mapping.toMap
 
-    val postExpr = tc.fromPureScala(application(fd.postcondition.get, Seq(fd.body.get)), env)
-    val preExpr = tc.caseClass(library.Theorem, tc.fromPureScala(fd.precondition.get, env))
+    val postExpr = encoder.encodeExpr(application(fd.postcondition.get, Seq(fd.body.get)), env)
+    val preExpr = encoder.caseClass(library.Theorem, encoder.encodeExpr(fd.precondition.get, env))
 
     val proofFunctionExpr = functionInvocation(proofFd, mapping.map(_._2) ++ Seq(preExpr, postExpr))
     println(proofFunctionExpr)
@@ -165,11 +165,13 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
     def swap[A, B](t: (A, B)): (B, A) = (t._2, t._1)
 
     val backEnv: Map[Expr, Identifier] = mapping.map(swap).toMap
-    val pureScalaTheorem = tc.toPureScala(evaluatedTheorem, backEnv)
+    val pureScalaTheorem = encoder.decodeExpr(evaluatedTheorem, backEnv)
 
     val proofVCs = evaluator.getVCExprs.map {
-      case e: Expr => VC(tc.toPureScala(e, backEnv), fd, VCKinds.ProveInvocation).setPos(proofFd)
+      case e: Expr => VC(encoder.decodeExpr(e, backEnv), fd, VCKinds.ProveInvocation).setPos(proofFd)
     }
+
+    reporter.info("Corresponding vcs : " + proofVCs.map(_.condition))  
 
     val exprVC = implies(
       and(fd.precOrTrue, pureScalaTheorem),

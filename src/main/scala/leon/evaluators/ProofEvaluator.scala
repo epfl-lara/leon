@@ -15,7 +15,7 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
 
   private var vcs: Seq[Expr] = Seq()
   val library = new Library(prog)
-  val tc = new TermConverter(ctx)
+  val encoder = new ExprEncoder(ctx)
 
   override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case FunctionInvocation(TypedFunDef(fd, Seq()), Seq(arg)) if (fd == library.prove.get) => {
@@ -28,7 +28,7 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
       ctx.reporter.info("Called fresh.")
       val StringLiteral(name) = e(arg)
       val freshName = FreshIdentifier(name, Untyped, true).uniqueName
-      tc.caseClass(library.Identifier, StringLiteral(freshName))
+      encoder.caseClass(library.Identifier, StringLiteral(freshName))
     }
     case _ => super.e(expr)
   }
