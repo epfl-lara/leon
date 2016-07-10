@@ -27,7 +27,7 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
     // Invocation of prove.
     case FunctionInvocation(TypedFunDef(fd, Seq()), Seq(arg)) if (fd == library.prove.get) => {
       ctx.reporter.info("Called solve.")
-      val evaluatedArg = e(arg)
+      val evaluatedArg = e(arg).setPos(expr)
       vcs = vcs :+ evaluatedArg
       super.e(FunctionInvocation(TypedFunDef(fd, Seq()), Seq(evaluatedArg)))
     }
