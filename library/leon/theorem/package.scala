@@ -31,8 +31,6 @@ package object theorem {
         Application(function.rename(from, to), arguments.map(_.rename(from, to)))
       case FunctionInvocation(function, arguments) =>
         FunctionInvocation(function, arguments.map(_.rename(from, to)))
-      case MethodInvocation(obj, clss, arguments) =>
-        MethodInvocation(obj.rename(from, to), clss, arguments.map(_.rename(from, to)))
       case And(left, right) => And(left.rename(from, to), right.rename(from, to))
       case Or(left, right) => Or(left.rename(from, to), right.rename(from, to))
       case Implies(left, right) => Implies(left.rename(from, to), right.rename(from, to))
@@ -64,7 +62,6 @@ package object theorem {
   case class Let(binder: Identifier, value: Term, body: Term) extends Term
   case class Application(function: Term, arguments: List[Term]) extends Term
   case class FunctionInvocation(function: String, arguments: List[Term]) extends Term
-  case class MethodInvocation(obj: Term, clss: String, arguments: List[Term]) extends Term
   case class BooleanLiteral(value: Boolean) extends Term
   case class StringLiteral(value: String) extends Term
   case class CharLiteral(value: Char) extends Term
