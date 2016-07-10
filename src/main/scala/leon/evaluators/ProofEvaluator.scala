@@ -56,8 +56,9 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
         ctx.reporter.fatalError("Called contract on unknown function: " + name)
       }
       val expr = Forall(fd.params, implies(fd.precOrTrue, application(fd.postcondition.get, Seq(fd.body.get))))
-      ctx.reporter.info("Expr: " + expr)
-      encoder.caseClass(library.Theorem, encoder.encodeExpr(expr, Map()))
+      val contract = encoder.caseClass(library.Theorem, encoder.encodeExpr(expr, Map()))
+      ctx.reporter.debug("Generated contract for " + fd.qualifiedName(ctx.program) + ": " + contract)
+      contract
     }
     // Any other expressions.
     case _ => super.e(expr)
