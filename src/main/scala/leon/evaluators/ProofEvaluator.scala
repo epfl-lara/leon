@@ -31,7 +31,7 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
   override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     // Invocation of prove.
     case FunctionInvocation(TypedFunDef(fd, Seq()), Seq(arg)) if (fd == library.prove.get) => {
-      ctx.reporter.debug("Called solve.")
+      ctx.reporter.debug("Called prove.")
       val evaluatedArg = e(arg).setPos(expr)
       vcs = vcs :+ evaluatedArg
       super.e(FunctionInvocation(TypedFunDef(fd, Seq()), Seq(evaluatedArg)))
