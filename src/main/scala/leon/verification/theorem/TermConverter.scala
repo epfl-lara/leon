@@ -1,6 +1,7 @@
 
 package leon
 package verification
+package theorem
 
 import purescala.Common._
 import purescala.Expressions._
@@ -8,11 +9,12 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Types._
-import theorem.Library
 
 class TermConverter(vctx: VerificationContext) {
 
   val library = Library(vctx.program)
+  val leonLib = leon.utils.Library(vctx.program)
+
   
   def fromPureScala(expr: Expr, env: Map[Identifier, Expr]): Expr = expr match {
     case NoTree(_) | Error(_, _) => ???
@@ -32,8 +34,25 @@ class TermConverter(vctx: VerificationContext) {
     case Application(callee, args) => ???
     case Lambda(args, body) => ???
     case FiniteLambda(mapping, default, tpe) => ???
-    case Forall(args, body) => ???
-    case FunctionInvocation(tfd, args) => ???
+    case Forall(args, body) => {
+      val newEnv = args.map {
+        (vd: ValDef) => vd.id -> makeIdentifier(vd.id.uniqueName)
+      }
+
+      val encodedBody = fromPureScala(body, env ++ newEnv)
+      newEnv.foldRight(encodedBody) {
+        (x: (Identifier, Expr), xs: Expr) => caseClass(library.Forall, 
+          x._2, 
+          StringLiteral(encodeType(x._1.getType)), 
+          xs)
+      }
+    }
+    case FunctionInvocation(tfd, args) => {
+      val funName = tfd.fd.qualifiedName(vctx.program)
+      caseClass(library.FunctionInvocation, 
+        StringLiteral(funName),
+        encodeList(args.map(fromPureScala(_, env))))
+    }
     case IfExpr(cond, thenn, elze) => ???
     case MatchExpr(scrutinee, cases) => ???
     case Passes(in, out, cases) => ???
@@ -52,8 +71,8 @@ class TermConverter(vctx: VerificationContext) {
     case Equals(left, right) => caseClass(library.Equals,
       fromPureScala(left, env),
       fromPureScala(right, env))
-    case And(exprs) => fold(library.And, exprs)
-    case Or(exprs) => fold(library.Or, exprs)
+    case And(exprs) => fold(library.And, exprs.map(fromPureScala(_, env)))
+    case Or(exprs) => fold(library.Or, exprs.map(fromPureScala(_, env)))
     case Implies(left, right) => caseClass(library.Implies,
       fromPureScala(left, env),
       fromPureScala(right, env))
@@ -150,9 +169,49 @@ class TermConverter(vctx: VerificationContext) {
     case _ => throw new Exception("Unsupported expression.")
   }
 
+  private def encodeType(tpe: TypeTree): String = tpe match {
+    // TODO: Complete this.
+    case BooleanType => "Boolean"
+    case UnitType => "Unit"
+    case CharType => "Char"
+    case IntegerType => "BigInt"
+    case Int32Type => "Int"
+    case StringType => "String"
+    case AbstractClassType(cd, Seq()) => cd.id.name
+    case AbstractClassType(cd, tps) => cd.id.name + tps.map(encodeType _).mkString("[", ", ", "]")
+    case CaseClassType(cd, Seq()) => cd.id.name
+    case CaseClassType(cd, tps) => cd.id.name + tps.map(encodeType _).mkString("[", ", ", "]")
+  }
+
+  private def decodeType(tpe: String): TypeTree = tpe match {
+    // TODO: Complete this.
+    case "Boolean" => BooleanType
+    case "Unit" => UnitType
+    case "Char" => CharType
+    case "BigInt" => IntegerType
+    case "Int" => Int32Type
+    case "String" => StringType
+  }
+
+  private def encodeList(exprs: Seq[Expr]): Expr = {
+    val nil: Expr = CaseClass(
+      CaseClassType(leonLib.Nil.get, Seq(AbstractClassType(library.Term.get, Seq()))),
+      Seq())
+    def cons(x: Expr, xs: Expr): Expr = CaseClass(
+      CaseClassType(leonLib.Cons.get, Seq(AbstractClassType(library.Term.get, Seq()))),
+      Seq(x, xs))
+
+    exprs.foldRight(nil)(cons _)
+  }
+
+  private def decodeList(expr: Expr): Seq[Expr] = expr match {
+    case CaseClass(ct, Seq(x, xs)) if (ct.classDef == leonLib.Cons.get) => x +: decodeList(xs)
+    case CaseClass(ct, Seq()) if (ct.classDef == leonLib.Nil.get) => Seq()
+  }
+
   def makeIdentifier(name: String): Expr = caseClass(library.Identifier, StringLiteral(name))
 
-  def caseClass(cc: Option[CaseClassDef], args: Expr*) =
+  def caseClass(cc: Option[CaseClassDef], args: Expr*): Expr =
     CaseClass(CaseClassType(cc.get, Seq()), args.toSeq)
 
   def fold(cc: Option[CaseClassDef], args: Seq[Expr]): Expr = {
@@ -167,11 +226,19 @@ class TermConverter(vctx: VerificationContext) {
   }
 
   def toPureScala(expr: Expr, env: Map[Expr, Identifier]): Expr = expr match {
+    // Operators
     case CaseClass(ct, Seq(op, lhs, rhs)) if (ct.classDef == library.BinOp.get) => op match {
       case StringLiteral("+") => Plus(toPureScala(lhs, env), toPureScala(rhs, env))
       case StringLiteral(">=") => GreaterEquals(toPureScala(lhs, env), toPureScala(rhs, env))
     }
+    // Literals
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.BigIntLiteral.get) => v
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.IntLiteral.get) => v
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.BooleanLiteral.get) => v
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.StringLiteral.get) => v
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.CharLiteral.get) => v
+    case CaseClass(ct, Seq()) if (ct.classDef == library.UnitLiteral.get) => UnitLiteral()
+    // Bindings
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.Variable.get) => Variable(env(v))
     case CaseClass(ct, Seq(i, v, b)) if (ct.classDef == library.Let.get) => {
       val CaseClass(_, Seq(StringLiteral(s))) = i
@@ -180,6 +247,41 @@ class TermConverter(vctx: VerificationContext) {
       val pb = toPureScala(b, env.updated(i, freshId))
       let(freshId, pv, pb)
     }
+    // Quantifiers
+    case CaseClass(ct, Seq(i, t, b)) if (ct.classDef == library.Forall.get) => {
+      val CaseClass(_, Seq(StringLiteral(s))) = i
+      val StringLiteral(tpe) = t
+      val freshId = FreshIdentifier(s, decodeType(tpe), true)  // TODO: Infer the type?
+      val pb = toPureScala(b, env.updated(i, freshId))
+      Forall(Seq(ValDef(freshId)), pb)
+    }
+    // Invocations
+    case CaseClass(ct, Seq(StringLiteral(name), args)) if (ct.classDef == library.FunctionInvocation.get) => {
+      vctx.program.lookupFunDef(name) match {
+        case None => {
+          vctx.reporter.error("Function not found: " + name)
+          throw new Exception("Function not found: " + name)
+        }
+        case Some(fd) => {
+          val decodedList = decodeList(args)
+          val decodedArgs = decodedList.map(toPureScala(_, env))
+          fd.applied(decodedArgs)
+        }
+      }
+    }
+    // Boolean operators
+    case CaseClass(ct, Seq(v)) if (ct.classDef == library.Not.get) => Not(toPureScala(v, env))
+    case CaseClass(ct, Seq(v, w)) if (ct.classDef == library.Implies.get) => Implies(toPureScala(v, env), toPureScala(w, env))
+    case CaseClass(ct, Seq(v, w)) if (ct.classDef == library.And.get) => And(toPureScala(v, env), toPureScala(w, env))
+    case CaseClass(ct, Seq(v, w)) if (ct.classDef == library.Or.get) => Or(toPureScala(v, env), toPureScala(w, env))
+    case CaseClass(ct, Seq(v, w)) if (ct.classDef == library.Iff.get) => {
+      // Use equals?
+      val a = toPureScala(v, env)
+      val b = toPureScala(w, env)
+
+      And(Implies(a, b), Implies(b, a))
+    }
+    case CaseClass(ct, Seq(v, w)) if (ct.classDef == library.Equals.get) => Equals(toPureScala(v, env), toPureScala(w, env))
     case _ => throw new Exception("Unsupported expression.")
   }
 }
