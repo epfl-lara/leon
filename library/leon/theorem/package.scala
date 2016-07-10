@@ -122,10 +122,9 @@ package object theorem {
   val truth: Theorem = toTheorem(BooleanLiteral(true))
 
   @library
-  def contradiction(term: Term, absurd: Theorem => Theorem): Option[Theorem] = {
+  def contradiction(term: Term, absurd: Theorem => Theorem): Theorem = {
     absurd(toTheorem(term)).formula match {
-      case BooleanLiteral(false) => Some(toTheorem(Not(term)))
-      case _ => None()
+      case BooleanLiteral(false) => toTheorem(Not(term))
     }
   }
 
