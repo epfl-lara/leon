@@ -34,6 +34,7 @@ case class Library(program: Program) {
   lazy val UnOp = lookup("leon.theorem.UnOp").collectFirst { case ccd : CaseClassDef => ccd }
 
   lazy val prove = lookup("leon.theorem.prove").collectFirst { case fd : FunDef => fd }
+  lazy val fresh = lookup("leon.theorem.fresh").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     program.lookupAll(name)
