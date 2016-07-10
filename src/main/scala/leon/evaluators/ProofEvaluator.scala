@@ -42,6 +42,11 @@ class ProofEvaluator(ctx: VerificationContext, prog: Program)
       val freshName = FreshIdentifier(name, Untyped, true).uniqueName
       encoder.caseClass(library.Identifier, StringLiteral(freshName))
     }
+    // Invocation of getType.
+    case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if (fd == library.getType.get) => {
+      ctx.reporter.debug("Called getType.")
+      encoder.caseClass(library.Type, StringLiteral(encoder.encodeType(tp)))
+    }
     // Any other expressions.
     case _ => super.e(expr)
   }

@@ -55,7 +55,7 @@ class ExprEncoder(vctx: VerificationContext) {
       newEnv.foldRight(encodedBody) {
         (x: (Identifier, Expr), xs: Expr) => caseClass(library.Forall, 
           x._2, 
-          StringLiteral(encodeType(x._1.getType)), 
+          caseClass(library.Type, StringLiteral(encodeType(x._1.getType))), 
           xs)
       }
     }
@@ -182,7 +182,7 @@ class ExprEncoder(vctx: VerificationContext) {
   }
 
   /** Encodes a type as a String. */
-  private def encodeType(tpe: TypeTree): String = tpe match {
+  def encodeType(tpe: TypeTree): String = tpe match {
     // TODO: Complete this.
     case BooleanType => "Boolean"
     case UnitType => "Unit"
@@ -197,7 +197,7 @@ class ExprEncoder(vctx: VerificationContext) {
   }
 
   /** Decodes a type from a String. */
-  private def decodeType(tpe: String): TypeTree = tpe match {
+  def decodeType(tpe: String): TypeTree = tpe match {
     // TODO: Complete this.
     case "Boolean" => BooleanType
     case "Unit" => UnitType
@@ -286,7 +286,7 @@ class ExprEncoder(vctx: VerificationContext) {
     // Quantifiers
     case CaseClass(ct, Seq(i, t, b)) if (ct.classDef == library.Forall.get) => {
       val CaseClass(_, Seq(StringLiteral(s))) = i
-      val StringLiteral(tpe) = t
+      val CaseClass(_, Seq(StringLiteral(tpe))) = t
       val freshId = FreshIdentifier(s, decodeType(tpe), true)  // TODO: Infer the type?
       val pb = decodeExpr(b, env.updated(i, freshId))
       Forall(Seq(ValDef(freshId)), pb)

@@ -11,6 +11,7 @@ case class Library(program: Program) {
   lazy val Theorem = lookup("leon.theorem.Theorem").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val Identifier = lookup("leon.theorem.Identifier").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val Term = lookup("leon.theorem.Term").collectFirst { case acd : AbstractClassDef => acd }
+  lazy val Type = lookup("leon.theorem.Type").collectFirst { case ccd : CaseClassDef => ccd }
 
   lazy val Variable = lookup("leon.theorem.Variable").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val Let = lookup("leon.theorem.Let").collectFirst { case ccd : CaseClassDef => ccd }
@@ -35,6 +36,7 @@ case class Library(program: Program) {
   lazy val UnOp = lookup("leon.theorem.UnOp").collectFirst { case ccd : CaseClassDef => ccd }
 
   lazy val prove = lookup("leon.theorem.prove").collectFirst { case fd : FunDef => fd }
+  lazy val getType = lookup("leon.theorem.getType").collectFirst { case fd : FunDef => fd }
   lazy val fresh = lookup("leon.theorem.fresh").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {

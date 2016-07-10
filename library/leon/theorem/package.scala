@@ -21,6 +21,11 @@ package object theorem {
     def by(proof: Theorem): Step = Step(this, proof)
   }
 
+  case class Type private (name: String)
+
+  @library
+  def getType[A](): Type = getType[A]()
+
   case class Variable(name: Identifier) extends Term
   case class Let(binder: Identifier, value: Term, body: Term) extends Term
   case class Application(function: Term, arguments: List[Term]) extends Term
@@ -37,8 +42,8 @@ package object theorem {
   case class Implies(left: Term, right: Term) extends Term
   case class Iff(left: Term, right: Term) extends Term
   case class Not(formula: Term) extends Term
-  case class Forall(binder: Identifier, tpe: String, formula: Term) extends Term
-  case class Exists(binder: Identifier, tpe: String, formula: Term) extends Term
+  case class Forall(binder: Identifier, tpe: Type, formula: Term) extends Term
+  case class Exists(binder: Identifier, tpe: Type, formula: Term) extends Term
   case class Equals(left: Term, right: Term) extends Term
   case class BinOp(name: String, left: Term, right: Term) extends Term
   case class UnOp(name: String, expr: Term) extends Term
