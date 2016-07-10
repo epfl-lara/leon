@@ -263,10 +263,20 @@ class ExprEncoder(vctx: VerificationContext) {
     */
   def decodeExpr(expr: Expr, env: Map[Expr, Identifier]): Expr = expr match {
     // Operators
-    case CaseClass(ct, Seq(op, lhs, rhs)) if (ct.classDef == library.BinOp.get) => op match {
-      case StringLiteral("+") => Plus(decodeExpr(lhs, env), decodeExpr(rhs, env))
-      case StringLiteral(">=") => GreaterEquals(decodeExpr(lhs, env), decodeExpr(rhs, env))
-    }
+    case CaseClass(ct, Seq(StringLiteral(op), lhs, rhs)) if (ct.classDef == library.BinOp.get) => 
+      op match {
+        case "+" => Plus(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "-" => Minus(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "*" => Times(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "/" => Division(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "%" => Remainder(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "mod" => Modulo(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case ">=" => GreaterEquals(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case ">" => GreaterThan(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "<" => LessThan(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case "<=" => LessEquals(decodeExpr(lhs, env), decodeExpr(rhs, env))
+        case _ => vctx.reporter.fatalError("Unknown operator: " + op)
+      }
     // Literals
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.BigIntLiteral.get) => v
     case CaseClass(ct, Seq(v)) if (ct.classDef == library.IntLiteral.get) => v
