@@ -162,7 +162,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
     // Encoding the postcondition and precondition.
     val postExpr = encoder.encodeExpr(application(fd.postcondition.get, Seq(fd.body.get)), env)
-    val preExpr = encoder.caseClass(library.Theorem, encoder.encodeExpr(fd.precondition.get, env))
+    val preExpr = encoder.caseClass(library.Theorem, encoder.encodeExpr(fd.precOrTrue, env))
 
     // Creating the proof function invocation.
     val proofFunctionExpr = functionInvocation(proofFd, mapping.map(_._2) ++ Seq(preExpr, postExpr))
