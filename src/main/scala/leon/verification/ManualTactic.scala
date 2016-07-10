@@ -193,7 +193,7 @@ class ManualTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
     // Gettings the set of verification conditions from the evaluator.
     val proofVCs = evaluator.popVCExprs.map {
-      case e: Expr => VC(encoder.decodeExpr(e, backEnv), fd, VCKinds.ProveInvocation).setPos(proofFd)
+      case e: Expr => VC(encoder.decodeExpr(e, backEnv), proofFd, VCKinds.ProveInvocation).setPos(proofFd)
     }
 
     reporter.debug("Corresponding vcs : " + proofVCs.map(_.condition).mkString(", "))  
