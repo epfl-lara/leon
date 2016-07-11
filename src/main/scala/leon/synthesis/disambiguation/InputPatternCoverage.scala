@@ -165,7 +165,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
   
   /** Map of g.left.symbol to the stream of expressions it could be assigned to */
   private def coverExpr(inputs: Seq[Identifier], e: Expr, covered: Covered, bindings: Map[Identifier, Expr]): Map[Path, Stream[Expr]] = {
-    println(s"Covering expr (inputs = $inputs, bindings = $bindings): \n$e")
+    //println(s"Covering expr (inputs = $inputs, bindings = $bindings): \n$e")
     val res : Map[Path, Stream[Expr]] = 
     e match {
     case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)
