@@ -28,16 +28,22 @@ object RunningExample {
     SCons((1, True()), () => nextElem(BigInt(2)))
   }
 
-  def isPrimeRec(i: BigInt, n: BigInt): Bool = {
+  /*def isPrimeRec(i: BigInt, n: BigInt): Bool = {
     require(i >= 1 && i < n)
     if(i == 1) True()
     else if((n / i) * i == n) False()
     else isPrimeRec(i - 1, n)
-  } ensuring(_ => time <= ? * i + ?)
+  } ensuring(_ => time <= ? * i + ?)*/
 
   def isPrimeNum(n: BigInt): Bool = {
     require(n >= 2)
-    isPrimeRec(n -1, n)
+    def rec(i: BigInt): Bool = {
+      require(i >= 1 && i < n)
+      /*if (i == 1) True()
+      else if ((n / i) * i == n) False()
+      else rec(i - 1)*/
+    } ensuring (_ => time <= ? * i + ?)
+    rec(n -1)
   } ensuring(r => time <= ? * n + ?)
 
   def nextElem(i: BigInt): Stream = {
@@ -50,7 +56,7 @@ object RunningExample {
   def isPrimeS(s: Stream, i: BigInt): Boolean = {
     require(i >= 2)
    s match {
-     case SNil() => true
+     case SNil() => false
      case SCons(x, tfun) => tfun == (() => nextElem(i))
    }}
 

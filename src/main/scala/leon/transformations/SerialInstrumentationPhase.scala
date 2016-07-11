@@ -36,7 +36,8 @@ object InstrumentationPhase extends TransformationPhase {
           Depth -> new DepthInstrumenter(program, si),
           Rec -> new RecursionCountInstrumenter(program, si),
           Stack -> new StackSpaceInstrumenter(program, si),
-          TPR -> new TPRInstrumenter(program, si))
+          TPR -> new TPRInstrumenter(program, si),
+          Alloc -> new AllocInstrumenter(program, si))
     val si = new SerialInstrumenter(program, instrumenterFactory)
     val instprog = si.apply
     //println("Instrumented Program: "+ScalaPrinter.apply(instprog, purescala.PrinterOptions(printUniqueIds = true)))
@@ -54,6 +55,7 @@ class SerialInstrumenter(program: Program,
   val exprInstFactory = exprInstOpt.getOrElse((ictx: InstruContext) => new ExprInstrumenter(ictx))
 
   val instToInstrumenter: Map[Instrumentation, Instrumenter] = instFactory(this)
+
 
   // a map from functions to the list of instrumentations to be performed for the function
   val (funcInsts, ftypeInsts) = {
@@ -512,7 +514,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             val hitCase = Tuple(lookupVal +: hitInstExprs)
 
             val missInstExprs = ictx.instrumenters.map { m =>
-              val luCost = InfiniteIntegerLiteral(2) // lookup/update cost combined
+              val luCost = m.missCost() // lookup/update cost combined
               m.instrument(f, subeInsts.getOrElse(m.inst, List()) :+ Plus(luCost, selectInst(funres, m.inst)),
                 Some(funres)) // note: even though calleeInst is passed, it may or may not be used.
             }
@@ -620,6 +622,7 @@ class ExprInstrumenter(ictx: InstruContext) {
           val ir = Variable(createInstVar("ir", transv.getType))
           (ir, transv)
         }
+
         val transformedBody = transform(b)(letIdMap + (i -> ni.id))
         val r = Variable(createInstVar("r", transformedBody.getType))
         val instexprs = instrumenters map { m =>
@@ -645,6 +648,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             Let(resthen.id, transThen, Tuple(TupleSelect(resthen, 1) +: theninsts))
           }
           (recons, thInstPart)
+
         }
         val (nelseCons, elseInsts) = {
           val transElze = transform(elze)
@@ -718,6 +722,10 @@ abstract class Instrumenter(program: Program, si: SerialInstrumenter) {
   def instProp(instExpr: Expr)(fd: FunDef): Option[Expr] = None
 
   def instrumentBody(bodyExpr: Expr, instExpr: Expr)(implicit fd: FunDef): Expr = instExpr
+
+  def missCost() = {
+    InfiniteIntegerLiteral(2)
+  }
 
   def getRootFuncs(prog: Program = program): (Set[FunDef], Set[CompatibleType]) = {
     // go over all user-defined functions, and collect those functions with an argument less instCall in the postcondition

@@ -28,7 +28,7 @@ object ZipWithAndFibStream {
     def tailVal = tailFun match {
       case s@Susp(f) => s.fval*
       case Val(x) => x
-    } 
+    }
     @inline
     def tailCached = tailFun match {
       case Val(_) => true
@@ -45,41 +45,36 @@ object ZipWithAndFibStream {
       }
     }
   }
-  case class Val(x: SCons) extends ValOrSusp
-  case class Susp(fun: () => SCons) extends ValOrSusp
+  private case class Val(x: SCons) extends ValOrSusp
+  private case class Susp(fun: () => SCons) extends ValOrSusp
 
   /**
-   * A generic higher-order `zipWithFun` function
+   * A generic higher-order `zipWithFun` function.
+   * The function is private so the targets of `f` are within scope.
    */
-  def zipWithFun(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
+  private def zipWithFun(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
     (xs, ys) match {
       case (SCons(x, _), SCons(y, _)) =>
         SCons(f(x, y), Susp(() => zipWithSusp(f, xs, ys)))
     }
-  } ensuring(time <= ?) // Orb result: 17
+  } ensuring(alloc <= ?) // Orb result: 17
 
-  def zipWithSusp(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
+  private def zipWithSusp(f: (BigInt, BigInt) => BigInt, xs: SCons, ys: SCons): SCons = {
     zipWithFun(f, xs.tail, ys.tail)
   }
 
-
-  /**
-   * First two elements have been evaluated
-   */
-  @inline  
-  def firstThreeEval(first: SCons, second: SCons, third: SCons) = {
-    first.tailVal == second && second.tailVal == third &&  
-        first.tailCached && second.tailCached 
-  }
-  
   /**
    * Given three elements, computes the next element.
    */
   @invisibleBody
   def next(f: SCons, s: SCons, t: SCons): SCons = {
-    t.tail 
-  }
+    t.tail
+  } ensuring(_ => alloc <= ?) // Orb result: alloc <= 73
 
+  /**
+   * Given the first three elements, reading the nth element (s.t. n >= 4) from a
+   * `argChainedStream` will take only linear alloc.
+   */
   @invisibleBody
   def nthElemAfterThird(n: BigInt, f: SCons, s: SCons, t: SCons): BigInt = {
     next(f, s, t) match {
@@ -88,24 +83,24 @@ object ZipWithAndFibStream {
         else
           nthElemAfterThird(n - 1, s, t, fourth)
     }
-  }
+  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 84 * n - 167
 
   /**
    * Using a `zipWithFun` function to implement a fibonacci stream.
    */
   val fibstream: SCons = SCons(0, Val(SCons(1, Susp(() => genNext))))
   @invisibleBody
-  val genNext = {
+  def genNext = {
     val fibs = this.fibstream
-    zipWithSusp(_ + _, fibs, fibs.tail)
-  } ensuring(_ => time <= ?)
+    zipWithFun(_ + _, fibs, fibs.tail)
+  } ensuring(_ => alloc <= ?)
 
   /**
-   * `nth` fib in O(n) time.
+   * `nth` fib in O(n) alloc.
    */
   def nthFib(n: BigInt) = {
     val first = fibstream
-    if(n == 0) first.x 
+    if(n == 0) first.x
     else{
       val second = first.tail
       if(n == 1) second.x
@@ -113,7 +108,7 @@ object ZipWithAndFibStream {
         val third = second.tail
         if(n == 2) third.x
         else nthElemAfterThird(n, first, second, third)
-      }       
+      }
     }
-  }
+  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 84 * n + 6
 }

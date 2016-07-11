@@ -117,7 +117,8 @@ object Knapscak {
       val tail = solveUptoWeight(w - 1, items)
       Cons((w, solveForWeightHelper(w, items)), tail)
     }
-  } ensuring { _ => deps(w, items) &&
+  } ensuring { _ =>
+    deps(w, items) &&
       steps <= ? * (w * items.size) + ? * items.size + ? * w + ?
   }
 
@@ -127,12 +128,12 @@ object Knapscak {
   def knapsack(w: BigInt, items: IList) = {
     require(w >= 0)
     solveUptoWeight(w, items)
-  } ensuring (_ => steps  <= ? * (w * items.size) + ? * items.size + ? * w + ?)
+  } ensuring (_ => steps <= ? * (w * items.size) + ? * items.size + ? * w + ?)
 
   @ignore
   def main(args: Array[String]) {
     import scala.util.Random
-    // pick some random weights and values
+    // Pick a sequence of weights and values that are equal.
     val weightsnValues1 = (1 to 10).foldRight(Nil(): IList) {
       case (i, acc) => Cons((i, i), acc)
     }

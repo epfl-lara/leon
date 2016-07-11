@@ -19,7 +19,8 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
       Depth -> new DepthInstrumenter(p, si),
       Rec -> new RecursionCountInstrumenter(p, si),
       Stack -> new StackSpaceInstrumenter(p, si),
-      TPR -> new MemTPRInstrumenter(p, si))
+      TPR -> new MemTPRInstrumenter(p, si),
+      Alloc -> new MemAllocInstrumenter(p, si))
 
   val serialInst = new SerialInstrumenter(p, instrumenterFactory, Some(exprInstFactory))
 
@@ -28,7 +29,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   class MemExprInstrumenter(ictx: InstruContext) extends ExprInstrumenter(ictx: InstruContext) {
 
     val costOfMemoization: Map[Instrumentation, Int] =
-      Map(Time -> 1, Stack -> 1, Rec -> 1, TPR -> 1, Depth -> 1)
+      Map(Time -> 1, Stack -> 1, Rec -> 1, TPR -> 1, Depth -> 1, Alloc -> 0)
 
     lazy val stateParam = ictx.currFun.params.last.id.toVariable // this field should be valid when it is accessed
 
@@ -123,6 +124,37 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
         val cumulativeCostOfPattern =
           me.cases.take(me.cases.indexOf(mc)).foldLeft(0)((acc, currCase) => acc + patternCost(currCase.pattern, false, false)) + costOfPattern
         Plus(costMatch, Plus(Plus(InfiniteIntegerLiteral(cumulativeCostOfPattern), caseExprCost), scrutineeCost))
+      }
+    }
+  }
+
+  object memAllocCostModel {
+    def costOf(e: Expr)(implicit currFun: FunDef): Int = {
+      val cost = e match {
+        case CaseClass(cct, _) if isMemoClosure(cct.root) || clFactory.closureNames.contains(cct.id.name) => 0 
+        case CaseClass(_, _) => 1 
+        case _ => 0
+      }
+      cost
+    }
+  }
+
+  class MemAllocInstrumenter(p: Program, si: SerialInstrumenter) extends AllocInstrumenter(p, si) {
+    override def costOf(e: Expr)(implicit currFd: FunDef): Int = memAllocCostModel.costOf(e)
+
+    override def instProp(e: Expr)(fd: FunDef) =
+      if (isEvalFunction(fd)) {
+        Some(GreaterEquals(e, Util.zero))
+      } else None
+
+    override def instrumentMatchCase(me: MatchExpr, mc: MatchCase, caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
+      if (isEvalFunction(fd)) {
+        // ignoring the cost of match completely
+        caseExprCost
+      } else {
+        val costMatch = costOfExpr(me)
+        def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
+        Plus(costMatch, Plus(caseExprCost, scrutineeCost))
       }
     }
   }
