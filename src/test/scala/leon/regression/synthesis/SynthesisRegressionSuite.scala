@@ -19,7 +19,7 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
   }
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
-    val ctx = createLeonContext("--synthesis", "--solvers=smt-z3")
+    val ctx = createLeonContext("--synthesis")
 
     val pipeline = leon.frontends.scalac.ExtractionPhase andThen new leon.utils.PreprocessingPhase
 
