@@ -113,8 +113,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
             }
           }
 
-          println("-"*80)
-          println("Considering function: "+tfd.asString)
+          //println("-"*80)
+          //println("Considering function: "+tfd.asString)
 
           val asSet = p.as.toSet
 
