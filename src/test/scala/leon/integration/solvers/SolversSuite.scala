@@ -91,10 +91,10 @@ class SolversSuite extends LeonTestSuiteWithProgram {
     }
   }
 
-  test(s"Data generation in enum solver") { implicit fix =>
+  /*test(s"Data generation in enum solver") { implicit fix =>
     for ((v,cnstr) <- vs zip cnstrs) {
       val solver = new EnumerationSolver(fix._1.toSctx, fix._2)
       checkSolver(solver, Set(v), cnstr)
     }
-  }
+  }*/
 }

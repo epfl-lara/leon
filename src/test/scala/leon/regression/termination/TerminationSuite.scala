@@ -36,7 +36,8 @@ class TerminationSuite extends LeonRegressionSuite {
       "termination/valid/NNF.scala",
       //"verification/purescala/valid/MergeSort.scala",
       "verification/purescala/valid/Nested14.scala",
-      "verification/purescala/valid/MergeSort2.scala"
+      "verification/purescala/valid/MergeSort2.scala",
+      "verification/purescala/valid/PropositionalLogic.scala"
     )
 
     val t = if (ignored.exists(displayName.replaceAll("\\\\","/").endsWith)) {

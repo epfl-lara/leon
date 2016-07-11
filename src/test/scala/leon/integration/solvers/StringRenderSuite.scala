@@ -412,7 +412,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         "<<aaYbb>Y<mmYnn>>")
   }
   
-  test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
+  /*test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
     val c = Constructors(program); import c._
     val d = FreshIdentifier("d", Dummy)
 
@@ -424,9 +424,8 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
             ->
         "[{a}-{b}, {c}-{d}]")
     
-  }
-  
-  
+  }*/
+
   test("Pretty-printing using inferred not yet defined functions in argument"){ case (ctx: LeonContext, program: Program) =>
     StringRender.enforceDefaultStringMethodsIfAvailable = true
     synthesizeAndAbstractTest("bConfigToString"){ (fd: FunDef, program: Program) =>

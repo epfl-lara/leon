@@ -217,17 +217,20 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
     def rank(es: Expr*) = fcall("Heap.rank")(es: _*)
 
     val tests = List[(List[Variable], Expr, Expr)](
-      (List(h1, v1, l1, r1, h2, v2, l2, r2),
-       makeN(v2, l1, merge(h1, r2)),
-       makeN(v2, l2, merge(h1, r2))
+      (
+        List(h1, v1, l1, r1, h2, v2, l2, r2),
+        makeN(v2, l1, merge(h1, r2)),
+        makeN(v2, l2, merge(h1, r2))
       ),
-      (List(v1, h1),
-       merge(Node(Plus(v1, bi(1)), Leaf(), Leaf()), h1),
-      merge(Node(v1, Leaf(), Leaf()), h1)
-      ),
-      (List(h1, h2),
-       GreaterThan(rank(h1), Plus(rank(h2), bi(42))),
-       GreaterThan(rank(h1), Minus(Plus(rank(h2), bi(42)), bi(1)))
+      /*(
+        List(v1, h1),
+        merge(Node(Plus(v1, bi(1)), Leaf(), Leaf()), h1),
+        merge(Node(v1, Leaf(), Leaf()), h1)
+      ),*/
+      (
+        List(h1, h2),
+        GreaterThan(rank(h1), Plus(rank(h2), bi(42))),
+        GreaterThan(rank(h1), Minus(Plus(rank(h2), bi(42)), bi(1)))
       )
     )
 
