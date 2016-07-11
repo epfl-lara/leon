@@ -12,7 +12,7 @@ object GuessNumber {
     bot + (top - bot)/2  //works for execution
   } ensuring(res => res >= bot && res <= top)
 
-  def guessNumber(choice: Option[BigInt])(implicit state: StdIn.State): BigInt = {
+  def guessNumber(choice: Option[BigInt])(implicit state: leon.io.State): BigInt = {
     require(choice match { case Some(c) => c >= 0 && c <= 10 case None() => true })
     var bot: BigInt = 0
     var top: BigInt = 10
@@ -39,7 +39,7 @@ object GuessNumber {
   })
 
   @extern
-  def isGreater(guess: BigInt, choice: Option[BigInt])(implicit state: StdIn.State): Boolean = (choice match {
+  def isGreater(guess: BigInt, choice: Option[BigInt])(implicit state: leon.io.State): Boolean = (choice match {
     case None() =>
       StdOut.print("Is it (strictly) smaller than " + guess + ": ")
       StdIn.readBoolean
@@ -47,7 +47,7 @@ object GuessNumber {
   }) ensuring(res => choice match { case Some(c) => res == guess > c case None() => true })
 
   @extern
-  def isSmaller(guess: BigInt, choice: Option[BigInt])(implicit state: StdIn.State): Boolean = (choice match {
+  def isSmaller(guess: BigInt, choice: Option[BigInt])(implicit state: leon.io.State): Boolean = (choice match {
     case None() =>
       StdOut.print("Is it (strictly) greater than " + guess + ": ")
       StdIn.readBoolean
@@ -56,13 +56,13 @@ object GuessNumber {
 
   def guessNumberValid(choice: BigInt): BigInt = {
     require(choice >= 0 && choice <= 10)
-    implicit val ioState = StdIn.newState
+    implicit val ioState = leon.io.newState
     guessNumber(Some(choice))
   } ensuring(_ == choice)
 
   @extern
   def main(args: Array[String]): Unit = {
-    implicit val ioState = StdIn.newState
+    implicit val ioState = leon.io.newState
     StdOut.println("Think of a number between 0 and 10...")
     StdOut.println("Leon will try to guess it...")
     val answer = guessNumber(None())
