@@ -16,6 +16,7 @@ exception Construction of string * exn
 exception Impossible of string
 exception Invalid_State of string
 exception Timeout of string
+exception Nested of string * exn
 
 local
   fun format_message msg pos = msg ^ " (at " ^ print_position pos ^ ")"
@@ -32,6 +33,13 @@ fun the_error msg pos NONE = impossible ("expected SOME: " ^ msg) pos
 
 fun single_error _   _   [t] = t
   | single_error msg pos _ = impossible ("expected singleton list: " ^ msg) pos
+
+fun reraise_nested msg pos f x =
+  let fun nest exn = Nested (format_message msg pos, exn) in
+    Exn.interruptible_capture f x
+    |> map_result_exn nest
+    |> Exn.release
+  end
 
 end
 
