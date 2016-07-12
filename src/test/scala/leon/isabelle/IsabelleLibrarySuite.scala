@@ -26,12 +26,12 @@ class IsabelleLibrarySuite extends LeonRegressionSuite {
       Await.result(IsabelleEnvironment(context, program).map(_ => ()), Duration.Inf)
   }
 
-  test("Define the library") {
+  /*test("Define the library") {
     val pipeline = ExtractionPhase andThen new PreprocessingPhase andThen IsabelleNoopPhase
 
     val ctx = Main.processOptions(Seq("--functions=_")).copy(reporter = new TestSilentReporter())
 
     pipeline.run(ctx, Nil)
-  }
+  }*/
 
 }
