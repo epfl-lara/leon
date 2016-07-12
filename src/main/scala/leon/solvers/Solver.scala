@@ -49,7 +49,6 @@ trait Solver extends Interruptible {
   protected def unsupported(t: Tree): Nothing = {
     val err = SolverUnsupportedError(t, this, None)
     context.reporter.warning(err.getMessage)
-    err.printStackTrace()
     throw err
   }
 
