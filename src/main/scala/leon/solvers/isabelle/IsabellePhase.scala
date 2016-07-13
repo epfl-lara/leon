@@ -30,7 +30,9 @@ object IsabellePhase extends SimpleLeonPhase[Program, VerificationReport] {
         val term = env.functions.term(expr)
         val input = term.map(t => (List(t), fd.proofMethod(vc, context)))
         val result = Await.result(input.flatMap(env.system.invoke(Prove)).assertSuccess(context), Duration.Inf) match {
-          case Some(thm) => VCResult(VCStatus.Valid, None, None)
+          case Some(thm) =>
+            context.reporter.debug(s"Proved theorem: ${canonicalizeOutput(env.system, thm)}")
+            VCResult(VCStatus.Valid, None, None)
           case None => VCResult(VCStatus.Unknown, None, None)
         }
         vc -> Some(result)

@@ -18,6 +18,8 @@ import leon.purescala.Common._
 import leon.solvers._
 import leon.utils._
 
+import cats.data.Xor
+
 import edu.tum.cs.isabelle._
 import edu.tum.cs.isabelle.api._
 import edu.tum.cs.isabelle.setup._
@@ -53,7 +55,10 @@ object IsabelleEnvironment {
     }.toList
 
     context.reporter.info(s"Preparing Isabelle setup (this might take a while) ...")
-    val setup = Setup.defaultSetup(version)
+    val setup = Setup.defaultSetup(version) match {
+      case Xor.Left(reason) => context.reporter.fatalError(s"Isabelle setup failed: ${reason.explain}")
+      case Xor.Right(setup) => setup
+    }
 
     val system = setup.flatMap { setup =>
       val resources = Resources.dumpIsabelleResources()

@@ -576,6 +576,7 @@ object List {
            
   /* Range from start (inclusive) to until (exclusive) */
   @library
+  @isabelle.noBody
   def range(start: BigInt, until: BigInt): List[BigInt] = {
     require(start <= until)
     if(until <= start) Nil[BigInt]() else Cons(start, range(start + 1, until))

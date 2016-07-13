@@ -308,6 +308,8 @@ val equivalences =
 fun functions raw_funs =
   update_loaded (fn lthy =>
     let
+      val (_, lthy) = Local_Theory.open_target lthy
+
       fun transform (name, raw_args, (raw_rhs, expected_typ)) =
         let
           val lhs = list_comb (Free (name, dummyT), map Free raw_args)
@@ -361,37 +363,37 @@ fun functions raw_funs =
         | (false, _) => def_construction)
     in
       case Exn.interruptible_capture construction lthy of
-        Exn.Res (thms, lthy) =>
+        Exn.Res (thms, lthy') =>
           let
             val names = map #1 raw_funs
             val get_typ =
               Thm.prop_of #> HOLogic.dest_Trueprop #> HOLogic.dest_eq #> fst
               #> strip_comb #> fst
               #> fastype_of
-              #> print_typ lthy
+              #> print_typ lthy'
             val typs = map get_typ thms
-            val lthy' = Local_Theory.restore lthy
-            val thms = Proof_Context.export lthy lthy' thms
-            val simpss = thms
-              |> map (try_case_to_simps lthy' o restore_eq o full_simplify (mk_simp_ctxt lthy'))
-              |> map (homogenize_spec_types lthy')
+            val lthy'' = Local_Theory.close_target lthy'
+            val thms = Proof_Context.export lthy' lthy'' thms
+            val simpss = thms |>
+              map (try_case_to_simps lthy'' o restore_eq o full_simplify (mk_simp_ctxt lthy''))
+              |> map (homogenize_spec_types lthy'')
             val simps = maps if_to_cond_simps (flat simpss)
-            val specs = names ~~ map (`(try_timeout' (mk_induction_schema lthy') #> Exn.get_res)) simpss
+            val specs = names ~~ map (`(try_timeout' (mk_induction_schema lthy'') #> Exn.get_res)) simpss
             fun print_induct (_, (NONE, _)) = NONE
-              | print_induct (name, (SOME rule, _)) = SOME (name, print_thm lthy' rule)
+              | print_induct (name, (SOME rule, _)) = SOME (name, print_thm lthy'' rule)
             val binding = Binding.qualified true "spec" (Binding.make (hd names, @{here}))
             val report =
               Function
                 {heads = names ~~ typs,
                  inducts = map_filter print_induct specs,
-                 specs = map (print_thm lthy') simps,
-                 raws = map (print_thm lthy') thms}
-            val lthy'' = lthy'
+                 specs = map (print_thm lthy'') simps,
+                 raws = map (print_thm lthy'') thms}
+            val lthy''' = lthy''
               |> Local_Theory.note ((Binding.empty, @{attributes [simp del]}), thms) |> snd
               |> Local_Theory.note ((binding, @{attributes [simp]}), simps) |> snd
               |> Local_Theory.background_theory (add_funs specs #> add_report report)
           in
-            (NONE, lthy'')
+            (NONE, lthy''')
           end
       | Exn.Exn (exn as Impossible _) =>
           reraise exn

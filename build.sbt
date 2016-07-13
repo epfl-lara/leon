@@ -40,7 +40,7 @@ resolvers ++= Seq(
   "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-val libisabelleVer = "0.3.1"
+val libisabelleVer = "0.3.4"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % scalaVer,
