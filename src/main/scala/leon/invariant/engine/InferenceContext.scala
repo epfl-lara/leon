@@ -34,7 +34,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val inferTemp = leonContext.findOption(optInferTemp).getOrElse(false)
   val withmult = leonContext.findOption(optWithMult).getOrElse(false)
   val usereals = leonContext.findOption(optUseReals).getOrElse(false)
-  val useCegis: Boolean = leonContext.findOption(optCegis).getOrElse(false)
+  val useSTE: Boolean = leonContext.findOption(optSTE).getOrElse(false)
   val dumpStats = leonContext.findOption(GlobalOptions.optBenchmark).getOrElse(false)
 
   // the following options have default values
@@ -43,7 +43,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val totalTimeout = leonContext.findOption(GlobalOptions.optTimeout) // in secs
   val functionsToInfer = leonContext.findOption(GlobalOptions.optFunctions)
   val reporter = leonContext.reporter
-  val maxCegisBound = 1000
+  val maxSTEBound = 1000
   val statsSuffix = leonContext.findOption(optStatsSuffix).getOrElse("-stats" + FileCountGUID.getID)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
