@@ -33,7 +33,7 @@ object RunningExample {
     if(i == 1) True()
     else if((n / i) * i == n) False()
     else isPrimeRec(i - 1, n)
-  } ensuring(_ => time <= ? * i + ?)*/
+  } ensuring(_ => steps <= ? * i + ?)*/
 
   def isPrimeNum(n: BigInt): Bool = {
     require(n >= 2)
@@ -42,9 +42,9 @@ object RunningExample {
       if (i == 1) True()
       else if ((n / i) * i == n) False()
       else rec(i - 1)
-    } ensuring (_ => time <= ? * i + ?)
+    } ensuring (_ => steps <= ? * i + ?)
     rec(n -1)
-  } ensuring(r => time <= ? * n + ?)
+  } ensuring(r => steps <= ? * n + ?)
   
   def nextElem(i: BigInt): Stream = {
     require(i >= 2)
