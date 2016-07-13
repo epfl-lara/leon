@@ -11,7 +11,7 @@ import Witnesses._
 import leon.grammars._
 import leon.grammars.aspects.{SimilarTo, DepthBound}
 
-case object TEGLESS extends TEGISLike("TEGLESS") {
+case object ExampleGuidedSimilarTermExploration extends ETELike("Example-guided Similar Term Expl.") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
 
     val TopLevelAnds(clauses) = p.ws
@@ -27,7 +27,7 @@ case object TEGLESS extends TEGISLike("TEGLESS") {
       }
     }
 
-    TegisParams(
+    ETEParams(
       grammar = grammars.default(sctx, p),
       rootLabel = { (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)) },
       minSize = 1,

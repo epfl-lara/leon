@@ -15,9 +15,9 @@ case class SynthesisSettings(
   functions: Option[Set[String]]      = None,
   functionsToIgnore: Set[FunDef]      = Set(),
   
-  // Cegis related options
-  cegisUseOptTimeout: Boolean = true,
-  cegisUseVanuatoo  : Boolean = false,
-  cegisMaxSize: Int           = 7
+  // STE related options
+  steUseOptTimeout: Boolean = true,
+  steUseVanuatoo  : Boolean = false,
+  steMaxSize: Int           = 7
 
 )

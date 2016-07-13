@@ -25,7 +25,7 @@ import datagen._
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-abstract class CEGISLike(name: String) extends Rule(name) {
+abstract class STELike(name: String) extends Rule(name) {
 
   class NonDeterministicProgram(
     interruptManager: InterruptManager,
@@ -50,15 +50,15 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     // Timeout to find a counter example to a candidate program
     val cexSolverTo = 3000L
 
-    val timers = outerCtx.timers.synthesis.applications.CEGIS
+    val timers = outerCtx.timers.synthesis.applications.STE
 
-    // CEGIS Flags to activate or deactivate features
-    val useOptTimeout = outerCtx.settings.cegisUseOptTimeout
-    val useVanuatoo   = outerCtx.settings.cegisUseVanuatoo
+    // STE Flags to activate or deactivate features
+    val useOptTimeout = outerCtx.settings.steUseOptTimeout
+    val useVanuatoo   = outerCtx.settings.steUseVanuatoo
 
 
     // Create a fresh solution function with the best solution around the
-    // current CEGIS as body
+    // current STE as body
     val fd = {
       val fd = outerCtx.functionContext.duplicate()
 
@@ -491,7 +491,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       }
 
       if (useOptTimeout && untrusted.nonEmpty) {
-        info(s"CEGIS could not prove the validity of the resulting ${untrusted.size} expression(s)")
+        info(s"STE could not prove the validity of the resulting ${untrusted.size} expression(s)")
         Some(untrusted.toStream)
       } else {
         None
@@ -532,7 +532,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     }
 
     /**
-     * First phase of CEGIS: discover potential candidates (that work on at least one input)
+     * First phase of STE: discover potential candidates (that work on at least one input)
      * Can return one of tree values:
      *  1) Some(Some(bs)) => Found a candidate program bs
      *  2) Some(None)     => We know for sure that no candidate exists
@@ -607,7 +607,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     }
 
     /**
-     * Second phase of CEGIS: verify a given candidate by looking for CEX inputs.
+     * Second phase of STE: verify a given candidate by looking for CEX inputs.
      * Returns the potential solution and whether it is to be trusted.
      */
     def validateCandidate(bs: Candidate, potentialCExamples: Seq[InExample] = Nil): Option[Solution] = {
@@ -667,14 +667,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           case None =>
             if (useOptTimeout) {
-              info("CEGIS could not prove the validity of the resulting expression")
+              info("STE could not prove the validity of the resulting expression")
               // Interpret timeout in CE search as "the candidate is valid"
               Some(Solution(BooleanLiteral(true), Set(), getOuterExpr(bs), false))
 
             } else {
               discardCandidate(bs, false)
 
-              // TODO: Make CEGIS fail early when it times out when verifying 1 program?
+              // TODO: Make STE fail early when it times out when verifying 1 program?
               None
             }
         }
@@ -777,14 +777,14 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     updateCTree()
   }
 
-  case class CegisParams(
+  case class STEParams(
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
     optimizations: Boolean,
     sizes: List[(Int, Int, Int)]
   )
 
-  def getParams(sctx: SynthesisContext, p: Problem): CegisParams
+  def getParams(sctx: SynthesisContext, p: Problem): STEParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -809,7 +809,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         def apply(hctx: SearchContext): RuleApplication = {
           var result: Option[RuleApplication] = None
 
-          val timers = hctx.timers.synthesis.applications.CEGIS
+          val timers = hctx.timers.synthesis.applications.STE
 
           implicit val ic = hctx
 
@@ -865,12 +865,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           try {
             do {
-              // Run CEGIS for one specific unfolding level
+              // Run STE for one specific unfolding level
               ndProgram.unfold()
 
               val filteredEnough = ndProgram.filterWithExamples()
 
-                // CEGIS Loop at a given unfolding level
+                // STE Loop at a given unfolding level
               while (result.isEmpty && !interruptManager.isInterrupted && ndProgram.hasViableCandidates) {
                 debug("Candidates left: " + ndProgram.viableCandidates.size)
 
@@ -882,7 +882,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
                   ndProgram.validateAllCandidates() match {
                     case Some(sols) =>
-                      // Found solution! Exit CEGIS
+                      // Found solution! Exit STE
                       result = Some(RuleClosed(sols))
 
                     case None =>
@@ -916,7 +916,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
                     case None =>
                       debug("Timeout while getting tentative program!")
                       ndProgram.discardAllCandidates()
-                      // TODO: Make CEGIS fail early when it times out when looking for tentative program?
+                      // TODO: Make STE fail early when it times out when looking for tentative program?
                       //result = Some(RuleFailed())
                   }
                 }
@@ -930,7 +930,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             result.getOrElse(RuleFailed())
           } catch {
             case e: Throwable =>
-              warning("CEGIS crashed: "+e.getMessage)
+              warning("STE crashed: "+e.getMessage)
               e.printStackTrace()
               RuleFailed()
           }

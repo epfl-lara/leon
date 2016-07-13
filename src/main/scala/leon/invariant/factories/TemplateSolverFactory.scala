@@ -20,7 +20,7 @@ object TemplateSolverFactory {
     minopt: Option[(Expr, Model) => Model] = None,
     bound: Option[Int] = None): TemplateSolver = {
     if (ctx.useCegis) {
-      // TODO: find a better way to specify CEGIS total time bound
+      // TODO: find a better way to specify STE total time bound
       new CegisSolver(ctx, prog, rootFun, ctrack, 10000, bound)
     } else {
       val minimizer = if (ctx.tightBounds && rootFun.hasTemplate) {

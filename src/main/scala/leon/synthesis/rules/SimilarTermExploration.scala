@@ -11,7 +11,7 @@ import leon.grammars._
 import leon.grammars.aspects._
 import Witnesses._
 
-case object CEGLESS extends CEGISLike("CEGLESS") {
+case object SimilarTermExploration extends STELike("Similar Term Expl.") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     val TopLevelAnds(clauses) = p.ws
 
@@ -28,7 +28,7 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
 
     val maxSize = Math.min((0 +: guides.map(depth(_) + 2)).max, 5)
 
-    CegisParams(
+    STEParams(
       grammar = grammars.default(sctx, p, guides),
       rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)),
       optimizations = true,

@@ -8,23 +8,14 @@ import purescala.Expressions._
 import purescala.Types._
 import purescala.Constructors._
 
-import datagen._
 import evaluators._
 import codegen.CodeGenParams
 import leon.grammars._
-import leon.grammars.aspects.Sized
-import leon.utils.GrowableIterable
 import leon.utils.SeqUtils._
 
-import scala.collection.mutable.{HashMap => MutableMap}
-
-import bonsai.enumerators._
-
-
-
-
-abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
-  case class TegisParams(
+/** A common base for all clases implementing Bottom-up Example-guided Term Exploration */
+abstract class BottomUpETELike(name: String) extends Rule(name) {
+  case class ETEParams(
     grammar: ExpressionGrammar,
     maxExpands: Int
   )
@@ -33,9 +24,6 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
 
   case class EqClass(sig: Signature, cand: Expr) {
     def asString(implicit ctx: LeonContext): String = {
-
-      val hash = Integer.toHexString(sig.hashCode)
-
       f"${cand.asString}%-50s <- "+debugSig(sig)
     }
   }
@@ -46,7 +34,7 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
     hash+": "+sig.map(_.asString).mkString(" ,  ")
   }
 
-  def getParams(sctx: SynthesisContext, p: Problem): TegisParams
+  def getParams(sctx: SynthesisContext, p: Problem): ETEParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val inOutExamples = p.qeb.examples collect {
@@ -72,11 +60,7 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
             val examplesEnvs = examples.map { case InOutExample(is, os) => (p.as zip is).toMap }
             val targetSign   = examples.map { case InOutExample(_, os) => tupleWrap(os) }
 
-            val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
-
             val targetType = tupleTypeWrap(p.xs.map(_.getType))
-
-            val timers = hctx.timers.synthesis.rules.bottomuptegis
 
             var classes = Map[TypeTree, Map[Signature, EqClass]]()
             var newClasses = classes
@@ -146,7 +130,7 @@ abstract class BottomUpTEGISLike(name: String) extends Rule(name) {
                 val sig = examplesEnvs.zipWithIndex.map { case (env, i) =>
                   val expr = builder(argss.map(_.sig(i)))
                   evaluator.eval(expr, env).result.get
-                }.toVector
+                }
 
                 val cand = builder(argss.map(_.cand))
 

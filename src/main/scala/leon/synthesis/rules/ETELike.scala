@@ -19,15 +19,18 @@ import scala.collection.mutable.{HashMap => MutableMap}
 
 import bonsai.enumerators._
 
-abstract class TEGISLike(name: String) extends Rule(name) {
-  case class TegisParams(
+/** A common trait for all classes that implemen Example-guided Term Exploration
+  *
+  */
+abstract class ETELike(name: String) extends Rule(name) {
+  case class ETEParams(
     grammar: ExpressionGrammar,
     rootLabel: TypeTree => Label,
     minSize: Int,
     maxSize: Int
   )
 
-  def getParams(sctx: SynthesisContext, p: Problem): TegisParams
+  def getParams(sctx: SynthesisContext, p: Problem): ETEParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -39,7 +42,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
 
         val nTests = if (p.pc.isEmpty) 50 else 20
 
-        val useVanuatoo = hctx.settings.cegisUseVanuatoo
+        val useVanuatoo = hctx.settings.steUseVanuatoo
 
         val baseExamples = if (p.isTestBased) {
           p.qebFiltered.examples.collect { case io: InOutExample => io }
@@ -52,10 +55,10 @@ abstract class TEGISLike(name: String) extends Rule(name) {
         val exampleGenerator: Iterator[Example] = if (p.isTestBased) {
           Iterator.empty
         } else if (useVanuatoo) {
-          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample(_))
+          new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
         } else {
           val evaluator = new DualEvaluator(hctx, hctx.program)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample(_))
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
         }
 
         val gi = new GrowableIterable[Example](baseExamples, exampleGenerator)
@@ -80,8 +83,7 @@ abstract class TEGISLike(name: String) extends Rule(name) {
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
-          val timers = hctx.timers.synthesis.rules.tegis
-
+          val timers = hctx.timers.synthesis.rules.ete
 
           val streams = for(size <- (params.minSize to params.maxSize).toIterator) yield {
             println("Size: "+size)

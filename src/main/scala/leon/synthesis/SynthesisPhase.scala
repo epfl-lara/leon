@@ -18,17 +18,17 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optCostModel    = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
   val optDerivTrees   = LeonFlagOptionDef("derivtrees", "Generate derivation trees", false)
   val optAllowPartial = LeonFlagOptionDef("partial", "Allow partial solutions", true)
-  val optIntroduceRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of CEGIS", true)
+  val optIntroduceRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of STE", true)
 
-  // CEGIS options
-  val optCEGISOptTimeout   = LeonFlagOptionDef("cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
-  val optCEGISVanuatoo     = LeonFlagOptionDef("cegis:vanuatoo",   "Generate inputs using new korat-style generator",        false)
-  val optCEGISNaiveGrammar = LeonFlagOptionDef("cegis:naive",      "Use the old naive grammar for CEGIS",                    false)
-  val optCEGISMaxSize      = LeonLongOptionDef("cegis:maxsize",    "Maximum size of expressions synthesized by CEGIS", 7L, "N")
+  // STE-related options
+  val optSTEOptTimeout   = LeonFlagOptionDef("ste:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
+  val optSTEVanuatoo     = LeonFlagOptionDef("ste:vanuatoo",   "Generate inputs using new korat-style generator",        false)
+  val optSTENaiveGrammar = LeonFlagOptionDef("ste:naive",      "Use the old naive grammar for STE",                      false)
+  val optSTEMaxSize      = LeonLongOptionDef("ste:maxsize",    "Maximum size of expressions synthesized by STE", 7L, "N")
 
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
     optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls,
-    optCEGISOptTimeout, optCEGISVanuatoo, optCEGISNaiveGrammar, optCEGISMaxSize
+    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
@@ -57,12 +57,12 @@ object SynthesisPhase extends UnitPhase[Program] {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(ctx.findOptionOrDefault(optCEGISNaiveGrammar), ctx.findOptionOrDefault(optIntroduceRecCalls)),
+      rules = Rules.all(ctx.findOptionOrDefault(optSTENaiveGrammar), ctx.findOptionOrDefault(optIntroduceRecCalls)),
       manualSearch = ms,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
-      cegisUseOptTimeout = ctx.findOptionOrDefault(optCEGISOptTimeout),
-      cegisUseVanuatoo = ctx.findOptionOrDefault(optCEGISVanuatoo),
-      cegisMaxSize = ctx.findOptionOrDefault(optCEGISMaxSize).toInt
+      steUseOptTimeout = ctx.findOptionOrDefault(optSTEOptTimeout),
+      steUseVanuatoo = ctx.findOptionOrDefault(optSTEVanuatoo),
+      steMaxSize = ctx.findOptionOrDefault(optSTEMaxSize).toInt
     )
   }
 

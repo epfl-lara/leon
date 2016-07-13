@@ -7,9 +7,9 @@ package rules
 import leon.grammars._
 import leon.grammars.aspects._
 
-case object TEGIS extends TEGISLike("TEGIS") {
+case object ExampleGuidedTermExploration extends ETELike("Example-guided Term Exploration") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
-    TegisParams(
+    ETEParams(
       grammar = grammars.default(sctx, p),
       rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
       minSize = 1,
