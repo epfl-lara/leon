@@ -39,7 +39,7 @@ sealed abstract class Instrumentation {
 
 object Time extends Instrumentation {
   override val getType = IntegerType
-  override val name = "time"
+  override val name = "steps"
 }
 object Depth extends Instrumentation {
   override val getType = IntegerType

@@ -182,7 +182,7 @@ object BottomUpMergeSortPrecise {
     reslist.size == range &&
     rest.size == l.size - range  &&
     reslist.weightBalanced &&
-    time <= ? * range + ? // 56 * to - 56 * from + 12  TODO: check why making the sign of the constant term form plus to minus fails a requirement
+    steps <= ? * range + ? // 56 * to - 56 * from + 12  TODO: check why making the sign of the constant term form plus to minus fails a requirement
   }
 
   @invisibleBody
@@ -200,13 +200,13 @@ object BottomUpMergeSortPrecise {
         }
     }
   } ensuring{res => a.size + b.size == res.size &&
-    time <= ? // time <= 16
+    steps <= ? // steps <= 16
   }
 
   /**
    *  A function that merges two sorted streams of integers.
    *  Note: the sorted stream of integers may by recursively constructed using merge.
-   *  Takes time linear in the size of the streams (non-trivial to prove due to cascading of lazy calls)
+   *  Takes steps linear in the size of the streams (non-trivial to prove due to cascading of lazy calls)
    */
   @invisibleBody
   private def mergeSusp(a: LList, b: Stream): LList = {
@@ -215,12 +215,12 @@ object BottomUpMergeSortPrecise {
   } ensuring {res =>
     res != SNil() &&
     res.height <= max(a.height, b.height) + 1 &&
-    time <= ? * b.height + ? // 22 * b.height + 23
+    steps <= ? * b.height + ? // 22 * b.height + 23
   }
 
   /**
    * Takes list of integers and returns a sorted stream of integers.
-   * Takes time linear in the size of the  input since it sorts lazily.
+   * Takes steps linear in the size of the  input since it sorts lazily.
    */
   @invisibleBody
   private def mergeSort(l: List[BigInt]): LList = {
@@ -232,7 +232,7 @@ object BottomUpMergeSortPrecise {
       logHeightProperty(res) &&
       l.size == res.size &&
       res.height <= log(l.size - 1) &&
-      time <= ? * l.size + ?) // 56 * l.size + 3
+      steps <= ? * l.size + ?) // 56 * l.size + 3
 
   private def kthMinRec(l: LList, k: BigInt): BigInt = { // note: making this invisibleBody breaks lemms instantiation, why ?
     require(k >= 0)
@@ -243,8 +243,8 @@ object BottomUpMergeSortPrecise {
           kthMinRec(xs.list, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * l.height) + ?) //  time <= 36 * (k * l.height) + 17
-  //TODO Add the ? * (l.height) term if the numbers do not match the runtime estimate
+  } ensuring (_ => steps <= ? * (k * l.height) + ?) //  steps <= 36 * (k * l.height) + 17
+  //TODO Add the ? * (l.height) term if the numbers do not match the runsteps estimate
 
   /**
    * A function that accesses the kth element of a list using lazy sorting.
@@ -252,7 +252,7 @@ object BottomUpMergeSortPrecise {
   def kthMin(l: List[BigInt], k: BigInt): BigInt = {
     require(k >= 0)
     kthMinRec(mergeSort(l), k)
-  } ensuring(_ => time <= ? * (k * log(l.size - 1)) + ? * (l.size) + ?) // 36 * (k * log(l.size - 1)) + 56 * l.size + 22
+  } ensuring(_ => steps <= ? * (k * log(l.size - 1)) + ? * (l.size) + ?) // 36 * (k * log(l.size - 1)) + 56 * l.size + 22
 
   @ignore
   def main(args: Array[String]) {

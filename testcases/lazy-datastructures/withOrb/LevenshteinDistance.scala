@@ -17,12 +17,12 @@ object LevenshteinDistance {
   @extern
   def lookup(i: BigInt, j: BigInt) = {
     (xstring(i.toInt), ystring(j.toInt))
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
   // deps and it's lemmas
   def deps(i: BigInt, j: BigInt): Boolean = {
     require(i >= 0 && j >= 0)
-    levDist(i, j).cached &&
+    cached(levDist(i, j)) &&
       (if (i <= 0 && j <= 0) true
       else if (i <= 0) deps(i, j - 1)
       else if (j <= 0) deps(i - 1, j)
@@ -33,7 +33,7 @@ object LevenshteinDistance {
   @traceInduct
   def depsMono(i: BigInt, j: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0 && j >= 0)
-    (st1.subsetOf(st2) && (deps(i, j) withState st1)) ==> (deps(i, j) withState st2)
+    (st1.subsetOf(st2) && (deps(i, j) in st1)) ==> (deps(i, j) in st2)
   } holds
 
   @traceInduct
@@ -60,19 +60,19 @@ object LevenshteinDistance {
       }
       if (a1 >= a2) a1 else a2
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
   @invisibleBody
   def invoke(i: BigInt, j: BigInt, n: BigInt) = {
     require((i >=0 && j >= 0 && n >= j) && (i == 0 || deps(i - 1, j)) && (j == 0 || deps(i, j-1)))
     levDist(i, j)
   } ensuring (res => {
-    val in = inState[BigInt]
-    val out = outState[BigInt]
+    val in = inSt[BigInt]
+    val out = outSt[BigInt]
       (i == 0 || (depsMono(i - 1, j, in, out) && depsMono(i - 1, n, in, out))) &&
       (j == 0 || depsMono(i, j - 1, in, out)) &&
       deps(i, j) &&
-      time <= ?
+      steps <= ?
   })
 
   /**
@@ -93,7 +93,7 @@ object LevenshteinDistance {
     }
   } ensuring {_ =>
     bottomUpPost(m, j, n) &&
-      time <= ? * (m * n)  + ? * m + ? * j + ?
+      steps <= ? * (m * n)  + ? * m + ? * j + ?
    }
 
   @invisibleBody
@@ -106,5 +106,5 @@ object LevenshteinDistance {
   def levDistSols(m: BigInt, n: BigInt): List[BigInt] = {
     require(0 <= m && 0 <= n)
     bottomup(m, n, n)
-  } ensuring(_ => time <= ? * (m * n)  + ? * m + ? * n + ?)
+  } ensuring(_ => steps <= ? * (m * n)  + ? * m + ? * n + ?)
 }

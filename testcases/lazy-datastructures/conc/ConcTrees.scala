@@ -106,7 +106,7 @@ object ConcTrees {
     // axiom instantiation
     instAppendIndexAxiom(xs, i) &&
       res == xs.toList(i) && // correctness
-      time <= ? * xs.level + ?) // lookup time is linear in the height
+      steps <= ? * xs.level + ?) // lookup time is linear in the height
 
   @invisibleBody
   def instAppendIndexAxiom[T](xs: Conc[T], i: BigInt): Boolean = {
@@ -131,7 +131,7 @@ object ConcTrees {
     res.level == xs.level && // heights of the input and output trees are equal
     res.valid && // tree invariants are preserved
     res.toList == xs.toList.updated(i, y) && // correctness
-    time <= ? * xs.level + ?) // update time is linear in the height of the tree
+    steps <= ? * xs.level + ?) // update time is linear in the height of the tree
 
   @invisibleBody
   def instAppendUpdateAxiom[T](xs: Conc[T], i: BigInt, y: T): Boolean = {
@@ -194,7 +194,7 @@ object ConcTrees {
       res.valid &&
       appendAssocInst(xs, ys) && // instantiation of an axiom
       concatCorrectness(res, xs, ys) && // correctness
-      time <= ? * abs(xs.level - ys.level) + ?) // time bounds
+      steps <= ? * abs(xs.level - ys.level) + ?) // time bounds
 
   @invisibleBody
   def appendAssocInst[T](xs: Conc[T], ys: Conc[T]): Boolean = {
@@ -238,7 +238,7 @@ object ConcTrees {
     res.level <= max(xs.level, ys.level) + 1 && // height invariants
     res.level >= max(xs.level, ys.level) &&
     concatCorrectness(res, xs, ys) && // correctness
-    time <= ? * abs(xs.level - ys.level) + ?)
+    steps <= ? * abs(xs.level - ys.level) + ?)
 
   @invisibleBody
   def concatCorrectness[T](res: Conc[T], xs: Conc[T], ys: Conc[T]): Boolean =
@@ -264,7 +264,7 @@ object ConcTrees {
       !res.isEmpty &&
       insertAppendAxiomInst(xs, i, y) && // instantiation of an axiom
       res.toList == insertAtIndex(xs.toList, i, y) && // correctness
-      time <= ? * xs.level + ? // time is linear in the height of the tree
+      steps <= ? * xs.level + ? // time is linear in the height of the tree
       )
 
   /**
@@ -330,7 +330,7 @@ object ConcTrees {
     xs.level >= res._1.level && xs.level >= res._2.level && // height bounds of the resulting tree
     instSplitAxiom(xs, n) && // instantiation of an axiom
     splitCorrectness(res, xs, n) &&
-    time <= ? * xs.level + ? * res._1.level + ? * res._2.level + ? // time is linear in height
+    steps <= ? * xs.level + ? * res._1.level + ? * res._2.level + ? // time is linear in height
     )
 
   @invisibleBody

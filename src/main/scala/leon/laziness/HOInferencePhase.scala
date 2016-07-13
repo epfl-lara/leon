@@ -89,8 +89,9 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
     // check termination of all functions
-    /*val termReport =  leon.termination.TerminationPhase(ctx, typeCorrectProg)
-    println("Termintion Results: "+termReport.summaryString)*/
+    // uncomment the following lines, maybe implemented --withTerm for this
+    // val termReport =  leon.termination.TerminationPhase(ctx, typeCorrectProg)
+    // println("Termintion Results: "+termReport.summaryString)    
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg, closureFactory)).apply
     if (dumpProgWithPreAsserts)

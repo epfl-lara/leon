@@ -11,8 +11,8 @@ import invariant._
 
 /**
  * This is a collection of methods translated to Scala from the haskell stream library.
- * To prove a running time bound, we impose a precondition that the input stream is an infinite
- * stream of natural numbers, and the higher-order function parameters are constant time functions
+ * To prove a running steps bound, we impose a precondition that the input stream is an infinite
+ * stream of natural numbers, and the higher-order function parameters are constant steps functions
  * We ignored methods that are not guaranteed to terminate on all streams e.g. `filter`, `dropWhile` etc.
  */
 object StreamLibrary {    
@@ -43,7 +43,7 @@ object StreamLibrary {
   def genNextNatFrom(n: BigInt): LList = {
     val nn = n + 1
     SCons(nn, () => genNextNatFrom(nn))
-  } ensuring(_ => time <= ?) // Orb result: ??
+  } ensuring(_ => steps <= ?) // Orb result: ??
 
   /**
    * A property that asserts that the a stream is a `natstream`
@@ -64,12 +64,12 @@ object StreamLibrary {
   @extern
   def constFun1(n: BigInt): BigInt = {
     array(0)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
   /**
    * Apply a function over all elements of a sequence.
    * Requires that the input is a `nat` stream, and `f` is
-   * constFun1 which is a constant time function.
+   * constFun1 which is a constant steps function.
    */  
   def map(f: BigInt => BigInt, s: LList): LList = {
     require(validNatStream(s) && f.is(constFun1 _))
@@ -77,12 +77,12 @@ object StreamLibrary {
       case SNil()          => SNil()
       case l @ SCons(x, _) => SCons(f(x), () => mapSusp(f, s))
     }
-  } ensuring{_ => time <= ?}
+  } ensuring{_ => steps <= ?}
 
   def mapSusp(f: BigInt => BigInt, s: LList) = {
     require(validNatStream(s) && f.is(constFun1 _))
     map(f, s.tailOrNil)
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => steps <= ?)
 
   /**
    * The function `appendList` appends a stream to a list,
@@ -94,7 +94,7 @@ object StreamLibrary {
       case Nil()         => s
       case Cons(x, tail) => SCons(x, () => appendList(tail, s))
     }
-  } ensuring (_ => time <= ?) // Orb result: ??
+  } ensuring (_ => steps <= ?) // Orb result: ??
 
   /**
    * The function repeat expects an integer and returns a
@@ -103,7 +103,7 @@ object StreamLibrary {
    */
   def repeat(n: BigInt): LList = {
     SCons(n, () => repeat(n))
-  } ensuring (_ => time <= ?) // Orb result: ??
+  } ensuring (_ => steps <= ?) // Orb result: ??
 
   /**
    * The function cycle expects a list and returns a
@@ -116,12 +116,12 @@ object StreamLibrary {
       case Cons(x, t) =>
         SCons(x, () => appendList(t, cycle(l)))
     }
-  } ensuring (_ => time <= ?) // Orb result: ??
+  } ensuring (_ => steps <= ?) // Orb result: ??
 
   @extern
   def constFun2(n: BigInt): Boolean = {
     array(0) == 0
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   
   /**
    * 'takeWhile' returns the longest prefix of the stream for which the
@@ -137,17 +137,17 @@ object StreamLibrary {
         else 
           SNil()      
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
    def takeWhileSusp(p: BigInt => Boolean, s: LList): LList = {
      require(validNatStream(s) && p.is(constFun2 _))
      takeWhile(p, s.tailOrNil)
-   } ensuring(_ => time <= ?)
+   } ensuring(_ => steps <= ?)
 
    @extern
   def constFun3(n: BigInt, m: BigInt): BigInt = {
     array(0)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   /**
    * 'scan' yields a stream of successive reduced values from:
    *  scan f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
@@ -160,17 +160,17 @@ object StreamLibrary {
         val r = f(z, x)
         SCons(z, () => scanSusp(f, r, s))
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
   def scanSusp(f: (BigInt, BigInt) => BigInt, z: BigInt, s: LList) = {
     require(validNatStream(s) && f.is(constFun3 _))
     scan(f, z, s.tailOrNil)
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => steps <= ?)
 
   @extern
   def constFun4(n: BigInt): (BigInt, BigInt) = {
     (array(0), array(0))
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
   
   /**
    * The unfold function is similar to the unfold for lists. Note
@@ -180,7 +180,7 @@ object StreamLibrary {
     require(f.is(constFun4 _))
     val (x, d) = f(c)
     SCons(x, () => unfold(f, d))
-  } ensuring(_ => time <= ?)
+  } ensuring(_ => steps <= ?)
   
   /**
    * The 'isPrefixOf' function returns True if the first argument is
@@ -202,7 +202,7 @@ object StreamLibrary {
             else false
         }
     }
-  } ensuring(_ => time <= ? * l.size + ?)
+  } ensuring(_ => steps <= ? * l.size + ?)
 
   /**
    * The elements of two tuples are combined using the function
@@ -219,10 +219,10 @@ object StreamLibrary {
             SCons(f(x, y), () => zipWithSusp(f, al, bl))
         }
     }
-   } ensuring(_ => time <= ?)
+   } ensuring(_ => steps <= ?)
 
   def zipWithSusp(f: (BigInt, BigInt) => BigInt, a: LList, b: LList) = {
     require(validNatStream(a) && validNatStream(b) && f.is(constFun3 _))
     zipWith(f, a.tailOrNil, b.tailOrNil)
-  } ensuring(_ => time <= ?)  
+  } ensuring(_ => steps <= ?)  
 }

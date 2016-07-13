@@ -60,7 +60,7 @@ object Conqueue {
 
     def isCached = this match {
       case _: Val[T] => true
-      case _      => fval.cached
+      case _      => cached(fval)
     }
   }
   private case class Val[T](x: ConList[T]) extends Stream[T]
@@ -179,7 +179,7 @@ object Conqueue {
       case s @ Spine(_, _) =>
         pushLeftLazy(ys, xs)
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
   
   @invisibleBody
   @invstate
@@ -220,7 +220,7 @@ object Conqueue {
           (!isConcrete(xs) || isConcrete(pushUntilCarry(r)))
       case _ => false
     }) &&
-      time <= ?
+      steps <= ?
   }  
   
   @invisibleBody
@@ -255,7 +255,7 @@ object Conqueue {
       case _ => true
     }) &&
       schedulesProperty(res._1, res._2) &&
-      time <= ?
+      steps <= ?
   }
   
   @invisibleBody
@@ -270,9 +270,9 @@ object Conqueue {
       case Nil() => scheds
     }
   } ensuring { res =>
-    payPostconditionInst(q, res, scheds, inState[ConList[T]], outState[ConList[T]]) && // properties
+    payPostconditionInst(q, res, scheds, inSt[ConList[T]], outSt[ConList[T]]) && // properties
       schedulesProperty(q, res) &&
-      time <= ?
+      steps <= ?
   }
   
    /**
@@ -284,7 +284,7 @@ object Conqueue {
     val (q, scheds) = pushLeft(ys, w)
     val nscheds = Pay(q, scheds)
     Conqueue(q, nscheds)
-  } ensuring { res => res.valid && time <= ? }
+  } ensuring { res => res.valid && steps <= ? }
 
   def head[T](w: Conqueue[T]): Conc[T] = {    
     w.trees.get match {

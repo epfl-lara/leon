@@ -38,7 +38,7 @@ object SortingnConcat {
             else Cons(y, Cons(x, ys))
         }
     }
-  } ensuring (res => res.size == l.size && time <= ? * l.size + ?)
+  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
 
   def sort(l: List[BigInt]): LList = {
     pullMin(l) match {
@@ -48,14 +48,14 @@ object SortingnConcat {
       case _ =>
         SNil()        
     }
-  } ensuring (res => res.size == l.size && time <= ? * l.size + ?)
+  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
 
   def concat(l1: List[BigInt], l2: LList) : LList = {
     l1 match {
       case Cons(x, xs) => SCons(x, Stream(() => concat(xs, l2)))
       case Nil() => SNil()
     }
-  } ensuring(res => time <= ?)
+  } ensuring(res => steps <= ?)
 
   def kthMin(l: Stream, k: BigInt): BigInt = {
     require(k >= 1)
@@ -66,5 +66,5 @@ object SortingnConcat {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= ? * (k * l.size) + ? * k + ?)
+  } ensuring (_ => steps <= ? * (k * l.size) + ? * k + ?)
 }

@@ -35,7 +35,7 @@ object StreamClient {
         if (n == 0) x
         else nthElemAfterMap(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
     
   @inline
   def repeatStream(s: LList) = {
@@ -56,7 +56,7 @@ object StreamClient {
         if (n == 0) x
         else nthElemInRepeat(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
   
   def takeWhileClient(n: BigInt) = {
     require(n >= 0)
@@ -82,7 +82,7 @@ object StreamClient {
         if (n == 0) x
         else nthElemAfterTakeWhile(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
 
   def scanClient(n: BigInt) = {
     require(n >= 0)
@@ -108,12 +108,12 @@ object StreamClient {
         if (n == 0) x
         else nthElemAfterScan(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
   
   def unfoldClient(n: BigInt, c: BigInt) = {
     require(n >= 0)
     nthElemAfterUnfold(n, unfold(constFun4, c))
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
 
   @inline
   def unfoldStream(s: LList) = {
@@ -133,7 +133,7 @@ object StreamClient {
         if (n == 0) x
         else nthElemAfterUnfold(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
 
   def zipWithClient(n: BigInt) = {
     require(n >= 0)
@@ -159,7 +159,7 @@ object StreamClient {
         if (n == 0) x
         else nthElemAfterZipWith(n - 1, s.tailOrNil)
     }
-  } ensuring (_ => time <= ? * n + ?) // Orb result: ??
+  } ensuring (_ => steps <= ? * n + ?) // Orb result: ??
   
   //  @invisibleBody  
 //  def getnthElem(n: BigInt, s: LList): BigInt = {
@@ -176,5 +176,5 @@ object StreamClient {
   /*def nthElemInNatsFromM(n: BigInt, M: BigInt) = {
     require(n >= 0)
     getnthElem(n, natsFromn(M))
-  }*/ //ensuring(_ => time <= ? * n + ?) // Orb result: ??
+  }*/ //ensuring(_ => steps <= ? * n + ?) // Orb result: ??
 }

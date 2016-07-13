@@ -15,9 +15,12 @@ package object mem {
    * This should be applied only over a function invocation or lambda application.
    */
   @library
-  case class Fun[T](v: T) {
-    @extern
-    def cached: Boolean = sys.error("not implemented!")
+  case class Fun[T](v: T) 
+
+  @library
+  @extern
+  def cached[T](v: Fun[T]): Boolean = {
+    sys.error("not implemented!")
   }
 
   /*@library
@@ -34,11 +37,11 @@ package object mem {
    */
   @library
   @extern
-  def inState[Any]: Set[Fun[Any]] = sys.error("inState method is not executable!")
+  def inSt[Any]: Set[Fun[Any]] = sys.error("inSt method is not executable!")
 
   @library
   @extern
-  def outState[Any]: Set[Fun[Any]] = sys.error("outState method is not executable")
+  def outSt[Any]: Set[Fun[Any]] = sys.error("outSt method is not executable")
 
   /**
    * Helper class for invoking with a given state instead of the implicit state
@@ -46,7 +49,7 @@ package object mem {
   @library
   case class memWithState[T](v: T) {
     @extern
-    def withState[U](u: Set[Fun[U]]): T = sys.error("withState method is not executable!")
+    def in[U](u: Set[Fun[U]]): T = sys.error("in method is not executable!")
   }
 
   @library

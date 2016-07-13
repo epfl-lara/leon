@@ -33,7 +33,7 @@ object MergeAndHammingNumbers {
     @inline
     def tailCached = tailFun match {
       case Val(_) => true
-      case s => s.fval.cached
+      case s => cached(s.fval)
     }
   }
 
@@ -58,7 +58,7 @@ object MergeAndHammingNumbers {
       case SCons(x, _) =>
         SCons(f(x), Susp(() => mapSusp(f, xs)))
     }
-  } ensuring(time <= ?) // Orb result: 11
+  } ensuring(steps <= ?) // Orb result: 11
 
   private def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
     map(f, xs.tail)
@@ -78,15 +78,15 @@ object MergeAndHammingNumbers {
   def merge(a: SCons, b: SCons, c: SCons): SCons = {
     val susp = Susp(() => mergeSusp(a, b, c))
     SCons(min(a.x, b.x, c.x), susp)
-  } ensuring (_ => time <= ?)  // Orb result: 11
+  } ensuring (_ => steps <= ?)  // Orb result: 11
 
   @invisibleBody
   def force(a: SCons) = {
     a.tail
   } ensuring{_ =>
-    val in = inState[BigInt]
-    if((constTimeArg(a) withState in))
-      time <= ? // Orb result: 223
+    val in = inSt[BigInt]
+    if((constTimeArg(a) in in))
+      steps <= ? // Orb result: 223
     else true
   }
 
@@ -98,10 +98,10 @@ object MergeAndHammingNumbers {
     val nextc = if (c.x == m) force(c) else c
     merge(nexta, nextb, nextc)
   } ensuring{_ =>
-    val in = inState[BigInt]
-    if((constTimeArg(a) withState in) && (constTimeArg(b) withState in)
-        && (constTimeArg(c) withState in))
-      time <= ? // Orb result: 223
+    val in = inSt[BigInt]
+    if((constTimeArg(a) in in) && (constTimeArg(b) in in)
+        && (constTimeArg(c) in in))
+      steps <= ? // Orb result: 223
     else true
   }
 
@@ -173,7 +173,7 @@ object MergeAndHammingNumbers {
   def next(f: SCons, s: SCons): SCons = {
     require(f.tailVal == s && f.tailCached && mergeMapProp(f))
     s.tail
-  } ensuring(_ => time <= ?) // Orb result: time <= 250
+  } ensuring(_ => steps <= ?) // Orb result: steps <= 250
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
@@ -188,7 +188,7 @@ object MergeAndHammingNumbers {
         else
           nthElemAfterSecond(n - 1, s, t)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 261 * n - 260
+  } ensuring(_ => steps <= ? * n + ?) // Orb result: 261 * n - 260
 
    /**
    * A stream generating hamming numbers
@@ -198,7 +198,7 @@ object MergeAndHammingNumbers {
   def hamGen = {
     val hs = this.hamstream
     merge(map(2 * _, hs), map(3 * _, hs), map(5 * _, hs))
-  } ensuring(_ => time <= ?) // Orb result: 63
+  } ensuring(_ => steps <= ?) // Orb result: 63
 
   @invisibleBody
   def hamStreamSatisfiesProp(n: BigInt): Boolean = {
@@ -219,5 +219,5 @@ object MergeAndHammingNumbers {
       if(n == 1) second.x
       else nthElemAfterSecond(n, first, second)
     }
-  } ensuring(_ => time <= ? * n + ?) // Orb result: 84 * n + 6
+  } ensuring(_ => steps <= ? * n + ?) // Orb result: 84 * n + 6
 }
