@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.annotation._
 
 object ArrayParamMutation7 {
 
@@ -12,6 +13,7 @@ object ArrayParamMutation7 {
     res
   }
 
+  @pure
   def mainProgram(): Unit = {
 
     implicit val world: Array[BigInt] = Array(0,0,0)

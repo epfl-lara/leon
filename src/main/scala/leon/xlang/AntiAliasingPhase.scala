@@ -29,7 +29,11 @@ object AntiAliasingPhase extends TransformationPhase {
 
     //we need to perform this now, because as soon as we apply the def transformer
     //some types will become Untyped and the checkAliasing won't be reliable anymore
-    allFunDefs(program).foreach(fd => checkAliasing(fd, effectsAnalysis)(ctx))
+    {
+      val fds = allFunDefs(program)
+      fds.foreach(fd => checkAliasing(fd, effectsAnalysis)(ctx))
+      checkFunctionPureAnnotations(fds, effectsAnalysis)(ctx)
+    }
 
     //mapping for case classes that needs to be replaced
     //var ccdMap: Map[CaseClassDef, CaseClassDef] =
@@ -645,6 +649,20 @@ object AntiAliasingPhase extends TransformationPhase {
       //any sub-expression is non-fresh (i.e. an if-then-else with a reference in one branch)
       case Operator(args, _) => args.forall(arg => isExpressionFresh(arg, effects))
     })
+  }
+
+  /*
+   * Checks and reports error if a function is annotated as pure and still has effects.
+   * Maybe it would be good in the future to merge this @pure annotation with the report
+   * from the AnalysisPhase, but until a good design is found we just implement this quick
+   * error reporting here.
+   */
+  private def checkFunctionPureAnnotations(fds: Seq[FunDef], effects: EffectsAnalysis)(ctx: LeonContext): Unit = {
+    for(fd <- fds if fd.annotations.contains("pure")) {
+      if(effects(fd).nonEmpty) {
+        ctx.reporter.fatalError(fd.getPos, "Function annotated @pure has effects.")
+      }
+    }
   }
 
 }
