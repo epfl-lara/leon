@@ -20,12 +20,15 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
   case object Noop extends Command
   case object Best extends Command
   case object Tree extends Command
+  case object Tests extends Command
   case object Help extends Command
+  case object Search extends Command
 
   // Manual search state:
   var rootNode: Node    = _
 
-  var path              = List[Int]()
+  var path: List[Int]               = Nil
+  var searchRoot: Option[List[Int]] = None
 
   override def init(n: RootNode) = {
     super.init(n)
@@ -159,7 +162,9 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
                       |$tOpen  (cd) N  $tClose  Expand descendant N
                       |$tOpen  cd ..   $tClose  Go one level up
                       |$tOpen  b       $tClose  Expand best descendant
-                      |$tOpen  t       $tClose  Display the partial solution around the current node
+                      |$tOpen  p       $tClose  Display the partial solution around the current node
+                      |$tOpen  t       $tClose  Display tests
+                      |$tOpen  s       $tClose  Search automatically from current node
                       |$tOpen  q       $tClose  Quit the search
                       |$tOpen  h       $tClose  Display this message
                       |""".stripMargin)
@@ -173,10 +178,16 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
 
           manualGetNext()
 
+        case Tests =>
+          println(c.p.eb.asString("Tests"))
+          manualGetNext()
+
         case Tree =>
           val hole = FreshIdentifier("\u001b[1;31m??? \u001b[0m", c.p.outType)
           val ps = new PartialSolution(this, true)
 
+          println("c: "+c)
+          println("c: "+c.getClass)
           ps.solutionAround(c)(hole.toVariable) match {
             case Some(sol) =>
               println("-"*120)
@@ -185,7 +196,6 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
               error("woot!")
           }
           manualGetNext()
-
 
         case Best =>
           strat.bestNext(c) match {
@@ -198,7 +208,22 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
               error("Woot?")
               manualGetNext()
           }
+        case Search =>
+          val continue = searchRoot match {
+            case Some(sPath) =>
+              path.size > sPath.size
+            case None =>
+              println("Searching...")
+              searchRoot = Some(path)
+              true
+          }
 
+          if (continue) {
+            cmdQueue = Best :: Search :: cmdQueue
+          } else {
+            searchRoot = None
+          }
+          manualGetNext()
 
         case Cd(Nil) =>
           error("Woot?")
@@ -259,8 +284,14 @@ class ManualStrategy(ctx: LeonContext, initCmd: Option[String], strat: Strategy)
         Cd(path.map(_.toInt)) :: parseCommands(ts.drop(path.size))
       }
 
-    case "t" :: ts =>
+    case "p" :: ts =>
       Tree :: parseCommands(ts)
+
+    case "t" :: ts =>
+      Tests :: parseCommands(ts)
+
+    case "s" :: ts =>
+      Search :: parseCommands(ts)
 
     case "b" :: ts =>
       Best :: parseCommands(ts)

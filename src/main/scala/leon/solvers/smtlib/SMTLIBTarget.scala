@@ -38,7 +38,6 @@ import _root_.smtlib.interpreters.ProcessInterpreter
 trait SMTLIBTarget extends Interruptible {
   val context: LeonContext
   val program: Program
-  protected def reporter = context.reporter
 
   def targetName: String
 
@@ -73,7 +72,7 @@ trait SMTLIBTarget extends Interruptible {
 
   /* Printing VCs */
   protected lazy val debugOut: Option[java.io.FileWriter] = {
-    if (reporter.isDebugEnabled) {
+    if (context.reporter.isDebugEnabled) {
       val file = context.files.headOption.map(_.getName).getOrElse("NA")
       val n = DebugFileNumbers.next(targetName + file)
 
@@ -82,7 +81,7 @@ trait SMTLIBTarget extends Interruptible {
       val javaFile = new java.io.File(fileName)
       javaFile.getParentFile.mkdirs()
 
-      reporter.debug(s"Outputting smt session into $fileName")
+      context.reporter.debug(s"Outputting smt session into $fileName")
 
       val fw = new java.io.FileWriter(javaFile, false)
 
@@ -103,7 +102,7 @@ trait SMTLIBTarget extends Interruptible {
     }
     interpreter.eval(cmd) match {
       case err @ ErrorResponse(msg) if !hasError && !interrupted && !rawOut =>
-        reporter.warning(s"Unexpected error from $targetName solver: $msg")
+        context.reporter.warning(s"Unexpected error from $targetName solver: $msg")
         //println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
         // Store that there was an error. Now all following check()
         // invocations will return None
@@ -117,7 +116,7 @@ trait SMTLIBTarget extends Interruptible {
   def parseSuccess() = {
     val res = interpreter.parser.parseGenResponse
     if (res != Success) {
-      reporter.warning("Unnexpected result from " + targetName + ": " + res + " expected success")
+      context.reporter.warning("Unnexpected result from " + targetName + ": " + res + " expected success")
     }
   }
 
@@ -153,7 +152,6 @@ trait SMTLIBTarget extends Interruptible {
   protected val selectors     = new IncrementalBijection[(TypeTree, Int), SSymbol]()
   protected val testers       = new IncrementalBijection[TypeTree, SSymbol]()
   protected val variables     = new IncrementalBijection[Identifier, SSymbol]()
-  protected val genericValues = new IncrementalBijection[GenericValue, SSymbol]()
   protected val sorts         = new IncrementalBijection[TypeTree, Sort]()
   protected val functions     = new IncrementalBijection[TypedFunDef, SSymbol]()
   protected val lambdas       = new IncrementalBijection[FunctionType, SSymbol]()
@@ -198,8 +196,14 @@ trait SMTLIBTarget extends Interruptible {
         unsupported(r, "Solver returned a co-finite set which is not supported.")
       }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
-
       FiniteSet(r.elems.keySet, base)
+
+    case BagType(base) =>
+      if (r.default != InfiniteIntegerLiteral(0)) {
+        unsupported(r, "Solver returned an infinite bag which is not supported.")
+      }
+      require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
+      FiniteBag(r.elems, base)
 
     case RawArrayType(from, to) =>
       r
@@ -226,13 +230,6 @@ trait SMTLIBTarget extends Interruptible {
       unsupported(other, "Unable to extract from raw array for " + tpe)
   }
 
-  protected def declareUninterpretedSort(t: TypeParameter): Sort = {
-    val s = id2sym(t.id)
-    val cmd = DeclareSort(s, 0)
-    emit(cmd)
-    Sort(SMTIdentifier(s))
-  }
-
   protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
@@ -252,10 +249,7 @@ trait SMTLIBTarget extends Interruptible {
         case FunctionType(from, to) =>
           Ints.IntSort()
 
-        case tp: TypeParameter =>
-          declareUninterpretedSort(tp)
-
-        case _: ClassType | _: TupleType | _: ArrayType | UnitType =>
+        case _: ClassType | _: TupleType | _: ArrayType | _: TypeParameter | UnitType =>
           declareStructuralSort(tpe)
 
         case other =>
@@ -305,7 +299,6 @@ trait SMTLIBTarget extends Interruptible {
         conflicts.foreach { declareStructuralSort }
         declareStructuralSort(t)
     }
-
   }
 
   protected def declareVariable(id: Identifier): SSymbol = {
@@ -439,31 +432,10 @@ trait SMTLIBTarget extends Interruptible {
         val selector = selectors.toB((tpe, i - 1))
         FunctionApplication(selector, Seq(toSMT(t)))
 
-      case al @ ArrayLength(a) =>
-        val tpe = normalizeType(a.getType)
-        val selector = selectors.toB((tpe, 0))
-
-        FunctionApplication(selector, Seq(toSMT(a)))
-
-      case al @ ArraySelect(a, i) =>
-        val tpe = normalizeType(a.getType)
-
-        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(toSMT(a)))
-
-        ArraysEx.Select(scontent, toSMT(i))
-
-      case al @ ArrayUpdated(a, i, e) =>
-        val tpe = normalizeType(a.getType)
-
-        val sa = toSMT(a)
-        val ssize = FunctionApplication(selectors.toB((tpe, 0)), Seq(sa))
-        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(sa))
-
-        val newcontent = ArraysEx.Store(scontent, toSMT(i), toSMT(e))
-
-        val constructor = constructors.toB(tpe)
-        FunctionApplication(constructor, Seq(ssize, newcontent))
-
+      case al @ RawArraySelect(a, i) =>
+        ArraysEx.Select(toSMT(a), toSMT(i))
+      case al @ RawArrayUpdated(a, i, e) =>
+        ArraysEx.Store(toSMT(a), toSMT(i), toSMT(e))
       case ra @ RawArrayValue(keyTpe, elems, default) =>
         val s = declareSort(ra.getType)
 
@@ -475,18 +447,6 @@ trait SMTLIBTarget extends Interruptible {
         }
 
         res
-
-      case a @ FiniteArray(elems, oDef, size) =>
-        val tpe @ ArrayType(to) = normalizeType(a.getType)
-        declareSort(tpe)
-
-        val default: Expr = oDef.getOrElse(simplestValue(to))
-
-        val arr = toSMT(RawArrayValue(Int32Type, elems.map {
-          case (k, v) => IntLiteral(k) -> v
-        }, default))
-
-        FunctionApplication(constructors.toB(tpe), List(toSMT(size), arr))
 
       /**
        * ===== Map operations =====
@@ -532,13 +492,12 @@ trait SMTLIBTarget extends Interruptible {
         toSMT(matchToIfThenElse(m))
 
       case gv @ GenericValue(tpe, n) =>
-        genericValues.cachedB(gv) {
-          val v = declareVariable(FreshIdentifier("gv" + n, tpe))
-          for ((ogv, ov) <- genericValues.aToB if ogv.getType == tpe) {
-            emit(SMTAssert(Core.Not(Core.Equals(v, ov))))
-          }
-          v
-        }
+        declareSort(tpe)
+        val constructor = constructors.toB(tpe)
+        FunctionApplication(constructor, Seq(toSMT(InfiniteIntegerLiteral(n))))
+
+      case synthesis.utils.MutableExpr(ex) =>
+        toSMT(ex)
 
       /**
        * ===== Everything else =====
@@ -803,11 +762,12 @@ trait SMTLIBTarget extends Interruptible {
           case cct: CaseClassType =>
             val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
             CaseClass(cct, rargs)
+
           case tt: TupleType =>
             val rargs = args.zip(tt.bases).map(fromSMT)
             tupleWrap(rargs)
 
-          case at@ArrayType(baseType) =>
+          case at @ ArrayType(baseType) =>
             val IntLiteral(size) = fromSMT(args(0), Int32Type)
             val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
 
@@ -824,6 +784,10 @@ trait SMTLIBTarget extends Interruptible {
 
               finiteArray(entries, None, baseType)
             }
+
+          case tp @ TypeParameter(id) =>
+            val InfiniteIntegerLiteral(n) = fromSMT(args(0), IntegerType)
+            GenericValue(tp, n.toInt)
 
           case t =>
             unsupported(t, "Woot? structural type that is non-structural")
@@ -900,7 +864,7 @@ trait SMTLIBTarget extends Interruptible {
             Equals(ra, fromSMT(b, ra.getType))
 
           case _ =>
-            reporter.fatalError("Function " + app + " not handled in fromSMT: " + s)
+            context.reporter.fatalError("Function " + app + " not handled in fromSMT: " + s)
         }
 
       case (Core.True(), Some(BooleanType))  => BooleanLiteral(true)
@@ -915,7 +879,7 @@ trait SMTLIBTarget extends Interruptible {
         }
 
       case _ =>
-        reporter.fatalError(s"Unhandled case in fromSMT: $t : ${otpe.map(_.asString(context)).getOrElse("?")} (${t.getClass})")
+        context.reporter.fatalError(s"Unhandled case in fromSMT: $t : ${otpe.map(_.asString(context)).getOrElse("?")} (${t.getClass})")
 
     }
   }

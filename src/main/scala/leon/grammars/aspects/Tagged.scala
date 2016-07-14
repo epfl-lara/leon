@@ -4,8 +4,6 @@ package leon
 package grammars
 package aspects
 
-import purescala.Expressions.Expr
-import utils.SeqUtils._
 import Tags._
 
 case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect {
@@ -18,10 +16,9 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect {
   /** [[isConst]] is printed as follows: ↓ for constants only, ↑ for nonconstants only,
     * ○ for anything allowed.
     */
-  override def asString(implicit ctx: LeonContext): String = s"$tag@$pos$cString"
+  def asString(implicit ctx: LeonContext): String = s"#$tag$cString@$pos"
 
-
-  override def applyTo(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+  def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
 
     // Tags to avoid depending on parent aspect
     val excludedTags: Set[Tag] = (tag, pos) match {

@@ -21,10 +21,11 @@ import Types.{TypeTree => LeonType, _}
 import Common._
 import Extractors._
 import Constructors._
-import ExprOps._
-import TypeOps.{leastUpperBound, typesCompatible, typeParamsOf, canBeSubtypeOf}
-import xlang.Expressions.{Block => LeonBlock, _}
+import ExprOps.exists
+import TypeOps.{exists => _, _}
+import xlang.Expressions.{Block => _, _}
 import xlang.ExprOps._
+import xlang.Constructors.{block => leonBlock}
 
 import leon.utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition, Bijection, DefinedPosition}
 
@@ -332,12 +333,17 @@ trait CodeExtraction extends ASTExtractors {
         }
 
         classToInvariants.get(sym).foreach { bodies =>
-          val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
-          fd.addFlag(IsADTInvariant)
-
           val cd = classesToClasses(sym)
-          cd.registerMethod(fd)
-          cd.addFlag(IsADTInvariant)
+
+          for (c <- (cd.ancestors.toSet ++ cd.root.knownDescendants + cd) if !c.methods.exists(_.isInvariant)) {
+            val fd = new FunDef(invId, Seq.empty, Seq.empty, BooleanType)
+            fd.addFlag(IsADTInvariant)
+            fd.addFlags(c.flags.collect { case annot : purescala.Definitions.Annotation => annot })
+            fd.fullBody = BooleanLiteral(true)
+            c.registerMethod(fd)
+          }
+
+          val fd = cd.methods.find(_.isInvariant).get
           val ctparams = sym.tpe match {
             case TypeRef(_, _, tps) =>
               extractTypeParams(tps).map(_._1)
@@ -380,7 +386,6 @@ trait CodeExtraction extends ASTExtractors {
 
             case t =>
               extractFunOrMethodBody(None, t)
-
           }
         case _ =>
       }
@@ -464,16 +469,52 @@ trait CodeExtraction extends ASTExtractors {
           }
       }
     }
+    
+    /** For every argument that is lazy, transforms it to a lambda. */
+    def defaultArgConvert(tfd: TypedFunDef, args: Seq[LeonExpr]): Seq[LeonExpr] = {
+      val argsByName = (tfd.fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+      argsByName
+    }
 
-    def getFunDef(sym: Symbol, pos: Position): FunDef = {
+    /** Returns the function associated to the symbol.
+     *  In the case of varargs, if the function is not found
+     *  and there are others with the same name in the same scope,
+     *  finds an equivalent function and converts the argument.*/
+    def getFunDef(sym: Symbol, pos: Position, allowFreeArgs: Boolean = true): (FunDef, (TypedFunDef, Seq[LeonExpr]) => Seq[LeonExpr]) = {
       defsToDefs.get(sym) match {
-        case Some(fd) => fd
+        case Some(fd) => (fd, defaultArgConvert)
         case None =>
-          outOfSubsetError(pos, "Function "+sym.name+" not properly defined?")
+           // Look for other functions accepting lists if they exist.
+          val similarFunction =
+            if(!allowFreeArgs) None
+            else (defsToDefs.find{ case (s, fd) => fd.id.name == sym.nameString &&
+              sym.owner == s.owner &&
+              fd.params.length == 1 && (fd.paramIds(0).getType match {
+                case AbstractClassType(ccd, tps) => ccd.id.name == "List"
+                case _ => false
+              })
+            })
+          similarFunction match {
+            case Some((sym, fd)) =>
+              val convertArgs = (tfd: TypedFunDef, elems: Seq[LeonExpr]) => {
+                val allowedType = fd.paramIds.head.getType match {
+                  case AbstractClassType(_, Seq(tpe)) => tfd.translated(tpe)
+                }
+                val cons = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Cons"), Seq(allowedType))
+                val nil  = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Nil"),  Seq(allowedType))
+                List(elems.foldRight(CaseClass(nil, Seq())) {
+                  case (e, ls) => CaseClass(cons, Seq(e, ls))
+                })
+              }
+              (fd, convertArgs)
+            case None =>
+              outOfSubsetError(pos, "Function "+sym.name+" not properly defined?")
+          }
       }
     }
 
     private var isMethod = Set[Symbol]()
+    private var ignoredMethods = Set[Symbol]()
     private var isMutator = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
     private var classToInvariants = Map[Symbol, Set[Tree]]()
@@ -556,9 +597,9 @@ trait CodeExtraction extends ASTExtractors {
 
       // Extract class
       val cd = if (sym.isAbstractClass) {
-        AbstractClassDef(id, tparams, parent.map(_._1))
+        new AbstractClassDef(id, tparams, parent.map(_._1))
       } else  {
-        CaseClassDef(id, tparams, parent.map(_._1), sym.isModuleClass)
+        new CaseClassDef(id, tparams, parent.map(_._1), sym.isModuleClass)
       }
       cd.setPos(sym.pos)
       //println(s"Registering $sym")
@@ -640,6 +681,12 @@ trait CodeExtraction extends ASTExtractors {
 
         case t if isIgnored(t.symbol) =>
           // ignore
+          d match {
+            // Special case so that we can find methods with varargs.
+            case ExFunctionDef(fsym, _, _, _, _) =>
+              ignoredMethods += fsym
+            case _ =>
+          }
 
         // Normal methods
         case t @ ExFunctionDef(fsym, _, _, _, _) =>
@@ -942,11 +989,14 @@ trait CodeExtraction extends ASTExtractors {
           NoTree(funDef.returnType)
       }
 
-      if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
-        reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
-      }
+      //if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
+      //  reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
+      //}
 
       funDef.fullBody = finalBody
+      if(fctx.isExtern) { //extern never keeps the body, but we keep pre and post
+        funDef.body = None
+      }
 
       // Post-extraction sanity checks
 
@@ -1031,7 +1081,7 @@ trait CodeExtraction extends ASTExtractors {
 
       case up@ExUnapplyPattern(s, args) =>
         implicit val p: Position = NoPosition
-        val fd = getFunDef(s, up.pos)
+        val (fd, _) = getFunDef(s, up.pos, allowFreeArgs=false)
         val (sub, ctx) = args.map (extractPattern(_)).unzip
         val unapplyMethod = defsToDefs(s)
         val formalTypes = tupleTypeWrap(
@@ -1042,10 +1092,11 @@ trait CodeExtraction extends ASTExtractors {
           extractType(up.tpe),
           tupleTypeWrap(args map { tr => extractType(tr.tpe)})
         ))
-        val newTps = canBeSubtypeOf(realTypes, typeParamsOf(formalTypes).toSeq, formalTypes) match {
+        val newTps = canBeSupertypeOf(formalTypes, realTypes) match {
           case Some(tmap) =>
             fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
           case None =>
+            //println(realTypes, formalTypes)
             reporter.fatalError("Could not instantiate type of unapply method")
         }
 
@@ -1119,6 +1170,13 @@ trait CodeExtraction extends ASTExtractors {
 
           Ensuring(b, closure)
 
+        case t @ ExHoldsWithProofExpression(body, ExMaybeBecauseExpressionWrapper(proof)) =>
+          val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
+          val p = extractTreeOrNoTree(proof)
+          val post = Lambda(Seq(LeonValDef(resId)), And(Seq(p, Variable(resId)))).setPos(current.pos)
+          val b = extractTreeOrNoTree(body)
+          Ensuring(b, post)
+          
         case t @ ExHoldsExpression(body) =>
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
           val post = Lambda(Seq(LeonValDef(resId)), Variable(resId)).setPos(current.pos)
@@ -1126,7 +1184,15 @@ trait CodeExtraction extends ASTExtractors {
           val b = extractTreeOrNoTree(body)
 
           Ensuring(b, post)
-
+          
+        // If the because statement encompasses a holds statement
+        case t @ ExBecauseExpression(ExHoldsExpression(body), proof) =>
+          val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos)
+          val p = extractTreeOrNoTree(proof)
+          val post = Lambda(Seq(LeonValDef(resId)), And(Seq(p, Variable(resId)))).setPos(current.pos)
+          val b = extractTreeOrNoTree(body)
+          Ensuring(b, post)
+          
         case t @ ExComputesExpression(body, expected) =>
           val b = extractTreeOrNoTree(body).setPos(body.pos)
           val expected_expr = extractTreeOrNoTree(expected).setPos(expected.pos)
@@ -1150,6 +1216,23 @@ trait CodeExtraction extends ASTExtractors {
               Passes(input_expr, Variable(resId), MatchCase(WildcardPattern(None), Some(BooleanLiteral(false)), NoTree(output_expr.getType))::Nil)).setPos(current.pos)
 
           Ensuring(output_expr, post)
+
+        case t @ ExBigLengthExpression(input) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          StringBigLength(input_expr)
+        case t @ ExBigSubstringExpression(input, start) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val start_expr = extractTreeOrNoTree(start).setPos(start.pos)
+          val s = FreshIdentifier("s", StringType)
+          let(s, input_expr, 
+            BigSubString(Variable(s), start_expr, StringBigLength(Variable(s)))
+          )
+          
+        case t @ ExBigSubstring2Expression(input, start, end) =>
+          val input_expr  =  extractTreeOrNoTree(input).setPos(input.pos)
+          val start_expr = extractTreeOrNoTree(start).setPos(start.pos)
+          val end_expr = extractTreeOrNoTree(end).setPos(end.pos)
+          BigSubString(input_expr, start_expr, end_expr)
 
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
@@ -1201,7 +1284,8 @@ trait CodeExtraction extends ASTExtractors {
           val tupleExprs = exprs.map(e => extractTree(e))
           Tuple(tupleExprs)
 
-        case ex@ExOldExpression(sym) if dctx.isVariable(sym) =>
+        case ex@ExOldExpression(t) if dctx.isVariable(t.symbol) =>
+          val sym = t.symbol
           dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
             case Some(builder) =>
               val Variable(id) = builder()
@@ -1209,6 +1293,18 @@ trait CodeExtraction extends ASTExtractors {
             case None =>
               outOfSubsetError(current, "old can only be used with variables")
           }
+        case ex@ExOldExpression(t: This) =>
+          extractType(t) match {
+            case ct: ClassType =>
+              OldThis(ct)
+            case _ =>
+              outOfSubsetError(t, "Invalid usage of `this`")
+          }
+
+        //TODO: could have a case to extract Old of CaseClassSelector and map them to Selectors of OldThis.
+        case ex@ExOldExpression(t) =>
+          outOfSubsetError(t, "Invalid usage of `old` with expression: " + t + ". Only works with variables and `this` keyword")
+
 
         case ExErrorExpression(str, tpt) =>
           Error(extractType(tpt), str)
@@ -1330,12 +1426,6 @@ trait CodeExtraction extends ASTExtractors {
 
         case update @ ExUpdate(lhs, index, newValue) =>
           val lhsRec = extractTree(lhs)
-          lhsRec match {
-            case Variable(_) =>
-            case _ =>
-              outOfSubsetError(tr, "Array update only works on variables")
-          }
-
           val indexRec = extractTree(index)
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)
@@ -1457,19 +1547,25 @@ trait CodeExtraction extends ASTExtractors {
           Forall(vds, exBody)
 
         case ExFiniteMap(tptFrom, tptTo, args) =>
-          val singletons = args.collect {
-            case ExTuple(tpes, trees) if trees.size == 2 =>
-              (extractTree(trees(0)), extractTree(trees(1)))
-          }.toMap
-
-          if (singletons.size != args.size) {
-            outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
-          }
-
-          FiniteMap(singletons, extractType(tptFrom), extractType(tptTo))
+          FiniteMap(args.map {
+            case ExTuple(tpes, Seq(key, value)) =>
+              (extractTree(key), extractTree(value))
+            case tree =>
+              val ex = extractTree(tree)
+              (TupleSelect(ex, 1), TupleSelect(ex, 2))
+          }.toMap, extractType(tptFrom), extractType(tptTo))
 
         case ExFiniteSet(tpt, args) =>
           FiniteSet(args.map(extractTree).toSet, extractType(tpt))
+
+        case ExFiniteBag(tpt, args) =>
+          FiniteBag(args.map {
+            case ExTuple(tpes, Seq(key, value)) =>
+              (extractTree(key), extractTree(value))
+            case tree =>
+              val ex = extractTree(tree)
+              (TupleSelect(ex, 1), TupleSelect(ex, 2))
+          }.toMap, extractType(tpt))
 
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
@@ -1610,7 +1706,7 @@ trait CodeExtraction extends ASTExtractors {
           elems.foldRight(CaseClass(nil, Seq())) {
             case (e, ls) => CaseClass(cons, Seq(extractTree(e), ls))
           }
-
+          
         case chr @ ExCharLiteral(c) =>
           CharLiteral(c)
 
@@ -1636,21 +1732,20 @@ trait CodeExtraction extends ASTExtractors {
 
           (rrec, sym.name.decoded, rargs) match {
             case (null, _, args) =>
-              val fd = getFunDef(sym, c.pos)
-
+              val (fd, convertArgs) = getFunDef(sym, c.pos, allowFreeArgs=true)
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+              val tfd = fd.typed(newTps)
+ 
+              FunctionInvocation(tfd, convertArgs(tfd, args))
 
-              FunctionInvocation(fd.typed(newTps), argsByName)
-
-            case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
-              val fd = getFunDef(sym, c.pos)
+            case (IsTyped(rec, ct: ClassType), methodName, args) if isMethod(sym) || ignoredMethods(sym) =>
+              val (fd, convertArgs) = getFunDef(sym, c.pos)
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
-              val argsByName = (fd.params zip args).map(p => if (isLazy(p._1)) Lambda(Seq(), p._2) else p._2)
+              val tfd = fd.typed(newTps)
 
-              MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
+              MethodInvocation(rec, cd, tfd, convertArgs(tfd, args))
 
             case (IsTyped(rec, ft: FunctionType), _, args) =>
               application(rec, args)
@@ -1665,6 +1760,7 @@ trait CodeExtraction extends ASTExtractors {
               val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
               FieldAssignment(rec, id, e1)
 
+
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>
               a1
@@ -1678,10 +1774,14 @@ trait CodeExtraction extends ASTExtractors {
               StringConcat(converter(a1), a2)
             case (IsTyped(a1, StringType), "length", List()) =>
               StringLength(a1)
-            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type))) =>
-              SubString(a1, start, StringLength(a1))
-            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type), IsTyped(end, IntegerType | Int32Type))) =>
+            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type))) =>
+              val s = FreshIdentifier("s", StringType)
+              let(s, a1,
+              SubString(Variable(s), start, StringLength(Variable(s)))
+              )
+            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type), IsTyped(end, Int32Type))) =>
               SubString(a1, start, end)
+            
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>
               Plus(a1, a2)
@@ -1704,6 +1804,7 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
               LessEquals(a1, a2)
 
+
             //Real methods
             case (IsTyped(a1, RealType), "+", List(IsTyped(a2, RealType))) =>
               RealPlus(a1, a2)
@@ -1721,6 +1822,7 @@ trait CodeExtraction extends ASTExtractors {
               LessThan(a1, a2)
             case (IsTyped(a1, RealType), "<=", List(IsTyped(a2, RealType))) =>
               LessEquals(a1, a2)
+
 
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
@@ -1756,12 +1858,14 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int32Type))) =>
               LessEquals(a1, a2)
 
+
             // Boolean methods
             case (IsTyped(a1, BooleanType), "&&", List(IsTyped(a2, BooleanType))) =>
               and(a1, a2)
 
             case (IsTyped(a1, BooleanType), "||", List(IsTyped(a2, BooleanType))) =>
               or(a1, a2)
+
 
             // Set methods
             case (IsTyped(a1, SetType(b1)), "size", Nil) =>
@@ -1772,6 +1876,9 @@ trait CodeExtraction extends ASTExtractors {
 
             //case (IsTyped(a1, SetType(b1)), "max", Nil) =>
             //  SetMax(a1)
+
+            case (IsTyped(a1, SetType(b1)), "+", List(a2)) =>
+              SetAdd(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "++", List(IsTyped(a2, SetType(b2))))  if b1 == b2 =>
               SetUnion(a1, a2)
@@ -1790,6 +1897,27 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, SetType(b1)), "isEmpty", List()) =>
               Equals(a1, FiniteSet(Set(), b1))
+
+
+            // Bag methods
+            case (IsTyped(a1, BagType(b1)), "+", List(a2)) =>
+              BagAdd(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "++", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagUnion(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "&", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagIntersection(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "--", List(IsTyped(a2, BagType(b2)))) if b1 == b2 =>
+              BagDifference(a1, a2)
+
+            case (IsTyped(a1, BagType(b1)), "get", List(a2)) =>
+              MultiplicityInBag(a2, a1)
+
+            case (IsTyped(a1, BagType(b1)), "isEmpty", List()) =>
+              Equals(a1, FiniteBag(Map(), b1))
+
 
             // Array methods
             case (IsTyped(a1, ArrayType(vt)), "apply", List(a2)) =>
@@ -1873,7 +2001,7 @@ trait CodeExtraction extends ASTExtractors {
 
       rest match {
         case Some(r) =>
-          LeonBlock(Seq(res), extractTree(r))
+          leonBlock(Seq(res, extractTree(r)))
         case None =>
           res
       }
@@ -1919,6 +2047,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, btt :: Nil) if isSetSym(sym) =>
         SetType(extractType(btt))
+
+      case TypeRef(_, sym, btt :: Nil) if isBagSym(sym) =>
+        BagType(extractType(btt))
 
       case TypeRef(_, sym, List(ftt,ttt)) if isMapSym(sym) =>
         MapType(extractType(ftt), extractType(ttt))

@@ -61,7 +61,7 @@ object Constructors {
     else bd
   }
 
-  /** $encodingof ``val (id1, id2, ...) = e; bd``, and returns `bd` if the identifiers are not bound in `bd`.
+  /** $encodingof ``val (...binders...) = value; body`` which is translated to  ``value match { case (...binders...) => body }``, and returns `body` if the identifiers are not bound in `body`.
     * @see [[purescala.Expressions.Let]]
     */
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
@@ -71,8 +71,11 @@ object Constructors {
       Let(x, value, body)
     case xs =>
       require(
-        value.getType.isInstanceOf[TupleType],
-        s"The definition value in LetTuple must be of some tuple type; yet we got [${value.getType}]. In expr: \n$this"
+        value.getType match {
+          case TupleType(args) => args.size == xs.size
+          case _ => false
+        },
+        s"In letTuple: '$value' is being assigned as a tuple of arity ${xs.size}; yet its type is '${value.getType}' (body is '$body')"
       )
 
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
@@ -119,7 +122,7 @@ object Constructors {
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
 
-    canBeSubtypeOf(actualType, typeParamsOf(formalType).toSeq, formalType) match {
+    canBeSupertypeOf(formalType, actualType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
       case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!")
@@ -209,6 +212,18 @@ object Constructors {
     }
   }
 
+  /**
+   * List((a -> b), (c -> d)) becomes (a ==> b) && (c ==> d)
+   * (a || c) is expected to be true
+   */
+  def cases(cs: List[(Expr, Expr)]): Expr = {
+    if (cs.forall(_._2 == BooleanLiteral(true))) {
+      BooleanLiteral(true)
+    } else {
+      andJoin(cs.map { case (a, b) => implies(a, b) })
+    }
+  }
+
   /** $encodingof `&&`-expressions with arbitrary number of operands as a sequence, and simplified.
     * @see [[purescala.Expressions.And And]]
     */
@@ -288,21 +303,12 @@ object Constructors {
   /** $encodingof simplified `... == ...` (equality).
     * @see [[purescala.Expressions.Equals Equals]]
     */
-  def equality(a: Expr, b: Expr) = {
-    if (a == b && isDeterministic(a)) {
+  // @mk I simplified that because it seemed dangerous and unnessecary
+  def equality(a: Expr, b: Expr): Expr = {
+    if (a.isInstanceOf[Terminal] && isPurelyFunctional(a) && a == b ) {
       BooleanLiteral(true)
     } else  {
-      (a, b) match {
-        case (a: Literal[_], b: Literal[_]) =>
-          if (a.value == b.value) {
-            BooleanLiteral(true)
-          } else {
-            BooleanLiteral(false)
-          }
-
-        case _ =>
-          Equals(a, b)
-      }
+      Equals(a, b)
     }
   }
 
@@ -380,6 +386,15 @@ object Constructors {
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealMinus(lhs, rhs)
     case _ => Minus(lhs, rhs)
+  }
+
+  def uminus(e: Expr): Expr = e match {
+    case InfiniteIntegerLiteral(bi) if bi == 0 => e
+    case IntLiteral(0) => e
+    case InfiniteIntegerLiteral(bi) if bi < 0 => InfiniteIntegerLiteral(-bi)
+    case IsTyped(_, Int32Type) => BVUMinus(e)
+    case IsTyped(_, RealType) => RealUMinus(e)
+    case _ => UMinus(e)
   }
 
   /** $encodingof simplified `... * ...` (times).

@@ -7,8 +7,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.solvers.z3._
-import leon.solvers.combinators._
+import leon.solvers._
 
 class UnrollingSolverSuite extends LeonSolverSuite {
 
@@ -27,7 +26,7 @@ class UnrollingSolverSuite extends LeonSolverSuite {
   )
 
   def getSolver(implicit ctx: LeonContext, pgm: Program) = {
-    new UnrollingSolver(ctx, pgm, new UninterpretedZ3Solver(ctx, pgm))
+    SolverFactory.getFromName(ctx, pgm)("unrollz3").getNewSolver()
   }
 
   test("'true' should be valid") { implicit fix =>

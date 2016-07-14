@@ -7,15 +7,14 @@ import purescala.Definitions._
 import evaluators._
 
 trait EvaluatingSolver extends Solver {
-  val context: LeonContext
   val program: Program
 
   val useCodeGen: Boolean
 
-  lazy val evaluator: DeterministicEvaluator =
-    if (useCodeGen) {
-      new CodeGenEvaluator(context, program)
-    } else {
-      new DefaultEvaluator(context, program)
-    }
+  val evaluator: DeterministicEvaluator = if (useCodeGen) {
+    new CodeGenEvaluator(context, program, sctx.bank)
+  } else {
+    new DefaultEvaluator(context, program, sctx.bank)
+  }
 }
+

@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    if (p.as.nonEmpty && p.xs.nonEmpty) {
+    if (p.as.nonEmpty && p.xs.nonEmpty && !p.isTestBased) {
       val res = new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext) = {
 
@@ -31,8 +31,8 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           var predicates: Seq[Expr]           = Seq()
 
           while (result.isEmpty && i < maxTries && continue) {
-            val phi = andJoin(p.pc +: p.phi +: predicates)
-            val notPhi = andJoin(p.pc +: not(p.phi) +: predicates)
+            val phi = p.pc and andJoin(p.phi +: predicates)
+            val notPhi = p.pc and andJoin(not(p.phi) +: predicates)
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>
@@ -45,7 +45,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
                   case (Some(false), _) =>
-                    // Model apprears valid, but it might be a fake expression (generic values)
+                    // Model appears valid, but it might be a fake expression (generic values)
                     val outExpr = tupleWrap(p.xs.map(valuateWithModel(satModel)))
 
                     if (!isRealExpr(outExpr)) {

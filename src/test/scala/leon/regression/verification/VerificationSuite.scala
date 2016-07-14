@@ -34,7 +34,7 @@ trait VerificationSuite extends LeonRegressionSuite {
   private def mkTest(files: List[String], cat: String)(block: Output => Unit) = {
     val extraction =
       ExtractionPhase andThen
-      new PreprocessingPhase(desugarXLang)
+      new PreprocessingPhase
 
     val analysis =
       AdaptationPhase.when(isabelle) andThen

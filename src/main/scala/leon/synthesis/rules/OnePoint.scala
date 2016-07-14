@@ -35,8 +35,8 @@ case object OnePoint extends NormalizingRule("One-point") {
       val newProblem = Problem(p.as, p.ws, p.pc, subst(x -> e, andJoin(others)), oxs, p.qeb.removeOuts(Set(x)))
 
       val onSuccess: List[Solution] => Option[Solution] = {
-        case List(s @ Solution(pre, defs, term)) =>
-          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, tupleWrap(p.xs.map(Variable)))), s.isTrusted))
+        case List(s @ Solution(pre, defs, term, isTrusted)) =>
+          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, tupleWrap(p.xs.map(Variable)))), isTrusted))
         case _ =>
           None
       }

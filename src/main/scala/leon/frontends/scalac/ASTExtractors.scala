@@ -44,6 +44,7 @@ trait ASTExtractors {
   protected lazy val scalaSetSym        = classFromName("scala.collection.immutable.Set")
   protected lazy val setSym             = classFromName("leon.lang.Set")
   protected lazy val mapSym             = classFromName("leon.lang.Map")
+  protected lazy val bagSym             = classFromName("leon.lang.Bag")
   protected lazy val realSym            = classFromName("leon.lang.Real")
   protected lazy val optionClassSym     = classFromName("scala.Option")
   protected lazy val arraySym           = classFromName("scala.Array")
@@ -78,6 +79,10 @@ trait ASTExtractors {
 
   def isSetSym(sym: Symbol) : Boolean = {
     getResolvedTypeSym(sym) == setSym
+  }
+
+  def isBagSym(sym: Symbol) : Boolean = {
+    getResolvedTypeSym(sym) == bagSym
   }
 
   def isRealSym(sym: Symbol) : Boolean = {
@@ -166,17 +171,79 @@ trait ASTExtractors {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
           => Some((body, contract))
+        case Apply(Select(Apply(TypeApply(ExSelected("leon", "lang", "StaticChecks", "any2Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
+          => Some((body, contract))
         case _ => None
       }
     }
 
-    /** Matches the `holds` expression at the end of any boolean expression, and return the boolean expression.*/
+    /** Matches the `holds` expression at the end of any boolean expression, and returns the boolean expression.*/
     object ExHoldsExpression {
       def unapply(tree: Select) : Option[Tree] = tree match {
         case Select(
           Apply(ExSelected("leon", "lang", "package", "BooleanDecorations"), realExpr :: Nil),
           ExNamed("holds")
         ) => Some(realExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `holds` expression at the end of any boolean expression with a proof as argument, and returns both of themn.*/
+    object ExHoldsWithProofExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "lang", "package", "BooleanDecorations"), body :: Nil), ExNamed("holds")), proof :: Nil) =>
+          Some((body, proof))
+        case _ => None
+       }
+    }
+    
+    /** Matches the `because` method at the end of any boolean expression, and return the assertion and the cause. If no "because" method, still returns the expression */
+    object ExMaybeBecauseExpressionWrapper {
+      def unapply(tree: Tree) : Some[Tree] = tree match {
+        case Apply(ExSelected("leon", "lang", "package", "because"), body :: Nil) =>
+          unapply(body)
+        case body => Some(body)
+       }
+    }
+    
+    /** Matches the `because` method at the end of any boolean expression, and return the assertion and the cause.*/
+    object ExBecauseExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "proof", "package", "boolean2ProofOps"), body :: Nil), ExNamed("because")), proof :: Nil) =>
+          Some((body, proof))
+        case _ => None
+       }
+    }
+    
+    /** Matches the `bigLength` expression at the end of any string expression, and returns the expression.*/
+    object ExBigLengthExpression {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigLength")), Nil)
+          => Some(stringExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `bigSubstring` method at the end of any string expression, and returns the expression and the start index expression.*/
+    object ExBigSubstringExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigSubstring")), startExpr :: Nil)
+           => Some(stringExpr, startExpr)
+        case _ => None
+       }
+    }
+    
+    /** Matches the `bigSubstring` expression at the end of any string expression, and returns the expression, the start and end index expressions.*/
+    object ExBigSubstring2Expression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(Select(
+          Apply(ExSelected("leon", "lang", "package", "StringDecorations"), stringExpr :: Nil),
+          ExNamed("bigSubstring")), startExpr :: endExpr :: Nil)
+           => Some(stringExpr, startExpr, endExpr)
         case _ => None
        }
     }
@@ -641,9 +708,9 @@ trait ASTExtractors {
     }
 
     object ExOldExpression {
-      def unapply(tree: Apply) : Option[Symbol] = tree match {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
         case a @ Apply(TypeApply(ExSymbol("leon", "lang", "old"), List(tpe)), List(arg)) =>
-          Some(arg.symbol)
+          Some(arg)
         case _ =>
           None
       }
@@ -1028,6 +1095,16 @@ trait ASTExtractors {
         case Apply(TypeApply(ExSelected("Set", "apply"), Seq(tpt)), args) =>
           Some(tpt, args)
         case Apply(TypeApply(ExSelected("leon", "lang", "Set", "apply"), Seq(tpt)), args) =>
+          Some(tpt, args)
+        case _ => None
+      }
+    }
+
+    object ExFiniteBag {
+      def unapply(tree: Apply): Option[(Tree, List[Tree])] = tree match {
+        case Apply(TypeApply(ExSelected("Bag", "apply"), Seq(tpt)), args) =>
+          Some(tpt, args)
+        case Apply(TypeApply(ExSelected("leon", "lang", "Bag", "apply"), Seq(tpt)), args) =>
           Some(tpt, args)
         case _ => None
       }

@@ -12,7 +12,6 @@ import purescala.TypeOps._
 import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Quantification._
-
 import cafebabe._
 import cafebabe.AbstractByteCodes._
 import cafebabe.ByteCodes._
@@ -72,6 +71,7 @@ trait CodeGeneration {
 
   private[codegen] val TupleClass                = "leon/codegen/runtime/Tuple"
   private[codegen] val SetClass                  = "leon/codegen/runtime/Set"
+  private[codegen] val BagClass                  = "leon/codegen/runtime/Bag"
   private[codegen] val MapClass                  = "leon/codegen/runtime/Map"
   private[codegen] val BigIntClass               = "leon/codegen/runtime/BigInt"
   private[codegen] val RealClass                 = "leon/codegen/runtime/Real"
@@ -92,7 +92,8 @@ trait CodeGeneration {
   def idToSafeJVMName(id: Identifier) = {
     scala.reflect.NameTransformer.encode(id.uniqueName).replaceAll("\\.", "\\$")
   }
-  def defToJVMName(d : Definition) : String = "Leon$CodeGen$" + idToSafeJVMName(d.id)
+
+  def defToJVMName(d: Definition): String = "Leon$CodeGen$Def$" + idToSafeJVMName(d.id)
 
   /** Retrieve the name of the underlying lazy field from a lazy field accessor method */
   private[codegen] def underlyingField(lazyAccessor : String) = lazyAccessor + "$underlying"
@@ -124,6 +125,9 @@ trait CodeGeneration {
 
     case _ : SetType =>
       "L" + SetClass + ";"
+
+    case _ : BagType =>
+      "L" + BagClass + ";"
 
     case _ : MapType =>
       "L" + MapClass + ";"
@@ -201,7 +205,7 @@ trait CodeGeneration {
       funDef.fullBody
     } else {
       funDef.body.getOrElse(
-        if(funDef.annotations contains "extern") {
+        if (funDef.annotations contains "extern") {
           Error(funDef.id.getType, "Body of " + funDef.id.name + " not implemented at compile-time and still executed.")
         } else {
           throw CompilationException("Can't compile a FunDef without body: "+funDef.id.name)
@@ -224,7 +228,7 @@ trait CodeGeneration {
       case _ =>
         ch << ARETURN
     }
-
+    
     ch.freeze
   }
 
@@ -232,21 +236,18 @@ trait CodeGeneration {
   private[codegen] val classToLambda = scala.collection.mutable.Map.empty[String, Lambda]
 
   protected def compileLambda(l: Lambda): (String, Seq[(Identifier, String)], Seq[TypeParameter], String) = {
-    val (normalized, structSubst) = purescala.ExprOps.normalizeStructure(matchToIfThenElse(l))
-    val reverseSubst = structSubst.map(p => p._2 -> p._1)
-    val nl = normalized.asInstanceOf[Lambda]
+    val tparams: Seq[TypeParameter] = typeParamsOf(l).toSeq.sortBy(_.id.uniqueName)
 
-    val tparams: Seq[TypeParameter] = typeParamsOf(nl).toSeq.sortBy(_.id.uniqueName)
-
-    val closedVars = purescala.ExprOps.variablesOf(nl).toSeq.sortBy(_.uniqueName)
+    val closedVars = purescala.ExprOps.variablesOf(l).toSeq.sortBy(_.uniqueName)
     val closuresWithoutMonitor = closedVars.map(id => id -> typeToJVM(id.getType))
     val closures = (monitorID -> s"L$MonitorClass;") +:
       ((if (tparams.nonEmpty) Seq(tpsID -> "[I") else Seq.empty) ++ closuresWithoutMonitor)
 
-    val afName = lambdaToClass.getOrElse(nl, {
-      val afName = "Leon$CodeGen$Lambda$" + lambdaCounter.nextGlobal
-      lambdaToClass += nl -> afName
-      classToLambda += afName -> nl
+    val afName = lambdaToClass.getOrElse(l, {
+      val afId = FreshIdentifier("Leon$CodeGen$Lambda$")
+      val afName = afId.uniqueName
+      lambdaToClass += l -> afName
+      classToLambda += afName -> l
 
       val cf = new ClassFile(afName, Some(LambdaClass))
 
@@ -287,7 +288,7 @@ trait CodeGeneration {
         cch.freeze
       }
 
-      val argMapping = nl.args.map(_.id).zipWithIndex.toMap
+      val argMapping = l.args.map(_.id).zipWithIndex.toMap
       val closureMapping = closures.map { case (id, jvmt) => id -> (afName, id.uniqueName, jvmt) }.toMap
       val newLocals = NoLocals.withArgs(argMapping).withFields(closureMapping).withTypes(tparams)
 
@@ -301,7 +302,7 @@ trait CodeGeneration {
 
         val apch = apm.codeHandler
 
-        mkBoxedExpr(nl.body, apch)(newLocals)
+        mkBoxedExpr(l.body, apch)(newLocals)
 
         apch << ARETURN
 
@@ -389,7 +390,7 @@ trait CodeGeneration {
     })
 
     (afName, closures.map { case p @ (id, jvmt) =>
-      if (id == monitorID || id == tpsID) p else (reverseSubst(id) -> jvmt)
+      if (id == monitorID || id == tpsID) p else (id -> jvmt)
     }, tparams, "(" + closures.map(_._2).mkString("") + ")V")
   }
 
@@ -446,11 +447,21 @@ trait CodeGeneration {
       case Require(pre, body) =>
         mkExpr(IfExpr(pre, body, Error(body.getType, "Precondition failed")), ch)
 
+      case Let(id, d, Variable(id2)) if id == id2 => // Optimization for local variables.
+        mkExpr(d, ch)
+        
+      case Let(id, d, Let(id3, Variable(id2), Variable(id4))) if id == id2 && id3 == id4 => // Optimization for local variables.
+        mkExpr(d, ch)
+        
       case Let(i,d,b) =>
         mkExpr(d, ch)
         val slot = ch.getFreshVar
         val instr = i.getType match {
-          case ValueType() => IStore(slot)
+          case ValueType() =>
+            if(slot > 127) {
+              println("Error while converting one more slot which is too much " + e)
+            }
+            IStore(slot)
           case _ => AStore(slot)
         }
         ch << instr
@@ -489,8 +500,9 @@ trait CodeGeneration {
         }
         ch << New(ccName) << DUP
         load(monitorID, ch)
+        loadTypes(cct.tps, ch)
 
-        for((a, vd) <- as zip cct.classDef.fields) {
+        for ((a, vd) <- as zip cct.classDef.fields) {
           vd.getType match {
             case TypeParameter(_) =>
               mkBoxedExpr(a, ch)
@@ -541,6 +553,11 @@ trait CodeGeneration {
           ch << InvokeVirtual(SetClass, "add", s"(L$ObjectClass;)V")
         }
 
+      case SetAdd(s, e) =>
+        mkExpr(s, ch)
+        mkBoxedExpr(e, ch)
+        ch << InvokeVirtual(SetClass, "plus", s"(L$ObjectClass;)L$SetClass;")
+
       case ElementOfSet(e, s) =>
         mkExpr(s, ch)
         mkBoxedExpr(e, ch)
@@ -569,6 +586,41 @@ trait CodeGeneration {
         mkExpr(s1, ch)
         mkExpr(s2, ch)
         ch << InvokeVirtual(SetClass, "minus", s"(L$SetClass;)L$SetClass;")
+
+      // Bags
+      case FiniteBag(els, _) =>
+        ch << DefaultNew(BagClass)
+        for((k,v) <- els) {
+          ch << DUP
+          mkBoxedExpr(k, ch)
+          mkExpr(v, ch)
+          ch << InvokeVirtual(BagClass, "add", s"(L$ObjectClass;L$BigIntClass;)V")
+        }
+
+      case BagAdd(b, e) =>
+        mkExpr(b, ch)
+        mkBoxedExpr(e, ch)
+        ch << InvokeVirtual(BagClass, "plus", s"(L$ObjectClass;)L$BagClass;")
+
+      case MultiplicityInBag(e, b) =>
+        mkExpr(b, ch)
+        mkBoxedExpr(e, ch)
+        ch << InvokeVirtual(BagClass, "get", s"(L$ObjectClass;)L$BigIntClass;")
+
+      case BagIntersection(b1, b2) =>
+        mkExpr(b1, ch)
+        mkExpr(b2, ch)
+        ch << InvokeVirtual(BagClass, "intersect", s"(L$BagClass;)L$BagClass;")
+
+      case BagUnion(b1, b2) =>
+        mkExpr(b1, ch)
+        mkExpr(b2, ch)
+        ch << InvokeVirtual(BagClass, "union", s"(L$BagClass;)L$BagClass;")
+
+      case BagDifference(b1, b2) =>
+        mkExpr(b1, ch)
+        mkExpr(b2, ch)
+        ch << InvokeVirtual(BagClass, "difference", s"(L$BagClass;)L$BagClass;")
 
       // Maps
       case FiniteMap(ss, _, _) =>
@@ -667,6 +719,8 @@ trait CodeGeneration {
         // list, it, cons, cons, elem, list
 
         load(monitorID, ch)
+        ch << DUP_X2 << POP
+        loadTypes(Seq(tp), ch)
         ch << DUP_X2 << POP
 
         ch << InvokeSpecial(consName, constructorName, ccApplySig)
@@ -828,7 +882,11 @@ trait CodeGeneration {
         
       case StringLength(a) =>
         mkExpr(a, ch)
-        ch << InvokeStatic(StrOpsClass, "length", s"(L$JavaStringClass;)L$BigIntClass;")
+        ch << InvokeVirtual(JavaStringClass, "length", s"()I")
+        
+      case StringBigLength(a) =>
+        mkExpr(a, ch)
+        ch << InvokeStatic(StrOpsClass, "bigLength", s"(L$JavaStringClass;)L$BigIntClass;")
         
       case Int32ToString(a) =>
         mkExpr(a, ch)
@@ -850,7 +908,13 @@ trait CodeGeneration {
         mkExpr(a, ch)
         mkExpr(start, ch)
         mkExpr(end, ch)
-        ch << InvokeStatic(StrOpsClass, "substring", s"(L$JavaStringClass;L$BigIntClass;L$BigIntClass;)L$JavaStringClass;")
+        ch << InvokeVirtual(JavaStringClass, "substring", s"(II)L$JavaStringClass;")
+      
+      case BigSubString(a, start, end) =>
+        mkExpr(a, ch)
+        mkExpr(start, ch)
+        mkExpr(end, ch)
+        ch << InvokeStatic(StrOpsClass, "bigSubstring", s"(L$JavaStringClass;L$BigIntClass;L$BigIntClass;)L$JavaStringClass;")
         
       // Arithmetic
       case Plus(l, r) =>
@@ -1140,6 +1204,9 @@ trait CodeGeneration {
         ch << Ldc(1)
         mkBranch(b, al, fl, ch, canDelegateToMkExpr = false)
         ch << Label(fl) << POP << Ldc(0) << Label(al)
+
+      case synthesis.utils.MutableExpr(e) =>
+        mkExpr(e, ch)
 
       case _ => throw CompilationException("Unsupported expr " + e + " : " + e.getClass)
     }
@@ -1529,7 +1596,7 @@ trait CodeGeneration {
     }
   }
 
-  def compileAbstractClassDef(acd : AbstractClassDef) {
+  def compileAbstractClassDef(acd: AbstractClassDef) {
 
     val cName = defToJVMName(acd)
 
@@ -1642,7 +1709,6 @@ trait CodeGeneration {
   }
 
   def compileCaseClassDef(ccd: CaseClassDef) {
-
     val cName = defToJVMName(ccd)
     val pName = ccd.parent.map(parent => defToJVMName(parent.classDef))
     // An instantiation of ccd with its own type parameters
@@ -1656,13 +1722,14 @@ trait CodeGeneration {
       CLASS_ACC_FINAL
     ).asInstanceOf[U2])
 
-    if(ccd.parent.isEmpty) {
+    if (ccd.parent.isEmpty) {
       cf.addInterface(CaseClassClass)
     }
 
     // Case class parameters
     val fieldsTypes = ccd.fields.map { vd => (vd.id, typeToJVM(vd.getType)) }
-    val constructorArgs = (monitorID -> s"L$MonitorClass;") +: fieldsTypes
+    val tpeParam = if (ccd.tparams.isEmpty) Seq() else Seq(tpsID -> "[I")
+    val constructorArgs = (monitorID -> s"L$MonitorClass;") +: (tpeParam ++ fieldsTypes)
 
     val newLocs = NoLocals.withFields(constructorArgs.map {
       case (id, jvmt) => (id, (cName, id.name, jvmt))
@@ -1674,7 +1741,7 @@ trait CodeGeneration {
 
       // Compile methods
       for (method <- methods) {
-        compileFunDef(method,ccd)
+        compileFunDef(method, ccd)
       }
 
       // Compile lazy fields
@@ -1688,7 +1755,7 @@ trait CodeGeneration {
       }
 
       // definition of the constructor
-      for((id, jvmt) <- constructorArgs) {
+      for ((id, jvmt) <- constructorArgs) {
         val fh = cf.addField(jvmt, id.name)
         fh.setFlags((
           FIELD_ACC_PUBLIC |
@@ -1710,7 +1777,7 @@ trait CodeGeneration {
       }
 
       var c = 1
-      for((id, jvmt) <- constructorArgs) {
+      for ((id, jvmt) <- constructorArgs) {
         cch << ALoad(0)
         cch << (jvmt match {
           case "I" | "Z" => ILoad(c)
@@ -1734,6 +1801,28 @@ trait CodeGeneration {
       // Now initialize fields
       for (lzy <- lazyFields) { initLazyField(cch, cName, lzy, isStatic = false)(newLocs) }
       for (field <- strictFields) { initStrictField(cch, cName , field, isStatic = false)(newLocs) }
+
+      // Finally check invariant (if it exists)
+      if (params.checkContracts && ccd.hasInvariant) {
+        val skip = cch.getFreshLabel("skip_invariant")
+        load(monitorID, cch)(newLocs)
+        cch << ALoad(0)
+        cch << Ldc(registerType(cct))
+
+        cch << InvokeVirtual(MonitorClass, "invariantCheck", s"(L$ObjectClass;I)Z")
+        cch << IfEq(skip)
+
+        load(monitorID, cch)(newLocs)
+        cch << ALoad(0)
+        cch << Ldc(registerType(cct))
+
+        val thisId = FreshIdentifier("this", cct, true)
+        val invLocals = newLocs.withVar(thisId -> 0)
+        mkExpr(FunctionInvocation(cct.invariant.get, Seq(Variable(thisId))), cch)(invLocals)
+        cch << InvokeVirtual(MonitorClass, "invariantResult", s"(L$ObjectClass;IZ)V")
+        cch << Label(skip)
+      }
+
       cch << RETURN
       cch.freeze
     }

@@ -49,6 +49,8 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           }
 
           (r, r)
+   
+        case SpecializedFunctionInvocation(res) => (res, res)
 
         case fi @ FunctionInvocation(tfd, args) =>
           if (gctx.stepsLeft < 0) {
@@ -71,7 +73,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           }
 
           if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-            throw EvalError("Evaluation of function with unknown implementation.")
+            throw EvalError("Tracing Evaluation of function with unknown implementation.")
           }
 
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))

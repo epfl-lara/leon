@@ -11,7 +11,6 @@ import purescala.Extractors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
-import purescala.TypeOps._
 import leon._
 import leon.purescala.ScalaPrinter
 import leon.utils._

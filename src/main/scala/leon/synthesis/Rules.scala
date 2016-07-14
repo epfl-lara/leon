@@ -7,7 +7,6 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.Constructors._
 import rules._
 
 /** A Rule can be applied on a synthesis problem */
@@ -34,9 +33,9 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false)
+  def all: List[Rule] = all(false, true)
   /** Returns the list of all available rules for synthesis */
-  def all(naiveGrammar: Boolean): List[Rule] = List[Rule](
+  def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = List[Rule](
     StringRender,
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
@@ -46,21 +45,23 @@ object Rules {
     Ground,
     CaseSplit,
     IndependentSplit,
+    //HOFDecomp,
+    //ExampleGuidedTermExploration,
+    //BottomUpETE,
     IfSplit,
     InputSplit,
     UnusedInput,
     EquivalentInputs,
     UnconstrainedOutput,
-    if(naiveGrammar) NaiveCEGIS else CEGIS,
+    if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration,
     OptimisticGround,
     GenericTypeEqualitySplit,
     InequalitySplit,
-    IntroduceRecCalls,
     rules.Assert,
     DetupleInput,
     ADTSplit,
     InnerCaseSplit
-  )
+  ) ++ introduceRecCalls.option(IntroduceRecCalls)
 
 }
 
@@ -106,7 +107,7 @@ case class SolutionBuilderDecomp(types: Seq[TypeTree], recomp: List[Solution] =>
  * Used by rules expected to close, no decomposition but maybe we already know
  * the solution when instantiating
  */
-case class SolutionBuilderCloser(osol: Option[Solution] = None) extends SolutionBuilder {
+case class SolutionBuilderCloser(osol: Option[Solution] = None, extraCost: Cost = Cost(0)) extends SolutionBuilder {
   val types = Nil
   def apply(sols: List[Solution]) = {
     assert(sols.isEmpty)
@@ -156,15 +157,6 @@ trait RuleDSL {
   /** Replaces all keys of `what` by their key in the expression `ìn`*/
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
-  val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }
-  
-  /** Returns a function that transforms the precondition and term of the first Solution of a list using `f`.  */
-  def forwardMap(f : Expr => Expr) : List[Solution] => Option[Solution] = { 
-    _.headOption map { s =>
-      Solution(f(s.pre), s.defs, f(s.term), s.isTrusted)
-    }
-  }
-
   /** Groups sub-problems and a callback merging the solutions to produce a global solution.*/
   def decomp(sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String)
             (implicit problem: Problem): RuleInstantiation = {
@@ -187,18 +179,22 @@ trait RuleDSL {
 
   }
 
-  /** @param pc corresponds to the post-condition to reach the point where the solution is used. It
-    * will be used if the sub-solution has a non-true precondition. */
-  def termWrap(f: Expr => Expr, pc: Expr = BooleanLiteral(true)): List[Solution] => Option[Solution] = {
-    case List(s) =>
-      val pre = if (s.pre == BooleanLiteral(true)) {
-        BooleanLiteral(true)
-      } else {
-        and(pc, s.pre)
-      }
+  /* Utilities which implement standard onSuccess fields for decomp */
 
-      Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
-    case _ => None
+  /** Forwards a solution unchanged */
+  val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }
 
+  /** Wraps term and precondition of a single [[Solution]] with given functions */
+  def wrap(preWrapper: Expr => Expr, termWrapper: Expr => Expr): List[Solution] => Option[Solution] = {
+    case List(Solution(pre, defs, term, isTrusted)) =>
+      Some(Solution(preWrapper(pre), defs, termWrapper(term), isTrusted))
+    case _ =>
+      None
   }
+
+  /** Wraps term and precondition of a single [[Solution]] with the same function */
+  def simpleWrap(f: Expr => Expr) = wrap(f, f)
+
+  /** Wrap the term of a [[Solution]] with a function. */
+  def termWrap(f: Expr => Expr): List[Solution] => Option[Solution] = wrap(e => e, f)
 }

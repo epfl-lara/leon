@@ -5,7 +5,7 @@ import leon.collection._
 import leon.lang.synthesis._
 
 object Holes {
-  def abs3(a: Int) = {
+  def abs3(a: BigInt) = {
     if (?(a > 0, a < 0)) {
       a
     } else {

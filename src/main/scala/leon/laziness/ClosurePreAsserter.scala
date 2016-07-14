@@ -98,7 +98,7 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
   val lemmas = closuresToPrePath map {
     case (cc, (capturedPre, path, fd)) =>
       anchorfd = Some(fd)
-      val vc = Implies(And(precOrTrue(fd), path), capturedPre)
+      val vc = Implies(And(precOrTrue(fd), path.toClause), capturedPre)
       // create a function for each vc
       val lemmaid = FreshIdentifier(cc.ct.classDef.id.name + fd.id.name + "Pre", Untyped, true)
       val params = variablesOf(vc).toSeq.map(v => ValDef(v))

@@ -273,8 +273,9 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
       //new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
-      SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
-        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), timeout * 1000))
+      SimpleSolverAPI(new TimeoutSolverFactory(
+        SolverFactory.getFromName(leonctx, program)("smt-z3-u"),
+        timeout * 1000))
     }
     if (verbose) reporter.info("solving...")
     val (res, model) =

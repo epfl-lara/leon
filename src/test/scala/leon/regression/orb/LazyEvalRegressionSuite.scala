@@ -1,3 +1,5 @@
+/* Copyright 2009-2016 EPFL, Lausanne */
+
 package leon.regression.orb
 import leon.test._
 
@@ -49,4 +51,10 @@ class LazyEvalRegressionSuite extends LeonRegressionSuite {
       testLazyVerification(f, createLeonContext("--mem", "--silent", "--vcTimeout=15", "--timeout=30"))
     }
   }
+/*
+  forEachFileIn("regression/orb/lazy/withconst") { f =>
+    test("Lazy evaluation w/o Orb: " + f.getName) {
+      testLazyVerification(f, createLeonContext("--lazy", "--silent", "--timeout=30"))
+    }
+  }*/
 }

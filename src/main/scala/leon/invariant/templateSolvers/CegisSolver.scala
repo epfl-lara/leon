@@ -155,7 +155,7 @@ class CegisCore(ctx: InferenceContext,
             }
             val t3 = System.currentTimeMillis()
             val elapsedTime = (t3 - startTime)
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver),
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extededUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver),
               timeoutMillis - elapsedTime))
             val (res1, newModel) = if (solveAsInt) {
               val intctr = And(newctr, initRealCtr)
@@ -214,7 +214,7 @@ class CegisCore(ctx: InferenceContext,
   val debugMinimization = false
 
   def minimizeReals(inputCtr: Expr, objective: Expr): (Option[Boolean], Model) = {
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -253,7 +253,7 @@ class CegisCore(ctx: InferenceContext,
 
               }
               val boundCtr = LessEquals(objective, currval)
-              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
               val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
               res match {
                 case Some(true) => {
@@ -296,7 +296,7 @@ class CegisCore(ctx: InferenceContext,
   }
 
   def minimizeIntegers(inputCtr: Expr, objective: Expr): (Option[Boolean], Model) = {
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extendedUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -328,7 +328,7 @@ class CegisCore(ctx: InferenceContext,
               } else 2 * upperBound
             }
             val boundCtr = LessEquals(objective, InfiniteIntegerLiteral(currval))
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory("extededUF", () => new ExtendedUFSolver(context, program) with TimeoutSolver), timeoutMillis))
             val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
             res match {
               case Some(true) => {

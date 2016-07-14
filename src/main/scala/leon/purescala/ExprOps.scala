@@ -20,19 +20,22 @@ import scala.language.implicitConversions
   *
   * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  *   - [[SubTreeOps.fold foldRight]]
-  *   - [[SubTreeOps.preTraversal preTraversal]]
-  *   - [[SubTreeOps.postTraversal postTraversal]]
-  *   - [[SubTreeOps.preMap preMap]]
-  *   - [[SubTreeOps.postMap postMap]]
-  *   - [[SubTreeOps.genericTransform genericTransform]]
+  *   - [[GenTreeOps.fold foldRight]]
+  *   - [[GenTreeOps.preTraversal preTraversal]]
+  *   - [[GenTreeOps.postTraversal postTraversal]]
+  *   - [[GenTreeOps.preMap preMap]]
+  *   - [[GenTreeOps.postMap postMap]]
+  *   - [[GenTreeOps.genericTransform genericTransform]]
   *
   * These operations usually take a higher order function that gets applied to the
   * expression tree in some strategy. They provide an expressive way to build complex
   * operations on Leon expressions.
   *
   */
-object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
+object ExprOps extends GenTreeOps[Expr] {
+
+  val Deconstructor = Operator
+
   /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
@@ -110,7 +113,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case _ => Set()
     }(expr)
   }
-
+  
   def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
     collect[FunDef] {
       case LetDef(fds, _) => fds.toSet
@@ -158,6 +161,42 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     rec(pat)
   }
 
+
+  /** Replace each node by its constructor
+    *
+    * Remap the expression by calling the corresponding constructor
+    * for each node of the expression. The constructor will perfom
+    * some local simplifications, resulting in a simplified expression.
+    */
+  def simplifyByConstructors(expr: Expr): Expr = {
+    def step(e: Expr): Option[Expr] = e match {
+      case Not(t) => Some(not(t))
+      case UMinus(t) => Some(uminus(t))
+      case BVUMinus(t) => Some(uminus(t))
+      case RealUMinus(t) => Some(uminus(t))
+      case CaseClassSelector(cd, e, sel) => Some(caseClassSelector(cd, e, sel))
+      case AsInstanceOf(e, ct) => Some(asInstOf(e, ct))
+      case Equals(t1, t2) => Some(equality(t1, t2))
+      case Implies(t1, t2) => Some(implies(t1, t2))
+      case Plus(t1, t2) => Some(plus(t1, t2))
+      case Minus(t1, t2) => Some(minus(t1, t2))
+      case Times(t1, t2) => Some(times(t1, t2))
+      case BVPlus(t1, t2) => Some(plus(t1, t2))
+      case BVMinus(t1, t2) => Some(minus(t1, t2))
+      case BVTimes(t1, t2) => Some(times(t1, t2))
+      case RealPlus(t1, t2) => Some(plus(t1, t2))
+      case RealMinus(t1, t2) => Some(minus(t1, t2))
+      case RealTimes(t1, t2) => Some(times(t1, t2))
+      case And(args) => Some(andJoin(args))
+      case Or(args) => Some(orJoin(args))
+      case Tuple(args) => Some(tupleWrap(args))
+      case MatchExpr(scrut, cases) => Some(matchExpr(scrut, cases))
+      case Passes(in, out, cases) => Some(passes(in, out, cases))
+      case _ => None
+    }
+    postMap(step)(expr)
+  }
+
   /** ATTENTION: Unused, and untested
     * rewrites pattern-matching expressions to use fresh variables for the binders
     */
@@ -184,28 +223,23 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
-        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)))
+        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)).copiedFrom(l))
 
       case _ => None
     }(expr)
   }
 
-  /** Computes the depth of the expression's tree */
-  def depth(e: Expr): Int = {
-    fold[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
-  }
-
   /** Applies the function to the I/O constraint and simplifies the resulting constraint */
   def applyAsMatches(p : Passes, f : Expr => Expr) = {
     f(p.asConstraint) match {
-      case Equals(newOut, MatchExpr(newIn, newCases)) => {
+      case Equals(newOut, MatchExpr(newIn, newCases)) =>
         val filtered = newCases flatMap {
           case MatchCase(p, g, `newOut`) => None
           case other => Some(other)
         }
         Passes(newIn, newOut, filtered)
-      }
-      case other => other
+      case other =>
+        other
     }
   }
 
@@ -219,9 +253,9 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         Some(letTuple(ids, v, tupleSelect(b, ts, true)))
 
       case CaseClassSelector(cct, cc: CaseClass, id) =>
-        Some(caseClassSelector(cct, cc, id))
+        Some(caseClassSelector(cct, cc, id).copiedFrom(e))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && isPurelyFunctional(c) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -231,10 +265,10 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         Some(IfExpr(c, elze, thenn).copiedFrom(e))
 
       case IfExpr(c, BooleanLiteral(false), BooleanLiteral(true)) =>
-        Some(Not(c))
+        Some(Not(c).copiedFrom(e))
 
       case FunctionInvocation(tfd, List(IfExpr(c, thenn, elze))) =>
-        Some(IfExpr(c, FunctionInvocation(tfd, List(thenn)), FunctionInvocation(tfd, List(elze))))
+        Some(IfExpr(c, FunctionInvocation(tfd, List(thenn)), FunctionInvocation(tfd, List(elze))).copiedFrom(e))
 
       case _ =>
         None
@@ -252,52 +286,73 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     *
     * This function relies on the static map `typedIds` to ensure identical
     * structures and must therefore be synchronized.
+    *
+    * The optional argument [[onlySimple]] determines whether non-simple expressions
+    * (see [[isSimple]]) should be normalized into a dependency or recursed into
+    * (when they don't depend on [[args]]). This distinction is used in the
+    * unrolling solver to provide geenral equality checks between functions even when
+    * they have complex closures.
     */
-  def normalizeStructure(expr: Expr): (Expr, Map[Identifier, Identifier]) = synchronized {
-    val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
-      (expr, idSeqs) => idSeqs.foldLeft(expr match {
-        case Lambda(args, _) => args.map(_.id)
-        case Forall(args, _) => args.map(_.id)
-        case LetDef(fds, _) => fds.flatMap(_.paramIds)
-        case Let(i, _, _) => Seq(i)
-        case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
-        case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
-        case Variable(id) => Seq(id)
-        case _ => Seq.empty[Identifier]
-      })((acc, seq) => acc ++ seq)
-    } (expr).distinct
+  def normalizeStructure(args: Seq[Identifier], expr: Expr, onlySimple: Boolean = true): (Seq[Identifier], Expr, Map[Identifier, Expr]) = synchronized {
+    val vars = args.toSet
 
-    val grouped : Map[TypeTree, Seq[Identifier]] = allVars.groupBy(_.getType)
-    val subst = grouped.foldLeft(Map.empty[Identifier, Identifier]) { case (subst, (tpe, ids)) =>
-      val currentVars = typedIds(tpe)
+    class Normalizer extends TreeTransformer {
+      var subst: Map[Identifier, Expr] = Map.empty
+      var remainingIds: Map[TypeTree, List[Identifier]] = typedIds.toMap
 
-      val freshCount = ids.size - currentVars.size
-      val typedVars = if (freshCount > 0) {
-        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", tpe, true))
-        typedIds += tpe -> allIds
-        allIds
-      } else {
-        currentVars
+      def getId(e: Expr): Identifier = {
+        val tpe = TypeOps.bestRealType(e.getType)
+        val newId = remainingIds.get(tpe) match {
+          case Some(x :: xs) =>
+            remainingIds += tpe -> xs
+            x
+          case _ =>
+            val x = FreshIdentifier("x", tpe, true)
+            typedIds(tpe) = typedIds(tpe) :+ x
+            x
+        }
+        subst += newId -> e
+        newId
       }
 
-      subst ++ (ids zip typedVars)
+      override def transform(id: Identifier): Identifier = subst.get(id) match {
+        case Some(Variable(newId)) => newId
+        case Some(_) => scala.sys.error("Should never happen!")
+        case None => getId(id.toVariable)
+      }
+
+      override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
+        case expr if (isSimple(expr) || !onlySimple) && (variablesOf(expr) & vars).isEmpty => getId(expr).toVariable
+        case f: Forall =>
+          val (args, body, newSubst) = normalizeStructure(f.args.map(_.id), f.body, onlySimple)
+          subst ++= newSubst
+          Forall(args.map(ValDef(_)), body)
+        case l: Lambda =>
+          val (args, body, newSubst) = normalizeStructure(l.args.map(_.id), l.body, onlySimple)
+          subst ++= newSubst
+          Lambda(args.map(ValDef(_)), body)
+        case _ => super.transform(e)
+      }
     }
 
-    val normalized = postMap {
-      case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
-      case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
-      case Let(i, e, b)       => Some(Let(subst(i), e, b))
-      case m@MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
-        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
-      }).copiedFrom(m))
-      case Passes(in, out, cses) => Some(Passes(in, out, cses.map { cse =>
-        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
-      }))
-      case Variable(id) => Some(Variable(subst(id)))
-      case _ => None
-    } (expr)
+    val n = new Normalizer
+    val bindings = args.map(id => id -> n.getId(id.toVariable)).toMap
+    val normalized = n.transform(matchToIfThenElse(expr))(bindings)
 
-    (normalized, subst)
+    val argsImgSet = bindings.map(_._2).toSet
+    val bodySubst = n.subst.filter(p => !argsImgSet(p._1))
+
+    (args.map(bindings), normalized, bodySubst)
+  }
+
+  def normalizeStructure(lambda: Lambda): (Lambda, Map[Identifier, Expr]) = {
+    val (args, body, subst) = normalizeStructure(lambda.args.map(_.id), lambda.body, onlySimple = false)
+    (Lambda(args.map(ValDef(_)), body), subst)
+  }
+
+  def normalizeStructure(forall: Forall): (Forall, Map[Identifier, Expr]) = {
+    val (args, body, subst) = normalizeStructure(forall.args.map(_.id), forall.body)
+    (Forall(args.map(ValDef(_)), body), subst)
   }
 
   /** Returns '''true''' if the formula is Ground,
@@ -308,6 +363,18 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     variablesOf(e).isEmpty && isDeterministic(e)
   }
 
+  /** Returns '''true''' if the formula is simple,
+    * which means that it requires no special encoding for an
+    * unrolling solver. See implementation for what this means exactly.
+    */
+  def isSimple(e: Expr): Boolean = !exists {
+    case (_: Choose) | (_: Hole) |
+         (_: Assert) | (_: Ensuring) |
+         (_: Forall) | (_: Lambda) | (_: FiniteLambda) |
+         (_: FunctionInvocation) | (_: Application) => true
+    case _ => false
+  } (e)
+
   /** Returns a function which can simplify all ground expressions which appear in a program context.
     */
   def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
@@ -317,10 +384,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
     def rec(e: Expr): Option[Expr] = e match {
       case l: Terminal => None
-      case e if isGround(e) => eval.eval(e) match {
-        case EvaluationResults.Successful(v) => Some(v)
-        case _ => None
-      }
+      case e if isGround(e) => eval.eval(e).result // returns None if eval fails
       case _ => None
     }
 
@@ -336,14 +400,114 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * @note the code is simple but far from optimal (many traversals...)
     */
   def simplifyLets(expr: Expr) : Expr = {
-    def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
-        Some(replaceFromIDs(Map(i -> t), b))
+    def freeComputable(e: Expr) = e match {
+      case TupleSelect(Variable(_), _) => true
+      case CaseClassSelector(_, Variable(_), _) => true
+      case FiniteSet(els, _) => els.isEmpty
+      case FiniteMap(els, _, _) => els.isEmpty
+      case _: Terminal => true
+      case _ => false
+    }
+    
+    def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): Expr = {
+      def inline(e: Expr) = leon.utils.fixpoint(
+        ExprOps.preMap{
+          case FunctionInvocation(TypedFunDef(f, targs), args) if toInline(f) =>
+            val substs = f.paramIds.zip(args).toMap
+            Some(replaceFromIDs(substs, f.fullBody))
+          case _ => None
+        } , 64)(e)
+      
+      val inlined = fds.filter(x => !toInline(x)).map{fd =>
+        val newFd = fd.duplicate()
+        newFd.fullBody = inline(fd.fullBody)
+        fd -> newFd
+      }
+      val inlined_body = inline(body)
+      val inlineMap = inlined.toMap
+      def useUpdatedFunctions(e: Expr): Expr = ExprOps.preMap{
+         case fi@FunctionInvocation(tfd@TypedFunDef(f, targs), args) =>
+           inlineMap.get(f).map{ newF =>
+             FunctionInvocation(TypedFunDef(newF, targs).copiedFrom(tfd), args).copiedFrom(fi)
+           }
+          case _ => None
+       }(e)
+      val updatedCalls = inlined.map{ case (f, newF) =>
+       newF.fullBody = useUpdatedFunctions(newF.fullBody)
+       newF
+      }
+      val updatedBody = useUpdatedFunctions(inlined_body)
+      if(updatedCalls.isEmpty) {
+        updatedBody
+      } else
+      LetDef(updatedCalls, updatedBody)
+    }
 
-      case letExpr @ Let(i,e,b) if isDeterministic(b) => {
+    def simplerLet(t: Expr): Option[Expr] = t match {
+      case LetDef(fds, body) => // Inline simple functions called only once, or calling another function.
+        
+        def collectCalls(e: Expr): Set[(FunDef, Int)] = {
+          var i = 1
+          ExprOps.collect[(FunDef, Int)]{
+            case FunctionInvocation(TypedFunDef(fd, _), _) => Set((fd, { i += 1; i}))
+            case _ => Set()}(e)
+        }
+        val calledGraph = ((for{
+            fd <- fds
+            (callee, id) <- collectCalls(fd.fullBody).toSeq
+            if fds.contains(callee)
+        } yield ((fd: Tree) -> callee)) ++ collectCalls(body).toSeq.map((body: Tree) -> _._1)).groupBy(_._2).mapValues(_.size)
+
+        val toInline = fds.filter{ fd => fd.fullBody match {
+          case Int32ToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case BooleanToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case IntegerToString(Variable(id)) if fd.paramIds.headOption == Some(id) => true
+          case Variable(id) if fd.paramIds.headOption == Some(id) => true
+          case _ if calledGraph.getOrElse(fd, 0) <= 1 => true
+          case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
+          case _ => false
+        }}
+        
+        if(toInline.length > 0) {
+          Some(inlineLetDefs(fds, body, toInline.toSet))
+        } else None
+
+      /* Untangle */
+      case Let(i1, Let(i2, e2, b2), b1) =>
+        Some(Let(i2, e2, Let(i1, b2, b1)))
+
+      case Let(i1, LetTuple(is2, e2, b2), b1) =>
+        Some(letTuple(is2, e2, Let(i1, b2, b1)))
+
+      case LetTuple(ids1, Let(id2, e2, b2), b1) =>
+        Some(Let(id2, e2, letTuple(ids1, b2, b1)))
+
+      case LetTuple(ids1, LetTuple(ids2, e2, b2), b1) =>
+        Some(letTuple(ids2, e2, letTuple(ids1, b2, b1)))
+
+      // Untuple
+      case Let(id, Tuple(es), b) =>
+        val ids = es.zipWithIndex.map { case (e, ind) =>
+          FreshIdentifier(id + (ind + 1).toString, e.getType, true)
+        }
+        val theMap: Map[Expr, Expr] = es.zip(ids).zipWithIndex.map {
+          case ((e, subId), ind) => TupleSelect(Variable(id), ind + 1) -> Variable(subId)
+        }.toMap
+
+        val replaced0 = replace(theMap, b)
+        val replaced  = replace(Map(Variable(id) -> Tuple(ids map Variable)), replaced0)
+
+        Some(letTuple(ids, Tuple(es), replaced))
+
+      case Let(i, e, b) if freeComputable(e) && isPurelyFunctional(e) =>
+        // computation is very quick and code easy to read, always inline
+        Some(replaceFromIDs(Map(i -> e), b))
+
+      case Let(i,e,b) if isPurelyFunctional(e) =>
+        // computation may be slow, or code complicated to read, inline at most once
         val occurrences = count {
-          case Variable(x) if x == i => 1
+          case Variable(`i`) => 1
           case _ => 0
         }(b)
 
@@ -354,79 +518,53 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         } else {
           None
         }
-      }
 
-      case letTuple @ LetTuple(ids, Tuple(exprs), body) if isDeterministic(body) =>
-        var newBody = body
+      case LetTuple(ids, Tuple(elems), body) =>
+        Some(ids.zip(elems).foldRight(body) { case ((id, elem), bd) => Let(id, elem, bd) })
 
-        val (remIds, remExprs) = (ids zip exprs).filter {
-          case (id, value: Terminal) =>
-            newBody = replaceFromIDs(Map(id -> value), newBody)
-            //we replace, so we drop old
-            false
-          case (id, value) =>
-            val occurences = count {
-              case Variable(x) if x == id => 1
-              case _ => 0
-            }(body)
+      /*case LetPattern(patt, e0, body) if isPurelyFunctional(e0) =>
+        // Will turn the match-expression with a single case into a list of lets.
+        // @mk it is not clear at all that we want this
 
-            if(occurences == 0) {
-              false
-            } else if(occurences == 1) {
-              newBody = replace(Map(Variable(id) -> value), newBody)
-              false
-            } else {
-              true
-            }
-        }.unzip
-
-        Some(Constructors.letTuple(remIds, tupleWrap(remExprs), newBody))
-
-      case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
-        val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-          case (v,i) => v -> tupleSelect(tExpr, i + 1, true).copiedFrom(v)
+        // Just extra safety...
+        val e = (e0.getType, patt) match {
+          case (_:AbstractClassType, CaseClassPattern(_, cct, _)) =>
+            asInstOf(e0, cct)
+          case (at: AbstractClassType, InstanceOfPattern(_, ct)) if at != ct =>
+            asInstOf(e0, ct)
+          case _ =>
+            e0
         }
 
-        Some(replace(substMap, body))
-
-      case l @ LetTuple(ids, tExpr, body) if isDeterministic(body) =>
-        val arity = ids.size
-        val zeroVec = Seq.fill(arity)(0)
-        val idMap   = ids.zipWithIndex.toMap.mapValues(i => zeroVec.updated(i, 1))
-
-        // A map containing vectors of the form (0, ..., 1, ..., 0) where
-        // the one corresponds to the index of the identifier in the
-        // LetTuple. The idea is that we can sum such vectors up to compute
-        // the occurences of all variables in one traversal of the
-        // expression.
-
-        val occurences : Seq[Int] = fold[Seq[Int]]({ case (e, subs) =>
-          e match {
-            case Variable(x) => idMap.getOrElse(x, zeroVec)
-            case _ => subs.foldLeft(zeroVec) { case (a1, a2) =>
-                (a1 zip a2).map(p => p._1 + p._2)
-              }
-          }
-        })(body)
-
-        val total = occurences.sum
-
-        if(total == 0) {
-          Some(body)
-        } else if(total == 1) {
-          val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-            case (v,i) => v -> tupleSelect(tExpr, i + 1, ids.size).copiedFrom(v)
-          }
-
-          Some(replace(substMap, body))
-        } else {
-          None
+        // Sort lets in dependency order
+        val lets = mapForPattern(e, patt).toSeq.sortWith {
+          case ((id1, e1), (id2, e2)) => exists{ _ == Variable(id1) }(e2)
         }
+
+        Some(lets.foldRight(body) {
+          case ((id, e), bd) => Let(id, e, bd)
+        })*/
+
+      case MatchExpr(scrut, cases) =>
+        // Merge match within match
+        var changed = false
+        val newCases = cases map {
+          case MatchCase(patt, g, LetPattern(innerPatt, Variable(id), body)) if patt.binders contains id =>
+            changed = true
+            val newPatt = PatternOps.preMap {
+              case WildcardPattern(Some(`id`)) => Some(innerPatt.withBinder(id))
+              case _ => None
+            }(patt)
+            MatchCase(newPatt, g, body)
+          case other =>
+            other
+        }
+        if(changed) Some(MatchExpr(scrut, newCases)) else None
 
       case _ => None
     }
 
-    postMap(simplerLet)(expr)
+    postMap(simplerLet, applyRec = true)(expr)
   }
 
   /** Fully expands all let expressions. */
@@ -437,7 +575,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
-      case n @ Deconstructor(args, recons) => {
+      case n @ Deconstructor(args, recons) =>
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a, s)
@@ -452,8 +590,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           recons(rargs)
         else
           n
-      }
-      case unhandled => scala.sys.error("Unhandled case in expandLets: " + unhandled)
+      case unhandled => throw LeonFatalError("Unhandled case in expandLets: " + unhandled)
     }
 
     def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = {
@@ -591,16 +728,16 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     *
     * @see [[purescala.Expressions.Pattern]]
     */
-  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Expr = {
-    def bind(ob: Option[Identifier], to: Expr): Expr = {
+  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Path = {
+    def bind(ob: Option[Identifier], to: Expr): Path = {
       if (!includeBinders) {
-        BooleanLiteral(true)
+        Path.empty
       } else {
-        ob.map(id => Equals(Variable(id), to)).getOrElse(BooleanLiteral(true))
+        ob.map(id => Path.empty withBinding (id -> to)).getOrElse(Path.empty)
       }
     }
 
-    def rec(in: Expr, pattern: Pattern): Expr = {
+    def rec(in: Expr, pattern: Pattern): Path = {
       pattern match {
         case WildcardPattern(ob) =>
           bind(ob, in)
@@ -609,31 +746,29 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           if (ct.parent.isEmpty) {
             bind(ob, in)
           } else {
-            and(IsInstanceOf(in, ct), bind(ob, in))
+            Path(IsInstanceOf(in, ct)) merge bind(ob, in)
           }
 
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.classDef.fields.size == subps.size)
           val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
-          val together = and(bind(ob, in) +: subTests :_*)
-          and(IsInstanceOf(in, cct), together)
+          Path(IsInstanceOf(in, cct)) merge bind(ob, in) merge subTests
 
         case TuplePattern(ob, subps) =>
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
-          val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
-          and(bind(ob, in) +: subTests: _*)
+          val subTests = subps.zipWithIndex.map {
+            case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)
+          }
+          bind(ob, in) merge subTests
 
         case up @ UnapplyPattern(ob, fd, subps) =>
-          def someCase(e: Expr) = {
-            // In the case where unapply returns a Some, it is enough that the subpatterns match
-            andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
-          }
-          and(up.patternMatch(in, BooleanLiteral(false), someCase).setPos(in), bind(ob, in))
+          val subs = unwrapTuple(up.get(in), subps.size).zip(subps) map (rec _).tupled
+          bind(ob, in) withCond up.isSome(in) merge subs
 
-        case LiteralPattern(ob,lit) =>
-          and(Equals(in,lit), bind(ob,in))
+        case LiteralPattern(ob, lit) =>
+          Path(Equals(in, lit)) merge bind(ob, in)
       }
     }
 
@@ -667,6 +802,9 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           case (e, p) => mapForPattern(e, p)
         }.toMap
 
+      case InstanceOfPattern(b, ct) =>
+        bindIn(b, Some(ct))
+
       case other =>
         bindIn(other.binder)
     }
@@ -681,22 +819,22 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case m @ MatchExpr(scrut, cases) =>
         // println("Rewriting the following PM: " + e)
 
-        val condsAndRhs = for(cse <- cases) yield {
+        val condsAndRhs = for (cse <- cases) yield {
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.optGuard match {
-            case Some(g) => and(patCond, replaceFromIDs(map, g))
+            case Some(g) => patCond withCond replaceFromIDs(map, g)
             case None => patCond
           }
           val newRhs = replaceFromIDs(map, cse.rhs)
-          (realCond, newRhs)
+          (realCond.toClause, newRhs, cse)
         }
 
         val bigIte = condsAndRhs.foldRight[Expr](Error(m.getType, "Match is non-exhaustive").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
-            IfExpr(p1._1, p1._2, ex)
+            IfExpr(p1._1, p1._2, ex).copiedFrom(p1._3)
           }
         })
 
@@ -719,26 +857,26 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * @see [[purescala.ExprOps#conditionForPattern conditionForPattern]]
     * @see [[purescala.ExprOps#mapForPattern mapForPattern]]
     */
-  def matchExprCaseConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
+  def matchExprCaseConditions(m: MatchExpr, path: Path) : Seq[Path] = {
     val MatchExpr(scrut, cases) = m
-    var pcSoFar = pathCond
-    for (c <- cases) yield {
+    var pcSoFar = path
 
+    for (c <- cases) yield {
       val g = c.optGuard getOrElse BooleanLiteral(true)
       val cond = conditionForPattern(scrut, c.pattern, includeBinders = true)
-      val localCond = pcSoFar :+ cond :+ g
+      val localCond = pcSoFar merge (cond withCond g)
 
       // These contain no binders defined in this MatchCase
       val condSafe = conditionForPattern(scrut, c.pattern)
-      val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
-      pcSoFar ::= not(and(condSafe, gSafe))
+      val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern), g)
+      pcSoFar = pcSoFar merge (condSafe withCond gSafe).negate
 
       localCond
     }
   }
 
   /** Condition to pass this match case, expressed w.r.t scrut only */
-  def matchCaseCondition(scrut: Expr, c: MatchCase): Expr = {
+  def matchCaseCondition(scrut: Expr, c: MatchCase): Path = {
 
     val patternC = conditionForPattern(scrut, c.pattern, includeBinders = false)
 
@@ -746,7 +884,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       case Some(g) =>
         // guard might refer to binders
         val map  = mapForPattern(scrut, c.pattern)
-        and(patternC, replaceFromIDs(map, g))
+        patternC withCond replaceFromIDs(map, g)
 
       case None =>
         patternC
@@ -757,7 +895,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     *
     * Each case holds the conditions on other previous cases as negative.
     */
-  def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
+  def passesPathConditions(p: Passes, pathCond: Path) : Seq[Path] = {
     matchExprCaseConditions(MatchExpr(p.in, p.cases), pathCond)
   }
 
@@ -830,6 +968,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
   }
 
+
   /** Rewrites all map accesses with additional error conditions. */
   def mapGetWithChecks(expr: Expr): Expr = {
     postMap({
@@ -852,6 +991,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
     case SetType(baseType)          => FiniteSet(Set(), baseType)
+    case BagType(baseType)          => FiniteBag(Map(), baseType)
     case MapType(fromType, toType)  => FiniteMap(Map(), fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => EmptyArray(tpe)
@@ -932,6 +1072,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     }
   }
 
+
   /** Hoists all IfExpr at top level.
     *
     * Guarantees that all IfExpr will be at the top level and as soon as you
@@ -962,74 +1103,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     postMap(transform, applyRec = true)(expr)
   }
 
-  private def noCombiner(e: Expr, subCs: Seq[Unit]) = ()
-  private def noTransformer[C](e: Expr, c: C) = (e, c)
-
-  def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
-    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
-    val newPost = (e: Expr, c: Unit) => (post(e), ())
-
-    genericTransform[Unit](newPre, newPost, noCombiner)(())(expr)._1
-  }
-
-  def simplePreTransform(pre: Expr => Expr)(expr: Expr) = {
-    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
-
-    genericTransform[Unit](newPre, (_, _), noCombiner)(())(expr)._1
-  }
-
-  def simplePostTransform(post: Expr => Expr)(expr: Expr) = {
-    val newPost = (e: Expr, c: Unit) => (post(e), ())
-
-    genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
-  }
-
-  /** Simplify If expressions when the branch is predetermined by the path condition */
-  def simplifyTautologies(sf: SolverFactory[Solver])(expr : Expr) : Expr = {
-    val solver = SimpleSolverAPI(sf)
-
-    def pre(e : Expr) = e match {
-
-      case LetDef(fds, expr) =>
-       for(fd <- fds if fd.hasPrecondition) {
-          val pre = fd.precondition.get
-
-          solver.solveVALID(pre) match {
-            case Some(true)  =>
-              fd.precondition = None
-
-            case Some(false) => solver.solveSAT(pre) match {
-              case (Some(false), _) =>
-                fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
-              case _ =>
-            }
-            case None =>
-          }
-       }
-       e
-      case IfExpr(cond, thenn, elze) =>
-        try {
-          solver.solveVALID(cond) match {
-            case Some(true)  => thenn
-            case Some(false) => solver.solveVALID(Not(cond)) match {
-              case Some(true) => elze
-              case _ => e
-            }
-            case None => e
-          }
-        } catch {
-          // let's give up when the solver crashes
-          case _ : Exception => e
-        }
-
-      case _ => e
-    }
-
-    simplePreTransform(pre)(expr)
-  }
-
-  def simplifyPaths(sf: SolverFactory[Solver], initC: List[Expr] = Nil): Expr => Expr = {
-    new SimplifierWithPaths(sf, initC).transform
+  def simplifyPaths(sf: SolverFactory[Solver], initPC: Path = Path.empty): Expr => Expr = {
+    new SimplifierWithPaths(sf, initPC).transform
   }
 
   trait Traverser[T] {
@@ -1037,25 +1112,23 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
   }
 
   object CollectorWithPaths {
-    def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Expr)] = new CollectorWithPaths[(T, Expr)] {
-      def collect(e: Expr, path: Seq[Expr]): Option[(T, Expr)] = if (!p.isDefinedAt(e)) None else {
-        Some(p(e) -> and(path: _*))
+    def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Path)] = new CollectorWithPaths[(T, Path)] {
+      def collect(e: Expr, path: Path): Option[(T, Path)] = if (!p.isDefinedAt(e)) None else {
+        Some(p(e) -> path)
       }
     }
   }
 
   trait CollectorWithPaths[T] extends TransformerWithPC with Traverser[Seq[T]] {
-    type C = Seq[Expr]
-    protected val initC : C = Nil
-    def register(e: Expr, path: C) = path :+ e
+    protected val initPath: Path = Path.empty
 
     private var results: Seq[T] = Nil
 
-    def collect(e: Expr, path: Seq[Expr]): Option[T]
+    def collect(e: Expr, path: Path): Option[T]
 
-    def walk(e: Expr, path: Seq[Expr]): Option[Expr] = None
+    def walk(e: Expr, path: Path): Option[Expr] = None
 
-    override def rec(e: Expr, path: Seq[Expr]) = {
+    override def rec(e: Expr, path: Path) = {
       collect(e, path).foreach { results :+= _ }
       walk(e, path) match {
         case Some(r) => r
@@ -1065,49 +1138,47 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
     def traverse(funDef: FunDef): Seq[T] = traverse(funDef.fullBody)
 
-    def traverse(e: Expr): Seq[T] = traverse(e, initC)
+    def traverse(e: Expr): Seq[T] = traverse(e, initPath)
 
-    def traverse(e: Expr, init: Expr): Seq[T] = traverse(e, Seq(init))
+    def traverse(e: Expr, init: Expr): Seq[T] = traverse(e, Path(init))
 
-    def traverse(e: Expr, init: Seq[Expr]): Seq[T] = {
+    def traverse(e: Expr, init: Path): Seq[T] = {
       results = Nil
       rec(e, init)
       results
     }
   }
 
-  def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
+  def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Path)] = {
     CollectorWithPaths(f).traverse(expr)
   }
 
-  def patternSize(p: Pattern): Int = p match {
-    case wp: WildcardPattern =>
-      1
-    case _ =>
-      1 + p.binder.size + p.subPatterns.map(patternSize).sum
-  }
-
-  def formulaSize(e: Expr): Int = e match {
+  override def formulaSize(e: Expr): Int = e match {
     case ml: MatchExpr =>
-      formulaSize(ml.scrutinee) + ml.cases.map {
-        case MatchCase(p, og, rhs) =>
-          formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
-      }.sum
-
-    case Deconstructor(es, _) =>
-      es.map(formulaSize).sum+1
+      super.formulaSize(e) + ml.cases.map(cs => PatternOps.formulaSize(cs.pattern)).sum
+    case _ =>
+      super.formulaSize(e)
   }
 
-  /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/
+  /** Returns true if the expression is deterministic /
+    * does not contain any [[purescala.Expressions.Choose Choose]]
+    * or [[purescala.Expressions.Hole Hole]] or [[purescala.Expressions.WithOracle WithOracle]]
+    */
   def isDeterministic(e: Expr): Boolean = {
-    preTraversal{
-      case Choose(_) => return false
-      case Hole(_, _) => return false
-      //@EK FIXME: do we need it?
-      //case Error(_, _) => return false
-      case _ =>
+    exists {
+      case _ : Choose | _: Hole | _: WithOracle => false
+      case _ => true
     }(e)
-    true
+  }
+
+  /** Returns if this expression behaves as a purely functional construct,
+    * i.e. always returns the same value (for the same environment) and has no side-effects
+    */
+  def isPurelyFunctional(e: Expr): Boolean = {
+    exists {
+      case _ : Error | _ : Choose | _: Hole | _: WithOracle => false
+      case _ => true
+    }(e)
   }
 
   /** Returns the value for an identifier given a model. */
@@ -1123,15 +1194,17 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
-
+  
   /** Simple, local optimization on string */
   def simplifyString(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = (expr match {
       case StringConcat(StringLiteral(""), b) => b
       case StringConcat(b, StringLiteral("")) => b
       case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a + b)
-      case StringLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
-      case SubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case StringLength(StringLiteral(a)) => IntLiteral(a.length)
+      case StringBigLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
+      case SubString(StringLiteral(a), IntLiteral(start), IntLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case BigSubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
       case _ => expr
     }).copiedFrom(expr)
     simplify0(expr)
@@ -1242,7 +1315,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     *    foo(Nil, b) and
     *    foo(t, b) => foo(Cons(h,t), b)
     */
-  def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
+  def isInductiveOn(sf: SolverFactory[Solver])(path: Path, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
 
       val toCheck = cd.knownDescendants.collect {
@@ -1251,7 +1324,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect {
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
             case (vd, tpe) if tpe == on.getType => vd.id
           }
 
@@ -1260,8 +1333,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
           } else {
             val v = Variable(on)
 
-            recSelectors.map{ s =>
-              and(isType, expr, not(replace(Map(v -> caseClassSelector(cct, v, s)), expr)))
+            recSelectors.map { s =>
+              and(path and isType, not(replace(Map(v -> caseClassSelector(cct, v, s)), path.toClause)))
             }
           }
       }.flatten
@@ -1282,28 +1355,19 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case _ =>
       false
   }
-
+  
   type Apriori = Map[Identifier, Identifier]
-
+  
   /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
   def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
     val freeT1Variables = ExprOps.variablesOf(t1)
     val freeT2Variables = ExprOps.variablesOf(t2)
-
+    
     def mergeContexts(
         a: Option[Apriori],
         b: Apriori => Option[Apriori]):
         Option[Apriori] = a.flatMap(b)
 
-    object Same {
-      def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
-        if (tt._1.getClass == tt._2.getClass) {
-          Some(tt)
-        } else {
-          None
-        }
-      }
-    }
     implicit class AugmentedContext(c: Option[Apriori]) {
       def &&(other: Apriori => Option[Apriori]): Option[Apriori] = mergeContexts(c, other)
       def --(other: Seq[Identifier]) =
@@ -1326,6 +1390,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     implicit def noneToContextTaker(c: None.type) = {
       (m: Apriori) => None
     }
+
 
     def idHomo(i1: Identifier, i2: Identifier)(apriori: Apriori): Option[Apriori] = {
       if(!(freeT1Variables(i1) || freeT2Variables(i2)) || i1 == i2 || apriori.get(i1) == Some(i2)) Some(Map(i1 -> i2)) else None
@@ -1391,17 +1456,15 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         }(apriori)
       }
 
-      import synthesis.Witnesses.Terminating
-
       val res: Option[Apriori] = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)(apriori)
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
-
+          
           isHomo(v1, v2)(apriori + (id1 -> id2)) &&
           isHomo(e1, e2)
-
+          
         case (Hole(_, _), Hole(_, _)) =>
           None
 
@@ -1439,7 +1502,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
               Some(m + (a1 -> a2)) }(apriori)
            && isHomo(body, body2)
           ) -- (defs.map(_.id))
-
+          
         case (v1, v2) if isValue(v1) && isValue(v2) =>
           v1 == v2 && Some(apriori)
 
@@ -1629,7 +1692,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
      * TODO: We ignore type parameters here, we might want to make sure it's
      * valid. What's Leon's semantics w.r.t. erasure?
      */
-    def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
+    def areExhaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
 
       tpe match {
         case TupleType(tpes) =>
@@ -1638,7 +1701,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
               bs
           }
 
-          areExaustive(tpes zip subs.transpose)
+          areExhaustive(tpes zip subs.transpose)
 
         case _: ClassType =>
 
@@ -1681,7 +1744,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
             if (subs.isEmpty) {
               false
             } else {
-              areExaustive(tpes zip subs.transpose)
+              areExhaustive(tpes zip subs.transpose)
             }
           }
 
@@ -1701,7 +1764,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         case UnitType =>
           // Anything matches ()
           ps.nonEmpty
-
+        
         case StringType =>
           // Can't possibly pattern match against all Strings one by one
           ps exists (_.isInstanceOf[WildcardPattern])
@@ -1722,7 +1785,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         return false
     }
 
-    areExaustive(Seq((m.scrutinee.getType, patterns)))
+    areExhaustive(Seq((m.scrutinee.getType, patterns)))
   }
 
   /** Flattens a function that contains a LetDef with a direct call to it
@@ -1795,7 +1858,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
           val newFd = fdOuter.duplicate()
 
-          val simp = Simplifiers.bestEffort(ctx, p) _
+          val simp = Simplifiers.bestEffort(ctx, p)((_: Expr))
 
           newFd.body          = fdInner.body.map(b => simplePreTransform(pre)(b))
           newFd.precondition  = mergePre(fdOuter.precondition, fdInner.precondition).map(simp)
@@ -1829,6 +1892,34 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
    * =================
    */
 
+  /** Returns whether a particular [[Expressions.Expr]] contains specification
+    * constructs, namely [[Expressions.Require]] and [[Expressions.Ensuring]].
+    */
+  def hasSpec(e: Expr): Boolean = exists {
+    case Require(_, _) => true
+    case Ensuring(_, _) => true
+    case Let(i, e, b) => hasSpec(b)
+    case _ => false
+  } (e)
+
+  /** Merges the given [[Path]] into the provided [[Expressions.Expr]].
+    *
+    * This method expects to run on a [[Definitions.FunDef.fullBody]] and merges into
+    * existing pre- and postconditions.
+    *
+    * @param expr The current body
+    * @param path The path that should be wrapped around the given body
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
+  def withPath(expr: Expr, path: Path): Expr = expr match {
+    case Let(i, e, b) => withPath(b, path withBinding (i -> e))
+    case Require(pre, b) => path specs (b, pre)
+    case Ensuring(Require(pre, b), post) => path specs (b, pre, post)
+    case Ensuring(b, post) => path specs (b, post = post)
+    case b => path specs b
+  }
+
   /** Replaces the precondition of an existing [[Expressions.Expr]] with a new one.
     *
     * If no precondition is provided, removes any existing precondition.
@@ -1843,9 +1934,11 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case (Some(newPre), Require(pre, b))              => req(newPre, b)
     case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(req(newPre, b), p)
     case (Some(newPre), Ensuring(b, p))               => Ensuring(req(newPre, b), p)
+    case (Some(newPre), Let(i, e, b)) if hasSpec(b)   => Let(i, e, withPrecondition(b, pred))
     case (Some(newPre), b)                            => req(newPre, b)
     case (None, Require(pre, b))                      => b
     case (None, Ensuring(Require(pre, b), p))         => Ensuring(b, p)
+    case (None, Let(i, e, b)) if hasSpec(b)           => Let(i, e, withPrecondition(b, pred))
     case (None, b)                                    => b
   }
 
@@ -1859,11 +1952,13 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
-    case (Some(npost), Ensuring(b, post)) => ensur(b, npost)
-    case (Some(npost), b)                 => ensur(b, npost)
-    case (None, Ensuring(b, p))           => b
-    case (None, b)                        => b
+  def withPostcondition(expr: Expr, oie: Option[Expr]): Expr = (oie, expr) match {
+    case (Some(npost), Ensuring(b, post))          => ensur(b, npost)
+    case (Some(npost), Let(i, e, b)) if hasSpec(b) => Let(i, e, withPostcondition(b, oie))
+    case (Some(npost), b)                          => ensur(b, npost)
+    case (None, Ensuring(b, p))                    => b
+    case (None, Let(i, e, b)) if hasSpec(b)        => Let(i, e, withPostcondition(b, oie))
+    case (None, b)                                 => b
   }
 
   /** Adds a body to a specification
@@ -1874,7 +1969,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withBody(expr: Expr, body: Option[Expr]) = expr match {
+  def withBody(expr: Expr, body: Option[Expr]): Expr = expr match {
+    case Let(i, e, b) if hasSpec(b)      => Let(i, e, withBody(b, body))
     case Require(pre, _)                 => Require(pre, body.getOrElse(NoTree(expr.getType)))
     case Ensuring(Require(pre, _), post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), post)
     case Ensuring(_, post)               => Ensuring(body.getOrElse(NoTree(expr.getType)), post)
@@ -1890,7 +1986,8 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */
-  def withoutSpec(expr: Expr) = expr match {
+  def withoutSpec(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)                    => withoutSpec(b).map(Let(i, e, _))
     case Require(pre, b)                 => Option(b).filterNot(_.isInstanceOf[NoTree])
     case Ensuring(Require(pre, b), post) => Option(b).filterNot(_.isInstanceOf[NoTree])
     case Ensuring(b, post)               => Option(b).filterNot(_.isInstanceOf[NoTree])
@@ -1898,14 +1995,16 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
   }
 
   /** Returns the precondition of an expression wrapped in Option */
-  def preconditionOf(expr: Expr) = expr match {
+  def preconditionOf(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)                 => preconditionOf(b).map(Let(i, e, _).copiedFrom(expr))
     case Require(pre, _)              => Some(pre)
     case Ensuring(Require(pre, _), _) => Some(pre)
     case b                            => None
   }
 
   /** Returns the postcondition of an expression wrapped in Option */
-  def postconditionOf(expr: Expr) = expr match {
+  def postconditionOf(expr: Expr): Option[Expr] = expr match {
+    case Let(i, e, b)      => postconditionOf(b).map(Let(i, e, _).copiedFrom(expr))
     case Ensuring(_, post) => Some(post)
     case _                 => None
   }
@@ -2082,6 +2181,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       None
   }
 
+
   /** Collects from within an expression all conditions under which the evaluation of the expression
     * will not fail (e.g. by violating a function precondition or evaluating to an error).
     *
@@ -2096,7 +2196,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     val conds = collectWithPC {
 
       case m @ MatchExpr(scrut, cases) =>
-        (m, orJoin(cases map (matchCaseCondition(scrut, _))))
+        (m, orJoin(cases map (matchCaseCondition(scrut, _).toClause)))
 
       case e @ Error(_, _) =>
         (e, BooleanLiteral(false))
@@ -2116,11 +2216,12 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
 
     conds map {
       case ((e, cond), path) =>
-        (e, implies(path, cond))
+        (e, path implies cond)
     }
   }
 
-  def simpleCorrectnessCond(e: Expr, path: List[Expr], sf: SolverFactory[Solver]): Expr = {
+
+  def simpleCorrectnessCond(e: Expr, path: Path, sf: SolverFactory[Solver]): Expr = {
     simplifyPaths(sf, path)(
       andJoin( collectCorrectnessConditions(e) map { _._2 } )
     )
@@ -2138,9 +2239,18 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
     case _ =>
       fun
   }
+  
+  // Use this only to debug isValueOfType
+  private implicit class BooleanAdder(b: Boolean) {
+    @inline def <(msg: String) = {/*if(!b) println(msg); */b}
+  }
 
   /** Returns true if expr is a value of type t */
   def isValueOfType(e: Expr, t: TypeTree): Boolean = {
+    def unWrapSome(s: Expr) = s match {
+      case CaseClass(_, Seq(a)) => a
+      case _ => s
+    }
     (e, t) match {
       case (StringLiteral(_), StringType) => true
       case (IntLiteral(_), Int32Type) => true
@@ -2156,25 +2266,43 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
         tbase == base &&
         (elems forall isValue)
       case (FiniteMap(elems, tk, tv), MapType(from, to)) =>
-        tk == from && tv == to &&
-        (elems forall (kv => isValueOfType(kv._1, from) && isValueOfType(kv._2, to) ))
+        (tk == from) < s"$tk not equal to $from" && (tv == to) < s"$tv not equal to $to" &&
+        (elems forall (kv => isValueOfType(kv._1, from) < s"${kv._1} not a value of type ${from}" && isValueOfType(unWrapSome(kv._2), to) < s"${unWrapSome(kv._2)} not a value of type ${to}" ))
       case (NonemptyArray(elems, defaultValues), ArrayType(base)) =>
         elems.values forall (x => isValueOfType(x, base))
       case (EmptyArray(tpe), ArrayType(base)) =>
         tpe == base
-      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) =>
-        TypeOps.isSubtypeOf(ct, ct2) &&
+      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
+        TypeOps.isSubtypeOf(ct, ct2) < s"$ct not a subtype of $ct2" &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2) < s"${argstyped._1} not a value of type ${argstyped._2}" ))
+      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
+        (ct == ct2) <  s"$ct not equal to $ct2" &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
-      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) =>
-        ct == ct2 &&
-        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (FiniteLambda(mapping, default, tpe), exTpe@FunctionType(ins, out)) =>
+        variablesOf(e).isEmpty &&
+        tpe == exTpe
       case (Lambda(valdefs, body), FunctionType(ins, out)) =>
-        (valdefs zip ins forall (vdin => vdin._1.getType == vdin._2)) &&
-        body.getType == out
+        variablesOf(e).isEmpty &&
+        (valdefs zip ins forall (vdin => TypeOps.isSubtypeOf(vdin._2, vdin._1.getType) < s"${vdin._2} is not a subtype of ${vdin._1.getType}")) &&
+        (TypeOps.isSubtypeOf(body.getType, out)) < s"${body.getType} is not a subtype of ${out}"
+      case (FiniteBag(elements, fbtpe), BagType(tpe)) =>
+        fbtpe == tpe && elements.forall{ case (key, value) => isValueOfType(key, tpe) && isValueOfType(value, IntegerType) }
       case _ => false
     }
   }
-
+    
   /** Returns true if expr is a value. Stronger than isGround */
   val isValue = (e: Expr) => isValueOfType(e, e.getType)
+  
+  /** Returns a nested string explaining why this expression is typed the way it is.*/
+  def explainTyping(e: Expr): String = {
+    leon.purescala.ExprOps.fold[String]{ (e, se) => 
+      e match {
+        case FunctionInvocation(tfd, args) =>
+          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString + s" because ${tfd.fd.id.name} was instantiated with ${tfd.fd.tparams.zip(args).map(k => k._1 +":="+k._2).mkString(",")} with type ${tfd.fd.params.map(_.getType).mkString(",")} => ${tfd.fd.returnType}"
+        case e =>
+          s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString
+      }
+    }(e)
+  }
 }

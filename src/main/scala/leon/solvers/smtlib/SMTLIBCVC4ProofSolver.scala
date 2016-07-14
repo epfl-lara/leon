@@ -1,7 +1,8 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
-package solvers.smtlib
+package solvers
+package smtlib
 
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
@@ -9,7 +10,8 @@ import purescala.Expressions.Expr
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert}
 import _root_.smtlib.parser.Terms.{Exists => SMTExists}
 
-class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
+class SMTLIBCVC4ProofSolver(context: SolverContext, program: Program)
+  extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
   override def targetName = "cvc4-proof"
 

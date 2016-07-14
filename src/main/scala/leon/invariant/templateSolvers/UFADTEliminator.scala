@@ -78,7 +78,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       }
       // an weaker property whose equality is necessary for mayAlias
       val hashcode =
-        key match {
+        (key: @unchecked) match {
           case Left(TypedFunDef(fd, _))   => fd.id.hashCode()
           case Right(ct: CaseClassType)   => ct.classDef.id.hashCode()
           case Right(tp @ TupleType(tps)) => (tps.hashCode() << 3) ^ tp.dimension

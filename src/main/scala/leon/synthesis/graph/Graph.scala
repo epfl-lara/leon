@@ -29,8 +29,6 @@ sealed class Graph(problem: Problem) {
 
 sealed abstract class Node(val parent: Option[Node]) extends Printable {
 
-  def asString(implicit ctx: LeonContext): String
-
   var descendants: List[Node] = Nil
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
@@ -84,7 +82,7 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
 
     import hctx.reporter.info
 
-    val prefix = f"[${Option(ri.rule.asString).getOrElse("?")}%-20s]"
+    val prefix = f"[${Option(ri).map(_.asString).getOrElse("?")}%-20s]"
 
     info(pad(prefix, ri.problem.asString))
 

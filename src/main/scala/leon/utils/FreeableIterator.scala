@@ -4,6 +4,8 @@ package leon
 package utils
 
 abstract class FreeableIterator[T] extends Iterator[T] {
+  orig =>
+
   private[this] var nextElem: Option[T] = None
 
   def hasNext = {
@@ -20,8 +22,6 @@ abstract class FreeableIterator[T] extends Iterator[T] {
   def free()
 
   override def map[B](f: T => B): FreeableIterator[B] = {
-    val orig = this
-
     new FreeableIterator[B] {
       def computeNext() = orig.computeNext.map(f)
       def free() = orig.free()
@@ -29,10 +29,8 @@ abstract class FreeableIterator[T] extends Iterator[T] {
   }
 
   override def take(n: Int): FreeableIterator[T] = {
-    val orig = this
-
     new FreeableIterator[T] {
-      private var c = 0;
+      private var c = 0
 
       def computeNext() = {
         if (c < n) {
@@ -44,6 +42,13 @@ abstract class FreeableIterator[T] extends Iterator[T] {
       }
 
       def free() = orig.free()
+    }
+  }
+
+  override def takeWhile(p: T => Boolean) = {
+    new FreeableIterator[T] {
+      def computeNext(): Option[T] = orig.computeNext.filter(p)
+      def free(): Unit = orig.free()
     }
   }
 

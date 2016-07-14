@@ -22,14 +22,22 @@ object Expressions {
       p"old($id)"
     }
   }
+  case class OldThis(ct: ClassType) extends XLangExpr with Terminal with PrettyPrintable {
+    val getType = ct
+
+    def printWith(implicit pctx: PrinterContext): Unit = {
+      p"old(this)"
+    }
+  }
 
   case class Block(exprs: Seq[Expr], last: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
 
-    override def getPos = {
-      Position.between(exprs.head.getPos, last.getPos)
+    override def getPos = exprs.headOption match {
+      case Some(head) => Position.between(head.getPos, last.getPos)
+      case None => last.getPos
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -49,7 +57,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"$varId = $expr;"
+      p"$varId = $expr"
     }
   }
 
@@ -61,7 +69,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"${obj}.${varId} = ${expr};"
+      p"${obj}.${varId} = ${expr}"
     }
   }
 
@@ -100,7 +108,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"epsilon(x${getPos.line}_${getPos.col}. $pred)"
+      p"epsilon(x${getPos.line}_${getPos.col} => $pred)"
     }
 
     val getType = tpe

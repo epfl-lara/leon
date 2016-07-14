@@ -13,11 +13,11 @@ import TypeOps._
 object Definitions {
 
   sealed abstract class Definition extends Tree {
-
+    
     val id: Identifier
 
     def subDefinitions: Seq[Definition] // The enclosed scopes/definitions by this definition
-
+  
     def containsDef(df: Definition): Boolean = {
       subDefinitions.exists { sd =>
         sd == df || sd.containsDef(df)
@@ -40,7 +40,7 @@ object Definitions {
     }
   }
 
-  /**
+  /** 
    *  A ValDef declares a new identifier to be of a certain type.
    *  The optional tpe, if present, overrides the type of the underlying Identifier id
    *  This is useful to instantiate argument types of polymorphic functions
@@ -88,7 +88,7 @@ object Definitions {
 
     def lookupAll(name: String)  = DefOps.searchWithin(name, this)
     def lookup(name: String)     = lookupAll(name).headOption
-
+    
     def lookupCaseClass(name: String) = lookupAll(name).collect{ case c: CaseClassDef => c }.headOption
     def lookupAbstractClass(name: String) = lookupAll(name).collect{ case c: AbstractClassDef => c }.headOption
     def lookupFunDef(name: String) = lookupAll(name).collect{ case c: FunDef => c }.headOption
@@ -103,9 +103,9 @@ object Definitions {
     def freshen = TypeParameterDef(tp.freshen)
     val id = tp.id
   }
-
+ 
   /** A package as a path of names */
-  type PackageRef = List[String]
+  type PackageRef = List[String] 
 
   case class Import(path: List[String], isWild: Boolean) extends Tree {
     def importedDefs(in: UnitDef)(implicit pgm: Program): Seq[Definition] = {
@@ -133,9 +133,9 @@ object Definitions {
     defs: Seq[Definition],
     isMainUnit: Boolean
   ) extends Definition {
-
+     
     def subDefinitions = defs
-
+    
     def definedFunctions = defs.flatMap{
       case m: ModuleDef => m.definedFunctions
       case _ => Nil
@@ -166,17 +166,17 @@ object Definitions {
       case md: ModuleDef => md
     }
   }
-
+  
   object UnitDef {
-    def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef =
+    def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef = 
       UnitDef(id, Nil, Nil, modules, true)
   }
-
+  
   /** Corresponds to an '''object''' in scala. Contains [[FunDef]]s, [[ClassDef]]s and [[ValDef]]s. */
   case class ModuleDef(id: Identifier, defs: Seq[Definition], isPackageObject: Boolean) extends Definition {
-
+    
     def subDefinitions = defs
-
+    
     lazy val definedFunctions : Seq[FunDef] = defs.collect { case fd: FunDef => fd }
 
     lazy val definedClasses : Seq[ClassDef] = defs.collect { case ctd: ClassDef => ctd }
@@ -186,11 +186,11 @@ object Definitions {
     }
 
     lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = defs.collect {
-      case c@CaseClassDef(_, _, Some(p), _) => c
+      case c : CaseClassDef if c.parent.isDefined => c
     }.groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
-      case c @ CaseClassDef(_, _, None, _) => c
+      case c : CaseClassDef if !c.parent.isDefined => c
     }
   }
 
@@ -229,14 +229,14 @@ object Definitions {
   // Is private
   case object IsPrivate extends FunctionFlag with ClassFlag
   // Is an ADT invariant method
-  case object IsADTInvariant extends FunctionFlag with ClassFlag
+  case object IsADTInvariant extends FunctionFlag
   case object IsInner extends FunctionFlag
 
   /** Represents a class definition (either an abstract- or a case-class) */
   sealed trait ClassDef extends Definition {
     self =>
 
-    def subDefinitions = fields ++ methods ++ tparams
+    def subDefinitions = fields ++ methods ++ tparams 
 
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
@@ -282,12 +282,13 @@ object Definitions {
 
     private var _invariant: Option[FunDef] = None
 
-    def invariant = _invariant
-    def hasInvariant = flags contains IsADTInvariant
-    def setInvariant(fd: FunDef): Unit = {
-      addFlag(IsADTInvariant)
-      _invariant = Some(fd)
+    def invariant: Option[FunDef] = parent.flatMap(_.classDef.invariant).orElse(_invariant)
+    def setInvariant(fd: FunDef): Unit = parent match {
+      case Some(act) => act.classDef.setInvariant(fd)
+      case None => _invariant = Some(fd)
     }
+
+    def hasInvariant: Boolean = invariant.isDefined || (this +: root.knownDescendants).exists(cd => cd.methods.exists(_.isInvariant))
 
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
@@ -333,19 +334,21 @@ object Definitions {
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
 
+    def typeArgs = tparams map (_.tp)
+
     def typed(tps: Seq[TypeTree]): ClassType
     def typed: ClassType
   }
 
   /** Abstract classes. */
-  case class AbstractClassDef(id: Identifier,
-                              tparams: Seq[TypeParameterDef],
-                              parent: Option[AbstractClassType]) extends ClassDef {
+  class AbstractClassDef(val id: Identifier,
+                         val tparams: Seq[TypeParameterDef],
+                         val parent: Option[AbstractClassType]) extends ClassDef {
 
     val fields = Nil
     val isAbstract   = true
     val isCaseObject = false
-
+    
     lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
 
     def typed(tps: Seq[TypeTree]) = {
@@ -353,7 +356,7 @@ object Definitions {
       AbstractClassType(this, tps)
     }
     def typed: AbstractClassType = typed(tparams.map(_.tp))
-
+    
     /** Duplication of this [[CaseClassDef]].
       * @note This will not add known case class children
       */
@@ -364,16 +367,17 @@ object Definitions {
     ): AbstractClassDef = {
       val acd = new AbstractClassDef(id, tparams, parent)
       acd.addFlags(this.flags)
-      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(acd)))
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => acd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(acd))
       acd.copiedFrom(this)
     }
   }
 
   /** Case classes/ case objects. */
-  case class CaseClassDef(id: Identifier,
-                          tparams: Seq[TypeParameterDef],
-                          parent: Option[AbstractClassType],
-                          isCaseObject: Boolean) extends ClassDef {
+  class CaseClassDef(val id: Identifier,
+                     val tparams: Seq[TypeParameterDef],
+                     val parent: Option[AbstractClassType],
+                     val isCaseObject: Boolean) extends ClassDef {
 
     private var _fields = Seq[ValDef]()
 
@@ -398,12 +402,12 @@ object Definitions {
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
 
+    def typed: CaseClassType = typed(tparams.map(_.tp))
     def typed(tps: Seq[TypeTree]): CaseClassType = {
       require(tps.length == tparams.length)
       CaseClassType(this, tps)
     }
-    def typed: CaseClassType = typed(tparams.map(_.tp))
-
+    
     /** Duplication of this [[CaseClassDef]].
       * @note This will not replace recursive [[CaseClassDef]] calls in [[fields]] nor the parent abstract class types
       */
@@ -417,9 +421,9 @@ object Definitions {
       val cd = new CaseClassDef(id, tparams, parent, isCaseObject)
       cd.setFields(fields)
       cd.addFlags(this.flags)
+      if (!parent.exists(_.classDef.hasInvariant)) invariant.foreach(inv => cd.setInvariant(inv))
+      parent.foreach(_.classDef.registerChild(cd))
       cd.copiedFrom(this)
-      parent.foreach(_.classDef.ancestors.foreach(_.registerChild(cd)))
-      cd
     }
   }
 
@@ -444,9 +448,9 @@ object Definitions {
   ) extends Definition {
 
     /* Body manipulation */
-
+    
     var fullBody: Expr = NoTree(returnType)
-
+    
     def body: Option[Expr] = withoutSpec(fullBody)
     def body_=(b: Option[Expr]) = {
       fullBody = withBody(fullBody, b)
@@ -456,11 +460,14 @@ object Definitions {
     def precondition_=(oe: Option[Expr]) = {
       fullBody = withPrecondition(fullBody, oe)
     }
+    def precondition_=(p: Path) = {
+      fullBody = withPath(fullBody, p)
+    }
     def precOrTrue = precondition getOrElse BooleanLiteral(true)
 
     def postcondition = postconditionOf(fullBody)
     def postcondition_=(op: Option[Expr]) = {
-      fullBody = withPostcondition(fullBody, op)
+      fullBody = withPostcondition(fullBody, op) 
     }
     def postOrTrue = postcondition getOrElse {
       val arg = ValDef(FreshIdentifier("res", returnType, alwaysShowUniqueID = true))
@@ -470,7 +477,7 @@ object Definitions {
     def hasBody          = body.isDefined
     def hasPrecondition  = precondition.isDefined
     def hasPostcondition = postcondition.isDefined
-
+    
     /* Nested definitions */
     def directlyNestedFuns = directlyNestedFunDefs(fullBody)
     def subDefinitions = params ++ tparams ++ directlyNestedFuns.toList
@@ -517,7 +524,7 @@ object Definitions {
     def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
     /* Wrapping in TypedFunDef */
-
+    
     def typed(tps: Seq[TypeTree]): TypedFunDef = {
       assert(tps.size == tparams.size)
       TypedFunDef(this, tps)
@@ -533,9 +540,12 @@ object Definitions {
 
     def paramIds = params map { _.id }
 
+    def typeArgs = tparams map (_.tp)
+
     def applied(args: Seq[Expr]): FunctionInvocation = Constructors.functionInvocation(this, args)
     def applied = FunctionInvocation(this.typed, this.paramIds map Variable)
   }
+
 
   // Wrapper for typing function according to valuations for type parameters
   case class TypedFunDef(fd: FunDef, tps: Seq[TypeTree]) extends Tree {
@@ -549,8 +559,8 @@ object Definitions {
       }
     }
 
-    private lazy val typesMap: Map[TypeParameterDef, TypeTree] = {
-      (fd.tparams zip tps).toMap.filter(tt => tt._1.tp != tt._2)
+    private lazy val typesMap: Map[TypeParameter, TypeTree] = {
+      (fd.typeArgs zip tps).toMap.filter(tt => tt._1 != tt._2)
     }
 
     def translated(t: TypeTree): TypeTree = instantiateType(t, typesMap)
@@ -582,9 +592,9 @@ object Definitions {
     def applied: FunctionInvocation =
       applied(params map { _.toVariable })
 
-    /**
+    /** 
      *  Params will return ValDefs instantiated with the correct types
-     *  For such a ValDef(id,tp) it may hold that (id.getType != tp)
+     *  For such a ValDef(id,tp) it may hold that (id.getType != tp)  
      */
     lazy val (params: Seq[ValDef], paramsMap: Map[Identifier, Identifier]) = {
       if (typesMap.isEmpty) {

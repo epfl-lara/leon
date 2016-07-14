@@ -8,15 +8,17 @@ import synthesis.Solution
 import evaluators.DefaultEvaluator
 import purescala.Expressions._
 import purescala.ExprOps
-import purescala.Types.{StringType, TypeTree}
+import purescala.Types._
 import purescala.Common.Identifier
-import purescala.Definitions.Program
+import purescala.Definitions.{FunDef, Program}
 import purescala.DefOps
 import grammars._
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import evaluators.AbstractEvaluator
 import scala.annotation.tailrec
+import leon.evaluators.EvaluationResults
+import leon.purescala.Common
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -81,74 +83,27 @@ object QuestionBuilder {
       case _ => ValueGrammar.computeProductions(t)
     }
   }
-}
-
-/**
- * Builds a set of disambiguating questions for the problem
- * 
- * {{{
- * def f(input: input.getType): T =
- *   [element of r.solution]
- * }}}
- * 
- * @tparam T A subtype of Expr that will be the type used in the Question[T] results.
- * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
- * @param filter A function filtering which outputs should be considered for comparison.
- *               It takes as input the sequence of outputs already considered for comparison, and the new output.
- *               It should return Some(result) if the result can be shown, and None else.
- * 
- */
-class QuestionBuilder[T <: Expr](
-    input: Seq[Identifier],
-    solutions: Stream[Solution],
-    filter: (Seq[T], Expr) => Option[T])(implicit c: LeonContext, p: Program) {
-  import QuestionBuilder._
-  private var _argTypes = input.map(_.getType)
-  private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
-  private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
-  private var solutionsToTake = 30
-  private var expressionsToTake = 30
-  private var keepEmptyAlternativeQuestions: T => Boolean = Set()
-  private var value_enumerator: ExpressionGrammar = ValueGrammar
-
-  /** Sets the way to sort questions. See [[QuestionSortingType]] */
-  def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
-  /** Sets the way to sort alternatives. See [[AlternativeSortingType]] */
-  def setSortAlternativesBy(alternativeSortMethod: AlternativeSortingType[T]) = { _alternativeSortMethod = alternativeSortMethod; this }
-  /** Sets the argument type. Not needed if the input identifier is already assigned a type. */
-  def setArgumentType(argTypes: List[TypeTree]) = { _argTypes = argTypes; this }
-  /** Sets the number of solutions to consider. Default is 15 */
-  def setSolutionsToTake(n: Int) = { solutionsToTake = n; this }
-  /** Sets the number of expressions to consider. Default is 15 */
-  def setExpressionsToTake(n: Int) = { expressionsToTake = n; this }
-  /** Sets if when there is no alternative, the question should be kept. */
-  def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
-  /** Sets the way to enumerate expressions */
-  def setValueEnumerator(v: ExpressionGrammar) = value_enumerator = v
   
-  private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
-    val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-    val e = new AbstractEvaluator(c, newProgram)
-    val model = new ModelBuilder
-    model ++= elems
-    val modelResult = model.result()
-    for{x <- e.eval(s.term, modelResult).result
-        res = x._1
-        simp = ExprOps.simplifyArithmetic(res)}
-      yield simp
-  }
-  
-  /** Make all generic values unique.
+  /** Make all generic values uniquely identifiable among the final string (no value is a substring of another if possible)
     * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
   def makeGenericValuesUnique(a: Expr): Expr = {
-    var genVals = Set[Expr with Terminal]()
+    //println("Going to make this value unique:" + a)
+    var genVals = Set[Expr with Terminal](StringLiteral(""))
     def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
       case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
       case StringLiteral(s) =>
-        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val newS = if(s == "") "a" else s
+        val i = s.lastIndexWhere { c => c < 'a' || c > 'z' }
         val prefix = s.take(i+1)
         val suffix = s.drop(i+1)
-        Some(StringLiteral(prefix + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+        val res = if(suffix.forall { _ == 'z' }) {
+          prefix + "a" + ("a" * suffix.length)
+        } else {
+          val last = suffix.reverse.prefixLength { _ == 'z' }
+          val digit2increase = suffix(suffix.length - last - 1)
+          prefix + (digit2increase.toInt + 1).toChar + ("a" * last)
+        }
+        Some(StringLiteral(res))
       case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
       case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
       case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
@@ -172,40 +127,130 @@ class QuestionBuilder[T <: Expr](
     }}(a)
   }
   
-  /** Returns a list of input/output questions to ask to the user. */
-  def result(): List[Question[T]] = {
-    if(solutions.isEmpty) return Nil
+}
 
+/**
+ * Builds a set of disambiguating questions for the problem
+ * 
+ * {{{
+ * def f(input: input.getType): T =
+ *   [element of r.solution]
+ * }}}
+ * 
+ * @tparam T A subtype of Expr that will be the type used in the Question[T] results.
+ * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
+ * @param filter A function filtering which outputs should be considered for comparison.
+ *               It takes as input the sequence of outputs already considered for comparison, and the new output.
+ *               It should return Some(result) if the result can be shown, and None else.
+ * 
+ */
+class QuestionBuilder[T <: Expr](
+    input: Seq[Identifier],
+    solutions: Stream[Solution],
+    filter: (Seq[T], Expr) => Option[T],
+    originalFun: Option[FunDef] = None)(implicit c: LeonContext, p: Program) {
+  import QuestionBuilder._
+  private var _argTypes = input.map(_.getType)
+  private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
+  private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
+  private var solutionsToTake = 15
+  private var expressionsToTake = 15 // TODO: At least cover the program !
+  private var keepEmptyAlternativeQuestions: T => Boolean = Set()
+  private var value_enumerator: ExpressionGrammar = ValueGrammar
+  private var expressionsToTestFirst: Option[Stream[Seq[Expr]]] = None
+
+  /** Sets the way to sort questions during enumeration. Not used at this moment. See [[QuestionSortingType]] */
+  def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
+  /** Sets the way to sort alternatives. See [[AlternativeSortingType]] */
+  def setSortAlternativesBy(alternativeSortMethod: AlternativeSortingType[T]) = { _alternativeSortMethod = alternativeSortMethod; this }
+  /** Sets the argument type. Not needed if the input identifier is already assigned a type. */
+  def setArgumentType(argTypes: List[TypeTree]) = { _argTypes = argTypes; this }
+  /** Sets the number of solutions to consider. Default is 15 */
+  def setSolutionsToTake(n: Int) = { solutionsToTake = n; this }
+  /** Sets the number of expressions to consider. Default is 15 */
+  def setExpressionsToTake(n: Int) = { expressionsToTake = n; this }
+  /** Sets if when there is no alternative, the question should be kept. */
+  def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
+  /** Sets the way to enumerate expressions */
+  def setValueEnumerator(v: ExpressionGrammar) = value_enumerator = v
+  /** Sets the expressions to test first */
+  def setExpressionsToTestFirst(s: Option[Stream[Seq[Expr]]]) = expressionsToTestFirst = s
+  
+  private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
+    val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
+    s.ifOnFunDef(originalFun.getOrElse(new FunDef(Common.FreshIdentifier("useless"), Nil, Nil, UnitType))){
+      val e = new AbstractEvaluator(c, newProgram)
+      val model = new ModelBuilder
+      model ++= elems
+      val modelResult = model.result()
+      val evaluation = e.eval(s.term, modelResult)
+      for{x <- evaluation.result
+          res = x._1
+          simp = ExprOps.simplifyArithmetic(res)}
+        yield simp
+    }
+  }
+  
+  /** Given an input, the current output, a list of alternative programs, compute a question if there is any. */
+  def computeQuestion(possibleInput: Seq[(Identifier, Expr)], currentOutput: T, alternatives: List[Solution]): Option[Question[T]] = {
+    val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
+      run(alternative, possibleInput) match {
+        case Some(alternative_output) if alternative_output != currentOutput =>
+          filter(prev, alternative_output) match {
+            case Some(alternative_output_filtered) =>
+              prev += alternative_output_filtered
+            case _ => prev
+          }
+        case _ => prev
+      }
+    }.drop(1).toList.distinct
+    if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
+      Some(Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0)))
+    } else {
+      None
+    }
+  }
+  
+  def getExpressionsToTestFirst(): Option[Stream[Seq[(Identifier, Expr)]]] = expressionsToTestFirst map { inputs =>
+    val inputs_generics = inputs.map(y => y.map(x => makeGenericValuesUnique(x)))
+    inputs_generics.map(in => input zip in)
+  }
+  
+  def getAllPossibleInputs(expressionsToTake: Int): Stream[Seq[(Identifier, Expr)]]= {
     val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
     val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake)
     .map(inputs =>
       inputs.map(id_expr =>
-        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toList
-
+        (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toStream
+    enumerated_inputs
+  }
+  
+  def inputsToQuestions(solution: Stream[Solution], inputs: Stream[Seq[(Identifier, Expr)]]): Stream[Question[T]] = {
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
-    val questions = ListBuffer[Question[T]]()
     for {
-      possibleInput            <- enumerated_inputs
+      possibleInput            <- inputs
       currentOutputNonFiltered <- run(solution, possibleInput)
       currentOutput            <- filter(Seq(), currentOutputNonFiltered)
-    } {
-      
-      val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
-        run(alternative, possibleInput) match {
-          case Some(alternative_output) if alternative_output != currentOutput =>
-            filter(prev, alternative_output) match {
-              case Some(alternative_output_filtered) =>
-                prev += alternative_output_filtered
-              case _ => prev
-            }
-          case _ => prev
-        }
-      }.drop(1).toList.distinct
-      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
-        questions += Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
-      }
-    }
-    questions.toList.sortBy(_questionSorMethod(_))
+      question <- computeQuestion(possibleInput, currentOutput, alternatives)
+    } yield question
   }
+  
+  /** Returns a list of input/output questions to ask to the user. */
+  def resultAsStream(): Stream[Question[T]] = {
+    if(solutions.isEmpty) return Stream.empty
+
+    getExpressionsToTestFirst() foreach  { inputs_generics =>
+      val res = inputsToQuestions(solutions, inputs_generics)
+      if(res.nonEmpty) return res
+    }
+    
+    val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
+    val questions = inputsToQuestions(solutions, enumerated_inputs)
+    questions
+  }/*
+  
+  def result(): List[Question[T]] = {
+    resultAsStream().toList.sortBy(_questionSorMethod(_))
+  }*/
 }

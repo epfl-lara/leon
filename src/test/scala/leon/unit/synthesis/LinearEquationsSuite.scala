@@ -201,7 +201,8 @@ class LinearEquationsSuite extends LeonTestSuite with helpers.WithLikelyEq with 
   }
 
   //TODO: automatic check result
-  test("elimVariable") { implicit ctx =>
+  //      and make faster to have into unit tests
+  ignore("elimVariable") { implicit ctx =>
     val as = Set[Identifier](aa.id, bb.id)
 
     val evaluator = new DefaultEvaluator(ctx, Program.empty)

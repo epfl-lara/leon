@@ -6,7 +6,7 @@ package purescala
 import Definitions._
 import Expressions._
 import ExprOps.replaceFromIDs
-import DefOps.replaceFunDefs
+import DefOps._
 import Types._
 
 object RestoreMethods extends TransformationPhase {
@@ -57,7 +57,7 @@ object RestoreMethods extends TransformationPhase {
       })
     })
 
-    val (np2, _) = replaceFunDefs(np)(fd => None, { (fi, fd) =>
+    val np2 = transformProgram(funDefReplacer(fd => None, { (fi, fd) =>
       fdToMd.get(fi.tfd.fd) match {
         case Some(md) =>
           Some(MethodInvocation(
@@ -69,7 +69,7 @@ object RestoreMethods extends TransformationPhase {
         case None =>
           None
       }
-    })
+    }), np)
 
     np2
 

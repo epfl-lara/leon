@@ -56,11 +56,11 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
         if(normalizedEq.size == 1) {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
-          val newProblem = Problem(problem.as, problem.ws, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
+          val newProblem = Problem(problem.as, problem.ws, problem.pc withCond eqPre, andJoin(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
-            case List(s @ Solution(pre, defs, term)) =>
-              Some(Solution(and(eqPre, pre), defs, term, s.isTrusted))
+            case List(s @ Solution(pre, defs, term, isTrusted)) =>
+              Some(Solution(and(eqPre, pre), defs, term, isTrusted))
             case _ =>
               None
           }
@@ -80,7 +80,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           var freshInputVariables: List[Identifier] = Nil
           var equivalenceConstraints: Map[Expr, Expr] = Map()
           val freshFormula = simplePreTransform({
-            case d@Division(_, _) => {
+            case d @ Division(_, _) => {
               assert(variablesOf(d).intersect(problem.xs.toSet).isEmpty)
               val newVar = FreshIdentifier("d", Int32Type, true) 
               freshInputVariables ::= newVar
@@ -93,17 +93,24 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, and(eqPre, problem.pc), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, problem.pc withCond eqPre, freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
-            case List(s @ Solution(pre, defs, term)) => {
+            case List(s @ Solution(pre, defs, term, isTrusted)) => {
               val freshPre = replace(equivalenceConstraints, pre)
               val freshTerm = replace(equivalenceConstraints, term)
               val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name, id.getType))
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(letTuple(subproblemxs, freshTerm, replace(id2res, tupleWrap(problem.xs.map(Variable)))))), s.isTrusted))
+              Some(Solution(
+                and(eqPre, freshPre),
+                defs,
+                simplifyArithmetic(simplifyLets(
+                  letTuple(subproblemxs, freshTerm, replace(id2res, tupleWrap(problem.xs.map(Variable))))
+                )),
+                isTrusted
+              ))
             }
 
             case _ =>
@@ -113,7 +120,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
           if (subproblemxs.isEmpty) {
             // we directly solve
-            List(solve(onSuccess(List(Solution(and(eqPre, problem.pc), Set(), UnitLiteral()))).get))
+            List(solve(onSuccess(List(Solution((problem.pc withCond eqPre).toClause, Set(), UnitLiteral()))).get))
           } else {
             List(decomp(List(newProblem), onSuccess, this.name))
           }

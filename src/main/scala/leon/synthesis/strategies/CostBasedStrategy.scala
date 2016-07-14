@@ -16,25 +16,29 @@ class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
   }
 
   def computeBestSolutionFor(n: Node): Option[Solution] = {
-    val res = if (n.isSolved) {
-      Some(n.generateSolutions().head)
+    def noExtraCost(os: Option[Solution]) = {
+      os.map(s => (s, Cost(0)))
+    }
+
+    val res: Option[(Solution, Cost)] = if (n.isSolved) {
+      noExtraCost(n.generateSolutions().headOption)
     } else if (n.isDeadEnd) {
       None
     } else if (!n.isExpanded) {
       n match {
         case an: AndNode =>
           an.ri.onSuccess match {
-            case SolutionBuilderCloser(_) =>
-              Some(Solution.simplest(an.p.outType))
+            case SolutionBuilderCloser(_, cost) =>
+              Some((Solution.simplest(an.p.outType), cost))
 
             case SolutionBuilderDecomp(types, recomp) =>
-              recomp(types.toList.map(Solution.simplest))
+              noExtraCost(recomp(types.toList.map(Solution.simplest)))
           }
         case on: OrNode =>
-          Some(Solution.simplest(n.p.outType))
+          noExtraCost(Some(Solution.simplest(n.p.outType)))
       }
     } else {
-      n match {
+      noExtraCost(n match {
         case an: AndNode =>
           val subs = an.descendants.map(bestSolutionFor)
 
@@ -47,13 +51,17 @@ class CostBasedStrategy(ctx: LeonContext, cm: CostModel) extends Strategy {
           on.descendants.foreach(bestSolutionFor)
 
           bestSolutionFor(on.descendants.minBy(bestCosts))
-      }
+      })
     }
 
-    bestSols += n -> res
-    bestCosts += n -> res.map(cm.solution _).getOrElse(cm.impossible)
+    val osol = res.map(_._1)
 
-    res
+    bestSols += n -> osol
+    bestCosts += n -> res.map {
+      case (sol, extraCost) => cm.solution(sol) + extraCost
+    }.getOrElse(cm.impossible)
+
+    osol
   }
 
   def bestAlternative(on: OrNode): Option[Node] = {

@@ -67,18 +67,21 @@ class ADTManager(ctx: LeonContext) {
     }
   }
 
-  def forEachType(t: TypeTree)(f: TypeTree => Unit): Unit = t match {
+  def forEachType(t: TypeTree, alreadyDone: Set[TypeTree] = Set())(f: TypeTree => Unit): Unit = if(!alreadyDone(t)) {
+    t match {
     case NAryType(tps, builder) =>
       f(t)
+      val alreadyDone2 = alreadyDone + t
       // note: each of the tps could be abstract classes in which case we need to
       // lock their dependencies, transitively.
       tps.foreach {
         case ct: ClassType =>
           val (root, sub) = getHierarchy(ct)
-          (root +: sub).flatMap(_.fields.map(_.getType)).foreach(subt => forEachType(subt)(f))
+          (root +: sub).flatMap(_.fields.map(_.getType)).foreach(subt => forEachType(subt, alreadyDone2)(f))
         case othert =>
-          forEachType(othert)(f)
+          forEachType(othert, alreadyDone2)(f)
       }
+    }
   }
 
   protected def findDependencies(t: TypeTree): Unit = t match {
@@ -124,24 +127,18 @@ class ADTManager(ctx: LeonContext) {
 
     case UnitType =>
       if (!(discovered contains t) && !(defined contains t)) {
-
-        val sym = freshId("Unit")
-
-        discovered += (t -> DataType(sym, Seq(Constructor(freshId(sym.name), t, Nil))))
+        discovered += (t -> DataType(freshId("Unit"), Seq(Constructor(freshId("Unit"), t, Nil))))
       }
 
-    case at @ ArrayType(base) =>
+    case tp @ TypeParameter(id) =>
       if (!(discovered contains t) && !(defined contains t)) {
-        val sym = freshId("array")
+        val sym = freshId(id.name)
 
-        val c = Constructor(freshId(sym.name), at, List(
-          (freshId("size"), Int32Type),
-          (freshId("content"), RawArrayType(Int32Type, base))
+        val c = Constructor(freshId(sym.name), tp, List(
+          (freshId("val"), IntegerType)
         ))
 
-        discovered += (at -> DataType(sym, Seq(c)))
-
-        findDependencies(base)
+        discovered += (tp -> DataType(sym, Seq(c)))
       }
 
     case _ =>

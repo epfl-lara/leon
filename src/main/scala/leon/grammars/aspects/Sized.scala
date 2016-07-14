@@ -4,18 +4,15 @@ package leon
 package grammars
 package aspects
 
-import purescala.Expressions.Expr
 import utils.SeqUtils._
 
 /**
  * Attach sizes to labels and transmit them down accordingly
  */
-case class Sized(size: Int) extends Aspect {
+case class Sized(size: Int, optimizeCommut: Boolean) extends Aspect {
   def asString(implicit ctx: LeonContext) = "|"+size+"|"
 
-  def applyTo(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
-    val optimizeCommut = true
-
+  def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     ps.flatMap { p =>
       if (size <= 0) {
         Nil
@@ -34,7 +31,7 @@ case class Sized(size: Int) extends Aspect {
 
         for (ss <- sizes) yield {
           val newSubTrees = (p.subTrees zip ss).map {
-            case (lab, s) => lab.withAspect(Sized(s))
+            case (lab, s) => lab.withAspect(Sized(s, optimizeCommut))
           }
 
           ProductionRule(newSubTrees, p.builder, p.tag, p.cost)

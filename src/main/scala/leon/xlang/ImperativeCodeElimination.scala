@@ -25,7 +25,23 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
     } {
       val (res, scope, _) = toFunction(body)(State(fd, Set(), Map()))
       fd.body = Some(scope(res))
+
     }
+
+    //probably not the cleanest way to do it, but if somehow we still have Old
+    //expressions at that point, they can be safely removed as the object is
+    //equals to its original value
+    for {
+      fd <- pgm.definedFunctions
+    } {
+      fd.postcondition = fd.postcondition.map(post => {
+        preMap{
+          case Old(v) => Some(v.toVariable)
+          case _ => None
+        }(post)
+      })
+    }
+
   }
 
   /* varsInScope refers to variable declared in the same level scope.
@@ -129,7 +145,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
  
       case wh@While(cond, body) =>
-        val whileFunDef = new FunDef(parent.id.freshen, Nil, Nil, UnitType).setPos(wh)
+        val whileFunDef = new FunDef(parent.id.duplicate(name = (parent.id.name + "While")), Nil, Nil, UnitType).setPos(wh)
         whileFunDef.addFlag(IsLoop(parent))
         whileFunDef.body = Some(
           IfExpr(cond, 
@@ -303,6 +319,11 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
             case None => fdWithoutSideEffects
           }
         }
+
+      //TODO: handle vars in scope, just like LetDef
+      case ld@Lambda(params, body) =>
+        val (bodyVal, bodyScope, bodyFun) = toFunction(body)
+        (Lambda(params, bodyScope(bodyVal)).copiedFrom(ld), (e: Expr) => e, Map())
 
       case c @ Choose(b) =>
         //Recall that Choose cannot mutate variables from the scope

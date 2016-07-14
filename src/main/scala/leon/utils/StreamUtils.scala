@@ -36,10 +36,10 @@ object StreamUtils {
   }
 
   private def reverseCantorPair(z: Int): (Int, Int) = {
-      val t = Math.floor((-1.0f + Math.sqrt(1.0f + 8.0f * z))/2.0f).toInt;
-      val x = t * (t + 3) / 2 - z;
-      val y = z - t * (t + 1) / 2;
-      (x, y)
+    val t = Math.floor((-1.0f + Math.sqrt(1.0f + 8.0f * z))/2.0f).toInt
+    val x = t * (t + 3) / 2 - z
+    val y = z - t * (t + 1) / 2
+    (x, y)
   }
   
   /** Combines two streams into one using cantor's unpairing function.
@@ -111,12 +111,16 @@ object StreamUtils {
       if(continue) Some(tuple.reverse) else None
     }
   }
+  
+  def cartesianMap[K, T](arg: Map[K, Stream[T]]): Stream[Map[K, T]] = {
+    val (k, v) = arg.toSeq.unzip
+    cartesianProduct(v).map(k.zip(_).toMap)
+  }
 
   private def diagCount(dim : Int) : Stream[List[Int]] = diag0(dim, 0)
   private def diag0(dim : Int, nextSum : Int) : Stream[List[Int]] = summingTo(nextSum, dim).append(diag0(dim, nextSum + 1))
 
   private def summingTo(sum : Int, n : Int) : Stream[List[Int]] = {
-    // assert(sum >= 0)
     if(sum < 0) {
       Stream.empty
     } else if(n == 1) {

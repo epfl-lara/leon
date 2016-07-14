@@ -19,8 +19,6 @@ object GlobalOptions extends LeonComponent {
 
   val optBenchmark    = LeonFlagOptionDef("benchmark", "Dump benchmarking information in a data file", false)
 
-  val optXLang = LeonFlagOptionDef("xlang", "Support for extra program constructs (imperative,...)", false)
-
   val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
 
   val optSilent = LeonFlagOptionDef("silent", "Do not display progress messages or  results to the console", false)
@@ -75,7 +73,6 @@ object GlobalOptions extends LeonComponent {
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optStrictPhases,
     optBenchmark,
-    optXLang,
     optFunctions,
     optSelectedSolvers,
     optDebug,

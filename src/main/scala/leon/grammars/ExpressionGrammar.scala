@@ -4,23 +4,21 @@ package leon
 package grammars
 
 import purescala.Expressions._
-import purescala.Types._
 import purescala.Common._
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-/** Represents a context-free grammar of expressions
-  */
+/** Represents a context-free grammar of expressions */
 abstract class ExpressionGrammar {
 
   private[this] val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
 
   /** The list of production rules for this grammar for a given nonterminal.
-    * This is the cached version of [[getProductions]] which clients should use.
     *
     * @param lab The nonterminal for which production rules will be generated
+    * @note This is the cached version of [[computeProductions]]. Clients should use this method.
     */
-  def getProductions(lab: Label)(implicit ctx: LeonContext) = {
+  final def getProductions(lab: Label)(implicit ctx: LeonContext) = {
     cache.getOrElse(lab, {
       val res = applyAspects(lab, computeProductions(lab))
       cache += lab -> res
@@ -28,19 +26,20 @@ abstract class ExpressionGrammar {
     })
   }
 
-  /** The list of production rules for this grammar for a given nonterminal
+  /** The list of production rules for this grammar for a given nonterminal.
     *
     * @param lab The nonterminal for which production rules will be generated
+    * @note Clients should use the cached version, [[getProductions]] instead
     */
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
 
-
-  def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
+  protected def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
     lab.aspects.foldLeft(ps) {
       case (ps, a) => a.applyTo(lab, ps)
     }
   }
 
+  /** Returns the union of two generators. */
   final def ||(that: ExpressionGrammar): ExpressionGrammar = {
     Union(Seq(this, that))
   }
@@ -50,8 +49,8 @@ abstract class ExpressionGrammar {
       val l1 = lp1._1
       val l2 = lp2._1
 
-      val os1 = l1.aspects.collectFirst { case aspects.Sized(size) => size }
-      val os2 = l2.aspects.collectFirst { case aspects.Sized(size) => size }
+      val os1 = l1.aspects.collectFirst { case aspects.Sized(size, _) => size }
+      val os2 = l2.aspects.collectFirst { case aspects.Sized(size, _) => size }
 
       (os1, os2) match {
         case (Some(s1), Some(s2)) =>
@@ -66,7 +65,6 @@ abstract class ExpressionGrammar {
       }
     }
 
-
     for ((lab, gs) <- cache.toSeq.sortWith(sorter)) {
       val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
 
@@ -74,14 +72,14 @@ abstract class ExpressionGrammar {
         printer(s"${lhs}ε")
       } else {
         val rhs = for (g <- gs) yield {
-          val subs = g.subTrees.map { t =>
-            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
-          }
+        val subs = g.subTrees.map { t =>
+          FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+        }
 
           g.builder(subs).asString
-        }
-        printer(lhs + rhs.mkString("\n" + " " * 55))
       }
+        printer(lhs + rhs.mkString("\n" + " " * 55))
     }
+  }
   }
 }

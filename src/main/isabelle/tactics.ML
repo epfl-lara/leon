@@ -31,8 +31,8 @@ fun equiv_tac rule ctxt =
           |> Syntax.check_term ctxt
           |> Thm.cterm_of ctxt
 
-        val insts = [(Thm.cterm_of ctxt p, p_inst)]
-        val rule = Drule.cterm_instantiate insts rule
+        val insts = [(fst (dest_Var p), p_inst)]
+        val rule = Drule.infer_instantiate ctxt insts rule
       in ext_tac (length args) n THEN resolve_tac ctxt [rule] n end)
 
     val maybe_induct =
@@ -53,8 +53,7 @@ fun method_tac pos src = Subgoal.FOCUS (fn {context = ctxt, concl, ...} =>
       |> Scan.catch scan
     val state =
       Proof.theorem NONE (K I) [[(Thm.term_of concl, [])]] ctxt
-      |> Proof.refine m
-      |> Seq.hd
+      |> Proof.refine_singleton m
     val {goal, ...} = Proof.simple_goal state
   in
     HEADGOAL (resolve_tac ctxt [Goal.conclude goal])
@@ -64,4 +63,4 @@ fun pat_completeness_auto_tac ctxt =
   Pat_Completeness.pat_completeness_tac ctxt 1 THEN auto_tac ctxt
 
 fun termination_tac ctxt =
-  Function_Common.termination_prover_tac ctxt
+  Function_Common.termination_prover_tac true ctxt

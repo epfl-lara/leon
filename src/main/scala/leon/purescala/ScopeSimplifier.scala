@@ -3,7 +3,7 @@
 package leon
 package purescala
 
-import collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
 import Common._
 import Definitions._
 import Expressions._
@@ -30,7 +30,7 @@ class ScopeSimplifier extends Transformer {
   protected def genId(id: Identifier, scope: Scope): Identifier = {
     val existCount = scope.inScope.count(_.name == id.name)
 
-    FreshIdentifier(id.name, existCount, id.getType)
+    FreshIdentifier.forceId(id.name, existCount, id.getType, existCount >= 1)
   }
 
   protected def rec(e: Expr, scope: Scope): Expr = e match {

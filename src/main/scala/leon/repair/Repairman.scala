@@ -3,7 +3,7 @@
 package leon
 package repair
 
-import leon.datagen.GrammarDataGen
+import purescala.Path
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors._
@@ -14,8 +14,8 @@ import purescala.Constructors._
 import evaluators._
 import solvers._
 import utils._
-import codegen._
 import verification._
+import datagen.GrammarDataGen
 
 import synthesis._
 import synthesis.rules._
@@ -24,17 +24,14 @@ import synthesis.graph.{dotGenIds, DotGenerator}
 
 import rules._
 
-class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
-  implicit val ctx = ctx0
+class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
+  implicit val ctx0 = ctx
 
   val reporter = ctx.reporter
 
   val doBenchmark = ctx.findOptionOrDefault(GlobalOptions.optBenchmark)
 
-  var program = initProgram
-
   implicit val debugSection = DebugSectionRepair
-
 
   def repair(): Unit = {
     val to = new TimeoutFor(ctx.interruptManager)
@@ -54,11 +51,14 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           printer(eb.asString("Discovered Tests"))
         }
 
+        val tSize = eb.invalids.size
+
         reporter.info(ASCIIHelpers.title("2. Minimizing tests"))
         val eb2 = eb.minimizeInvalids(fd, ctx, program)
 
         // We exclude redundant failing tests, and only select the minimal tests
         reporter.info(f" - Minimal Failing Set Size: ${eb2.invalids.size}%3d")
+        val mtSize = eb2.invalids.size
 
         reporter.ifDebug { printer =>
           printer(eb2.asString("Minimal Failing Tests"))
@@ -97,6 +97,8 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             bh.write()
           }
 
+          val prePath = Path(fd.precOrTrue)
+
           reporter.ifDebug { printer =>
             import java.text.SimpleDateFormat
             import java.util.Date
@@ -132,7 +134,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
-                val solExpr = sol.toSimplifiedExpr(ctx, program, fd)
+                val solExpr = sol.toSimplifiedExpr(ctx, program, prePath)
                 val totalSolSize = formulaSize(solExpr)
                 (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
               case _ =>
@@ -144,9 +146,9 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             val fw = new java.io.FileWriter("repair-report.txt", true)
 
             try {
-              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
+              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $tSize%4d & $mtSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%3.1f &  ${timeSynth/1000.0}%3.1f & $proof%7s \\\\\n")
             } finally {
-              fw.close
+              fw.close()
             }
           }(DebugSectionReport)
 
@@ -162,7 +164,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             reporter.info(ASCIIHelpers.title("Repair successful:"))
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
-              val expr = sol.toSimplifiedExpr(ctx, synth.program, fd)
+              val expr = sol.toSimplifiedExpr(ctx, synth.program, prePath)
               reporter.info(expr.asString(program)(ctx))
             }
           }
@@ -183,7 +185,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val prob = Problem.fromSpec(fd.postOrTrue, andJoin(Seq(pre, guide, term)), eb, Some(fd))
+    val prob = Problem.fromSpec(fd.postOrTrue, Path(Seq(pre, guide, term)), eb, Some(fd))
 
     val ci = SourceInfo(fd, origBody, prob)
 
@@ -192,7 +194,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val soptions = so0.copy(
       functionsToIgnore = so0.functionsToIgnore + fd,
-      rules = Seq(Focus, CEGLESS) ++ so0.rules
+      rules = Seq(Focus, SimilarTermExploration) ++ so0.rules
     )
 
     new Synthesizer(ctx, program, ci, soptions)
@@ -201,14 +203,14 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
   def getVerificationCExs(fd: FunDef): Seq[Example] = {
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(timeoutMs)
-    val vctx = VerificationContext(ctx, program, solverf, reporter)
+    val vctx = new VerificationContext(ctx, program, solverf)
     val vcs = VerificationPhase.generateVCs(vctx, Seq(fd))
 
     try {
       val report = VerificationPhase.checkVCs(
         vctx,
         vcs,
-        stopAfter = Some({ (vc, vr) => vr.isInvalid })
+        stopWhen = _.isInvalid
       )
 
       val vrs = report.vrs
@@ -226,7 +228,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val maxEnumerated = 1000
     val maxValid      = 400
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
 
     val inputsToExample: Seq[Expr] => Example = { ins =>
       evaluator.eval(functionInvocation(fd, ins)) match {

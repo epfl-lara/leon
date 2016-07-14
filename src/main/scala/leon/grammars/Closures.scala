@@ -4,11 +4,9 @@ package leon
 package grammars
 
 import purescala.Types._
-import purescala.TypeOps._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Common._
-import purescala.Constructors._
 
 case object Closures extends ExpressionGrammar {
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {
@@ -20,7 +18,7 @@ case object Closures extends ExpressionGrammar {
       val rlab = Label(ret).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
       applyAspects(lab, List(
-        ProductionRule(List(rlab), { case List(body) => Lambda(args, body) }, Tags.Top, 1)
+        ProductionRule(List(rlab), { case Seq(body) => Lambda(args, body) }, Tags.Top, 1)
       ))
 
     case _ =>

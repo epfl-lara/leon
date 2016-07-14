@@ -24,6 +24,9 @@ import org.scalatest.Matchers
 import scala.language.implicitConversions
 
 class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures {
+
+  override val leonOpts = List("--solvers=smt-cvc4")
+
   test("Template Generator simple"){ case (ctx: LeonContext, program: Program) =>
     val TTG = new TypedTemplateGenerator(IntegerType) {}
     val e = TTG(hole => Plus(hole, hole))
@@ -38,7 +41,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     vars2(1) shouldEqual vars(1)
     expr2 shouldEqual Minus(Variable(vars2(2)), expr)
   }
-  
+
   trait withSymbols {
     val x = FreshIdentifier("x", StringType)
     val y = FreshIdentifier("y", StringType)
@@ -47,7 +50,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val fd = new FunDef(f, Nil, Seq(ValDef(i)), StringType)
     val fdi = FunctionInvocation(fd.typed, Seq(Variable(i)))
   }
-  
+
   test("toEquations working"){ case (ctx: LeonContext, program: Program) =>
     import StringRender._
     new withSymbols {
@@ -82,7 +85,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
 
   def applyStringRenderOn(functionName: String): (FunDef, Program) = {
     val ci = synthesisInfos(functionName)
-    val search = new Search(ctx, ci, ci.problem, new CostBasedStrategy(ctx, CostModels.default))
+    val search = new Search(ctx, ci, new CostBasedStrategy(ctx, CostModels.default))
     val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
     val orNode = search.g.root
     if (!orNode.isExpanded) {
@@ -115,13 +118,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val newProgram = DefOps.addFunDefs(synth.program, solutions.head.defs, synth.sctx.functionContext)
     val newFd = ci.fd.duplicate()
     newFd.body = Some(solutions.head.term)
-    val (newProgram2, _) = DefOps.replaceFunDefs(newProgram)({ fd =>
-      if(fd == ci.fd) {
-        Some(newFd)
-      } else None
-    }, { (fi: FunctionInvocation, fd: FunDef) =>
-      Some(FunctionInvocation(fd.typed, fi.args))
-    })
+    val newProgram2 = DefOps.transformProgram(DefOps.funDefReplacer { fd =>
+      if(fd == ci.fd) Some(newFd) else None
+    }, newProgram)
     (newFd, newProgram2)
   }
   
@@ -207,11 +206,64 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def nodeToString(n: Node): String = ??? by example
     |  def edgeToString(e: Edge): String = ??? by example
     |  def listEdgeToString(l: List[Edge]): String = ??? by example
+    |  
+    |  // Test if it can infer functions based on sealed classes.
+    |  abstract class ThreadId
+    |  case object T1 extends ThreadId
+    |  case object T2 extends ThreadId
+    |  case object T3 extends ThreadId
+    |  case object T4 extends ThreadId
+    |  case object T5 extends ThreadId
+    |  
+    |  case class ThreadConfig(t: ThreadId, push: Option[Int])
+    |  
+    |  def threadConfigToString(t: ThreadConfig): String = ???[String] ensuring {
+    |    (res: String) => (t, res) passes {
+    |      case ThreadConfig(T1, Some(2)) => "T1: Push 2"
+    |      case ThreadConfig(T2, None()) => "T2: Skip"
+    |    }
+    |  }
+    |  
+    |  def doubleOptionToString(pushed: Option[Int], pulled: Option[Int]): String =  {
+    |    ???[String]
+    |  } ensuring {
+    |    (res : String) => ((pushed, pulled), res) passes {
+    |      case (None(), None()) =>
+    |        "Config: "
+    |      case (None(), Some(0)) =>
+    |        "Config: pulled 0"
+    |      case (Some(0), None()) =>
+    |        "Config: pushed 0 "
+    |    }
+    |  }
+    |  
+    |  case class MultipleConfig(i: Int, next: Option[MultipleConfig])
+    |  
+    |  def multipleConfigToString(m: MultipleConfig): String = {
+    |    ???[String]
+    |  } ensuring {
+    |    (res: String) => (m, res) passes {
+    |      case MultipleConfig(0, None()) => "MultipleConfig: 0"
+    |      case MultipleConfig(0, Some(MultipleConfig(1, None()))) => "MultipleConfig: 0\nMultipleConfig: 1"
+    |    }
+    |  }
+    |  
+    |  def setToString(in : Set[String]): String =  {
+    |    ???[String]
+    |  } ensuring {
+    |    (res : String) => (in, res) passes {
+    |      case s if s == Set[String]("1", "2", "0") =>
+    |        "{0 | 1 | 2}"
+    |      case s if s == Set[String]() =>
+    |        "{}"
+    |    }
+    |  }
     |}
     """.stripMargin.replaceByExample)
+
   implicit val (ctx, program) = getFixture()
-  
-  val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si ).toMap
+
+  val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si).toMap
 
   def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
     val (fd, program) = applyStringRenderOn(functionName)
@@ -260,6 +312,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     def apply(types: TypeTree*)(args: Expr*) =
       FunctionInvocation(fd.typed(types), args)
   }
+
   // Mimics the file above, allows construction of expressions.
   case class Constructors(program: Program) {
     implicit val p = program
@@ -273,18 +326,20 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     object List {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => Nil(types: _*)()
+          case scala.collection.immutable.Nil => Nil(types: _*)()
           case a::b => Cons(types: _*)(a, List(types: _*)(b: _*))
         }
       }
     }
+    object Some extends ParamCCBuilder("Some", "leon.lang.")
+    object None extends ParamCCBuilder("None", "leon.lang.")
     
     object BCons extends ParamCCBuilder("BCons")
     object BNil extends ParamCCBuilder("BNil")
     object BList {
       def apply(types: TypeTree*)(elems: Expr*): CaseClass = {
         elems.toList match {
-          case collection.immutable.Nil => BNil(types: _*)()
+          case scala.collection.immutable.Nil => BNil(types: _*)()
           case a::b => BCons(types: _*)(a, BList(types: _*)(b: _*))
         }
       }
@@ -302,6 +357,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     lazy val dummy2ToString = method("dummy2ToString")
     lazy val bListToString = method("bListToString")
     object customListToString extends paramMethod("customListToString")
+    lazy val threadConfigToString = method("threadConfigToString")
+    object T3  extends CCBuilder("T3")
+    object ThreadConfig extends CCBuilder("ThreadConfig")
+    
+    lazy val doubleOptionToString = method("doubleOptionToString")
+    object MultipleConfig  extends CCBuilder("MultipleConfig")
+    lazy val multipleConfigToString = method("multipleConfigToString")
   }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -350,7 +412,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         "<<aaYbb>Y<mmYnn>>")
   }
   
-  test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
+  /*test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
     val c = Constructors(program); import c._
     val d = FreshIdentifier("d", Dummy)
 
@@ -362,9 +424,8 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
             ->
         "[{a}-{b}, {c}-{d}]")
     
-  }
-  
-  
+  }*/
+
   test("Pretty-printing using inferred not yet defined functions in argument"){ case (ctx: LeonContext, program: Program) =>
     StringRender.enforceDefaultStringMethodsIfAvailable = true
     synthesizeAndAbstractTest("bConfigToString"){ (fd: FunDef, program: Program) =>
@@ -400,5 +461,35 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
           StringLiteral("\n  ")),
           customListToString(Dummy2)(listDummy2, lambdaDummy2ToString)))
     }
+  }
+  
+  test("Pretty-printing a hierarchy of case object") { case (ctx, program) =>
+    val c= Constructors(program); import c._
+    synthesizeAndTest("threadConfigToString",
+      Seq(c.ThreadConfig(c.T3(), c.Some(Int32Type)(IntLiteral(5)))) -> "T3: Push 5"
+    )
+  }
+  
+  test("Activating horizontal markovization should work") { case (ctx, program) =>
+    val c = Constructors(program); import c._
+    synthesizeAndTest("doubleOptionToString",
+      Seq(c.Some(Int32Type)(IntLiteral(1)), c.Some(Int32Type)(IntLiteral(2))) -> "Config: pushed 1 pulled 2"
+    )
+  }
+  
+  test("reuse of the same function twice should work") { case (ctx, program) =>
+    synthesizeAndAbstractTest("multipleConfigToString"){ (fd: FunDef, program: Program) =>
+      val numOfMultipleConfig = program.definedFunctions.map(fd => ExprOps.fold[Int]{ case (StringLiteral("MultipleConfig: "), _) => 1 case (e, children) => children.sum }(fd.fullBody)).reduce(_ + _)
+      numOfMultipleConfig should equal(1)
+      Seq()
+    }
+  }
+  
+  test("setToString should be found") { case (ctx, program) =>
+    val c= Constructors(program); import c._
+    synthesizeAndTest("setToString",
+      Seq(FiniteSet(Set(StringLiteral("a"), StringLiteral("c"), StringLiteral("b"), StringLiteral("e")), StringType)) ->
+      "{a | b | c | e}"
+    )
   }
 }

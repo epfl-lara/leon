@@ -25,14 +25,14 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
 
   def createAbstractClass(tpename: String, tparamCount: Int): AbstractClassDef = {
     val absTParams = (1 to tparamCount).map(i => TypeParameterDef(TypeParameter.fresh("T" + i)))
-    AbstractClassDef(FreshIdentifier(typeNameToADTName(tpename), Untyped), absTParams, None)
+    new AbstractClassDef(FreshIdentifier(typeNameToADTName(tpename), Untyped), absTParams, None)
   }
 
   def createCaseClass(name: String, absClass: AbstractClassDef, fields: Seq[ValDef]): CaseClassDef = {
     val classid = FreshIdentifier(opNameToCCName(name), Untyped)
     val fieldTParams = fields.flatMap{ v => getTypeParameters(v.getType) }.distinct
     val tparams = fieldTParams ++ absClass.tparams.map(_.tp).drop(fieldTParams.size)
-    val cdef = CaseClassDef(classid, tparams map TypeParameterDef, Some(AbstractClassType(absClass, tparams)), isCaseObject = false)
+    val cdef = new CaseClassDef(classid, tparams map TypeParameterDef, Some(AbstractClassType(absClass, tparams)), isCaseObject = false)
     cdef.setFields(fields)
     absClass.registerChild(cdef)
     cdef

@@ -3,6 +3,8 @@
 package leon
 package grammars
 
+import leon.purescala.Common.FreshIdentifier
+import leon.purescala.Definitions.ValDef
 import purescala.Types._
 import purescala.Expressions._
 
@@ -18,20 +20,48 @@ case object ValueGrammar extends SimpleExpressionGrammar {
       List(
         terminal(IntLiteral(0), Tags.Zero),
         terminal(IntLiteral(1), Tags.One),
-        terminal(IntLiteral(5), Tags.Constant)
+        terminal(IntLiteral(5), Tags.Constant),
+        terminal(IntLiteral(-1), Tags.Constant, 3),
+        terminal(IntLiteral(2),  Tags.Constant, 3),
+        terminal(IntLiteral(3),  Tags.Constant, 3),
+        terminal(IntLiteral(-2), Tags.Constant, 5),
+        terminal(IntLiteral(4),  Tags.Constant, 5),
+        terminal(IntLiteral(10), Tags.Constant, 5)
       )
     case IntegerType =>
       List(
         terminal(InfiniteIntegerLiteral(0), Tags.Zero),
         terminal(InfiniteIntegerLiteral(1), Tags.One),
-        terminal(InfiniteIntegerLiteral(5), Tags.Constant)
+        terminal(InfiniteIntegerLiteral(5), Tags.Constant),
+        terminal(InfiniteIntegerLiteral(-1), Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(2),  Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(3),  Tags.Constant, 3),
+        terminal(InfiniteIntegerLiteral(-2), Tags.Constant, 5),
+        terminal(InfiniteIntegerLiteral(4),  Tags.Constant, 5),
+        terminal(InfiniteIntegerLiteral(10), Tags.Constant, 5)
+      )
+    case CharType =>
+      List(
+        terminal(CharLiteral('a'), Tags.Constant),
+        terminal(CharLiteral('b'), Tags.Constant),
+        terminal(CharLiteral('0'), Tags.Constant)
+      )
+    case RealType =>
+      List(
+        terminal(FractionalLiteral(0, 1), Tags.Zero),
+        terminal(FractionalLiteral(1, 1), Tags.One),
+        terminal(FractionalLiteral(-1, 2), Tags.Constant),
+        terminal(FractionalLiteral(555, 42), Tags.Constant)
       )
     case StringType =>
       List(
         terminal(StringLiteral(""), Tags.Constant),
         terminal(StringLiteral("a"), Tags.Constant),
         terminal(StringLiteral("foo"), Tags.Constant),
-        terminal(StringLiteral("bar"), Tags.Constant)
+        terminal(StringLiteral("bar"), Tags.Constant),
+        terminal(StringLiteral("b"), Tags.Constant, 3),
+        terminal(StringLiteral("c"), Tags.Constant, 3),
+        terminal(StringLiteral("d"), Tags.Constant, 3)
       )
 
     case tp: TypeParameter =>
@@ -64,6 +94,12 @@ case object ValueGrammar extends SimpleExpressionGrammar {
     case UnitType =>
       List(
         terminal(UnitLiteral(), Tags.Constant)
+      )
+
+    case FunctionType(from, to) =>
+      val args = from map (tp => ValDef(FreshIdentifier("x", tp, true)))
+      List(
+        nonTerminal(Seq(to), { case Seq(e) => Lambda(args, e) })
       )
 
     case _ =>

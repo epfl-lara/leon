@@ -6,10 +6,9 @@ package purescala
 import Definitions._
 import Expressions._
 import ExprOps._
-import Constructors._
 import TypeOps.instantiateType
 import Common.Identifier
-import Types.TypeParameter
+import leon.purescala.Types.TypeParameter
 import utils.GraphOps._
 
 object FunctionClosure extends TransformationPhase {
@@ -23,7 +22,7 @@ object FunctionClosure extends TransformationPhase {
     * The strategy is as follows: Remove one layer of nested FunDef's, then call
     * close recursively on the new functions.
     */
-  private def close(fd: FunDef): Seq[FunDef] = { 
+  def close(fd: FunDef): Seq[FunDef] = {
 
     // Directly nested functions with their p.c.
     val nestedWithPathsFull = {
@@ -32,6 +31,7 @@ object FunctionClosure extends TransformationPhase {
         case LetDef(fd1, body) => fd1.filter(funDefs)
       }(fd.fullBody)
     }
+
     val nestedWithPaths = (for((fds, path) <- nestedWithPathsFull; fd <- fds) yield (fd, path)).toMap
     val nestedFuns = nestedWithPaths.keys.toSeq
 
@@ -39,25 +39,45 @@ object FunctionClosure extends TransformationPhase {
     val callGraph: Map[FunDef, Set[FunDef]] = transitiveClosure(
       nestedFuns.map { f =>
         val calls = functionCallsOf(f.fullBody) collect {
-          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) =>
-            fd
+          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) => fd
         }
-        f -> calls
+
+        val pcCalls = functionCallsOf(nestedWithPaths(f).fullClause) collect {
+          case FunctionInvocation(TypedFunDef(fd, _), _) if nestedFuns.contains(fd) => fd
+        }
+
+        f -> (calls ++ pcCalls)
       }.toMap
     )
+    //println("nested funs: " + nestedFuns)
+    //println("call graph: " + callGraph)
 
-    def freeVars(fd: FunDef, pc: Expr): Set[Identifier] =
-      variablesOf(fd.fullBody) ++ variablesOf(pc) -- fd.paramIds
+    def freeVars(fd: FunDef, pc: Path): Set[Identifier] =
+      variablesOf(fd.fullBody) ++ pc.variables ++ pc.bindings.map(_._1) -- fd.paramIds
 
     // All free variables one should include.
     // Contains free vars of the function itself plus of all transitively called functions.
-    val transFree = nestedFuns.map { fd =>
-      fd -> (callGraph(fd) + fd).flatMap( (fd2:FunDef) => freeVars(fd2, nestedWithPaths(fd2)) ).toSeq
-    }.toMap
+    // also contains free vars from PC if the PC is relevant to the fundef
+    val transFreeWithBindings = {
+      def step(current: Map[FunDef, Set[Identifier]]): Map[FunDef, Set[Identifier]] = {
+        nestedFuns.map(fd => {
+          val transFreeVars = (callGraph(fd) + fd).flatMap((fd2:FunDef) => current(fd2))
+          val reqPath = nestedWithPaths(fd).filterByIds(transFreeVars)
+          (fd, transFreeVars ++ freeVars(fd, reqPath))
+        }).toMap
+      }
+
+      utils.fixpoint(step, -1)(nestedFuns.map(fd => (fd, variablesOf(fd.fullBody) -- fd.paramIds)).toMap)
+    }
+
+    val transFree: Map[FunDef, Seq[Identifier]] = 
+      //transFreeWithBindings.map(p => (p._1, p._2 -- nestedWithPaths(p._1).bindings.map(_._1))).map(p => (p._1, p._2.toSeq))
+      transFreeWithBindings.map(p => (p._1, p._2.toSeq))
+
 
     // Closed functions along with a map (old var -> new var).
     val closed = nestedWithPaths.map {
-      case (inner, pc) => inner -> step(inner, fd, pc, transFree(inner))
+      case (inner, pc) => inner -> closeFd(inner, fd, pc, transFree(inner))
     }
 
     // Remove LetDefs from fd
@@ -79,7 +99,7 @@ object FunctionClosure extends TransformationPhase {
     (dummySubst +: closed.values.toSeq).foreach {
       case FunSubst(f, callerMap, callerTMap) =>
         f.fullBody = preMap {
-          case fi@FunctionInvocation(tfd, args) if closed contains tfd.fd =>
+          case fi @ FunctionInvocation(tfd, args) if closed contains tfd.fd =>
             val FunSubst(newCallee, calleeMap, calleeTMap) = closed(tfd.fd)
 
             // This needs some explanation.
@@ -123,38 +143,48 @@ object FunctionClosure extends TransformationPhase {
   )
 
   // Takes one inner function and closes it. 
-  private def step(inner: FunDef, outer: FunDef, pc: Expr, free: Seq[Identifier]): FunSubst = {
+  private def closeFd(inner: FunDef, outer: FunDef, pc: Path, free: Seq[Identifier]): FunSubst = {
+    //println("inner: " + inner)
+    //println("pc: " + pc)
+    //println("free: " + free.map(_.uniqueName))
+
+    val reqPC = pc.filterByIds(free.toSet)
 
     val tpFresh = outer.tparams map { _.freshen }
-    val tparamsMap = outer.tparams.zip(tpFresh map {_.tp}).toMap
+    val tparamsMap = outer.typeArgs.zip(tpFresh map {_.tp}).toMap
     
     val freshVals = (inner.paramIds ++ free).map{_.freshen}.map(instantiateType(_, tparamsMap))
     val freeMap   = (inner.paramIds ++ free).zip(freshVals).toMap
+    val freshParams = (inner.paramIds ++ free).filterNot(v => reqPC.isBound(v)).map(v => freeMap(v))
 
     val newFd = inner.duplicate(
       inner.id.freshen,
       inner.tparams ++ tpFresh,
-      freshVals.map(ValDef(_)),
+      freshParams.map(ValDef(_)),
       instantiateType(inner.returnType, tparamsMap)
     )
-    newFd.precondition = Some(and(pc, inner.precOrTrue))
 
     val instBody = instantiateType(
-      newFd.fullBody,
+      withPath(newFd.fullBody, reqPC),
       tparamsMap,
       freeMap
     )
 
     newFd.fullBody = preMap {
-      case fi@FunctionInvocation(tfd, args) if tfd.fd == inner =>
+      case Let(id, v, r) if freeMap.isDefinedAt(id) => Some(Let(freeMap(id), v, r))
+      case fi @ FunctionInvocation(tfd, args) if tfd.fd == inner =>
         Some(FunctionInvocation(
           newFd.typed(tfd.tps ++ tpFresh.map{ _.tp }),
-          args ++ freshVals.drop(args.length).map(Variable)
+          args ++ freshParams.drop(args.length).map(Variable)
         ).setPos(fi))
       case _ => None
     }(instBody)
 
-    FunSubst(newFd, freeMap, tparamsMap.map{ case (from, to) => from.tp -> to})
+    //HACK to make sure substitution happened even in nested fundef
+    newFd.fullBody = replaceFromIDs(freeMap.map(p => (p._1, p._2.toVariable)), newFd.fullBody)
+
+
+    FunSubst(newFd, freeMap, tparamsMap)
   }
 
   override def apply(ctx: LeonContext, program: Program): Program = {

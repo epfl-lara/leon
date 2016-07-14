@@ -2,6 +2,7 @@
 
 package leon.synthesis
 
+import leon.purescala.Common.Identifier
 import leon.purescala._
 import Types._
 import Extractors._
@@ -15,7 +16,7 @@ object Witnesses {
     override def isSimpleExpr = true
   }
   
-  case class Guide(e : Expr) extends Witness {
+  case class Guide(e: Expr) extends Witness {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((Seq(e), (es: Seq[Expr]) => Guide(es.head)))
 
     override def printWith(implicit pctx: PrinterContext): Unit = {
@@ -38,5 +39,12 @@ object Witnesses {
       p"谶$e"
     }
   }
-  
+
+  case class Inactive(i: Identifier) extends Witness {
+    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((Seq(), _ => this ))
+    override def printWith(implicit pctx: PrinterContext): Unit = {
+      p"inactive($i)"
+    }
+
+  }
 }

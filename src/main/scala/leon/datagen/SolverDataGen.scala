@@ -11,12 +11,11 @@ import purescala.Constructors._
 import solvers._
 import utils._
 
-
-class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program) => SolverFactory[Solver])) extends DataGenerator {
+class SolverDataGen(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver]) extends DataGenerator {
   implicit val ctx0 = ctx
 
   def generate(tpe: TypeTree): FreeableIterator[Expr] = {
-    generateFor(Seq(FreshIdentifier("tmp", tpe)), BooleanLiteral(true), 20, 20).map(_.head)
+    generateFor(Seq(FreshIdentifier("tmp", tpe)), BooleanLiteral(true), 20, 20).map(_.head).takeWhile(_ => !interrupted.get)
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): FreeableIterator[Seq[Expr]] = {
@@ -73,12 +72,11 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program)
         ModuleDef(FreshIdentifier("new"), fds.values.toSeq, false)
       )))
 
-      val sf = sff(ctx, pgm1)
       val modelEnum = new ModelEnumerator(ctx, pgm1, sf)
 
       val enum = modelEnum.enumVarying(ins, satisfying, sizeOf, 5)
 
-      enum.take(maxValid).map(model => ins.map(model))
+      enum.take(maxValid).map(model => ins.map(model)).takeWhile(_ => !interrupted.get)
     }
   }
 

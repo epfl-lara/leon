@@ -12,31 +12,19 @@ import leon.collection.ListOps._
 import leon.lang.synthesis._
 
 object JsonRender {
-  /** Synthesis by example specs */
-  @inline def psStandard(x: Int, y: String, z: Boolean) = (res: String) =>((x, y, z), res) passes {
-    case (31, "routed", true) => """{ field1: 31, field2: "routed", field3: true }"""
-  }
+  abstract class JSON
+  abstract class JCompositeValue extends JSON
+  abstract class JFinalValue extends JSON
+  case class JDict(values: List[(String, JSON)]) extends JCompositeValue
+  case class JArray(values: List[JSON]) extends JCompositeValue
+  case class JString(value: String) extends JFinalValue
+  case class JBoolean(value: Boolean) extends JFinalValue
+  case class JInt(value: Int) extends JFinalValue
   
-  @inline def psTupled1(xy: (Int, String), z: Boolean) = (res: String) =>((xy, z), res) passes {
-    case ((31, "routed"), true) => """{ field1: 31, field2: "routed", field3: true }"""
-  }
-
-  @inline def psTupled2(x: Int, yz: (String, Boolean)) = (res: String) =>((x, yz), res) passes {
-    case (31, ("routed", true)) => """{ field1: 31, field2: "routed", field3: true }"""
-  }
+  def JStringToString(j: JString) = "\"" + StrOps.escape(j.value) + "\""
   
-  //////////////////////////////////////////////
-  // Non-incremental examples: pure synthesis //
-  //////////////////////////////////////////////
-  def synthesizeStandard(x: Int, y: String, z: Boolean): String = {
-    ???[String]
-  } ensuring psStandard(x, y, z)
-
-  def synthesizeTupled1(xy: (Int, String), z: Boolean): String = {
-    ???[String]
-  } ensuring psTupled1(xy, z)
-  
-  def synthesizeTupled2(x: Int, yz: (String, Boolean)): String = {
-    ???[String]
-  } ensuring psTupled2(x, yz)
+  /** Synthesize this function by example to have a JSON serializer. */
+  def json_render(j: JSON): String = {
+    ???[String] ask j
+  }
 }

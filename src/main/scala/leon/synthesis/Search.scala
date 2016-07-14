@@ -8,11 +8,12 @@ import graph._
 
 import scala.annotation.tailrec
 
-import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
-class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, val strat: Strategy) extends Interruptible {
+class Search(val ctx: LeonContext, ci: SourceInfo, val strat: Strategy) extends Interruptible {
+
+  val p: Problem = ci.problem
   val g = new Graph(p)
 
   val interrupted = new AtomicBoolean(false)
@@ -33,16 +34,17 @@ class Search(val ctx: LeonContext, ci: SourceInfo, p: Problem, val strat: Strate
     }
   }
 
+  final def expand(n: Node, sctx: SynthesisContext) = {
+    strat.beforeExpand(n)
+    doExpand(n, sctx)
+    strat.afterExpand(n)
+  }
+
   @tailrec
   final def searchFrom(sctx: SynthesisContext, from: Node): Boolean = {
     strat.getNextToExpand(from) match {
       case Some(n) =>
-        strat.beforeExpand(n)
-
-        doExpand(n, sctx)
-
-        strat.afterExpand(n)
-
+        expand(n, sctx)
         if (from.isSolved) {
           true
         } else if (interrupted.get) {

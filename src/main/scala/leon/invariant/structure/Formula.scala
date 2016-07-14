@@ -3,26 +3,20 @@
 package leon
 package invariant.structure
 
-import z3.scala._
-import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
-import solvers.{ Solver, TimeoutSolver }
-import solvers.z3.FairZ3Solver
 import java.io._
-import solvers.z3._
 import invariant.engine._
 import invariant.util._
-import leon.solvers.Model
+import solvers.Model
 import Util._
 import PredicateUtil._
 import TVarFactory._
 import ExpressionTransformer._
-import evaluators._
 import invariant.factories._
 import evaluators._
 import EvaluationResults._
@@ -155,12 +149,12 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
       case Operator(args, op) =>
         op(args.map(rec(_)(true)))
     }
-    val f1 = rec(ExpressionTransformer.simplify(simplifyArithmetic(
+    val f1 = simplifyByConstructors(rec(ExpressionTransformer.simplify(simplifyArithmetic(
         //TODO: this is a hack as of now. Fix this.
         //Note: it is necessary to convert real literals to integers since the linear constraint cannot handle real literals
         if(ctx.usereals) ExpressionTransformer.FractionalLiteralToInt(ine)
         else ine
-        )))(false)
+        )))(false))
     val rootvar = f1 match {
       case v: Variable if(conjuncts.contains(v)) => v
       case v: Variable if(disjuncts.contains(v)) => throw new IllegalStateException("f1 is a disjunct guard: "+v)
@@ -224,7 +218,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
    * 'neweexpr' is required to be in negation normal form and And/Ors have been pulled up
    */
   def conjoinWithDisjunct(guard: Variable, newexpr: Expr, callParents: List[FunDef], inSpec:Boolean) = {
-     val (exprRoot, newGaurds) = addConstraints(newexpr, callParents, _ => inSpec)
+     val (exprRoot, newGuards) = addConstraints(newexpr, callParents, _ => inSpec)
      //add 'newguard' in conjunction with 'disjuncts(guard)'
      val ctrs = disjuncts(guard)
      disjuncts -= guard
@@ -233,7 +227,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
   }
 
   def conjoinWithRoot(newexpr: Expr, callParents: List[FunDef], inSpec: Boolean) = {
-    val (exprRoot, newGaurds) = addConstraints(newexpr, callParents, _ => inSpec)
+    val (exprRoot, newGuards) = addConstraints(newexpr, callParents, _ => inSpec)
     roots :+= exprRoot
     exprRoot
   }
@@ -401,10 +395,10 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
    * Functions for stats
    */
   def atomsCount = disjuncts.map(_._2.size).sum + conjuncts.map(i => atomNum(i._2)).sum
-  def funsCount = disjuncts.map(_._2.filter {
+  def funsCount = disjuncts.map(_._2.count {
     case _: Call | _: ADTConstraint => true
-    case _                          => false
-  }.size).sum
+    case _ => false
+  }).sum
 
   /**
    * Functions solely used for debugging
@@ -465,14 +459,14 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext, initSpecCal
   def pickSatFromUnflatFormula(unflate: Expr, model: Model, evaluator: DefaultEvaluator): Seq[Expr] = {
     def rec(e: Expr): Seq[Expr] = e match {
       case IfExpr(cond, thn, elze) =>
-        evaluator.eval(cond, model) match {
+        (evaluator.eval(cond, model): @unchecked) match {
           case Successful(BooleanLiteral(true)) => cond +: rec(thn)
           case Successful(BooleanLiteral(false)) => Not(cond) +: rec(elze)
         }
       case And(args) => args flatMap rec
       case Or(args) => rec(args.find(evaluator.eval(_, model) == Successful(BooleanLiteral(true))).get)
       case Equals(b: Variable, rhs) if b.getType == BooleanType =>
-        evaluator.eval(b, model) match {
+        (evaluator.eval(b, model): @unchecked) match {
           case Successful(BooleanLiteral(true)) =>
             rec(b) ++ rec(rhs)
           case Successful(BooleanLiteral(false)) =>

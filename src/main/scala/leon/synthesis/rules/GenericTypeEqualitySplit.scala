@@ -4,11 +4,12 @@ package leon
 package synthesis
 package rules
 
-import leon.purescala.Common.Identifier
+import purescala.Common.Identifier
 import purescala.Constructors._
 import purescala.Expressions._
-import leon.purescala.Extractors.{IsTyped, TopLevelAnds}
+import purescala.Extractors.{IsTyped, TopLevelAnds}
 import purescala.Types._
+import Witnesses._
 
 /** For every pair of input variables of the same generic type,
   * checks equality and output an If-Then-Else statement with the two new branches.
@@ -26,11 +27,12 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
       case _ => Set()
     }
 
-    val TopLevelAnds(as) = and(p.pc, p.phi)
+    val facts: Set[Set[Identifier]] = {
+      val TopLevelAnds(as) = andJoin(p.pc.conditions :+ p.phi)
+      as.toSet.flatMap(getFacts)
+    }
 
-    val facts = as.flatMap(getFacts).toSet
-
-    val candidates = p.as.combinations(2).collect {
+    val candidates = p.allAs.combinations(2).collect {
       case List(IsTyped(a1, TypeParameter(t1)), IsTyped(a2, TypeParameter(t2)))
         if t1 == t2 && !facts(Set(a1, a2)) =>
         (a1, a2)
@@ -40,23 +42,30 @@ case object GenericTypeEqualitySplit extends Rule("Eq. Split") {
       case (a1, a2) =>
         val v1 = Variable(a1)
         val v2 = Variable(a2)
-        val subProblems = List(
-          p.copy(as  = p.as.diff(Seq(a1)),
-                 pc  = subst(a1 -> v2, p.pc),
-                 ws  = subst(a1 -> v2, p.ws),
-                 phi = subst(a1 -> v2, p.phi),
-                 eb  = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))),
 
-          p.copy(pc = and(p.pc, not(Equals(v1, v2))),
-                 eb = p.qeb.filterIns(not(Equals(v1, v2))))
-        )
+        val (f, t, isInput) = if (p.as contains a1) (a1, v2, true) else (a2, v1, p.as contains a2)
+        val eq = if (isInput) {
+          p.copy(
+            as = p.as.diff(Seq(f)),
+            pc = p.pc map (subst(f -> t, _)),
+            ws = subst(f -> t, p.ws),
+            phi = subst(f -> t, p.phi),
+            eb = p.qeb.removeIns(Set(f))
+          )
+        } else {
+          p.copy(pc = p.pc withCond Equals(v1,v2)).withWs(Seq(Inactive(f))) // FIXME!
+        }
+
+        val neq = p.copy(pc = p.pc withCond not(Equals(v1, v2)))
+
+        val subProblems = List(eq, neq)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols @ List(sEQ, sNE) =>
-            val pre = or(
-              and(Equals(v1, v2),      sEQ.pre),
-              and(not(Equals(v1, v2)), sNE.pre)
-            )
+            val pre = cases(List(
+              Equals(v1, v2)      -> sEQ.pre,
+              not(Equals(v1, v2)) -> sNE.pre
+            ))
 
             val term = IfExpr(Equals(v1, v2), sEQ.term, sNE.term)
 

@@ -3,9 +3,12 @@
 package leon
 package grammars
 
-import purescala.Expressions._
-import purescala.Types._
+import purescala.Expressions.Expr
+import purescala.Types.TypeTree
 
+/** An [[ExpressionGrammar]] whose productions for a given [[Label]]
+  * depend only on the underlying [[TypeTree]] of the label
+  */
 abstract class SimpleExpressionGrammar extends ExpressionGrammar {
 
   type Prod = ProductionRule[TypeTree, Expr]
@@ -28,15 +31,13 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
     }
   }
 
-  /** The list of production rules for this grammar for a given nonterminal
-    *
-    * @param lab The nonterminal for which production rules will be generated
-    */
-  def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
+  // Finalize this to depend only on the type of the label
+  final def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
     computeProductions(lab.getType).map { p =>
       ProductionRule(p.subTrees.map(Label(_)), p.builder, p.tag, p.cost)
     }
   }
 
-  def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[ProductionRule[TypeTree, Expr]]
+  /** Version of [[ExpressionGrammar.computeProductions]] which depends only a [[TypeTree]] */
+  def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[Prod]
 }

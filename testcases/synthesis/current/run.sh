@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=60 --synthesis $1"
+    cmd="./leon --debug=report --timeout=60 --synthesis --partial=off --solvers=smt-z3 $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
@@ -15,6 +15,7 @@ run testcases/synthesis/current/List/Delete.scala
 run testcases/synthesis/current/List/Union.scala
 run testcases/synthesis/current/List/Diff.scala
 run testcases/synthesis/current/List/Split.scala
+run testcases/synthesis/current/List/ListOfSize.scala
 
 # SortedList
 run testcases/synthesis/current/SortedList/Insert.scala

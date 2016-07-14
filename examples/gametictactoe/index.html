@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Leon verified Tic-Tac-Toe</title>
+  </head>
+  <body>
+    <canvas id="leon-canvas" width="900" height="900"></canvas>
+    <!-- Include Scala.js compiled code -->
+    <script type="text/javascript" src="./target/scala-2.11/leon-tictactoe-fastopt.js"></script>
+    <!-- Run tutorial.webapp.TutorialApp -->
+    <script type="text/javascript">
+      var c = document.getElementById("leon-canvas");
+      leon.gametictactoe.Main().main(c);
+    </script>
+  </body>
+</html>

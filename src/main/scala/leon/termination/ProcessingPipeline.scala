@@ -86,15 +86,15 @@ abstract class ProcessingPipeline(context: LeonContext, initProgram: Program) ex
   private val unsolved     : MutableSet[Problem] = MutableSet.empty
   private val dependencies : MutableSet[Problem] = MutableSet.empty
 
-  def isProblem(fd: FunDef): Boolean =
+  def isProblem(fd: FunDef): Boolean = {
+    lazy val callees = program.callGraph.transitiveCallees(fd)
+    lazy val problemDefs = problems.flatMap(_._1.funDefs).toSet
     unsolved.exists(_.contains(fd)) ||
-    dependencies.exists(_.contains(fd)) || {
-      val problemDefs = problems.flatMap(_._1.funDefs).toSet
-      problemDefs(fd) || {
-        val callees = program.callGraph.transitiveCallees(fd)
-        (problemDefs intersect callees).nonEmpty
-      }
-    }
+    dependencies.exists(_.contains(fd)) || 
+    unsolved.exists(_.funDefs exists callees) ||
+    dependencies.exists(_.funDefs exists callees) ||
+    problemDefs(fd) || (problemDefs intersect callees).nonEmpty
+  }
 
   private def printQueue() {
     val sb = new StringBuilder()
@@ -141,7 +141,8 @@ abstract class ProcessingPipeline(context: LeonContext, initProgram: Program) ex
         } else {
           clearedMap.get(funDef).map(Terminates).getOrElse(
             if (!running) {
-              verifyTermination(funDef)
+              val verified = verifyTermination(funDef)
+              for (fd <- verified) terminates(fd) // fill in terminationMap
               terminates(funDef)
             } else {
               if (!dependencies.exists(_.contains(funDef))) {
@@ -162,15 +163,21 @@ abstract class ProcessingPipeline(context: LeonContext, initProgram: Program) ex
     val funDefs = program.callGraph.transitiveCallees(funDef) + funDef
     val pairs = program.callGraph.allCalls.filter { case (fd1, fd2) => funDefs(fd1) && funDefs(fd2) }
     val callGraph = pairs.groupBy(_._1).mapValues(_.map(_._2))
-    val components = SCC.scc(callGraph)
+    val allComponents = SCC.scc(callGraph)
 
-    for (fd <- funDefs -- components.toSet.flatten) clearedMap(fd) = "Non-recursive"
-    val newProblems = components.filter(fds => fds.forall { fd => !terminationMap.isDefinedAt(fd) })
+    val (problemComponents, nonRec) = allComponents.partition { fds =>
+      fds.flatMap(fd => program.callGraph.transitiveCallees(fd)) exists fds
+    }
+
+    for (fd <- funDefs -- problemComponents.toSet.flatten) clearedMap(fd) = "Non-recursive"
+    val newProblems = problemComponents.filter(fds => fds.forall { fd => !terminationMap.isDefinedAt(fd) })
     newProblems.map(fds => Problem(fds.toSeq))
   }
 
-  def verifyTermination(funDef: FunDef): Unit = {
-    problems ++= generateProblems(funDef).map(_ -> 0)
+  def verifyTermination(funDef: FunDef): Set[FunDef] = {
+    reporter.debug("Verifying termination of " + funDef.id)
+    val terminationProblems = generateProblems(funDef)
+    problems ++= terminationProblems.map(_ -> 0)
 
     val it = new Iterator[(String, List[Result])] {
       def hasNext : Boolean      = running
@@ -180,7 +187,7 @@ abstract class ProcessingPipeline(context: LeonContext, initProgram: Program) ex
         val processor : Processor = processorArray(index)
         reporter.debug("Running " + processor.name)
         val result = processor.run(problem)
-        reporter.debug(" +-> " + (if (result.isDefined) "Success" else "Failure"))
+        reporter.debug(" +-> " + (if (result.isDefined) "Success" else "Failure")+ "\n")
 
         // dequeue and enqueue atomically to make sure the queue always
         // makes sense (necessary for calls to terminates(fd))
@@ -211,5 +218,7 @@ abstract class ProcessingPipeline(context: LeonContext, initProgram: Program) ex
       case Broken(fd, args) => brokenMap(fd) = (reason, args)
       case MaybeBroken(fd, args) => maybeBrokenMap(fd) = (reason, args)
     }
+
+    terminationProblems.flatMap(_.funDefs).toSet
   }
 }

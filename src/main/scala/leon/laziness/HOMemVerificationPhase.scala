@@ -199,7 +199,7 @@ object HOMemVerificationPhase {
       case None =>
         baseSolverF
     }
-    val vctx = VerificationContext(checkCtx, p, solverF, reporter)
+    val vctx = new VerificationContext(checkCtx, p, solverF)
     try {
       VerificationPhase.checkVCs(vctx, vcs)
       //println("Resource Verification Results: \n" + veriRep.summaryString)

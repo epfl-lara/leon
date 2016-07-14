@@ -173,14 +173,17 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         val subProblemxs: List[Identifier] = quotientIds ++ otherVars
         val subProblem = Problem(problem.as ++ remainderIds, problem.ws, problem.pc, subProblemFormula, subProblemxs)
 
-
         def onSuccess(sols: List[Solution]): Option[Solution] = sols match {
-          case List(s @ Solution(pre, defs, term)) => {
+          case List(s @ Solution(pre, defs, term, isTrusted)) =>
             if(remainderIds.isEmpty) {
-              Some(Solution(And(newPre, pre), defs,
+              Some(Solution(
+                And(newPre, pre),
+                defs,
                 letTuple(subProblemxs, term,
                   Let(processedVar, witness,
-                    tupleWrap(problem.xs.map(Variable)))), isTrusted=s.isTrusted))
+                    tupleWrap(problem.xs.map(Variable)))),
+                isTrusted
+              ))
             } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {
@@ -207,7 +210,6 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
               Some(Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef.typed, Seq(IntLiteral(L-1)))))
             }
-          }
           case _ =>
             None
         }

@@ -27,16 +27,16 @@ class ADTSpecializer {
    * The fields should be set by calling `specializeFields`
    */
   def copyADTHierarchy(rootADT: ClassDef): Map[ClassDef, ClassDef] = rootADT match {
-    case adef @ AbstractClassDef(id, tparams, parent) =>
-      val newAbs = new AbstractClassDef(FreshIdentifier(id.name, Untyped, true), tparams, parent)
+    case adef:  AbstractClassDef =>      
+      val newAbs = new AbstractClassDef(FreshIdentifier(adef.id.name, Untyped, true), adef.tparams, adef.parent)
       ((adef -> newAbs) +: adef.knownCCDescendants.map { cc =>
         val parentType = cc.parent.map { case AbstractClassType(_, targs) => AbstractClassType(newAbs, targs) }
         val newCC = new CaseClassDef(FreshIdentifier(cc.id.name, Untyped, true), cc.tparams, parentType, cc.isCaseObject)
         newAbs.registerChild(newCC)
         cc -> newCC
       }).toMap
-    case cdef @ CaseClassDef(id, tparams, None, cobj) =>
-      Map(cdef -> new CaseClassDef(FreshIdentifier(id.name, Untyped, true), tparams, None, cobj))
+    case cdef: CaseClassDef if !cdef.parent.isDefined =>
+      Map(cdef -> new CaseClassDef(FreshIdentifier(cdef.id.name, Untyped, true), cdef.tparams, None, cdef.isCaseObject))
   }
 
   /**

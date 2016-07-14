@@ -810,7 +810,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   }
 
   def transformCaseClasses = p.definedClasses.foreach {
-    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj) if !ccd.flags.contains(Annotation("library", Seq())) =>
+    case ccd :CaseClassDef if !ccd.flags.contains(Annotation("library", Seq())) =>
       val nfields = ccd.fields.map { fld =>
         val nt = replaceClosureTypes(fld.getType)
         if (nt != fld.getType) {

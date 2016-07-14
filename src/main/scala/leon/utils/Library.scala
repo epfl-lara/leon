@@ -7,6 +7,8 @@ import purescala.Definitions._
 import purescala.Types._
 import purescala.DefOps._
 
+import scala.reflect._
+
 case class Library(pgm: Program) {
   lazy val List = lookup("leon.collection.List").collectFirst { case acd : AbstractClassDef => acd }
   lazy val Cons = lookup("leon.collection.Cons").collectFirst { case ccd : CaseClassDef => ccd }
@@ -24,8 +26,21 @@ case class Library(pgm: Program) {
   
   lazy val escape = lookup("leon.lang.StrOps.escape").collectFirst { case fd : FunDef => fd }
 
+  lazy val mapMkString = lookup("leon.lang.Map.mkString").collectFirst { case fd : FunDef => fd }
+  
+  lazy val setMkString = lookup("leon.lang.Set.mkString").collectFirst { case fd : FunDef => fd }
+  
+  lazy val bagMkString = lookup("leon.lang.Bag.mkString").collectFirst { case fd : FunDef => fd }
+
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)
+  }
+
+  def lookupUnique[D <: Definition : ClassTag](name: String): D = {
+    val ct = classTag[D]
+    val all = pgm.lookupAll(name).filter(d => ct.runtimeClass.isInstance(d))
+    assert(all.size == 1, "lookupUnique(\"name\") returned results " + all.map(_.id.uniqueName))
+    all.head.asInstanceOf[D]
   }
 
   def optionType(tp: TypeTree) = AbstractClassType(Option.get, Seq(tp))

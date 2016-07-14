@@ -151,7 +151,7 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
         if (shouldCreateVC(recFun, calldata.inSpec)) {
           reporter.info("Creating VC for " + recFun.id)
           // instantiate the body with new types
-          val tparamMap = (recFun.tparams zip recFunTyped.tps).toMap
+          val tparamMap = (recFun.typeArgs zip recFunTyped.tps).toMap
           val paramMap = recFun.params.map { pdef =>
             pdef.id -> FreshIdentifier(pdef.id.name, instantiateType(pdef.id.getType, tparamMap))
           }.toMap
@@ -185,7 +185,7 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
     if (callee.isBodyVisible) {
       //here inline the body and conjoin it with the guard
       //Important: make sure we use a fresh body expression here, and freshenlocals
-      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val tparamMap = (callee.typeArgs zip tfd.tps).toMap
       val freshBody = instantiateType(replace(formalToActual(call),
         Equals(getFunctionReturnVariable(callee), freshenLocals(callee.body.get))),
         tparamMap, Map())

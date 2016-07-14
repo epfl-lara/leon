@@ -25,9 +25,11 @@ import scala.collection.JavaConverters._
 import java.lang.reflect.Constructor
 
 import synthesis.Problem
+import evaluators._
 
 class CompilationUnit(val ctx: LeonContext,
                       val program: Program,
+                      val bank: EvaluationBank = new EvaluationBank,
                       val params: CodeGenParams = CodeGenParams.default) extends CodeGeneration {
 
 
@@ -80,7 +82,7 @@ class CompilationUnit(val ctx: LeonContext,
     id
   }
 
-  def defineClass(df: Definition) {
+  def defineClass(df: Definition): Unit = {
     val cName = defToJVMName(df)
 
     val cf = df match {
@@ -105,7 +107,8 @@ class CompilationUnit(val ctx: LeonContext,
   def leonClassToJVMInfo(cd: ClassDef): Option[(String, String)] = {
     classes.get(cd) match {
       case Some(cf) =>
-        val sig = "(L"+MonitorClass+";" + cd.fields.map(f => typeToJVM(f.getType)).mkString("") + ")V"
+        val tpeParam = if (cd.tparams.isEmpty) "" else "[I"
+        val sig = "(L"+MonitorClass+";" + tpeParam + cd.fields.map(f => typeToJVM(f.getType)).mkString("") + ")V"
         Some((cf.className, sig))
       case _ => None
     }
@@ -113,7 +116,6 @@ class CompilationUnit(val ctx: LeonContext,
 
   // Returns className, methodName, methodSignature
   private[this] var funDefInfo = Map[FunDef, (String, String, String)]()
-
 
   /**
    * Returns (cn, mn, sig) where
@@ -213,8 +215,13 @@ class CompilationUnit(val ctx: LeonContext,
     case CaseClass(cct, args) =>
       caseClassConstructor(cct.classDef) match {
         case Some(cons) =>
-          val jvmArgs = monitor +: args.map(valueToJVM)
-          cons.newInstance(jvmArgs.toArray : _*).asInstanceOf[AnyRef]
+          try {
+            val tpeParam = if (cct.tps.isEmpty) Seq() else Seq(cct.tps.map(registerType).toArray)
+            val jvmArgs = monitor +: (tpeParam ++ args.map(valueToJVM))
+            cons.newInstance(jvmArgs.toArray : _*).asInstanceOf[AnyRef]
+          } catch {
+            case e : java.lang.reflect.InvocationTargetException => throw e.getCause
+          }
         case None =>
           ctx.reporter.fatalError("Case class constructor not found?!?")
       }
@@ -230,6 +237,13 @@ class CompilationUnit(val ctx: LeonContext,
         s.add(valueToJVM(e))
       }
       s
+
+    case b @ FiniteBag(els, _) =>
+      val b = new leon.codegen.runtime.Bag()
+      for ((k,v) <- els) {
+        b.add(valueToJVM(k), valueToJVM(v).asInstanceOf[leon.codegen.runtime.BigInt])
+      }
+      b
 
     case m @ FiniteMap(els, _, _) =>
       val m = new leon.codegen.runtime.Map()
@@ -259,10 +273,8 @@ class CompilationUnit(val ctx: LeonContext,
 
       val lc = loader.loadClass(afName)
       val conss = lc.getConstructors.sortBy(_.getParameterTypes.length)
-      println(conss)
       assert(conss.nonEmpty)
       val lambdaConstructor = conss.last
-      println(args.toArray)
       lambdaConstructor.newInstance(args.toArray : _*).asInstanceOf[AnyRef]
 
     case f @ IsTyped(FiniteArray(elems, default, IntLiteral(length)), ArrayType(underlying)) =>
@@ -362,6 +374,13 @@ class CompilationUnit(val ctx: LeonContext,
 
     case (set: runtime.Set, SetType(b)) =>
       FiniteSet(set.getElements.asScala.map(jvmToValue(_, b)).toSet, b)
+
+    case (bag: runtime.Bag, BagType(b)) =>
+      FiniteBag(bag.getElements.asScala.map { entry =>
+        val k = jvmToValue(entry.getKey, b)
+        val v = jvmToValue(entry.getValue, IntegerType)
+        (k, v)
+      }.toMap, b)
 
     case (map: runtime.Map, MapType(from, to)) =>
       val pairs = map.getElements.asScala.map { entry =>
@@ -541,7 +560,7 @@ class CompilationUnit(val ctx: LeonContext,
 
       for (m <- u.modules) {
         defineClass(m)
-        for(funDef <- m.definedFunctions) {
+        for (funDef <- m.definedFunctions) {
           defToModuleOrClass += funDef -> m
         }
       }
@@ -583,6 +602,5 @@ class CompilationUnit(val ctx: LeonContext,
 }
 
 private [codegen] object exprCounter extends UniqueCounter[Unit]
-private [codegen] object lambdaCounter extends UniqueCounter[Unit]
 private [codegen] object forallCounter extends UniqueCounter[Unit]
 

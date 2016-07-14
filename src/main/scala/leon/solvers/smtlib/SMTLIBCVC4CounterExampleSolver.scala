@@ -1,11 +1,12 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
-package solvers.smtlib
+package solvers
+package smtlib
 
 import purescala.Definitions.Program
 
-class SMTLIBCVC4CounterExampleSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
+class SMTLIBCVC4CounterExampleSolver(context: SolverContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
   override def targetName = "cvc4-cex"
 

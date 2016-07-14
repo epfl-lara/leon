@@ -3,8 +3,8 @@
 package leon
 
 /** A common trait for everything that is important enough to be named,
- *  and that processes command line options. And important category are
- *  `LeonPhase`s. */
+ *  and that defines command line options. And important category are
+ *  [[LeonPhase]]s. */
 trait LeonComponent {
   val name : String
   val description : String

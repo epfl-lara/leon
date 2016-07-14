@@ -157,8 +157,8 @@ object HOMemUtil {
   }
 
   def isLazyType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
-      cid.name == "Lazy"
+    case CaseClassType(ccd, Seq(_)) if !ccd.parent.isDefined && !ccd.isCaseObject =>
+      ccd.id.name == "Lazy"
     case _ => false
   }
 

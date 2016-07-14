@@ -16,8 +16,9 @@ import leon.utils.Interruptible
 import leon.verification.VC
 
 import edu.tum.cs.isabelle._
+import edu.tum.cs.isabelle.pure.{Expr => _, _}
 
-class IsabelleSolver(val context: LeonContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
+class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -49,7 +50,7 @@ class IsabelleSolver(val context: LeonContext, program: Program, types: Types, f
   def check: Option[Boolean] = {
     val verdict = sequencePending().flatMapC { ts =>
       Future.traverse(ts)(system.invoke(Pretty)(_).assertSuccess(context)).foreach { strs =>
-        context.reporter.debug(s"Attempting to prove disjunction of ${canonicalizeOutput(strs.mkString(", "))}")
+        context.reporter.debug(s"Attempting to prove disjunction of ${canonicalizeOutput(system, strs.mkString(", "))}")
       }
 
       system.cancellableInvoke(Prove)((ts, method))
@@ -59,7 +60,7 @@ class IsabelleSolver(val context: LeonContext, program: Program, types: Types, f
     try {
       Await.result(verdict.future.assertSuccess(context), timeout) match {
         case Some(thm) =>
-          context.reporter.debug(s"Proved theorem: ${canonicalizeOutput(thm)}")
+          context.reporter.debug(s"Proved theorem: ${canonicalizeOutput(system, thm)}")
           Some(false)
         case None =>
           None

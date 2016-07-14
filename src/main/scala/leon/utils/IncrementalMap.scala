@@ -60,6 +60,12 @@ class IncrementalMap[A, B] private(dflt: Option[B])
   def getOrElse[B1 >: B](k: A, e: => B1) = stack.head.getOrElse(k, e)
   def values = stack.head.values
 
+  def cached(k: A)(b: => B): B = getOrElse(k, {
+    val ev = b
+    this += k -> ev
+    ev
+  })
+
   def iterator = stack.head.iterator
   def +=(kv: (A, B)) = { stack.head += kv; this }
   def -=(k: A) = { stack.head -= k; this }

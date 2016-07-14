@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import leon.synthesis.Witnesses.Inactive
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Constructors._
@@ -28,8 +29,6 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    val TopLevelAnds(as) = and(p.pc, p.phi)
-
     def getFacts(e: Expr): Set[Fact] = e match {
       case LessThan(a, b)           => Set(LT(b,a), EQ(a,b))
       case LessEquals(a, b)         => Set(LT(b,a))
@@ -44,39 +43,49 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
       case _ => Set()
     }
 
-    val facts = as flatMap getFacts
+    val facts: Set[Fact] = {
+      val TopLevelAnds(fromPhi) = p.phi
+      (fromPhi.toSet ++ p.pc.conditions ++ p.pc.bindings.map { case (id,e) => Equals(id.toVariable, e) }) flatMap getFacts
+    }
 
     val candidates =
-      (p.as.map(_.toVariable).filter(_.getType == Int32Type) :+ IntLiteral(0)).combinations(2).toList ++
-      (p.as.map(_.toVariable).filter(_.getType == IntegerType) :+ InfiniteIntegerLiteral(0)).combinations(2).toList
+      (p.allAs.map(_.toVariable).filter(_.getType == Int32Type) :+ IntLiteral(0)).combinations(2).toList ++
+      (p.allAs.map(_.toVariable).filter(_.getType == IntegerType) :+ InfiniteIntegerLiteral(0)).combinations(2).toList
 
     candidates.flatMap {
       case List(v1, v2) =>
 
         val lt = if (!facts.contains(LT(v1, v2))) {
           val pc = LessThan(v1, v2)
-          Some(pc, p.copy(pc = and(p.pc, pc), eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc))
         } else None
 
         val gt = if (!facts.contains(LT(v2, v1))) {
           val pc = GreaterThan(v1, v2)
-          Some(pc, p.copy(pc = and(p.pc, pc), eb = p.qeb.filterIns(pc)))
+          Some(pc, p.copy(pc = p.pc withCond pc))
         } else None
 
-        val eq = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
+        val eq: Option[(Equals, Problem)] = if (!facts.contains(EQ(v1, v2)) && !facts.contains(EQ(v2,v1))) {
           val pc = Equals(v1, v2)
-          // One of v1, v2 will be an input variable
-          val a1 = (v1, v2) match {
-            case (Variable(a), _) => a
-            case (_, Variable(a)) => a
+          // Let's see if an input variable is involved
+          val (f, t, isInput) = (v1, v2) match {
+            case (Variable(a1), _) if p.as.contains(a1) => (a1, v2, true)
+            case (_, Variable(a2)) if p.as.contains(a2) => (a2, v1, true)
+            case (Variable(a1), _)                      => (a1, v2, false)
           }
-          val newP = p.copy(
-            as = p.as.diff(Seq(a1)),
-            pc = subst(a1 -> v2, p.pc),
-            ws = subst(a1 -> v2, p.ws),
-            phi = subst(a1 -> v2, p.phi),
-            eb = p.qeb.filterIns(Equals(v1, v2)).removeIns(Set(a1))
-          )
+
+          val newP = if (isInput) {
+            p.copy(
+              as = p.as.diff(Seq(f)),
+              pc = p.pc map (subst(f -> t, _)),
+              ws = subst(f -> t, p.ws),
+              phi = subst(f -> t, p.phi),
+              eb = p.qeb.filterIns(m => m(f) == t)
+            )
+          } else {
+            p.copy(pc = p.pc withCond pc).withWs(Seq(Inactive(f))) // equality in pc is fine for numeric types
+          }
+
           Some(pc, newP)
         } else None
 
@@ -86,9 +95,9 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
         else {
 
           val onSuccess: List[Solution] => Option[Solution] = { sols =>
-            val pre = orJoin(pcs.zip(sols).map { case (pc, sol) =>
-              and(pc, sol.pre)
-            })
+            val pre = cases(pcs.zip(sols).map {
+                case (pc, sol) => pc -> sol.pre
+              })
 
             val term = pcs.zip(sols) match {
               case Seq((pc1, s1), (_, s2)) =>
@@ -100,7 +109,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
             Some(Solution(pre, sols.flatMap(_.defs).toSet, term, sols.forall(_.isTrusted)))
           }
 
-          Some(decomp(subProblems, onSuccess, s"Ineq. Split on '$v1' and '$v2'"))
+          Some(decomp(subProblems, onSuccess, s"Ineq. Split on '${v1.asString(hctx)}' and '${v2.asString(hctx)}'"))
         }
     }
   }

@@ -9,12 +9,13 @@ import purescala.Types.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Constructors._
+import purescala.Path
 
 import leon.utils.Simplifiers
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) extends Printable {
+case class Solution(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean = true) extends Printable {
 
   def asString(implicit ctx: LeonContext) = {
     "⟨ "+pre.asString+" | "+defs.map(_.asString).mkString(" ")+" "+term.asString+" ⟩" 
@@ -31,8 +32,15 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
   def toExpr = {
-    if(defs.isEmpty) guardedTerm else
-    LetDef(defs.toList, guardedTerm)
+    letDef(defs.toList, guardedTerm)
+  }
+  
+  def ifOnFunDef[T](originalFun: FunDef)(body: => T): T = {
+    val saved = originalFun.body
+    originalFun.body = Some(term)
+    val res = body
+    originalFun.body = saved
+    res
   }
 
   // Projects a solution (ignore several output variables)
@@ -53,40 +61,28 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     }
   }
 
-
-  def toSimplifiedExpr(ctx: LeonContext, p: Program, within: FunDef): Expr = {
-    withoutSpec(Simplifiers.bestEffort(ctx, p)(req(within.precOrTrue, toExpr))).get
+  def toSimplifiedExpr(ctx: LeonContext, p: Program, pc: Path): Expr = {
+    Simplifiers.bestEffort(ctx, p)(toExpr, pc)
   }
 }
 
 object Solution {
-  def simplify(e: Expr) = simplifyLets(e)
-
-  def apply(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean = true) = {
-    new Solution(simplify(pre), defs, simplify(term), isTrusted)
-  }
 
   def term(term: Expr, isTrusted: Boolean = true) = {
-    new Solution(BooleanLiteral(true), Set(), simplify(term), isTrusted)
+    Solution(BooleanLiteral(true), Set(), term, isTrusted)
   }
 
-  def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr)] = if (s eq null) None else Some((s.pre, s.defs, s.term))
-
   def choose(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef(_)), p.phi)))
+    Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.phi)))
   }
 
   def chooseComplete(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef(_)), and(p.pc, p.phi))))
+    Solution(BooleanLiteral(true), Set(), Choose(Lambda(p.xs.map(ValDef), p.pc and p.phi)))
   }
 
-  // Generate the simplest, wrongest solution, used for complexity lowerbound
-  def basic(p: Problem): Solution = {
-    simplest(p.outType)
-  }
-
+  // Generate the simplest, wrongest solution, used for complexity lower bound
   def simplest(t: TypeTree): Solution = {
-    new Solution(BooleanLiteral(true), Set(), simplestValue(t))
+    Solution(BooleanLiteral(true), Set(), simplestValue(t))
   }
 
   def failed(implicit p: Problem): Solution = {
@@ -96,6 +92,6 @@ object Solution {
 
   def UNSAT(implicit p: Problem): Solution = {
     val tpe = tupleTypeWrap(p.xs.map(_.getType))
-    Solution(BooleanLiteral(false), Set(), Error(tpe, "Path condition is UNSAT!"))
+    Solution(BooleanLiteral(false), Set(), Error(tpe, "Spec is UNSAT for this path!"))
   }
 }

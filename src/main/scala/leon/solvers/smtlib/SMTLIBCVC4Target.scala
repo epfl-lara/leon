@@ -10,6 +10,8 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Types._
 
+import org.apache.commons.lang3.StringEscapeUtils;
+
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTForall, _}
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
@@ -20,7 +22,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
   override def getNewInterpreter(ctx: LeonContext) = {
     val opts = interpreterOps(ctx)
-    reporter.debug("Invoking solver with "+opts.mkString(" "))
+    context.reporter.debug("Invoking solver with "+opts.mkString(" "))
 
     new CVC4Interpreter("cvc4", opts.toArray)
   }
@@ -49,10 +51,6 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case _: Throwable =>
             super.fromSMT(t, otpe)
         }
-
-      case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
-        val n = s.name.split("_").toList.last
-        GenericValue(tp, n.toInt)
 
       case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), Some(SetType(base))) =>
         FiniteSet(Set(), base)
@@ -111,11 +109,15 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         }).toSet, base)
 
       case (SString(v), Some(StringType)) =>
-        StringLiteral(v)
+        StringLiteral(StringEscapeUtils.unescapeJava(v))
         
-      case (Strings.Length(a), _) =>
+      case (Strings.Length(a), Some(Int32Type)) =>
         val aa = fromSMT(a)
         StringLength(aa)
+        
+      case (Strings.Length(a), Some(IntegerType)) =>
+        val aa = fromSMT(a)
+        StringBigLength(aa)
 
       case (Strings.Concat(a, b, c @ _*), _) =>
         val aa = fromSMT(a)
@@ -129,8 +131,14 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         val tt = fromSMT(start)
         val oo = fromSMT(offset)
         oo match {
-          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
-          case _ => SubString(ss, tt, Plus(tt, oo))
+          case BVMinus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
+          case Minus(otherEnd, `tt`) => BigSubString(ss, tt, otherEnd)
+          case _ => 
+            if(tt.getType == IntegerType) {
+              BigSubString(ss, tt, Plus(tt, oo))
+            } else {
+              SubString(ss, tt, BVPlus(tt, oo))
+            }
         }
         
       case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
@@ -166,12 +174,16 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case SetIntersection(a, b) => Sets.Intersection(toSMT(a), toSMT(b))
     case StringLiteral(v)          =>
         declareSort(StringType)
-        Strings.StringLit(v)
+        Strings.StringLit(StringEscapeUtils.escapeJava(v))
     case StringLength(a)           => Strings.Length(toSMT(a))
+    case StringBigLength(a)        => Strings.Length(toSMT(a))
     case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
-    case SubString(a, start, Plus(start2, length)) if start == start2  =>
+    case SubString(a, start, BVPlus(start2, length)) if start == start2  =>
                                       Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
-    case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
+    case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(BVMinus(end, start)))
+    case BigSubString(a, start, Plus(start2, length)) if start == start2  =>
+                                      Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
+    case BigSubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
     case _ =>
       super.toSMT(e)
   }

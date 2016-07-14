@@ -59,7 +59,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
 
     val synthPhi = replaceFromIDs(xToFdCall, p.phi)
 
-    val constraint = implies(p.pc, synthPhi)
+    val constraint = p.pc implies synthPhi
 
     emit(FunctionApplication(constraintId, Seq(toSMT(constraint)(bindings))))
 
@@ -81,7 +81,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
                 val res = fromSMT(body, sorts.toA(retSort))(Map(), Map())
                 Some(res)
               case r =>
-                reporter.warning("Unnexpected result from cvc4-sygus: "+r)
+                context.reporter.warning("Unnexpected result from cvc4-sygus: "+r)
                 None
             }
           }).flatten
@@ -96,7 +96,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
           None
 
         case r =>
-          reporter.warning("Unnexpected result from cvc4-sygus: "+r+" expected unsat")
+          context.reporter.warning("Unnexpected result from cvc4-sygus: "+r+" expected unsat")
           None
       }
     } catch { 

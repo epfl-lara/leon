@@ -9,7 +9,7 @@ import purescala.ExprOps._
 import purescala.Common._
 import purescala.Constructors._
 import evaluators._
-import grammars._
+import leon.grammars._
 import codegen._
 import datagen._
 import solvers._
@@ -78,7 +78,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   
   /** Extract examples from the passes found in expression */
   def extractFromProblem(p: Problem): ExamplesBank = {
-    val testClusters = extractTestsOf(and(p.pc, p.phi))
+    val testClusters = extractTestsOf(p.pc and p.phi)
 
     // Finally, we keep complete tests covering all as++xs
     val allIds  = (p.as ++ p.xs).toSet
@@ -99,12 +99,12 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
 
     def isValidExample(ex: Example): Boolean = {
-      if(this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
+      if (this.keepAbstractExamples) return true // TODO: Abstract interpretation here ?
       val (mapping, cond) = ex match {
         case io: InOutExample =>
-          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), And(p.pc, p.phi))
+          (Map((p.as zip io.ins) ++ (p.xs zip io.outs): _*), p.pc and p.phi)
         case i =>
-          ((p.as zip i.ins).toMap, p.pc)
+          ((p.as zip i.ins).toMap, p.pc.toClause)
       }
 
       evaluator.eval(cond, mapping) match {
@@ -116,15 +116,22 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     ExamplesBank(examples.filter(isValidExample), Seq())
   }
 
-  def generateForPC(ids: List[Identifier], pc: Expr, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
+  def generateForPC(ids: List[Identifier], pc: Expr, ctx: LeonContext, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
+    //println(program.definedClasses)
 
-    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val evaluator = new CodeGenEvaluator(ctx, program)
     val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
-    val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory(() => new FairZ3Solver(ctx, pgm)))
+    val solverF   = SolverFactory.getFromSettings(ctx, program)
+    val solverDataGen = new SolverDataGen(ctx, program, solverF)
 
     val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
 
-    val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
+    val solverExamples    = try {
+      solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
+    } catch  {
+      case e: leon.Unsupported =>
+        Nil
+    }
 
     ExamplesBank(generatedExamples.toSeq ++ solverExamples.toList, Nil)
   }
@@ -141,8 +148,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           val ids  = variablesOf(test)
 
           // Test could contain expressions, we evaluate
-          evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
-            case EvaluationResults.Successful(res) => res
+          abstractEvaluator.eval(test, Model.empty) match {
+            case EvaluationResults.Successful((res, _)) => res
             case _                                 => test
           }
         }
@@ -217,11 +224,26 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           } else {
             // If the input contains free variables, it does not provide concrete examples. 
             // We will instantiate them according to a simple grammar to get them.
-            val dataGen = new GrammarDataGen(evaluator)
 
-            val theGuard = replace(Map(in -> pattExpr), cs.optGuard.getOrElse(BooleanLiteral(true)))
+            val exs = cs.optGuard match {
+              case Some(g) =>
+                // We have a guard constraining the freeVars, we generate them together
+                val theGuard = replace(Map(in -> pattExpr), g)
 
-            dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000).toSeq map { vals =>
+                val dataGen = new GrammarDataGen(evaluator)
+                dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000)
+
+              case None =>
+                // We have no guard, it boils down to generate bunch of values
+                // per types of freevars and building tuples.
+                //println(s"Found simple in/out testcase: $cs")
+                //println("Free: "+freeVars)
+
+                val dataGen = new VaryingGrammarDataGen(evaluator)
+                dataGen.generateFor(freeVars, BooleanLiteral(true), examplesPerCase, examplesPerCase)
+            }
+
+            exs.toSeq map { vals =>
               val inst = freeVars.zip(vals).toMap
               val inR = replaceFromIDs(inst, pattExpr)
               val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
@@ -230,6 +252,11 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           }
         }
       }
+
+      //println("Case: "+cs.asString)
+      //val eb = ExamplesBank(res.map(c => InOutExample(Seq(c._1), Seq(c._2))), Nil)
+      //println(eb.asString("Tests"))
+
       
       if(this.keepAbstractExamples) res.map(expand) else res
     }

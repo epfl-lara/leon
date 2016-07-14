@@ -23,16 +23,17 @@ case object Assert extends NormalizingRule("Assert") {
           if (others.isEmpty) {
             val simplestOut = simplestValue(tupleTypeWrap(p.xs.map(_.getType)))
 
-            if (!isRealExpr(simplestOut)) {
+            if (!isRealExpr(simplestOut) || p.hasOutputTests) {
               None
             } else {
               Some(solve(Solution(pre = andJoin(exprsA), defs = Set(), term = simplestOut)))
             }
           } else {
-            val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others), eb = p.qeb.filterIns(andJoin(exprsA)))
+            val sub = p.copy(pc = p.pc withConds exprsA, phi = andJoin(others))
 
             Some(decomp(List(sub), {
-              case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(pre=andJoin(exprsA :+ pre), defs, term, s.isTrusted))
+              case List(s @ Solution(pre, defs, term, isTrusted)) =>
+                Some(Solution(andJoin(exprsA :+ pre), defs, term, isTrusted))
               case _ => None
             }, "Assert "+andJoin(exprsA).asString))
           }

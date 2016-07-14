@@ -9,9 +9,9 @@ import leon.purescala.Common._
 import leon.purescala.Types._
 import leon.purescala.Expressions._
 
-trait ExpressionsDSL {
-  self: Assertions =>
+import scala.language.implicitConversions
 
+trait ExpressionsDSLVariables {
   val F = BooleanLiteral(false)
   val T = BooleanLiteral(true)
 
@@ -35,6 +35,11 @@ trait ExpressionsDSL {
   val p = FreshIdentifier("p", BooleanType).toVariable
   val q = FreshIdentifier("q", BooleanType).toVariable
   val r = FreshIdentifier("r", BooleanType).toVariable
+}
+
+trait ExpressionsDSLProgram {
+self: Assertions =>
+
 
   def id(name: String, tpe: TypeTree)(implicit pgm: Program): Identifier = {
     FreshIdentifier(name, tpe)
@@ -92,4 +97,13 @@ trait ExpressionsDSL {
     val tfd = funDef(name).typed(Seq())
     FunctionInvocation(tfd, args.toSeq)
   }
+}
+
+trait ExpressionsDSL extends ExpressionsDSLVariables with ExpressionsDSLProgram {
+  self: Assertions =>
+ 
+ 
+  implicit def int2IntLit(i: Int): IntLiteral = IntLiteral(i)
+  implicit def bigInt2IntegerLit(i: BigInt): InfiniteIntegerLiteral = InfiniteIntegerLiteral(i)
+
 }

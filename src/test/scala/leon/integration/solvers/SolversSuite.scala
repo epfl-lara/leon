@@ -13,23 +13,16 @@ import leon.LeonContext
 
 import leon.solvers._
 import leon.solvers.smtlib._
-import leon.solvers.combinators._
 import leon.solvers.z3._
 
 class SolversSuite extends LeonTestSuiteWithProgram {
 
   val sources = List()
 
-  val getFactories: Seq[(String, (LeonContext, Program) => Solver)] = {
-    (if (SolverFactory.hasNativeZ3) Seq(
-      ("fairz3",   (ctx: LeonContext, pgm: Program) => new Z3StringFairZ3Solver(ctx, pgm))
-    ) else Nil) ++
-    (if (SolverFactory.hasZ3)       Seq(
-      ("smt-z3",   (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBZ3Solver(ctx, pgm)))
-    ) else Nil) ++
-    (if (SolverFactory.hasCVC4)     Seq(
-      ("smt-cvc4", (ctx: LeonContext, pgm: Program) => new Z3StringUnrollingSolver(ctx, pgm, pgm => new SMTLIBCVC4Solver(ctx, pgm)))
-    ) else Nil)
+  val solverNames: Seq[String] = {
+    (if (SolverFactory.hasNativeZ3) Seq("fairz3") else Nil) ++
+    (if (SolverFactory.hasZ3)       Seq("smt-z3") else Nil) ++
+    (if (SolverFactory.hasCVC4)     Seq("smt-cvc4") else Nil)
   }
 
   val types = Seq(
@@ -42,6 +35,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
     StringType,
     TypeParameter.fresh("T"),
     SetType(IntegerType),
+    BagType(IntegerType),
     MapType(IntegerType, IntegerType),
     FunctionType(Seq(IntegerType), IntegerType),
     TupleType(Seq(IntegerType, BooleanType, Int32Type))
@@ -49,12 +43,14 @@ class SolversSuite extends LeonTestSuiteWithProgram {
 
   val vs = types.map(FreshIdentifier("v", _).toVariable)
 
-      // We need to make sure models are not co-finite
+  // We need to make sure models are not co-finite
   val cnstrs = vs.map(v => v.getType match {
     case UnitType =>
       Equals(v, simplestValue(v.getType))
     case SetType(base) =>
       Not(ElementOfSet(simplestValue(base), v))
+    case BagType(base) =>
+      Not(Equals(MultiplicityInBag(simplestValue(base), v), simplestValue(IntegerType)))
     case MapType(from, to) =>
       Not(Equals(MapApply(v, simplestValue(from)), simplestValue(to)))
     case FunctionType(froms, to) =>
@@ -77,7 +73,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
               fail(s"Solver $solver - Model does not contain "+v.id.uniqueName+" of type "+v.getType)
             }
           }
-        case _ =>
+        case res =>
           fail(s"Solver $solver - Constraint "+cnstr.asString+" is unsat!? Solver was "+solver.getClass)
       }
     } finally {
@@ -86,19 +82,19 @@ class SolversSuite extends LeonTestSuiteWithProgram {
   }
 
   // Check that we correctly extract several types from solver models
-  for ((sname, sf) <- getFactories) {
+  for (sname <- solverNames) {
     test(s"Model Extraction in $sname") { implicit fix =>
       val ctx = fix._1
       val pgm = fix._2
-      val solver = sf(ctx, pgm)
+      val solver = SolverFactory.getFromName(ctx, pgm)(sname).getNewSolver()
       checkSolver(solver, vs.toSet, andJoin(cnstrs))
     }
   }
 
-  test(s"Data generation in enum solver") { implicit fix =>
+  /*test(s"Data generation in enum solver") { implicit fix =>
     for ((v,cnstr) <- vs zip cnstrs) {
-      val solver = new EnumerationSolver(fix._1, fix._2)
+      val solver = new EnumerationSolver(fix._1.toSctx, fix._2)
       checkSolver(solver, Set(v), cnstr)
     }
-  }
+  }*/
 }

@@ -27,7 +27,7 @@ class RelationProcessor(
       funDef -> modules.getRelations(funDef).collect({
         case Relation(_, path, FunctionInvocation(tfd, args), _) if problem.funSet(tfd.fd) =>
           val args0 = funDef.params.map(_.toVariable)
-          def constraint(expr: Expr) = implies(andJoin(path.toSeq), expr)
+          def constraint(expr: Expr) = path implies expr
           val greaterThan = modules.sizeDecreasing(args0, args)
           val greaterEquals = modules.softDecreasing(args0, args)
           (tfd.fd, (constraint(greaterThan), constraint(greaterEquals)))
@@ -46,6 +46,7 @@ class RelationProcessor(
         else if (definitiveALL(ge)) Dep(Set(fid))
         else Failure
       })
+
       val result = if(solved.contains(Failure)) Failure else {
         val deps = solved.collect({ case Dep(fds) => fds }).flatten
         if (deps.isEmpty) Success

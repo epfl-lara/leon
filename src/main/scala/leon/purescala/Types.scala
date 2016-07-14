@@ -3,8 +3,6 @@
 package leon
 package purescala
 
-import scala.language.implicitConversions
-
 import Common._
 import Expressions._
 import Definitions._
@@ -13,7 +11,7 @@ import TypeOps._
 object Types {
 
   trait Typed extends Printable {
-    val getType: TypeTree
+    def getType: TypeTree
     def isTyped : Boolean = getType != Untyped
   }
 
@@ -74,12 +72,13 @@ object Types {
    * If you are not sure about the requirement, 
    * you should use tupleTypeWrap in purescala.Constructors
    */
-  case class TupleType (bases: Seq[TypeTree]) extends TypeTree {
+  case class TupleType(bases: Seq[TypeTree]) extends TypeTree {
     val dimension: Int = bases.length
     require(dimension >= 2)
   }
 
   case class SetType(base: TypeTree) extends TypeTree
+  case class BagType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class FunctionType(from: Seq[TypeTree], to: TypeTree) extends TypeTree
   case class ArrayType(base: TypeTree) extends TypeTree
@@ -99,7 +98,7 @@ object Types {
     assert(classDef.tparams.size == tps.size)
 
     lazy val fields = {
-      val tmap = (classDef.tparams zip tps).toMap
+      val tmap = (classDef.typeArgs zip tps).toMap
       if (tmap.isEmpty) {
         classDef.fields
       } else {
@@ -125,27 +124,41 @@ object Types {
     lazy val root: ClassType = parent.map{ _.root }.getOrElse(this)
 
     lazy val parent = classDef.parent.map { pct =>
-      instantiateType(pct, (classDef.tparams zip tps).toMap) match {
+      instantiateType(pct, (classDef.typeArgs zip tps).toMap) match {
         case act: AbstractClassType  => act
         case t => throw LeonFatalError("Unexpected translated parent type: "+t)
       }
     }
+
   }
 
   case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType
   case class CaseClassType(classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
 
-  object NAryType extends SubTreeOps.Extractor[TypeTree] {
+  object NAryType extends TreeExtractor[TypeTree] {
     def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {
       case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
       case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
-      case TupleType(ts) => Some((ts, Constructors.tupleTypeWrap _))
+      case TupleType(ts) => Some((ts, TupleType))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
+      case BagType(t) => Some((Seq(t), ts => BagType(ts.head)))
       case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))
       case FunctionType(fts, tt) => Some((tt +: fts, ts => FunctionType(ts.tail.toList, ts.head)))
-      /* n-ary operators */
+
+      /* TODO: use some extractable interface once this proved useful */
+      case solvers.RawArrayType(from,to) => Some((Seq(from, to), t => solvers.RawArrayType(t(0), t(1))))
+
+      /* nullary types */
       case t => Some(Nil, _ => t)
+    }
+  }
+
+  object FirstOrderFunctionType {
+    def unapply(tpe: TypeTree): Option[(Seq[TypeTree], TypeTree)] = tpe match {
+      case FunctionType(from, to) =>
+        unapply(to).map(p => (from ++ p._1) -> p._2) orElse Some(from -> to)
+      case _ => None
     }
   }
   

@@ -21,7 +21,7 @@ class FairZ3SolverTests extends LeonSolverSuite {
    )
 
   def getSolver(implicit ctx: LeonContext, pgm: Program) = {
-    new FairZ3Solver(ctx, pgm)
+    new FairZ3Solver(ctx.toSctx, pgm)
   }
 
   test("Tautology 1") { implicit fix =>
