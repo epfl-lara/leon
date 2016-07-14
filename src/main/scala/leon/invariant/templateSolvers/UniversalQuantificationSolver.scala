@@ -52,7 +52,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
   val leonctx = ctx.leonContext
 
   //flag controlling behavior
-  val disableSTE = true
+  val disableCegis = true
   private val useIncrementalSolvingForVCs = true
   private val usePortfolio = false // portfolio has a bug in incremental solving
 
@@ -389,13 +389,13 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
     (res, modelCons(packedModel, defaultEval))
   }
 
-  // STE code, now not used
-  //val (cres, cctr, cmodel) = solveWithSTE(tempIds.toSet, createOr(newConfDisjuncts), inputCtr, Some(model))
-  //  def solveWithSTE(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Model]): (Option[Boolean], Expr, Model) = {
-  //      val steSolver = new STECore(ctx, program, timeout.toInt, NLTemplateSolver.this)
-  //      val (res, ctr, model) = steSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
+  // cegis code, now not used
+  //val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, createOr(newConfDisjuncts), inputCtr, Some(model))
+  //  def solveWithCegis(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Model]): (Option[Boolean], Expr, Model) = {
+  //      val cegisSolver = new CegisCore(ctx, program, timeout.toInt, NLTemplateSolver.this)
+  //      val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
   //      if (res.isEmpty)
-  //        reporter.info("STE timed-out on the disjunct...")
+  //        reporter.info("cegis timed-out on the disjunct...")
   //      (res, ctr, model)
   //    }
 

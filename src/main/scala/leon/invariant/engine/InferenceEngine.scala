@@ -60,16 +60,16 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
     val relfuns = ctx.functionsToInfer.getOrElse(program.definedFunctions.map(InstUtil.userFunctionName))
     var results: Map[FunDef, InferenceCondition] = null
     time {
-      if (!ctx.useSTE) {
+      if (!ctx.useCegis) {
         results = analyseProgram(program, relfuns, defaultVCSolver, progressCallback)
         //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
       } else {
         var remFuncs = relfuns
         var b = 200
-        val maxSTEBound = 200
+        val maxCegisBound = 200
         breakable {
-          while (b <= maxSTEBound) {
-            Stats.updateCumStats(1, "STEBoundsTried")
+          while (b <= maxCegisBound) {
+            Stats.updateCumStats(1, "CegisBoundsTried")
             val succeededFuncs = analyseProgram(program, remFuncs, defaultVCSolver, progressCallback)
             val successes = succeededFuncs.keySet.map(InstUtil.userFunctionName)
             remFuncs = remFuncs.filterNot(successes.contains _)

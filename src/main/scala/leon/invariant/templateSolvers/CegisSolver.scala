@@ -19,9 +19,9 @@ import SolverUtil._
 import Stats._
 import Util._
 
-class STESolver(ctx: InferenceContext, program: Program,
-                rootFun: FunDef, ctrTracker: ConstraintTracker,
-                timeout: Int, bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker) {
+class CegisSolver(ctx: InferenceContext, program: Program,
+  rootFun: FunDef, ctrTracker: ConstraintTracker,
+  timeout: Int, bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker) {
 
   override def solve(tempIds: Set[Identifier], funcs: Seq[FunDef]): (Option[Model], Option[Set[Call]]) = {
     val initCtr = if (bound.isDefined) {
@@ -33,9 +33,9 @@ class STESolver(ctx: InferenceContext, program: Program,
       }).toSeq)
 
     } else tru
-    val formula = createOr(funcs.map(getVCForFun))
+    val formula = createOr(funcs.map(getVCForFun _).toSeq)
     //using reals with bounds does not converge and also results in overflow
-    val (res, _, model) = (new STECore(ctx, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
+    val (res, _, model) = (new CegisCore(ctx, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
       case Some(true) => (Some(model), None)
       case Some(false) => (None, None) //no solution exists
@@ -45,9 +45,9 @@ class STESolver(ctx: InferenceContext, program: Program,
   }
 }
 
-class STECore(ctx: InferenceContext,
-              program: Program, timeout: Int,
-              steSolver: TemplateSolver) {
+class CegisCore(ctx: InferenceContext,
+    program: Program, timeout: Int,
+  cegisSolver: TemplateSolver) {
 
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
@@ -88,7 +88,7 @@ class STECore(ctx: InferenceContext,
 
     val tempVarSum = if (minimizeSum) {
       //compute the sum of the tempIds
-      val rootTempIds = getTemplateVars(steSolver.rootFun.getTemplate)
+      val rootTempIds = getTemplateVars(cegisSolver.rootFun.getTemplate)
       if (rootTempIds.nonEmpty) {
         rootTempIds.tail.foldLeft(rootTempIds.head.asInstanceOf[Expr])((acc, tvar) => Plus(acc, tvar))
       } else zero
@@ -99,7 +99,7 @@ class STECore(ctx: InferenceContext,
     if (hasInts(initRealCtr))
       throw new IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
-    def steRec(model: Model, prevctr: Expr): (Option[Boolean], Expr, Model) = {
+    def cegisRec(model: Model, prevctr: Expr): (Option[Boolean], Expr, Model) = {
 
       val elapsedTime = (System.currentTimeMillis() - startTime)
       if (elapsedTime >= timeoutMillis - 100) {
@@ -108,11 +108,11 @@ class STECore(ctx: InferenceContext,
       } else {
 
         //println("elapsedTime: "+elapsedTime / 1000+" timeout: "+timeout)
-        Stats.updateCounter(1, "STEIters")
+        Stats.updateCounter(1, "CegisIters")
 
         if (dumpCandidateInvs) {
           reporter.info("Candidate invariants")
-          val candInvs = TemplateInstantiator.getAllInvariants(model, steSolver.ctrTracker.getFuncs)
+          val candInvs = TemplateInstantiator.getAllInvariants(model, cegisSolver.ctrTracker.getFuncs)
           candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
         }
         val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
@@ -151,7 +151,7 @@ class STECore(ctx: InferenceContext,
             val tempctrs = if (!solveAsInt) ExpressionTransformer.IntLiteralToReal(satctrs) else satctrs
             val newctr = And(tempctrs, prevctr)
             if (ctx.dumpStats) {
-              Stats.updateCounterStats(atomNum(newctr), "STETemplateCtrs", "STEIters")
+              Stats.updateCounterStats(atomNum(newctr), "CegisTemplateCtrs", "CegisIters")
             }
             val t3 = System.currentTimeMillis()
             val elapsedTime = (t3 - startTime)
@@ -179,7 +179,7 @@ class STECore(ctx: InferenceContext,
                 //this is for sanity check
                 addModel(newModel)
                 //generate more constraints
-                steRec(newModel, newctr)
+                cegisRec(newModel, newctr)
               }
             } else {
               //we have timed out
@@ -197,8 +197,8 @@ class STECore(ctx: InferenceContext,
         }
       }
     }
-    //note: initRealCtr is used inside 'steRec'
-    steRec(simplestModel, tru)
+    //note: initRealCtr is used inside 'cegisRec'
+    cegisRec(simplestModel, tru)
   }
 
   /**
