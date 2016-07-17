@@ -1,17 +1,17 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
-package invariant.util
+package invariant.templateSolvers
 
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import solvers._
-import solvers.smtlib.SMTLIBZ3Solver
 import invariant.engine.InferenceContext
 import invariant.factories._
-import leon.invariant.util.RealValuedExprEvaluator._
+import leon.invariant.util._
+import RealValuedExprEvaluator._
 import Stats._
 
 class Minimizer(ctx: InferenceContext, program: Program) {
@@ -27,7 +27,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
   val two = FractionalLiteral(2, 1)
   val rzero = FractionalLiteral(0, 1)
   val mone = FractionalLiteral(-1, 1)
-  val minusHundred = FractionalLiteral(-100, 1)
+  val lowerLimit = FractionalLiteral(BigInt(ctx.tightBounds.getOrElse(0): Long), 1)
 
   private val leonctx = ctx.leonContext
   val reporter = leonctx.reporter
@@ -48,6 +48,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
     minimizeBounds(computeCompositionLevel(timeTemplate))(inputCtr, initModel)
   }
 
+  val farkasSolver = new FarkasLemmaSolver(ctx, program)
   /**
    * TODO: use incremental solving of z3 when it is  supported in nlsat
    * Do a binary search sequentially on the tempvars ordered by the rate of growth of the term they
@@ -55,10 +56,9 @@ class Minimizer(ctx: InferenceContext, program: Program) {
    */
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
-      SolverFactory.getFromName(leonctx,program)("smt-z3-u"),
-      ctx.vcTimeout * 1000))
-
+    //    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
+    //      SolverFactory.getFromName(leonctx,program)("orb-smt-z3"),
+    //      ctx.vcTimeout * 1000))    
     reporter.info("minimizing...")
     var currentModel = initModel
     orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
@@ -71,7 +71,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
       var lowerBound: FractionalLiteral =
         if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar))
           lowerBoundMap(tvar)
-        else minusHundred
+        else lowerLimit
       def updateState(nmodel: Model) = {
         upperBound = nmodel(tvar.id).asInstanceOf[FractionalLiteral]
         currentModel = nmodel
@@ -94,7 +94,10 @@ class Minimizer(ctx: InferenceContext, program: Program) {
             val (res, newModel) =
               if (ctx.abort) (None, Model.empty)
               else {
-                time { solver.solveSAT(And(acc, boundCtr)) }{minTime =>
+                time {
+                  farkasSolver.solveFarkasConstraints(And(acc, boundCtr))
+                  //solver.solveSAT(And(acc, boundCtr))
+                } { minTime =>
                   updateCumTime(minTime, "BinarySearchTime")
                 }
               }
@@ -116,12 +119,14 @@ class Minimizer(ctx: InferenceContext, program: Program) {
         else
           initModel(tvar.id).asInstanceOf[FractionalLiteral]
       if (d != 1 && !ctx.abort) {
-        val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
+        val (res, newModel) =
+          farkasSolver.solveFarkasConstraints(And(acc, Equals(tvar, floor(currval))))
+        //solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
         if (res == Some(true))
           updateState(newModel)
       }
       //here, we found a best-effort minimum
-      if (lowerBound != minusHundred) {
+      if (lowerBound != lowerLimit) {
         updateLowerBound(tvar, lowerBound)
       }
       And(acc, Equals(tvar, currval))
@@ -167,7 +172,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
     def functionNesting(e: Expr): Int = {
       e match {
         case Times(e1, v @ Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          val nestLevel = functionNesting(e1)  + 1
+          val nestLevel = functionNesting(e1) + 1
           updateMax(v, nestLevel)
           nestLevel
         }
@@ -181,7 +186,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           0
         }
         case FunctionInvocation(_, args) => 1 + args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
-        case IfExpr(c, th, el) =>  1 + functionNesting(c) + functionNesting(th) + functionNesting(el)
+        case IfExpr(c, th, el)           => 1 + functionNesting(c) + functionNesting(th) + functionNesting(el)
         case t: Terminal                 => 0
         case Operator(args, _)           => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
       }

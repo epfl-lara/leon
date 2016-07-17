@@ -17,7 +17,7 @@ import scala.util.control.Breaks._
 import solvers._
 import scala.concurrent._
 import scala.concurrent.duration._
-import leon.evaluators.DefaultEvaluator
+import leon.evaluators.OrbEvaluator
 
 import invariant.templateSolvers._
 import invariant.factories._
@@ -268,7 +268,7 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
    * Note: taking a formula as input may not be necessary. We can store it as a part of the state
    * TODO: can we use transitivity here to optimize ?
    */
-  def axiomsForCalls(formula: Formula, calls: Set[Call], model: LazyModel, tmplMap: Map[Identifier,Expr], eval: DefaultEvaluator): Seq[Constraint] = {
+  def axiomsForCalls(formula: Formula, calls: Set[Call], model: LazyModel, tmplMap: Map[Identifier,Expr], eval: OrbEvaluator): Seq[Constraint] = {
     //note: unary axioms need not be instantiated
     //consider only binary axioms
     (for (x <- calls; y <- calls) yield (x, y)).foldLeft(Seq[Constraint]())((acc, pair) => {

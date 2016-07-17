@@ -58,7 +58,7 @@ object HOMemVerificationPhase {
   }
 
   def contextForChecks(userOptions: LeonContext) = {
-    val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre"))
+    val solverOptions = Main.processOptions(Seq("--solvers=orb-smt-cvc4,orb-smt-z3", "--assumepre"))
     LeonContext(userOptions.reporter, userOptions.interruptManager,
       solverOptions.options ++ userOptions.options)
   }
@@ -68,7 +68,7 @@ object HOMemVerificationPhase {
     Stats.updateCumStats(rep.totalConditions, "Total-VCs-Generated")
     val (withz3, withcvc) = rep.vrs.partition {
       case (vc, vr) =>
-        vr.solvedWith.map(s => s.name.contains("smt-z3")).get
+        vr.solvedWith.map(s => s.name.contains("orb-smt-z3")).get
     }
     Stats.updateCounter(withz3.size, "Z3SolvedVCs")
     Stats.updateCounter(withcvc.size, "CVC4SolvedVCs")
@@ -115,7 +115,7 @@ object HOMemVerificationPhase {
 
   def getInferenceContext(checkCtx: LeonContext, p: Program): InferenceContext = {
     // create an inference context
-    val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds", "--solvers=smt-cvc4"))
+    val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds=-100", "--solvers=orb-smt-cvc4"))
     val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
       inferOpts.options ++ checkCtx.options)
     new InferenceContext(p, ctxForInf)

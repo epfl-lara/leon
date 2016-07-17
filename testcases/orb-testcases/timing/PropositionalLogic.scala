@@ -33,7 +33,7 @@ object PropositionalLogic {
     case Implies(lhs, rhs) => Or(Not(removeImplies(lhs)),removeImplies(rhs))
     case Not(f) => Not(removeImplies(f))
     case _ => f
-  }) ensuring(_ => time <= ? * size(f) + ?)
+  }) ensuring(_ => steps <= ? * size(f) + ?)
 
   def nnf(formula: Formula): Formula = (formula match {
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
@@ -48,7 +48,7 @@ object PropositionalLogic {
     case Not(True()) => False()
     case Not(False()) => True()
     case _ => formula
-  }) ensuring(_ => time <= ? * size(formula) + ?)
+  }) ensuring(_ => steps <= ? * size(formula) + ?)
 
   def isNNF(f: Formula): Boolean = { f match {
     case And(lhs, rhs) => isNNF(lhs) && isNNF(rhs)
@@ -57,7 +57,7 @@ object PropositionalLogic {
     case Not(Literal(_)) => true
     case Not(_) => false
     case _ => true
-  }} ensuring(_ => time <= ? * size(f) + ?)
+  }} ensuring(_ => steps <= ? * size(f) + ?)
 
   def simplify(f: Formula): Formula = (f match {
     case And(lhs, rhs) => {
@@ -110,5 +110,5 @@ object PropositionalLogic {
     case Not(False()) => True()
     case _ => f
 
-  }) ensuring(_ => time <= ? *size(f) + ?)
+  }) ensuring(_ => steps <= ? *size(f) + ?)
 }

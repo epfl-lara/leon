@@ -30,7 +30,7 @@ import Util._
 import PredicateUtil._
 import SolverUtil._
 
-class DisjunctChooser(ctx: InferenceContext, program: Program, ctrTracker: ConstraintTracker, defaultEval: DefaultEvaluator) {
+class DisjunctChooser(ctx: InferenceContext, program: Program, ctrTracker: ConstraintTracker, defaultEval: OrbEvaluator) {
   val debugElimination = false
   val debugChooseDisjunct = false
   val debugTheoryReduction = false
@@ -71,7 +71,7 @@ class DisjunctChooser(ctx: InferenceContext, program: Program, ctrTracker: Const
    * @tempIdMap a model for the template variables
    */
   def chooseNumericalDisjunct(formula: Formula, initModel: LazyModel, tempIdMap: Map[Identifier, Expr]): (Seq[LinearConstraint], Seq[LinearTemplate], Set[Call]) = {
-    val satCtrs = formula.pickSatDisjunct(formula.firstRoot, initModel, tempIdMap, defaultEval) //this picks the satisfiable disjunct of the VC modulo axioms
+    val satCtrs = formula.pickSatDisjunct(formula.firstRoot, initModel, tempIdMap, defaultEval) //this picks the satisfiable disjunct of the VC modulo axioms    
     //for debugging
     if (debugChooseDisjunct || printPathToFile || dumpPathAsSMTLIB || verifyInvariant) {
       val pathctrs = satCtrs.map(_.toExpr)
@@ -123,7 +123,7 @@ class DisjunctChooser(ctx: InferenceContext, program: Program, ctrTracker: Const
     val selTrans = new SelectorToCons()
     val cons = selTrans.selToCons(adtExprs)
     val expModel = selTrans.getModel(initModel)
-    // get constraints for UFADTs
+    // get constraints for UFADTs    
     val callCtrs = time {
       (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons),
         linearEval.predEval(expModel)).map(ConstraintUtil.createConstriant _)

@@ -16,14 +16,14 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   val optFunctionUnroll = LeonFlagOptionDef("fullunroll", "Unroll all calls in every unroll step", false)
   val optWithMult = LeonFlagOptionDef("withmult", "Multiplication is not converted to a recursive function in VCs", false)
   val optUseReals = LeonFlagOptionDef("usereals", "Interpret the input program as a real program", false)
-  val optMinBounds = LeonFlagOptionDef("minbounds", "tighten time bounds", false)
+  val optMinBounds = LeonLongOptionDef("minbounds", "tighten time bounds", 0, "--minbounds[=lowerlimit], default lower limit is zero")
   val optInferTemp = LeonFlagOptionDef("inferTemp", "Infer templates by enumeration", false)
   val optCegis = LeonFlagOptionDef("cegis", "use cegis instead of farkas", false)
   val optStatsSuffix = LeonStringOptionDef("stats-suffix", "the suffix of the statistics file", "", "s")
   val optVCTimeout = LeonLongOptionDef("vcTimeout", "Timeout after T seconds when trying to prove a verification condition", 20, "s")
   val optNLTimeout = LeonLongOptionDef("nlTimeout", "Timeout after T seconds when trying to solve nonlinear constraints", 20, "s")
   val optDisableInfer = LeonFlagOptionDef("disableInfer", "Disable automatic inference of auxiliary invariants", false)
-  val optAssumePre = LeonFlagOptionDef("assumepreInf", "Assume preconditions of callees during unrolling", false)
+  val optAssumePre = LeonFlagOptionDef("assumepreInf", "Assume preconditions of callees during unrolling", false)  
 
   override val definedOptions: Set[LeonOptionDef[Any]] =
     Set(optFunctionUnroll, optWithMult, optUseReals,

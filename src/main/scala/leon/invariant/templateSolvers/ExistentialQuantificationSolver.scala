@@ -29,12 +29,13 @@ import Stats._
 import Util._
 import PredicateUtil._
 import SolverUtil._
+import ExpressionTransformer._
 
 /**
  * This class uses Farkas' lemma to try and falsify numerical disjuncts with templates provided one by one
  */
 class ExistentialQuantificationSolver(ctx: InferenceContext, program: Program,
-    ctrTracker: ConstraintTracker, defaultEval: DefaultEvaluator) {
+    ctrTracker: ConstraintTracker, defaultEval: OrbEvaluator) {
   import NLTemplateSolver._
   val reporter = ctx.reporter
 
@@ -73,7 +74,7 @@ class ExistentialQuantificationSolver(ctx: InferenceContext, program: Program,
     Stats.updateCounterStats((newSize + currSize), "NLsize", "disjuncts")
     if (verbose) reporter.info("# of atomic predicates: " + newSize + " + " + currSize)
 
-    val combCtr = And(Seq(currentCtr, newPart) ++ hypoCtrs)
+    val combCtr = simplifyByConstructors(createAnd(Seq(currentCtr, newPart) ++ hypoCtrs))
     val (res, newModel) = farkasSolver.solveFarkasConstraints(combCtr)
     res match {
       case _ if ctx.abort =>

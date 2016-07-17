@@ -37,7 +37,7 @@ object TemplateInstantiator {
     val tempvars = getTemplateVars(template)
     val instTemplate = instantiate(template, tempvars.map { v => (v, model(v.id)) }.toMap, prettyInv)
     // here, we optimistically assume there are no sharedIds (an invariant of the analysis)
-    // TODO: can we check this property ?
+    // TODO: can we check this property ?    
     simpleUnflattenWithMap(instTemplate, Set(), true)._1
   }
 

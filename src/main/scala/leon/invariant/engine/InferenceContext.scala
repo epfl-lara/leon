@@ -30,7 +30,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val assumepre = leonContext.findOption(optAssumePre).getOrElse(false)
 
   // the following options are disabled by default
-  val tightBounds = leonContext.findOption(optMinBounds).getOrElse(false)
+  val tightBounds = leonContext.findOption(optMinBounds)
   val inferTemp = leonContext.findOption(optInferTemp).getOrElse(false)
   val withmult = leonContext.findOption(optWithMult).getOrElse(false)
   val usereals = leonContext.findOption(optUseReals).getOrElse(false)

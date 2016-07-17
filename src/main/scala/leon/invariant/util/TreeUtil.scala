@@ -484,7 +484,13 @@ object PredicateUtil {
   }
 
   def createAnd(exprs: Seq[Expr]): Expr = {
-    val newExprs = exprs.filterNot(conj => conj == tru)
+    // pull ands if any in the subexpression to the top
+    val newExprs = exprs.flatMap {
+      case BooleanLiteral(true) => Seq()
+      case And(args) => args
+      case e => Seq(e)
+    }
+    //val newExprs = exprs.filterNot(conj => conj == tru)
     newExprs match {
       case Seq()  => tru
       case Seq(e) => e
@@ -493,7 +499,12 @@ object PredicateUtil {
   }
 
   def createOr(exprs: Seq[Expr]): Expr = {
-    val newExprs = exprs.filterNot(disj => disj == fls)
+    val newExprs = exprs.flatMap {
+      case BooleanLiteral(false) => Seq()
+      case Or(args) => args
+      case e => Seq(e)
+    }
+    //val newExprs = exprs.filterNot(disj => disj == fls)
     newExprs match {
       case Seq()  => fls
       case Seq(e) => e

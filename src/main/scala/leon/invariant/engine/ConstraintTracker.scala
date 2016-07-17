@@ -45,7 +45,7 @@ class ConstraintTracker(ctx : InferenceContext, program: Program, rootFun : FunD
       case _ => Set[Expr]()
     } _
     val specCalls = callCollect(flatAssump) ++ callCollect(conseqNeg)
-    val vc = createAnd(Seq(flatAssump, flatBody, conseqNeg))
+    val vc = simplifiers(createAnd(Seq(flatAssump, flatBody, conseqNeg)))
     funcVCs += (fd -> new Formula(fd, vc, ctx, specCalls))
   }
 

@@ -18,11 +18,11 @@ object InsertionSort {
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
       case _ => Cons(e,Nil())
     }
-  } ensuring(res => size(res) == size(l) + 1 && tmpl((a,b) => time <= a*size(l) +b && depth <=  a*size(l) +b))
+  } ensuring(res => size(res) == size(l) + 1 && tmpl((a,b) => steps <= a*size(l) +b && depth <=  a*size(l) +b))
 
   def sort(l: List): List = (l match {
     case Cons(x,xs) => sortedIns(x, sort(xs))
     case _ => Nil()
 
-  }) ensuring(res => size(res) == size(l) && tmpl((a,b) => time <= a*(size(l)*size(l)) +b && rec <= a*size(l) + b))
+  }) ensuring(res => size(res) == size(l) && tmpl((a,b) => steps <= a*(size(l)*size(l)) +b && rec <= a*size(l) + b))
 }

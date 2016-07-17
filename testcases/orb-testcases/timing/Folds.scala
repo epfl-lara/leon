@@ -26,7 +26,7 @@ object TreeMaps {
         }
       case Leaf() => false
     }
-  } ensuring(res => true && tmpl((a,b) => time <= a*size(t) + b))
+  } ensuring(res => true && tmpl((a,b) => steps <= a*size(t) + b))
 
 
   def squareMap(t : Tree) : Tree = {
@@ -37,7 +37,7 @@ object TreeMaps {
         Node(nl, x*x, nr)
       case _ => t
     }
-  } ensuring (res => true && tmpl((a,b) => time <= a*size(t) + b))
+  } ensuring (res => true && tmpl((a,b) => steps <= a*size(t) + b))
 
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
@@ -54,7 +54,7 @@ object TreeMaps {
     if(n == 1 || n == 0) BigInt(1)
     else n * fact(n-1)
 
-  } ensuring(res => true && tmpl((a,b) => time <= a*n + b))
+  } ensuring(res => true && tmpl((a,b) => steps <= a*n + b))
 
   def descending(l: List, k: BigInt) : Boolean = {
     l match {
@@ -73,5 +73,5 @@ object TreeMaps {
       Cons(f, factMap(t, x-1))
     }
 
-  }} ensuring(res => true && tmpl((a,b) => time <= a*(k*k) + b))
+  }} ensuring(res => true && tmpl((a,b) => steps <= a*(k*k) + b))
 }

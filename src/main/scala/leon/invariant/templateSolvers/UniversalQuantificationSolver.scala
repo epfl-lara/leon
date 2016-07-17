@@ -56,7 +56,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
   private val useIncrementalSolvingForVCs = true
   private val usePortfolio = false // portfolio has a bug in incremental solving
 
-  val defaultEval = new DefaultEvaluator(leonctx, program) // an evaluator for extracting models
+  val defaultEval = new OrbEvaluator(leonctx, program) // an evaluator for extracting models
   val existSolver = new ExistentialQuantificationSolver(ctx, program, ctrTracker, defaultEval)
 
   val solverFactory =
@@ -64,10 +64,12 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       if (useIncrementalSolvingForVCs)
         throw new IllegalArgumentException("Cannot perform incremental solving with portfolio solvers!")
       new PortfolioSolverFactory(leonctx.toSctx, Seq(
-        SolverFactory.getFromName(leonctx, program)("smt-cvc4-u"),
-        SolverFactory.getFromName(leonctx, program)("smt-z3-u")))
-    } else
-      SolverFactory.uninterpreted(leonctx, program)
+        SolverFactory.getFromName(leonctx, program)("orb-smt-cvc4"),
+        SolverFactory.getFromName(leonctx, program)("orb-smt-z3")))
+    } else {
+      getOrbSolver(leonctx, program)
+    }
+      
 
   def splitVC(fd: FunDef) = {
     val (paramPart, rest, modCons) =
@@ -79,7 +81,7 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
     } else (paramPart, rest, modCons)
   }
 
-  case class FunData(modelCons: (Model, DefaultEvaluator) => FlatModel, paramParts: Expr, simpleParts: Expr)
+  case class FunData(modelCons: (Model, OrbEvaluator) => FlatModel, paramParts: Expr, simpleParts: Expr)
   val funInfos = funs.map { fd =>
     val (paramPart, rest, modelCons) = splitVC(fd)
     if (hasReals(rest) && hasInts(rest))

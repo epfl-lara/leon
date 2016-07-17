@@ -396,17 +396,19 @@ object ExpressionTransformer {
       case e => e
     }(ine)
   }
+  
+  val simplifiers = Util.fix(simplifyByConstructors _ andThen this.simplify andThen simplifyArithmetic) _
 
   /**
    * Normalizes the expressions
    */
   def normalizeExpr(expr: Expr, multOp: (Expr, Expr) => Expr): Expr = {
     //println("Normalizing " + ScalaPrinter(expr) + "\n")
-    val iteExpr = andOrToITE(toNNF(matchToIfThenElse(expr)))
+    val iteExpr = andOrToITE(toNNF(matchToIfThenElse(simplifiers(expr))))
     val redex = reduceLangBlocks(iteExpr, multOp)
     //println("After reducing lang blocks: " + ScalaPrinter(redex) + "\n")
     val flatExpr = FlattenFunction(redex)
-    val simpExpr = pullAndOrs(flatExpr)
+    val simpExpr = simplifiers(pullAndOrs(flatExpr))
     //println("After Normalizing: " + ScalaPrinter(flatExpr) + "\n")
     simpExpr
   }
@@ -437,12 +439,13 @@ object ExpressionTransformer {
         val nrhs = rec(rhs)
         if (idMap.contains(id)) Equals(Variable(id), nrhs)
         else {
-          idMap += (id -> nrhs)
+          idMap += (id -> simplifyByConstructors(nrhs))
           tru
         }
       // specially handle boolean function to prevent unnecessary simplifications
-      case Or(args)  => Or(args map rec)
-      case And(args) => And(args map rec)
+      case Or(args)  => createOr(args map rec)
+      case And(args) => //And(args map rec) 
+        createAnd(args map rec)
       case IfExpr(cond, th, elze) =>
         val ncond = rec(cond)
         val nth = fix(closure)(rec(th)) // simplify then and elze. This may lead to further simplifications

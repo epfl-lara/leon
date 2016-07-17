@@ -15,7 +15,7 @@ object SimpleMap {
 
   def insert(l: List, key: BigInt, value: BigInt): List = {
     Cons((key, value), l)
-  } ensuring(res => tmpl((a) => time <= a))
+  } ensuring(res => tmpl((a) => steps <= a))
 
   def getOrElse(l: List, key: BigInt, elseValue: BigInt): BigInt = {
     l match {
@@ -23,5 +23,5 @@ object SimpleMap {
       case Cons((currKey, currValue), _) if (currKey == key) => currValue
       case Cons(_, tail) => getOrElse(tail, key, elseValue)
     }
-  } ensuring(res => tmpl((a, b) => time <= a*size(l) + b))
+  } ensuring(res => tmpl((a, b) => steps <= a*size(l) + b))
 }

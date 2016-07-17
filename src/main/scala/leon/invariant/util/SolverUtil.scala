@@ -20,6 +20,21 @@ import purescala.Extractors._
 
 object SolverUtil {
 
+  def getOrbSolver(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+    val namesOpt = ctx.findOption(GlobalOptions.optSelectedSolvers)
+    namesOpt match {
+      case Some(names) if names.contains("orb-smt-z3") =>
+        SolverFactory.getFromName(ctx, program)("orb-smt-z3")
+      case Some(names) if names.contains("orb-smt-cvc4") =>
+        SolverFactory.getFromName(ctx, program)("orb-smt-cvc4")
+      case None =>
+        ctx.reporter.warning("Using native z3 solver for checking VCs")
+        SolverFactory.getFromName(ctx, program)("nativez3-u") 
+      case _ =>
+        ctx.reporter.fatalError("solvers must be one of the Orb Solvers: orb-smt-z3 or orb-smt-cvc4.")
+    }
+  }
+
   def modelToExpr(model: Model): Expr = {
     model.foldLeft(tru: Expr)((acc, elem) => {
       val (k, v) = elem

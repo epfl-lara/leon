@@ -83,7 +83,7 @@ object AVLTree {
 
   def avlInsert(t: Tree, e: BigInt): Tree = {
     balance(unbalancedInsert(t, e))
-  } ensuring (_ => time <= ? * height(t) + ?)
+  } ensuring (_ => steps <= ? * height(t) + ?)
 
   def deletemax(t: Tree): (Tree, OptionInt) = {
     t match {
@@ -98,7 +98,7 @@ object AVLTree {
       case Node(_, _, r, _) => deletemax(r)
       case _                => (t, None())
     }
-  } ensuring (res => time <= ? * height(t) + ?)
+  } ensuring (res => steps <= ? * height(t) + ?)
 
   def unbalancedDelete(t: Tree, e: BigInt): Tree = {
     t match {
@@ -126,7 +126,7 @@ object AVLTree {
 
   def avlDelete(t: Tree, e: BigInt): Tree = {
     balance(unbalancedDelete(t, e))
-  } ensuring (res => tmpl((a, b) => time <= a * height(t) + b))
+  } ensuring (res => tmpl((a, b) => steps <= a * height(t) + b))
 
   @invisibleBody
   def balance(t: Tree): Tree = {
@@ -149,7 +149,7 @@ object AVLTree {
           rotateLeft(Node(l, v, newR, max(rank(newR), rank(l)) + 1))
         } else t
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
   def rotateRight(t: Tree) = {
     t match {

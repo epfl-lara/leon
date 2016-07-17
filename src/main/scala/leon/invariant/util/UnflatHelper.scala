@@ -33,12 +33,12 @@ class SimpleLazyModel(m: Model) extends LazyModel {
  * Expands a given model into a model with mappings for identifiers introduced during flattening.
  * Note: this class cannot be accessed in parallel.
  */
-class FlatModel(freeVars: Set[Identifier], flatIdMap: Map[Identifier, Expr], initModel: Model, eval: DefaultEvaluator) extends LazyModel {
+class FlatModel(freeVars: Set[Identifier], flatIdMap: Map[Identifier, Expr], initModel: Model, eval: OrbEvaluator) extends LazyModel {
   var idModel = initModel.toMap
 
   override def get(iden: Identifier) = {
     var seen = Set[Identifier]()
-    def recBind(id: Identifier): Option[Expr] = {
+    def recBind(id: Identifier): Option[Expr] = {      
       val idv = idModel.get(id)
       if (idv.isDefined) idv
       else {
@@ -74,7 +74,7 @@ class FlatModel(freeVars: Set[Identifier], flatIdMap: Map[Identifier, Expr], ini
 }
 
 object UnflatHelper {
-  def evaluate(e: Expr, m: LazyModel, eval: DefaultEvaluator): Expr = {
+  def evaluate(e: Expr, m: LazyModel, eval: OrbEvaluator): Expr = {
     val varsMap = variablesOf(e).collect {
       case v if m.isDefinedAt(v) => (v -> m(v))
     }.toMap
@@ -90,7 +90,7 @@ object UnflatHelper {
  * A class that can used to compress a flattened expression
  * and also expand the compressed models to the flat forms
  */
-class UnflatHelper(ine: Expr, excludeIds: Set[Identifier], eval: DefaultEvaluator) {
+class UnflatHelper(ine: Expr, excludeIds: Set[Identifier], eval: OrbEvaluator) {
 
   val (unflate, flatIdMap) = unflattenWithMap(ine, excludeIds, includeFuns = false)
   val invars = variablesOf(ine)

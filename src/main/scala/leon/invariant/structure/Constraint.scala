@@ -22,7 +22,7 @@ trait Constraint {
 }
 
 trait ExtendedConstraint extends Constraint {
-  def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator): Constraint
+  def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator): Constraint
 }
 
 object LinearTemplate {
@@ -86,7 +86,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
     args map LinearConstraintUtil.exprToTemplate
   }
 
-  def pickSatDisjunctOfNegation(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
+  def pickSatDisjunctOfNegation(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
     val err = new IllegalStateException(s"Cannot pick a sat disjunct of negation: ${toString} is sat!")
     template match {
       case _: Equals => // here, negation is a disjunction
@@ -220,7 +220,7 @@ case class ExtendedLinearTemplate(v: Variable, tmpl: LinearTemplate, diseq: Bool
   /**
    * Chooses a sat disjunct of the constraint
    */
-  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
     if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) tmpl
     else {
       //println(s"Picking sat disjunct of: ${toExpr} model($v) = ${model(v.id)}")
@@ -291,7 +291,7 @@ case class ExtendedADTConstraint(v: Variable, adtCtr: ADTConstraint, diseq: Bool
   /**
    * Chooses a sat disjunct of the constraint
    */
-  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
     if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) adtCtr
     else {
       adtCtr.toExpr match {
@@ -370,7 +370,7 @@ case class ExtendedSetConstraint(v: Variable, setCtr: SetConstraint, diseq: Bool
   /**
    * Chooses a sat disjunct of the constraint
    */
-  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
     if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) setCtr
     else SetConstraint(Not(setCtr.toExpr))
   }

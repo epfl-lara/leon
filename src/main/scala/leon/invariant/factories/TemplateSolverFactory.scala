@@ -12,6 +12,7 @@ import invariant.structure._
 import FunctionUtils._
 import templateSolvers._
 import leon.solvers.Model
+import leon.invariant.templateSolvers.Minimizer
 
 object TemplateSolverFactory {
 
@@ -23,7 +24,7 @@ object TemplateSolverFactory {
       // TODO: find a better way to specify STE total time bound
       new CegisSolver(ctx, prog, rootFun, ctrack, 10000, bound)
     } else {
-      val minimizer = if (ctx.tightBounds && rootFun.hasTemplate) {
+      val minimizer = if (ctx.tightBounds.isDefined && rootFun.hasTemplate) {
         if (minopt.isDefined)
           minopt
         else {

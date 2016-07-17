@@ -100,6 +100,8 @@ object SolverFactory {
     case "smt-cvc4-u"     => SolverFactory(name, () => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case "nativez3-u"     => SolverFactory(name, () => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
     case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx.context, program)
+    case "orb-smt-z3"     => SolverFactory(name, () => new invariant.smtlib.solvers.OrbSMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+    case "orb-smt-cvc4"   => SolverFactory(name, () => new invariant.smtlib.solvers.OrbSMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")
       showSolvers(ctx)

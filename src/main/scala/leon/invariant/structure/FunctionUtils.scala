@@ -115,7 +115,7 @@ object FunctionUtils {
             val (tempExprs, otherPreds) = args.partition(exists(isQMark))
             //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(createAnd(tempExprs))}")
             createAnd(otherPreds :+ qmarksToTmplFunction(createAnd(tempExprs)))
-          case pb if exists(isQMark)(pb) =>
+          case pb if exists(isQMark)(pb) =>           
             pb match {
               case l: Let =>
                 val (letsCons, letsBody) = letStarUnapplyWithSimplify(l) // we try to see if the post is let* .. in e_1 ^ e_2 ^ ...
