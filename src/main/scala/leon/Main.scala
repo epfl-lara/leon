@@ -30,7 +30,8 @@ object Main {
       invariant.engine.InferInvariantsPhase,
       laziness.LazinessEliminationPhase,
       genc.GenerateCPhase,
-      genc.CFileOutputPhase
+      genc.CFileOutputPhase,
+      comparison.ComparisonPhase
     )
   }
 
@@ -59,9 +60,11 @@ object Main {
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
     val optLazyEval    = LeonFlagOptionDef("lazy",        "Handles programs that may use the 'lazy' construct",        false)
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
+    val optComparison  = LeonFlagOptionDef("compare", "Compare the targeted program to the Leon exemple suit", false)
+
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval, optGenc)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval, optGenc, optComparison)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -177,6 +180,8 @@ object Main {
     val instrumentF = ctx.findOptionOrDefault(optInstrument)
     val lazyevalF = ctx.findOptionOrDefault(optLazyEval)
     val analysisF = verifyF && terminationF
+    val comparisonF = ctx.findOptionOrDefault(optComparison)
+
     // Check consistency in options
 
     if (helpF) {
@@ -206,6 +211,7 @@ object Main {
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
+        else if (comparisonF) comparison.ComparisonPhase andThen PrintReportPhase
         else verification
       }
 
@@ -217,6 +223,7 @@ object Main {
   private var hasFatal = false
 
   def main(args: Array[String]) {
+
     val argsl = args.toList
 
     // Process options
