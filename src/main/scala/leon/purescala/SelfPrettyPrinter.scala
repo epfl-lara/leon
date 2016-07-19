@@ -151,7 +151,7 @@ class SelfPrettyPrinter extends PrettyPrinterFinder[Lambda, Lambda] { top =>
         val s = FreshIdentifier("s", t) // verify the type
         Some(Stream((Lambda(Seq(ValDef(s)), converter(Variable(s))), List())) ++ super.getPrintersForType(t, underlying).getOrElse(Stream.empty) )
       case StringType => 
-        val const = FreshIdentifier("const", StringType)
+        val const = FreshIdentifier("const", StringType, true)
         Some(Stream((Variable(const), List(const))))
       case TupleType(targs) =>
         def convertPrinters(ts: Seq[TypeTree]): Option[Seq[Stream[(Expressions.Expr, List[Common.Identifier])]]] = {
