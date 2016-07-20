@@ -190,7 +190,7 @@ object ComfusyConverters {
             CaseClass(CaseClassType(LeonCons.get, Seq(IntegerType)), Seq(v, l))
         }
         val initial_fun = (x: Expr) => Let(b, functionInvocation(bezoutWithBase, Seq(InfiniteIntegerLiteral(BigInt(1)), tsConvertedToList)), x)
-        decomposed_recomposed compose initial_fun
+        initial_fun compose decomposed_recomposed 
     }
   }
   
