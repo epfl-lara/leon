@@ -186,6 +186,24 @@ object APASynthesis {
   def propagateAssignment(y: OutputVar, t: APACombination, output_assignments : List[(OutputVar, APATerm)], output_variables_initial : List[OutputVar]): List[(OutputVar, APATerm)]  = {
     recursive_propagation(output_assignments, (y,t)::Nil, output_variables_initial)
   }
+  
+  def needsLessOperations(coef1: APAInputTerm, coef2: APAInputTerm): Boolean = (coef1, coef2) match {
+    case (APAInputCombination(k1, Nil), APAInputCombination(k2, Nil)) => Math.abs(k1) < Math.abs(k2)
+    case (APAInputCombination(k1, Nil), _) => true
+    case (_, APAInputCombination(k2, Nil)) => false
+    case (_, _) => false
+  }
+  
+  def minInputTerms(coef1: APAInputTerm, coef2:APAInputTerm) = if(needsLessOperations(coef1, coef2)) coef1 else coef2
+
+  /** Sorting function (OptimizeMe) */
+  /** Priority to constant terms */
+  def by_least_outputvar_coef(eq1: APAEqualZero, eq2: APAEqualZero): Boolean = (eq1, eq2) match {
+    case (APAEqualZero(pac1@APACombination(c1, o1)), APAEqualZero(pac2@APACombination(c2, o2))) =>
+      val min_coefs_o1 = o1 map (_._1) reduceLeft (minInputTerms(_, _))
+      val min_coefs_o2 = o2 map (_._1) reduceLeft (minInputTerms(_, _))
+      needsLessOperations(min_coefs_o1, min_coefs_o2)
+  }
 }
 
 class APASynthesis(equations: FormulaSplit, input_variables_initial:List[InputVar], output_variables_initial:List[OutputVar]) {
@@ -261,14 +279,7 @@ class APASynthesis(equations: FormulaSplit, input_variables_initial:List[InputVa
       case e => e.simplified::Nil
     }
   }
-
-  def needsLessOperations(coef1: APAInputTerm, coef2: APAInputTerm): Boolean = (coef1, coef2) match {
-    case (APAInputCombination(k1, Nil), APAInputCombination(k2, Nil)) => Math.abs(k1) < Math.abs(k2)
-    case (APAInputCombination(k1, Nil), _) => true
-    case (_, APAInputCombination(k2, Nil)) => false
-    case (_, _) => false
-  }
-
+  
   /** Returns the remaining non_equalities (non_equalities should not contain equalities, nor will the returned term do) */
   def solveEqualities(data: FormulaSplit): APASplit = {
     val FormulaSplit(equalities, non_equalities, remaining_disjunctions) = data
@@ -276,18 +287,6 @@ class APASynthesis(equations: FormulaSplit, input_variables_initial:List[InputVa
     /** Make sure all equalities have at least one output variable, else remove them. */
     val (interesting_equalities, precondition_equalities) = equalities partition (_.has_output_variables)
     addPrecondition(APAConjunction(precondition_equalities))
-
-
-    def minInputTerms(coef1: APAInputTerm, coef2:APAInputTerm) = if(needsLessOperations(coef1, coef2)) coef1 else coef2
-
-    /** Sorting function (OptimizeMe) */
-    /** Priority to constant terms */
-    def by_least_outputvar_coef(eq1: APAEqualZero, eq2: APAEqualZero): Boolean = (eq1, eq2) match {
-      case (APAEqualZero(pac1@APACombination(c1, o1)), APAEqualZero(pac2@APACombination(c2, o2))) =>
-        val min_coefs_o1 = o1 map (_._1) reduceLeft (minInputTerms(_, _))
-        val min_coefs_o2 = o2 map (_._1) reduceLeft (minInputTerms(_, _))
-        needsLessOperations(min_coefs_o1, min_coefs_o2)
-    }
 
     val sorted_equalities = interesting_equalities sortWith by_least_outputvar_coef
 

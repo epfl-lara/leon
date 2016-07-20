@@ -48,6 +48,7 @@ object Rules {
     //HOFDecomp,
     //ExampleGuidedTermExploration,
     //BottomUpETE,
+    IntegerEquality,
     IfSplit,
     InputSplit,
     UnusedInput,

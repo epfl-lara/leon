@@ -538,6 +538,10 @@ case class APACombination(const_part: APAInputTerm, output_linear: List[(APAInpu
   def /(i : Int): APACombination = {
     APACombination(const_part / APAInputCombination(i), output_linear map {t => (t._1 / APAInputCombination(i), t._2)})
   }
+  /** Division of this combination by an integer. Caution ! It should be divisible. */
+  def /(i : APAInputTerm): APACombination = {
+    APACombination(const_part / i, output_linear map {t => (t._1 / i, t._2)})
+  }
   /** Multiplication by an integer */
   def *(i : Int): APACombination = {
     val result = APACombination(const_part * APAInputCombination(i), output_linear map {t => (t._1 * APAInputCombination(i), t._2)})

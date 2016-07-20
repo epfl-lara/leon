@@ -31,6 +31,8 @@ case class Library(pgm: Program) {
   lazy val setMkString = lookup("leon.lang.Set.mkString").collectFirst { case fd : FunDef => fd }
   
   lazy val bagMkString = lookup("leon.lang.Bag.mkString").collectFirst { case fd : FunDef => fd }
+  
+  lazy val bezoutWithBase = lookup("leon.math.bezoutWithBase").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)

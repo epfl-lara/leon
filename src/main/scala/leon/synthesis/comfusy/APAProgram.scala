@@ -511,14 +511,14 @@ case class APAProgram(input_variables: List[InputVar],
   override def toString = toCommonString("  ")
 
   /** Returns a string representing this program, depending on the rendering mode <code>APASynthesis.rendering_mode</code>. */
-  def toCommonString(indent: String):String = APASynthesis.rendering_mode match {
+  def toCommonString(indent: String): String = APASynthesis.rendering_mode match {
     case RenderingScala => toScalaString(indent)
     case RenderingPython => toPythonString(indent)
   }
 
   /** Returns a string representing the content of the function described by this program.
    *  Namely, the input assignments, the case split and the output assignments. */
-  def innerCommonContent(indent:String):String = {
+  def innerCommonContent(indent: String): String = {
     val prog_input = InputAssignment.listToCommonString(input_assignment, indent)
     val prog_case_split = case_splits.toCommonString(indent)
     val prog_output = output_assignment map {
