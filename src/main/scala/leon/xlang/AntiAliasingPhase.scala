@@ -25,6 +25,8 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, program: Program): Program = {
 
+    println(program.definedClasses.map(_.mutableTParams))
+
     val effectsAnalysis = new EffectsAnalysis
 
     //we need to perform this now, because as soon as we apply the def transformer
