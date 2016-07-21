@@ -22,6 +22,7 @@ package object math {
   def abs(i: BigInt) = if(i < BigInt(0)) -i else i
   
   @library
+  @annotation.isabelle.noBody()
   def isGCDable(l: List[BigInt]): Boolean = l match {
     case Cons(x, b) if x == BigInt(0) => isGCDable(b)
     case Cons(x, b) => true
@@ -30,6 +31,7 @@ package object math {
   
   /** Computes the GCD between numbers */
   @library
+  @annotation.isabelle.noBody()
   def gcdlist(l:List[BigInt]):BigInt = {
     require(l.length > 0 && isGCDable(l))
     l match {
@@ -40,6 +42,7 @@ package object math {
   
   /** Computes the LCM between numbers */
   @library
+  @annotation.isabelle.noBody()
   def lcmlist(l:List[BigInt]):BigInt = {
     require(l.length > 0 && isGCDable(l))
     l match {
@@ -50,6 +53,7 @@ package object math {
   
   /** Computes the GCD between two numbers */
   @library
+  @annotation.isabelle.noBody()
   def gcd(x:BigInt, y:BigInt): BigInt = {
     if (x==BigInt(0)) abs(y)
     else if (x<0) gcd(-x, y)
@@ -59,6 +63,7 @@ package object math {
   
   /** Computes the LCM between two numbers */
   @library
+  @annotation.isabelle.noBody()
   def lcm(x: BigInt, y: BigInt): BigInt = {
     x * y / gcd(x, y)
   }
@@ -91,6 +96,7 @@ package object math {
   }*/
   
   @library
+  @annotation.isabelle.noBody()
   def bezoutWithBase(e: BigInt, a: List[BigInt]): (List[List[BigInt]]) = {
     bezoutWithBaseMMFunc(e, a)
   }
@@ -183,6 +189,7 @@ package object math {
   }*/
   
   @library
+  @annotation.isabelle.noBody()
   def extendedEuclidFunc(a_in: BigInt, b_in: BigInt):(BigInt, BigInt, BigInt) = {
     val (x, lastx) = (BigInt(0), BigInt(1))
     val (y, lasty) = (BigInt(1), BigInt(0))
@@ -203,6 +210,7 @@ package object math {
   }
   
   @library
+  @annotation.isabelle.noBody()
   def bezoutMMFunc(a_in: List[BigInt], k: BigInt):List[BigInt] = {
     val a = a_in
     val a_in_gcds = a_in.foldRight(List[BigInt]()){ (e: BigInt, v: List[BigInt]) => (e, v) match {
@@ -234,6 +242,7 @@ package object math {
   }
   
   @library
+  @annotation.isabelle.noBody()
   def bezoutWithBaseMMFunc(e: BigInt, a: List[BigInt]): (List[List[BigInt]]) = {
     val coefs = a
     val coefs_gcd = coefs.foldRight(List[BigInt]()){
