@@ -542,6 +542,8 @@ trait CodeExtraction extends ASTExtractors {
 
     def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
 
+
+
       //println(s"Extracting $sym")
 
       val id = FreshIdentifier(sym.name.toString).setPos(sym.pos)
@@ -592,6 +594,30 @@ trait CodeExtraction extends ASTExtractors {
         case Some((p, tparams)) => tparams
         case None => tparamsMap.map(t => TypeParameterDef(t._2))
       }
+      //println("extract cd: " + sym + ". t params: " + tparams)
+      
+      
+      val mutableTParams: List[TypeParameterDef] = {
+        val constructor: DefDef = tmpl.children.find {
+          case ExConstructorDef() => true
+          case _ => false
+        }.get.asInstanceOf[DefDef]
+        val valDefs = constructor.vparamss.flatten
+        //println("valDefs: " + valDefs)
+        valDefs.filter(vd => vd.symbol.tpe.toString.startsWith("leon.lang.Mutable")).flatMap(vd => {
+          val TypeRef(_, sym, tps) = vd.symbol.tpe
+          println("found evidence")
+          println("sym: " + sym)
+          println("tps: " + tps)
+          println(vd)
+          val tpSym: String = tps.head.toString
+          println("tparam: " + tpSym)
+          println(tparamsMap)
+          tparamsMap.find(_._1.name.toString == tpSym).map(t => TypeParameterDef(t._2))
+        })
+      }
+      //println("mutableTParams: " + mutableTParams)
+
 
       val defCtx = DefContext((tparamsMap.map(_._1) zip tparams.map(_.tp)).toMap)
 
@@ -608,6 +634,8 @@ trait CodeExtraction extends ASTExtractors {
       // extract more modifiers here if needed
       if(sym.isPrivate)
         cd.addFlag(IsPrivate)
+
+      cd.mutableTParams = mutableTParams
 
       // Register parent
       parent.map(_._1).foreach(_.classDef.registerChild(cd))

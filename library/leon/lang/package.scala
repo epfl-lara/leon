@@ -109,5 +109,8 @@ package object lang {
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
+  
+  case class Mutable[T]()
+  implicit def mutable[T] = new Mutable[T]
 
 }
