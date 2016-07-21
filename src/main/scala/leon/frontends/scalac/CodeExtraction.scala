@@ -636,6 +636,8 @@ trait CodeExtraction extends ASTExtractors {
         cd.addFlag(IsPrivate)
 
       cd.mutableTParams = mutableTParams
+      mutableTParams.foreach(_.tp.isMutable = true)
+
 
       // Register parent
       parent.map(_._1).foreach(_.classDef.registerChild(cd))
