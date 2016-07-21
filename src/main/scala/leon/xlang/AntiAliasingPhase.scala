@@ -551,6 +551,15 @@ object AntiAliasingPhase extends TransformationPhase {
           (None, bindings)
         }
 
+        case CaseClass(ct, args) => {
+          ct.classDef.tparams.zip(ct.tps).foreach{ case (typeParam, instanceType) => {
+            if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
+              ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
+            }
+          }}
+          (None, bindings)
+        }
+
         case _ => (None, bindings)
       })(bd, params)
     })
