@@ -278,6 +278,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
       //new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
       SimpleSolverAPI(new TimeoutSolverFactory(
         SolverFactory.getFromName(leonctx, program)("orb-smt-z3"),
+          //SolverFactory.getFromName(leonctx, program)("smt-z3-u"),
         timeout * 1000))
     }
     if (verbose) reporter.info("solving...")

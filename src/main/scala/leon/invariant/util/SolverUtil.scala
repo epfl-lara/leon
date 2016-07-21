@@ -17,9 +17,28 @@ import PredicateUtil._
 import evaluators._
 import EvaluationResults._
 import purescala.Extractors._
+import leon.solvers._
+import leon.solvers.unrolling.UnrollingSolver
+import leon.invariant.engine.InferenceContext
+import leon.verification.VC
 
 object SolverUtil {
 
+  def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC, timeout: Long /*in secs*/) = {
+    val solFactory = SolverUtil.getOrbSolver(leonctx, p)
+    val smtUnrollZ3 = new UnrollingSolver(leonctx.toSctx, p, solFactory.getNewSolver()) with TimeoutSolver
+    smtUnrollZ3.setTimeout(timeout * 1000)
+    smtUnrollZ3.assertVC(vc)
+    val res = smtUnrollZ3.check match {
+      case Some(true) =>
+        (Some(true), smtUnrollZ3.getModel)
+      case r =>
+        (r, Model.empty)
+    }
+    smtUnrollZ3.free()
+    res
+  }
+  
   def getOrbSolver(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     val namesOpt = ctx.findOption(GlobalOptions.optSelectedSolvers)
     namesOpt match {
@@ -29,7 +48,7 @@ object SolverUtil {
         SolverFactory.getFromName(ctx, program)("orb-smt-cvc4")
       case None =>
         ctx.reporter.warning("Using native z3 solver for checking VCs")
-        SolverFactory.getFromName(ctx, program)("nativez3-u") 
+        SolverFactory.getFromName(ctx, program)("nativez3-u")
       case _ =>
         ctx.reporter.fatalError("solvers must be one of the Orb Solvers: orb-smt-z3 or orb-smt-cvc4.")
     }
@@ -54,9 +73,9 @@ object SolverUtil {
   }
 
   def toZ3SMTLIB(expr: Expr, filename: String,
-    theory: String, ctx: LeonContext, pgm: Program,
-    useBitvectors: Boolean = false,
-    bitvecSize: Int = 32) = {
+                 theory: String, ctx: LeonContext, pgm: Program,
+                 useBitvectors: Boolean = false,
+                 bitvecSize: Int = 32) = {
     //create new solver, assert constraints and print
     val printSol = new ExtendedUFSolver(ctx, pgm)
     printSol.assertCnstr(expr)
@@ -106,7 +125,7 @@ object SolverUtil {
     var newEqs = Map[Expr, Expr]()
     val solver = new ExtendedUFSolver(ctx, prog)
     val newe = simplePostTransform {
-      case e@(And(_) | Or(_)) => {
+      case e @ (And(_) | Or(_)) => {
         val v = TVarFactory.createTempDefault("a", BooleanType).toVariable
         newEqs += (v -> e)
         val newe = Equals(v, e)
@@ -154,7 +173,7 @@ object SolverUtil {
     solver.assertCnstr(testExpr)
     solver.check match {
       case Some(true) => true
-      case _ => false
+      case _          => false
     }
   }
 

@@ -202,23 +202,6 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     val post = newroot.postcondition.get
     val body = newroot.body.get
     val vc = implies(newroot.precOrTrue, application(post, Seq(body)))
-    solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition))
-  }
-
-  import leon.solvers._
-  import leon.solvers.unrolling.UnrollingSolver
-  def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC) = {
-    val solFactory = SolverUtil.getOrbSolver(leonctx, p)
-    val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext.toSctx, p, solFactory.getNewSolver()) with TimeoutSolver
-    smtUnrollZ3.setTimeout(ctx.vcTimeout * 1000)
-    smtUnrollZ3.assertVC(vc)
-    val res = smtUnrollZ3.check match {
-      case Some(true) =>
-        (Some(true), smtUnrollZ3.getModel)
-      case r =>
-        (r, Model.empty)
-    }
-    smtUnrollZ3.free()
-    res
+    SolverUtil.solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition), ctx.vcTimeout)
   }
 }

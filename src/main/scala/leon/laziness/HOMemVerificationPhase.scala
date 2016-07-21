@@ -219,7 +219,7 @@ object HOMemVerificationPhase {
     }
 
     override def verifyVC(newprog: Program, newroot: FunDef) = {
-      solveUsingLeon(contextForChecks(ctx.leonContext), newprog, vcForFun(newroot))
+      SolverUtil.solveUsingLeon(contextForChecks(ctx.leonContext), newprog, vcForFun(newroot), ctx.vcTimeout)
     }
   }
 }

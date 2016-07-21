@@ -97,8 +97,7 @@ abstract class OrbSMTLIBSolver(val sctx: SolverContext, val program: Program)
                   val value = fromSMT(e, id.getType)(Map(), modelFunDefs)
                   Some(id-> value)
                 } catch {
-                  case _: Unsupported =>
-                    None
+                  case _: Unsupported => None
                 }
               case _ => None
             }.toMap

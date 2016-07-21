@@ -90,32 +90,32 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     FunctionInvocation(TypedFunDef(nlelim.multFun, nlelim.multFun.tparams.map(_.tp)), Seq(e1, e2))
   }
 
-  val validPosts = MutableMap[String, VCResult]()
+  var validPosts = Set[String]()
+  val userLevelFunctionsMap = ProgramUtil.userLevelFunctions(progWOTemplate).map { fd =>
+    purescala.DefOps.fullName(fd)(progWOTemplate) -> fd
+  }.toMap
 
   /**
    * There should be only one function with funName in the
    * program
    */
   def isFunctionPostVerified(funName: String) = {
-    if (validPosts.contains(funName)) {
-      validPosts(funName).isValid
-    }
+    if (validPosts.contains(funName)) true
     else if (abort) false
     else {
-      val verifyPipe = VerificationPhase
-      //println("Leon context: "+leonContext) TODO: why aren't we able to use solvers given from command line here ?
-      val ctxWithTO = createLeonContext(leonContext, s"--timeout=$vcTimeout", s"--functions=$funName")
-      (true /: verifyPipe.run(ctxWithTO, progWOTemplate)._2.results) {
-        case (acc, (VC(_, _, vckind), Some(vcRes))) if vcRes.isInvalid =>
-          throw new IllegalStateException(s"$vckind invalid for function $funName") // TODO: remove the exception
-        case (acc, (VC(_, _, VCKinds.Postcondition), None)) =>
-          throw new IllegalStateException(s"Postcondition verification returned unknown for function $funName") // TODO: remove the exception
-        case (acc, (VC(_, _, VCKinds.Postcondition), _)) if validPosts.contains(funName) =>
-          throw new IllegalStateException(s"Multiple postcondition VCs for function $funName") // TODO: remove the exception
-        case (acc, (VC(_, _, VCKinds.Postcondition), Some(vcRes))) =>
-          validPosts(funName) = vcRes
-          vcRes.isValid
-        case (acc, _) => acc
+      val vctx = new VerificationContext(leonContext, progWOTemplate, 
+          SolverUtil.getOrbSolver(leonContext, progWOTemplate))     
+      val vcs = (new DefaultTactic(vctx)).generateVCs(userLevelFunctionsMap(funName))    
+      (true /: vcs) { (acc, vc) =>
+        SolverUtil.solveUsingLeon(leonContext, progWOTemplate, vc, vcTimeout) match {
+          case (Some(true), _) =>
+            leonContext.reporter.fatalError(s"${vc.kind} invalid for function $funName") 
+          case (None, _) =>
+            leonContext.reporter.fatalError(s"${vc.kind} verification returned unknown for function $funName") 
+          case (Some(false), _) =>                      
+            validPosts += funName
+            true          
+        }
       }
     }
   }
