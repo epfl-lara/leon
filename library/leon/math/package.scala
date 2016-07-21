@@ -36,6 +36,7 @@ package object math {
     require(l.length > 0 && isGCDable(l))
     l match {
       case Cons(a, Nil()) => if(a < 0) -a else a
+      case Cons(z, q) if z == BigInt(0) => gcdlist(q)
       case Cons(a, Cons(b, q)) => gcdlist(gcd(a,b)::q)
     }
   }
@@ -47,6 +48,7 @@ package object math {
     require(l.length > 0 && isGCDable(l))
     l match {
       case Cons(a, Nil()) => if(a < 0) -a else a
+      case Cons(z, q) if z == BigInt(0) => lcmlist(q)
       case Cons(a, Cons(b, q)) => lcmlist(lcm(a,b)::q)
     }
   }
@@ -55,17 +57,23 @@ package object math {
   @library
   @annotation.isabelle.noBody()
   def gcd(x:BigInt, y:BigInt): BigInt = {
+    require(x != 0 || y != 0)
     if (x==BigInt(0)) abs(y)
     else if (x<0) gcd(-x, y)
     else if (y<0) gcd(x, -y)
     else gcd(y%x, x)
+  } ensuring { (res: BigInt) =>
+    x % res == 0 && y % res == 0 && res > 0
   }
   
   /** Computes the LCM between two numbers */
   @library
   @annotation.isabelle.noBody()
   def lcm(x: BigInt, y: BigInt): BigInt = {
-    x * y / gcd(x, y)
+    require(x != 0 || y != 0)
+    abs(x * y) / gcd(x, y)
+  } ensuring { (res: BigInt) =>
+    res % x == 0 && res % y == 0 && res > 0
   }
   
   /** Computes the GCD between two numbers. Axponential speed-up.*/
@@ -98,6 +106,7 @@ package object math {
   @library
   @annotation.isabelle.noBody()
   def bezoutWithBase(e: BigInt, a: List[BigInt]): (List[List[BigInt]]) = {
+    require(isNonZero(a) && a.nonEmpty)
     bezoutWithBaseMMFunc(e, a)
   }
   
@@ -211,12 +220,38 @@ package object math {
   
   @library
   @annotation.isabelle.noBody()
+  def isPositive(l: List[BigInt]): Boolean = l match {
+    case Cons(a, b) => a > 0 && isPositive(b)
+    case Nil() => true
+  }
+  @library
+  @annotation.isabelle.noBody()
+  def isNonZero(l: List[BigInt]): Boolean = l match {
+    case Cons(a, b) => a != 0 && isNonZero(b)
+    case Nil() => true
+  }
+  @library
+  @annotation.isabelle.noBody()
+  def foldRightGcds(es: List[BigInt]): List[BigInt] = {
+    require(isNonZero(es))
+    ((es match {
+    case Cons(i, aq) => foldRightGcds(aq) match {
+      case Cons(a, q) => gcd(a, i)::a::q
+      case Nil() => List(abs(i))
+    }
+    case Nil() => Nil()
+  }): List[BigInt])} ensuring {
+    (res: List[BigInt]) =>
+    isPositive(res) && res.length == es.length
+  }
+  
+  @library
+  @annotation.isabelle.noBody()
   def bezoutMMFunc(a_in: List[BigInt], k: BigInt):List[BigInt] = {
+    require(isNonZero(a_in))
     val a = a_in
-    val a_in_gcds = a_in.foldRight(List[BigInt]()){ (e: BigInt, v: List[BigInt]) => (e, v) match {
-      case (i, Nil()) => List(i)
-      case (i, a::q) => gcd(a, i)::a::q
-    } }
+    
+    val a_in_gcds = foldRightGcds(a_in)
     val result:List[BigInt] = Nil()
     val last_coef = BigInt(-1)
     def aux(a: List[BigInt], a_in_gcds: List[BigInt], result: List[BigInt], last_coef: BigInt): List[BigInt] = {
@@ -244,16 +279,16 @@ package object math {
   @library
   @annotation.isabelle.noBody()
   def bezoutWithBaseMMFunc(e: BigInt, a: List[BigInt]): (List[List[BigInt]]) = {
+    require(isNonZero(a) && a.nonEmpty)
     val coefs = a
-    val coefs_gcd = coefs.foldRight(List[BigInt]()){
-      case (i, Nil()) => List(abs(i))
-      case (i, Cons(a, q)) => gcd(a, i)::a::q
-    }
+    val coefs_gcd = foldRightGcds(coefs)
     val n = a.length
     val result = List(bezoutMMFunc(a, e/coefs_gcd.head)) // The gcd of all coefs divides e.
     val i = BigInt(1)
     val zeros:List[BigInt] = Nil()
-    def aux(i: BigInt, result: List[List[BigInt]], coefs: List[BigInt], coefs_gcd: List[BigInt], zeros: List[BigInt]): List[List[BigInt]] = {
+    def aux(i: BigInt, result: List[List[BigInt]], coefs: List[BigInt], coefs_gcd: List[BigInt], zeros: List[BigInt])
+        : List[List[BigInt]] = {
+      require(i <= n && isPositive(coefs_gcd) && isNonZero(coefs) && coefs_gcd.length >= 2 && coefs.length >= 1)
       if (i > n-BigInt(1)) {
         result.reverse
       } else {
