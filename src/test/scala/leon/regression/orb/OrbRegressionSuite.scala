@@ -19,7 +19,7 @@ class OrbRegressionSuite extends LeonRegressionSuite {
   }
 
   private def testInference(f: File, bound: Option[Int] = None) {
-    val ctx = createLeonContext("--inferInv", "--vcTimeout=3", "--solvers=smt-z3", "--silent", "--timeout=120")
+    val ctx = createLeonContext("--inferInv", "--vcTimeout=3", "--solvers=orb-smt-z3", "--silent", "--timeout=120")
     val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
       new leon.utils.PreprocessingPhase
     val (ctx2, program) = beginPipe.run(ctx, f.getAbsolutePath :: Nil)

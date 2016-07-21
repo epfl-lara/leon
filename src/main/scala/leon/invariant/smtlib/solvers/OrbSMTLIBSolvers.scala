@@ -83,16 +83,13 @@ abstract class OrbSMTLIBSolver(val sctx: SolverContext, val program: Program)
       Model.empty
     } else {
       try {
-        val cmd = GetModel()
-
-        emit(cmd) match {
+        emit(GetModel()) match {
           case GetModelResponseSuccess(smodel) =>
             // first-pass to gather functions
             val modelFunDefs = smodel.collect {
               case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
                 a -> me
             }.toMap
-
             val model = smodel.flatMap {
               case DefineFun(SMTFunDef(s, _, _, e)) if syms(s) =>
                 try {

@@ -14,7 +14,7 @@ import invariant.factories._
 import leon.invariant.util._
 import RealValuedExprEvaluator._
 import Stats._
-import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{ Map => MutableMap }
 
 class Minimizer(ctx: InferenceContext, program: Program) {
 
@@ -58,14 +58,14 @@ class Minimizer(ctx: InferenceContext, program: Program) {
    */
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-    //    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
-    //      SolverFactory.getFromName(leonctx,program)("orb-smt-z3"),
-    //      ctx.vcTimeout * 1000))    
+    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
+      SolverFactory.getFromName(leonctx, program)("orb-smt-z3"),
+      ctx.vcTimeout * 1000))
     reporter.info("minimizing...")
     var result = Map[Identifier, FractionalLiteral]()
     var currentModel = initModel
     // lookup currentModel, otherwise lookup initModel
-    val currentVal = (x:Identifier) => currentModel.getOrElse(x, initModel(x)).asInstanceOf[FractionalLiteral]
+    val currentVal = (x: Identifier) => currentModel.getOrElse(x, initModel(x)).asInstanceOf[FractionalLiteral]
     orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
       var upperBound = currentVal(tvar.id)
       //note: the lower bound is an integer by construction (and is by default zero)
@@ -113,7 +113,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           }
         }
       } while (!ctx.abort && continue && iter < MaxIter)
-       //update lowerbound
+      //update lowerbound
       if (lowerBound != lowerLimit) {
         updateLowerBound(tvar, lowerBound)
       }
@@ -130,14 +130,14 @@ class Minimizer(ctx: InferenceContext, program: Program) {
         } else currval
       } else currval
       // update currentResult
-      result += (tvar.id -> intval)      
+      result += (tvar.id -> intval)
       //And(acc, Equals(tvar, currval))
       replace(Map(tvar -> intval), acc)
     })
     //println("New result: "+results)    
     new Model(initModel.map {
       case (id, _) if result.isDefinedAt(id) => (id -> result(id))
-      case (id, _) => (id -> currentVal(id))        
+      case (id, _)                           => (id -> currentVal(id))
     }.toMap)
   }
 
