@@ -23,9 +23,9 @@ package object math {
   
   @library
   def isGCDable(l: List[BigInt]): Boolean = l match {
-    case Cons(x, b) if x == BigInt(0) => false
-    case Cons(a, b) => isGCDable(b)
-    case Nil() => true
+    case Cons(x, b) if x == BigInt(0) => isGCDable(b)
+    case Cons(x, b) => true
+    case Nil() => false
   }
   
   /** Computes the GCD between numbers */

@@ -375,6 +375,16 @@ object ComfusyConverters {
     case APAInputAbs(a) =>
       val absFun = vc.sctx.program.library.lookupUnique[FunDef]("leon.math.abs")
       functionInvocation(absFun, Seq(APAInputTermToExpr(a)))
+      
+    case APAInputGCD(List(a)) =>
+      APAInputTermToExpr(APAInputAbs(a))
+      
+    case APAInputGCD(numbers@List(a, b)) =>
+      import vc.sctx.program.library._
+      val gcdFun = lookupUnique[FunDef]("leon.math.gcd")
+      val args = numbers map APAInputTermToExpr
+      functionInvocation(gcdFun, args)
+      
     case APAInputGCD(numbers) =>
       import vc.sctx.program.library._
       val gcdFun = lookupUnique[FunDef]("leon.math.gcdlist")
@@ -383,6 +393,16 @@ object ComfusyConverters {
         CaseClass(CaseClassType(Cons.get, Seq(IntegerType)), Seq(v, l))
       }
       functionInvocation(gcdFun, Seq(l))
+
+    case APAInputLCM(List(a)) =>
+      APAInputTermToExpr(APAInputAbs(a))
+      
+    case APAInputLCM(numbers@List(a, b)) =>
+      import vc.sctx.program.library._
+      val lcmFun = lookupUnique[FunDef]("leon.math.lcm")
+      val args = numbers map APAInputTermToExpr
+      functionInvocation(lcmFun, args)
+
     case APAInputLCM(numbers) =>
       import vc.sctx.program.library._
       val lcmFun = lookupUnique[FunDef]("leon.math.lcmlist")
@@ -398,24 +418,117 @@ case object IntegerEquality extends Rule("Solve integer equality"){
   
   import ComfusyConverters._
   
+  object Flatten {
+    def unapply(e: Expr): Option[Expr] = e match {
+      case v: Variable => Some(v)
+      case Tuple(vs) => Some(Tuple(vs.map(e => Flatten.unapply(e).getOrElse(return None))))
+      case TupleSelect(Flatten(e), n) => Some(TupleSelect(e, n))
+      case Let(i, Flatten(e), Variable(i2)) if i2 == i => Some(e)
+      case Let(i, Flatten(e), Tuple(seq))
+        if seq.zipWithIndex.forall{
+          case (TupleSelect(Flatten(Variable(i2)), n), nm1) if nm1 + 1 == n && i2 == i => true case _ => false } =>
+          Some(e)
+      case LetTuple(is, Flatten(e), Tuple(vs)) if vs.toList == is.map(Variable) => Some(e)
+      case _ => None
+    }
+    
+  }
+  
+  object GetOutputVariables {
+    def unapply(e: Expr)(implicit p: Problem): Option[(Seq[Expr], Seq[Identifier])] = 
+      rec(e, p.xs.map(Variable))
+    
+    def rec(e: Expr, originOutputVariables: Seq[Expr]): Option[(Seq[Expr], Seq[Identifier])] = {
+      //println(s"Reducing $e under $originOutputVariables")
+      e} match {
+      case Let(i, Flatten(j), b) =>
+        val k =  originOutputVariables.indexOf(j)
+        if(k == -1) { // Maybe j is a TupleSelect, in which case we need to expand the corresponding originOutputVariable
+          val varsOfJ = ExprOps.variablesOf(j)
+          val newOutputvariables=  originOutputVariables.flatMap(ov =>
+            ov.getType match {
+              case t: TupleType if ExprOps.exists{ case Variable(m) if varsOfJ(m) => true case _ => false }(ov) =>
+                t.bases.indices.map(i => TupleSelect(ov, i + 1))
+              case _ => List(ov)
+            }
+          )
+          if(originOutputVariables != newOutputvariables) {
+            rec(e, newOutputvariables)
+          } else {
+            // Maybe j is a tuple of variable, in which case we are going to replace i._m by the corresponding variable.
+            j match {
+              case Tuple(values) if values.forall(_.isInstanceOf[Variable])=>
+                val newB = 
+                  ExprOps.preMap{
+                    case TupleSelect(Variable(ii), n)  if ii == i => Some(values(n - 1))
+                    case _ => None
+                  }(b)
+                if( b != newB ) {
+                  rec(newB, originOutputVariables)
+                } else {
+                  //println(s"Was not able 2 reduce the expression $e with input variables $originOutputVariables")
+                  None
+                }
+              case _ =>
+                //println(s"Was not able to reduce the expression $e with input variables $originOutputVariables")
+                None
+            }
+            
+          }
+        } else {
+          rec(b, originOutputVariables.take(k) ++ Seq(Variable(i)) ++ originOutputVariables.drop(k+1))
+        }
+      case LetTuple(is, Flatten(res), b)  =>
+        val k = originOutputVariables.indexOf(res)
+        if (k >= 0) {
+          val newOriginOutputVariables = 
+            originOutputVariables.take(k) ++ is.map(Variable) ++ originOutputVariables.drop(k+1)
+          rec(b, newOriginOutputVariables)
+        } else {
+          //println(s"Was not able to reduce $e under input variables $originOutputVariables")
+          None
+        }
+      // Now it's possible that j is a tuple select so let's try this
+      case TopLevelAnds(conjuncts) =>
+        val finalReturnVariables = originOutputVariables.map{
+          case Variable(x) => x
+          case e => 
+            //println(s"This is not an output variable: $e")
+            return None
+        }
+        Some((conjuncts, finalReturnVariables))
+      case _ =>
+        //println("Was not able to simplify the expression " + e)
+        None
+    }
+  }
   
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    implicit lazy val vc = new VarContext(p.as.toSet, p.xs.toSet, hctx)
     p.phi match {
-      case TopLevelAnds(conjuncts) =>
-        val candidates: List[Equals] = conjuncts.toList collect { case e: Equals => e } filter { e => isLinEqInOutputVariables(e) }
+      case GetOutputVariables(conjuncts, outputVars) =>
+        implicit lazy val vc = new VarContext(p.as.toSet, outputVars.toSet, hctx)
+        val candidates: List[Equals] = conjuncts.toList collect {
+          case e: Equals => e
+        } filter { e => isLinEqInOutputVariables(e) }
+        //println(s"Candidates $conjuncts for $outputVars")
         if(candidates.isEmpty) {
+          //println("No candidates for integer equality. Got " + conjuncts)
           Nil
         } else {
           val realCandidates  = candidates map (e => convertToAPAEqualZero(e)) sortWith APASynthesis.by_least_outputvar_coef
-          val problem = new APASynthesis(FormulaSplit(realCandidates, Nil, Stream.empty), p.as.toList.map(vc.getInputVar), p.xs.toList.map(vc.getOutputVar))
+          val problem = new APASynthesis(FormulaSplit(realCandidates, Nil, Stream.empty),
+              p.as.toList.map(vc.getInputVar), outputVars.toList.map(vc.getOutputVar))
           List(RuleInstantiation("Solve integer equalities") {
+            //println(s"Solve problem ${realCandidates}")
             val (cond, prog) = problem.solve()
+            //println(s"Solution condition = $cond under program = $prog")
             val solution = convertToSolution(cond, prog)
             RuleClosed(solution)
           })
         }
-      case _ => Nil
+      case _ => 
+        //println("Not parsable as equation with conjuncts")
+        Nil
     }
   }
 }
