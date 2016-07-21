@@ -4,7 +4,7 @@ import leon.collection.List
 
 object Friends { 
 
-  case class Index[A](i: Int) {
+  case class Index[A : Mutable](i: Int) {
     def canIndex[B](arr: Array[B]): Boolean = {
       0 <= i && i < arr.length
     }
