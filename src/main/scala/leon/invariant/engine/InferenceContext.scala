@@ -90,7 +90,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     FunctionInvocation(TypedFunDef(nlelim.multFun, nlelim.multFun.tparams.map(_.tp)), Seq(e1, e2))
   }
 
-  var validPosts = Set[String]()
+  val validPosts = MutableMap[String, Boolean]()
   val userLevelFunctionsMap = ProgramUtil.userLevelFunctions(progWOTemplate).map { fd =>
     purescala.DefOps.fullName(fd)(progWOTemplate) -> fd
   }.toMap
@@ -100,7 +100,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
    * program
    */
   def isFunctionPostVerified(funName: String) = {
-    if (validPosts.contains(funName)) true
+    if (validPosts.contains(funName)) validPosts(funName)
     else if (abort) false
     else {
       val vctx = new VerificationContext(leonContext, progWOTemplate, 
@@ -110,11 +110,15 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
         SolverUtil.solveUsingLeon(leonContext, progWOTemplate, vc, vcTimeout) match {
           case (Some(true), _) =>
             leonContext.reporter.fatalError(s"${vc.kind} invalid for function $funName") 
+          case (None, _) if vc.kind == VCKinds.Postcondition =>
+            validPosts.update(funName, false)
+            false
           case (None, _) =>
             leonContext.reporter.fatalError(s"${vc.kind} verification returned unknown for function $funName") 
-          case (Some(false), _) =>                      
-            validPosts += funName
-            true          
+          case (Some(false), _) if vc.kind == VCKinds.Postcondition =>                      
+            validPosts.update(funName, true)
+            true
+          case _ => acc // here, we have verified a VC that is not post, so skip it            
         }
       }
     }

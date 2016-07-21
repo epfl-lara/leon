@@ -207,7 +207,7 @@ object HOMemVerificationPhase {
       solverF.shutdown()
     }
   }
-
+  
   class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends
   	UnfoldingTemplateSolver(ctx, p, rootFd) {
 
