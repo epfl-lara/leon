@@ -3,6 +3,7 @@
 package leon
 package invariant.templateSolvers
 
+import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
@@ -13,11 +14,12 @@ import invariant.factories._
 import leon.invariant.util._
 import RealValuedExprEvaluator._
 import Stats._
+import scala.collection.mutable.{Map => MutableMap}
 
 class Minimizer(ctx: InferenceContext, program: Program) {
 
   val verbose = false
-  val debugMinimization = false
+  val debugMinimization = true
   /**
    * Here we are assuming that that initModel is a model for ctrs
    * TODO: make sure that the template for rootFun is the time template
@@ -60,13 +62,12 @@ class Minimizer(ctx: InferenceContext, program: Program) {
     //      SolverFactory.getFromName(leonctx,program)("orb-smt-z3"),
     //      ctx.vcTimeout * 1000))    
     reporter.info("minimizing...")
+    var result = Map[Identifier, FractionalLiteral]()
     var currentModel = initModel
+    // lookup currentModel, otherwise lookup initModel
+    val currentVal = (x:Identifier) => currentModel.getOrElse(x, initModel(x)).asInstanceOf[FractionalLiteral]
     orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
-      var upperBound = if (currentModel.isDefinedAt(tvar.id)) {
-        currentModel(tvar.id).asInstanceOf[FractionalLiteral]
-      } else {
-        initModel(tvar.id).asInstanceOf[FractionalLiteral]
-      }
+      var upperBound = currentVal(tvar.id)
       //note: the lower bound is an integer by construction (and is by default zero)
       var lowerBound: FractionalLiteral =
         if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar))
@@ -78,7 +79,6 @@ class Minimizer(ctx: InferenceContext, program: Program) {
         if (this.debugMinimization)
           reporter.info("Found new upper bound: " + upperBound)
       }
-
       if (this.debugMinimization)
         reporter.info(s"Minimizing variable: $tvar Initial Bounds: [$upperBound,$lowerBound]")
       var continue = true
@@ -90,6 +90,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           if (evaluateRealPredicate(GreaterEquals(lowerBound, currval))) //check if the lowerbound, if it exists, is < currval
             continue = false
           else {
+            // TODO: we can convert this to disjunction if the range is small.
             val boundCtr = And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound))
             val (res, newModel) =
               if (ctx.abort) (None, Model.empty)
@@ -112,31 +113,31 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           }
         }
       } while (!ctx.abort && continue && iter < MaxIter)
-      //A last ditch effort to make the upper bound an integer.
-      val currval @ FractionalLiteral(n, d) =
-        if (currentModel.isDefinedAt(tvar.id))
-          currentModel(tvar.id).asInstanceOf[FractionalLiteral]
-        else
-          initModel(tvar.id).asInstanceOf[FractionalLiteral]
-      if (d != 1 && !ctx.abort) {
-        val (res, newModel) =
-          farkasSolver.solveFarkasConstraints(And(acc, Equals(tvar, floor(currval))))
-        //solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
-        if (res == Some(true))
-          updateState(newModel)
-      }
-      //here, we found a best-effort minimum
+       //update lowerbound
       if (lowerBound != lowerLimit) {
         updateLowerBound(tvar, lowerBound)
       }
-      And(acc, Equals(tvar, currval))
+      //A last ditch effort to make the upper bound an integer.
+      val currval @ FractionalLiteral(n, d) = currentVal(tvar.id)
+      val intval = if (d != 1 && !ctx.abort) {
+        val flcurrval = floor(currval)
+        val (res, newModel) =
+          farkasSolver.solveFarkasConstraints(And(acc, Equals(tvar, flcurrval)))
+        //solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
+        if (res == Some(true)) {
+          updateState(newModel)
+          flcurrval
+        } else currval
+      } else currval
+      // update currentResult
+      result += (tvar.id -> intval)      
+      //And(acc, Equals(tvar, currval))
+      replace(Map(tvar -> intval), acc)
     })
+    //println("New result: "+results)    
     new Model(initModel.map {
-      case (id, e) =>
-        if (currentModel.isDefinedAt(id))
-          (id -> currentModel(id))
-        else
-          (id -> initModel(id))
+      case (id, _) if result.isDefinedAt(id) => (id -> result(id))
+      case (id, _) => (id -> currentVal(id))        
     }.toMap)
   }
 
