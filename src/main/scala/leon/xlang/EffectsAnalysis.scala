@@ -78,6 +78,7 @@ class EffectsAnalysis {
     */
   def isMutableType(tpe: TypeTree): Boolean = {
     def rec(tpe: TypeTree, abstractClasses: Set[ClassType]): Boolean = mutableTypes.getOrElseUpdate(tpe, tpe match {
+      case (tp: TypeParameter) => tp.isMutable
       case (ct: ClassType) if abstractClasses.contains(ct) => false
       case (arr: ArrayType) => true
       case ct@CaseClassType(ccd, _) => ccd.fields.exists(vd => vd.isVar || rec(vd.getType, abstractClasses + ct))

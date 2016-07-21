@@ -53,7 +53,16 @@ object Types {
 
   class TypeParameter private (name: String) extends TypeTree {
     val id = FreshIdentifier(name, this)
-    def freshen = new TypeParameter(name)
+
+    //TODO: really not sure about what I'm doing there, but
+    //      I really need the information of whether the TypeParameter
+    //      was mutable or not, so I copy it around with the freshen
+    //      @samarion please excuse me for using vars
+    def freshen = {
+      val ntp = new TypeParameter(name)
+      ntp.isMutable = isMutable
+      ntp
+    }
 
     override def equals(that: Any) = that match {
       case TypeParameter(id) => this.id == id
@@ -61,6 +70,9 @@ object Types {
     }
 
     override def hashCode = id.hashCode
+
+    //is the type parameter annotated as Mutable
+    var isMutable: Boolean = false
   }
 
   object TypeParameter {
