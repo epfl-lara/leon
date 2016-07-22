@@ -64,10 +64,10 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       if (useIncrementalSolvingForVCs)
         throw new IllegalArgumentException("Cannot perform incremental solving with portfolio solvers!")
       new PortfolioSolverFactory(leonctx.toSctx, Seq(
-        SolverFactory.getFromName(leonctx, program)("orb-smt-cvc4"),
-        SolverFactory.getFromName(leonctx, program)("orb-smt-z3")))
+        SolverFactory.getFromName(leonctx, program)("orb-smt-cvc4-u"),
+        SolverFactory.getFromName(leonctx, program)("orb-smt-z3-u")))
     } else {
-      getOrbSolver(leonctx, program)
+      getUninterpretedOrbSolver(leonctx, program)
     }
       
 
@@ -409,6 +409,8 @@ class UniversalQuantificationSolver(ctx: InferenceContext, program: Program,
       /*ctrTracker.getVC(fd).checkUnflattening(tempVarMap,
         SimpleSolverAPI(SolverFactory(() => solverFactory.getNewSolver())),
         defaultEval)*/
+      //val bd5 = variablesOf(funData.simpleParts).find{ case k => k.uniqueName == "bd$5" }.get
+      //println("mapping for bd5: "+packedModel(bd5))
       verifyModel(funData.simpleParts, packedModel, SimpleSolverAPI(solverFactory))
       //val unflatPath = ctrTracker.getVC(fd).pickSatFromUnflatFormula(funData.simpleParts, packedModel, defaultEval)
     }

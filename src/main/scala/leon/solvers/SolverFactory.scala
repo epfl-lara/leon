@@ -12,6 +12,7 @@ import smtlib._
 import purescala.Definitions._
 import scala.reflect.runtime.universe._
 import _root_.smtlib.interpreters._
+import invariant.smtlib.solvers._
 
 abstract class SolverFactory[+S <: Solver] {
   def getNewSolver(): S
@@ -36,14 +37,15 @@ object SolverFactory {
   val definedSolvers = Map(
     "fairz3" -> "Native Z3 with z3-templates for unrolling (default)",
     "smt-cvc4" -> "CVC4 through SMT-LIB",
-    "smt-z3" -> "Z3 through SMT-LIB",
+    "smt-z3" -> "Z3 through SMT-LIB",   
     "smt-z3-q" -> "Z3 through SMT-LIB, with quantified encoding",
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex" -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
     "unrollz3" -> "Native Z3 with leon-templates for unrolling",
     "ground" -> "Only solves ground verification conditions by evaluating them",
     "enum" -> "Enumeration-based counter-example-finder",
-    "isabelle" -> "Isabelle2015 through libisabelle with various automated tactics")
+    "isabelle" -> "Isabelle2015 through libisabelle with various automated tactics",
+    "orb-smt-z3/cvc4" -> "Solvers for the Orb inference engine that do not support Leon theory extensions")
 
   val availableSolversPretty = "Available: " +
     solvers.SolverFactory.definedSolvers.toSeq.sortBy(_._1).map {
@@ -84,7 +86,7 @@ object SolverFactory {
 
   def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] =
     getFromName(SolverContext(ctx, new evaluators.EvaluationBank), program)(name)
-
+  
   def getFromName(ctx: SolverContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "enum"           => SolverFactory(name, () => new EnumerationSolver(ctx, program) with TimeoutSolver)
     case "ground"         => SolverFactory(name, () => new GroundSolver(ctx, program) with TimeoutSolver)
@@ -99,8 +101,10 @@ object SolverFactory {
     case "smt-cvc4-u"     => SolverFactory(name, () => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case "nativez3-u"     => SolverFactory(name, () => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
     case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx.context, program)
-    case "orb-smt-z3"     => SolverFactory(name, () => new invariant.smtlib.solvers.OrbSMTLIBZ3Solver(ctx, program) with TimeoutSolver)
-    case "orb-smt-cvc4"   => SolverFactory(name, () => new invariant.smtlib.solvers.OrbSMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
+    case "orb-smt-z3"     => SolverFactory(name, () => new Z3UnrollingSolver(ctx, program, new OrbSMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+    case "orb-smt-cvc4"   => SolverFactory(name, () => new CVC4UnrollingSolver(ctx, program, new OrbSMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
+    case "orb-smt-z3-u"   => SolverFactory(name, () => new OrbSMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+    case "orb-smt-cvc4-u" => SolverFactory(name, () => new OrbSMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")
       showSolvers(ctx)

@@ -26,6 +26,7 @@ class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
       case fd: FunDef   => fd.flags.contains(IsPrivate)
     }
   }
+  // TODO: type arguments of classes are a bit of a problem, when they are returned. Fix this.
   val escapingTypes = p.units.filter(_.isMainUnit).flatMap { md =>
     // fields and parameters of public classes and methods are accessible from outside, others are not
     (md.definedClasses ++ md.definedFunctions).flatMap {
@@ -37,11 +38,17 @@ class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
         fd.params.map(_.getType)
       case _ => Seq()
     }
-  }
+  }.groupBy { TypeUtil.canonTypeName(_) }.collect{ 
+    case (k, v) if !v.head.isInstanceOf[TypeParameter] => v.head }
+  //println("Escaping types: "+escapingTypes)
   /**
    * A function type escapes if it is a **super type** of an escaping type
    */
   def isEscapingType(ft: FunctionType) = escapingTypes.exists{ escType => 
-    //canBeSubtypeOf(ft, getTypeParameters(ft), escType).isDefined  }
-    canBeSubtypeOf(escType, ft).isDefined }
+    canBeSubtypeOf(escType, ft).isDefined
+//    if(x.isDefined) {
+//      println("Subtype instantiation: "+x.get)
+//      true
+//    } else false      
+   }
 }

@@ -20,11 +20,11 @@ import transformations._
  */
 object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] {
   val dumpInputProg = false
-  val dumpLiftProg = true
-  val dumpProgramWithClosures = true
-  val dumpTypeCorrectProg = true
+  val dumpLiftProg = false
+  val dumpProgramWithClosures = false
+  val dumpTypeCorrectProg = false
   val dumpProgWithPreAsserts = true
-  val dumpProgWOInstSpecs = true
+  val dumpProgWOInstSpecs = false
   val dumpInstrumentedProgram = true
   val debugSolvers = false
   val skipStateVerification = false

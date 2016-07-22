@@ -147,6 +147,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
             cdef
         })
         val ucase = if (typeAnalysis.isEscapingType(ft)) {
+          //println("Found escaping type: "+ft)
           stateNeedingTypes += tpename
           stateUpdatingTypes += tpename
           escapingTypes += tpename

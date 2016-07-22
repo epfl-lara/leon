@@ -25,8 +25,9 @@ import leon.verification.VC
 object SolverUtil {
 
   def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC, timeout: Long /*in secs*/) = {
-    val solFactory = SolverUtil.getOrbSolver(leonctx, p)
-    val smtUnrollZ3 = new UnrollingSolver(leonctx.toSctx, p, solFactory.getNewSolver()) with TimeoutSolver
+    val solFactory = SolverFactory.getFromSettings(leonctx, p)
+    val smtUnrollZ3 =  solFactory.getNewSolver() 
+    //new UnrollingSolver(leonctx.toSctx, p, solFactory.getNewSolver()) with TimeoutSolver
     smtUnrollZ3.setTimeout(timeout * 1000)
     smtUnrollZ3.assertVC(vc)
     val res = smtUnrollZ3.check match {
@@ -39,13 +40,13 @@ object SolverUtil {
     res
   }
   
-  def getOrbSolver(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+  def getUninterpretedOrbSolver(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     val namesOpt = ctx.findOption(GlobalOptions.optSelectedSolvers)
     namesOpt match {
       case Some(names) if names.contains("orb-smt-z3") =>
-        SolverFactory.getFromName(ctx, program)("orb-smt-z3")
+        SolverFactory.getFromName(ctx, program)("orb-smt-z3-u")
       case Some(names) if names.contains("orb-smt-cvc4") =>
-        SolverFactory.getFromName(ctx, program)("orb-smt-cvc4")
+        SolverFactory.getFromName(ctx, program)("orb-smt-cvc4-u")
       case None =>
         ctx.reporter.warning("Using native z3 solver for checking VCs")
         SolverFactory.getFromName(ctx, program)("nativez3-u")

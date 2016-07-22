@@ -439,6 +439,7 @@ object ExpressionTransformer {
         val nrhs = rec(rhs)
         if (idMap.contains(id)) Equals(Variable(id), nrhs)
         else {
+          //println(s"Mapping $id to ${simplifyByConstructors(nrhs)}")
           idMap += (id -> simplifyByConstructors(nrhs))
           tru
         }

@@ -15,6 +15,7 @@ import verification._
 import verification.VCKinds
 import InferInvariantsPhase._
 import ProgramUtil._
+import leon.solvers.SolverFactory
 
 /**
  * @author ravi
@@ -54,7 +55,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
         fd -> fd.getTemplate
     }.toMap
     (assignTemplateAndCojoinPost(funToTmpl, instrumentedProg, Map()),
-        assignTemplateAndCojoinPost(Map(), instrumentedProg, Map()))
+      assignTemplateAndCojoinPost(Map(), instrumentedProg, Map()))
   }
 
   val nlelim = new NonlinearityEliminator(withmult, if (usereals) RealType else IntegerType)
@@ -103,19 +104,19 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     if (validPosts.contains(funName)) validPosts(funName)
     else if (abort) false
     else {
-      val vctx = new VerificationContext(leonContext, progWOTemplate, 
-          SolverUtil.getOrbSolver(leonContext, progWOTemplate))     
-      val vcs = (new DefaultTactic(vctx)).generateVCs(userLevelFunctionsMap(funName))    
+      val vctx = new VerificationContext(leonContext, progWOTemplate,
+        SolverFactory.getFromSettings(leonContext, progWOTemplate))
+      val vcs = (new DefaultTactic(vctx)).generateVCs(userLevelFunctionsMap(funName))
       (true /: vcs) { (acc, vc) =>
         SolverUtil.solveUsingLeon(leonContext, progWOTemplate, vc, vcTimeout) match {
           case (Some(true), _) =>
-            leonContext.reporter.fatalError(s"${vc.kind} invalid for function $funName") 
+            leonContext.reporter.fatalError(s"${vc.kind} invalid for function $funName")
           case (None, _) if vc.kind == VCKinds.Postcondition =>
             validPosts.update(funName, false)
             false
           case (None, _) =>
-            leonContext.reporter.fatalError(s"${vc.kind} verification returned unknown for function $funName") 
-          case (Some(false), _) if vc.kind == VCKinds.Postcondition =>                      
+            leonContext.reporter.fatalError(s"${vc.kind} verification returned unknown for function $funName")
+          case (Some(false), _) if vc.kind == VCKinds.Postcondition =>
             validPosts.update(funName, true)
             true
           case _ => acc // here, we have verified a VC that is not post, so skip it            

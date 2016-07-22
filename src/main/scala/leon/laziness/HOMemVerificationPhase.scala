@@ -21,10 +21,10 @@ object HOMemVerificationPhase {
   val debugInferProgram = false
 
   class MemVerificationReport(val stateVerification: Option[VerificationReport],
-      val resourceVeri: Option[VerificationReport]) {
-    def inferReport= resourceVeri match {
+                              val resourceVeri: Option[VerificationReport]) {
+    def inferReport = resourceVeri match {
       case Some(inf: InferenceReport) => Some(inf)
-      case _ => None
+      case _                          => None
     }
   }
 
@@ -33,7 +33,7 @@ object HOMemVerificationPhase {
       exists(InstUtil.instCall(_).isDefined)(e)
     }
     val newPosts = p.definedFunctions.collect {
-      case fd if fd.hasTemplate || fd.postcondition.exists { exists(hasInstVar) } =>        
+      case fd if fd.hasTemplate || fd.postcondition.exists { exists(hasInstVar) } =>
         val Lambda(resdef, _) = fd.postcondition.get
         //println(s"postcondition of ${fd.id}: ${fd.postcondition.get}, postWoTemplate: ${fd.postWoTemplate}, tmpl: ${fd.template}")
         val npost = fd.postWoTemplate match {
@@ -49,7 +49,7 @@ object HOMemVerificationPhase {
               case _ => Util.tru
             }
           case Some(e) =>
-            if(hasInstVar(e))  Util.tru
+            if (hasInstVar(e)) Util.tru
             else e
         }
         (fd -> Lambda(resdef, npost))
@@ -85,7 +85,7 @@ object HOMemVerificationPhase {
     val report = VerificationPhase.apply(checkCtx, prog)
     // collect stats
     collectCumulativeStats(report)
-    if(!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
+    if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
       println(report.summaryString)
     }
     report
@@ -122,7 +122,7 @@ object HOMemVerificationPhase {
   }
 
   def checkUsingOrb(infEngine: InferenceEngine, inferctx: InferenceContext,
-      progressCallback: Option[InferenceCondition => Unit] = None) = {
+                    progressCallback: Option[InferenceCondition => Unit] = None) = {
     if (debugInferProgram) {
       prettyPrintProgramToFile(inferctx.inferProgram, inferctx.leonContext, "-inferProg", true)
     }
@@ -134,7 +134,7 @@ object HOMemVerificationPhase {
   }
 
   def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
-      exists(_ == TupleSelect(resid.toVariable, 2))(e)
+    exists(_ == TupleSelect(resid.toVariable, 2))(e)
 
   /**
    * Note: we also skip verification of uninterpreted functions
@@ -207,9 +207,8 @@ object HOMemVerificationPhase {
       solverF.shutdown()
     }
   }
-  
-  class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends
-  	UnfoldingTemplateSolver(ctx, p, rootFd) {
+
+  class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends UnfoldingTemplateSolver(ctx, p, rootFd) {
 
     override def constructVC(fd: FunDef): (Expr, Expr, Expr) = {
       val (body, ants, post, tmpl) = collectAntsPostTmpl(rootFd)

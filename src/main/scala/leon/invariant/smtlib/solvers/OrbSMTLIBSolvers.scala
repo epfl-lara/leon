@@ -1,14 +1,16 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
 package leon
-package invariant.smtlib.solvers
+package invariant
+package smtlib
+package solvers
 
 import purescala.Common._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Definitions._
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => SMTFunDef, _}
-import smtlib.parser.Terms.SSymbol
+import _root_.smtlib.parser.Terms.SSymbol
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import utils._
 import leon.LeonContext
@@ -21,9 +23,9 @@ import leon.solvers.Solver
 import leon.solvers.SolverContext
 import leon.solvers.SolverUnsupportedError
 import leon.solvers.smtlib.SMTLIBCVC4Component
-import leon.solvers.smtlib.SMTLIBCVC4Target
 import leon.solvers.smtlib.SMTLIBTarget
 import leon.solvers.smtlib.SMTLIBUnsupportedError
+import leon.solvers.smtlib.SMTLIBCVC4Target
 import leon.solvers.smtlib.SMTLIBZ3Target
 
 /**
@@ -118,6 +120,7 @@ abstract class OrbSMTLIBSolver(val sctx: SolverContext, val program: Program)
     constructors.push()
     selectors.push()
     testers.push()
+    //genericValues.push()
     variables.push()
     sorts.push()
     lambdas.push()
@@ -131,6 +134,7 @@ abstract class OrbSMTLIBSolver(val sctx: SolverContext, val program: Program)
     constructors.pop()
     selectors.pop()
     testers.pop()
+    //genericValues.pop()
     variables.pop()    
     sorts.pop()
     lambdas.pop()

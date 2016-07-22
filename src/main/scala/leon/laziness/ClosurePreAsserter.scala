@@ -74,6 +74,8 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
       } traverse (fd.body.get) // Note: closures cannot be created in specs
       closures.map {
         case ((cc@CaseClass(cct: CaseClassType, ccArgs), st), path) =>
+          //println(s"Path for $cc : $path")
+          //println(s"Path clause : ${path.toPath}")
           anchorfd = Some(fd)
           val l@Lambda(largs, FunctionInvocation(TypedFunDef(target, _), allargs)) = closureToLambda(cct)
           val args = ccArgs  // TODO: return value handling: argsRet.dropRight(1) // drop the return value which is the right-most field
@@ -97,8 +99,8 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
   var anchorfd: Option[FunDef] = None
   val lemmas = closuresToPrePath map {
     case (cc, (capturedPre, path, fd)) =>
-      anchorfd = Some(fd)
-      val vc = Implies(And(precOrTrue(fd), path.toClause), capturedPre)
+      anchorfd = Some(fd)      
+      val vc = Implies(And(precOrTrue(fd), path.toPath), capturedPre)
       // create a function for each vc
       val lemmaid = FreshIdentifier(cc.ct.classDef.id.name + fd.id.name + "Pre", Untyped, true)
       val params = variablesOf(vc).toSeq.map(v => ValDef(v))

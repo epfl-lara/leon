@@ -19,7 +19,7 @@ import scala.collection.mutable.{ Map => MutableMap }
 class Minimizer(ctx: InferenceContext, program: Program) {
 
   val verbose = false
-  val debugMinimization = true
+  val debugMinimization = false
   /**
    * Here we are assuming that that initModel is a model for ctrs
    * TODO: make sure that the template for rootFun is the time template
@@ -58,9 +58,9 @@ class Minimizer(ctx: InferenceContext, program: Program) {
    */
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
-      SolverFactory.getFromName(leonctx, program)("orb-smt-z3"),
-      ctx.vcTimeout * 1000))
+//    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(
+//      SolverFactory.getFromName(leonctx, program)("orb-smt-z3-u"),
+//      ctx.vcTimeout * 1000))
     reporter.info("minimizing...")
     var result = Map[Identifier, FractionalLiteral]()
     var currentModel = initModel
