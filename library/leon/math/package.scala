@@ -23,6 +23,17 @@ package object math {
   
   @library
   @annotation.isabelle.noBody()
+  // Computes the vectorial product of two lists.
+  def vectorialProduct(a: List[BigInt], b: List[BigInt]): BigInt = {
+    require(a.length == b.length)
+    a match {
+      case Nil() => 0
+      case Cons(ael, aq) => ael * b.head + vectorialProduct(aq, b.tail)
+    }
+  }
+  
+  @library
+  @annotation.isabelle.noBody()
   def isGCDable(l: List[BigInt]): Boolean = l match {
     case Cons(x, b) if x == BigInt(0) => isGCDable(b)
     case Cons(x, b) => true
@@ -200,6 +211,7 @@ package object math {
   @library
   @annotation.isabelle.noBody()
   def extendedEuclidFunc(a_in: BigInt, b_in: BigInt):(BigInt, BigInt, BigInt) = {
+    require(a_in != 0 || b_in != 0)
     val (x, lastx) = (BigInt(0), BigInt(1))
     val (y, lasty) = (BigInt(1), BigInt(0))
     val (a, b) = (a_in, b_in)
@@ -216,7 +228,10 @@ package object math {
       }
     }
     aux(a, b, x, y, lastx, lasty)
-  }
+  }/* ensuring { res =>
+    val (x1, x2, k) = res
+    x1 * a_in + x2 * b_in + k == 0 && k == gcd(a_in, b_in)
+  }*/
   
   @library
   @annotation.isabelle.noBody()
@@ -248,18 +263,19 @@ package object math {
   @library
   @annotation.isabelle.noBody()
   def bezoutMMFunc(a_in: List[BigInt], k: BigInt):List[BigInt] = {
-    require(isNonZero(a_in))
+    require(isNonZero(a_in) && a_in.length > 0)
     val a = a_in
     
     val a_in_gcds = foldRightGcds(a_in)
     val result:List[BigInt] = Nil()
     val last_coef = BigInt(-1)
     def aux(a: List[BigInt], a_in_gcds: List[BigInt], result: List[BigInt], last_coef: BigInt): List[BigInt] = {
+      require(isNonZero(a) && a_in_gcds == foldRightGcds(a))
       if(a.isEmpty) result.reverse
       else {
         a match {
-        case Cons(x, Nil()) if x == BigInt(0)  =>
-          aux(Nil(), a_in_gcds, Cons(BigInt(0), result), last_coef)
+        /*case Cons(x, Nil()) if x == BigInt(0)  =>
+          aux(Nil(), a_in_gcds, Cons(BigInt(0), result), last_coef)*/
         case Cons(el, Nil()) =>
           // Solution is -el/abs(el)
           aux(Nil(), a_in_gcds, (k*(-last_coef * (-el/abs(el))))::result, last_coef)
@@ -272,9 +288,14 @@ package object math {
           aux(q, a_in_gcds.tail,  (-u*k*last_coef)::result, -v*last_coef)
         }
       }
+    } ensuring {
+      (res: List[BigInt]) => true
     }
     aux(a_in, a_in_gcds, result, last_coef)
-  }
+  }/* ensuring {
+    (x: List[BigInt]) =>
+      vectorialProduct(x, a_in) + k*gcdlist(a_in) == 0
+  }*/
   
   @library
   @annotation.isabelle.noBody()
@@ -288,7 +309,7 @@ package object math {
     val zeros:List[BigInt] = Nil()
     def aux(i: BigInt, result: List[List[BigInt]], coefs: List[BigInt], coefs_gcd: List[BigInt], zeros: List[BigInt])
         : List[List[BigInt]] = {
-      require(i <= n && isPositive(coefs_gcd) && isNonZero(coefs) && coefs_gcd.length >= 2 && coefs.length >= 1)
+      require(i <= n && coefs.length + i == a.length + BigInt(1) && isNonZero(coefs) && isPositive(coefs_gcd) && coefs_gcd == foldRightGcds(coefs) && (i == n || (coefs_gcd.length >= 2 && coefs.length >= 1)))
       if (i > n-BigInt(1)) {
         result.reverse
       } else {
