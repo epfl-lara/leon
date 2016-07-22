@@ -12,7 +12,7 @@ import verification._
 
 import java.io.File
 
-class LazyEvalRegressionSuite extends LeonRegressionSuite {
+class OrbLazinessRegressionSuite extends LeonRegressionSuite {
   private def forEachFileIn(path: String)(block: File => Unit) {
     val fs = filesInResourceDir(path, _.endsWith(".scala"))
     for (f <- fs) {
@@ -47,14 +47,8 @@ class LazyEvalRegressionSuite extends LeonRegressionSuite {
   }
 
   forEachFileIn("regression/orb/lazy/withorb") { f =>
-    test("Lazy evaluation with Orb: " + f.getName) {
+    test("Lazy evaluation and memoization tests: " + f.getName) {
       testLazyVerification(f, createLeonContext("--mem", "--silent", "--vcTimeout=15", "--timeout=30"))
     }
   }
-/*
-  forEachFileIn("regression/orb/lazy/withconst") { f =>
-    test("Lazy evaluation w/o Orb: " + f.getName) {
-      testLazyVerification(f, createLeonContext("--lazy", "--silent", "--timeout=30"))
-    }
-  }*/
 }
