@@ -152,7 +152,6 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
           stateUpdatingTypes += tpename
           escapingTypes += tpename
           val unknownCase = createCaseClass("U" + tpename, absClass, Seq())
-          absClass.registerChild(unknownCase)
           Some(unknownCase)
         } else {
           val targets = canonLambdas.map { _.l.body.asInstanceOf[FunctionInvocation].tfd.fd }
@@ -187,8 +186,7 @@ class ClosureFactory(p: Program, funsManager: FunctionsManager) {
   val memoClosures = {
     val cls = memoClasses.values.toSeq
     if(cls.isEmpty) { // no memoized functin in the program, however there can be  functions coming from outside
-      val defMem = createCaseClass("DMem", memoAbsClass, Seq())
-      memoAbsClass.registerChild(defMem)
+      val defMem = createCaseClass("DMem", memoAbsClass, Seq())      
       Seq(memoAbsClass, defMem) // we create a default case just to make things type check
     }
     else memoAbsClass +: cls

@@ -2,4 +2,3 @@
 ./leon --inferInv --benchmark --minbounds=0 --vcTimeout=3 --timeout=1800  ./testcases/orb-testcases/timing/LeftistHeap.scala # < 20s
 ./leon --inferInv --benchmark --minbounds=0 --vcTimeout=3 --timeout=1800  ./testcases/orb-testcases/timing/AVLTree.scala # < 30s
 ./leon --inferInv --benchmark --minbounds=0 --vcTimeout=3 --timeout=1800  ./testcases/orb-testcases/timing/RedBlackTree.scala # < 40s
-./leon --inferInv --benchmark --minbounds=0 --disableInfer --solvers=orb-smt-cvc4 --timeout=1800  ./testcases/orb-testcases/timing/ConcTrees.scala # < 100s
