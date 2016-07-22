@@ -152,8 +152,9 @@ object FunctionUtils {
     }
 
     lazy val template = templateExpr map (finv => extractTemplateFromLambda(finv.args(0).asInstanceOf[Lambda]))
-    lazy val normalizedTemplate = template.map(normalizeExpr(_, (e1: Expr, e2: Expr) =>
-      throw new IllegalStateException("Not implemented yet!")))
+    lazy val normalizedTemplate = {
+      template.map(normalizeExpr(_, (e1: Expr, e2: Expr) => throw new IllegalStateException("Not implemented yet!")))      
+    }
 
     def hasTemplate: Boolean = templateExpr.isDefined
     def getPostWoTemplate = postWoTemplate match {

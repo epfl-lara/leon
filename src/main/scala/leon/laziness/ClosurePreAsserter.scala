@@ -131,10 +131,10 @@ class ClosurePreAsserter(p: Program, clFactory: ClosureFactory) {
               case And(args) =>
                 args.filter(a => variablesOf(a).contains(stparam))
               case l: Let => // checks if the body of the let can be deconstructed as And
-                val (letsCons, letsBody) = letStarUnapply(l)
+                val (letsCons, letsBody) = letStarUnapplyWithSimplify(l)
                 letsBody match {
                   case And(args) =>
-                    args.filter(a => variablesOf(a).contains(stparam)).map { e => simplifyLets(letsCons(e)) }
+                    args.filter(a => variablesOf(a).contains(stparam)).map { e => letsCons(e) }
                   case _ => Seq()
                 }
               case e => Seq()

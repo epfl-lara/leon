@@ -334,7 +334,7 @@ object PredicateUtil {
 
   def letStarUnapplyWithSimplify(e: Expr): (Expr => Expr, Expr) = {
     val (letCons, letBody) = letStarUnapply(e)
-    (letCons andThen simplifyLets, letBody)
+    (letCons andThen LetTupleSimplification.simplifyLetsAndLetsWithTuples, letBody)
   }
 
   /**
