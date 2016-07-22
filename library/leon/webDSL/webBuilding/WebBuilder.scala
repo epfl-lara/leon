@@ -2,6 +2,7 @@ package leon.webDSL.webBuilding
 import leon.webDSL.webDescription._
 import leon.collection._
 import leon.annotation._
+import scala.language.implicitConversions
 
 @library
 case class Acceptor[T](tag: String) {

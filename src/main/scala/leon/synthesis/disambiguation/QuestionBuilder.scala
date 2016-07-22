@@ -225,7 +225,7 @@ class QuestionBuilder[T <: Expr](
     enumerated_inputs
   }
   
-  def inputsToQuestions(solution: Stream[Solution], inputs: Stream[Seq[(Identifier, Expr)]]): Stream[Question[T]] = {
+  def inputsToQuestions(inputs: Stream[Seq[(Identifier, Expr)]]): Stream[Question[T]] = {
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
     for {
@@ -241,12 +241,12 @@ class QuestionBuilder[T <: Expr](
     if(solutions.isEmpty) return Stream.empty
 
     getExpressionsToTestFirst() foreach  { inputs_generics =>
-      val res = inputsToQuestions(solutions, inputs_generics)
+      val res = inputsToQuestions(inputs_generics)
       if(res.nonEmpty) return res
     }
     
     val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
-    val questions = inputsToQuestions(solutions, enumerated_inputs)
+    val questions = inputsToQuestions(enumerated_inputs)
     questions
   }/*
   

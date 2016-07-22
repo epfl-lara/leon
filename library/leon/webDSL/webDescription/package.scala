@@ -2,6 +2,7 @@ package leon.webDSL
 import leon.collection._
 import leon.lang._
 import leon.annotation._
+import scala.language.implicitConversions
 
 package object webDescription {
   @library

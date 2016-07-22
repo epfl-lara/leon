@@ -97,10 +97,10 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
             case Some(Seq(mp, sepk_v, sep_entry, fkey, fvalue)) =>
               mp.getType match {
                 case MapType(keyType, valueType) =>
-                  val key1 = FreshIdentifier("k", keyType)
-                  val key2 = FreshIdentifier("k", keyType)
-                  val value1 = FreshIdentifier("v", valueType)
-                  val value2 = FreshIdentifier("v", valueType)
+                  val key1 = FreshIdentifier("k1", keyType)
+                  val key2 = FreshIdentifier("k2", keyType)
+                  val value1 = FreshIdentifier("v1", valueType)
+                  val value2 = FreshIdentifier("v2", valueType)
                   val dumbbody =
                     tupleWrap(Seq(application(fkey, Seq(Variable(key1))),
                                   application(fkey, Seq(Variable(key2))),
@@ -168,6 +168,15 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     //println(s"Covering expr (inputs = $inputs, bindings = $bindings): \n$e")
     val res : Map[Path, Stream[Expr]] = 
     e match {
+    case IfExpr(Reconstructor(path), thenn, elze) => 
+      mergeCoverage(
+      mergeCoverage(
+          Map(path -> Stream(BooleanLiteral(true), BooleanLiteral(false))),
+          coverExpr(inputs, thenn, covered, bindings)
+      ),
+          coverExpr(inputs, elze, covered, bindings)
+      )
+      
     case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)
     case MatchExpr(Reconstructor(path), cases) if inputs.nonEmpty && inputs.headOption == Some(path.orig) =>
       val pathType = path.getType
@@ -177,7 +186,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
     case FunctionInvocation(tfd@TypedFunDef(fd, targs), args @ (Reconstructor(path)+:tail)) =>
       Map(path -> coverFunDef(tfd, covered, Some(compose(bindings, args))).map(_.head))
       
-    case Reconstructor(path) if inputs.nonEmpty && inputs.headOption == Some(path.orig) =>
+    case Reconstructor(path) /*if inputs.nonEmpty && inputs.headOption == Some(path.orig)*/ =>
       Map(path -> Stream(a(path.getType)))
       
     case Application(Variable(f), args @ (Reconstructor(path)+:tail)) =>
@@ -193,6 +202,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
         lhsrhs.map(child => coverExpr(inputs, child, covered, bindings)).reduce(mergeCoverage)
       }
     }
+    //println(s"covered $e and got $res")
     res
   }
   
