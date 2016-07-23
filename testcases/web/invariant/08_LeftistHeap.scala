@@ -49,7 +49,7 @@ object LeftistHeap {
       case Node(_,_,l,r) => merge(l, r)
       case l @ Leaf() => l
     }
-  } ensuring(res => time <= ? *leftRightHeight(h) + ?)
+  } ensuring(res => steps <= ? *leftRightHeight(h) + ?)
 
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -64,7 +64,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => time <= ? *rightHeight(h1) + ? *rightHeight(h2) + ?)
+  } ensuring(res => steps <= ? *rightHeight(h1) + ? *rightHeight(h2) + ?)
 
   private def makeT(value: BigInt, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -78,5 +78,5 @@ object LeftistHeap {
 
     merge(Node(1, element, Leaf(), Leaf()), heap)
 
-  } ensuring(res => time <= ? *rightHeight(heap) + ?)
+  } ensuring(res => steps <= ? *rightHeight(heap) + ?)
 }

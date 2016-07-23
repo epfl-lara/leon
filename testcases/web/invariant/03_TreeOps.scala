@@ -43,7 +43,7 @@ object TreeOperations {
       case Node(l, x, r) => if (x <= elem) Node(l, x, insert(elem, r))
       else Node(insert(elem, l), x, r)
     }
-  } ensuring (res => height(res) <= height(t) + 1 && time <= ? *height(t) + ?)
+  } ensuring (res => height(res) <= height(t) + 1 && steps <= ? *height(t) + ?)
 
   def addAll(l: List, t: Tree): Tree = {
     l match {
@@ -53,7 +53,7 @@ object TreeOperations {
         addAll(xs, newt)
       }
     }
-  } ensuring(_ => time <= ? *(listSize(l) * (height(t) + listSize(l))) + ? *listSize(l) + ?)
+  } ensuring(_ => steps <= ? *(listSize(l) * (height(t) + listSize(l))) + ? *listSize(l) + ?)
 
   def remove(elem: BigInt, t: Tree): Tree = {
     t match {
@@ -72,14 +72,14 @@ object TreeOperations {
         }
       }
     }
-  } ensuring (res => height(res) <= height(t) && time <= ? *height(t) + ?)
+  } ensuring (res => height(res) <= height(t) && steps <= ? *height(t) + ?)
 
   def removeAll(l: List, t: Tree): Tree = {
     l match {
       case Nil() => t
       case Cons(x, xs) => removeAll(xs, remove(x, t))
     }
-  } ensuring(_ => time <= ? *(listSize(l) * height(t)) + ? *listSize(l) + ?)
+  } ensuring(_ => steps <= ? *(listSize(l) * height(t)) + ? *listSize(l) + ?)
 
   def contains(elem : BigInt, t : Tree) : Boolean = {
     t match {
@@ -89,5 +89,5 @@ object TreeOperations {
         else if (x < elem) contains(elem, r)
         else contains(elem, l)
     }
-  } ensuring (_ => time <= ? * height(t) + ?)
+  } ensuring (_ => steps <= ? * height(t) + ?)
 }
