@@ -37,7 +37,7 @@ object SolverFactory {
   val definedSolvers = Map(
     "fairz3" -> "Native Z3 with z3-templates for unrolling (default)",
     "smt-cvc4" -> "CVC4 through SMT-LIB",
-    "smt-z3" -> "Z3 through SMT-LIB",   
+    "smt-z3" -> "Z3 through SMT-LIB",
     "smt-z3-q" -> "Z3 through SMT-LIB, with quantified encoding",
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex" -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
@@ -86,7 +86,7 @@ object SolverFactory {
 
   def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] =
     getFromName(SolverContext(ctx, new evaluators.EvaluationBank), program)(name)
-  
+
   def getFromName(ctx: SolverContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "enum"           => SolverFactory(name, () => new EnumerationSolver(ctx, program) with TimeoutSolver)
     case "ground"         => SolverFactory(name, () => new GroundSolver(ctx, program) with TimeoutSolver)
