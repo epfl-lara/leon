@@ -12,8 +12,8 @@ import leon.purescala.Types.TupleType
 class OrbInstrumentationTestSuite extends LeonRegressionSuite {
 
   test("TestInstrumentation") {
-    val ctx = createLeonContext("--inferInv", "--minbounds", "--timeout=" + 10)
-    val testFilename = toTempFile(
+    val ctx = createLeonContext("--timeout=10")
+    val content =
       """
 	import leon.annotation._
 	import leon.invariant._
@@ -28,21 +28,15 @@ class OrbInstrumentationTestSuite extends LeonRegressionSuite {
 	  def size(l: List) : BigInt = (l match {
 	      case Nil() => BigInt(0)
 	      case Cons(t) => 1 + size(t)
-	  }) ensuring(res => tmpl(a => time <= a))
-	}""")
-    val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
-      new leon.utils.PreprocessingPhase
-    val (ctx2, program) = beginPipe.run(ctx, testFilename)
-    val processPipe = InstrumentationPhase
-    // check properties.
-    val (ctx3, instProg) = processPipe.run(ctx2, program)
+	  }) ensuring(res => tmpl(a => steps <= a))
+	}"""
+    val pipe = leon.utils.TemporaryInputPhase andThen
+      leon.frontends.scalac.ExtractionPhase andThen
+      new leon.utils.PreprocessingPhase andThen
+      InstrumentationPhase
+    val (ctx2, instProg) = pipe.run(ctx, (List(content), Nil))
     val sizeFun = instProg.definedFunctions.find(_.id.name.startsWith("size"))
     if (!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
       fail("Error in instrumentation")
-  }
-
-  def toTempFile(content: String): List[String] = {
-    val pipeline = leon.utils.TemporaryInputPhase
-    pipeline.run(createLeonContext(), (List(content), Nil))._2
   }
 }

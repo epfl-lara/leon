@@ -110,7 +110,7 @@ object Main {
 
     val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
-    val leonOptions: Seq[LeonOption[Any]] = options.map { opt =>
+    val initOptions: Seq[LeonOption[Any]] =  options.map { opt =>
       val (name, value) = OptionsHelpers.nameValue(opt).getOrElse(
         initReporter.fatalError(
           s"Malformed option $opt. Options should have the form --name or --name=value"
@@ -123,8 +123,13 @@ object Main {
           "Try 'leon --help' for more information."
         )
       }
-      df.parse(value)(initReporter)
+      df.parse(value)(initReporter)      
     }
+    val leonOptions: Seq[LeonOption[Any]] =
+      if (initOptions.exists(opt => opt.optionDef == MainComponent.optLazyEval && opt.value == true)) {
+        // here, add the `disablePos` option to side step a bug in the scala compiler
+        LeonOption(GlobalOptions.optDisablePos)(true) +: initOptions
+      } else initOptions
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {

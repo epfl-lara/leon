@@ -44,7 +44,7 @@ object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
     settings.classpath.value   = scalaLib
     settings.usejavacp.value   = false
     settings.deprecation.value = true
-    settings.Yrangepos.value   = false
+    settings.Yrangepos.value   = !ctx.findOptionOrDefault(GlobalOptions.optDisablePos)
     settings.skip.value        = List("patmat")
 
     val compilerOpts = Build.libFiles ::: args.filterNot(_.startsWith("--"))
