@@ -102,7 +102,9 @@ object InstUtil {
     val splits = fd.id.name.split("-")
     if(!splits.isEmpty) {
       val instNames = InstTypes.map(_.name).toSet
-      splits.head + splits.tail.takeWhile(x => !instNames.contains(x)).mkString("-", "-", "")
+      splits.head + (
+        if (splits.tail.isEmpty) ""
+        else splits.tail.takeWhile(x => !instNames.contains(x)).mkString("-", "-", ""))
     } else ""
   }
 
