@@ -46,6 +46,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val reporter = leonContext.reporter
   val maxCegisBound = 1000
   val statsSuffix = leonContext.findOption(optStatsSuffix).getOrElse("-stats" + FileCountGUID.getID)
+  val webMode = leonContext.findOptionOrDefault(optWebMode)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
   // converts qmarks to templates

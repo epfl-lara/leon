@@ -121,7 +121,8 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
               case (Some(model), callsInPath) =>
                 toRefineCalls = callsInPath
                 //Validate the model here
-                instantiateAndValidateModel(model, constTracker.getFuncs)
+                if(!ctx.webMode)
+                  instantiateAndValidateModel(model, constTracker.getFuncs)
                 Some(InferResult(true, Some(model), constTracker.getFuncs.toList))
               case (None, callsInPath) =>
                 toRefineCalls = callsInPath
