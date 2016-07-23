@@ -66,14 +66,15 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   }
 
   def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
+    val inprog = HOInliningPhase(ctx, prog)
     if (dumpInputProg)
-      println("Input prog: \n" + ScalaPrinter.apply(prog))
+      println("Input prog: \n" + ScalaPrinter.apply(inprog))
 
-    val (pass, msg) = sanityChecks(prog, ctx)
+    val (pass, msg) = sanityChecks(inprog, ctx)
     assert(pass, msg)
 
     // refEq is by default false
-    val nprog = ExpressionLifter.liftLambdaBody(ctx, prog, ctx.findOption(optRefEquality).getOrElse(false))
+    val nprog = ExpressionLifter.liftLambdaBody(ctx, inprog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
@@ -98,16 +99,16 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
 
     // verify the contracts that do not use resources
-    val progWOInstSpecs = InliningPhase.apply(ctx, removeInstrumentationSpecs(progWithPre))
+    val progWOInstSpecs = HOInliningPhase(ctx, removeInstrumentationSpecs(progWithPre))
     if (dumpProgWOInstSpecs)
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
     // Note: do not inline before instrument, because inlining might change the performance properties
     val instrumenter = new MemInstrumenter(typeCorrectProg, ctx, closureFactory, funsManager)
-    val instProg = InliningPhase.apply(ctx, instrumenter.apply)
+    val instProg = HOInliningPhase(ctx, instrumenter.apply)
     if (dumpInstrumentedProgram) {
-      val runnProg = RunnableCodePhase.apply(ctx, instProg)
+      val runnProg = RunnableCodePhase(ctx, instProg)
       prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
     }
