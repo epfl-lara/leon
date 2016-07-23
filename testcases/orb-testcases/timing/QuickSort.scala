@@ -16,7 +16,7 @@ object QuickSort {
   def append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x, xs) => Cons(x,append(xs,bList))
-  }} ensuring(res => size(res) == size(aList) + size(bList) && tmpl((a,b) => time <= a*size(aList) +b))
+  }} ensuring(res => size(res) == size(aList) + size(bList) && tmpl((a,b) => steps <= a*size(aList) +b))
 
   def partition(n:BigInt,l:List) : Triple = (l match {
     case Nil() => Triple(Nil(), Nil(), Nil())
@@ -26,7 +26,7 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }
- }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && tmpl((a,b) => time <= a*size(l) +b))
+ }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && tmpl((a,b) => steps <= a*size(l) +b))
 
  //Unable to prove n^2  upper bound :-(
   def quickSort(l:List): List = (l match {
@@ -38,6 +38,6 @@ object QuickSort {
     }
     case _ => l
   })
-  //ensuring(res => size(l) == size(res) && tmpl((a,b,c,d) => time <= a*(size(l)*size(l)) + c*size(l) + d))
+  //ensuring(res => size(l) == size(res) && tmpl((a,b,c,d) => steps <= a*(size(l)*size(l)) + c*size(l) + d))
 }
 

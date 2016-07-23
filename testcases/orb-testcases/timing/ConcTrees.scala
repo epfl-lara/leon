@@ -137,7 +137,7 @@ object ConcTrees {
           lookup(r, i - l.size)
         }
     }
-  } ensuring (res => tmpl((a,b) => time <= a*xs.level + b) && // lookup time is linear in the height
+  } ensuring (res => tmpl((a,b) => steps <= a*xs.level + b) && // lookup steps is linear in the height
     res == xs.toList(i) && // correctness
     instAppendIndexAxiom(xs, i)) // an auxiliary axiom instantiation that is required for the proof
 
@@ -171,7 +171,7 @@ object ConcTrees {
     }
   } ensuring (res => res.level == xs.level && // heights of the input and output trees are equal
    res.valid && // tree invariants are preserved
-   tmpl((a,b) => time <= a*xs.level + b) && // update time is linear in the height of the tree
+   tmpl((a,b) => steps <= a*xs.level + b) && // update steps is linear in the height of the tree
    res.toList == xs.toList.updated(i, y) && // correctness
    numTrees(res) == numTrees(xs) && //auxiliary property that preserves the potential function
    instAppendUpdateAxiom(xs, i, y)) // an auxiliary axiom instantiation
@@ -261,7 +261,7 @@ object ConcTrees {
           }
       }
     }
-  } ensuring (res => tmpl((a,b) => time <= a*abs(xs.level - ys.level) + b) && // time bound
+  } ensuring (res => tmpl((a,b) => steps <= a*abs(xs.level - ys.level) + b) && // steps bound
    res.level <= max(xs.level, ys.level) + 1 && // height invariants
    res.level >= max(xs.level, ys.level) &&
    res.balanced && res.appendInv && res.concInv && //this is should not be needed. But, seems necessary for leon
@@ -315,7 +315,7 @@ object ConcTrees {
     }
   } ensuring (res => res.valid && res.isNormalized && // tree invariants
    res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree
-   tmpl((a,b) => time <= a*xs.level + b) && // time is linear in the height of the tree
+   tmpl((a,b) => steps <= a*xs.level + b) && // steps is linear in the height of the tree
    res.toList == xs.toList.insertAt(i, y) && // correctness
    insertAppendAxiomInst(xs, i, y) // instantiation of an axiom
    )
@@ -329,7 +329,7 @@ object ConcTrees {
     }
   }.holds
 
-  //TODO: why with instrumentation we are not able prove the running time here ? (performance bug ?)
+  //TODO: why with instrumentation we are not able prove the running steps here ? (performance bug ?)
   @library
   def split[T](xs: Conc[T], n: BigInt): (Conc[T], Conc[T]) = {
     require(xs.valid && xs.isNormalized)
@@ -356,7 +356,7 @@ object ConcTrees {
   } ensuring (res => res._1.valid && res._2.valid && // tree invariants are preserved
    res._1.isNormalized && res._2.isNormalized &&
    xs.level >= res._1.level && xs.level >= res._2.level && // height bounds of the resulting tree
-   tmpl((a,b,c,d) => time <= a*xs.level + b*res._1.level + c*res._2.level + d) && // time is linear in height
+   tmpl((a,b,c,d) => steps <= a*xs.level + b*res._1.level + c*res._2.level + d) && // steps is linear in height
    res._1.toList == xs.toList.take(n) && res._2.toList == xs.toList.drop(n) && // correctness
    instSplitAxiom(xs, n) // instantiation of an axiom
    )
@@ -387,7 +387,7 @@ object ConcTrees {
   } ensuring (res => res.valid && //conctree invariants
    res.toList == xs.toList ++ Cons(x, Nil[T]()) && //correctness
    res.level <= xs.level + 1 &&
-   tmpl((a,b,c) => time <= a*numTrees(xs) - b*numTrees(res) + c) //time bound (worst case)
+   tmpl((a,b,c) => steps <= a*numTrees(xs) - b*numTrees(res) + c) //steps bound (worst case)
    )
 
   /**
@@ -416,7 +416,7 @@ object ConcTrees {
   } ensuring (res => res.valid && //conc tree invariants
    res.toList == xs.toList ++ ys.toList && //correctness invariants
    res.level <= xs.level + 1 &&
-   tmpl((a,b,c) => time <= a*numTrees(xs) - b*numTrees(res) + c) && //time bound (worst case)
+   tmpl((a,b,c) => steps <= a*numTrees(xs) - b*numTrees(res) + c) && //steps bound (worst case)
    appendAssocInst2(xs, ys))
 
   @library
@@ -452,7 +452,7 @@ object ConcTrees {
     res.isNormalized &&
     res.toList == t.toList && //correctness
     res.size == t.size && res.level <= t.level && //normalize preserves level and size
-    tmpl((a,b) => time <= a*t.level + b) //time bound (a little over approximate)
+    tmpl((a,b) => steps <= a*t.level + b) //steps bound (a little over approximate)
     )
 
        @library
@@ -471,7 +471,7 @@ object ConcTrees {
    res.toList == xs.toList ++ ys.toList && //correctness
    res.size == xs.size + ys.size && //other auxiliary properties
    res.level <= xs.level &&
-   tmpl((a,b,c) => time <= a*xs.level - b*ys.level + c) && //time bound
+   tmpl((a,b,c) => steps <= a*xs.level - b*ys.level + c) && //steps bound
    appendAssocInst2(xs, ys)) //some lemma instantiations
 
   /**
@@ -488,7 +488,7 @@ object ConcTrees {
    x: T /*for update, insert, append*/ )
 
   /**
-  * Proving amortized running time of 'Append' when used ephimerally.
+  * Proving amortized running steps of 'Append' when used ephimerally.
   * ops- a arbitrary sequence of operations,
   * noaps - number of append operations in the list
   */
@@ -501,7 +501,7 @@ object ConcTrees {
         // val _ = if (0 <= i && i < xs.size)
         //     lookup(xs, i)
         //   else BigInt(0)
-            performOperations(xs, tail, noaps) //returns the time taken by appends in the remaining operations
+            performOperations(xs, tail, noaps) //returns the steps taken by appends in the remaining operations
 
       case Cons(Operation(id, i, x), tail) if id == 1 =>
         val newt = if (0 <= i && i < xs.size)
@@ -526,11 +526,11 @@ object ConcTrees {
         //here, we need to perform append operation
         val newt = append(xs, x)
         val r = performOperations(newt, tail, noaps - 1)
-        r //time taken by this append and those that follow it
+        r //steps taken by this append and those that follow it
 
       case _ =>
         xs
     }
-  } ensuring (res => tmpl((a, b) => time <= a*noaps + b*numTrees(xs)))
+  } ensuring (res => tmpl((a, b) => steps <= a*noaps + b*numTrees(xs)))
 //res._2 <= noaps + 2*nops*(xs.level + res._1.level)+ numTrees(xs)
 }

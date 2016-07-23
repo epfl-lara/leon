@@ -27,8 +27,9 @@ object Main {
       solvers.isabelle.AdaptationPhase,
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
+      transformations.RunnableCodePhase,
       invariant.engine.InferInvariantsPhase,
-      laziness.LazinessEliminationPhase,
+      laziness.HOInferencePhase,
       genc.GenerateCPhase,
       genc.CFileOutputPhase
     )
@@ -56,12 +57,13 @@ object Main {
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                 false)
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
     val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
+    val optRunnable    = LeonFlagOptionDef("runnable",    "Generate runnable code after instrumenting it",             false)
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
-    val optLazyEval    = LeonFlagOptionDef("lazy",        "Handles programs that may use the 'lazy' construct",        false)
+    val optLazyEval    = LeonFlagOptionDef("mem",        "Handles programs that may use the memoization and higher-order programs", false)
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval, optGenc)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optRunnable, optInferInv, optLazyEval, optGenc)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -108,7 +110,7 @@ object Main {
 
     val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
-    val leonOptions: Seq[LeonOption[Any]] = options.map { opt =>
+    val initOptions: Seq[LeonOption[Any]] =  options.map { opt =>
       val (name, value) = OptionsHelpers.nameValue(opt).getOrElse(
         initReporter.fatalError(
           s"Malformed option $opt. Options should have the form --name or --name=value"
@@ -121,8 +123,13 @@ object Main {
           "Try 'leon --help' for more information."
         )
       }
-      df.parse(value)(initReporter)
+      df.parse(value)(initReporter)      
     }
+    val leonOptions: Seq[LeonOption[Any]] =
+      if (initOptions.exists(opt => opt.optionDef == MainComponent.optLazyEval && opt.value == true)) {
+        // here, add the `disablePos` option to side step a bug in the scala compiler
+        LeonOption(GlobalOptions.optDisablePos)(true) +: initOptions
+      } else initOptions
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {
@@ -162,6 +169,7 @@ object Main {
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
+    import transformations.RunnableCodePhase
     import laziness._
 
     val helpF = ctx.findOptionOrDefault(optHelp)
@@ -175,6 +183,7 @@ object Main {
     val evalF = ctx.findOption(optEval).isDefined
     val inferInvF = ctx.findOptionOrDefault(optInferInv)
     val instrumentF = ctx.findOptionOrDefault(optInstrument)
+    val runnableF = ctx.findOptionOrDefault(optRunnable)
     val lazyevalF = ctx.findOptionOrDefault(optLazyEval)
     val analysisF = verifyF && terminationF
     // Check consistency in options
@@ -189,6 +198,7 @@ object Main {
         new PreprocessingPhase(genc = gencF)
 
       val verification =
+        InstrumentationPhase andThen
         VerificationPhase andThen
         FixReportLabels andThen
         PrintReportPhase
@@ -204,8 +214,9 @@ object Main {
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
+        else if (runnableF) InstrumentationPhase andThen RunnableCodePhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
-        else if (lazyevalF) LazinessEliminationPhase
+        else if (lazyevalF) HOInferencePhase
         else verification
       }
 

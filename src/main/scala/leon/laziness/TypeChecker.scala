@@ -25,7 +25,7 @@ object TypeChecker {
      * Note this method has side-effects
      */
     def makeIdOfType(oldId: Identifier, tpe: TypeTree): Identifier = {
-      if (oldId.getType != tpe) {
+      if (tpe.isInstanceOf[ClassType] || oldId.getType != tpe) { // note: class fields are mutated so they need to referesh to avoid unintended side-effects.
         val freshid = FreshIdentifier(oldId.name, tpe, true)
         idmap += (oldId -> freshid)
         gamma += (oldId -> tpe)
@@ -74,6 +74,7 @@ object TypeChecker {
                       throw new IllegalStateException(s"Cannot find subtype of $expType with name: ${ict.classDef.id.toString}")
                     val cct = ntype.get.asInstanceOf[CaseClassType]
                     val nbopt = bopt.map(makeIdOfType(_, cct))
+                    //println(s"Type of the identifier $nbopt : "+nbopt.map(_.getType)+" FieldTypes: "+nbopt.map {_.getType.asInstanceOf[CaseClassType].fieldsTypes})
                     val npats = (subpats zip cct.fieldsTypes).map {
                       case (p, t) =>
                         //println(s"Subpat: $p expected type: $t")
@@ -142,28 +143,19 @@ object TypeChecker {
             }
           } else (id.getType, v)
 
-        case FunctionInvocation(TypedFunDef(fd, tparams), args) =>
+        case FunctionInvocation(TypedFunDef(fd, oldTparams), args) =>
           //println(s"Consider expr: $e initial type: ${e.getType}")
           val nargs = args.map(arg => rec(arg)._2)
-          var tpmap = Map[TypeParameter, TypeTree]()
-          (fd.params zip nargs).foreach { x =>
-              (x._1.getType, x._2.getType) match {
-                case (t1, t2) =>
-                  getTypeArguments(t1) zip getTypeArguments(t2) foreach {
-                    case (tf : TypeParameter, ta) =>
-                      tpmap += (tf -> ta)
-                    case _ => ;
-                  }
-                /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
-                    + s"do not match for call: $call")*/
-              }
-            }
+          val tpmap = (fd.params zip nargs).flatMap { case (ref, arg) =>
+             //println(s"Computing inst. for $ref: ${ref.getType} $arg: ${arg.getType}")
+             typeInstMap(arg.getType, ref.getType).get
+          }.toMap
           // for uninterpreted functions, we could have a type parameter used only in the return type
           val dummyTParam = TypeParameter.fresh("R@")
-          val ntparams = fd.tparams.map(_.tp).zipAll(tparams, dummyTParam, dummyTParam).map{
-            case (paramt, argt) =>
-              tpmap.getOrElse(paramt /* in this case we inferred the type parameter */,
-                  argt /* in this case we reuse the argument type parameter */ )
+          val ntparams = fd.tparams.map(_.tp).zipAll(oldTparams, dummyTParam, dummyTParam).map{
+            case (tparam, targ) =>
+              tpmap.getOrElse(tparam /* in this case we inferred the type parameter */,
+                  targ /* in this case we reuse the argument type parameter */ )
           }
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
           if (nexpr.getType == Untyped) {
@@ -203,7 +195,7 @@ object TypeChecker {
       newType match {
         case AbstractClassType(absClass, tps) if absClass.knownCCDescendants.contains(oldType.classDef) =>
           //here oldType.classDef <: absClass
-          Some(CaseClassType(oldType.classDef.asInstanceOf[CaseClassDef], tps))
+          Some(CaseClassType(oldType.classDef.asInstanceOf[CaseClassDef], tps)) // note: class fields are mutated so they need to referesh to avoid unintended side-effects.
         case cct: CaseClassType =>
           Some(cct)
         case _ =>

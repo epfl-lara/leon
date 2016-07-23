@@ -9,6 +9,7 @@ import purescala.Types._
 
 import invariant.factories._
 import invariant.util._
+import invariant.datastructure._
 import ProgramUtil._
 
 import scala.collection.mutable.{Set => MutableSet}
@@ -31,7 +32,19 @@ class TemplateEnumerator(ctx: InferenceContext, prog: Program) extends TemplateG
   //create a call graph for the program
   //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
   private val callGraph = {
-    val cg = CallGraphUtil.constructCallGraph(prog)
+    val cg = new DirectedGraph[FunDef] with CallGraph { }
+    functionsWOFields(prog.definedFunctions).foreach{fd =>
+      cg.addNode(fd)
+      if (fd.hasBody) {
+        var funExpr = fd.body.get
+        if (fd.hasPrecondition)
+          funExpr = Tuple(Seq(funExpr, fd.precondition.get))
+        if (fd.hasPostcondition)
+          funExpr = Tuple(Seq(funExpr, fd.postcondition.get))
+        //introduce a new edge for every callee
+        CallGraphUtil.getCallees(funExpr).foreach(cg.addEdge(fd, _))
+      }
+    }
     cg
   }
 
@@ -53,7 +66,7 @@ class TemplateEnumerator(ctx: InferenceContext, prog: Program) extends TemplateG
  * Caution: The methods of this class has side-effects on the 'callGraph' parameter
  */
 class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr) => Expr,
-                                 callGraph: CallGraph, reporter: Reporter) {
+                                 callGraph: DirectedGraph[FunDef] with CallGraph, reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = InfiniteIntegerLiteral(0)
   //using default op as <= or == (manually adjusted)
@@ -154,10 +167,9 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr
         })
         //add newTemp to currTemp
         currTemp = Plus(newTemp, currTemp)
-
         //get all the calls in the 'newTemp' and add edges from 'rootFun' to the callees to the call-graph
         val callees = CallGraphUtil.getCallees(newTemp)
-        callees.foreach(callGraph.addEdgeIfNotPresent(rootFun, _))
+        callees.foreach(callGraph.addEdge(rootFun, _))
       }
       op(currTemp, zero)
     }

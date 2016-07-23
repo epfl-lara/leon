@@ -115,7 +115,7 @@ object FunctionUtils {
             val (tempExprs, otherPreds) = args.partition(exists(isQMark))
             //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(createAnd(tempExprs))}")
             createAnd(otherPreds :+ qmarksToTmplFunction(createAnd(tempExprs)))
-          case pb if exists(isQMark)(pb) =>
+          case pb if exists(isQMark)(pb) =>           
             pb match {
               case l: Let =>
                 val (letsCons, letsBody) = letStarUnapplyWithSimplify(l) // we try to see if the post is let* .. in e_1 ^ e_2 ^ ...
@@ -152,8 +152,9 @@ object FunctionUtils {
     }
 
     lazy val template = templateExpr map (finv => extractTemplateFromLambda(finv.args(0).asInstanceOf[Lambda]))
-    lazy val normalizedTemplate = template.map(normalizeExpr(_, (e1: Expr, e2: Expr) =>
-      throw new IllegalStateException("Not implemented yet!")))
+    lazy val normalizedTemplate = {
+      template.map(normalizeExpr(_, (e1: Expr, e2: Expr) => throw new IllegalStateException("Not implemented yet!")))      
+    }
 
     def hasTemplate: Boolean = templateExpr.isDefined
     def getPostWoTemplate = postWoTemplate match {

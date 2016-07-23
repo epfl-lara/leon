@@ -9,38 +9,38 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import solvers._
 import transformations._
-import LazinessUtil._
+import HOMemUtil._
 import purescala.Constructors._
 import verification._
 import PredicateUtil._
 import invariant.engine._
 
-object LazyVerificationPhase {
+object HOMemVerificationPhase {
 
   val debugInstVCs = false
   val debugInferProgram = false
 
-  class LazyVerificationReport(val stateVerification: Option[VerificationReport],
-      val resourceVeri: Option[VerificationReport]) {
-    def inferReport= resourceVeri match {
+  class MemVerificationReport(val stateVerification: Option[VerificationReport],
+                              val resourceVeri: Option[VerificationReport]) {
+    def inferReport = resourceVeri match {
       case Some(inf: InferenceReport) => Some(inf)
-      case _ => None
+      case _                          => None
     }
   }
 
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
-      exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
+      exists(InstUtil.instCall(_).isDefined)(e)
     }
     val newPosts = p.definedFunctions.collect {
-      case fd if fd.postcondition.exists { exists(hasInstVar) } =>
-        // remove the conjuncts that use instrumentation vars
-        val Lambda(resdef, pbody) = fd.postcondition.get
-        val npost = simplifyByConstructors(pbody) match {
-          case And(args) =>
+      case fd if fd.hasTemplate || fd.postcondition.exists { exists(hasInstVar) } =>
+        val Lambda(resdef, _) = fd.postcondition.get
+        //println(s"postcondition of ${fd.id}: ${fd.postcondition.get}, postWoTemplate: ${fd.postWoTemplate}, tmpl: ${fd.template}")
+        val npost = fd.postWoTemplate match {
+          case None => Util.tru
+          case Some(And(args)) =>
             createAnd(args.filterNot(hasInstVar))
-          case l: Let => // checks if the body of the let can be deconstructed as And
-            //println(s"Fist let val: ${l.value} body: ${l.body}")
+          case Some(l: Let) => // checks if the body of the let can be deconstructed as And
             val (letsCons, letsBody) = letStarUnapply(l)
             //println("Let* body: "+letsBody)
             letsBody match {
@@ -48,7 +48,9 @@ object LazyVerificationPhase {
                 letsCons(createAnd(args.filterNot(hasInstVar)))
               case _ => Util.tru
             }
-          case e => Util.tru
+          case Some(e) =>
+            if (hasInstVar(e)) Util.tru
+            else e
         }
         (fd -> Lambda(resdef, npost))
     }.toMap
@@ -56,7 +58,7 @@ object LazyVerificationPhase {
   }
 
   def contextForChecks(userOptions: LeonContext) = {
-    val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre"))
+    val solverOptions = Main.processOptions(Seq("--solvers=orb-smt-cvc4,orb-smt-z3", "--assumepre"))
     LeonContext(userOptions.reporter, userOptions.interruptManager,
       solverOptions.options ++ userOptions.options)
   }
@@ -66,7 +68,7 @@ object LazyVerificationPhase {
     Stats.updateCumStats(rep.totalConditions, "Total-VCs-Generated")
     val (withz3, withcvc) = rep.vrs.partition {
       case (vc, vr) =>
-        vr.solvedWith.map(s => s.name.contains("smt-z3")).get
+        vr.solvedWith.map(s => s.name.contains("orb-smt-z3")).get
     }
     Stats.updateCounter(withz3.size, "Z3SolvedVCs")
     Stats.updateCounter(withcvc.size, "CVC4SolvedVCs")
@@ -83,36 +85,24 @@ object LazyVerificationPhase {
     val report = VerificationPhase.apply(checkCtx, prog)
     // collect stats
     collectCumulativeStats(report)
-    if(!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
+    if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
       println(report.summaryString)
     }
     report
   }
 
-  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext, useOrb: Boolean): VerificationReport = {
+  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext): VerificationReport = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
+    val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
+    val useOrb = funsToCheck.exists(_.template.isDefined)
     val rep =
       if (useOrb) {
-        /*// create an inference context
-        val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds", "--solvers=smt-cvc4"))
-        val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
-          inferOpts.options ++ checkCtx.options)
-        val inferctx = new InferenceContext(p, ctxForInf)
-        val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
-        if (debugInferProgram){
-          prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
-        }
-
-        val results = (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram,
-            funsToCheck.map(InstUtil.userFunctionName), vcSolver, None)
-        new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)*/
         val inferctx = getInferenceContext(checkCtx, p)
         checkUsingOrb(new InferenceEngine(inferctx), inferctx)
       } else {
-        val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
         val rep = checkVCs(funsToCheck.map(vcForFun), checkCtx, p)
         // record some stats
         collectCumulativeStats(rep)
@@ -125,14 +115,14 @@ object LazyVerificationPhase {
 
   def getInferenceContext(checkCtx: LeonContext, p: Program): InferenceContext = {
     // create an inference context
-    val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds", "--solvers=smt-cvc4"))
+    val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds=-100", "--solvers=orb-smt-cvc4"))
     val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
       inferOpts.options ++ checkCtx.options)
     new InferenceContext(p, ctxForInf)
   }
 
   def checkUsingOrb(infEngine: InferenceEngine, inferctx: InferenceContext,
-      progressCallback: Option[InferenceCondition => Unit] = None) = {
+                    progressCallback: Option[InferenceCondition => Unit] = None) = {
     if (debugInferProgram) {
       prettyPrintProgramToFile(inferctx.inferProgram, inferctx.leonContext, "-inferProg", true)
     }
@@ -144,17 +134,18 @@ object LazyVerificationPhase {
   }
 
   def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
-      exists(_ == TupleSelect(resid.toVariable, 2))(e)
+    exists(_ == TupleSelect(resid.toVariable, 2))(e)
 
   /**
    * Note: we also skip verification of uninterpreted functions
    */
   def shouldGenerateVC(fd: FunDef) = {
-    !fd.isInvariant && !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
-      fd.postcondition.exists { post =>
-        val Lambda(Seq(resdef), pbody) = post
-        accessesSecondRes(pbody, resdef.id)
-      }
+    !fd.isInvariant && !fd.isLibrary && (fd.hasTemplate ||
+      (InstUtil.isInstrumented(fd) && fd.hasBody &&
+        fd.postcondition.exists { post =>
+          val Lambda(Seq(resdef), pbody) = post
+          accessesSecondRes(pbody, resdef.id)
+        }))
   }
 
   /**
@@ -176,7 +167,7 @@ object LazyVerificationPhase {
   def collectAntsPostTmpl(fd: FunDef) = {
     val Lambda(Seq(resdef), _) = fd.postcondition.get
     val (pbody, tmpl) = (fd.getPostWoTemplate, fd.template)
-    val (instPost, assumptions) = simplifyByConstructors(pbody) match {
+    val (instPost, assumptions) = pbody match {
       case And(args) =>
         val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
         (createAnd(instSpecs), createAnd(rest))
@@ -199,6 +190,7 @@ object LazyVerificationPhase {
 
   def checkVCs(vcs: List[VC], checkCtx: LeonContext, p: Program) = {
     val timeout: Option[Long] = None
+    val reporter = checkCtx.reporter
     // Solvers selection and validation
     val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
     val solverF = timeout match {
@@ -216,8 +208,7 @@ object LazyVerificationPhase {
     }
   }
 
-  class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends
-  	UnfoldingTemplateSolver(ctx, p, rootFd) {
+  class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends UnfoldingTemplateSolver(ctx, p, rootFd) {
 
     override def constructVC(fd: FunDef): (Expr, Expr, Expr) = {
       val (body, ants, post, tmpl) = collectAntsPostTmpl(rootFd)
@@ -227,7 +218,7 @@ object LazyVerificationPhase {
     }
 
     override def verifyVC(newprog: Program, newroot: FunDef) = {
-      solveUsingLeon(contextForChecks(ctx.leonContext), newprog, vcForFun(newroot))
+      SolverUtil.solveUsingLeon(contextForChecks(ctx.leonContext), newprog, vcForFun(newroot), ctx.vcTimeout)
     }
   }
 }

@@ -2,22 +2,25 @@
 
 package leon
 
-import leon.utils.{DebugSections, DebugSection}
+import leon.utils.{ DebugSections, DebugSection }
 import OptionParsers._
 
-/** This object contains options that are shared among different modules of Leon.
-  *
-  * Options that determine the pipeline of Leon are not stored here,
-  * but in [[Main.MainComponent]] instead.
-  */
+/**
+ * This object contains options that are shared among different modules of Leon.
+ *
+ * Options that determine the pipeline of Leon are not stored here,
+ * but in [[Main.MainComponent]] instead.
+ */
 object GlobalOptions extends LeonComponent {
 
   val name = "sharedOptions"
   val description = "Options shared by multiple components of Leon"
 
+  val optDisablePos = LeonFlagOptionDef("disablePos", "Disable extraction of position in the frontends", false)
+
   val optStrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
 
-  val optBenchmark    = LeonFlagOptionDef("benchmark", "Dump benchmarking information in a data file", false)
+  val optBenchmark = LeonFlagOptionDef("benchmark", "Dump benchmarking information in a data file", false)
 
   val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
 
@@ -44,7 +47,7 @@ object GlobalOptions extends LeonComponent {
     val name = "debug"
     val description = {
       val sects = DebugSections.all.toSeq.map(_.name).sorted
-      val (first, second) = sects.splitAt(sects.length/2 + 1)
+      val (first, second) = sects.splitAt(sects.length / 2 + 1)
       "Enable detailed messages per component.\nAvailable:\n" +
         "  " + first.mkString(", ") + ",\n" +
         "  " + second.mkString(", ")
@@ -67,10 +70,10 @@ object GlobalOptions extends LeonComponent {
     "timeout",
     "Set a timeout for attempting to prove a verification condition/ repair a function (in sec.)",
     0L,
-    "t"
-  )
+    "t")
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
+    optDisablePos,
     optStrictPhases,
     optBenchmark,
     optFunctions,
@@ -78,6 +81,5 @@ object GlobalOptions extends LeonComponent {
     optDebug,
     optWatch,
     optTimeout,
-    optSilent
-  )
+    optSilent)
 }

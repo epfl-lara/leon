@@ -124,14 +124,14 @@ object ConstantPropagation {
       case Nil() => Nil[(BigInt /*function id*/ , Element)]()
       case Cons(fun, tail) => Cons((fun.id, Bot()), initToBot(tail))
     }
-  } ensuring (_ => time <= ? * size(l) + ?)
+  } ensuring (_ => steps <= ? * size(l) + ?)
 
   def foldConstants(p: Program): Program = {
     val initVals = initToBot(p.funcs)
     val fvals = computeSummaries(p, initToBot(p.funcs), height)
     val newfuns = transformFuns(p.funcs, fvals)
     Program(newfuns)
-  } ensuring(_ => time <= ? * (progSize(p)*height) + ? * height + ? * size(p.funcs) + ?)
+  } ensuring(_ => steps <= ? * (progSize(p)*height) + ? * height + ? * size(p.funcs) + ?)
 
   /**
    * The initVals is the initial values for the
@@ -143,7 +143,7 @@ object ConstantPropagation {
       initVals
     } else
       computeSummaries(p, analyzeFuns(p.funcs, initVals, initVals), noIters - 1)
-  } ensuring(_ => time <= ? * (progSize(p)*noIters) + ? * noIters + ?)
+  } ensuring(_ => steps <= ? * (progSize(p)*noIters) + ? * noIters + ?)
 
   /**
    * Initial fvals and oldVals are the same
@@ -159,7 +159,7 @@ object ConstantPropagation {
       case _ =>
         Nil[(BigInt, Element)]() //this also handles precondition violations e.g. lists aren't of same size etc.
     }
-  } ensuring (_ => time <= ? * sizeFuncList(funcs) + ?)
+  } ensuring (_ => steps <= ? * sizeFuncList(funcs) + ?)
 
   @library
   def getFunctionVal(funcId: BigInt, funcVals: List[(BigInt, Element)]): Element = {
@@ -169,7 +169,7 @@ object ConstantPropagation {
       case Cons(_, otherFuncVals) =>
         getFunctionVal(funcId, otherFuncVals)
     }
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
 
   def analyzeExprList(l: List[Expr], funcVals: List[(BigInt, Element)]): List[Element] = {
@@ -177,7 +177,7 @@ object ConstantPropagation {
       case Nil() => Nil[Element]()
       case Cons(expr, otherExprs) => Cons(analyzeExpr(expr, funcVals), analyzeExprList(otherExprs, funcVals))
     }
-  } ensuring (_ => time <= ? * sizeExprList(l) + ?)
+  } ensuring (_ => steps <= ? * sizeExprList(l) + ?)
 
   /**
    * Returns the value of the expression when "Abstractly Interpreted"
@@ -211,7 +211,7 @@ object ConstantPropagation {
 
       case Identifier(_) => Bot()
     }
-  } ensuring (_ => time <= ? * sizeExpr(e) + ?)
+  } ensuring (_ => steps <= ? * sizeExpr(e) + ?)
 
 
   def analyzeFunction(f: Function, oldVals: List[(BigInt, Element)]): Element = {
@@ -220,7 +220,7 @@ object ConstantPropagation {
     // also for if-then-else statments, take a join of the values along if and else branches
     // assume that bot op any = bot and top op any = top (but this can be made more precise).
     analyzeExpr(f.body, oldVals)
-  } ensuring (_ => time <= ? * sizeExpr(f.body) + ?)
+  } ensuring (_ => steps <= ? * sizeExpr(f.body) + ?)
 
 
   def transformExprList(l: List[Expr], funcVals: List[(BigInt, Element)]): List[Expr] = {
@@ -229,7 +229,7 @@ object ConstantPropagation {
       case Cons(expr, otherExprs) => Cons(transformExpr(expr, funcVals),
         transformExprList(otherExprs, funcVals))
     }
-  } ensuring (_ => time <= ? * sizeExprList(l) + ?)
+  } ensuring (_ => steps <= ? * sizeExprList(l) + ?)
 
   /**
    * Returns the folded expression
@@ -279,7 +279,7 @@ object ConstantPropagation {
       }
       case _ => e
     }
-  } ensuring (_ => time <= ? * sizeExpr(e) + ?)
+  } ensuring (_ => steps <= ? * sizeExpr(e) + ?)
 
 
   def transformFuns(funcs: List[Function], fvals: List[(BigInt, Element)]): List[Function] = {
@@ -290,5 +290,5 @@ object ConstantPropagation {
       case _ =>
         Nil[Function]()
     }
-  } ensuring (_ => time <= ? * sizeFuncList(funcs) + ?)
+  } ensuring (_ => steps <= ? * sizeFuncList(funcs) + ?)
 }

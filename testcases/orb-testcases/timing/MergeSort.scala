@@ -13,24 +13,24 @@ object MergeSort {
   @monotonic
   def log(x: BigInt) : BigInt = {
     require(x >= 0)
-    if(x <= 1) 0
+    if(x <= 1) BigInt(0)
     else {
       val k = x/2
-      1 + log(x - k)
+      BigInt(1) + log(x - k)
     }
   } ensuring(res => true && tmpl((a) => res >= 0))
 
   def size(list:List): BigInt = {list match {
-    case Nil() => 0
+    case Nil() => BigInt(0)
     case Cons(x,xs) => 1 + size(xs)
   }} ensuring(res => true && tmpl((a) => res >= 0))
 
   def length(l:List): BigInt = {
     l match {
-      case Nil() => 0
+      case Nil() => BigInt(0)
       case Cons(x,xs) => 1 + length(xs)
     }
-  } ensuring(res => res == size(l) && tmpl((a,b) => time <= a*size(l) + b))
+  } ensuring(res => res == size(l) && tmpl((a,b) => steps <= a*size(l) + b))
 
   def split(l:List,n:BigInt): (List,List) = {
     require(n >= 0 && n <= size(l))
@@ -46,7 +46,7 @@ object MergeSort {
         }
       }
 	}
-  } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n && tmpl((a,b) => time <= a*n +b))
+  } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n && tmpl((a,b) => steps <= a*n +b))
 
   def merge(aList:List, bList:List):List = (bList match {
     case Nil() => aList
@@ -59,7 +59,7 @@ object MergeSort {
      		else
 		   Cons(x,merge(aList, xs))
    	 }
-  }) ensuring(res => size(aList)+size(bList) == size(res) && tmpl((a,b,c) => time <= a*size(aList) + b*size(bList) + c))
+  }) ensuring(res => size(aList)+size(bList) == size(res) && tmpl((a,b,c) => steps <= a*size(aList) + b*size(bList) + c))
 
   def mergeSort(list:List):List = {
     list match {
@@ -69,8 +69,6 @@ object MergeSort {
     	 val (fst,snd) = split(list,lby2)
       	 //merge(mergeSort(fst,l), mergeSort(snd,len - l))
     	 merge(mergeSort(fst),mergeSort(snd))
-
       case _ => list
-
-  }} ensuring(res => true && tmpl((a,b) => time <= a*(size(list)*log(size(list))) + b))
+  }} ensuring(res => true && tmpl((a,b) => steps <= a*(size(list)*log(size(list))) + b))
 }

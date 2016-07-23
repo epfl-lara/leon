@@ -94,7 +94,7 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
     val pw = new PrintWriter(filename)
     Stats.dumpStats(pw)
     SpecificStats.dumpOutputs(pw)
-    if (ctx.tightBounds) {
+    if (ctx.tightBounds.isDefined) {
       SpecificStats.dumpMinimizationStats(pw)
     }
     pw.close()

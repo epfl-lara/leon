@@ -23,7 +23,8 @@ object RealValuedExprEvaluator {
       val FractionalLiteral(num, denom) = plainEvaluate(e)
       FractionalLiteral(-num, denom)
     }
-    case Minus(lhs, rhs) => {
+    case Minus(_, _) | RealMinus(_, _) => {
+      val Operator(Seq(lhs, rhs), _) = expr
       plainEvaluate(Plus(lhs, UMinus(rhs)))
     }
     case Plus(_, _) | RealPlus(_, _) => {

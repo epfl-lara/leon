@@ -36,7 +36,9 @@ object TemplateInstantiator {
   def instantiateNormTemplates(model: Model, template: Expr, prettyInv: Boolean = false): Expr = {
     val tempvars = getTemplateVars(template)
     val instTemplate = instantiate(template, tempvars.map { v => (v, model(v.id)) }.toMap, prettyInv)
-    unflatten(instTemplate)
+    // here, we optimistically assume there are no sharedIds (an invariant of the analysis)
+    // TODO: can we check this property ?    
+    simpleUnflattenWithMap(instTemplate, Set(), true)._1
   }
 
   /**
@@ -122,7 +124,7 @@ object TemplateInstantiator {
 
     val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
     if (prettyInv)
-      linearCtr.toPrettyExpr
+      linearCtr.prettyExpr
     else linearCtr.toExpr
   }
 }

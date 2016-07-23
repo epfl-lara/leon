@@ -18,16 +18,16 @@ object AmortizedQueue {
     case Nil()       => l2
     case Cons(x, xs) => Cons(x, concat(xs, l2))
 
-  }) ensuring (res => res.size == l1.size + l2.size && time <= ? * l1.size + ?)
+  }) ensuring (res => res.size == l1.size + l2.size && steps <= ? * l1.size + ?)
 
   def reverseRec(l1: List, l2: List): List = (l1 match {
     case Nil()       => l2
     case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
-  }) ensuring (res => l1.size + l2.size == res.size && time <= ? * l1.size + ?)
+  }) ensuring (res => l1.size + l2.size == res.size && steps <= ? * l1.size + ?)
 
   def listRev(l: List): List = {
     reverseRec(l, Nil())
-  } ensuring (res => l.size == res.size && time <= ? * l.size + ?)
+  } ensuring (res => l.size == res.size && steps <= ? * l.size + ?)
 
   def removeLast(l: List): List = {
     require(l != Nil())
@@ -36,7 +36,7 @@ object AmortizedQueue {
       case Cons(x, xs)    => Cons(x, removeLast(xs))
       case _              => Nil()
     }
-  } ensuring (res => res.size <= l.size && tmpl((a, b) => time <= a * l.size + b))
+  } ensuring (res => res.size <= l.size && tmpl((a, b) => steps <= a * l.size + b))
 
   case class Queue(front: List, rear: List) {
     def qsize: BigInt = front.size + rear.size
@@ -59,7 +59,7 @@ object AmortizedQueue {
 
     def enqueue(elem: BigInt): Queue = ({
       amortizedQueue(front, Cons(elem, rear))
-    }) ensuring (_ => time <= ? * qsize + ?)
+    }) ensuring (_ => steps <= ? * qsize + ?)
 
     def dequeue: Queue = {
       require(isAmortized && !isEmpty)
@@ -67,7 +67,7 @@ object AmortizedQueue {
         case Cons(f, fs) => amortizedQueue(fs, rear)
         case _           => Queue(Nil(), Nil())
       }
-    } ensuring (_ => time <= ? * qsize + ?)
+    } ensuring (_ => steps <= ? * qsize + ?)
 
     def head: BigInt = {
       require(isAmortized && !isEmpty)
@@ -76,7 +76,7 @@ object AmortizedQueue {
       }
     }
     
-    def reverse: Queue = { // this lets the queue perform deque operation (but they no longer have efficient constant time amortized bounds)
+    def reverse: Queue = { // this lets the queue perform deque operation (but they no longer have efficient constant steps amortized bounds)
       amortizedQueue(rear, front)
     }
   }

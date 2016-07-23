@@ -12,6 +12,7 @@ import smtlib._
 import purescala.Definitions._
 import scala.reflect.runtime.universe._
 import _root_.smtlib.interpreters._
+import invariant.smtlib.solvers._
 
 abstract class SolverFactory[+S <: Solver] {
   def getNewSolver(): S
@@ -26,7 +27,7 @@ abstract class SolverFactory[+S <: Solver] {
 }
 
 object SolverFactory {
-  def apply[S <: Solver : TypeTag](nme: String, builder: () => S): SolverFactory[S] = {
+  def apply[S <: Solver: TypeTag](nme: String, builder: () => S): SolverFactory[S] = {
     new SolverFactory[S] {
       val name = nme
       def getNewSolver() = builder()
@@ -34,21 +35,21 @@ object SolverFactory {
   }
 
   val definedSolvers = Map(
-    "fairz3"         -> "Native Z3 with z3-templates for unrolling (default)",
-    "smt-cvc4"       -> "CVC4 through SMT-LIB",
-    "smt-z3"         -> "Z3 through SMT-LIB",
-    "smt-z3-q"       -> "Z3 through SMT-LIB, with quantified encoding",
+    "fairz3" -> "Native Z3 with z3-templates for unrolling (default)",
+    "smt-cvc4" -> "CVC4 through SMT-LIB",
+    "smt-z3" -> "Z3 through SMT-LIB",
+    "smt-z3-q" -> "Z3 through SMT-LIB, with quantified encoding",
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
-    "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
-    "unrollz3"       -> "Native Z3 with leon-templates for unrolling",
-    "ground"         -> "Only solves ground verification conditions by evaluating them",
-    "enum"           -> "Enumeration-based counter-example-finder",
-    "isabelle"       -> "Isabelle2015 through libisabelle with various automated tactics"
-  )
+    "smt-cvc4-cex" -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
+    "unrollz3" -> "Native Z3 with leon-templates for unrolling",
+    "ground" -> "Only solves ground verification conditions by evaluating them",
+    "enum" -> "Enumeration-based counter-example-finder",
+    "isabelle" -> "Isabelle2015 through libisabelle with various automated tactics",
+    "orb-smt-z3/cvc4" -> "Solvers for the Orb inference engine that do not support Leon theory extensions")
 
   val availableSolversPretty = "Available: " +
     solvers.SolverFactory.definedSolvers.toSeq.sortBy(_._1).map {
-      case (name, desc) =>  f"\n  $name%-14s : $desc"
+      case (name, desc) => f"\n  $name%-14s : $desc"
     }.mkString("")
 
   def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] =
@@ -74,7 +75,7 @@ object SolverFactory {
         ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
       }
     } else {
-      getFromNames(ctx, program)(names.toSeq : _*)
+      getFromNames(ctx, program)(names.toSeq: _*)
     }
   }
 
@@ -100,6 +101,10 @@ object SolverFactory {
     case "smt-cvc4-u"     => SolverFactory(name, () => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case "nativez3-u"     => SolverFactory(name, () => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
     case "isabelle"       => new isabelle.IsabelleSolverFactory(ctx.context, program)
+    case "orb-smt-z3"     => SolverFactory(name, () => new Z3UnrollingSolver(ctx, program, new OrbSMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+    case "orb-smt-cvc4"   => SolverFactory(name, () => new CVC4UnrollingSolver(ctx, program, new OrbSMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
+    case "orb-smt-z3-u"   => SolverFactory(name, () => new OrbSMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+    case "orb-smt-cvc4-u" => SolverFactory(name, () => new OrbSMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")
       showSolvers(ctx)
@@ -145,9 +150,9 @@ object SolverFactory {
       } else {
         ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
       }
-    } else if(names contains "smt-cvc4") {
+    } else if (names contains "smt-cvc4") {
       fromName("smt-cvc4-u")
-    } else if(names contains "smt-z3") {
+    } else if (names contains "smt-z3") {
       fromName("smt-z3-u")
     } else if ((names contains "fairz3") && hasNativeZ3) {
       fromName("nativez3-u")

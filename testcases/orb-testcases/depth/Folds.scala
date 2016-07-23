@@ -31,7 +31,7 @@ object TreeMaps {
           else false
         }
     }
-  } ensuring(res => true && tmpl((a,b) => depth <= a*height(t) + b))
+  } ensuring(res => true && tmpl((a,b) => depth >= a*height(t) + b && a > 0))
 
 
   def squareMap(t : Tree) : Tree = {

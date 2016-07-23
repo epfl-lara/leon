@@ -26,7 +26,7 @@ object Sort {
       case Nil() => 0
       case Cons(x,xs) => 1 + length(xs)
     }
-  } ensuring(res => res == size(l) && tmpl((a,b) => time <= a*size(l) + b))
+  } ensuring(res => res == size(l) && tmpl((a,b) => steps <= a*size(l) + b))
 
   def split(l:List,n:BigInt): (List,List) = {
     require(n >= 0 && n <= size(l))
@@ -42,7 +42,7 @@ object Sort {
         }
       }
 	}
-  } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n && tmpl((a,b) => time <= a*n +b))
+  } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n && tmpl((a,b) => steps <= a*n +b))
 
   def merge(aList:List, bList:List):List = (bList match {
     case Nil() => aList
@@ -55,7 +55,7 @@ object Sort {
      		else
 		   Cons(x,merge(aList, xs))
    	 }
-  }) ensuring(res => size(aList)+size(bList) == size(res) && tmpl((a,b,c) => time <= a*size(aList) + b*size(bList) + c))
+  }) ensuring(res => size(aList)+size(bList) == size(res) && tmpl((a,b,c) => steps <= a*size(aList) + b*size(bList) + c))
 
   def mergeSort(list:List, len: BigInt):List = {
     require(len == size(list))
@@ -69,15 +69,15 @@ object Sort {
 
       case _ => list
 
-  }} //ensuring(res => size(res) == size(list) && tmpl((a,b,c) => time <= a*(size(list)*size(list)) + c))
-      //&& tmpl((a,b) => time <= a*size(list) + b))
-  //ensuring(res => true && tmpl((a,b) => time <= a*(size(list)*log(size(list))) + b))
+  }} //ensuring(res => size(res) == size(list) && tmpl((a,b,c) => steps <= a*(size(list)*size(list)) + c))
+      //&& tmpl((a,b) => steps <= a*size(list) + b))
+  //ensuring(res => true && tmpl((a,b) => steps <= a*(size(list)*log(size(list))) + b))
   case class Triple(fst:List,snd:List, trd: List)
 
   def append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x, xs) => Cons(x,append(xs,bList))
-  }} ensuring(res => size(res) == size(aList) + size(bList) && tmpl((a,b) => time <= a*size(aList) +b))
+  }} ensuring(res => size(res) == size(aList) + size(bList) && tmpl((a,b) => steps <= a*size(aList) +b))
 
   def partition(n:BigInt,l:List) : Triple = (l match {
     case Nil() => Triple(Nil(), Nil(), Nil())
@@ -87,7 +87,7 @@ object Sort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }
- }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && tmpl((a,b) => time <= a*size(l) +b))
+ }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) && tmpl((a,b) => steps <= a*size(l) +b))
 
  //Unable to prove n^2  upper bound :-(
   def quickSort(l:List): List = (l match {
@@ -105,12 +105,12 @@ object Sort {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
     }
-  } ensuring(res => size(res) == size(l) + 1 && tmpl((a,b) => time <= a*size(l) +b))
+  } ensuring(res => size(res) == size(l) + 1 && tmpl((a,b) => steps <= a*size(l) +b))
 
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
 
-  }) ensuring(res => size(res) == size(l) && tmpl((a,b) => time <= a*(size(l)*size(l)) +b))
+  }) ensuring(res => size(res) == size(l) && tmpl((a,b) => steps <= a*(size(l)*size(l)) +b))
 
 }

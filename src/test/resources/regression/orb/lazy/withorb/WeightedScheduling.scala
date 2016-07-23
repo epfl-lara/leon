@@ -38,12 +38,12 @@ object WeightedSched {
   @extern
   def jobInfo(i: BigInt) = {
     jobs(i.toInt)
-  } ensuring (_ => time <= 1)
+  } ensuring (_ => steps <= 1)
 
   @extern
   def prevCompatibleJob(i: BigInt) = {
     BigInt(p(i.toInt))
-  } ensuring (res => res >= 0 && res < i && time <= 1)
+  } ensuring (res => res >= 0 && res < i && steps <= 1)
 
   @inline
   def max(x: BigInt, y: BigInt) = if (x >= y) x else y
@@ -52,15 +52,15 @@ object WeightedSched {
 
   def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    sched(i).isCached &&
+    cached(sched(i)) &&
       (if (i == 0) true
       else allEval(i - 1))
   }
 
   @traceInduct
-  def evalMono(i: BigInt, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
+  def evalMono(i: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
     require(i >= 0)
-    (st1.subsetOf(st2) && (allEval(i) withState st1)) ==> (allEval(i) withState st2)
+    (st1.subsetOf(st2) && (allEval(i) in st1)) ==> (allEval(i) in st2)
   } holds
 
   @traceInduct
@@ -74,7 +74,7 @@ object WeightedSched {
   @memoize
   def sched(jobIndex: BigInt): BigInt = {
     require(depsEval(jobIndex) &&
-      (jobIndex == 0 || evalLem(prevCompatibleJob(jobIndex), jobIndex - 1)))
+      (if(jobIndex == 0) true else evalLem(prevCompatibleJob(jobIndex), jobIndex - 1)))
     val (st, fn, w) = jobInfo(jobIndex)
     if (jobIndex == 0) w
     else {
@@ -84,17 +84,17 @@ object WeightedSched {
       val prevCompatVal = sched(prevCompatibleJob(jobIndex))
       max(w + prevCompatVal, tailValue)
     }
-  } ensuring (_ => time <= ?)
+  } ensuring (_ => steps <= ?)
 
   @invisibleBody
   def invoke(jobIndex: BigInt) = {
     require(depsEval(jobIndex))
     sched(jobIndex)
   } ensuring (res => {
-    val in = inState[BigInt]
-    val out = outState[BigInt]
+    val in = inSt[BigInt]
+    val out = outSt[BigInt]
     (jobIndex == 0 || evalMono(jobIndex - 1, in, out)) &&
-      time <= ?
+      steps <= ?
   })
 
   @invisibleBody
@@ -107,7 +107,7 @@ object WeightedSched {
       Cons(invoke(jobi), tailRes)
     }
   } ensuring (_ => allEval(jobi) &&
-    time <= ? * (jobi + 1))
+    steps <= ? * jobi + ?)
 
   @ignore
   def main(args: Array[String]) {

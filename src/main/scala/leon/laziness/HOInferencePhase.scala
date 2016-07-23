@@ -2,20 +2,23 @@ package leon
 package laziness
 
 import invariant.util._
+
 import invariant.structure.FunctionUtils._
 import purescala.ScalaPrinter
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import LazinessUtil._
-import LazyVerificationPhase._
+import HOMemUtil._
+import HOMemVerificationPhase._
 import utils._
 import java.io._
 import invariant.engine.InferenceReport
+import transformations._
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
+ * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
-object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificationReport] {
+object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] {
   val dumpInputProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
@@ -27,20 +30,16 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
   val skipStateVerification = false
   val skipResourceVerification = false
 
-  val name = "Laziness Elimination Phase"
+  val name = "Higher-order Memoization Verification Phase"
   val description = "Coverts a program that uses lazy construct" +
     " to a program that does not use lazy constructs"
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
-  val optUseOrb = LeonFlagOptionDef("useOrb", "Use Orb to infer constants", false)
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optUseOrb, optRefEquality)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality)
 
-  /**
-   * TODO: add inlining annotations for optimization.
-   */
-  def apply(ctx: LeonContext, prog: Program): LazyVerificationReport = {
+  def apply(ctx: LeonContext, prog: Program): MemVerificationReport = {
     val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
     val checkCtx = contextForChecks(ctx)
     val stateVeri =
@@ -50,8 +49,7 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
 
     val resourceVeri =
       if (!skipResourceVerification)
-        Some(checkInstrumentationSpecs(instProg, checkCtx,
-          checkCtx.findOption(LazinessEliminationPhase.optUseOrb).getOrElse(false)))
+        Some(checkInstrumentationSpecs(instProg, checkCtx))
       else None
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
@@ -64,24 +62,25 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
       pw.close()
     }
     // return a report
-    new LazyVerificationReport(stateVeri, resourceVeri)
+    new MemVerificationReport(stateVeri, resourceVeri)
   }
 
   def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
+    val inprog = HOInliningPhase(ctx, prog)
     if (dumpInputProg)
-      println("Input prog: \n" + ScalaPrinter.apply(prog))
+      println("Input prog: \n" + ScalaPrinter.apply(inprog))
 
-    val (pass, msg) = sanityChecks(prog, ctx)
+    val (pass, msg) = sanityChecks(inprog, ctx)
     assert(pass, msg)
 
     // refEq is by default false
-    val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
+    val nprog = ExpressionLifter.liftLambdaBody(ctx, inprog, ctx.findOption(optRefEquality).getOrElse(false))
     if (dumpLiftProg)
       prettyPrintProgramToFile(nprog, ctx, "-lifted", true)
 
-    val funsManager = new LazyFunctionsManager(nprog)
-    val closureFactory = new LazyClosureFactory(nprog)
-    val progWithClosures = (new LazyClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
+    val funsManager = new FunctionsManager(nprog)
+    val closureFactory = new ClosureFactory(nprog, funsManager)
+    val progWithClosures = (new ClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
     if (dumpProgramWithClosures)
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
 
@@ -90,20 +89,29 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
     if (dumpTypeCorrectProg)
       prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    // check termination of all functions
+    // uncomment the following lines, maybe implemented --withTerm for this
+    // val termReport =  leon.termination.TerminationPhase(ctx, typeCorrectProg)
+    // println("Termintion Results: "+termReport.summaryString)    
+
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, closureFactory)).apply
     if (dumpProgWithPreAsserts)
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
 
     // verify the contracts that do not use resources
-    val progWOInstSpecs = InliningPhase.apply(ctx, removeInstrumentationSpecs(progWithPre))
+    val progWOInstSpecs = HOInliningPhase(ctx, removeInstrumentationSpecs(progWithPre))
     if (dumpProgWOInstSpecs)
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), ctx, closureFactory)
-    val instProg = instrumenter.apply
-    if (dumpInstrumentedProgram)
+    // Note: do not inline before instrument, because inlining might change the performance properties
+    val instrumenter = new MemInstrumenter(typeCorrectProg, ctx, closureFactory, funsManager)
+    val instProg = HOInliningPhase(ctx, instrumenter.apply)
+    if (dumpInstrumentedProgram) {
+      val runnProg = RunnableCodePhase(ctx, instProg)
+      prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
+    }
     (progWOInstSpecs, instProg)
   }
 
@@ -153,8 +161,8 @@ object LazinessEliminationPhase extends SimpleLeonPhase[Program, LazyVerificatio
               false
             } else {
               // arguments or return types of memoized functions cannot be lazy because we do not know how to compare them for equality
-              if (isMemoized(fd)) {
-                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(LazinessUtil.isLazyType)
+              if (hasMemAnnotation(fd)) {
+                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(isLazyType)
                 if (argCheckFailed) {
                   failMsg = "Memoized function has a lazy argument or return type: " + fd.id
                   false

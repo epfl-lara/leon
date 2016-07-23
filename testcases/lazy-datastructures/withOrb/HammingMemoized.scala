@@ -9,7 +9,7 @@ import invariant._
 
 /**
  * A memoized version of the implementation of Hamming problem shown in
- * section 4.3 of Type-based allocation analysis for Co-recursion
+ * section 4.3 of Type-based allocation analysis for Co-recursion.
  */
 object Hamming {
   sealed abstract class IList
@@ -43,17 +43,17 @@ object Hamming {
   } ensuring(res =>  res.i2 <= n && res.i3 <= n && res.i5 <= n &&
       res.i3 >= 0 && res.i5 >= 0 && res.i2 >= 0 &&
       depsLem(res.i2, n) && depsLem(res.i3, n) && depsLem(res.i5, n) && // instantiations
-      time <= ?)
+      steps <= ?)
 
   def depsEval(i: BigInt): Boolean = {
     require(i >= 0)
-    ham(i).isCached && (if (i <= 0) true else depsEval(i - 1))
+    cached(ham(i)) && (if (i <= 0) true else depsEval(i - 1))
   }
 
   @traceInduct
-  def depsEvalMono(i: BigInt, st1: Set[Mem[Data]], st2: Set[Mem[Data]]) = {
+  def depsEvalMono(i: BigInt, st1: Set[Fun[Data]], st2: Set[Fun[Data]]) = {
     require(i >= 0)
-    (st1.subsetOf(st2) && (depsEval(i) withState st1)) ==> (depsEval(i) withState st2)
+    (st1.subsetOf(st2) && (depsEval(i) in st1)) ==> (depsEval(i) in st2)
   } holds
 
   @traceInduct
@@ -66,10 +66,10 @@ object Hamming {
     require(n == 0 || n > 0 && depsEval(n - 1))
     ham(n).v
   } ensuring (res => {
-    val in = inState[Data]
-    val out =outState[Data]
+    val in = inSt[Data]
+    val out = outSt[Data]
     (n == 0 || depsEvalMono(n-1, in, out)) && // instantiation
-      time <= ?
+      steps <= ?
   })
 
   /**
@@ -83,7 +83,7 @@ object Hamming {
       val tailRes =  hammingList(n-1)
       Cons(invoke(n), tailRes)
     }
-  } ensuring(_ => depsEval(n) && time <= ? * (n + 1))
+  } ensuring(_ => depsEval(n) && steps <= ? * n + ?)
 
   @inline
    def threeWayMerge(a: BigInt, b: BigInt, c: BigInt, i2: BigInt, i3: BigInt, i5: BigInt) = {

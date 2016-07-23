@@ -8,6 +8,7 @@ import purescala.Expressions._
 import invariant.structure._
 import invariant.util.ExpressionTransformer._
 import purescala.ExprOps._
+import purescala.Common._
 import invariant.util.PredicateUtil._
 
 object ConstraintTracker {
@@ -34,7 +35,7 @@ class ConstraintTracker(ctx : InferenceContext, program: Program, rootFun : FunD
    */
   def addVC(fd: FunDef, assump: Expr, body: Expr, conseq: Expr) = {
     if(debugVC) {
-      println(s"Init VC \n assumption: $assump \n body: $body \n conseq: $conseq")
+       println(s"Init VC \n assumption: $assump \n body: $body \n conseq: $conseq")
     }
     val flatBody = normalizeExpr(body, ctx.multOp)
     val flatAssump = normalizeExpr(assump, ctx.multOp)
@@ -44,7 +45,7 @@ class ConstraintTracker(ctx : InferenceContext, program: Program, rootFun : FunD
       case _ => Set[Expr]()
     } _
     val specCalls = callCollect(flatAssump) ++ callCollect(conseqNeg)
-    val vc = createAnd(Seq(flatAssump, flatBody, conseqNeg))
+    val vc = simplifiers(createAnd(Seq(flatAssump, flatBody, conseqNeg)))
     funcVCs += (fd -> new Formula(fd, vc, ctx, specCalls))
   }
 

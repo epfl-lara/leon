@@ -9,7 +9,8 @@ case class PrinterOptions (
   baseIndent: Int = 0,
   printPositions: Boolean = false,
   printUniqueIds: Boolean = false,
-  printTypes: Boolean = false
+  printTypes: Boolean = false,
+  printRunnableCode: Boolean = false
 )
 
 object PrinterOptions {

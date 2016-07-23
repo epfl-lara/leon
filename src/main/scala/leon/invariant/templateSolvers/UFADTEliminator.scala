@@ -21,55 +21,6 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
   val reporter = ctx.reporter
   val verbose = false
 
-  //  def collectCompatibleCalls(calls: Set[Expr]) = {
-  //    //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
-  //    val vec = calls.toArray
-  //    val size = calls.size
-  //    var j = 0
-  //    //for stats
-  //    var tuples = 0
-  //    var functions = 0
-  //    var adts = 0
-  //    val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
-  //      //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
-  //      /*val shouldConsider = if(InvariantisCallExpr(call)) {
-  //        val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
-  //        if(calledFun == DepthInstPhase.maxFun) false
-  //        else true
-  //      } else true*/
-  //      var pairs = Set[(Expr, Expr)]()
-  //      for (i <- j + 1 until size) {
-  //        val call2 = vec(i)
-  //        if (mayAlias(call, call2)) {
-  //          call match {
-  //            case Equals(_, fin: FunctionInvocation) => functions += 1
-  //            case Equals(_, tup: Tuple)              => tuples += 1
-  //            case _                                  => adts += 1
-  //          }
-  //          if (debugAliases)
-  //            println("Aliases: " + call + "," + call2)
-  //          pairs ++= Set((call, call2))
-  //        } else {
-  //          if (debugAliases) {
-  //            (call, call2) match {
-  //              case (Equals(_, t1 @ Tuple(_)), Equals(_, t2 @ Tuple(_))) =>
-  //                println("No Aliases: " + t1.getType + "," + t2.getType)
-  //              case _ => println("No Aliases: " + call + "," + call2)
-  //            }
-  //          }
-  //        }
-  //      }
-  //      j += 1
-  //      acc ++ pairs
-  //    })
-  //    if (verbose) reporter.info("Number of compatible calls: " + product.size)
-  //    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
-  //    Stats.updateCumStats(functions, "Compatible-functioncalls")
-  //    Stats.updateCumStats(adts, "Compatible-adtcalls")
-  //    Stats.updateCumStats(tuples, "Compatible-tuples")
-  //    product
-  //  }
-
   def collectCompatibleTerms(terms: Set[Expr]) = {
     class Comp(val key: Either[TypedFunDef, TypeTree]) {
       override def equals(other: Any) = other match {
@@ -210,9 +161,9 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     var equivClasses = new DisjointSets[Expr]()
     var neqSet = MutableSet[(Expr, Expr)]()
     val termClasses = collectCompatibleTerms(calls)
-    val preds = MutableList[Expr]()
+    val preds = MutableList[Expr]()    
     termClasses.foreach {
-      case (_, compTerms) =>
+      case (_, compTerms) =>        
         val vec = compTerms.toArray
         val size = vec.size
         vec.zipWithIndex.foreach {
@@ -238,7 +189,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
               }
             }
         }
-    }   
+    }
     Stats.updateCounterStats(preds.size, "CallADT-Constraints", "disjuncts")
     preds.toSeq
   }

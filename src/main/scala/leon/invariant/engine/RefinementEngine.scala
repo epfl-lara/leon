@@ -165,7 +165,6 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
           //note: here we are only adding the template as the postcondition (other post need not be proved again)
           val idmap = formalToActual(Call(resvar, FunctionInvocation(recFunTyped, paramMap.values.toSeq.map(_.toVariable))))
           val postTemp = replace(idmap, recFun.getTemplate)
-          //val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr, Not(postTemp)), ctx.multOp)
           ctrTracker.addVC(recFun, pre, bodyExpr, postTemp)
         }
         //Here, unroll the call into the caller tree

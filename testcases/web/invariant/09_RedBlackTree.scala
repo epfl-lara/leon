@@ -75,7 +75,7 @@ object RedBlackTree {
           balance(c,a,y,t1)
         }
     }
-  } ensuring(res => time <= ? *blackHeight(t) + ?)
+  } ensuring(res => steps <= ? *blackHeight(t) + ?)
 
   def makeBlack(n: Tree): Tree = {
     n match {
@@ -89,7 +89,7 @@ object RedBlackTree {
     val t1 =  ins(x, t)
     makeBlack(t1)
 
-  } ensuring(res => time <= ? *blackHeight(t) + ?)
+  } ensuring(res => steps <= ? *blackHeight(t) + ?)
 
   def balance(co: Color, l: Tree, x: BigInt, r: Tree): Tree = {
     Node(co,l,x,r)

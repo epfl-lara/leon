@@ -67,7 +67,7 @@ object BinomialHeap {
       }
       case _ => ConsHeap(t, NilHeap())
     }
-  } ensuring(_ => time <= ? * treeNum(h) + ?)
+  } ensuring(_ => steps <= ? * treeNum(h) + ?)
 
   def merge(h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
     h1 match {
@@ -87,7 +87,7 @@ object BinomialHeap {
       }
       case _ => h2
     }
-  } ensuring(_ => time <= ? * treeNum(h1) + ? * treeNum(h2) + ?)
+  } ensuring(_ => steps <= ? * treeNum(h1) + ? * treeNum(h2) + ?)
 
   def mergeWithCarry(t: TreeNode, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
     h1 match {
@@ -115,7 +115,7 @@ object BinomialHeap {
       }
       case _ => insTree(t, h2)
     }
-  } ensuring (_ => time <= ? * treeNum(h1) + ? * treeNum(h2) + ?)
+  } ensuring (_ => steps <= ? * treeNum(h1) + ? * treeNum(h2) + ?)
 
   def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {
     h match {
@@ -134,7 +134,7 @@ object BinomialHeap {
       }
       case _ => (None(), NilHeap())
     }
-  } ensuring (res => treeNum(res._2) <= treeNum(h) && time <= ? * treeNum(h) + ?)
+  } ensuring (res => treeNum(res._2) <= treeNum(h) && steps <= ? * treeNum(h) + ?)
 
   def minTreeChildren(h: BinomialHeap) : BigInt = {
     val (min, _) = removeMinTree(h)
@@ -150,5 +150,5 @@ object BinomialHeap {
 		case Some(TreeNode(_,_,ts1)) => merge(ts1, ts2)
 		case _ => h
 	  }
-  } ensuring(_ => time <= ? * minTreeChildren(h) + ? * treeNum(h) + ?)
+  } ensuring(_ => steps <= ? * minTreeChildren(h) + ? * treeNum(h) + ?)
 }

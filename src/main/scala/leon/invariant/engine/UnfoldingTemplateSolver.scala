@@ -43,6 +43,22 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
   lazy val constTracker = new ConstraintTracker(ctx, program, rootFd)
   lazy val templateSolver = TemplateSolverFactory.createTemplateSolver(ctx, program, constTracker, rootFd)
 
+//  TODO: handle traceInduct in Orb  
+//  def constructFunToVerify(infun: FunDef): FunDef = {
+//    if (infun.annotations.contains("induct")) {
+//      reporter.warning("@induct option is not supported by Orb. Falling back to normal VC generation.")
+//      infun
+//    } else if (infun.annotations.contains("traceInduct")) {
+//      TraceInductHelper.createTactFun(program, infun, reporter) match {
+//        case Some(tactFun) => tactFun
+//        case _ =>
+//          throw new IllegalStateException(s"Cannot extract induction patter for function $infun. Try removing @traceInduct Option.")
+//      }
+//    } else {
+//      infun
+//    }
+//  }
+
   def constructVC(funDef: FunDef): (Expr, Expr, Expr) = {
     val Lambda(Seq(ValDef(resid)), _) = funDef.postcondition.get
     val body = Equals(resid.toVariable, funDef.body.get)
@@ -73,9 +89,9 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     var infRes: Option[InferResult] = None
     do {
       infRes =
-        if(ctx.abort)
+        if (ctx.abort)
           Some(InferResult(false, None, List()))
-        else{
+        else {
           Stats.updateCounter(1, "VC-refinement")
           /*
            * uncomment if we want to bound refinements
@@ -119,7 +135,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
   }
 
   def apply() = {
-    if(ctx.abort) {
+    if (ctx.abort) {
       Some(InferResult(false, None, List()))
     } else {
       val (body, pre, post) = constructVC(rootFd)
@@ -186,21 +202,6 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     val post = newroot.postcondition.get
     val body = newroot.body.get
     val vc = implies(newroot.precOrTrue, application(post, Seq(body)))
-    solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition))
-  }
-
-  import leon.solvers._
-  import leon.solvers.unrolling.UnrollingSolver
-  def solveUsingLeon(leonctx: LeonContext, p: Program, vc: VC) = {
-    val solFactory = SolverFactory.uninterpreted(leonctx, program)
-    val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext.toSctx, program, solFactory.getNewSolver()) with TimeoutSolver
-    smtUnrollZ3.setTimeout(ctx.vcTimeout * 1000)
-    smtUnrollZ3.assertVC(vc)
-    smtUnrollZ3.check match {
-      case Some(true) =>
-        (Some(true), smtUnrollZ3.getModel)
-      case r =>
-        (r, Model.empty)
-    }
+    SolverUtil.solveUsingLeon(ctx.leonContext, newprog, VC(vc, newroot, VCKinds.Postcondition), ctx.vcTimeout)
   }
 }

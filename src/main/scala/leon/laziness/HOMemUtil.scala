@@ -5,6 +5,7 @@ import purescala.ScalaPrinter
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Types._
 import java.io.File
@@ -12,11 +13,17 @@ import java.io.FileWriter
 import java.io.BufferedWriter
 import scala.util.matching.Regex
 import utils.FileOutputPhase
+import invariant.util.PredicateUtil._
+import invariant.util.Util._
 
-object LazinessUtil {
+object HOMemUtil {
+
+  def hasMemAnnotation(fd: FunDef) = {
+    fd.flags.contains(Annotation("memoize", Seq()))
+  }
 
   def isMemoized(fd: FunDef) = {
-    fd.flags.contains(Annotation("memoize", Seq()))
+    fd.id.name.contains("-mem")
   }
 
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
@@ -36,12 +43,11 @@ object LazinessUtil {
         val plainText = ScalaPrinter.apply(u, purescala.PrinterOptions(printUniqueIds = uniqueIds))
         //println("Plain text: "+plainText)
         // remove '@' from the end of the identifier names
-        val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
-
+        val pat = new Regex("""(\w+)(@)""", "base", "at")
         val pgmText = try{ pat.replaceAllIn(plainText,
           m => {
-            m.group("base") + m.group("mid") + (
-              if (!m.group("star").isEmpty()) "S" else "") + m.group("rest")
+            m.group("base")
+//            + (if (!m.group("star").isEmpty()) "S" else "")
           })
         } catch {
           case _: IndexOutOfBoundsException => plainText
@@ -72,7 +78,7 @@ object LazinessUtil {
   def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inState")
+      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inSt")
     case _ =>
       false
   }
@@ -80,20 +86,14 @@ object LazinessUtil {
   def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
       val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outState")
+      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outSt")
     case _ =>
       false
   }
 
-  def isEvaluatedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def cachedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.Lazy.isEvaluated"
-    case _ => false
-  }
-
-  def isSuspInvocation(e: Expr)(implicit p: Program): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
-      fullName(fd)(p) == "leon.lazyeval.Lazy.isSuspension"
+      fullName(fd)(p) == "leon.mem.cached"
     case _ => false
   }
 
@@ -104,9 +104,31 @@ object LazinessUtil {
     case _ => false
   }
 
-  def isMemCons(e: Expr)(implicit p: Program): Boolean = e match {
+  def isFunType(t: TypeTree)(implicit p: Program) = t match {
+    case cct: CaseClassType => fullName(cct.classDef)(p) == "leon.mem.Fun"
+    case _ => false
+  }
+
+  def isFunSetType(t: TypeTree)(implicit p: Program) = t match {
+    case SetType(baseType) => isFunType(baseType)
+    case _ => false
+  }
+
+  def isFunCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.mem.Mem"
+      fullName(cct.classDef)(p) == "leon.mem.Fun"
+    case _ => false
+  }
+
+  def isFunMatch(e: Expr)(implicit p: Program): Boolean = e match {
+   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
+      fullName(fd)(p) == "leon.higherorder.Fmatch.fmatch"
+    case _ => false
+  }
+
+  def isIsFun(e: Expr)(implicit p: Program): Boolean = e match {
+   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
+      fullName(fd)(p) == "leon.higherorder.Is.is"
     case _ => false
   }
 
@@ -118,13 +140,7 @@ object LazinessUtil {
     case FunctionInvocation(TypedFunDef(fd, _), _) =>
       val fn = fullName(fd)(p)
       (fn == "leon.lazyeval.WithState.withState" ||
-          fn == "leon.mem.memWithState.withState")
-    case _ => false
-  }
-
-  def isCachedInv(e: Expr)(implicit p: Program): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.Mem.isCached"
+          fn == "leon.mem.memWithState.in")
     case _ => false
   }
 
@@ -136,30 +152,32 @@ object LazinessUtil {
 
   def isStarInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.Lazy.*"
+      fullName(fd)(p) == "leon.mem.Star.*"
     case _ => false
   }
 
   def isLazyType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(ccd, Seq(_)) if !ccd.hasParent && !ccd.isCaseObject =>
+    case CaseClassType(ccd, Seq(_)) if !ccd.parent.isDefined && !ccd.isCaseObject =>
       ccd.id.name == "Lazy"
     case _ => false
   }
 
-  def isMemType(tpe: TypeTree): Boolean = tpe match {
-    case CaseClassType(ccd, Seq(_)) if !ccd.hasParent && !ccd.isCaseObject =>
-      ccd.id.name == "Mem"
-    case _ => false
+  def capturedVars(l: Lambda) = l match {
+    case Lambda(args, FunctionInvocation(_, allArgs)) if allArgs.forall(_.isInstanceOf[Variable]) =>
+      val argvars = args.map(_.id).toSet
+      (allArgs.map{ case Variable(id) => id }.filterNot(argvars.contains)).toList
+    case _ =>
+      throw new IllegalStateException("Lambda is not in expected form: "+l)
   }
 
   /**
-   * Lazy types are not nested by precondition
+   * Nested Closure types are not yet supported. TODO: handle them
    */
-  def unwrapLazyType(tpe: TypeTree) = tpe match {
-    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
+  /*def mapClosureType(tpe: TypeTree) = tpe match {
+    case FunctionType =>
       Some(innerType)
     case _ => None
-  }
+  }*/
 
   def opNameToCCName(name: String) = {
     name.capitalize + "@"
@@ -167,15 +185,15 @@ object LazinessUtil {
 
   /**
    * Convert the first character to lower case
-   * and remove the last character.
+   * and remove the last two characters.
    */
   def ccNameToOpName(name: String) = {
     name.substring(0, 1).toLowerCase() +
-      name.substring(1, name.length() - 1)
+      name.substring(1, name.length() - 2)
   }
 
   def typeNameToADTName(name: String) = {
-    "Lazy" + name
+    name + "@"
   }
 
   def adtNameToTypeName(name: String) = {
@@ -206,6 +224,25 @@ object LazinessUtil {
     id.name.startsWith("st@")
   }
 
+  def isStateType(t: TypeTree) = {
+     t match {
+       case SetType(baseType) => isMemoClosure(baseType)
+       case _ => false
+     }
+  }
+
+  def isMemoClosure(t: TypeTree) = {
+     t match {
+       case ct: ClassType =>
+         ct.root match {
+           case AbstractClassType(adef, _) =>
+             adef.id.name.startsWith("MemoFuns@")
+           case _ => false
+         }
+       case _ => false
+     }
+  }
+
   def isPlaceHolderTParam(tp: TypeParameter) = {
     tp.id.name.endsWith("@")
   }
@@ -218,6 +255,42 @@ object LazinessUtil {
           case targ                => targ
         }
         tcons(ntargs)
+    }
+  }
+
+  /**
+   * Returns the conjuncts of the  preconditions that contain
+   * at least one argument (possibly in addition to captured variables)
+   */
+  def argPreconditions(l: Lambda): Expr ={
+    l match {
+      case Lambda(argDefs, FunctionInvocation(TypedFunDef(fd, _), _)) if fd.hasPrecondition =>
+        val args = argDefs.map(_.id).toSet
+        val pres = fd.precondition.get match {
+          case And(conjs) => conjs
+          case pre       => Seq(pre)
+        }
+        createAnd(pres.filter { p => !variablesOf(p).intersect(args).isEmpty })
+      case _ => tru
+    }
+  }
+
+  /**
+   * @param st expression representing state at the point when the function is called.
+   * Returns all preconditions that depend only on captured variables
+   * First return value: state independent precondition,
+   * Second return value: state dependent
+   */
+  def capturedPreconditions(l: Lambda): Expr = {
+    l match {
+      case Lambda(_, FunctionInvocation(TypedFunDef(fd, _), _)) if fd.hasPrecondition =>
+        val capturedvars = capturedVars(l)
+        val pres = fd.precondition.get match {
+          case And(args) => args
+          case pre       => Seq(pre)
+        }
+        createAnd(pres.filter { p => (variablesOf(p) -- capturedvars).isEmpty })
+      case _ => tru
     }
   }
 }

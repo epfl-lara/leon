@@ -18,15 +18,16 @@ import leon.evaluators._
 
 trait Constraint {
   def toExpr: Expr
+  def prettyExpr = toExpr // this can be overriden
 }
 
 trait ExtendedConstraint extends Constraint {
-  def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier,Expr], eval: DefaultEvaluator): Constraint
+  def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator): Constraint
 }
 
 object LinearTemplate {
-   val debug = false
-   val debugPickSat = false
+  val debug = false
+  val debugPickSat = false
 }
 
 /**
@@ -38,8 +39,8 @@ object LinearTemplate {
  * Otherwise a NPE will be thrown (in the computation of 'template')
  */
 class LinearTemplate(oper: Seq[Expr] => Expr,
-  coeffTemp: Map[Expr, Expr],
-  constTemp: Option[Expr]) extends Constraint {
+                     coeffTemp: Map[Expr, Expr],
+                     constTemp: Option[Expr]) extends Constraint {
 
   import LinearTemplate._
 
@@ -47,31 +48,28 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   val op = oper
 
   val coeffTemplate = {
-    if(debug) assert(coeffTemp.values.forall(e => isTemplateExpr(e)))
+    if (debug) assert(coeffTemp.values.forall(e => isTemplateExpr(e)))
     coeffTemp
   }
 
   val constTemplate = {
-    if(debug) assert(constTemp.map(isTemplateExpr).getOrElse(true))
+    if (debug) assert(constTemp.map(isTemplateExpr).getOrElse(true))
     constTemp
   }
 
   val lhsExpr = {
-    //construct the expression corresponding to the template here
     var lhs = coeffTemp.foldLeft(null: Expr) {
       case (acc, (term, coeff)) =>
         val minterm = Times(coeff, term)
         if (acc == null) minterm else Plus(acc, minterm)
     }
-    if (constTemp.isDefined) {
-      if (lhs == null) constTemp.get
-      else Plus(lhs, constTemp.get)
-    } else lhs
+    constTemp.map(ct => if (lhs == null) ct else Plus(lhs, ct)).getOrElse(lhs)
   }
 
+  //construct the expression corresponding to the template here (but, preserve equalities)
   val template = oper(Seq(lhsExpr, zero))
 
-  def templateVars: Set[Variable] = getTemplateVars(template)  
+  def templateVars: Set[Variable] = getTemplateVars(template)
 
   /**
    * Picks a sat disjunct of the negation of the template w.r.t to the
@@ -79,16 +77,16 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
    */
   lazy val negTmpls = {
     val args = template match {
-      case _: Equals => Seq(GreaterThan(lhsExpr, zero), LessThan(lhsExpr,zero))
-      case _: LessEquals => Seq(GreaterThan(lhsExpr, zero))
-      case _: LessThan => Seq(GreaterEquals(lhsExpr, zero))
+      case _: Equals        => Seq(GreaterThan(lhsExpr, zero), LessThan(lhsExpr, zero))
+      case _: LessEquals    => Seq(GreaterThan(lhsExpr, zero))
+      case _: LessThan      => Seq(GreaterEquals(lhsExpr, zero))
       case _: GreaterEquals => Seq(LessThan(lhsExpr, zero))
-      case _: GreaterThan => Seq(LessEquals(lhsExpr, zero))
+      case _: GreaterThan   => Seq(LessEquals(lhsExpr, zero))
     }
     args map LinearConstraintUtil.exprToTemplate
   }
-  
-  def pickSatDisjunctOfNegation(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: DefaultEvaluator) = {
+
+  def pickSatDisjunctOfNegation(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
     val err = new IllegalStateException(s"Cannot pick a sat disjunct of negation: ${toString} is sat!")
     template match {
       case _: Equals => // here, negation is a disjunction
@@ -111,13 +109,13 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
     val (e, i) = coeffEntry
     i match {
-      case InfiniteIntegerLiteral(x) if (x == 1) => e.toString
+      case InfiniteIntegerLiteral(x) if (x == 1)  => e.toString
       case InfiniteIntegerLiteral(x) if (x == -1) => "-" + e.toString
-      case InfiniteIntegerLiteral(v) => v + e.toString
-      case IntLiteral(1) => e.toString
-      case IntLiteral(-1) => "-" + e.toString
-      case IntLiteral(v) => v + e.toString
-      case _ => i + " * " + e.toString
+      case InfiniteIntegerLiteral(v)              => v + e.toString
+      case IntLiteral(1)                          => e.toString
+      case IntLiteral(-1)                         => "-" + e.toString
+      case IntLiteral(v)                          => v + e.toString
+      case _                                      => i + " * " + e.toString
     }
   }
 
@@ -127,16 +125,20 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
    * Converts the template to a more human readable form
    * by group positive (and negative) terms together
    */
-  def toPrettyExpr = {
+  override lazy val prettyExpr = {
     val (lhsCoeff, rhsCoeff) = coeffTemplate.partition {
       case (term, InfiniteIntegerLiteral(v)) =>
         v >= 0
       case _ => true
     }
-    var lhsExprs: Seq[Expr] = lhsCoeff.map(e => Times(e._2, e._1)).toSeq
+    var lhsExprs: Seq[Expr] = lhsCoeff.map {
+      case (term, InfiniteIntegerLiteral(v)) if v == 1 => term
+      case (term, coeff)                               => Times(coeff, term)
+    }.toSeq
     var rhsExprs: Seq[Expr] = rhsCoeff.map {
       case (term, InfiniteIntegerLiteral(v)) =>
-        Times(InfiniteIntegerLiteral(-v), term) // make the coeff +ve
+        if (v == -1) term
+        else Times(InfiniteIntegerLiteral(-v), term) // make the coeff +ve
     }.toSeq
     constTemplate match {
       case Some(InfiniteIntegerLiteral(v)) if v < 0 =>
@@ -157,8 +159,9 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
           Some(Plus(acc.get, minterm))
         else Some(minterm)
     }
-    val lhs = lhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
-    val rhs = rhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
+    val zero = InfiniteIntegerLiteral(0)
+    val lhs = lhsExprOpt.getOrElse(zero)
+    val rhs = rhsExprOpt.getOrElse(zero)
     oper(Seq(lhs, rhs))
   }
 
@@ -176,10 +179,10 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
     val str = if (!coeffStr.isEmpty() && !constStr.isEmpty()) coeffStr + " + " + constStr
     else coeffStr + constStr
     str + (template match {
-      case t: Equals => " = "
-      case t: LessThan => " < "
-      case t: GreaterThan => " > "
-      case t: LessEquals => " <= "
+      case t: Equals        => " = "
+      case t: LessThan      => " < "
+      case t: GreaterThan   => " > "
+      case t: LessEquals    => " <= "
       case t: GreaterEquals => " >= "
     }) + "0"
   }
@@ -188,7 +191,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
 
   override def equals(obj: Any): Boolean = obj match {
     case lit: LinearTemplate => lit.template.equals(this.template)
-    case _ => false
+    case _                   => false
   }
 }
 
@@ -196,7 +199,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
  * class representing a linear constraint. This is a linear template wherein the coefficients are constants
  */
 class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: Option[Expr])
-  extends LinearTemplate(opr, cMap, constant) {
+    extends LinearTemplate(opr, cMap, constant) {
   val coeffMap = cMap
   val const = constant
 }
@@ -206,18 +209,19 @@ class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: 
  * Used for efficiently choosing a disjunct
  */
 case class ExtendedLinearTemplate(v: Variable, tmpl: LinearTemplate, diseq: Boolean) extends ExtendedConstraint {
-  val expr = {
-    val eqExpr = Equals(v, tmpl.toExpr)
-    if(diseq) Not(eqExpr) else eqExpr
+  def consExpr(tmplExpr: Expr) = {
+    val eqExpr = Equals(v, tmplExpr)
+    if (diseq) Not(eqExpr) else eqExpr
   }
-  override def toExpr = expr
-  override def toString: String = expr.toString
+  override lazy val prettyExpr = consExpr(tmpl.prettyExpr)
+  override val toExpr = consExpr(tmpl.toExpr)
+  override def toString: String = toExpr.toString
 
   /**
    * Chooses a sat disjunct of the constraint
    */
-  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier,Expr], eval: DefaultEvaluator) = {
-    if((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) tmpl
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
+    if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) tmpl
     else {
       //println(s"Picking sat disjunct of: ${toExpr} model($v) = ${model(v.id)}")
       tmpl.pickSatDisjunctOfNegation(model, tmplModel, eval)
@@ -228,7 +232,7 @@ case class ExtendedLinearTemplate(v: Variable, tmpl: LinearTemplate, diseq: Bool
 object BoolConstraint {
   def isBoolConstraint(e: Expr): Boolean = e match {
     case _: Variable | _: BooleanLiteral if e.getType == BooleanType => true
-    case Equals(l, r) => isBoolConstraint(l) && isBoolConstraint(r) //enabling makes the system slower!! surprising
+    case Equals(l, r) => isBoolConstraint(l) && isBoolConstraint(r)
     case Not(arg) => isBoolConstraint(arg)
     case And(args) => args forall isBoolConstraint
     case Or(args) => args forall isBoolConstraint
@@ -255,21 +259,21 @@ object ADTConstraint {
     case Equals(_: Variable, _: IsInstanceOf) =>
       new ADTConstraint(e, inst = true)
     case Equals(lhs @ Variable(_), AsInstanceOf(rhs @ Variable(_), _)) =>
-      new ADTConstraint(Equals(lhs, rhs), comp= true)
+      new ADTConstraint(Equals(lhs, rhs), comp = true)
     case Equals(lhs: Variable, _: Variable) if adtType(lhs) =>
       new ADTConstraint(e, comp = true)
     case Not(Equals(lhs: Variable, _: Variable)) if adtType(lhs) =>
       new ADTConstraint(e, comp = true)
     case _ =>
-      throw new IllegalStateException(s"Expression not an ADT constraint: $e")
+      throw new IllegalStateException(s"Expression not an ADT constraint: $e Argument types: ${variablesOf(e).map(fv => fv -> fv.getType).mkString(",")} ")
   }
 }
 
 class ADTConstraint(val expr: Expr,
-  val cons: Boolean = false,
-  val inst: Boolean = false,
-  val comp: Boolean = false,
-  val sel: Boolean = false) extends Constraint {
+                    val cons: Boolean = false,
+                    val inst: Boolean = false,
+                    val comp: Boolean = false,
+                    val sel: Boolean = false) extends Constraint {
 
   override def toString(): String = expr.toString
   override def toExpr = expr
@@ -279,7 +283,7 @@ case class ExtendedADTConstraint(v: Variable, adtCtr: ADTConstraint, diseq: Bool
   val expr = {
     assert(adtCtr.comp)
     val eqExpr = Equals(v, adtCtr.toExpr)
-    if(diseq) Not(eqExpr) else eqExpr
+    if (diseq) Not(eqExpr) else eqExpr
   }
   override def toExpr = expr
   override def toString: String = expr.toString
@@ -287,9 +291,14 @@ case class ExtendedADTConstraint(v: Variable, adtCtr: ADTConstraint, diseq: Bool
   /**
    * Chooses a sat disjunct of the constraint
    */
-  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier,Expr], eval: DefaultEvaluator) = {
-    if((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) adtCtr
-    else ADTConstraint(Not(adtCtr.toExpr))
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
+    if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) adtCtr
+    else {
+      adtCtr.toExpr match {
+        case Not(ine) => ADTConstraint(ine)
+        case _        => ADTConstraint(Not(adtCtr.toExpr))
+      }
+    }
   }
 }
 
@@ -302,13 +311,14 @@ case class Call(retexpr: Expr, fi: FunctionInvocation) extends Constraint {
  * If-then-else constraint
  */
 case class ITE(cond: BoolConstraint, ths: Seq[Constraint], elzs: Seq[Constraint]) extends Constraint {
-  val expr = IfExpr(cond.toExpr, createAnd(ths.map(_.toExpr)), createAnd(elzs.map(_.toExpr)))
+  lazy val expr = IfExpr(cond.toExpr, createAnd(ths.map(_.toExpr)), createAnd(elzs.map(_.toExpr)))
+  override lazy val prettyExpr = IfExpr(cond.prettyExpr, createAnd(ths.map(_.prettyExpr)), createAnd(elzs.map(_.prettyExpr)))
   override def toExpr = expr
 }
 
 object SetConstraint {
   def setConstraintOfBase(e: Expr) = e match {
-    case Equals(lhs@Variable(_), _) if lhs.getType.isInstanceOf[SetType] =>
+    case Equals(lhs @ Variable(_), _) if lhs.getType.isInstanceOf[SetType] =>
       true
     case Equals(Variable(_), SetUnion(_, _) | FiniteSet(_, _) | ElementOfSet(_, _) | SubsetOf(_, _)) =>
       true
@@ -318,7 +328,7 @@ object SetConstraint {
   def isSetConstraint(e: Expr) = {
     val base = e match {
       case Not(b) => b
-      case _ => e
+      case _      => e
     }
     setConstraintOfBase(base)
   }
@@ -327,24 +337,43 @@ object SetConstraint {
 case class SetConstraint(expr: Expr) extends Constraint {
   var union = false
   var newset = false
-  var equal = false
+  var comp = false
   var elemof = false
   var subset = false
   // TODO: add more operations here
   expr match {
     case Equals(Variable(_), rhs) =>
       rhs match {
-        case SetUnion(_, _) => union = true
-        case FiniteSet(_, _) => newset = true
+        case SetUnion(_, _)     => union = true
+        case FiniteSet(_, _)    => newset = true
         case ElementOfSet(_, _) => elemof = true
-        case SubsetOf(_, _) => subset = true
-        case Variable(_) => equal = true
+        case SubsetOf(_, _)     => subset = true
+        case Variable(_)        => comp = true
       }
+    case Not(Equals(Variable(_), Variable(_))) => comp = true
   }
   override def toString(): String = {
     expr.toString
   }
   override def toExpr = expr
+}
+
+case class ExtendedSetConstraint(v: Variable, setCtr: SetConstraint, diseq: Boolean) extends ExtendedConstraint {
+  val expr = {
+    assert(setCtr.comp)
+    val eqExpr = Equals(v, setCtr.toExpr)
+    if (diseq) Not(eqExpr) else eqExpr
+  }
+  override def toExpr = expr
+  override def toString: String = expr.toString
+
+  /**
+   * Chooses a sat disjunct of the constraint
+   */
+  override def pickSatDisjunct(model: LazyModel, tmplModel: Map[Identifier, Expr], eval: OrbEvaluator) = {
+    if ((model(v.id) == tru && !diseq) || (model(v.id) == fls && diseq)) setCtr
+    else SetConstraint(Not(setCtr.toExpr))
+  }
 }
 
 object ConstraintUtil {
@@ -375,10 +404,12 @@ object ConstraintUtil {
       case Equals(_: Variable, _: CaseClassSelector | _: CaseClass | _: TupleSelect | _: Tuple | _: IsInstanceOf) =>
         ADTConstraint(ie)
       case _ if SetConstraint.isSetConstraint(ie)                                      => SetConstraint(ie)
+      case Equals(v: Variable, rhs) if SetConstraint.isSetConstraint(rhs)              => ExtendedSetConstraint(v, SetConstraint(rhs), false)
       case Equals(v: Variable, rhs) if (isArithmeticRelation(rhs) != Some(false))      => toExtendedTemplate(v, rhs, false)
       case Not(Equals(v: Variable, rhs)) if (isArithmeticRelation(rhs) != Some(false)) => toExtendedTemplate(v, rhs, true)
       case _ if (isArithmeticRelation(ie) != Some(false))                              => toLinearTemplate(ie)
-      case Equals(v: Variable, rhs@Equals(l, _)) if adtType(l) => ExtendedADTConstraint(v, ADTConstraint(rhs), false)
+      case Equals(v: Variable, rhs @ Equals(l, _)) if adtType(l)                       => ExtendedADTConstraint(v, ADTConstraint(rhs), false)
+      case Equals(v: Variable, rhs @ Not(Equals(l, _))) if adtType(l)                  => ExtendedADTConstraint(v, ADTConstraint(rhs), false)
 
       // every other equality will be considered an ADT constraint (including TypeParameter equalities)
       case Equals(lhs, rhs) if !isNumericType(lhs.getType)                             => ADTConstraint(ie)

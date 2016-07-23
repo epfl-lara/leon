@@ -31,7 +31,7 @@ object BigNums {
         if(x == 0) Cons(1, tail)
         else Cons(0, increment(tail))
     }
-  } ensuring (res => time <= ? * incrTime(l) + ? && incrTime(l) + potentialIncr(res) - potentialIncr(l) <= ?)
+  } ensuring (res => steps <= ? * incrTime(l) + ? && incrTime(l) + potentialIncr(res) - potentialIncr(l) <= ?)
 
   /**
    * Nop is the number of operations
@@ -41,10 +41,10 @@ object BigNums {
     else {
       incrUntil(nop-1, increment(l))
     }
-  } ensuring (res => time <= ? * nop + ? * potentialIncr(l) + ?)
+  } ensuring (res => steps <= ? * nop + ? * potentialIncr(l) + ?)
 
   def count(nop: BigInt) : BigNum = {
     incrUntil(nop, Nil())
-  } ensuring (res => time <= ? * nop + ?)
+  } ensuring (res => steps <= ? * nop + ?)
 
 }

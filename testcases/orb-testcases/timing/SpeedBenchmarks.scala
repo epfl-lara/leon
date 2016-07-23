@@ -1,7 +1,6 @@
 import leon.invariant._
 import leon.instrumentation._
 
-
 object SpeedBenchmarks {
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
@@ -65,8 +64,8 @@ object SpeedBenchmarks {
         }
       }
     }
-  } ensuring(res => true && tmpl((a,b,c,d,e) => time <= a*((k+1)*(length(s1) + length(s2))) + b*size(str1) + e))
-  //ensuring(res => true && tmpl((a,b,c,d,e) => time <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))
+  } ensuring(res => true && tmpl((a,b,c,d,e) => steps <= a*((k+1)*(length(s1) + length(s2))) + b*size(str1) + e))
+  //ensuring(res => true && tmpl((a,b,c,d,e) => steps <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))
 
   def max(x: BigInt, y: BigInt) : BigInt = if(x >= y) x else y
 
@@ -77,7 +76,7 @@ object SpeedBenchmarks {
       if(y < m) Dis1(x, y+1, n, m)
       else Dis1(x+1, y, n, m)
     }
-  } ensuring(res => true && tmpl((a,b,c) => time <= a*max(0,n-x) + b*max(0,m-y) + c))
+  } ensuring(res => true && tmpl((a,b,c) => steps <= a*max(0,n-x) + b*max(0,m-y) + c))
 
   //Fig. 2 of Speed POPL'09
   def Dis2(x : BigInt, z : BigInt, n: BigInt) : BigInt = {
@@ -86,7 +85,7 @@ object SpeedBenchmarks {
       if(z > x) Dis2(x+1, z, n)
       else Dis2(x, z+1, n)
     }
-  } ensuring(res => true && tmpl((a,b,c) => time <= a*max(0,n-x) + b*max(0,n-z) + c))
+  } ensuring(res => true && tmpl((a,b,c) => steps <= a*max(0,n-x) + b*max(0,n-z) + c))
 
   //Pg. 138, Speed POPL'09
   def Dis3(x : BigInt, b : Boolean, t: BigInt, n: BigInt) : BigInt = {
@@ -96,7 +95,7 @@ object SpeedBenchmarks {
       if(b) Dis3(x+t, b, t, n)
       else Dis3(x-t, b, t, n)
     }
-  } ensuring(res => true && tmpl((a,c) => time <= a*max(0,(n-x)) + c))
+  } ensuring(res => true && tmpl((a,c) => steps <= a*max(0,(n-x)) + c))
 
   //Pg. 138, Speed POPL'09
   def Dis4(x : BigInt, b : Boolean, t: BigInt, n: BigInt) : BigInt = {
@@ -105,6 +104,15 @@ object SpeedBenchmarks {
       if(b) Dis4(x+t, b, t, n)
       else Dis4(x-t, b, t, n)
     }
-  } ensuring(res => true && tmpl((a,c,d,e) => (((b && t >= 0) || (!b && t < 0)) && time <= a*max(0,(n-x)) + c)
-  					|| (((!b && t >= 0) || (b && t < 0)) && time <= d*max(0,x) + e)))
+  }ensuring(res => //ensuring(res => true && tmpl((a,c,d,e) => (((b && t >= 0) || (!b && t < 0)) && steps <= a*max(0,(n-x)) + c)
+    //			|| (((!b && t >= 0) || (b && t < 0)) && steps <= d*max(0,x) + e)))
+    true && tmpl((a, c, d, e) => {
+      val cond =
+        if(b) t >= 0
+        else t < 0
+      if (cond)
+        steps <= a * max(0, (n - x)) + c
+      else
+        steps <= d * max(0, x) + e
+    }))
 }

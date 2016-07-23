@@ -32,14 +32,20 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
-    val instFunSet = getRootFuncs().foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
+    val (rootFuns, rootTypes) = getRootFuncs()
+    if(!rootTypes.isEmpty)
+      throw new IllegalStateException("Higher-order functions are not supported by depth instrumentation!")
+    val instFunSet = rootFuns.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
     instFunSet.map(x => (x, List(Depth))).toMap
   }
+
+  //TODO: ignoring higher-order function calls. Fix this!!
+  def functionTypesToInstrument() =  Map()
 
   def additionalfunctionsToAdd(): Seq[FunDef] = Seq()// - max functions are inlined, so they need not be added
 
   def instrumentMatchCase(me: MatchExpr, mc: MatchCase,
-    caseExprCost: Expr, scrutineeCost: Expr): Expr = {
+    caseExprCost: Expr, scrutineeCost: Expr)(implicit fd: FunDef): Expr = {
     val costMatch = costOfExpr(me)
     def totalCostOfMatchPatterns(me: MatchExpr, mc: MatchCase): BigInt = 0
     combineDepthIds(costMatch, List(caseExprCost, scrutineeCost))
@@ -49,9 +55,12 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
     val costOfParent = costOfExpr(e)
     e match {
       case Variable(id) if letIdMap.contains(id) =>
-        // add the cost of instrumentation here
-        Plus(costOfParent, si.selectInst(fd)(letIdMap(id).toVariable, inst))
-
+        // add the cost of instrumentation here if the variable is an let identifier
+        val nid = letIdMap(id)
+        if (ExprInstrumenter.isInstVar(nid))
+          Plus(costOfParent, si.selectInst(fd)(nid.toVariable, inst))
+        else
+          costOfParent
       case t: Terminal => costOfParent
       case FunctionInvocation(tfd, args) =>
         val depthvar = subInsts.last
@@ -74,7 +83,7 @@ class DepthInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
   }
 
   def instrumentIfThenElseExpr(e: IfExpr, condInst: Option[Expr],
-    thenInst: Option[Expr], elzeInst: Option[Expr]): (Expr, Expr) = {
+    thenInst: Option[Expr], elzeInst: Option[Expr])(implicit fd: FunDef): (Expr, Expr) = {
 
     val cinst = condInst.toList
     val tinst = thenInst.toList

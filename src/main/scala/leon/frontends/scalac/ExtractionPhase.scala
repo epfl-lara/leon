@@ -25,14 +25,14 @@ object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
 
     val settings = new Settings
 
-    def getFiles(path: String): Option[Array[String]] = 
+    def getFiles(path: String): Option[Array[String]] =
       scala.util.Try(new File(path).listFiles().map{ _.getAbsolutePath }).toOption
-    
+
     val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource).map{
       _.getLocation.getPath
     }.orElse( for {
       // We are in Eclipse. Look in Eclipse plugins to find scala lib
-      eclipseHome <- Option(System.getenv("ECLIPSE_HOME")) 
+      eclipseHome <- Option(System.getenv("ECLIPSE_HOME"))
       pluginsHome = eclipseHome + "/plugins"
       plugins <- getFiles(pluginsHome)
       path <- plugins.find{ _ contains "scala-library"}
@@ -40,11 +40,11 @@ object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
       "No Scala library found. If you are working in Eclipse, " +
       "make sure to set the ECLIPSE_HOME environment variable to your Eclipse installation home directory"
     ))
-    
+
     settings.classpath.value   = scalaLib
     settings.usejavacp.value   = false
     settings.deprecation.value = true
-    settings.Yrangepos.value   = true
+    settings.Yrangepos.value   = !ctx.findOptionOrDefault(GlobalOptions.optDisablePos)
     settings.skip.value        = List("patmat")
 
     val compilerOpts = Build.libFiles ::: args.filterNot(_.startsWith("--"))
@@ -60,7 +60,6 @@ object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
       //     println(" => "+p.toString)
       //   )
       // }
-
 
       val compiler = new ScalaCompiler(settings, ctx)
       val run = new compiler.Run

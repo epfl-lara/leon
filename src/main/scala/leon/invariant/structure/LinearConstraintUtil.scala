@@ -101,15 +101,15 @@ object LinearConstraintUtil {
       case Times(e1, e2) =>
         e2 match {
           case Variable(_) | ResultVariable(_) | FunctionInvocation(_, _) =>
-          case _                        => throw new IllegalStateException("Multiplicand not a constraint variable: " + e2)
+          case _ => throw new IllegalStateException("Multiplicand not a constraint variable: " + e2)
         }
         e1 match {
           case _ if (isTemplateExpr(e1)) => addCoefficient(e2, e1)
-          case _ => throw new IllegalStateException("Coefficient not a constant or template expression: " + e1)
+          case _                         => throw new IllegalStateException("Coefficient not a constant or template expression: " + e1)
         }
-      case Variable(_) => addCoefficient(minterm, one) //here the coefficient is 1
+      case Variable(_)       => addCoefficient(minterm, one) //here the coefficient is 1
       case ResultVariable(_) => addCoefficient(minterm, one)
-      case _ => throw new IllegalStateException("Unhandled min term: " + minterm)
+      case _                 => throw new IllegalStateException("Unhandled min term: " + minterm)
     })
 
     if (coeffMap.isEmpty && constant.isEmpty) {
@@ -125,33 +125,45 @@ object LinearConstraintUtil {
   /**
    * This method may have to do all sorts of transformation to make the expressions linear constraints.
    * This assumes that the input expression is an atomic predicate (i.e, without and, or and nots)
-   * This is subjected to constant modification.
+   * Note: It may seem that the following code does not handle all cases of `real valued` trees.
+   * However, Orb uses uses normal expression constructors like Plus/Minus to also handle real arithmetic
+   * operations.
    */
   def makeLinear(atom: Expr): Expr = {
 
-    //pushes the minus inside the arithmetic terms
-    //we assume that inExpr is in linear form
-    def pushMinus(inExpr: Expr): Expr = {
+    /**
+     * pushes the minus inside the arithmetic terms.
+     * we assume that inExpr is in linear form.
+     * This function does not preserve real-valued trees.
+     */
+    //
+    def pushMinus(inExpr: Expr, real: Boolean = false): Expr = {
+      val timesOp = if (real) RealTimes else Times
+      val minusOne = if (real) FractionalLiteral(-1, 1) else mone
       inExpr match {
         case IntLiteral(v)                       => IntLiteral(-v)
         case InfiniteIntegerLiteral(v)           => InfiniteIntegerLiteral(-v)
-        case t: Terminal                         => Times(mone, t)
-        case fi @ FunctionInvocation(fdef, args) => Times(mone, fi)
+        case FractionalLiteral(n, m)             => FractionalLiteral(-n, m)
+        case t: Terminal                         => timesOp(minusOne, t)
+        case fi @ FunctionInvocation(fdef, args) => timesOp(minusOne, fi)
         case UMinus(e1)                          => e1
         case RealUMinus(e1)                      => e1
         case Minus(e1, e2)                       => Plus(pushMinus(e1), e2)
-        case RealMinus(e1, e2)                   => Plus(pushMinus(e1), e2)
+        case RealMinus(e1, e2)                   => RealPlus(pushMinus(e1), e2)
         case Plus(e1, e2)                        => Plus(pushMinus(e1), pushMinus(e2))
-        case RealPlus(e1, e2)                    => Plus(pushMinus(e1), pushMinus(e2))
+        case RealPlus(e1, e2)                    => RealPlus(pushMinus(e1), pushMinus(e2))
         case Times(e1, e2) =>
           //here push the minus in to the coefficient which is the first argument
           Times(pushMinus(e1), e2)
-        case RealTimes(e1, e2) => Times(pushMinus(e1), e2)
+        case RealTimes(e1, e2) => RealTimes(pushMinus(e1, real = true), e2)
         case _                 => throw new NotImplementedException("pushMinus -- Operators not yet handled: " + inExpr)
       }
     }
 
-    //we assume that ine is in linear form
+    /**
+     * we assume that ine is in linear form.
+     * This function preserves real-valued trees.
+     */
     def pushTimes(mul: Expr, ine: Expr): Expr = {
       val isReal = ine.getType == RealType && mul.getType == RealType
       val timesCons =
@@ -232,9 +244,9 @@ object LinearConstraintUtil {
           newop(finale, zero)
         }
         case Minus(e1, e2)     => Plus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
-        case RealMinus(e1, e2) => RealPlus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2)))
+        case RealMinus(e1, e2) => Plus(mkLinearRecur(e1), pushMinus(mkLinearRecur(e2), real = true))
         case UMinus(e1)        => pushMinus(mkLinearRecur(e1))
-        case RealUMinus(e1)    => pushMinus(mkLinearRecur(e1))
+        case RealUMinus(e1)    => pushMinus(mkLinearRecur(e1), real = true)
         case Times(_, _) | RealTimes(_, _) => {
           val Operator(Seq(e1, e2), op) = inExpr
           val (r1, r2) = (mkLinearRecur(e1), mkLinearRecur(e2))
@@ -403,6 +415,37 @@ object LinearConstraintUtil {
   }
 
   /**
+   * Checks linearity with out convertiing to a linear constraint.
+   */
+  def isLinearAtom(atom: Expr): Boolean = {
+    sealed abstract class LnRes
+    case object Const extends LnRes
+    case object Linear extends LnRes
+    case object NL extends LnRes
+    def rec(e: Expr): LnRes = e match {
+      case Times(_, _) | RealTimes(_, _) =>
+        val Operator(Seq(l, r), _) = e
+        val rl = rec(l)
+        val rr = rec(r)
+        if (rl == NL || rr == NL) NL
+        else if (rl == Linear && rr == Linear) NL
+        else if (rl == Linear || rr == Linear) Linear
+        else Const
+      case _: Literal[_] => Const
+      case _: Variable   => Linear
+      case Operator(args, op) =>
+        (args.foldLeft(None: Option[LnRes]) {
+          case (acc, arg) if acc == NL => Some(NL)
+          case (acc, arg) if acc == Linear =>
+            if (rec(arg) != NL) Some(Linear)
+            else Some(NL)
+          case (acc, arg) => Some(rec(arg))
+        }).get
+    }
+    rec(atom) != NL
+  }
+
+  /**
    * Checks if the expression is linear i.e,
    * is only conjuntion and disjunction of linear atomic predicates
    */
@@ -414,7 +457,8 @@ object LinearConstraintUtil {
       case Implies(e1, e2) => isLinearFormula(e1) && isLinearFormula(e2)
       case t: Terminal     => true
       case atom =>
-        exprToTemplate(atom).isInstanceOf[LinearConstraint]
+        //exprToTemplate(atom).isInstanceOf[LinearConstraint]
+        isLinearAtom(atom)
     }
   }
 }

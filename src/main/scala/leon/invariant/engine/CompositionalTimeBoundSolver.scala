@@ -14,7 +14,7 @@ import leon.invariant.structure.Formula
 import leon.invariant.structure.Call
 import leon.invariant.util._
 import leon.invariant.factories.TemplateSolverFactory
-import leon.invariant.util.Minimizer
+import leon.invariant.templateSolvers.Minimizer
 import leon.solvers.Model
 import Util._
 import PredicateUtil._

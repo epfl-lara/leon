@@ -573,6 +573,7 @@ trait SMTLIBTarget extends Interruptible {
       case RealMinus(a, b)           => Reals.Sub(toSMT(a), toSMT(b))
       case RealTimes(a, b)           => Reals.Mul(toSMT(a), toSMT(b))
       case RealDivision(a, b)        => Reals.Div(toSMT(a), toSMT(b))
+      case RealUMinus(a)             => Reals.Neg(toSMT(a))
 
       case And(sub)                  => SmtLibConstructors.and(sub.map(toSMT))
       case Or(sub)                   => SmtLibConstructors.or(sub.map(toSMT))
@@ -717,7 +718,7 @@ trait SMTLIBTarget extends Interruptible {
 
       case (SNumeral(n), Some(RealType)) =>
         FractionalLiteral(n, 1)
-      
+
       case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
         IfExpr(
           fromSMT(cond, Some(BooleanType)),
