@@ -161,6 +161,8 @@ class SerialInstrumenter(program: Program,
       (fd -> new FunDef(FreshIdentifier(fd.id.name, fd.returnType), fd.tparams, newparams, nretType))
     }
   }.toMap
+  
+  //println("Functions with mappings: "+(instFuncs).map(_.id))
 
   def instrumenters(fd: FunDef) = funcInsts(fd) map instToInstrumenter.apply _
 
@@ -461,7 +463,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             else nid.toVariable
           } else v
           val instPart = ictx.instrumenters map (_.instrument(v, Seq()))
-          Tuple(valPart +: instPart)
+          Tuple(valPart +: instPart)          
         case t: Terminal =>
           val instPart = ictx.instrumenters map (_.instrument(t, Seq()))
           val finalRes = Tuple(t +: instPart)
@@ -496,7 +498,7 @@ class ExprInstrumenter(ictx: InstruContext) {
       case fi @ FunctionInvocation(tfd @ TypedFunDef(fd, tps), args) =>
         // here, selectInst must refer to the target function, not the current function
         val selectInst = serialInst.selectInst(fd) _
-        val newfd = TypedFunDef(funMap(fd), tps map serialInst.instrumentType)
+        val newfd = TypedFunDef(funMap.getOrElse(fd, fd), tps map serialInst.instrumentType)
         val newFunInv = FunctionInvocation(newfd, subeVals)
         //create a variable to store the result of function invocation
         if (serialInst.instFuncs(fd)) { //this function is also instrumented

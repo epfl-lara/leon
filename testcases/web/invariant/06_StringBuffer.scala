@@ -57,7 +57,7 @@ object StringBuffer {
         }
       }
     }
-  } ensuring(res => true && tmpl((a,b,c,d,e) => steps <= a*((k+1)*(length(s1) + length(s2))) + b*size(str1) + e))
+  } ensuring(_ => steps <= ? * ((k+1)*(length(s1) + length(s2))) + ? * size(str1) + ?)
 
   def max(x: BigInt, y: BigInt) : BigInt = if(x >= y) x else y
 }
