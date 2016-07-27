@@ -21,7 +21,6 @@ object StdIn {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeReadInt(implicit state: State): Int = {
     scala.io.StdIn.readInt
   } ensuring((x: Int) => true)
@@ -35,7 +34,6 @@ object StdIn {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeReadBigInt(implicit state: State): BigInt = {
     BigInt(scala.io.StdIn.readInt)
   } ensuring((x: BigInt) => true)
@@ -49,7 +47,6 @@ object StdIn {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeReadBoolean(implicit state: State): Boolean = {
     scala.io.StdIn.readBoolean
   } ensuring((x: Boolean) => true)

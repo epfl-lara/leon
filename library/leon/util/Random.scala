@@ -23,7 +23,6 @@ object Random {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeNextBoolean(implicit state: State): Boolean = {
     scala.util.Random.nextBoolean
   } ensuring((x: Boolean) => true)
@@ -39,7 +38,6 @@ object Random {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeNextInt(implicit state: State): Int = {
     scala.util.Random.nextInt
   } ensuring((x: Int) => true)
@@ -56,7 +54,6 @@ object Random {
 
   @library
   @extern
-  @isabelle.noBody()
   def nativeNextInt(max: Int)(implicit state: State): Int = {
     scala.util.Random.nextInt(max)
   } ensuring(res => res >= 0 && res < max)
@@ -72,7 +69,6 @@ object Random {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeNextBigInt(implicit state: State): BigInt = {
     BigInt(scala.util.Random.nextInt)
   } ensuring((x: BigInt) => true)
@@ -89,7 +85,6 @@ object Random {
 
   @library
   @extern
-  @isabelle.noBody()
   private def nativeNextBigInt(max: BigInt)(implicit state: State): BigInt = {
     BigInt(scala.util.Random.nextInt(max.toInt))
   } ensuring((x: BigInt) => x >= 0 && x < max)
