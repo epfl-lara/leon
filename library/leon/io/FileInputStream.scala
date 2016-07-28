@@ -91,7 +91,6 @@ case class FileInputStream(var filename: Option[String]) {
   }
 
   @library
-  @isabelle.noBody()
   @cCode.function(code = """
     |int32_t __FUNCTION__(FILE* this, void* unused) {
     |  int32_t x;
@@ -108,7 +107,6 @@ case class FileInputStream(var filename: Option[String]) {
   // Implementation detail
   @library
   @extern
-  @isabelle.noBody()
   @cCode.drop
   private def nativeReadInt(implicit state: State): Int = {
     // TODO Using Java or Scala to implement a simple readInt method
