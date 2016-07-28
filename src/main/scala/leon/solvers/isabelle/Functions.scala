@@ -48,7 +48,7 @@ final class Functions(context: LeonContext, program: Program, types: Types, funs
     case Left(_) => context.reporter.internalError("unexpected cycle in call graph")
   }
 
-  context.reporter.debug(s"Functions to be defined: ${groups.map(_.map(_.qualifiedName(program)).mkString("{", ", ", "}")).mkString(", ")}")
+  context.reporter.debug("Functions to be defined: " + groups.map(_.map(_.qualifiedName(program)).mkString("{", ", ", "}")).mkString(", "))
 
   private def globalLookup(data: List[FunDef])(fun: FunDef, typ: Typ) =
     if (data.contains(fun))
@@ -84,18 +84,32 @@ final class Functions(context: LeonContext, program: Program, types: Types, funs
 
     system.invoke(Declare)(defs.map(_.id.mangledName)).assertSuccess(context).flatMap { case () => Future.traverse(defs) { fun =>
       val name = fun.id.mangledName
+      val qname = fun.qualifiedName(program)
       val params = Future.traverse(fun.params.toList) { param =>
         types.typ(param.getType, strict = true).map(param.id.mangledName -> _)
       }
 
       val full = fun.annotations.contains("isabelle.fullBody")
       val none = fun.annotations.contains("isabelle.noBody")
+      val ext  = fun.annotations.contains("extern")
 
-      val body = (full, none) match {
-        case (true, false) =>  translator.term(fun.fullBody, Nil, lookup)
-        case (false, true) =>  translator.mkFreshError(None)
-        case (false, false) => translator.term(fun.body.get, Nil, lookup)
-        case (true, true) =>   context.reporter.fatalError(s"Conflicting body annotations for function definition ${fun.qualifiedName(program)}")
+      if (ext && none)
+        context.reporter.warning(s"Redundant isabelle.noBody annotation for function definition $qname; extern already elides the body")
+
+      val body = (full, none || ext) match {
+        case (true, false) =>
+          translator.term(fun.fullBody, Nil, lookup)
+        case (false, true) =>
+          translator.mkFreshError(None)
+        case (false, false) =>
+          fun.body match {
+            case Some(body) =>
+              translator.term(body, Nil, lookup)
+            case None =>
+              context.reporter.fatalError(s"No body present for function definition $qname")
+          }
+        case (true, true) =>
+          context.reporter.fatalError(s"Conflicting annotations for function definition $qname; cannot combine isabelle.fullBody with extern or isabelle.noBody")
       }
 
       for {
