@@ -25,6 +25,9 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, program: Program): Program = {
 
+    //println(program.definedClasses.map(_.mutableTParams))
+    //println(program.definedClasses.map(_.tparams.map(_.tp.isMutable)))
+
     val effectsAnalysis = new EffectsAnalysis
 
     //we need to perform this now, because as soon as we apply the def transformer
@@ -545,6 +548,15 @@ object AntiAliasingPhase extends TransformationPhase {
         }
         case l@LetDef(fds, body) => {
           fds.foreach(fd => fd.body.foreach(bd => checkReturnValue(bd, bindings)))
+          (None, bindings)
+        }
+
+        case CaseClass(ct, args) => {
+          ct.classDef.tparams.zip(ct.tps).foreach{ case (typeParam, instanceType) => {
+            if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
+              ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
+            }
+          }}
           (None, bindings)
         }
 

@@ -272,6 +272,8 @@ trait ASTExtractors {
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(ExSelected("scala", "Predef", "require"), contractBody :: Nil) =>
          Some(contractBody)
+        case Apply(ExSelected("leon", "lang", "StaticChecks", "require"), contractBody :: Nil) =>
+         Some(contractBody)
         case _ => None
       }
     }
@@ -409,6 +411,8 @@ trait ASTExtractors {
          Some((contractBody, None))
         case Apply(ExSelected("scala", "Predef", "assert"), contractBody :: (error: Literal) :: Nil) =>
          Some((contractBody, Some(error.value.stringValue)))
+        case Apply(ExSelected("leon", "lang", "StaticChecks", "assert"), contractBody :: Nil) =>
+         Some((contractBody, None))
         case _ =>
          None
       }
@@ -460,9 +464,17 @@ trait ASTExtractors {
             case ExConstructorDef() => true
             case _ => false
           }.get.asInstanceOf[DefDef]
+          //println("extract constructor: " + constructor)
 
           val valDefs = constructor.vparamss.flatten
           //println("valDefs: " + valDefs)
+
+          //valDefs.foreach(vd => println(vd.symbol.tpe.toString == "Test.Mutable[A]"))
+
+          //if(valDefs.exists(vd => vd.symbol.tpe.toString == "Test.Mutable[A]")) {
+          //  println("found evidence")
+          //  println(name)
+          //}
 
           //impl.children foreach println
 
@@ -481,6 +493,10 @@ trait ASTExtractors {
           //}
 
           val args = symbols zip valDefs
+          //if(valDefs.exists(vd => vd.symbol.tpe.toString == "Test.Mutable[A]")) {
+          //  println("symbols: " + symbols)
+          //  println("args: " + args)
+          //}
 
           Some((name.toString, cd.symbol, args, impl))
         }
@@ -951,6 +967,11 @@ trait ASTExtractors {
     object ExCaseClassConstruction {
       def unapply(tree: Apply): Option[(Tree,Seq[Tree])] = tree match {
         case Apply(s @ Select(New(tpt), n), args) if n == nme.CONSTRUCTOR => {
+          Some((tpt, args))
+        }
+        //essentially this ignores implicit evidence for mutable types annotations
+        case Apply(Apply(s @ Select(New(tpt), n), args), List(TypeApply(ExSelected("leon", "lang", "package", "mutable"), tps))) if n == nme.CONSTRUCTOR => {
+          //println("stuff tps: " + tps)
           Some((tpt, args))
         }
         case _ => None
