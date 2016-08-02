@@ -606,13 +606,7 @@ trait CodeExtraction extends ASTExtractors {
         //println("valDefs: " + valDefs)
         valDefs.filter(vd => vd.symbol.tpe.toString.startsWith("leon.lang.Mutable")).flatMap(vd => {
           val TypeRef(_, sym, tps) = vd.symbol.tpe
-          println("found evidence")
-          println("sym: " + sym)
-          println("tps: " + tps)
-          println(vd)
           val tpSym: String = tps.head.toString
-          println("tparam: " + tpSym)
-          println(tparamsMap)
           tparamsMap.find(_._1.name.toString == tpSym).map(t => TypeParameterDef(t._2))
         })
       }
