@@ -16,13 +16,13 @@ object StdIn {
   @isabelle.noBody()
   def readInt(implicit state: State): Int = {
     state.seed += 1
-    nativeReadInt
+    nativeReadInt(state.seed)
   }
 
   @library
   @extern
   @isabelle.noBody()
-  private def nativeReadInt(implicit state: State): Int = {
+  private def nativeReadInt(implicit state: State)(seed: BigInt): Int = {
     scala.io.StdIn.readInt
   } ensuring((x: Int) => true)
 
@@ -30,13 +30,13 @@ object StdIn {
   @isabelle.noBody()
   def readBigInt(implicit state: State): BigInt = {
     state.seed += 1
-    nativeReadBigInt
+    nativeReadBigInt(state.seed)
   }
 
   @library
   @extern
   @isabelle.noBody()
-  private def nativeReadBigInt(implicit state: State): BigInt = {
+  private def nativeReadBigInt(seed: BigInt): BigInt = {
     BigInt(scala.io.StdIn.readInt)
   } ensuring((x: BigInt) => true)
 
@@ -44,13 +44,13 @@ object StdIn {
   @isabelle.noBody()
   def readBoolean(implicit state: State): Boolean = {
     state.seed += 1
-    nativeReadBoolean
+    nativeReadBoolean(state.seed)
   }
 
   @library
   @extern
   @isabelle.noBody()
-  private def nativeReadBoolean(implicit state: State): Boolean = {
+  private def nativeReadBoolean(seed: BigInt): Boolean = {
     scala.io.StdIn.readBoolean
   } ensuring((x: Boolean) => true)
 
