@@ -56,6 +56,16 @@ class VarContext(val inputVariables: Set[Identifier], val outputVariables: Set[I
       FreshIdentifier(ov.name, IntegerType, false)
     }
   }
+  
+  def newIdentifierName(init: String = ""): String = {
+    for(i <- 0 until 26) {
+      val c = init + ('a'.toInt + i).toChar.toString
+      if(idToInputVar.iterator.forall(_._1.name != c) && idToOutputVar.iterator.forall(_._1.name != c)) {
+        return c
+      }
+    }
+    newIdentifierName(init + "a")
+  }
 }
 
 case class NotInputVarException(msg: String) extends Exception(msg)
@@ -67,7 +77,8 @@ object ComfusyConverters {
     case Minus(a, b) => convertToAPAInputTerm(a) - convertToAPAInputTerm(b)
     case UMinus(a) => -convertToAPAInputTerm(a)
     case Times(a, b) => convertToAPAInputTerm(a) * convertToAPAInputTerm(b)
-    case Division(a, b) => convertToAPAInputTerm(a) / convertToAPAInputTerm(b)
+    case Division(a, b) => convertToAPAInputTerm(a) / convertToAPAInputTerm(b).assumeNotZero()
+    case purescala.Expressions.Assert(_, Some("Division by zero"), a) => convertToAPAInputTerm(a)
     case IfExpr(LessEquals(a1, InfiniteIntegerLiteral(zero)), UMinus(a2), a3) if a1 == a2 && a2 == a3 && zero == BigInt(0) => APAInputAbs(convertToAPAInputTerm(a1))
     //APAInputMod is not supported in Comfusy
     case Variable(i) if vc.inputVariables contains i => APAInputCombination(0, (1, vc.getInputVar(i))::Nil)
@@ -102,6 +113,7 @@ object ComfusyConverters {
       case UMinus(a) => aux(a)
       case Times(a, b) => aux(a) && aux(b)
       case Division(a, b) => aux(a) && aux(b)
+      case purescala.Expressions.Assert(_, Some("Division by zero"), a) => aux(a)
       //case Remainder(a, b) => aux(a) && aux(b)
       //case Modulo(a, b) => aux(a) && aux(b)
       case Variable(i) => vc.inputVariables contains i
@@ -174,7 +186,7 @@ object ComfusyConverters {
         val listType = LeonList.get
         val applyfun = vc.sctx.program.library.lookupUnique[FunDef]("leon.collection.List.apply")
         val bezoutWithBase = vc.sctx.program.library.bezoutWithBase.get
-        val b = FreshIdentifier("b", listType.typed(Seq(listType.typed(Seq(IntegerType)))), false)
+        val b = FreshIdentifier(vc.newIdentifierName(), listType.typed(Seq(listType.typed(Seq(IntegerType)))), false)
         val decomposed: List[Expr => Expr] = vs.zipWithIndex.map{ case (lv, i) =>
           lv.zipWithIndex.map { case (v, j) =>
             (w: Expr) =>
@@ -196,6 +208,8 @@ object ComfusyConverters {
   
   def APASplitConditionToExpr(sc: APASplitCondition)(implicit vc: VarContext): Expr = sc match {
     case APAEmptySplitCondition() => BooleanLiteral(true)
+    case APACaseSplitCondition(Nil) => BooleanLiteral(true)
+    case APACaseSplitCondition(a::Nil) => APAAbstractConditionToExpr(a)
     case APACaseSplitCondition(csl) => Or(csl.map(e => APAAbstractConditionToExpr(e)))
     case APAForCondition(vl, lower_range, upper_range, global_condition) =>
       val range = vc.sctx.program.library.lookupUnique[FunDef]("leon.collection.List.range")
@@ -266,7 +280,7 @@ object ComfusyConverters {
   def APAProgramToExpr(prog: APAProgram, expected_output_vars: List[OutputVar])(implicit vc: VarContext): Expr = {
     val assigns = ListInputAssignmentToExpr(prog.input_assignment)
     val affectedOutputVariables = prog.output_assignment.map(_._1).toSet
-    val referedOutputVariables = prog.output_assignment.flatMap(_._2.output_variables) filterNot affectedOutputVariables
+    val referedOutputVariables = (expected_output_vars ++ prog.output_assignment.flatMap(_._2.output_variables)) filterNot affectedOutputVariables
     val assignMiddle = APASplitToExpr(prog.case_splits, referedOutputVariables)
     val assigns2 = ListOutputAssignmentToExpr(prog.output_assignment)
     val output_expr = tupleWrap(expected_output_vars.map(ov => Variable(vc.getIdentifier(ov))))
@@ -354,7 +368,14 @@ object ComfusyConverters {
     case APAInputCombination(coef, input_linear) =>
       ((InfiniteIntegerLiteral(BigInt(coef)): Expr) /: input_linear) { (c: Expr, iv) =>
         val (i, v) = iv
-        Plus(c, Times(InfiniteIntegerLiteral(i), Variable(vc.getIdentifier(v))))
+        val newTerm = if( i == BigInt(1) ) 
+          Variable(vc.getIdentifier(v))
+        else
+          Times(InfiniteIntegerLiteral(i), Variable(vc.getIdentifier(v)))
+        if( c == InfiniteIntegerLiteral(BigInt(0)))
+          newTerm
+        else
+          Plus(c, newTerm)
       }
     case APAInputDivision(numerator, denominator) =>
       Division(APAInputTermToExpr(APAInputMultiplication(numerator)), APAInputTermToExpr(APAInputMultiplication(denominator)))
@@ -523,6 +544,7 @@ case object IntegerEquality extends Rule("Solve integer equality"){
             val (cond, prog) = problem.solve()
             //println(s"Solution condition = $cond under program = $prog")
             val solution = convertToSolution(cond, prog)
+            //println(s"Rendered to $solution")
             RuleClosed(solution)
           })
         }

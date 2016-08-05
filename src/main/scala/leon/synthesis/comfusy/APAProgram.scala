@@ -522,7 +522,7 @@ case class APAProgram(input_variables: List[InputVar],
     val prog_input = InputAssignment.listToCommonString(input_assignment, indent)
     val prog_case_split = case_splits.toCommonString(indent)
     val prog_output = output_assignment map {
-      case (i, t) => indent+APAProgram.outputAssignmentToString(i, t)
+      case (i, t) => indent + APAProgram.outputAssignmentToString(i, t)
     } match {
       case Nil => ""
       case l => l reduceLeft (APAAbstractProgram.combineSentences(_, _))
