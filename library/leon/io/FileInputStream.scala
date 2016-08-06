@@ -47,7 +47,7 @@ object FileInputStream {
 
 @library
 @cCode.typedef(alias = "FILE*", include = "stdio.h")
-case class FileInputStream(var filename: Option[String], var consumed: Long = 0) {
+case class FileInputStream(var filename: Option[String], var consumed: BigInt = 0) {
 
   /**
    * Close the stream; return `true` on success.
@@ -150,7 +150,7 @@ case class FileInputStream(var filename: Option[String], var consumed: Long = 0)
     }
 
     // Skip what was already consumed by previous reads
-    assert(in.skip(consumed) == consumed) // Yes, skip might not skip the requested number of bytes...
+    assert(in.skip(consumed.toLong) == consumed.toLong) // Yes, skip might not skip the requested number of bytes...
 
     // Handle error in parsing and close the stream, return the given error code
     def fail(e: Int): Int = {
