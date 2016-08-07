@@ -78,15 +78,13 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt = 
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, void* unused) {
+    |bool __FUNCTION__(FILE* this) {
     |  return this != NULL;
     |}
     """
   )
   // We assume the stream to be opened if and only if the filename is defined.
-  def isOpen(implicit state: State): Boolean = {
-    state.seed += 1
-
+  def isOpen: Boolean = {
     filename.isDefined
   }
 
