@@ -132,7 +132,6 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     val EOF = -1
 
     val in = new java.io.FileInputStream(filename.get)
-    assert(in.markSupported())
 
     // Keep track of the number of by read so far in this operation
     var reads = 0
@@ -145,7 +144,6 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     def markStream() = {
       consumed += reads
       reads = 0
-      in.mark(Int.MaxValue)
     }
 
     // Skip what was already consumed by previous reads
