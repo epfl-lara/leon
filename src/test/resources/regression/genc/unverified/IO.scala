@@ -4,7 +4,7 @@ import leon.annotation._
 import leon.io.{ FileOutputStream => FOS, FileInputStream => FIS }
 import leon.io.{ StdIn, StdOut }
 
-object Print {
+object IO {
 
   def getFileName() = "test.txt"
 
