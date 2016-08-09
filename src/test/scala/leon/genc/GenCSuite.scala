@@ -25,7 +25,7 @@ class GenCSuite extends LeonRegressionSuite {
   private val testDir = "regression/genc/"
   private lazy val tmpDir = Files.createTempDirectory("genc")
   private val ccflags = "-std=c99 -g -O0"
-  private val timeout = 10 // seconds, for processes evaluation
+  private val timeout = 60 // seconds, for processes execution
 
   private val counter = new UniqueCounter[Unit]
   counter.nextGlobal // Start with 1
