@@ -120,7 +120,8 @@ final class Functions(context: LeonContext, program: Program, types: Types, funs
       yield
         (name, params, (body, typ))
     }}.flatMap(system.invoke(Functions)).assertSuccess(context).flatMap {
-      case Some(msg) => context.reporter.fatalError(s"In function definition: $msg")
+      case Some(msg) =>
+        context.reporter.fatalError(s"Error in function definition; this usually means that termination could not be proven; error message: $msg")
       case None =>
         def requireProof(fun: FunDef) = funs.contains(fun) || strict
 
