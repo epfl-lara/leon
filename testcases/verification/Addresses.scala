@@ -56,13 +56,12 @@ object Addresses {
 
   def collectA(x:BigInt,l:List) : (BigInt,BigInt,List) = (l match {
     case Nil() => (BigInt(0),BigInt(0),Nil())
-    case Cons(a,b,c,l1) if (a==x) => {
+    case Cons(a,b,c,l1) => {
       val (b2,c2,l2) = collectA(x,l1)
-      (max(b,b2),max(c,c2),l2)
-    }
-    case Cons(a,b,c,l1) if (a!=x) => {
-      val (b2,c2,l2) = collectA(x,l1)
-      (b2,c2,Cons(a,b,c,l2))
+      if (a == x)
+        (max(b,b2),max(c,c2),l2)
+      else
+        (b2,c2,Cons(a,b,c,l2))
     }
   }) ensuring (res => {
     val (b,c,l1) = res
