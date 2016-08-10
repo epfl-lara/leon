@@ -111,7 +111,7 @@ script := {
 
 sourceGenerators in Compile <+= Def.task {
   val libFiles = ((baseDirectory.value / "library") ** "*.scala").getPaths
-  val build = (sourceManaged in Compile).value / "leon" / "Build.scala";
+  val build = (sourceManaged in Compile).value / "leon" / "Build.scala"
   IO.write(build, s"""|package leon
                       |
                       |object Build {
