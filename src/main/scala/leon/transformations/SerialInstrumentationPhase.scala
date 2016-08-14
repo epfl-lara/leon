@@ -260,17 +260,20 @@ class SerialInstrumenter(program: Program,
     instCall(e) match {
       case None => throw new IllegalStateException(s"Expr not an inst call" + e)
       case Some(inst) =>
-        val FunctionInvocation(_, Seq(instArg)) = e // here, e has to be of this form
-        instArg match {
-          case FunctionInvocation(TypedFunDef(fd, targs), args) =>
-            val ntargs = targs map instrumentType
-            val nargs = args map mapFun
-            TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
+        e match {
+          case FunctionInvocation(_, Seq(instArg)) => // here, e has to be of this form       
+            instArg match {
+              case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+                val ntargs = targs map instrumentType
+                val nargs = args map mapFun
+                TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd), ntargs), nargs), instIndex(fd)(inst))
 
-          case Application(fterm, args) =>
-            val nargs = (fterm +: args) map mapFun //lambda has to be instrumented here
-            val ftype = fterm.getType.asInstanceOf[FunctionType]
-            TupleSelect(Application(nargs.head, nargs.tail), instIndex(ftype)(inst))
+              case Application(fterm, args) =>
+                val nargs = (fterm +: args) map mapFun //lambda has to be instrumented here
+                val ftype = fterm.getType.asInstanceOf[FunctionType]
+                TupleSelect(Application(nargs.head, nargs.tail), instIndex(ftype)(inst))
+            }
+          case _ => throw new IllegalStateException(s"Cannot use an instrumentation variable in body without arugments" + e)
         }
     }
   }

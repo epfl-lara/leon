@@ -53,7 +53,7 @@ object RealTimeQueue {
     require(l.valid)
     l match {
       case c @ SCons(_, _, _) =>
-        c.tail.cached && isConcrete(c.tail*)
+        cached(c.tail) && isConcrete(c.tail*)
       case _ => true
     }
   }
@@ -88,7 +88,7 @@ object RealTimeQueue {
     }
   } ensuring (res => res.valid &&
     res.size == f.size + r.size + a.size &&
-    !res.isEmpty && time <= ?)
+    !res.isEmpty && steps <= ?)
 
   /**
    * Returns the first element of the stream whose tail is not memoized.
@@ -97,7 +97,7 @@ object RealTimeQueue {
     require(l.valid)
     l match {
       case c @ SCons(_, _, _) =>
-        if (c.tail.cached)
+        if (cached(c.tail))
           firstUneval(c.tail*)
         else l
       case _ => l
@@ -147,7 +147,7 @@ object RealTimeQueue {
   def empty[T] = {
     val a: Stream[T] = SNil()
     Queue(a, Nil(), a)
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid && steps <= ?)
 
   /**
    * Reads the first elements of the queue without removing it.
@@ -157,7 +157,7 @@ object RealTimeQueue {
     q.f match {
       case SCons(x, _, _) => x
     }
-  } ensuring (res => time <= ?)
+  } ensuring (res => steps <= ?)
 
   /**
    * Appends an element to the end of the queue
@@ -166,8 +166,8 @@ object RealTimeQueue {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-      res.valid && time <= ?
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
+      res.valid && steps <= ?
   }
 
   /**
@@ -180,8 +180,8 @@ object RealTimeQueue {
         createQ(c.tail, q.r, q.s)
     }
   } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-      res.valid && time <= ?
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
+      res.valid && steps <= ?
   }
 
   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
@@ -192,7 +192,7 @@ object RealTimeQueue {
   def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require(st1.subsetOf(st2) && l1.valid)
     // property
-    (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
+    (firstUneval(l1) in st2) == (firstUneval(firstUneval(l1) in st1) in st2)
   } holds
 
   /**
@@ -200,10 +200,10 @@ object RealTimeQueue {
    */
   @invisibleBody
   def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
-    require(l1.valid && l2.valid && (firstUneval(l1) withState st1) == (firstUneval(l2) withState st1) &&
+    require(l1.valid && l2.valid && (firstUneval(l1) in st1) == (firstUneval(l2) in st1) &&
       st1.subsetOf(st2))
     funeCompose(l1, st1, st2) && // implies: fune(l1, st2) == fune(fune(l1,st1), st2)
       funeCompose(l2, st1, st2) && // implies: fune(l2, st2) == fune(fune(l2,st1), st2)
-      (firstUneval(l1) withState st2) == (firstUneval(l2) withState st2) // property
+      (firstUneval(l1) in st2) == (firstUneval(l2) in st2) // property
   } holds
 }
