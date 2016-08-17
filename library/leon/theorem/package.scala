@@ -129,6 +129,23 @@ package object theorem {
   }
 
   @library
+  def naturalInduction(formula: Identifier => Term, ground: Term, groundCase: Theorem, inductiveCase: Theorem => Theorem): Theorem = {
+
+    // Base case.
+    val z = fresh("z")
+    prove(Implies(groundCase.formula, Let(z, ground, formula(z))))
+
+    // Inductive case.
+    val n = fresh("n")
+    val hyp = toTheorem(And(formula(n), BinOp(">=", Variable(n), ground)))
+    val succN = fresh("succN")
+    prove(Implies(inductiveCase(hyp).formula, Let(succN, BinOp("+", Variable(n), 1), formula(succN))))
+
+    val x = fresh("x")
+    toTheorem(Forall(x, getType[BigInt], Implies(BinOp(">=", Variable(x), ground), formula(x))))
+  }
+
+  @library
   def hypothesis(term: Term, conclusion: Theorem => Theorem): Theorem = 
     toTheorem(Implies(term, conclusion(toTheorem(term)).formula))
 
