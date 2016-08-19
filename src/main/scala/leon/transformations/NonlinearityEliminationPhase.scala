@@ -168,6 +168,9 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
             replaceFun(fd.getPostWoTemplate)
           Some(Lambda(resultBinders, newpost))
         } else None
+        // upate decreases
+        newfd.decreaseMeasure = fd.decreaseMeasure.map(x => replaceFun(x))
+        // update flags
         fd.flags.foreach(newfd.addFlag(_))
     }
     val transProg = copyProgram(program, (defs: Seq[Definition]) => {

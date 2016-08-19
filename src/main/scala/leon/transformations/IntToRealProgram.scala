@@ -19,6 +19,9 @@ import PredicateUtil._
 import TypeUtil._
 import invariant.structure._
 
+/**
+ * This class is not well maintained.
+ */
 abstract class ProgramTypeTransformer {
   protected var defmap = Map[ClassDef, ClassDef]()
   protected var idmap = Map[Identifier, Identifier]()

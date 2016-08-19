@@ -28,7 +28,7 @@ package object lang {
     }
   }
   @inline def because(b: Boolean) = b
-  
+
   @ignore def forall[A](p: A => Boolean): Boolean = sys.error("Can't execute quantified proposition")
   @ignore def forall[A,B](p: (A,B) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
   @ignore def forall[A,B,C](p: (A,B,C) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
@@ -55,12 +55,20 @@ package object lang {
     def passes(tests : A => B ) : Boolean =
       try { tests(in) == out } catch { case _ : MatchError => true }
   }
-  
+
   @ignore
   def byExample[A, B](in: A, out: B): Boolean = {
     sys.error("Can't execute by example proposition")
   }
-  
+
+  /**
+   * A construct for specifying ranking function.
+   */
+  @library
+  def decreases(rankFun: BigInt): Unit = {
+    // no-op (rankFun will be ignored in the actual execution)
+  }
+
   implicit class SpecsDecorations[A](val underlying: A) {
     @ignore
     def computes(target: A) = {
@@ -68,7 +76,7 @@ package object lang {
     } ensuring {
       res => res == target
     }
-    
+
     @ignore // Programming by example: ???[String] ask input
     def ask[I](input : I) = {
       underlying
@@ -76,7 +84,7 @@ package object lang {
       (res: A) => byExample(input, res)
     }
   }
-  
+
   implicit class StringDecorations(val underlying: String) {
     @ignore @inline
     def bigLength() = BigInt(underlying.length)
@@ -99,7 +107,7 @@ package object lang {
       }
     }
   }
-  
+
   @library
   def tupleToString[A, B](t: (A, B), mid: String, f: A => String, g: B => String) = {
     f(t._1) + mid + g(t._2)
@@ -109,7 +117,7 @@ package object lang {
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
-  
+
   case class Mutable[T]()
   implicit def mutable[T] = new Mutable[T]
 

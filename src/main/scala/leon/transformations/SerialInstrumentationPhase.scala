@@ -56,7 +56,6 @@ class SerialInstrumenter(program: Program,
 
   val instToInstrumenter: Map[Instrumentation, Instrumenter] = instFactory(this)
 
-
   // a map from functions to the list of instrumentations to be performed for the function
   val (funcInsts, ftypeInsts) = {
     def update[T](fd: T, inst: Instrumentation, emap: MutableMap[T, List[Instrumentation]]) {
@@ -161,7 +160,7 @@ class SerialInstrumenter(program: Program,
       (fd -> new FunDef(FreshIdentifier(fd.id.name, fd.returnType), fd.tparams, newparams, nretType))
     }
   }.toMap
-  
+
   //println("Functions with mappings: "+(instFuncs).map(_.id))
 
   def instrumenters(fd: FunDef) = funcInsts(fd) map instToInstrumenter.apply _
@@ -261,7 +260,7 @@ class SerialInstrumenter(program: Program,
       case None => throw new IllegalStateException(s"Expr not an inst call" + e)
       case Some(inst) =>
         e match {
-          case FunctionInvocation(_, Seq(instArg)) => // here, e has to be of this form       
+          case FunctionInvocation(_, Seq(instArg)) => // here, e has to be of this form
             instArg match {
               case FunctionInvocation(TypedFunDef(fd, targs), args) =>
                 val ntargs = targs map instrumentType
@@ -329,6 +328,11 @@ class SerialInstrumenter(program: Program,
         //copy annotations
         from.flags.foreach(to.addFlag(_))
         val paramMap = (from.params.map(_.id) zip to.params.map(_.id)).toMap
+        // copy decreases (but it should not use instrumentation)
+        if(from.decreaseMeasure.filter(exists(InstUtil.instCall(_).isDefined)).isDefined) {
+          throw LeonFatalError("The decreases caluse of function: "+from.id+" uses resource variable!")
+        }
+        to.decreaseMeasure = from.decreaseMeasure.map(mapExpr(_, paramMap))
         to.fullBody = from.fullBody match {
           case b @ NoTree(_) => NoTree(to.returnType)
           case Require(pre, body) =>
@@ -466,7 +470,7 @@ class ExprInstrumenter(ictx: InstruContext) {
             else nid.toVariable
           } else v
           val instPart = ictx.instrumenters map (_.instrument(v, Seq()))
-          Tuple(valPart +: instPart)          
+          Tuple(valPart +: instPart)
         case t: Terminal =>
           val instPart = ictx.instrumenters map (_.instrument(t, Seq()))
           val finalRes = Tuple(t +: instPart)

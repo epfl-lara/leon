@@ -1,4 +1,4 @@
-package sortconcat
+package terminationProofs
 
 import leon._
 import mem._
@@ -21,7 +21,7 @@ object SortingnConcat {
       }
     }
 
-    def size = this match {
+    def rank = this match {
       case SCons(_, _, r) => r
       case SNil()         => BigInt(0)
     }
@@ -29,23 +29,40 @@ object SortingnConcat {
     /**
      * A property that is true if `sz` field decreases for the tail of the stream.
      * `sz` is a well-founded ordering.
+     * This is a data structure invariant.
      */
-    /*def valid: Boolean = {
+    def valid: Boolean = {
       this match {
-        case c @ SCons(_, _, r) =>
-          r >= 1 && r == (c.tail*).size + 1 && (c.tail*).valid
+        case c @ SCons(_, tfun, r) =>
+          r >= 0 &&
+          (tfun fmatch[List[BigInt],LList,Boolean] {
+            case (l, _) if tfun.is(() => sort(l)) =>
+              r == l.rank + 1
+             case (a, b) if tfun.is(() => concat(a, b)) =>
+                r == a.rank + b.rank + 1 && b.valid
+          })
         case _ => true
       }
-    }*/
+    }
+
+    def size: BigInt = {
+      require(this.valid)
+      this match {
+        case c@SCons(_, _, r) =>
+          1 + (c.tail*).size
+        case SNil() =>
+          BigInt(0)
+      }
+    } ensuring(res => this.rank == res) // this property states that `rank` and `size` are equivalent
   }
   private case class SCons(x: BigInt, tailFun: () => LList, sz: BigInt) extends LList
   private case class SNil() extends LList
 
   sealed abstract class List[T] {
-    val size: BigInt = {
+    val rank: BigInt = {
       this match {
         case Nil()      => BigInt(0)
-        case Cons(_, t) => 1 + t.size
+        case Cons(_, t) => 1 + t.rank
       }
     } ensuring (_ >= 0)
   }
@@ -63,27 +80,28 @@ object SortingnConcat {
             else Cons(y, Cons(x, ys))
         }
     }
-  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
+  } ensuring (res => res.rank == l.rank && steps <= ? * l.rank + ?)
 
   def sort(l: List[BigInt]): LList = {
     pullMin(l) match {
       case Cons(x, xs) =>
         // here, x is the minimum
-        SCons(x, () => sort(xs), l.size) // sorts lazily only if needed
+        SCons(x, () => sort(xs), l.rank) // sorts lazily only if needed
       case _ =>
         SNil()
     }
-  } ensuring (res => /*res.valid && */res.size == l.size && steps <= ? * l.size + ?)
+  } ensuring (res => res.valid && res.rank == l.rank && steps <= ? * l.rank + ?)
 
-/*  def concat(l1: List[BigInt], l2: LList) : LList = {
+  def concat(l1: List[BigInt], l2: LList) : LList = {
+    require(l2.valid)
     l1 match {
-      case Cons(x, xs) => SCons(x, Stream(() => concat(xs, l2)))
-      case Nil() => SNil()
+      case Cons(x, xs) => SCons(x, () => concat(xs, l2), l1.rank + l2.rank)
+      case Nil() => l2
     }
-  } ensuring(res => time <= ?)*/
+  } ensuring(res => res.valid && res.rank == l1.rank + l2.rank && steps <= ?)
 
   def kthMin(l: LList, k: BigInt): BigInt = {
-    require(/*l.valid &&*/ k >= 1)
+    require(l.valid && k >= 1)
     l match {
       case c@SCons(x, _, _) =>
         if (k == 1) x
@@ -91,5 +109,5 @@ object SortingnConcat {
           kthMin(c.tail, k - 1) // here, k itself is a ranking function.
       case SNil() => BigInt(0)
     }
-  } //ensuring (_ => steps <= ? * (k * l.size) + ? * k + ?)
+  } ensuring (_ => steps <= ? * (k * l.rank) + ? * k + ?)
 }

@@ -162,6 +162,7 @@ object InferenceReportUtil {
     }
     // copy bodies and specs
     for ((from, to) <- initToOutput) {
+      to.decreaseMeasure = from.decreaseMeasure.map(mapExpr)
       to.body = from.body.map(mapExpr)
       to.precondition = from.precondition.map(mapExpr)
       val icOpt = initICMap.get(from)
