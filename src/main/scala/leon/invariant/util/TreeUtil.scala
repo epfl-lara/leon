@@ -178,6 +178,8 @@ object ProgramUtil {
           }
         }
       }
+      //copy decreases
+      to.decreaseMeasure = from.decreaseMeasure
       //copy annotations
       from.flags.foreach(to.addFlag(_))
     }
@@ -211,6 +213,7 @@ object ProgramUtil {
           }
         }
       }
+      to.decreaseMeasure = from.decreaseMeasure
       //copy annotations
       from.flags.foreach(to.addFlag(_))
     }
@@ -243,7 +246,7 @@ object ProgramUtil {
           (u.isMainUnit || !(fd.annotations.contains("library") || fd.isInvariant)))
     }
   }
-  
+
   def userLevelClasses(program: Program): Seq[ClassDef] = {
     program.units.flatMap { u =>
       u.definedClasses.filter(cd => u.isMainUnit || !cd.annotations.contains("library"))
@@ -426,7 +429,7 @@ object PredicateUtil {
     case And(args)         => (args map atomNum).sum
     case Or(args)          => (args map atomNum).sum
     case IfExpr(c, th, el) => atomNum(c) + atomNum(th) + atomNum(el)
-    case Not(arg)          => atomNum(arg)    
+    case Not(arg)          => atomNum(arg)
     case e                 => 1
   }
 

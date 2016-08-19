@@ -59,6 +59,8 @@ object ProgramSimplifier {
 
     for ((from, to) <- funMap) {
       to.fullBody = mapExpr(from.fullBody, from)
+      // update decreases (note: here we are not simplifying decreases, as it should not have been instrumented.)
+      to.decreaseMeasure = from.decreaseMeasure
       //copy annotations
       from.flags.foreach(to.addFlag(_))
     }

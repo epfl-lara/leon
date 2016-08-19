@@ -30,14 +30,14 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   val skipStateVerification = false
   val skipResourceVerification = false
 
-  val name = "Higher-order Memoization Verification Phase"
-  val description = "Coverts a program that uses lazy construct" +
-    " to a program that does not use lazy constructs"
+  val name = "Higher-order/Memoization Verification Phase"
+  val description = "Verifis resource bounds of higher-order programs with memoization."
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
+  val optCheckTerm = LeonFlagOptionDef("checkTerm", "Checks termination of the program as well. This may take a few minutes.", false)
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality, optCheckTerm)
 
   def apply(ctx: LeonContext, prog: Program): MemVerificationReport = {
     val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
@@ -90,9 +90,11 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       prettyPrintProgramToFile(typeCorrectProg, ctx, "-typed")
 
     // check termination of all functions
-    // uncomment the following lines, maybe implemented --withTerm for this
-    // val termReport =  leon.termination.TerminationPhase(ctx, typeCorrectProg)
-    // println("Termintion Results: "+termReport.summaryString)    
+    if (ctx.findOptionOrDefault(optCheckTerm)) {
+      ctx.reporter.info("Checking termination of the input program...")
+      val termReport = leon.termination.TerminationPhase(ctx, typeCorrectProg)
+      println("Termintion Results: " + termReport.summaryString)
+    }
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg, closureFactory)).apply
     if (dumpProgWithPreAsserts)

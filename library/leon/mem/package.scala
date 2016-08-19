@@ -15,7 +15,7 @@ package object mem {
    * This should be applied only over a function invocation or lambda application.
    */
   @library
-  case class Fun[T](v: T) 
+  case class Fun[T](v: T)
 
   @library
   @extern
@@ -74,8 +74,9 @@ package object mem {
    * The argument should be of a function type. Each possible target of the call should then
    * be annotated invstate
    */
+  @library
   @extern
-  def invstateFun[T](f: T): Boolean  = sys.error("invStateFun method is not executable!")
+  def invstateFun[T](f: T): Boolean = sys.error("invStateFun method is not executable!")
 
   /**
    * methods for running instrumented code using memoization
@@ -88,8 +89,8 @@ package object mem {
     res
   }
   @ignore
-  def lookup[T](args:List[Any]): (Boolean, T) = {
-    if(memoTable.contains(args)) {
+  def lookup[T](args: List[Any]): (Boolean, T) = {
+    if (memoTable.contains(args)) {
       (true, memoTable(args).asInstanceOf[T])
     } else {
       (false, null.asInstanceOf[T]) // for ints and bools this will be zero, false

@@ -58,6 +58,8 @@ object ExpressionLifter {
             new FunDef(nname, fd.tparams, fd.params, fd.returnType)
         // remove lazy val/memoized annotations and replace them by a new name
         fd.flags.filterNot(flg => flg == IsField(true) || flg == Annotation("memoize", Seq())).foreach(nfd.addFlag(_))
+        // copy the decreases measure
+        nfd.decreaseMeasure = fd.decreaseMeasure
         (fd -> nfd)
     }.toMap
 
@@ -181,86 +183,4 @@ object ExpressionLifter {
     } else
       progWithClasses
   }
-
-  /**
-   * NOT USED CURRENTLY
-   * Lift the specifications on functions to the invariants corresponding
-   * case classes.
-   * Ideally we should class invariants here, but it is not currently supported
-   * so we create a functions that can be assume in the pre and post of functions.
-   */
-  /*  def liftSpecsToClosures(opToAdt: Map[FunDef, CaseClassDef]) = {
-    val invariants = opToAdt.collect {
-      case (fd, ccd) if fd.hasPrecondition =>
-        val transFun = (args: Seq[Identifier]) => {
-          val argmap: Map[Expr, Expr] = (fd.params.map(_.id.toVariable) zip args.map(_.toVariable)).toMap
-          replace(argmap, fd.precondition.get)
-        }
-        (ccd -> transFun)
-    }.toMap
-    val absTypes = opToAdt.values.collect {
-      case cd if cd.parent.isDefined => cd.parent.get.classDef
-    }
-    val invFuns = absTypes.collect {
-      case abs if abs.knownCCDescendents.exists(invariants.contains) =>
-        val absType = AbstractClassType(abs, abs.tparams.map(_.tp))
-        val param = ValDef(FreshIdentifier("$this", absType))
-        val tparams = abs.tparams
-        val invfun = new FunDef(FreshIdentifier(abs.id.name + "$Inv", Untyped),
-            tparams, BooleanType, Seq(param))
-        (abs -> invfun)
-    }.toMap
-    // assign bodies for the 'invfuns'
-    invFuns.foreach {
-      case (abs, fd) =>
-        val bodyCases = abs.knownCCDescendents.collect {
-          case ccd if invariants.contains(ccd) =>
-            val ctype = CaseClassType(ccd, fd.tparams.map(_.tp))
-            val cvar = FreshIdentifier("t", ctype)
-            val fldids = ctype.fields.map {
-              case ValDef(fid, Some(fldtpe)) =>
-                FreshIdentifier(fid.name, fldtpe)
-            }
-            val pattern = CaseClassPattern(Some(cvar), ctype,
-              fldids.map(fid => WildcardPattern(Some(fid))))
-            val rhsInv = invariants(ccd)(fldids)
-            // assert the validity of substructures
-            val rhsValids = fldids.flatMap {
-              case fid if fid.getType.isInstanceOf[ClassType] =>
-                val t = fid.getType.asInstanceOf[ClassType]
-                val rootDef = t match {
-                  case absT: AbstractClassType => absT.classDef
-                  case _ if t.parent.isDefined =>
-                    t.parent.get.classDef
-                }
-                if (invFuns.contains(rootDef)) {
-                  List(FunctionInvocation(TypedFunDef(invFuns(rootDef), t.tps),
-                    Seq(fid.toVariable)))
-                } else
-                  List()
-              case _ => List()
-            }
-            val rhs = Util.createAnd(rhsInv +: rhsValids)
-            MatchCase(pattern, None, rhs)
-        }
-        // create a default case
-        val defCase = MatchCase(WildcardPattern(None), None, Util.tru)
-        val matchExpr = MatchExpr(fd.params.head.id.toVariable, bodyCases :+ defCase)
-        fd.body = Some(matchExpr)
-    }
-    invFuns
-  }*/
-  // Expressions for testing solvers
-  // a test expression
-  /*val tparam =
-    val dummyFunDef = new FunDef(FreshIdentifier("i"),Seq(), Seq(), IntegerType)
-    val eq = Equals(FunctionInvocation(TypedFunDef(dummyFunDef, Seq()), Seq()), InfiniteIntegerLiteral(0))
-    import solvers._
-    val solver = SimpleSolverAPI(SolverFactory(() => new solvers.smtlib.SMTLIBCVC4Solver(ctx, prog)))
-    solver.solveSAT(eq) match {
-      case (Some(true), m) =>
-        println("Model: "+m.toMap)
-      case _ => println("Formula is unsat")
-    }
-    System.exit(0)*/
 }

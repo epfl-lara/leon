@@ -16,7 +16,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   val optFunctionUnroll = LeonFlagOptionDef("fullunroll", "Unroll all calls in every unroll step", false)
   val optWithMult = LeonFlagOptionDef("withmult", "Multiplication is not converted to a recursive function in VCs", false)
   val optUseReals = LeonFlagOptionDef("usereals", "Interpret the input program as a real program", false)
-  val optMinBounds = LeonLongOptionDef("minbounds", "tighten time bounds", 0, "--minbounds[=lowerlimit], default lower limit is zero")
+  val optMinBounds = LeonLongOptionDef("minbounds", "Minimize inferred bounds. Lower limit is mandatory, and could be zero or negative", 0, "[lowerlimit]")
   val optInferTemp = LeonFlagOptionDef("inferTemp", "Infer templates by enumeration", false)
   val optCegis = LeonFlagOptionDef("cegis", "use cegis instead of farkas", false)
   val optStatsSuffix = LeonStringOptionDef("stats-suffix", "the suffix of the statistics file", "", "s")

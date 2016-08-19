@@ -1,4 +1,4 @@
-package withOrb
+package terminationProofs
 
 import leon._
 import mem._
@@ -25,7 +25,7 @@ object RealTimeQueue {
       }
     }
 
-    def size = this match {
+    val rank = this match {
       case SCons(_, _, r) => r
       case SNil()         => BigInt(0)
     }
@@ -33,36 +33,58 @@ object RealTimeQueue {
     /**
      * A property that is true if `sz` field decreases for the tail of the stream.
      * `sz` is a well-founded ordering.
+     * This is a data structure invariant.
      */
     def valid: Boolean = {
       this match {
-        case c @ SCons(_, _, _) =>
-          val s = size
-          s > 0 && s == (c.tail*).size + 1 && (c.tail*).valid
+        case c @ SCons(_, tfun, r) =>
+          r >= 0 &&
+          (tfun fmatch[Stream[T],List[T],Stream[T],Boolean] {
+            case (f, rear, a) if tfun.is(() => rotate(f,rear,a)) =>
+              r == f.rank + rear.rank + a.rank + 1 && f.valid && a.valid
+            case (a, _, _) if tfun.is(() => id(a)) =>
+              r == 1 + a.rank
+          })
         case _ => true
       }
     }
+
+    def size: BigInt = {
+      require(this.valid)
+      this match {
+        case c@SCons(_, _, r) =>
+          1 + (c.tail*).size
+        case SNil() =>
+          BigInt(0)
+      }
+    } ensuring(res => this.rank == res) // this property states that `rank` and `size` are equivalent
   }
   private case class SCons[T](x: T, tailFun: () => Stream[T], sz: BigInt) extends Stream[T]
   private case class SNil[T]() extends Stream[T]
+
+  def id[T](l: Stream[T]) = {
+    require(l.valid)
+    l
+  } ensuring(l.valid)
 
   /**
    * A property that holds for stream where all elements have been memoized.
    */
   def isConcrete[T](l: Stream[T]): Boolean = {
     require(l.valid)
+    //decreasesBy(l.rank)
     l match {
       case c @ SCons(_, _, _) =>
-        c.tail.cached && isConcrete(c.tail*)
+        cached(c.tail) && isConcrete(c.tail*)
       case _ => true
     }
   }
 
   sealed abstract class List[T] {
-    val size: BigInt = {
+    val rank: BigInt = {
       this match {
         case Nil()      => BigInt(0)
-        case Cons(_, t) => 1 + t.size
+        case Cons(_, t) => 1 + t.rank
       }
     } ensuring (_ >= 0)
   }
@@ -76,19 +98,19 @@ object RealTimeQueue {
   @invisibleBody
   @invstate // says that the function doesn't change state
   def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
-    require(r.size == f.size + 1 && f.valid && a.valid && isConcrete(f))
+    require(r.rank == f.rank + 1 && f.valid && a.valid && isConcrete(f))
+    // decreasesBy(f.rank)
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, lift(a), a.size + 1) //  size: a.size + 1
+        SCons[T](y, () => id(a), a.rank + 1) //  rank: a.rank + 1
       case (c @ SCons(x, _, _), Cons(y, r1)) =>
-        val newa = SCons[T](y, lift(a), a.size + 1) // size : a.size + 1
+        val newa = SCons[T](y, () => id(a), a.rank + 1) // rank : a.rank + 1
         val ftail = c.tail
         val rot = () => rotate(ftail, r1, newa)
-        SCons[T](x, rot, f.size + r.size + a.size) // @ size == f.size + r.size + a.size
+        SCons[T](x, rot, f.rank + r.rank + a.rank) // @ rank == f.rank + r.rank + a.rank
     }
   } ensuring (res => res.valid &&
-    res.size == f.size + r.size + a.size &&
-    !res.isEmpty && time <= ?)
+    res.rank == f.rank + r.rank + a.rank && !res.isEmpty)
 
   /**
    * Returns the first element of the stream whose tail is not memoized.
@@ -97,7 +119,7 @@ object RealTimeQueue {
     require(l.valid)
     l match {
       case c @ SCons(_, _, _) =>
-        if (c.tail.cached)
+        if (cached(c.tail))
           firstUneval(c.tail*)
         else l
       case _ => l
@@ -123,7 +145,7 @@ object RealTimeQueue {
       f.valid && s.valid &&
         //invariant: firstUneval of `f` and `s` are the same.
         (firstUneval(f) == firstUneval(s)) &&
-        s.size == f.size - r.size //invariant: |s| = |f| - |r|
+        s.rank == f.rank - r.rank //invariant: |s| = |f| - |r|
     }
   }
 
@@ -147,7 +169,7 @@ object RealTimeQueue {
   def empty[T] = {
     val a: Stream[T] = SNil()
     Queue(a, Nil(), a)
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid)
 
   /**
    * Reads the first elements of the queue without removing it.
@@ -157,7 +179,7 @@ object RealTimeQueue {
     q.f match {
       case SCons(x, _, _) => x
     }
-  } ensuring (res => time <= ?)
+  } //ensuring (res => steps <= ?)
 
   /**
    * Appends an element to the end of the queue
@@ -166,8 +188,7 @@ object RealTimeQueue {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-      res.valid && time <= ?
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) && res.valid
   }
 
   /**
@@ -180,8 +201,8 @@ object RealTimeQueue {
         createQ(c.tail, q.r, q.s)
     }
   } ensuring { res =>
-    funeMonotone(q.f, q.s, inState[T], outState[T]) &&
-      res.valid && time <= ?
+    funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
+      res.valid
   }
 
   // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
@@ -192,7 +213,7 @@ object RealTimeQueue {
   def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require(st1.subsetOf(st2) && l1.valid)
     // property
-    (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
+    (firstUneval(l1) in st2) == (firstUneval(firstUneval(l1) in st1) in st2)
   } holds
 
   /**
@@ -200,10 +221,10 @@ object RealTimeQueue {
    */
   @invisibleBody
   def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
-    require(l1.valid && l2.valid && (firstUneval(l1) withState st1) == (firstUneval(l2) withState st1) &&
+    require(l1.valid && l2.valid && (firstUneval(l1) in st1) == (firstUneval(l2) in st1) &&
       st1.subsetOf(st2))
     funeCompose(l1, st1, st2) && // implies: fune(l1, st2) == fune(fune(l1,st1), st2)
       funeCompose(l2, st1, st2) && // implies: fune(l2, st2) == fune(fune(l2,st1), st2)
-      (firstUneval(l1) withState st2) == (firstUneval(l2) withState st2) // property
+      (firstUneval(l1) in st2) == (firstUneval(l2) in st2) // property
   } holds
 }

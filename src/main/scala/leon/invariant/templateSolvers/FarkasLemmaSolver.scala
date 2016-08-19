@@ -29,7 +29,7 @@ import leon.invariant.smtlib.solvers._
 class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
 
   //debug flags
-  val verbose = true
+  val verbose = false
   val verifyModel = false
   val dumpNLCtrsAsSMTLIB = false
   val dumpNLCtrs = false
@@ -250,7 +250,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
       if (LinearConstraintUtil.isLinearFormula(redctrs)) {
         if (verbose) reporter.info("Constraints reduced to linear !")
         redctrs
-      } else redctrs 
+      } else redctrs
     //for debugging nonlinear constraints
     if (this.debugNLCtrs && hasInts(simpctrs)) {
       throw new IllegalStateException("Nonlinear constraints have integers: " + simpctrs)
@@ -274,21 +274,21 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     lazy val solver = if (solveAsBitvectors) {
       throw new IllegalStateException("Not supported now. Will be in the future!")
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
-    } else {      
+    } else {
       SimpleSolverAPI(new TimeoutSolverFactory(
-        SolverFactory.getFromName(leonctx, program)("orb-smt-z3-u"),          
+        SolverFactory.getFromName(leonctx, program)("orb-smt-z3-u"),
         timeout * 1000))
     }
     if (verbose) reporter.info("solving...")
     val (res, model) =
       if (ctx.abort) (None, Model.empty)
       else {
-        //solver.assertCnstr(simpctrs)//{ updateCounterTime(_, "NLAssertCtrTime", "disjuncts") } 
+        //solver.assertCnstr(simpctrs)//{ updateCounterTime(_, "NLAssertCtrTime", "disjuncts") }
         val (r, solTime) = getTime { solver.solveSAT(simpctrs) }
         if (verbose) reporter.info((if (r._1.isDefined) "solved" else "timed out") + "... in " + solTime / 1000.0 + "s")
-        Stats.updateCounterTime(solTime, "NL-solving-time", "disjuncts")     
+        Stats.updateCounterTime(solTime, "NL-solving-time", "disjuncts")
         r
-      }    
+      }
     res match {
       case Some(true) =>
         // construct assignments for the variables that were removed during nonlinearity reduction

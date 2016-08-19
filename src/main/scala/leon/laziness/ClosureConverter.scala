@@ -651,6 +651,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
         val stTparams = nfd.tparams.collect {
           case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
         }
+        // TODO: we want the decreases measure to be state independent
         if (fd.hasBody) {
           val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
           val nbody = nbodyFun(stateParam)

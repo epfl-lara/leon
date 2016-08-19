@@ -172,6 +172,7 @@ class TypeRectifier(p: Program, clFactory: ClosureFactory) {
           nfd.fullBody = simplifyLetsAndLetsWithTuples(transformFunBody(fd))
         }
         fd.flags.foreach(nfd.addFlag(_))
+        // TODO: what about decreases ?
         //println("New fun: "+fd)
         nfd
       case d => d
