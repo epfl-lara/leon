@@ -18,7 +18,7 @@ a task to accomplish due to the complexities of the hardware, and operating envi
 the modern day softwares are deployed on.
 This is true to an extent only if one wants to precisely estimate the resource usage in terms of the actual
 physical units such as wall-clock time or bytes.
-However, as shown by decades of research in theoretically computer science, it is possible to asses
+However, as shown by decades of research in theoretically computer science, it is possible to assess
 resource usage of programs using more abstract, algorithmic metrics that are fairly independent of the runtime
 infrastructure.
 These metrics often characterize the asymptotic behavior of the programs.
@@ -156,7 +156,7 @@ the correctness properties, and resource bounds.
 These properties can be seamlessly combined in Leon. 
 Given enough correctness properties, Leon can establish resource bounds of complex programs 
 like *red-black tree*, *AVL tree*, *binomial heaps*, and many more. 
-Some of the benchmarks are available in leon web, others can be found in `testcases/orb-testcases/` directory.
+Some of the benchmarks are available in leon web, others can be found in ``testcases/orb-testcases/`` directory.
 
 Resources Supported
 -------------------
