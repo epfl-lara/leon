@@ -13,9 +13,9 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.verification.VC
 
-import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.api.Environment
-import edu.tum.cs.isabelle.pure.{Expr => _, _}
+import info.hupel.isabelle._
+import info.hupel.isabelle.api.Environment
+import info.hupel.isabelle.pure.{Expr => _, _}
 
 import shapeless.tag
 

@@ -20,9 +20,9 @@ import leon.utils._
 
 import cats.data.Xor
 
-import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.api._
-import edu.tum.cs.isabelle.setup._
+import info.hupel.isabelle._
+import info.hupel.isabelle.api._
+import info.hupel.isabelle.setup._
 
 object IsabelleEnvironment {
 
@@ -60,8 +60,12 @@ object IsabelleEnvironment {
       case Xor.Right(setup) => setup
     }
 
+    val resources = Resources.dumpIsabelleResources() match {
+      case Xor.Left(reason) => context.reporter.fatalError(s"Resource dump failed: ${reason.explain}")
+      case Xor.Right(resources) => resources
+    }
+
     val system = setup.flatMap { setup =>
-      val resources = Resources.dumpIsabelleResources()
       val config = resources.makeConfiguration(Nil, "Leon")
 
       setup.makeEnvironment.flatMap { env =>

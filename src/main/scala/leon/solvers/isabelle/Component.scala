@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import leon._
 
-import edu.tum.cs.isabelle.setup._
+import info.hupel.isabelle.setup._
 
 object Component extends LeonComponent {
 
