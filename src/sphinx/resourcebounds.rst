@@ -4,7 +4,7 @@ Resource Verification
 =====================
 
 Not only does Leon allow verification of correctness properties, it also supports establishing
-bounds on resources, such as time or memory usage, consumed by programs. 
+bounds on resources such as time or memory usage consumed by programs. 
 The sub-system of Leon that performs verification of resource bounds is called: *Orb*.
 It complements correctness verification by allowing users to specify and verify 
 upper bounds on resources consumed by programs. 
@@ -14,18 +14,18 @@ Why Verify Resource Bounds?
 ---------------------------
 
 Statically proving bounds on resources such as time and space consumed by softwares is considered too difficult 
-a task to accomplish due to the complexities of the hardware, and operating environments that 
+a task to accomplish due to the complexities of the hardware and operating environments that 
 the modern day softwares are deployed on.
 This is true to an extent only if one wants to precisely estimate the resource usage in terms of the actual
 physical units such as wall-clock time or bytes.
-However, as shown by decades of research in theoretically computer science, it is possible to asses
+However, as shown by decades of research in theoretically computer science, it is possible to assess
 resource usage of programs using more abstract, algorithmic metrics that are fairly independent of the runtime
 infrastructure.
 These metrics often characterize the asymptotic behavior of the programs.
 What Leon provides you is a way to establish bounds on such algorithmic metrics. 
 For instance, you can state and prove that a function `sorting a list of integers using insertion sort 
 takes time quadratic in size of the list`.
-After all, most of the  development effort is spent on making implementations efficient, and now you can verify the 
+After all most of the  development effort is spent on making implementations efficient, and now you can verify the 
 efficiency of your implementations!
 
 The rest of this documentation presents a brief overview of verifying resource usage of programs using Leon. 
@@ -54,7 +54,7 @@ This can be expressed in Leon as shown below:
 
 Consider the postconditions of the ``count`` function.
 The postcondition uses a reserved keyword ``steps`` that refers to the number of steps in the evaluation of the function 
-``count`` on a given input, 
+``count`` on a given input.
 Generally, it is equal to the number of primitive operations, such as arithmetic-logical 
 operations, performed by the function, and hence is an abstraction of the execution time.
 The question marks (``?``) represent unknown coefficients called *holes*, which needs to be inferred by 
@@ -64,13 +64,13 @@ as ``steps <= 4 * n + 2``.
 This bound is guaranteed to hold for all executions of ``count`` invoked with any ``n``.
 
 Leon also *tries* to ensure that the inferred bounds are as strong as possible. That is, it tries to ensure that
-in the inferred bound, the coefficient of a term cannot be reduced without increasing the coefficients of the faster growing terms.
-However, the minimality of the inferred constants is only "best-effort", and not guaranteed. 
+in the inferred bound the coefficient of a term cannot be reduced without increasing the coefficients of the faster growing terms.
+However, the minimality of the inferred constants is only "best-effort" and not guaranteed. 
 
 Importing Inferred Bounds
 -------------------------
 The `leon web <http://leon.epfl.ch>`_ interface allows importing the inferred resource bounds and correctness invariants (if any)
-automatically into the program. To do so, click on a tick mark on the right pane, and choose `import all invariants`.
+automatically into the program. To do so click on a tick mark on the right pane, and choose `import all invariants`.
 Once all invariants have been imported, the verification phase will get initiated, which may serve to cross check the results.
 
 
@@ -94,8 +94,8 @@ For instance, Leon will report a counter-example on the following code snippet: 
   }
 
 The display of the counter-example will consist of an input to the function ``count`` and an output.
-The output would be represented as a pair, where the first component refers
-to the output of the function, and the second component to its resource usage.
+The output would be represented as a pair where the first component refers
+to the output of the function and the second component to its resource usage.
 For the above code snippet, Leon would display the following message
 
 .. code-block:: scala
@@ -109,7 +109,7 @@ For the above code snippet, Leon would display the following message
 	(BigInt(0), BigInt(6))
 
 Here, ``BigInt(6)`` is the number of steps taken by the function ``count`` when the input is ``BigInt(1)``.
-Clearly, it is not less than 2, and hence violates the specification.
+Clearly, it is not less than 2 and hence violates the specification.
 This feature of Leon can be used to manually test the minimality of the bounds once they have been inferred.
 
 Using Correctness Properties to Establish Bounds
@@ -152,12 +152,12 @@ These relationships between the sizes of the input and output lists of ``reverse
 	  } ensuring (res => size(res) == size(l) && steps <= ? *(size(l)*size(l)) + ?)
 	}
 
-As highlighted by this example, there could be deep inter-relationships between 
-the correctness properties, and resource bounds. 
+As highlighted by this example there could be deep inter-relationships between 
+the correctness properties and resource bounds. 
 These properties can be seamlessly combined in Leon. 
-Given enough correctness properties, Leon can establish resource bounds of complex programs 
+Given enough correctness properties Leon can establish resource bounds of complex programs 
 like *red-black tree*, *AVL tree*, *binomial heaps*, and many more. 
-Some of the benchmarks are available in leon web, others can be found in `testcases/orb-testcases/` directory.
+Some of the benchmarks are available in leon web, others can be found in ``testcases/orb-testcases/`` directory.
 
 Resources Supported
 -------------------
@@ -226,7 +226,7 @@ Common Pitfalls
 	    } ensuring(res => steps <= ? * n + ?)
 	  }
 
-	To prove a linear bound for ``countUntilN``, one should use either ``steps <= ? * (n - i) + ?`` or more generally, ``steps <= ? * n + ? * i + ?``
+	To prove a linear bound for ``countUntilN``, one should use either ``steps <= ? * (n - i) + ?`` or more generally ``steps <= ? * n + ? * i + ?``
  	
 
 Limitations
@@ -261,7 +261,7 @@ Find below a list people who have contribtued to the resource verification sub-s
  **Contributor**, **Organization**, **Github Username**
 
 * Ravi Madhavan, EPFL, `ravimad`
-* Pratik Fegade (during 2015 Summer), IIT Bombay , `pratikfegade`
+* Prateek Fegade (during 2015 Summer), IIT Bombay , `pratikfegade`
 * Sumith Kulal (during 2016 Summer), IIT Bombay, `sumith1896`
 
 Orb depends extensively on the rest of the code base of Leon. In particular, it relies on functionalities provided by the  Leon Frontend, Leon SMT Solver APIs, and Leon Abstract Syntax Trees. These are contributed, and maintained by many others who are not mentioned above.

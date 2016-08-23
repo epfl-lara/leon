@@ -11,8 +11,8 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 
-import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.pure._
+import info.hupel.isabelle._
+import info.hupel.isabelle.pure._
 
 case class Constructor(term: Term, disc: Term, sels: Map[ValDef, Term])
 case class Datatype(typ: String, constructors: Map[CaseClassDef, Constructor])
