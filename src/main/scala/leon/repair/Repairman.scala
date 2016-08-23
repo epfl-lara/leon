@@ -41,7 +41,9 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
 
       val timer = new Timer().start
 
+      ctx.timers.repair.tests.dicovery.start()
       val eb = discoverTests()
+      ctx.timers.repair.tests.dicovery.stop()
 
       if (eb.invalids.nonEmpty) {
         reporter.info(f" - Passing: ${eb.valids.size}%3d")
@@ -53,6 +55,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
 
         val tSize = eb.invalids.size
 
+        ctx.timers.repair.tests.minimization.start()
         reporter.info(ASCIIHelpers.title("2. Minimizing tests"))
         val eb2 = eb.minimizeInvalids(fd, ctx, program)
 
@@ -65,6 +68,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
         reporter.ifDebug { printer =>
           printer(eb2.asString("Minimal Failing Tests"))
         }
+
+        ctx.timers.repair.tests.minimization.stop()
 
         val timeTests = timer.stop
         timer.start

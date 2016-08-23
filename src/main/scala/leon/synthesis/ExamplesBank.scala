@@ -17,36 +17,39 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   // Minimize tests of a function so that tests that are invalid because of a
   // recursive call are eliminated
   def minimizeInvalids(fd: FunDef, ctx: LeonContext, program: Program): ExamplesBank = {
-    val evaluator = new TrackingEvaluator(ctx, program)
+    if (program.callGraph.isRecursive(fd)) {
+      val evaluator = new TrackingEvaluator(ctx, program)
 
-    invalids foreach { ts =>
-      evaluator.eval(functionInvocation(fd, ts.ins))
+      invalids foreach { ts =>
+        evaluator.eval(functionInvocation(fd, ts.ins))
+      }
+
+      val callGraph = evaluator.fullCallGraph
+
+      def isFailing(fi: (FunDef, Seq[Expr])) = !evaluator.fiStatus(fi) && (fi._1 == fd)
+
+      val failingSet = (callGraph filter { case (from, to) =>
+        isFailing(from) && (to forall (!isFailing(_)) )
+      }).keySet.map(_._2)
+
+      val newInvalids = invalids.filter(t => failingSet(t.ins))
+
+      /*
+      val newInvalids = failing.keySet map {
+        case (_, args) =>
+          outInfo.get(args) match {
+            case Some(outs) =>
+              InOutExample(args, outs)
+
+            case None =>
+              InExample(args)
+          }
+      }*/
+
+      ExamplesBank(valids, newInvalids)
+    } else {
+      this
     }
-
-    val outInfo = invalids.collect {
-      case InOutExample(ins, outs) => ins -> outs
-    }.toMap
-
-    val callGraph = evaluator.fullCallGraph
-
-    def isFailing(fi: (FunDef, Seq[Expr])) = !evaluator.fiStatus(fi) && (fi._1 == fd)
-
-    val failing = callGraph filter { case (from, to) =>
-      isFailing(from) && (to forall (!isFailing(_)) )
-    }
-
-    val newInvalids = failing.keySet map {
-      case (_, args) =>
-        outInfo.get(args) match {
-          case Some(outs) =>
-            InOutExample(args, outs)
-
-          case None =>
-            InExample(args)
-        }
-    }
-
-    ExamplesBank(valids, newInvalids.toSeq)
   }
 
   def union(that: ExamplesBank) = {
