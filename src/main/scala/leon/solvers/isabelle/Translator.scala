@@ -210,7 +210,7 @@ final class Translator(context: LeonContext, program: Program, types: Types, sys
         def sel(i: Int, len: Int, term: Term): Term = (i, len) match {
           case (1, _) => App(Const("Product_Type.prod.fst", Typ.dummyT), term)
           case (2, 2) => App(Const("Product_Type.prod.snd", Typ.dummyT), term)
-          case _ => App(Const("Product_Type.prod.snd", Typ.dummyT), sel(i - 1, len - 1, term))
+          case _ => sel(i - 1, len - 1, App(Const("Product_Type.prod.snd", Typ.dummyT), term))
         }
 
         term(expr, bounds, consts).map(sel(i, arity(expr.getType), _))
