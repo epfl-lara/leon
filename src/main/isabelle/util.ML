@@ -43,8 +43,8 @@ fun reraise_nested msg pos f x =
 
 end
 
-fun print_exn (exn: exn) =
-  YXML.content_of (@{make_string} exn)
+fun print_exn (ERROR msg) = "ERROR " ^ YXML.content_of msg
+  | print_exn exn = YXML.content_of (@{make_string} exn)
 
 fun check true _ = ()
   | check false f = error (f ())

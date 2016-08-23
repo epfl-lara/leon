@@ -40,7 +40,7 @@ resolvers ++= Seq(
   "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-val libisabelleVer = "0.3.4"
+val libisabelleVer = "0.4"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % scalaVer,
@@ -48,6 +48,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
   "info.hupel" %% "libisabelle" % libisabelleVer,
   "info.hupel" %% "libisabelle-setup" % libisabelleVer,
+  "info.hupel" %% "pide-package" % libisabelleVer,
   "info.hupel" %% "slf4j-impl-helper" % "0.1" % "optional",
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"//,
@@ -111,7 +112,7 @@ script := {
 
 sourceGenerators in Compile <+= Def.task {
   val libFiles = ((baseDirectory.value / "library") ** "*.scala").getPaths
-  val build = (sourceManaged in Compile).value / "leon" / "Build.scala";
+  val build = (sourceManaged in Compile).value / "leon" / "Build.scala"
   IO.write(build, s"""|package leon
                       |
                       |object Build {
