@@ -15,8 +15,9 @@ import leon.solvers._
 import leon.utils.Interruptible
 import leon.verification.VC
 
-import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.pure.{Expr => _, _}
+import info.hupel.isabelle._
+import info.hupel.isabelle.pure.{Expr => _, _}
+import monix.execution.{Cancelable, CancelableFuture}
 
 class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
 
@@ -30,7 +31,7 @@ class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, fu
 
   private var pending: List[Future[Term]] = Nil
   private var method: Option[String] = None
-  private var running: Option[CancellableFuture[_]] = None
+  private var running: Option[CancelableFuture[_]] = None
 
   def reset() = { pending = Nil; method = None; running = None }
   private def addPending(future: Future[Term]) = { pending ::= future }
@@ -48,12 +49,12 @@ class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, fu
   }
 
   def check: Option[Boolean] = {
-    val verdict = sequencePending().flatMapC { ts =>
+    val verdict = CancelableFuture(sequencePending(), Cancelable.empty).flatMap { ts =>
       Future.traverse(ts)(system.invoke(Pretty)(_).assertSuccess(context)).foreach { strs =>
         context.reporter.debug(s"Attempting to prove disjunction of ${canonicalizeOutput(system, strs.mkString(", "))}")
       }
 
-      system.cancellableInvoke(Prove)((ts, method))
+      system.invoke(Prove)((ts, method))
     }
     running = Some(verdict)
 

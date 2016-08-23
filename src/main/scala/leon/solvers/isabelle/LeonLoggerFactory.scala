@@ -41,7 +41,7 @@ object LeonLoggerFactory {
 
 class LeonLoggerFactory extends ILoggerFactory {
   override def getLogger(name: String): Logger =
-    if (name startsWith "edu.tum.cs.isabelle")
+    if (name startsWith "info.hupel.isabelle")
       new LeonLoggerFactory.LeonLogger
     else
       NOPLogger.NOP_LOGGER
