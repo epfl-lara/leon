@@ -43,12 +43,11 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
       case EvalError(msg) =>
         EvaluationResults.EvaluatorError(msg)      
       case so: StackOverflowError =>
-        EvaluationResults.RuntimeError("Stack overflow")
+        EvaluationResults.RuntimeError("Stack overflow", Some(so))
       case e @ RuntimeError(msg) =>
-        EvaluationResults.RuntimeError(msg)      
+        EvaluationResults.RuntimeError(msg, Some(e)) 
       case jre: java.lang.RuntimeException =>
-        EvaluationResults.RuntimeError(jre.getMessage)
-    } finally {
+        EvaluationResults.RuntimeError(jre.getMessage, Some(jre))
     }
   }
   

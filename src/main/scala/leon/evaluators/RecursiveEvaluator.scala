@@ -185,15 +185,21 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         }
       }
 
-      val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-        scalaEv.call(tfd, evArgs)
-      } else {
-        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-          throw EvalError("Evaluation of function with unknown implementation." + expr)
-        }
+      val callResult = try {
+        if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+          scalaEv.call(tfd, evArgs)
+        } else {
+          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation." + expr)
+          }
 
-        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-        e(body)(frame, gctx)
+          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+          e(body)(frame, gctx)
+        }
+      } catch {
+        case re: RuntimeError =>
+          val expr = FunctionInvocation(tfd, evArgs)
+          throw new RuntimeError(re.getMessage, Some(expr), Some(re))
       }
 
       //println(s"Gave $callResult")
