@@ -2304,4 +2304,29 @@ object ExprOps extends GenTreeOps[Expr] {
       }
     }(e)
   }
+
+  def minimizeGenericValues(e: Expr) = {
+    var counter = Map[TypeParameter, Int]().withDefaultValue(0)
+    var map = Map[GenericValue, Int]()
+    
+    def rec(e: Expr): Option[Expr] = e match {
+      case gv @ GenericValue(tp, c) =>
+        val nc = map.get(gv) match {
+          case Some(nc) =>
+            nc
+
+          case None =>
+            val nc = counter(tp)
+            counter += tp -> (nc+1)
+            map += gv -> nc
+            nc
+        }
+
+        Some(GenericValue(tp, nc).copiedFrom(e))
+
+      case _ => None
+    }
+
+    preMap(rec)(e)
+  }
 }

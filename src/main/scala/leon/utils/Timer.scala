@@ -26,9 +26,11 @@ class Timer() {
   }
 
   def stop = {
-    end         = System.currentTimeMillis
-    runs      ::= (end - beginning)
-    beginning   = 0L
+    if (beginning != 0L) {
+      end         = System.currentTimeMillis
+      runs      ::= (end - beginning)
+      beginning   = 0L
+    }
     runs.head
   }
 
@@ -81,7 +83,6 @@ class TimerStorage extends Dynamic {
       selfTimer = Some(new Timer)
     }
     selfTimer.get.start
-
     this
   }
 

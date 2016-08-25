@@ -39,7 +39,7 @@ class GroundSolver(val sctx: SolverContext, val program: Program) extends Solver
       evaluator.eval(expr) match {
         case Successful(BooleanLiteral(result)) =>
           Some(result)
-        case RuntimeError(message) =>
+        case RuntimeError(message, _) =>
           dbg(s"Evaluation of $expr resulted in runtime error")
           Some(false)
         case _ =>

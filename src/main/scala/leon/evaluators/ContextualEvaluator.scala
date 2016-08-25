@@ -20,14 +20,14 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC(model: solvers.Model, check: Boolean): GC
 
-  case class EvalError(msg : String) extends Exception {
-    override def getMessage = msg + Option(super.getMessage).map("\n" + _).getOrElse("")
-  }
-  case class RuntimeError(msg : String) extends Exception
-  case class QuantificationError(msg: String) extends Exception
-
   // Used by leon-web, please do not delete
   var lastGC: Option[GC] = None
+
+  case class EvalError(msg: String) extends Exception {
+    override def getMessage = msg + Option(super.getMessage).map("\n" + _).getOrElse("")
+  }
+  case class RuntimeError(msg: String, expr: Option[Expr] = None, cause: Option[RuntimeError] = None) extends Exception
+  case class QuantificationError(msg: String) extends Exception
 
   def eval(ex: Expr, model: Model) = {
     try {
@@ -40,13 +40,13 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
       case ee: LeonCodeGenEvaluationException =>
         EvaluationResults.EvaluatorError(ee.getMessage)
       case so: StackOverflowError =>
-        EvaluationResults.RuntimeError("Stack overflow")
-      case e @ RuntimeError(msg) =>
-        EvaluationResults.RuntimeError(msg)
+        EvaluationResults.RuntimeError("Stack overflow", Some(so))
+      case e @ RuntimeError(msg, _, _) =>
+        EvaluationResults.RuntimeError(msg, Some(e))
       case re: LeonCodeGenRuntimeException =>
-        EvaluationResults.RuntimeError(re.getMessage)
+        EvaluationResults.RuntimeError(re.getMessage, Some(re))
       case jre: java.lang.RuntimeException =>
-        EvaluationResults.RuntimeError(jre.getMessage)
+        EvaluationResults.RuntimeError(jre.getMessage, Some(jre))
     } finally {
       ctx.timers.evaluators.recursive.runtime.stop()
     }

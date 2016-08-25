@@ -223,7 +223,7 @@ trait AbstractUnrollingSolver[T]
         reporter.debug("- Invalid model.")
         false
 
-      case EvaluationResults.RuntimeError(msg) =>
+      case EvaluationResults.RuntimeError(msg, _) =>
         emit(silenceErrors)("- Model leads to runtime error: " + msg)
         false
 

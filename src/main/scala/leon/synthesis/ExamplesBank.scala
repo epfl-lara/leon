@@ -5,9 +5,11 @@ package synthesis
 
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.ExprOps.minimizeGenericValues
 import purescala.Constructors._
+import purescala.Extractors._
 import purescala.Common._
-import evaluators.{TrackingEvaluator, DefaultEvaluator}
+import evaluators.DefaultEvaluator
 import leon.utils.ASCIIHelpers._
 
 /** Sets of valid and invalid examples */
@@ -17,36 +19,49 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
   // Minimize tests of a function so that tests that are invalid because of a
   // recursive call are eliminated
   def minimizeInvalids(fd: FunDef, ctx: LeonContext, program: Program): ExamplesBank = {
-    val evaluator = new TrackingEvaluator(ctx, program)
+    import evaluators._
 
-    invalids foreach { ts =>
-      evaluator.eval(functionInvocation(fd, ts.ins))
-    }
+    if (program.callGraph.isRecursive(fd)) {
 
-    val outInfo = invalids.collect {
-      case InOutExample(ins, outs) => ins -> outs
-    }.toMap
+      def causeChain(e: Option[Throwable]): List[Expr] = e match {
+        case Some(e : ContextualEvaluator#RuntimeError) =>
+          e.expr.toList ::: causeChain(e.cause)
+        case _ =>
+          Nil
+      }
 
-    val callGraph = evaluator.fullCallGraph
+      val evaluator = new DefaultEvaluator(ctx, program)
 
-    def isFailing(fi: (FunDef, Seq[Expr])) = !evaluator.fiStatus(fi) && (fi._1 == fd)
+      ctx.timers.repair.tests.minimization.eval.start()
 
-    val failing = callGraph filter { case (from, to) =>
-      isFailing(from) && (to forall (!isFailing(_)) )
-    }
-
-    val newInvalids = failing.keySet map {
-      case (_, args) =>
-        outInfo.get(args) match {
-          case Some(outs) =>
-            InOutExample(args, outs)
-
-          case None =>
-            InExample(args)
+      val newInvalids = invalids map { ts =>
+        val newIns = evaluator.eval(functionInvocation(fd, ts.ins)) match {
+          case EvaluationResults.RuntimeError(_, cause) =>
+            (causeChain(cause).collect {
+              case FunctionInvocation(TypedFunDef(`fd`, _), args) =>
+                args
+            }).lastOption
+          case _ =>
+            None
         }
-    }
 
-    ExamplesBank(valids, newInvalids.toSeq)
+        val ins = newIns match {
+          case Some(ins) =>
+            unwrapTuple(minimizeGenericValues(tupleWrap(ins)), ins.size)
+          case None =>
+            ts.ins
+        }
+
+        InExample(ins)
+      }
+
+      ctx.timers.repair.tests.minimization.eval.stop()
+
+
+      ExamplesBank(valids, newInvalids.distinct)
+    } else {
+      this
+    }
   }
 
   def union(that: ExamplesBank) = {

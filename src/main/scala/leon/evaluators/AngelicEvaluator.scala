@@ -21,7 +21,7 @@ class AngelicEvaluator(underlying: NDEvaluator)
       Successful(h)
     case Successful(Stream()) =>
       RuntimeError("Underlying ND-evaluator returned no solution")
-    case r @ RuntimeError(_) =>
+    case r @ RuntimeError(_, _) =>
       r
     case e @ EvaluatorError(_) =>
       e
@@ -42,7 +42,7 @@ class DemonicEvaluator(underlying: NDEvaluator)
       Successful(h)
     case Successful(_) =>
       RuntimeError("Underlying ND-evaluator did not return unique solution!")
-    case r @ RuntimeError(_) =>
+    case r @ RuntimeError(_, _) =>
       r
     case e @ EvaluatorError(_) =>
       e

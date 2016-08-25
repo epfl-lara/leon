@@ -45,7 +45,7 @@ object EvaluationPhase extends UnitPhase[Program] {
       eval.eval(call) match {
         case EvaluationResults.Successful(ex) =>
           reporter.info(s"  => $ex")
-        case EvaluationResults.RuntimeError(msg) =>
+        case EvaluationResults.RuntimeError(msg, _) =>
           reporter.warning(s"  Runtime Error: $msg")
         case EvaluationResults.EvaluatorError(msg) =>
           reporter.warning(s"  Evaluator Error: $msg")

@@ -11,8 +11,8 @@ object EvaluationResults {
   case class Successful[A](value : A) extends Result(Some(value))
 
   /** Represents an evaluation that led to an error (in the program). */
-  case class RuntimeError(message : String) extends Result(None)
+  case class RuntimeError(message: String, cause: Option[Throwable] = None) extends Result(None)
 
   /** Represents an evaluation that failed (in the evaluator). */
-  case class EvaluatorError(message : String) extends Result(None)
+  case class EvaluatorError(message: String) extends Result(None)
 }

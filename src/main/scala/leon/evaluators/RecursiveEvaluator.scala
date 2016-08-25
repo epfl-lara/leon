@@ -198,15 +198,21 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         }
       }
 
-      val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-        scalaEv.call(tfd, evArgs)
-      } else {
-        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-          throw EvalError("Evaluation of function with unknown implementation.")
-        }
+      val callResult = try {
+        if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+          scalaEv.call(tfd, evArgs)
+        } else {
+          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation.")
+          }
 
-        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-        e(body)(frame, gctx)
+          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+          e(body)(frame, gctx)
+        }
+      } catch {
+        case re: RuntimeError =>
+          val expr = FunctionInvocation(tfd, evArgs)
+          throw new RuntimeError(re.getMessage, Some(expr), Some(re))
       }
 
       //println(s"Gave $callResult")
@@ -215,7 +221,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         case Some(post) =>
           e(application(post, Seq(callResult)))(frame, gctx) match {
             case BooleanLiteral(true) =>
-            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.")
+            case BooleanLiteral(false) =>
+              val expr = FunctionInvocation(tfd, evArgs)
+              throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.", Some(expr))
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         case None =>

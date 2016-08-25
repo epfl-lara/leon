@@ -433,7 +433,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         case EvaluationResults.Successful(res) =>
           Some(res == BooleanLiteral(true))
 
-        case EvaluationResults.RuntimeError(err) =>
+        case EvaluationResults.RuntimeError(err, _) =>
           debug("RE testing CE: "+err)
           Some(false)
 
