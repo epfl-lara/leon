@@ -18,6 +18,11 @@ case class Element(tag: String, sons: leon.collection.List[WebElement], properti
   def attr(attributeName: String): Option[String] = {
     (properties.find { we => we.attributeName == attributeName }) map (_.attributeValue)
   }
+  def apply(elem: Option[WebTree]): Element = elem match {
+    case None() => this
+    case Some(e) => apply(List(e))
+  }
+  
   @isabelle.noBody()
   def apply(elems: List[WebTree]): Element = {
     val (sons2, properties2, style2) = leon.webDSL.webBuilding.implicits.extractElements(elems)

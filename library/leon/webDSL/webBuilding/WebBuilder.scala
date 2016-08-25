@@ -15,10 +15,18 @@ case class CssAcceptor[T](tag: String) {
   def :=(v: String) = WebStyle(tag, v)
 }
 
+case class ElementDecision(b: Boolean) {
+  @isabelle.noBody() @library
+  def ?=(v: Element) = if(b) v else Element("", Nil(), Nil(), Nil())
+}
+
 @library
 object implicits {
   @isabelle.noBody()
   implicit def toAttribute(e: String): WebTree = TextElement(e)
+  
+  @isabelle.noBody()
+  implicit def toDecision(b: Boolean): ElementDecision = ElementDecision(b)
   
   /*def extractElements(e: List[WebTree], acc: List[WebElement], acc2: List[WebAttribute], acc3: List[WebStyle]): (List[WebElement], List[WebAttribute], List[WebStyle]) = e match {
     case Nil() => (acc.reverse, acc2.reverse, acc3.reverse)
@@ -29,6 +37,13 @@ object implicits {
   @isabelle.noBody()
   def extractElements(e: List[WebTree]): (List[WebElement], List[WebAttribute], List[WebStyle]) = e match {
     case Nil() => (Nil(), Nil(), Nil())
+    case Cons(e: Element, t) =>
+      val abc = extractElements(t)
+      if(e.tag != "") {
+        (e::abc._1, abc._2, abc._3)
+      } else {
+        abc
+      }
     case Cons(e: WebElement, t) =>
       val abc = extractElements(t)
       (e::abc._1, abc._2, abc._3)
@@ -86,6 +101,8 @@ object < {
   val li = Element("li", Nil(), Nil(), Nil())
   val a = Element("a", Nil(), Nil(), Nil())
   val img = Element("img", Nil(), Nil(), Nil())
+  val script = Element("script", Nil(), Nil(), Nil())
+  val section = Element("section", Nil(), Nil(), Nil())
   
   val b = Element("b", Nil(), Nil(), Nil())
   val i = Element("i", Nil(), Nil(), Nil())

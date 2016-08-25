@@ -18,6 +18,9 @@ class LibraryVerificationSuite extends LeonRegressionSuite {
 
       val (_, report) = pipeline.run(ctx, Nil)
 
-      assert(report.totalConditions === report.totalValid, "Only "+report.totalValid+" valid out of "+report.totalConditions)
+      assert(report.totalConditions === report.totalValid,
+          "Only "+report.totalValid+" valid out of " + report.totalConditions +
+          "\nInvalids are:\n" + report.vrs.filter(_._2.isInvalid).mkString("\n") +
+          "\nUnknown are:\n" + report.vrs.filter(_._2.isInconclusive).mkString("\n"))
   }
 }
