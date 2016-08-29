@@ -9,6 +9,8 @@ package object webDescription {
   val Style = StyleSheet(Nil())
   
   @library
+  @isabelle.typ(name = "Leon_Types.style_builder")
+  @isabelle.constructor(name = "Leon_Types.style_builder.Style_Builder")
   case class StyleBuilder(name: String) {
     def :=(s: List[WebStyle]) = StyleRule(name, s)
     

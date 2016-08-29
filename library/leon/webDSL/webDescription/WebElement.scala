@@ -9,10 +9,12 @@ import leon.annotation._
   * All new subclasses of WebElement must also be registered in the pickler
   * (see shared/src/main/scala/shared/Picklers (the "webElementPickler" implicit val))
   */
+@isabelle.typ(name = "Leon_Types.web_tree")
 sealed abstract class WebTree
 sealed abstract class WebElement extends WebTree
 
 @library
+@isabelle.constructor(name = "Leon_Types.web_tree.Element")
 case class Element(tag: String, sons: leon.collection.List[WebElement], properties: leon.collection.List[WebAttribute], style: leon.collection.List[WebStyle]) extends WebElement {
   @isabelle.noBody()
   def attr(attributeName: String): Option[String] = {
@@ -37,8 +39,13 @@ case class Element(tag: String, sons: leon.collection.List[WebElement], properti
     apply(l.reverse)
   }
 }
+
+@isabelle.constructor(name = "Leon_Types.web_tree.Text_Element")
 case class TextElement(text: String) extends WebElement
+@isabelle.constructor(name = "Leon_Types.web_tree.Web_Attribute")
 case class WebAttribute(attributeName: String, attributeValue: String) extends WebTree
+@isabelle.constructor(name = "Leon_Types.web_tree.Web_Style")
 case class WebStyle(attributeName: String, attributeValue: String) extends WebTree 
 
+@isabelle.constructor(name = "Leon_Types.web_tree.Web_Element_With_ID")
 case class WebElementWithID(we: WebElement, id: Int) extends WebElement

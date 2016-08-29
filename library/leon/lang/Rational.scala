@@ -7,6 +7,8 @@ import leon.annotation._
 import scala.language.implicitConversions
 
 @library
+@isabelle.typ(name = "Leon_Types.rational")
+@isabelle.constructor(name = "Leon_Types.rational.Rational")
 case class Rational(numerator: BigInt, denominator: BigInt) {
 
   require(this.isRational)

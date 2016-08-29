@@ -11,6 +11,8 @@ import leon.proof.Internal._
 package object proof {
 
   @library
+  @isabelle.typ(name = "Leon_Types.proof_ops")
+  @isabelle.constructor(name = "Leon_Types.proof_ops.Proof_Ops")
   case class ProofOps(prop: Boolean) {
     def because(proof: Boolean): Boolean = proof && prop
     def neverHolds: Boolean = {
@@ -46,6 +48,8 @@ package object proof {
    *         }.qed
    */
   @library
+  @isabelle.typ(name = "Leon_Types.rel_reasoning")
+  @isabelle.constructor(name = "Leon_Types.rel_reasoning.Rel_Reasoning")
   case class RelReasoning[A](x: A, prop: Boolean) {
 
     def ^^[B](r: (A, B) => Boolean): WithRel[A, B] = WithRel(x, r, prop)

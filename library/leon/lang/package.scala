@@ -8,6 +8,8 @@ import scala.language.implicitConversions
 package object lang {
   import leon.proof._
 
+  @isabelle.typ(name = "Leon_Types.boolean_decorations")
+  @isabelle.constructor(name = "Leon_Types.boolean_decorations.Boolean_Decorations")
   implicit class BooleanDecorations(val underlying: Boolean) {
     @inline
     def holds : Boolean = {
@@ -69,6 +71,8 @@ package object lang {
     // no-op (rankFun will be ignored in the actual execution)
   }
 
+  @isabelle.typ(name = "Leon_Types.specs_decorations")
+  @isabelle.constructor(name = "Leon_Types.specs_decorations.Specs_Decorations")
   implicit class SpecsDecorations[A](val underlying: A) {
     @ignore
     def computes(target: A) = {
@@ -85,6 +89,8 @@ package object lang {
     }
   }
 
+  @isabelle.typ(name = "Leon_Types.string_decorations")
+  @isabelle.constructor(name = "Leon_Types.string_decorations.String_Decorations")
   implicit class StringDecorations(val underlying: String) {
     @ignore @inline
     def bigLength() = BigInt(underlying.length)

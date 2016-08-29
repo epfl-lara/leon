@@ -9,6 +9,8 @@ object Internal {
 
   /*** Helper classes for relational reasoning ***/
   @library
+  @isabelle.typ(name = "Leon_Types.with_rel")
+  @isabelle.constructor(name = "Leon_Types.with_rel.With_Rel")
   case class WithRel[A, B](x: A, r: (A, B) => Boolean, prop: Boolean) {
 
     /** Continue with the next relation. */
@@ -33,6 +35,8 @@ object Internal {
   }
 
   @library
+  @isabelle.typ(name = "Leon_Types.with_proof")
+  @isabelle.constructor(name = "Leon_Types.with_proof.With_Proof")
   case class WithProof[A, B](
     x: A, r: (A, B) => Boolean, proof: Boolean, prop: Boolean) {
 
