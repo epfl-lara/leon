@@ -118,27 +118,31 @@ object IsabelleEnvironment {
       yield
         new Functions(context, program, t, funs, s)
 
-    functions.flatMap(_.data).foreach { _ =>
-      if (dump.isEmpty)
-        system.foreach { sys =>
-          sys.invoke(Report)(()).assertSuccess(context).foreach { report =>
+    val output =
+      for {
+        s <- system
+        f <- functions
+        d <- f.data
+      }
+      yield {
+        if (dump.isEmpty)
+          s.invoke(Report)(()).assertSuccess(context).map { report =>
             context.reporter.debug(s"Report for $theory ...")
             report.foreach { case (key, value) =>
-              context.reporter.debug(s"$key: ${canonicalizeOutput(sys, value)}")
+              context.reporter.debug(s"$key: ${canonicalizeOutput(s, value)}")
             }
           }
-        }
-      else
-        system.flatMap(_.invoke(Dump)(())).assertSuccess(context).foreach { output =>
-          context.reporter.debug(s"Dumping theory sources to $dump ...")
-          val path = Files.createDirectories(Paths.get(dump))
-          output.foreach { case (name, content) =>
-            val writer = new FileWriter(path.resolve(s"$name.thy").toFile())
-            writer.write(content)
-            writer.close()
+        else
+          s.invoke(Dump)(()).assertSuccess(context).map { output =>
+            context.reporter.debug(s"Dumping theory sources to $dump ...")
+            val path = Files.createDirectories(Paths.get(dump))
+            output.foreach { case (name, content) =>
+              val writer = new FileWriter(path.resolve(s"$name.thy").toFile())
+              writer.write(content)
+              writer.close()
+            }
           }
-        }
-    }
+      }
 
     for {
       s <- system
@@ -146,6 +150,7 @@ object IsabelleEnvironment {
       f <- functions
       _ <- t.data
       _ <- f.data
+      _ <- output
     }
     yield new IsabelleEnvironment(context, program, t, f, s, funs)
   }
