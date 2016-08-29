@@ -104,6 +104,8 @@ final class Types(context: LeonContext, program: Program, system: System)(implic
         Future.successful { TFree(s"'${id0.mangledName}", List("HOL.type")) }
       case SetType(base) =>
         typ(base, subst, strict).map { typ => Type("Set.set", List(typ)) }
+      case ArrayType(base) =>
+        typ(base, subst, strict).map { typ => Type("List.list", List(typ)) }
       case TupleType(bases) =>
         flexary1("Product_Type.prod", bases)
       case FunctionType(args, res) =>
