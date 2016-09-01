@@ -17,7 +17,7 @@ echo "#           Category,                 File,             function, p.S, fuS
 #All benchmarks:
 
 function run {
-  cmd="./leon --debug=report --timeout=60 --repair --introreccalls=off --solvers=fairz3,enum --functions=$1 $2"
+  cmd="./leon --debug=report --timeout=60 --repair --solvers=fairz3,enum --functions=$1 $2"
   echo "Running " $cmd
   echo "------------------------------------------------------------------------------------------------------------------"
   $cmd | tee -a $fullLog
@@ -31,6 +31,7 @@ run desugar  testcases/synt2016/repair/Compiler/Compiler3.scala
 run desugar  testcases/synt2016/repair/Compiler/Compiler4.scala   
 run desugar  testcases/synt2016/repair/Compiler/Compiler5.scala   
 run simplify testcases/synt2016/repair/Compiler/Compiler6.scala   
+run simplify testcases/synt2016/repair/Compiler/Compiler7.scala   
 
 run merge    testcases/synt2016/repair/Heap/Heap3.scala           
 run merge    testcases/synt2016/repair/Heap/Heap4.scala           
@@ -52,7 +53,6 @@ run find     testcases/synt2016/repair/List/List9.scala
 run size     testcases/synt2016/repair/List/List10.scala          
 run sum      testcases/synt2016/repair/List/List11.scala          
 run -        testcases/synt2016/repair/List/List12.scala          
-run drop     testcases/synt2016/repair/List/List4.scala           
 run drop     testcases/synt2016/repair/List/List13.scala          
 
 run power    testcases/synt2016/repair/Numerical/Numerical1.scala 
