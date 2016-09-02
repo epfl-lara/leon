@@ -37,7 +37,7 @@ definition update :: "'a list => int32 => 'a => 'a list" where
 [simp]: "update xs n = list_update xs (unat n)"
 
 definition length :: "'a list => int32" where
-[simp]: "length xs = word_of_int (int (List.length xs))"
+[simp]: "length xs = of_nat (List.length xs)"
 
 definition replicate :: "int32 => 'a => 'a list" where
 [simp]: "replicate n = List.replicate (unat n)"
