@@ -5,6 +5,8 @@ import scala.language.implicitConversions
 
 object StaticChecks {
 
+  @isabelle.typ(name = "Leon_Types.ensuring")
+  @isabelle.constructor(name = "Leon_Types.ensuring.Ensuring")
   case class Ensuring[A](x: A) {
     @library
     def ensuring(cond: (A) => Boolean): A = x

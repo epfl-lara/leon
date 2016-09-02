@@ -9,6 +9,8 @@ import State._
 
 
 @library
+@isabelle.typ(name = "Leon_Types.state")
+@isabelle.constructor(name = "Leon_Types.state.State")
 case class State[S, A](runState: S => (A, S)) {
 
   /** Basic monadic methods */

@@ -15,6 +15,8 @@ package object par {
   }
 
   @library
+  @isabelle.typ(name = "Leon_Types.task")
+  @isabelle.constructor(name = "Leon_Types.task.Task")
   case class Task[A](c: A) {
     def join: A = c
   }

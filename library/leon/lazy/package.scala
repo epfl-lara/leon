@@ -41,6 +41,8 @@ package object lazyeval {
    * Helper class for invoking with a given state instead of the implicit state
    */
   @library
+  @isabelle.typ(name = "Leon_Types.with_state")
+  @isabelle.constructor(name = "Leon_Types.with_state.With_State")
   case class WithState[T](v: T) {
     @extern
     def withState[U](u: Set[Lazy[U]]): T = sys.error("withState method is not executable!")
@@ -71,6 +73,8 @@ package object lazyeval {
   class monoproof(methodname: String) extends StaticAnnotation
 
   @library
+  @isabelle.typ(name = "Leon_Types.lazy")
+  @isabelle.constructor(name = "Leon_Types.lazy.Lazy")
   case class Lazy[T](f: Unit => T) {
     @extern
     lazy val value = {

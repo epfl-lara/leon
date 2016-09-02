@@ -15,6 +15,8 @@ package object mem {
    * This should be applied only over a function invocation or lambda application.
    */
   @library
+  @isabelle.typ(name = "Leon_Types.fun")
+  @isabelle.constructor(name = "Leon_Types.fun.Fun")
   case class Fun[T](v: T)
 
   @library
@@ -47,6 +49,8 @@ package object mem {
    * Helper class for invoking with a given state instead of the implicit state
    */
   @library
+  @isabelle.typ(name = "Leon_Types.mem_with_state")
+  @isabelle.constructor(name = "Leon_Types.mem_with_state.Mem_With_State")
   case class memWithState[T](v: T) {
     @extern
     def in[U](u: Set[Fun[U]]): T = sys.error("in method is not executable!")
@@ -65,6 +69,8 @@ package object mem {
   implicit def toStar[T](f: T) = new Star(f)
 
   @library
+  @isabelle.typ(name = "Leon_Types.star")
+  @isabelle.constructor(name = "Leon_Types.star.Star")
   case class Star[T](f: T) {
     def * = f
   }

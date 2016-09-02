@@ -4,28 +4,31 @@ import leon.collection._
 import leon.annotation._
 import scala.language.implicitConversions
 
-@library
+@isabelle.typ(name = "Leon_Types.acceptor")
+@isabelle.constructor(name = "Leon_Types.acceptor.Acceptor")
 case class Acceptor[T](tag: String) {
-  @isabelle.noBody() @library
+  @library
   def :=(v: String) = WebAttribute(tag, v)
 }
 
+@isabelle.typ(name = "Leon_Types.css_acceptor")
+@isabelle.constructor(name = "Leon_Types.css_acceptor.CSS_Acceptor")
 case class CssAcceptor[T](tag: String) {
-  @isabelle.noBody() @library
+  @library
   def :=(v: String) = WebStyle(tag, v)
 }
 
+@isabelle.typ(name = "Leon_Types.element_decision")
+@isabelle.constructor(name = "Leon_Types.element_decision.Element_Decision")
 case class ElementDecision(b: Boolean) {
-  @isabelle.noBody() @library
+  @library
   def ?=(v: Element) = if(b) v else Element("", Nil(), Nil(), Nil())
 }
 
 @library
 object implicits {
-  @isabelle.noBody()
   implicit def toAttribute(e: String): WebTree = TextElement(e)
   
-  @isabelle.noBody()
   implicit def toDecision(b: Boolean): ElementDecision = ElementDecision(b)
   
   /*def extractElements(e: List[WebTree], acc: List[WebElement], acc2: List[WebAttribute], acc3: List[WebStyle]): (List[WebElement], List[WebAttribute], List[WebStyle]) = e match {
