@@ -28,4 +28,18 @@ ML_file "leon_syntax.ML"
 
 setup \<open>Leon_Syntax.setup\<close>
 
+type_synonym int32 = "32 word"
+
+definition select :: "'a list => int32 => 'a" where
+[simp]: "select xs n = xs ! unat n"
+
+definition update :: "'a list => int32 => 'a => 'a list" where
+[simp]: "update xs n = list_update xs (unat n)"
+
+definition length :: "'a list => int32" where
+[simp]: "length xs = of_nat (List.length xs)"
+
+definition replicate :: "int32 => 'a => 'a list" where
+[simp]: "replicate n = List.replicate (unat n)"
+
 end

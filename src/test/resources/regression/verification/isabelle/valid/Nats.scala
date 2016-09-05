@@ -47,7 +47,7 @@ object Nats {
     case Cons(x, xs) => x + listSum(xs)
   }
 
-  @isabelle.function(term = "length")
+  @isabelle.function(term = "List.length")
   def length[A](xs: List[A]): Nat = xs match {
     case Nil() => Zero()
     case Cons(x, xs) => Succ(length(xs))

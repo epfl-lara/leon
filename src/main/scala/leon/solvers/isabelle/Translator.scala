@@ -317,6 +317,46 @@ final class Translator(context: LeonContext, program: Program, types: Types, sys
         }
       case MapUnion(x, y) => nary(Const("Map.map_add", Typ.dummyT), x, y)
 
+      case ArraySelect(array, index) => nary(Const("Leon_Library.select", Typ.dummyT), array, index)
+      case ArrayUpdated(array, index, value) => nary(Const("Leon_Library.update", Typ.dummyT), array, index, value)
+      case ArrayLength(array) => nary(Const("Leon_Library.length", Typ.dummyT), array)
+
+      case EmptyArray(tpe) =>
+        types.typ(ArrayType(tpe)).map(Const("List.list.Nil", _))
+
+      case NonemptyArray(elems, defaults) =>
+        defaults match {
+          case Some((default, length)) =>
+            val int32 = types.typ(Int32Type)
+
+            val entries = Future.traverse(elems.toList) { case (i, e) =>
+              val index = int32.flatMap(typ => system.invoke(NumeralLiteral)((i, typ)).assertSuccess(context))
+              val value = term(e, bounds, consts)
+              index zip value
+            }
+
+            for {
+              d <- term(default, bounds, consts)
+              l <- term(length, bounds, consts)
+              es <- entries
+            }
+            yield
+              es.foldRight(mkApp(Const("Leon_Library.replicate", Typ.dummyT), l, d)) { case ((i, v), acc) =>
+                mkApp(Const("Leon_Library.update", Typ.dummyT), acc, i, v)
+              }
+
+          case None =>
+            val sortedElems = elems.toList.sortBy(_._1)
+            val max = sortedElems.last._1
+
+            if (sortedElems.map(_._1) != (0 to max).toList)
+              context.reporter.fatalError(s"In expression $expr: Neither length nor default given and element map not contiguous")
+
+            types.typ(expr.getType).flatMap { typ =>
+              flexary(Const("List.list.Cons", Typ.dummyT), Const("List.list.Nil", typ), sortedElems.map(_._2))
+            }
+        }
+
       case Choose(pred) =>
         nary(Const("Hilbert_Choice.Eps", Typ.dummyT), pred)
 
