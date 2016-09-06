@@ -29,7 +29,12 @@ case class Element(tag: String, sons: leon.collection.List[WebElement], properti
   def apply(elems: List[WebTree]): Element = {
     val (sons2, properties2, style2) = leon.webDSL.webBuilding.implicits.extractElements(elems)
     Element(tag, sons ++ sons2, properties ++ properties2, style ++ style2) 
-  }
+  }/* ensuring { (res: Element) =>
+    res.tag == tag &&
+    res.sons == sons ++ webElementsOf(l) &&
+    res.properties == properties ++ propertiesOf(l) &&
+    res.style == style ++ stylesOf(l)
+  }*/
   @ignore
   def apply(elems: WebTree*): Element = {
     var l: List[WebTree] = Nil[WebTree]()
