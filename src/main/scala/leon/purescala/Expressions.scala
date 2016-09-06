@@ -193,6 +193,42 @@ object Expressions {
     }
   }
 
+  case class ArrayForall(array: Expr, from: Expr, to: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(_, BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+  case class ArrayExists(array: Expr, from: Expr, to: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(_, BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+
+  case class BoundedForall(from: Expr, to: Expr, body: Expr) extends Expr {
+    val intType = from.getType
+    require((intType == IntegerType || intType == Int32Type) && from.getType == to.getType)
+    require(body.getType match {
+      case FunctionType(Seq(IntegerType), BooleanType) => intType == IntegerType
+      case FunctionType(Seq(Int32Type), BooleanType) => intType == Int32Type
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+  case class BoundedExists(from: Expr, to: Expr, body: Expr) extends Expr {
+    val intType = from.getType
+    require((intType == IntegerType || intType == Int32Type) && from.getType == to.getType)
+    require(body.getType match {
+      case FunctionType(Seq(IntegerType), BooleanType) => intType == IntegerType
+      case FunctionType(Seq(Int32Type), BooleanType) => intType == Int32Type
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+
   /** $encodingof the '''this''' keyword
     * Both [[Expressions.MethodInvocation]] and [[Expressions.This]] get removed by phase [[MethodLifting]].
     * Methods become functions, [[Expressions.This]] becomes first argument,

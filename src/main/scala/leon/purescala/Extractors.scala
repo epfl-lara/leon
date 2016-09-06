@@ -247,6 +247,25 @@ object Extractors {
           es => NonemptyArray(indexes.zip(es).toMap, None)
         ))
       case Tuple(args) => Some((args, es => Tuple(es)))
+
+      case ArrayForall(array, from, to, pred) => Some((
+        Seq(array, from, to, pred),
+        (as: Seq[Expr]) => ArrayForall(as(0), as(1), as(2), as(3))
+      ))
+      case ArrayExists(array, from, to, pred) => Some((
+        Seq(array, from, to, pred),
+        (as: Seq[Expr]) => ArrayExists(as(0), as(1), as(2), as(3))
+      ))
+
+      case BoundedForall(from, to, pred) => Some((
+        Seq(from, to, pred),
+        (as: Seq[Expr]) => BoundedForall(as(0), as(1), as(2))
+      ))
+      case BoundedExists(from, to, pred) => Some((
+        Seq(from, to, pred),
+        (as: Seq[Expr]) => BoundedExists(as(0), as(1), as(2))
+      ))
+
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
         { case Seq(c, t, e) => IfExpr(c, t, e) }

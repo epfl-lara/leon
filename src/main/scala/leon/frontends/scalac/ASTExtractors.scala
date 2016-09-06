@@ -787,11 +787,93 @@ trait ASTExtractors {
       }
     }
 
+    object ExArrayForallExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayForall"), types),
+            List(array, pred)) =>
+          Some((array, pred))
+        case _ => None
+      }
+    }
+    object ExArrayBoundedForallExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayForall"), types),
+            List(array, from, to, pred)) =>
+          Some((array, from, to, pred))
+        case _ => None
+      }
+    }
+    object ExBoundedForallExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            ExSymbol("leon", "lang", "boundedForall"),
+            List(from, to, pred)) =>
+          Some((from, to, pred))
+        case _ => None
+      }
+    }
+    object ExArrayExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayExists"), types),
+            List(array, pred)) =>
+          Some((array, pred))
+        case _ => None
+      }
+    }
+    object ExArrayBoundedExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayExists"), types),
+            List(array, from, to, pred)) =>
+          Some((array, from, to, pred))
+        case _ => None
+      }
+    }
+    object ExBoundedExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            ExSymbol("leon", "lang", "boundedExists"),
+            List(from, to, pred)) =>
+          Some((from, to, pred))
+        case _ => None
+      }
+    }
+
     object ExArrayUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
         case Apply(
-              Apply(TypeApply(Select(Apply(ExSelected("scala", "Predef", s), Seq(lhs)), n), _), Seq(index, value)),
-              List(Apply(_, _))) if (s.toString contains "Array") && (n.toString == "updated") => Some((lhs, index, value))
+               Apply(
+                 TypeApply(
+                   Select(
+                     Apply(ExSelected("scala", "Predef", s), Seq(lhs)), 
+                     n
+                   ), 
+                   _
+                 ), 
+                 Seq(index, value)
+               ),
+               List(Apply(_, _))
+             ) if (s.toString contains "Array") && 
+                  (n.toString == "updated") => 
+          Some((lhs, index, value))
+        case Apply(
+               Apply(
+                 TypeApply(
+                   Select(
+                     Apply(TypeApply(ExSelected("scala", "Predef", s), tpes), Seq(lhs)),
+                     n
+                   ),
+                   _
+                 ), 
+                 Seq(index, value)
+               ),
+               List(Apply(_, _))
+             ) if (s.toString contains "Array") && 
+                  (n.toString == "updated") => 
+          Some((lhs, index, value))
         case _ => None
       }
     }

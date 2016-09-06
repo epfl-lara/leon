@@ -1588,6 +1588,42 @@ trait CodeExtraction extends ASTExtractors {
 
           Forall(vds, exBody)
 
+        case f @ ExArrayForallExpression(array, pred) =>
+          val a = extractTree(array)
+          val lambda = extractTree(pred)
+          ArrayForall(a, IntLiteral(0), ArrayLength(a), lambda)
+
+        case f @ ExArrayBoundedForallExpression(array, from, to, pred) =>
+          val ra = extractTree(array)
+          val rf = extractTree(from)
+          val rt = extractTree(to)
+          val lambda = extractTree(pred)
+          ArrayForall(ra, rf, rt, lambda)
+
+        case f @ ExBoundedForallExpression(from, to, pred) =>
+          val rf = extractTree(from)
+          val rt = extractTree(to)
+          val lambda = extractTree(pred)
+          BoundedForall(rf, rt, lambda)
+
+        case f @ ExArrayExistsExpression(array, pred) =>
+          val a = extractTree(array)
+          val lambda = extractTree(pred)
+          ArrayExists(a, IntLiteral(0), ArrayLength(a), lambda)
+
+        case f @ ExArrayBoundedExistsExpression(array, from, to, pred) =>
+          val ra = extractTree(array)
+          val rf = extractTree(from)
+          val rt = extractTree(to)
+          val lambda = extractTree(pred)
+          ArrayExists(ra, rf, rt, lambda)
+
+        case f @ ExBoundedExistsExpression(from, to, pred) =>
+          val rf = extractTree(from)
+          val rt = extractTree(to)
+          val lambda = extractTree(pred)
+          BoundedExists(rf, rt, lambda)
+
         case ExFiniteMap(tptFrom, tptTo, args) =>
           FiniteMap(args.map {
             case ExTuple(tpes, Seq(key, value)) =>

@@ -127,4 +127,23 @@ package object lang {
   case class Mutable[T]()
   implicit def mutable[T] = new Mutable[T]
 
+
+  @ignore
+  def arrayForall[A](array: Array[A], pred: A => Boolean): Boolean = ???
+  @ignore
+  def arrayForall[A](array: Array[A], from: Int, to: Int, pred: A => Boolean): Boolean = ???
+  @ignore
+  def arrayExists[A](array: Array[A], pred: A => Boolean): Boolean = ???
+  @ignore
+  def arrayExists[A](array: Array[A], from: Int, to: Int, pred: A => Boolean): Boolean = ???
+
+  @ignore
+  def boundedForall(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
+  @ignore
+  def boundedForall(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
+  @ignore
+  def boundedExists(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
+  @ignore
+  def boundedExists(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
+
 }

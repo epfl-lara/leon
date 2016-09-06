@@ -25,7 +25,7 @@ import _root_.smtlib.parser.Commands.{
 }
 import _root_.smtlib.parser.Terms.{
   Forall => SMTForall,
-  Exists => _,
+  Exists => SMTExists,
   Identifier => SMTIdentifier,
   Let => SMTLet,
   _
@@ -586,6 +586,94 @@ trait SMTLIBTarget extends Interruptible {
         }
       case Forall(vs, bd) =>
         quantifiedTerm(SMTForall, vs map { _.id }, bd)(Map())
+
+      case ArrayForall(array, from, to, pred) =>
+        val tpe @ ArrayType(base) = normalizeType(array.getType)
+
+        val index = FreshIdentifier("i", Int32Type)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> ArraySelect(array, index.toVariable)), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTForall(
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          Core.Implies(
+            Core.And(
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))),
+            rSubstBody
+          )
+        )
+      case ArrayExists(array, from, to, pred) =>
+        val tpe @ ArrayType(base) = normalizeType(array.getType)
+
+        val index = FreshIdentifier("i", Int32Type)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> ArraySelect(array, index.toVariable)), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTExists(
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          Core.And(
+            FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+            FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to)),
+            rSubstBody
+          )
+        )
+      
+
+      case BoundedForall(from, to, pred) =>
+        val intType = from.getType
+        val index = FreshIdentifier("i", intType)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> index.toVariable), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTForall(
+          SortedVar(id2sym(index), declareSort(intType)), Seq(),
+          Core.Implies(
+            Core.And(
+              (if(intType == Int32Type)
+                FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from))
+              else
+                Ints.GreaterEquals(id2sym(index), toSMT(from))),
+              (if(intType == Int32Type)
+                FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))
+              else
+                Ints.LessThan(id2sym(index), toSMT(to)))),
+            rSubstBody
+          )
+        )
+      case BoundedExists(from, to, pred) =>
+        val intType = from.getType
+        val index = FreshIdentifier("i", intType)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> index.toVariable), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTExists(
+          SortedVar(id2sym(index), declareSort(intType)), Seq(),
+          Core.And(
+            (if(intType == Int32Type)
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from))
+            else
+              Ints.GreaterEquals(id2sym(index), toSMT(from))),
+            (if(intType == Int32Type)
+              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))
+            else
+              Ints.LessThan(id2sym(index), toSMT(to))),
+            rSubstBody
+          )
+        )
+
       case o =>
         unsupported(o, "")
     }
