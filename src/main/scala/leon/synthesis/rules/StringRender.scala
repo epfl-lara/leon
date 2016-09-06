@@ -23,6 +23,7 @@ import programsets.DirectProgramSet
 import programsets.JoinProgramSet
 import leon.utils.StreamUtils
 import leon.synthesis.RulePriority
+import leon.evaluators.AbstractEvaluator
 
 /** A template generator for a given type tree. 
   * Extend this class using a concrete type tree,
@@ -149,8 +150,8 @@ case object StringRender extends Rule("StringRender") {
     rec(lhs, rhs, ListBuffer[Equation](), ListBuffer[StringFormToken](), new StringBuffer)
   }
   
-  /** Returns a stream of assignments compatible with input/output examples for the given template */
-  def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr, variablesToReplace: Set[Identifier])(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
+  /** Returns a string equation problem corresponding to input/output examples for the given template */
+  def extractStringProblem(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr, variablesToReplace: Set[Identifier])(implicit hctx: SearchContext): Option[StringSolver.Problem] = {
     //println(s"finding assignments in program\n$p")
     val e = new AbstractEvaluator(hctx, p)
     
@@ -191,7 +192,12 @@ case object StringRender extends Rule("StringRender") {
         }
     }
    
-    gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList) match {
+    gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList)
+  }
+  
+  /** Returns a stream of assignments compatible with input/output examples for the given template */
+  def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr, variablesToReplace: Set[Identifier])(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
+    extractStringProblem(p, inputs, examples, template, variablesToReplace) match {
       case Some(problem) =>
         StringSolver.solve(problem)
       case None => Stream.empty
@@ -721,6 +727,47 @@ case object StringRender extends Rule("StringRender") {
     }
   }
   
+  def repair(p: Problem, examples: ExamplesBank, guide: Expr)(implicit hctx: SearchContext): RuleApplication = {
+    // TODO: Extract the functions which depend on the guide to maybe modify them too.
+    
+    val initialMappingBuilder = ListBuffer[(Identifier, String)]()
+    
+    val guideTemplate: Expr = ExprOps.preMap{
+      case StringLiteral(a) => val c = FreshIdentifier("const", StringType)
+        initialMappingBuilder += c -> a
+        Some(Variable(c))
+      case _ => None
+    }(guide)
+    val initialMapping: StringSolver.Assignment = initialMappingBuilder.toMap
+
+    val a = new AbstractEvaluator(hctx, hctx.program)
+    
+    //findAssignments(hctx.program, p.as, examples, template: guideTemplate, variablesToReplace: Set[Identifier])(implicit hctx: SearchContext): Stream[Map[Identifier, String]]
+    
+    val problem: StringSolver.Problem  = extractStringProblem(hctx.program, p.as, examples, guideTemplate, initialMapping.keySet) match {
+      case Some(p) => p
+      case None =>
+        hctx.reporter.debug("Could not extract string problem from " + guideTemplate)
+        return RuleClosed(Stream.Empty)
+    }
+    
+    val solutions = StringSolver.solveMinChange(problem, initialMapping)
+    
+    def assignGuide(solution: StringSolver.Assignment): Expr = {
+      ExprOps.preMap{
+        case Variable(i) if solution contains i => Some(StringLiteral(solution(i)))
+        case Variable(i) if initialMapping contains i => Some(StringLiteral(initialMapping(i)))
+        case _ => None
+      }(guideTemplate)
+    }
+    
+    RuleClosed(
+       solutions.map{solution => 
+         Solution(BooleanLiteral(true), Set(), assignGuide(solution), true)
+       }
+    )
+  }
+  
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     //hctx.reporter.debug("StringRender:Output variables="+p.xs+", their types="+p.xs.map(_.getType))
     if(hctx.currentNode.parent.nonEmpty) Nil else
@@ -746,6 +793,19 @@ case object StringRender extends Rule("StringRender") {
         })
         
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
+        
+        // If there is a guide, we first try to modify its string constants.
+        p.wsList.collectFirst{
+          case Witnesses.Guide(expr) => expr
+        } match {
+          case Some(guide) =>
+            ruleInstantiations += RuleInstantiation("String repair") {
+              repair(p, examples, guide)
+            }
+          case _ =>
+        }
+        
+        
         val originalInputs = inputVariables.map(Variable)
         ruleInstantiations += RuleInstantiation("String conversion") {
           val synthesisResult = FunDefTemplateGenerator(originalInputs, functionVariables).buildFunDefTemplate(true)

@@ -145,7 +145,7 @@ object Expressions {
     */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val getType = {
-      // We can't demand anything sticter here, because some binders are
+      // We can't demand anything stricter here, because some binders are
       // typed context-wise
       if (typesCompatible(value.getType, binder.getType))
         body.getType
