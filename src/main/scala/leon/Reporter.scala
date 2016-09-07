@@ -34,8 +34,8 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
 
   def emit(msg: Message): Unit
 
-  def onFatal(): Nothing = {
-    throw LeonFatalError(None)
+  def onFatal(msg: Option[String] = None): Nothing = {
+    throw LeonFatalError(msg)
   }
 
   def onCompilerProgress(current: Int, total: Int) = {}
@@ -47,14 +47,14 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
 
   final def fatalError(pos: Position, msg: Any): Nothing = {
     emit(account(Message(FATAL, pos, msg)))
-    onFatal()
+    onFatal(Some(msg.toString))
   }
 
   final def internalError(pos: Position, msg : Any) : Nothing = {
-    emit(account(Message(INTERNAL, pos, msg.toString + 
+    val finalMsg = msg.toString + 
       "\nPlease inform the authors of Leon about this message"
-    ))) 
-    onFatal()
+    emit(account(Message(INTERNAL, pos, msg.toString))) 
+    onFatal(Some(finalMsg))
   }
 
   final def internalAssertion(cond : Boolean, pos: Position, msg : Any) : Unit = {

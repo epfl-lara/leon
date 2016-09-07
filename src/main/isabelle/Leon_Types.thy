@@ -32,8 +32,8 @@ datatype (discs_sels) web_page = Web_Page web_tree style_sheet
 datatype (discs_sels) web_site = Web_Site "web_page list"
 datatype (discs_sels) web_page_ided = Web_Page_IDed web_tree style_sheet
 datatype (discs_sels) web_site_ided = Web_Site_IDed "web_page_ided list"
-datatype (discs_sels) acceptor = Acceptor Leon_Library.string
-datatype (discs_sels) css_acceptor = CSS_Acceptor Leon_Library.string
+datatype (discs_sels) 't acceptor = Acceptor Leon_Library.string
+datatype (discs_sels) 't css_acceptor = CSS_Acceptor Leon_Library.string
 datatype (discs_sels) element_decision = Element_Decision bool
 datatype (discs_sels) style_builder = Style_Builder Leon_Library.string
 
