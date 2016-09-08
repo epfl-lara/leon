@@ -15,6 +15,31 @@ import datagen._
 import solvers._
 import solvers.z3._
 
+object ExamplesFinder {
+  def isConcretelyTestablePasses(e: Expr) = {
+    e match {
+      case Passes(in, out, cases) => 
+        if(cases.forall{
+            case MatchCase(pattern, optGuard, body) =>
+            PatternOps.exists{
+              case WildcardPattern(_) => false
+              case InstanceOfPattern(_, tp) => false
+              case u : UnapplyPattern => false
+              case _ => true
+            }(pattern) ||
+            ((pattern, optGuard) match {
+              case (WildcardPattern(Some(x)), Some(Equals(Variable(x2), b))) if x == x2 => isValue(b)
+              case (WildcardPattern(Some(x)), Some(Equals(b, Variable(x2)))) if x == x2 => isValue(b) 
+              case _ => false
+            })
+           }) {
+          true
+        } else false
+      case _ => false
+    }
+  }
+}
+
 class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
   lazy val evaluator = new DefaultEvaluator(ctx, program)
