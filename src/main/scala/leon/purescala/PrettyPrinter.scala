@@ -212,7 +212,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case BooleanLiteral(v) => p"$v"
       case UnitLiteral()     => p"()"
       case StringLiteral(v) =>
-        if (v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
+        val newlineCount = v.count(c => c == '\n')
+        if (newlineCount >= 1 && (v.length >= 80 || (newlineCount >= 3 && newlineCount < v.length / 3)) && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
           val escaped = StringEscapeUtils.escapeJava(v)
