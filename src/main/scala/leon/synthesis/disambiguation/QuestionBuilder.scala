@@ -193,7 +193,12 @@ class QuestionBuilder[T <: Expr](
   
   /** Given an input, the current output, a list of alternative programs, compute a question if there is any. */
   def computeQuestion(possibleInput: Seq[(Identifier, Expr)], currentOutput: T, alternatives: List[Solution]): Option[Question[T]] = {
-    val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
+    augmentQuestion(possibleInput, currentOutput, Nil, alternatives)
+  }
+  
+  /** Performs the same as computeQuestion but takes the previous outputs into account to produce an increasing question */
+  def augmentQuestion(possibleInput: Seq[(Identifier, Expr)], currentOutput: T, previousAlternativeOutputs: List[T], newAlternatives: List[Solution]): Option[Question[T]] = {
+    val alternative_outputs = (((ListBuffer[T](currentOutput) ++= previousAlternativeOutputs) /: newAlternatives) { (prev, alternative) =>
       run(alternative, possibleInput) match {
         case Some(alternative_output) if alternative_output != currentOutput =>
           filter(prev, alternative_output) match {
@@ -203,7 +208,7 @@ class QuestionBuilder[T <: Expr](
           }
         case _ => prev
       }
-    }.drop(1).toList.distinct
+    }).drop(1 + previousAlternativeOutputs.length).toList.distinct
     if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
       Some(Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0)))
     } else {
@@ -218,7 +223,7 @@ class QuestionBuilder[T <: Expr](
   
   def getAllPossibleInputs(expressionsToTake: Int): Stream[Seq[(Identifier, Expr)]]= {
     val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
-    val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake)
+    val enumerated_inputs = datagen.generateMapping(input, originalFun.map(f => f.precOrTrue).getOrElse(BooleanLiteral(true)), expressionsToTake, expressionsToTake)
     .map(inputs =>
       inputs.map(id_expr =>
         (id_expr._1, makeGenericValuesUnique(id_expr._2)))).toStream
@@ -236,18 +241,46 @@ class QuestionBuilder[T <: Expr](
     } yield question
   }
   
+  def inputsToQuestionsByAlternativeFirst(inputs: Stream[Seq[(Identifier, Expr)]]): Stream[Question[T]] = {
+    val solution = solutions.head
+    val alternatives = solutions.drop(1).take(solutionsToTake)
+    var inputsToConsider = inputs
+    var stopOtherOutputs = false
+    var previousAlternativeOutputs = List[T]()
+    for {
+      alternative              <- alternatives
+      _ = (stopOtherOutputs = false)
+      possibleInput            <- inputsToConsider
+      if !stopOtherOutputs
+      currentOutputNonFiltered <- run(solution, possibleInput)
+      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+      question <- augmentQuestion(possibleInput, currentOutput, previousAlternativeOutputs, List(alternative))
+    } yield {
+      inputsToConsider = Stream(possibleInput)
+      stopOtherOutputs = true
+      previousAlternativeOutputs = previousAlternativeOutputs ++ question.other_outputs
+      question
+    }
+  }
+  
+  
   /** Returns a list of input/output questions to ask to the user. */
   def resultAsStream(): Stream[Question[T]] = {
     if(solutions.isEmpty) return Stream.empty
 
+    val all_inputs = getExpressionsToTestFirst().getOrElse(Stream.Empty) #::: getAllPossibleInputs(expressionsToTake).take(expressionsToTake)
+
+    val res = inputsToQuestionsByAlternativeFirst(all_inputs)
+    return res
+    /*
     getExpressionsToTestFirst() foreach  { inputs_generics =>
       val res = inputsToQuestions(inputs_generics)
       if(res.nonEmpty) return res
     }
     
-    val enumerated_inputs = getAllPossibleInputs(expressionsToTake)
+    val enumerated_inputs = getAllPossibleInputs(expressionsToTake).take(expressionsToTake)
     val questions = inputsToQuestions(enumerated_inputs)
-    questions
+    questions*/
   }/*
   
   def result(): List[Question[T]] = {
