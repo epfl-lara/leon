@@ -98,12 +98,15 @@ class PrettyPrinter(opts: PrinterOptions,
         p"""|val $b = $d
             |$e"""
 
-      case LetDef(a :: q, body) =>
+      case LetDef(a +: q, body) =>
         p"""|$a
             |${letDef(q, body)}"""
       case LetDef(Nil, body) =>
         p"""$body"""
 
+      case Require(BooleanLiteral(true), body) =>
+        p"|$body"
+        
       case Require(pre, body) =>
         p"""|require($pre)
             |$body"""

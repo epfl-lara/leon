@@ -35,6 +35,7 @@ abstract class Position extends Ordered[Position] {
 }
 
 object Position {
+  /** Merges the two positions into the smallest RangePosition containing both positions */
   def between(a: Position, b: Position): Position = {
     if (a.file == b.file) {
       if (a.line == b.line && a.col == b.col) {
@@ -57,6 +58,29 @@ object Position {
       }
     } else {
       a
+    }
+  }
+  
+  /** Returns true if position a is inside position b.*/
+  def isInside(a: Position, b: Position): Boolean = {
+    b match {
+      case b: OffsetPosition =>
+        a match {
+          case OffsetPosition(line, col, point, file) =>
+            file == b.file && point == b.point
+          case RangePosition(line, col, pointFrom, line2, col2, pointTo, file) =>
+            file == b.file && pointFrom == b.point && pointTo == pointFrom
+          case _ => false
+        }
+      case b: RangePosition =>
+        a match {
+          case OffsetPosition(line, col, point, file) =>
+            file == b.file && point >= b.pointFrom && point <= b.pointTo
+          case RangePosition(line, col, pointFrom, line2, col2, pointTo, file) =>
+            file == b.file && pointFrom >= b.pointFrom && pointTo <= b.pointTo
+          case _ => false
+        }
+      case _ => false
     }
   }
 }

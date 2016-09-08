@@ -716,5 +716,32 @@ object DefOps {
       fd.postcondition = fd.postcondition.map(post => updateBody(post))
     }
   }
+  
+  /** Returns the set of all reachable inner functions of a given one.
+    * @param initial The initial set of inline function definitions. You can set it to Set(container)*/
+  def getAllReachableInlineFunctions(inside: FunDef, initial: Set[FunDef]): Set[FunDef] = {
+    var inlineFunDefs = initial
+    // Reach a fix point where all reachable inline functions are taken into account.
+    var prevInlineFunDefs = Set[FunDef]()
+    while(prevInlineFunDefs.size < inlineFunDefs.size) {
+      prevInlineFunDefs = inlineFunDefs
+      for{ fd <- inlineFunDefs
+           body <- fd.body} {
+        inlineFunDefs ++= getAllInlineFunctionInvocations(body, inside)
+      }
+    }
+    inlineFunDefs
+  }
+  
+  /** Returns the set of all reachable inner functions of a given one.
+    * @param initial The initial set of inline function definitions. You can set it to Set(container)*/
+  def getAllInlineFunctionInvocations(body: Expr, inside: FunDef): Set[FunDef] = {
+    ExprOps.collect{
+      case FunctionInvocation(tfd, args) if leon.utils.Position.isInside(tfd.fd.getPos, inside.getPos) => 
+        Set(tfd.fd)
+      case _ =>Set[FunDef]()
+    }(body)
+  }
+  
 
 }

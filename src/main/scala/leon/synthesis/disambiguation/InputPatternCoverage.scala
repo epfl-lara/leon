@@ -177,7 +177,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
           coverExpr(inputs, elze, covered, bindings)
       )
       
-    case IfExpr(cond, thenn, elze) => throw new Exception("Requires only match/case pattern, got "+e)
+    case IfExpr(cond, thenn, elze) => throw new InputPatternCoverageException("Requires only match/case pattern, got "+e)
     case MatchExpr(Reconstructor(path), cases) if inputs.nonEmpty && inputs.headOption == Some(path.orig) =>
       val pathType = path.getType
       val coveringExprs = cases.map(coverMatchCase(pathType, _, covered, bindings))
