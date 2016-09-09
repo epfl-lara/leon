@@ -40,22 +40,29 @@ object MatrixDisplayer {
       }
     }
   }
+  def horizontalDelimiter(row: List[String], cellWidth: BigInt, inlineChar: String, repeatChar: String) = {
+    List.mkString[String](row, inlineChar, (elem : String) => repeat(repeatChar, cellWidth))
+  }
+  def printrow(row: List[String], cellWidth: BigInt, leftDelimiter: String, midDelimiter: String, rightDelimiter: String, padChar: String, padOddLeft: String, padOddRight: String) = {
+    leftDelimiter + List.mkString[String](row, midDelimiter,
+          (elem : String) => padCenter(elem, cellWidth, padChar, padOddLeft, padOddRight)) + rightDelimiter
+  }
 
   def showMatrix(a : List[List[Int]]): String =  {
     require(a.length > BigInt(0) && a.head.length > BigInt(0))
     val b = a.map[List[String]]((l : List[Int]) => l.map[String]((i : Int) => i.toString))
     val cellWidth = maximum(b.map[BigInt]((l : List[String]) => maxLength(l, BigInt(1))), BigInt(1))
     val width = a.head.length
-    "\r\n+" + List.mkString[String](b.head, "+", (elem : String) => repeat("-", cellWidth)) + "+\r\n" + List.mkString[List[String]](b, "+" + repeat(repeat("-", cellWidth) + "+", width) + "\r\n", (line : List[String]) => "|" + List.mkString[String](line, "|", (elem : String) => padCenter(elem, cellWidth, " ", "", " ")) + "|\r\n") + "+" + List.mkString[String](b.head, "+", (elem : String) => repeat("-", cellWidth)) + "+"
+    "\r\n+" + horizontalDelimiter(b.head, cellWidth, "+", "-") + "+\r\n" + List.mkString[List[String]](b, "+" + horizontalDelimiter(b.head, cellWidth, "+", "-") + "+\r\n", (row : List[String]) => printrow(row, cellWidth, "|", "|", "|\r\n", " ", "", " ")) + "+" + horizontalDelimiter(b.head, cellWidth, "+", "-") + "+"
   } ensuring {
     (res : String) => (a, res) passes {
       case x if x == List[List[Int]](List[Int](1, 234), List[Int](5674, 23)) =>
         """
------+-----
+/----+----\
 | 1  |234 |
 +----+----+
 |5674| 23 |
------+-----"""
+\----+----/"""
     }
   }
   

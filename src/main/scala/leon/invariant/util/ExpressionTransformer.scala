@@ -179,7 +179,7 @@ object ExpressionTransformer {
    */
   def FlattenFunction(inExpr: Expr): Expr = {
 
-    /**
+    /*
      * First return value is the new expression. The second return value is the
      * set of new conjuncts
      * @param insideFunction when set to true indicates that the newConjuncts (second argument)
