@@ -8,7 +8,6 @@ import scala.language.implicitConversions
 package object lang {
   import leon.proof._
 
-  @cCode.drop
   @isabelle.typ(name = "Leon_Types.boolean_decorations")
   @isabelle.constructor(name = "Leon_Types.boolean_decorations.Boolean_Decorations")
   implicit class BooleanDecorations(val underlying: Boolean) {
@@ -72,7 +71,6 @@ package object lang {
     // no-op (rankFun will be ignored in the actual execution)
   }
 
-  @cCode.drop
   @isabelle.typ(name = "Leon_Types.specs_decorations")
   @isabelle.constructor(name = "Leon_Types.specs_decorations.Specs_Decorations")
   implicit class SpecsDecorations[A](val underlying: A) {
@@ -121,23 +119,8 @@ package object lang {
     f(t._1) + mid + g(t._2)
   }
 
-  @extern
-  @library
-  @cCode.function(
-    code = """
-      |void __FUNCTION__(char* s) {
-      |  printf("%s", s);
-      |}
-      """,
-    includes = "stdio.h"
-  )
-  def print(x: String): Unit = {
-    scala.Predef.print(x)
-  }
-
   case class Mutable[T]()
   implicit def mutable[T] = new Mutable[T]
-
 
   @ignore
   def arrayForall[A](array: Array[A], pred: A => Boolean): Boolean = ???
