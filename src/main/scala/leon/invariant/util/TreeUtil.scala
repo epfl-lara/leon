@@ -99,7 +99,12 @@ object ProgramUtil {
     else if (fd.annotations.contains("library")) BooleanLiteral(true)
     else {
       //just consider all the arguments, return values that are integers
-      val baseTerms = fd.params.filter((vardecl) => isNumericType(vardecl.getType)).map(_.toVariable) ++
+      val baseTerms = fd.params.filter {
+        _.getType match {
+          case IntegerType | RealType => true
+          case _                      => false
+        }
+      }.map(_.toVariable) ++
         (if (isNumericType(fd.returnType)) Seq(getFunctionReturnVariable(fd))
         else Seq())
       val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar(): Expr)((acc, t) => {

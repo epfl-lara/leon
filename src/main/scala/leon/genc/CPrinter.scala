@@ -11,25 +11,50 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   def print(tree: Tree) = pp(tree)(PrinterContext(0, this))
 
-  def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
+  private def escape(c: Char): String = c match {
+    case '\b' => "\\b"
+    case '\t' => "\\t"
+    case '\n' => "\\n"
+    case '\f' => "\\f"
+    case '\r' => "\\r"
+    case '\\' => "\\\\"
+    case '\'' => "\\'"
+    case '\"' => "\\\""
+    case c    => c.toString
+  }
+
+  private def escape(s: String): String = {
+    import org.apache.commons.lang3.StringEscapeUtils
+    StringEscapeUtils.escapeJava(s)
+  }
+
+  private[genc] def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
     /* ---------------------------------------------------------- Types ----- */
-    case typ: Type => c"${typ.toString}"
+    case typ: Type => c"${typ.rep}"
 
 
     /* ------------------------------------------------------- Literals ----- */
-    case IntLiteral(v) => c"$v"
-    case BoolLiteral(b) => c"$b"
+    case CharLiteral(c)   => c"'${escape(c)}'"
+    case IntLiteral(v)    => c"$v"
+    case BoolLiteral(b)   => c"$b"
+
+    // Mind the fourth and eighth double quotes
+    case StringLiteral(s) => c""""${escape(s)}""""
 
 
     /* --------------------------------------------------- Definitions  ----- */
-    case Prog(structs, functions) =>
+    case Prog(includes, structs, typedefs, functions) =>
       c"""|/* ------------------------------------ includes ----- */
           |
-          |${nary(includeStmts, sep = "\n")}
+          |${nary(buildIncludes(includes), sep = "\n")}
           |
           |/* ---------------------- data type declarations ----- */
           |
           |${nary(structs map StructDecl, sep = "\n")}
+          |
+          |/* -------------------------------- type aliases ----- */
+          |
+          |${nary(typedefs map TypeDefDecl, sep = "\n")}
           |
           |/* ----------------------- data type definitions ----- */
           |
@@ -44,12 +69,21 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |${nary(functions, sep = "\n")}
           |"""
 
-    case f @ Fun(_, _, _, body) =>
+    // Manually defined function
+    case Fun(_, _, _, Right(function)) =>
+      c"$function"
+
+    // Auto-generated function
+    case f @ Fun(_, _, _, Left(body: Compound)) =>
       c"""|${FunSign(f)}
           |{
           |  $body
           |}
           |"""
+
+    // Quick'n'dirty hack to ensure one ';' close the body
+    case Fun(id, retType, params, Left(stmt)) =>
+      c"${Fun(id, retType, params, Left(Compound(Seq(stmt))))}"
 
     case Id(name) => c"$name"
 
@@ -113,7 +147,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case Break => c"break;"
     case Return(stmt) => c"return $stmt;"
 
-    case IfElse(cond, thn, elze) =>
+    case IfElse(cond, thn: Compound, elze: Compound) =>
       c"""|if ($cond)
           |{
           |  $thn
@@ -123,6 +157,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |  $elze
           |}
           |"""
+
+    case IfElse(cond, thn: Compound, elze) => pp(IfElse(cond, thn, Compound(Seq(elze))))
+    case IfElse(cond, thn, elze: Compound) => pp(IfElse(cond, Compound(Seq(thn)), elze))
+    case IfElse(cond, thn, elze) => pp(IfElse(cond, Compound(Seq(thn)), Compound(Seq(elze))))
 
     case While(cond, body) =>
       c"""|while ($cond)
@@ -153,7 +191,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   }
 
 
-  def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
+  private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
+    case TypeDefDecl(TypeDef(Id(orig), Id(alias))) =>
+      c"typedef $alias $orig;"
+
     case FunDecl(f) =>
       c"${FunSign(f)};$NewLine"
 
@@ -183,16 +224,19 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   }
 
   /** Hardcoded list of required include files from C standard library **/
-  lazy val includes = "assert.h" :: "stdbool.h" :: "stdint.h" :: Nil
-  lazy val includeStmts = includes map { i => s"#include <$i>" }
+  private lazy val includes_ = Set("assert.h", "stdbool.h", "stdint.h") map Include
+
+  private def buildIncludes(includes: Set[Include]): Seq[String] =
+    (includes_ ++ includes).toSeq sortBy { _.file } map { i => s"#include <${i.file}>" }
 
   /** Wrappers to distinguish how the data should be printed **/
-  sealed abstract class WrapperTree
-  case class FunDecl(f: Fun) extends WrapperTree
-  case class FunSign(f: Fun) extends WrapperTree
-  case class DeclParam(x: Var) extends WrapperTree
-  case class StructDecl(s: Struct) extends WrapperTree
-  case class StructDef(s: Struct) extends WrapperTree
-  case object NewLine extends WrapperTree
+  private[genc] sealed abstract class WrapperTree
+  private case class TypeDefDecl(td: TypeDef) extends WrapperTree
+  private case class FunDecl(f: Fun) extends WrapperTree
+  private case class FunSign(f: Fun) extends WrapperTree
+  private case class DeclParam(x: Var) extends WrapperTree
+  private case class StructDecl(s: Struct) extends WrapperTree
+  private case class StructDef(s: Struct) extends WrapperTree
+  private case object NewLine extends WrapperTree
 }
 

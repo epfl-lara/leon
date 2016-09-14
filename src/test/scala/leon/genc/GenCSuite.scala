@@ -16,20 +16,26 @@ import scala.sys.process._
 
 import org.scalatest.{ Args, Status }
 
-import java.io.ByteArrayInputStream
-import java.nio.file.{ Files, Path }
+import scala.io.Source
+import java.io.{ ByteArrayInputStream, File }
+import java.nio.file.{ Files, Path, Paths }
 
 class GenCSuite extends LeonRegressionSuite {
 
   private val testDir = "regression/genc/"
   private lazy val tmpDir = Files.createTempDirectory("genc")
   private val ccflags = "-std=c99 -g -O0"
-  private val maxExecutionTime = 2 // seconds
+  private val timeout = 60 // seconds, for processes execution
 
   private val counter = new UniqueCounter[Unit]
   counter.nextGlobal // Start with 1
 
-  private case class ExtendedContext(leon: LeonContext, tmpDir: Path, progName: String)
+  private case class ExtendedContext(
+    leon: LeonContext,
+    progName: String,            // name of the source file, without extention
+    sourceDir: String,           // directory in which the source lives
+    inputFileOpt: Option[String] // optional path to an file to be used as stdin at runtime
+  )
 
   // Tests are run as follows:
   // - before mkTest is run, all valid test are verified using XLangVerificationSuite
@@ -42,7 +48,9 @@ class GenCSuite extends LeonRegressionSuite {
   //   + if P is expected to be convertible to C, then we make sure that:
   //     * the GenerateCPhase run without trouble,
   //     * the generated C code compiles using a C99 compiler without error,
-  //     * and that, when run, the exit code is 0
+  //     * and that, when run, the exit code is 0;
+  //     * additionally, we compile the original scala program and evaluate it,
+  //     * and, finally, we compare the output of the C and Scala program.
   //   + if P is expected to be non-convertible to C, then we make sure that:
   //     * the GenerateCPhase fails
   private def mkTest(files: List[String], cat: String)(block: (ExtendedContext, Program) => Unit) = {
@@ -61,9 +69,18 @@ class GenCSuite extends LeonRegressionSuite {
       }
 
       for { prog <- programs } {
-        val name = prog.units.head.id.name
+        // Retrieve the unit name and the optional input/output files
+        val name       = prog.units.head.id.name
+        val fileOpt    = files find { _ endsWith s"$name.scala" }
+        val filePrefix = fileOpt.get dropRight ".scala".length
+
+        val sourceDir  = new File(fileOpt.get).getParent()
+
+        val inputName  = filePrefix + ".input"
+        val inputOpt   = if (Files.isReadable(Paths.get(inputName))) Some(inputName) else None
+
         val ctx  = createLeonContext(s"--o=$tmpDir/$name.c")
-        val xCtx = ExtendedContext(ctx, tmpDir, name)
+        val xCtx = ExtendedContext(ctx, name, sourceDir, inputOpt)
 
         val displayName = s"$cat/$name.scala"
         val index       = counter.nextGlobal
@@ -81,11 +98,13 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   // Run a process with a timeout and return the status code
-  private def runProcess(pb: ProcessBuilder): Int = runProcess(pb.run)
+  private def runProcess(pb: ProcessBuilder): Int =
+    runProcess(pb.run)
+
   private def runProcess(p: Process): Int = {
     val f = Future(blocking(p.exitValue()))
     try {
-      Await.result(f, duration.Duration(maxExecutionTime, "sec"))
+      Await.result(f, duration.Duration(timeout, "sec"))
     } catch {
       case _: TimeoutException =>
         p.destroy()
@@ -130,7 +149,7 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   private def compile(xCtx: ExtendedContext, cc: String)(unused: Unit) = {
-    val basename     = s"${xCtx.tmpDir}/${xCtx.progName}"
+    val basename     = s"$tmpDir/${xCtx.progName}"
     val sourceFile   = s"$basename.c"
     val compiledProg = basename
 
@@ -140,14 +159,68 @@ class GenCSuite extends LeonRegressionSuite {
     assert(status == 0, "Compilation of converted program failed")
   }
 
-  private def evaluate(xCtx: ExtendedContext)(unused: Unit) = {
-    val compiledProg = s"${xCtx.tmpDir}/${xCtx.progName}"
+  // Evaluate the C program, making sure it succeeds, and return the file containing the output
+  private def evaluateC(xCtx: ExtendedContext): File = {
+    val compiledProg = s"$tmpDir/${xCtx.progName}"
 
-    // TODO memory limit
-    val process = Process(compiledProg)
+    // If available, use the given input file
+    val baseCommand = xCtx.inputFileOpt match {
+      case Some(inputFile) => compiledProg #< new File(inputFile)
+      case None            => Process(compiledProg)
+    }
 
-    val status = runProcess(process)
+    // Redirect output to a tmp file
+    val outputFile = new File(s"$compiledProg.c_output")
+    val command    = baseCommand #> outputFile
+
+    // println(s"Using input file for ${xCtx.progName}: ${xCtx.inputFileOpt.isDefined}")
+
+    // TODO add a memory limit
+
+    val status = runProcess(command)
     assert(status == 0, s"Evaluation of converted program failed with status [$status]")
+
+    outputFile
+  }
+
+  // Compile and evalue the Scala program
+  private def evaluateScala(xCtx: ExtendedContext): File = {
+    // NOTE Those command are based on code found in `scripts/`
+    val source       = s"${xCtx.sourceDir}/${xCtx.progName}.scala"
+    val leonBasePath = new File(System.getProperty("user.dir"))
+    val libraryPath  = new File(leonBasePath, "library")
+    val libraries    = scanFilesIn(libraryPath, { _ endsWith ".scala" }, true)
+    val outClasses   = Files.createTempDirectory(tmpDir, xCtx.progName + ".out")
+    val scalac       = "fsc"
+    val scala        = "scala"
+
+    val compile = s"$scalac -deprecation ${libraries.mkString(" ")} $source -d $outClasses"
+
+    val runBase = s"$scala -cp $outClasses ${xCtx.progName}"
+    val run = xCtx.inputFileOpt match {
+      case Some(inputFile) => runBase #< new File(inputFile)
+      case None            => Process(runBase)
+    }
+
+    // println(s"COMPILE: $compile")
+    // println(s"RUN: $run")
+
+    val outputFile = new File(s"$tmpDir/${xCtx.progName}.scala_output")
+    val command    = compile #&& (run #> outputFile)
+
+    val status = runProcess(command)
+    assert(status == 0, s"Compilation or evaluation of the source program failed")
+
+    outputFile
+  }
+
+  // Evaluate both Scala and C programs, making sure their output matches
+  private def evaluate(xCtx: ExtendedContext)(unused: Unit) = {
+    val c     = Source.fromFile(evaluateC(xCtx)).getLines
+    val scala = Source.fromFile(evaluateScala(xCtx)).getLines
+
+    // Compare outputs
+    assert((c zip scala) forall { case (c, s) => c == s }, "Output mismatch")
   }
 
   private def forEachFileIn(cat: String)(block: (ExtendedContext, Program) => Unit) {
@@ -163,7 +236,7 @@ class GenCSuite extends LeonRegressionSuite {
     mkTest(files, cat)(block)
   }
 
-  protected def testDirectory(cc: String, dir: String) = forEachFileIn(dir) { (xCtx, prog) =>
+  protected def testDirectory(cc: String, cat: String) = forEachFileIn(cat) { (xCtx, prog) =>
     val converter = convert(xCtx) _
     val saver     = saveToFile(xCtx) _
     val compiler  = compile(xCtx, cc) _

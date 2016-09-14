@@ -56,11 +56,17 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     case UnitType =>
       "scala/runtime/BoxedUnit"
 
+    case StringType =>
+      "java/lang/String"
+
     case ct: ClassType =>
       jvmName(ct.classDef)
 
+    case tp: TypeParameter =>
+      unsupported(s"Generic types cannot be shared between the JVM and Leon.")
+
     case _ =>
-      ctx.reporter.internalError(s"$tpe is not a jvm class type ?!?")
+      ctx.reporter.internalError(s"$tpe [${tpe.getClass}] is not a jvm class type ?!?")
   }
 
   private def compiledName(d: Definition): String = {
@@ -71,26 +77,26 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     val pathToModule = path.takeWhile{!_.isInstanceOf[ModuleDef]}
     val rest = path.drop(pathToModule.size)
 
-    val upToModule = pathToNames(pathToModule, false).map(encodeName).mkString(".")
+    val upToModule = pathToNames(pathToModule, false).map(encodeName)
 
-    if(rest.isEmpty) {
+    (if(rest.isEmpty) {
       upToModule
     } else {
       d match {
         case md: ModuleDef =>
-          upToModule+"."+encodeName(md.id.name)+"$"
+          upToModule :+ encodeName(md.id.name)+"$"
         case _ =>
           val afterModule = pathToNames(rest, false).map(encodeName).mkString("$")
-          upToModule+"."+afterModule
+          upToModule :+ afterModule
       }
-    }
+    }).mkString(".")
   }
 
   def call(tfd: TypedFunDef, args: Seq[Expr]): Expr = {
     val fd = tfd.fd
 
     val methodName = encodeName(fd.id.name)
-    
+
     val jvmArgs = args.map(leonToScalac)
 
     val (clazz, jvmRec, jvmCallArgs) = fd.methodOwner match {
@@ -128,7 +134,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
         unsupported(s"Unable to lookup method")
 
       case ms =>
-        unsupported(s"Ambiguous reference to method: ${ms.size} methods found with a matching name")
+        unsupported(s"Ambiguous reference to method $methodName: ${ms.size} methods found with a matching name \n\t${ms mkString "\n\t"}\nArgs = $args")
 
     }
   }
@@ -142,9 +148,26 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       encodeName(fd.id.name) -> fd
     }).toMap
 
-    fds.groupBy { case (n, fd) =>
+    val mainCases = fds.groupBy { case (n, fd) =>
       compiledName(fd.methodOwner.getOrElse(moduleOf(fd).get))
     }
+
+    // For every class, if a parent class is in `mainCases`, we must instrument it as well
+    // Not doing this result in type incompatibility such as:
+    //   java.lang.VerifyError: Bad type on operand stack
+    //   Reason:
+    //      Type 'leon/lang/Some' (current frame, stack[0]) is not assignable to 'leon/lang/Option'
+    val additionalCases = for {
+      cdParent <- pgm.definedClasses
+      nameParent = compiledName(cdParent)
+      if mainCases contains nameParent
+      cdChild <- cdParent.knownDescendants
+      nameChild = compiledName(cdChild)
+    } yield {
+      nameChild -> mainCases(nameParent) // an alias of some sort
+    }
+
+    mainCases ++ additionalCases
   }
 
   val compiledClassLoader = {
@@ -160,6 +183,9 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
   def leonToScalac(e: Expr): AnyRef = e match {
     case CharLiteral(v) =>
       new java.lang.Character(v)
+
+    case StringLiteral(s) =>
+      new java.lang.String(s)
 
     case IntLiteral(v) =>
       new java.lang.Integer(v)
@@ -212,7 +238,7 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       unsupported("It is not yet possible to pass a closure to an @extern function")
 
     case t: Terminal =>
-      unsupported("Unhandled conversion to scala runtime: "+t)
+      unsupported(s"Unhandled conversion to scala runtime: $t [${t.getClass}]")
 
     case _ =>
       unsupported("Trying to convert non-terminal: "+e)
@@ -231,6 +257,8 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
       IntLiteral(o.asInstanceOf[Integer].intValue)
     case CharType =>
       CharLiteral(o.asInstanceOf[Character].charValue)
+    case StringType =>
+      StringLiteral(o.asInstanceOf[String])
     case IntegerType =>
       InfiniteIntegerLiteral(o.asInstanceOf[BigInt])
     case UnitType =>
@@ -271,8 +299,11 @@ class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program
     case FunctionType(_, _) =>
       unsupported("It is not possible to pass a closure from @extern back to leon")
 
+    case tp: TypeParameter =>
+      unsupported(s"Generic types cannot be shared between the JVM and Leon.")
+
     case _ =>
-      unsupported("Unhandled conversion from scala runtime: "+t)
+      unsupported(s"Unhandled conversion from scala runtime: $t [${t.getClass}]")
   }
 
   def jvmCallBack(cName: String, fName: String, args: Array[AnyRef]): AnyRef = {

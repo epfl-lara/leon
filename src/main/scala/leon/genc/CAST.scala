@@ -3,14 +3,23 @@
 package leon
 package genc
 
-import utils.UniqueCounter
+import utils.{ Position, UniqueCounter }
 
 /*
  * Here are defined classes used to represent AST of C programs.
+ *
+ * NOTE on char and string: because the C character and string literals
+ * encoding sets are highly dependent on platforms and compilers, only
+ * basic single-byte characters from the ASCII set are supported at the
+ * moment.
+ *
+ * Details on such literals can be found in the C99 standard in §3.7,
+ * §6.4.4.4 and §6.4.5, and more.
  */
 
 object CAST { // C Abstract Syntax Tree
 
+  /* ------------------------------------------------------------- Tree ----- */
   sealed abstract class Tree
   case object NoTree extends Tree
 
@@ -18,18 +27,15 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------ Types ----- */
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
-
-    def mutable: Type = this match {
-      case Const(typ) => typ.mutable
-      case _          => this
-    }
   }
+  case object NoType extends Type("???") // Used in place of a dropped type
 
   /* Type Modifiers */
   case class Const(typ: Type) extends Type(s"$typ const")
   case class Pointer(typ: Type) extends Type(s"$typ*")
 
   /* Primitive Types */
+  case object Char extends Type("char")     // See NOTE on char & string
   case object Int32 extends Type("int32_t") // Requires <stdint.h>
   case object Bool extends Type("bool")     // Requires <stdbool.h>
   case object Void extends Type("void")
@@ -37,18 +43,47 @@ object CAST { // C Abstract Syntax Tree
   /* Compound Types */
   case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
 
+  /* (Basic) String Type */
+  // NOTE It might be better to have data+length structure
+  // NOTE Currently, only string literals are supported, hence they can legally
+  //      be returned from functions.
+  case object String extends Type("char*")
+
+  /* Typedef */
+  case class TypeDef(orig: Id, alias: Id) extends Type(alias.name)
+
 
   /* --------------------------------------------------------- Literals ----- */
+  case class CharLiteral(c: Char) extends Stmt {
+    require(isASCII(c)) // See NOTE on char & string
+  }
+
   case class IntLiteral(v: Int) extends Stmt
+
   case class BoolLiteral(b: Boolean) extends Stmt
+
+  case class StringLiteral(s: String) extends Stmt {
+    require(isASCII(s)) // See NOTE on char & string
+  }
 
 
   /* ----------------------------------------------------- Definitions  ----- */
   abstract class Def extends Tree
 
-  case class Prog(structs: Seq[Struct], functions: Seq[Fun]) extends Def
+  case class Include(file: String) extends Def {
+    require(!file.isEmpty && isASCII(file))
+  }
 
-  case class Fun(id: Id, retType: Type, params: Seq[Var], body: Stmt) extends Def
+  case class Prog(
+    includes:  Set[Include],
+    structs:   Seq[Struct],
+    typedefs:  Seq[TypeDef],
+    functions: Seq[Fun]
+  ) extends Def
+
+  // Manually defined function through the cCode.function annotation have a string
+  // for signature+body instead of the usual Stmt AST exclusively for the body
+  case class Fun(id: Id, retType: Type, params: Seq[Var], body: Either[Stmt, String]) extends Def
 
   case class Id(name: String) extends Def {
     // `|` is used as the margin delimiter and can cause trouble in some situations
@@ -57,7 +92,9 @@ object CAST { // C Abstract Syntax Tree
       else name
   }
 
-  case class Var(id: Id, typ: Type) extends Def
+  case class Var(id: Id, typ: Type) extends Def {
+    require(!typ.isVoid)
+  }
 
   /* ----------------------------------------------------------- Stmts  ----- */
   abstract class Stmt extends Tree
@@ -135,6 +172,22 @@ object CAST { // C Abstract Syntax Tree
 
 
   /* -------------------------------------------------------- Factories ----- */
+  object Literal {
+    def apply(c: Char)(implicit pos: Position): CharLiteral = {
+      if (isASCII(c)) CharLiteral(c)
+      else unsupported("Character literals are restricted to the ASCII set")
+    }
+
+    def apply(s: String)(implicit pos: Position): StringLiteral = {
+      if (isASCII(s)) StringLiteral(s)
+      else unsupported("String literals are restricted to the ASCII set")
+    }
+
+    def apply(i: Int) = IntLiteral(i)
+    def apply(b: Boolean) = BoolLiteral(b)
+    def apply(u: Unit) = NoStmt
+  }
+
   object Op {
     def apply(op: String, rhs: Stmt) = UnOp(Id(op), rhs)
     def apply(op: String, rhs: Stmt, lhs: Stmt) = MultiOp(Id(op), rhs :: lhs :: Nil)
@@ -182,9 +235,11 @@ object CAST { // C Abstract Syntax Tree
   /* ---------------------------------------------------- Introspection ----- */
   implicit class IntrospectionOps(val stmt: Stmt) {
     def isLiteral = stmt match {
-      case _: IntLiteral  => true
-      case _: BoolLiteral => true
-      case _              => false
+      case _: CharLiteral   => true
+      case _: IntLiteral    => true
+      case _: BoolLiteral   => true
+      case _: StringLiteral => true
+      case _                => false
     }
 
     // True if statement can be used as a value
@@ -270,8 +325,25 @@ object CAST { // C Abstract Syntax Tree
     def ~~~(others: Seq[Stmt]) = Compound(stmts) ~~ others
   }
 
-  val True = BoolLiteral(true)
+  val True  = BoolLiteral(true)
   val False = BoolLiteral(false)
+
+
+  implicit class TypeOps(val typ: Type) {
+    // Test whether a given type is made of void
+    def isVoid: Boolean = typ match {
+      case Void       => true
+      case Const(t)   => t.isVoid
+      case Pointer(t) => t.isVoid // TODO is this a good idea since it can represent anything?
+      case _          => false
+    }
+
+    // Remove any const qualifier from the given type
+    def removeConst: Type = typ match {
+      case Const(t) => t.removeConst
+      case _        => typ
+    }
+  }
 
 
   /* ------------------------------------------------ Fresh Generators  ----- */
@@ -292,5 +364,33 @@ object CAST { // C Abstract Syntax Tree
   object FreshVal {
     def apply(typ: Type, prefix: String = "") = Val(FreshId(prefix), typ)
   }
+
+  def generateMain(_mainId: Id, return_mainResult: Boolean): Fun = {
+      val id = Id("main")
+      val retType = Int32
+      val argc = Var(Id("argc"), Int32)
+      val argv = Var(Id("argv"), Pointer(Pointer(Char)))
+      val params = argc :: argv :: Nil
+
+      val body =
+        if (return_mainResult) Return(Call(_mainId, Nil))
+        else Call(_mainId, Nil) ~ Return(IntLiteral(0))
+
+      val main = Fun(id, retType, params, Left(body))
+
+      main
+  }
+
+
+  /* ---------------------------------------------------------- Details ----- */
+  // String & char limitations, see NOTE above
+  private def isASCII(c: Char): Boolean = { c >= 0 && c <= 127 }
+  private def isASCII(s: String): Boolean = s forall isASCII
+
+  // Type of exception used to report unexpected or unsupported features
+  final case class ConversionError(error: String, pos: Position) extends Exception(error)
+
+  private[genc] def unsupported(detail: String)(implicit pos: Position) =
+    throw ConversionError(s"Unsupported feature: $detail", pos)
 }
 

@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object RecursionAndNestedFunctions {
@@ -31,9 +32,12 @@ object RecursionAndNestedFunctions {
     bar(58) + j - i
   } ensuring { _ == 100 + 2 * i }
 
-  def main() = {
+  def _main() = {
     foo(2) - zzz(104)
   } ensuring { _ == 0 }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 
 }
 

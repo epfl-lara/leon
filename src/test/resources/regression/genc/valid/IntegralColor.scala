@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object IntegralColor {
@@ -167,10 +168,13 @@ object IntegralColor {
   }.holds
 
 
-  def main: Int = {
+  def _main(): Int = {
     if (testColorSinglePixel && testColorWholeImage && testFilterConvolutionSmooth) 0
     else 1
   } ensuring { _ == 0 }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 
 }
 

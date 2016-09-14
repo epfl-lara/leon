@@ -4,7 +4,6 @@ import leon.lang._
 
 object AbsFun {
 
-
   def isPositive(a : Array[Int], size : Int) : Boolean = {
     require(a.length >= 0 && size <= a.length)
     rec(0, a, size)
@@ -65,4 +64,5 @@ object AbsFun {
       isPositive(nt, k+1)
     } else true
   } holds
+
 }

@@ -119,14 +119,8 @@ package object lang {
     f(t._1) + mid + g(t._2)
   }
 
-  @extern @library
-  def print(x: String): Unit = {
-    scala.Predef.print(x)
-  }
-
   case class Mutable[T]()
   implicit def mutable[T] = new Mutable[T]
-
 
   @ignore
   def arrayForall[A](array: Array[A], pred: A => Boolean): Boolean = ???

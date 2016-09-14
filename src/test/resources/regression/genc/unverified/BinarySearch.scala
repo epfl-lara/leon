@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 /* VSTTE 2008 - Dafny paper */
@@ -74,11 +75,14 @@ object BinarySearch {
   }
 
 
-  def main = {
+  def _main() = {
     val a = Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
     val i = binarySearch(a, 2)
     i - 2 // i should be 2
   }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 
 }
 

@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation.extern
 import leon.lang._
 
 object TupleArray {
@@ -15,7 +16,7 @@ object TupleArray {
     found
   }
 
-  def main = {
+  def _main() = {
     val a = Array(0, 1, 5, -5, 9)
     val e1 = exists((a, 0))
     val e2 = exists((a, -1))
@@ -23,5 +24,7 @@ object TupleArray {
     else -1
   } ensuring { _ == 0 }
 
+  @extern
+  def main(args: Array[String]): Unit = _main()
 }
 
