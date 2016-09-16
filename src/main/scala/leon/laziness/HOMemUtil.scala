@@ -30,10 +30,10 @@ object HOMemUtil {
   def userFunctionName(fd: FunDef) = {
     val uname = InstUtil.userFunctionName(fd)
     if (uname.contains("-mem")) {
-      val splits = fd.id.name.split("-")
+      val splits = uname.split("-")
       splits.head
     } else
-      fd.id.name
+      uname
   }
 
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
