@@ -9,9 +9,6 @@ import collection._
 import instrumentation._
 import invariant._
 
-/**
- * Requires unrollfactor=2
- */
 object RealTimeQueue {
 
   sealed abstract class Stream[T] {
@@ -34,10 +31,12 @@ object RealTimeQueue {
       }
     }
   }
-  // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
   private case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
   private case class SNil[T]() extends Stream[T]
 
+  /**
+   * A property that holds for stream where all elements have been memoized.
+   */
   def isConcrete[T](l: Stream[T]): Boolean = {
     l match {
       case c@SCons(_, _) =>
@@ -46,6 +45,10 @@ object RealTimeQueue {
     }
   }
 
+  /**
+   * A function that lazily performs an operation equivalent to `f ++ reverse(r) ++ a`.
+   * Based on the implementation provided in Pg. of Functional Data Structures by Okasaki.
+   */
   @invisibleBody
   @invstate // says that the function doesn't change state
   def rotate[T](f: Stream[T], r: List[T], a: Stream[T]): Stream[T] = {
@@ -63,8 +66,7 @@ object RealTimeQueue {
 
   /**
    * Returns the first element of the stream whose tail is not evaluated.
-   */
-  // @invisibleBody
+   */  
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
@@ -83,14 +85,16 @@ object RealTimeQueue {
   case class Queue[T](f: Stream[T], r: List[T], s: Stream[T]) {
     @inline
     def isEmpty = f.isEmpty
-
-    //@inline
     def valid = {
       (firstUnevaluated(f) == firstUnevaluated(s)) &&
         s.size == f.size - r.size //invariant: |s| = |f| - |r|
     }
   }
 
+  /**
+   * A helper function for enqueue and dequeue methods that forces
+   * the schedule once
+   */
   @inline
   def createQ[T](f: Stream[T], r: List[T], s: Stream[T]) = {
     s match {
@@ -101,26 +105,38 @@ object RealTimeQueue {
     }
   }
 
+  /**
+   * Creates an empty queue, with an empty schedule
+   */
   def empty[T] = {
     val a: Stream[T] = SNil()
     Queue(a, Nil(), a)
   }
 
+  /**
+   * Reads the first elements of the queue without removing it.
+   */
   def head[T](q: Queue[T]): T = {
     require(!q.isEmpty && q.valid)
     q.f match {
       case SCons(x, _) => x
     }
-  } //ensuring (res => res.valid && steps <= ?)
+  } ensuring (res => steps <= ?)
 
+  /**
+   * Appends an element to the end of the queue
+   */
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring { res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
-  } // Orb results: steps <= 62
+  } 
 
+  /**
+   * Removes the element at the beginning of the queue
+   */
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f match {
@@ -130,11 +146,11 @@ object RealTimeQueue {
   } ensuring{res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
-  } // Orb results: steps <= 119
+  } 
 
    // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
   /**
-   * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
+   * Lemma: st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
    */
   @traceInduct
   def funeCompose[T](l1: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
@@ -143,6 +159,9 @@ object RealTimeQueue {
     (firstUnevaluated(l1) in st2) == (firstUnevaluated(firstUnevaluated(l1) in st1) in st2)
   } holds
 
+  /**
+   * Lemma: monotonicity of `fistUneval` function with respect to the state.
+   */
   @invisibleBody
   def funeMonotone[T](l1: Stream[T], l2: Stream[T], st1: Set[Fun[T]], st2: Set[Fun[T]]): Boolean = {
     require((firstUnevaluated(l1) in st1) == (firstUnevaluated(l2) in st1) &&
