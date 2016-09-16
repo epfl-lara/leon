@@ -15,6 +15,7 @@ import scala.util.matching.Regex
 import utils.FileOutputPhase
 import invariant.util.PredicateUtil._
 import invariant.util.Util._
+import transformations.InstUtil
 
 object HOMemUtil {
 
@@ -24,6 +25,15 @@ object HOMemUtil {
 
   def isMemoized(fd: FunDef) = {
     fd.id.name.contains("-mem")
+  }
+
+  def userFunctionName(fd: FunDef) = {
+    val uname = InstUtil.userFunctionName(fd)
+    if (uname.contains("-mem")) {
+      val splits = fd.id.name.split("-")
+      splits.head
+    } else
+      fd.id.name
   }
 
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
