@@ -210,7 +210,7 @@ object BottomUpMergeSortPrecise {
    */
   @invisibleBody
   private def mergeSusp(a: LList, b: Stream): LList = {
-    require(a != SNil()) // && a.valid && b.valid)
+    require(a != SNil())
     merge(a, b.list)
   } ensuring {res =>
     res != SNil() &&
@@ -244,7 +244,6 @@ object BottomUpMergeSortPrecise {
       case SNil() => BigInt(0)
     }
   } ensuring (_ => steps <= ? * (k * l.height) + ?) //  steps <= 36 * (k * l.height) + 17
-  //TODO Add the ? * (l.height) term if the numbers do not match the runsteps estimate
 
   /**
    * A function that accesses the kth element of a list using lazy sorting.

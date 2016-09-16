@@ -57,7 +57,7 @@ object SortingnConcatStepBounds {
     }
   } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
 
-  def sort(l: List[BigInt]): LList = {
+  /*def sort(l: List[BigInt]): LList = {
     pullMin(l) match {
       case Cons(x, xs) =>
         // here, x is the minimum
@@ -65,7 +65,7 @@ object SortingnConcatStepBounds {
       case _ =>
         SNil()
     }
-  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
+  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)*/
 
   def concat(l1: List[BigInt], l2: LList): LList = {
     l1 match {

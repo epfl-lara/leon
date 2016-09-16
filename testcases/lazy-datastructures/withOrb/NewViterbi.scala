@@ -7,11 +7,12 @@ import annotation._
 import instrumentation._
 import invariant._
 import collection._
+import math._
 
 // DO NOT remove the commented code, lemmas are hard to come up with :-)
 
 /**
- * Implementation of the Viterbi algorithm 
+ * Implementation of the Viterbi algorithm
  * Wiki - https://en.wikipedia.org/wiki/Viterbi_algorithm
  * The probabilities are in logarithms.
  */
@@ -35,9 +36,9 @@ object Viterbi {
   def S(i: BigInt) = {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
-  /** 
+  /**
    * Let K be the size of the state space. Then the transition matrix
-   * A of size K * K such that A_{ij} stores the transition probability 
+   * A of size K * K such that A_{ij} stores the transition probability
    * of transiting from state s_i to state s_j
    */
   @extern
@@ -45,8 +46,8 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
   /**
-   * Let N be the size of the observation space. Emission matrix B of 
-   * size K * N such that B_{ij} stores the probability of observing o_j 
+   * Let N be the size of the observation space. Emission matrix B of
+   * size K * N such that B_{ij} stores the probability of observing o_j
    * from state s_i
    */
   @extern
@@ -54,8 +55,8 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
   /**
-   * An array of initial probabilities C of size K such that C_i stores 
-   * the probability that x_1 == s_i 
+   * An array of initial probabilities C of size K such that C_i stores
+   * the probability that x_1 == s_i
    */
   @extern
   def C(i: BigInt) = {
@@ -69,7 +70,6 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
 
-
 	def deps(j: BigInt, K: BigInt): Boolean = {
 		require(j >= 0 && K >= 0)
 		if(j <= 0) true
@@ -81,7 +81,7 @@ object Viterbi {
 		columnCached(K, j, K) && {
 		if(j <= 0) true
 		else columnsCachedfrom(j - 1, K)
-		} 
+		}
 	}
 
 	def columnCached(i: BigInt, j: BigInt, K: BigInt): Boolean = {
@@ -94,7 +94,7 @@ object Viterbi {
 
 	@traceInduct
   	def columnMono(i: BigInt, j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
-    	require(i >= 0 && j >= 0 && K >= i)    
+    	require(i >= 0 && j >= 0 && K >= i)
     	(st1.subsetOf(st2) && (columnCached(i, j, K) in st1)) ==> (columnCached(i, j, K) in st2)
   	} holds
 
@@ -105,17 +105,17 @@ object Viterbi {
    		else (columnsCachedfrom(j - 1, K) && columnCached(K, j, K)) ==> (columnsCachedfrom(j, K))
    	} holds
 
+  // Does this terminate ? this requires a very complex ranking function: what is it ?
 	def cachedLem(l: BigInt, j: BigInt, K: BigInt): Boolean = {
 	 require(j >= 0 && l >= 0 && K >= l)
 	 (if(l == K) true
 	   else if(l == 0) cachedLem(l + 1, j, K)
 	   else cachedLem(l + 1, j, K) && cachedLem(l - 1, j, K)
-	   ) && (columnCached(K, j, K) ==> columnCached(l, j, K))    
+	   ) && (columnCached(K, j, K) ==> columnCached(l, j, K))
 	} holds
 
-
 	def columnsCachedfromMono(j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]): Boolean = {
-		require(j >= 0 && K >= 0)    
+		require(j >= 0 && K >= 0)
 		(columnMono(K, j, K, st1, st2) && (j <= 0 || columnsCachedfromMono(j - 1, K, st1, st2))) &&
 		((st1.subsetOf(st2) && (columnsCachedfrom(j, K) in st1)) ==> (columnsCachedfrom(j, K) in st2))
 	} holds
@@ -148,10 +148,10 @@ object Viterbi {
   } ensuring(res => {
     val in = inSt[BigInt]
     val out = outSt[BigInt]
-    (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) && 
-    (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) && 
+    (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) &&
+    (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) &&
     steps <= ? * K + ?
-  }) 
+  })
 
   def fillColumn(i: BigInt, j: BigInt, K: BigInt): List[BigInt] = {
     require(i >= 0 && j >= 0 && K >= i && deps(j, K) && (i == 0 || i > 0 && columnCached(i - 1, j, K)))
@@ -165,8 +165,8 @@ object Viterbi {
       Cons(x, tail)
     }
   } ensuring(res => {
-  	columnLem(j, K) && 
-  	deps(j + 1, K) && 
+  	columnLem(j, K) &&
+  	deps(j + 1, K) &&
   	steps <= ? * ((K - i) * K) + ? * K + ?
   })
 

@@ -6,6 +6,7 @@ import lang._
 import annotation._
 import instrumentation._
 import invariant._
+import leon.math._
 
 /**
  * A memoized version of the implementation of Hamming problem shown in
@@ -30,6 +31,7 @@ object Hamming {
   @invstate
   @memoize
   def ham(n: BigInt): Data = {
+    decreases(abs(n))
     require(n ==0 || (n > 0 && depsEval(n - 1)))
     if(n == BigInt(0)) Data(1, 0, 0, 0)
     else {

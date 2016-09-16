@@ -6,6 +6,7 @@ import lang._
 import annotation._
 import instrumentation._
 import invariant._
+import math._
 
 /**
  * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
@@ -25,7 +26,7 @@ object PackratParsing {
   /**
    * A mutable array of tokens returned by the lexer.
    * The string of tokens is reversed i.e,
-   * string(legnth-1) represents the first char and string(0) represents the last char.
+   * string(length-1) represents the first char and string(0) represents the last char.
    */
   @ignore
   var string = Array[Terminal]()
@@ -56,6 +57,7 @@ object PackratParsing {
   @memoize
   @invstate
   def pAdd(i: BigInt): Result = {
+    decreases(2*abs(i) + 1)
     require {
       if (depsEval(i) && cached(pMul(i)) && cached(pPrim(i)))
         resEval(i, pMul(i)) // lemma inst
@@ -82,6 +84,7 @@ object PackratParsing {
   @memoize
   @invstate
   def pMul(i: BigInt): Result = {
+    decreases(2*abs(i))
     require{
       if (depsEval(i) && cached(pPrim(i)))
         resEval(i, pPrim(i)) // lemma inst
@@ -126,7 +129,6 @@ object PackratParsing {
     } else NoParse()
   } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 32
 
-  //@inline
   def depsEval(i: BigInt) =
     if (i == 0) true
     else if (i > 0) allEval(i - 1)
@@ -154,7 +156,6 @@ object PackratParsing {
   /**
    * Instantiates the lemma `depsLem` on the result index (if any)
    */
-  //@inline
   def resEval(i: BigInt, res: Result) = {
     (res match {
       case Parsed(j) =>
@@ -163,18 +164,6 @@ object PackratParsing {
       case _ => true
     })
   }
-
-  /*@invisibleBody
-  def invoke(i: BigInt): (Result, Result, Result) = {
-    require(i == 0 || (i > 0 && allEval(i - 1)))
-    (pPrim(i), pMul(i), pAdd(i))
-  } ensuring (res => {
-    val in = inSt[Result]
-    val out = outSt[Result]
-    (if (i > 0) evalMono(i - 1, in, out) else true) &&
-      allEval(i) &&
-      steps <= ?
-  })*/
 
   def invokePrim(i: BigInt): Result = {
     require(depsEval(i))

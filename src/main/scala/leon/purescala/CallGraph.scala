@@ -6,6 +6,8 @@ package purescala
 import Definitions._
 import Expressions._
 import ExprOps._
+import Extractors._
+import laziness.HOMemUtil._
 
 import utils.Graphs._
 
@@ -17,16 +19,35 @@ class CallGraph(p: Program) {
       case _ => Set()
     }) ++ p.subPatterns.flatMap(collectCallsInPats(fd))
 
-  private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] = e match {
+  /*private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] = e match {
+    // extensions for handling `memoized` benchmarks
+    case f : FunctionInvocation if cachedInvocation(f)(p) || isIsFun(f)(p) => Set()
     case f @ FunctionInvocation(f2, _) => Set((fd, f2.fd))
     case MatchExpr(_, cases) => cases.toSet.flatMap((mc: MatchCase) => collectCallsInPats(fd)(mc.pattern))
     case _ => Set()
+  }*/
+
+  // do a pre-order traversal so as handle extensions for handling `memoized` benchmarks
+  private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] ={
+    e match {
+      case f: FunctionInvocation if cachedInvocation(f)(p) || isIsFun(f)(p) => Set()
+      case f @ FunctionInvocation(f2, args) =>
+        (args.flatMap(collectCalls(fd)).toSet) ++ Set((fd, f2.fd))
+      case MatchExpr(scr, cases) =>
+        collectCalls(fd)(scr) ++
+        (cases.flatMap{
+          case MatchCase(pat, g, rhs) =>
+            (collectCallsInPats(fd)(pat)  ++  g.map(collectCalls(fd)).getOrElse(Set()) ++ collectCalls(fd)(rhs))
+        }.toSet)
+      case Operator(args, _) => args.flatMap(collectCalls(fd)).toSet
+    }
   }
 
   lazy val graph: DiGraph[FunDef, SimpleEdge[FunDef]] = {
     var g = DiGraph[FunDef, SimpleEdge[FunDef]]()
 
-    for (fd <- p.definedFunctions; c <- collect(collectCalls(fd))(fd.fullBody)) {
+    for (fd <- p.definedFunctions; c <- collectCalls(fd)(fd.fullBody) ++
+        fd.decreaseMeasure.toList.flatMap(collectCalls(fd))) {
       g += SimpleEdge(c._1, c._2)
     }
 
