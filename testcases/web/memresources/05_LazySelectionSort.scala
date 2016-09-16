@@ -1,4 +1,4 @@
-package sel
+package sortconcat
 
 import leon._
 import mem._
@@ -7,25 +7,42 @@ import lang._
 import annotation._
 import instrumentation._
 import invariant._
-import collection._
 
-object SortingnConcat {
+object SortingnConcatStepBounds {
 
   sealed abstract class LList {
+    @inline
+    def isEmpty: Boolean = this == SNil()
+
+    lazy val tail: LList = {
+      require(!isEmpty)
+      this match {
+        case SCons(_, tailFun) => tailFun()
+      }
+    }
+
     def size: BigInt = {
       this match {
-        case SCons(_, t) => 1 + t.size
-        case _            => BigInt(0)
+        case c @ SCons(_, _) =>
+          1 + (c.tail*).size
+        case SNil() =>
+          BigInt(0)
       }
     } ensuring (_ >= 0)
   }
-  private case class SCons(x: BigInt, tailFun: Stream) extends LList
+  private case class SCons(x: BigInt, tailFun: () => LList) extends LList
   private case class SNil() extends LList
-  private case class Stream(lfun: () => LList) {
-    lazy val list: LList = lfun()
-    @inline
-    def size = (list*).size
+
+  sealed abstract class List[T] {
+    def size: BigInt = {
+      this match {
+        case Nil()      => BigInt(0)
+        case Cons(_, t) => 1 + t.size
+      }
+    } ensuring (_ >= 0)
   }
+  case class Cons[T](x: T, tail: List[T]) extends List[T]
+  case class Nil[T]() extends List[T]
 
   def pullMin(l: List[BigInt]): List[BigInt] = {
     l match {
@@ -40,32 +57,30 @@ object SortingnConcat {
     }
   } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
 
-  def sort(l: List[BigInt]): LList = {
+  /*def sort(l: List[BigInt]): LList = {
     pullMin(l) match {
       case Cons(x, xs) =>
         // here, x is the minimum
-        SCons(x, Stream(() => sort(xs))) // sorts lazily only if needed
+        SCons(x, () => sort(xs)) // sorts lazily only if needed
       case _ =>
         SNil()
     }
-  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
+  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)*/
 
-  // a lazy concat method
-  def concat(l1: List[BigInt], l2: LList) : LList = {
+  def concat(l1: List[BigInt], l2: LList): LList = {
     l1 match {
-      case Cons(x, xs) => SCons(x, Stream(() => concat(xs, l2)))
-      case Nil() => SNil()
+      case Cons(x, xs) => SCons(x, () => concat(xs, l2))
+      case Nil()       => l2
     }
-  } ensuring(res => steps <= ?)
+  } ensuring (res => steps <= ?)
 
-  // k-th min accompanying the lazy selection sort
-  def kthMin(l: Stream, k: BigInt): BigInt = {
+  def kthMin(l: LList, k: BigInt): BigInt = {
     require(k >= 1)
-    l.list match {
-      case SCons(x, xs) =>
+    l match {
+      case c @ SCons(x, _) =>
         if (k == 1) x
         else
-          kthMin(xs, k - 1)
+          kthMin(c.tail, k - 1)
       case SNil() => BigInt(0)
     }
   } ensuring (_ => steps <= ? * (k * l.size) + ? * k + ?)
