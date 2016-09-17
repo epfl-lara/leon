@@ -19,6 +19,6 @@ object FibMem {
       BigInt(1)
     else
       fibRec(n - 1) + fibRec(n - 2) 
-  } ensuring (res => res <= 4 && steps <= ? * n + ?)
+  } ensuring (res => res <= 0 && steps <= ? * n + ?)
     // postcondition is an invalid property
 }

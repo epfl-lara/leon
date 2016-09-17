@@ -83,7 +83,11 @@ object HOMemVerificationPhase {
         val VCStatus.Invalid(cex) = vcres.status
         val nmodel = new Model(cex.map {
           case (k, v) =>
-            (k -> simplePostTransform{
+            val nk =
+              if (isStateParam(k))
+                FreshIdentifier("cacheKeys", k.getType)
+              else k 
+            (nk -> simplePostTransform{
               case cc@CaseClass(cct, args) =>               
                 val cname = cct.classDef.id.name
                 clFactory.lambdaOfClosureByName(cname) match {
