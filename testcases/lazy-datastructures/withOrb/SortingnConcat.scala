@@ -8,7 +8,7 @@ import annotation._
 import instrumentation._
 import invariant._
 
-object SortingnConcatStepBounds {
+object SortingnConcatBuggy {
 
   sealed abstract class LList {
     @inline
@@ -55,9 +55,9 @@ object SortingnConcatStepBounds {
             else Cons(y, Cons(x, ys))
         }
     }
-  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)
+  } ensuring (res => res.size == l.size && steps <= 15 * l.size + 2)
 
-  /*def sort(l: List[BigInt]): LList = {
+  def sort(l: List[BigInt]): LList = {
     pullMin(l) match {
       case Cons(x, xs) =>
         // here, x is the minimum
@@ -65,14 +65,14 @@ object SortingnConcatStepBounds {
       case _ =>
         SNil()
     }
-  } ensuring (res => res.size == l.size && steps <= ? * l.size + ?)*/
+  } ensuring (res => res.size == l.size && steps <= 15 * l.size + 9)
 
   def concat(l1: List[BigInt], l2: LList): LList = {
     l1 match {
       case Cons(x, xs) => SCons(x, () => concat(xs, l2))
       case Nil()       => l2
     }
-  } ensuring (res => steps <= ?)
+  } ensuring (res => steps <= 6)
 
   def kthMin(l: LList, k: BigInt): BigInt = {
     require(k >= 1)
@@ -83,5 +83,5 @@ object SortingnConcatStepBounds {
           kthMin(c.tail, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => steps <= ? * (k * l.size) + ? * k + ?)
+  } ensuring (_ => steps <= k + 3)
 }

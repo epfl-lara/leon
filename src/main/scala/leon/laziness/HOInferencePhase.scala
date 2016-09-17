@@ -40,16 +40,16 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality, optCheckTerm)
 
   def apply(ctx: LeonContext, prog: Program): MemVerificationReport = {
-    val (progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
+    val (clFac, progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
     val checkCtx = contextForChecks(ctx)
     val stateVeri =
       if (!skipStateVerification)
-        Some(checkSpecifications(progWOInstSpecs, checkCtx))
+        Some(checkSpecifications(clFac, progWOInstSpecs, checkCtx))
       else None
 
     val resourceVeri =
       if (!skipResourceVerification)
-        Some(checkInstrumentationSpecs(instProg, checkCtx))
+        Some(checkInstrumentationSpecs(clFac, instProg, checkCtx))
       else None
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
@@ -65,7 +65,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
     new MemVerificationReport(stateVeri, resourceVeri)
   }
 
-  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (Program, Program) = {
+  def genVerifiablePrograms(ctx: LeonContext, prog: Program): (ClosureFactory, Program, Program) = {
     val inprog = HOInliningPhase(ctx, prog)
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(inprog))
@@ -114,7 +114,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       prettyPrintProgramToFile(runnProg, ctx, "-withrun", uniqueIds = true)
       prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
     }
-    (progWOInstSpecs, instProg)
+    (closureFactory, progWOInstSpecs, instProg)
   }
 
   /**

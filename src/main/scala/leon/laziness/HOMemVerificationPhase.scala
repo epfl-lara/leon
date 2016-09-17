@@ -75,14 +75,46 @@ object HOMemVerificationPhase {
     Stats.updateCounterStats(withz3.map(_._2.timeMs.getOrElse(0L)).sum, "Z3-Time", "Z3SolvedVCs")
     Stats.updateCounterStats(withcvc.map(_._2.timeMs.getOrElse(0L)).sum, "CVC4-Time", "CVC4SolvedVCs")
   }
+  
+  def mapCounterExample(vr: VerificationReport, clFactory: ClosureFactory): VerificationReport = {
+    val prog = vr.program
+    val nrep = vr.results.map {
+      case (vc, Some(vcres)) if vcres.isInvalid =>
+        val VCStatus.Invalid(cex) = vcres.status
+        val nmodel = new Model(cex.map {
+          case (k, v) =>
+            (k -> simplePostTransform{
+              case cc@CaseClass(cct, args) =>               
+                val cname = cct.classDef.id.name
+                clFactory.lambdaOfClosureByName(cname) match {
+                  case Some(lam) => 
+                    replaceFromIDs((capturedVars(lam) zip args).toMap, lam)
+                  case None => 
+                    clFactory.memoClasesByName.get(cname) match {
+                      case Some(fd) =>                         
+                        FunctionInvocation(TypedFunDef(fd, Seq()), args) // type params are not very important herec
+                      case None => cc
+                    }
+                }
+              case e => e
+            }(v))          
+        }.toMap)
+        //println("New model: "+nmodel.toMap.map{ case (k,v) => k +" -> "+ v }.mkString("\n"))
+        val nstatus = VCStatus.Invalid(nmodel)
+        val nres = VCResult(nstatus, vcres.solvedWith, vcres.timeMs)
+        (vc -> Some(nres))
+      case r => r
+    }.toMap
+    VerificationReport(prog, nrep)    
+  }
 
-  def checkSpecifications(prog: Program, checkCtx: LeonContext): VerificationReport = {
+  def checkSpecifications(clFac: ClosureFactory, prog: Program, checkCtx: LeonContext): VerificationReport = {
     // convert 'axiom annotation to library
     prog.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    val report = VerificationPhase.apply(checkCtx, prog)
+    val report = mapCounterExample(VerificationPhase.apply(checkCtx, prog), clFac)
     // collect stats
     collectCumulativeStats(report)
     if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
@@ -91,7 +123,7 @@ object HOMemVerificationPhase {
     report
   }
 
-  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext): VerificationReport = {
+  def checkInstrumentationSpecs(clFac: ClosureFactory, p: Program, checkCtx: LeonContext): VerificationReport = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
@@ -103,7 +135,9 @@ object HOMemVerificationPhase {
         val inferctx = getInferenceContext(checkCtx, p)
         checkUsingOrb(new InferenceEngine(inferctx), inferctx)
       } else {
-        val rep = checkVCs(funsToCheck.map(vcForFun), checkCtx, p)
+        val rep = mapCounterExample(
+            checkVCs(funsToCheck.map(vcForFun), checkCtx, p),
+            clFac)
         // record some stats
         collectCumulativeStats(rep)
         rep
