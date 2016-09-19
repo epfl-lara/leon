@@ -7,6 +7,7 @@ import leon.annotation._
 object StdOut {
 
   @extern
+  @library
   @cCode.function(
     code = """
       |void __FUNCTION__(char* s) {
@@ -14,16 +15,18 @@ object StdOut {
       |}
       """,
     includes = "stdio.h"
-  )
+  )  
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
 
+  @library
   def println(s: String): Unit = {
     print(s)
     print('\n')
   }
 
+  @library
   @extern
   @cCode.function(
     code = """
@@ -32,16 +35,18 @@ object StdOut {
      |}
      """,
     includes = "inttypes.h:stdio.h"
-  )
+  )  
   def print(x: Int): Unit = {
     scala.Predef.print(x)
   }
 
+  @library
   def println(x: Int): Unit = {
     print(x)
     print('\n')
   }
 
+  @library
   @extern
   @cCode.function(
     code = """
@@ -55,11 +60,13 @@ object StdOut {
     scala.Predef.print(c)
   }
 
+  @library
   def println(c: Char): Unit = {
     print(c)
     print('\n')
   }
 
+  @library
   def println(): Unit = {
     print('\n')
   }
