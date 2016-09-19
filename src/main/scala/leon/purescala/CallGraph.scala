@@ -27,19 +27,33 @@ class CallGraph(p: Program) {
     case _ => Set()
   }*/
 
+ def cachedInvocation(e: Expr): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
+      fd.id.name == "cached" &&  (fd.annotations contains "library")
+    case _ => false
+  }
+
+  def isIsFun(e: Expr): Boolean = e match {
+   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
+      fd.id.name == "is" &&  (fd.annotations contains "library")
+    case _ => false
+  }
+
   // do a pre-order traversal so as handle extensions for handling `memoized` benchmarks
   private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] ={
     e match {
-      case f: FunctionInvocation if cachedInvocation(f)(p) || isIsFun(f)(p) => Set()
+      case f: FunctionInvocation if cachedInvocation(f) || isIsFun(f) => Set()
       case f @ FunctionInvocation(f2, args) =>
         (args.flatMap(collectCalls(fd)).toSet) ++ Set((fd, f2.fd))
       case MatchExpr(scr, cases) =>
         collectCalls(fd)(scr) ++
-        (cases.flatMap{
-          case MatchCase(pat, g, rhs) =>
-            (collectCallsInPats(fd)(pat)  ++  g.map(collectCalls(fd)).getOrElse(Set()) ++ collectCalls(fd)(rhs))
-        }.toSet)
-      case Operator(args, _) => args.flatMap(collectCalls(fd)).toSet
+          (cases.toSet.flatMap { (c: MatchCase) =>
+            c match {
+              case MatchCase(pat, g, rhs) =>
+                (collectCallsInPats(fd)(pat) ++ g.map(collectCalls(fd)).getOrElse(Set()) ++ collectCalls(fd)(rhs))
+            }
+          })
+      case Operator(args, _) => args.toSet.flatMap(collectCalls(fd))
     }
   }
 
