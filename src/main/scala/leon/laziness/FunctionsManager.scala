@@ -37,12 +37,12 @@ class FunctionsManager(p: Program) {
         case body =>
           def rec(l: Label)(e: Expr): Unit = e match {
             // ignore non-real calls. It following cases, calls are used as a way to refer to closures.
-            case f: FunctionInvocation if isIsFun(f)(p) =>
-            case cc: CaseClass if isFunCons(cc)(p)      =>
+            case f: FunctionInvocation if isIsFun(f) =>
+            case cc: CaseClass if isFunCons(cc)      =>
             // other calls may be tagged by labels
-            case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
+            case cc @ CaseClass(_, args) if isWithStateCons(cc) =>
               args map rec(WithState())
-            case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f)(p) =>
+            case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f) =>
               rec(Star())(invExpr)
             case f @ FunctionInvocation(TypedFunDef(callee, _), args) => //if !callee.canBeStrictField
               dg.addEdge(fd, callee, l)
@@ -76,8 +76,8 @@ class FunctionsManager(p: Program) {
   val lambdasList = userLevelFunctions(p).flatMap {
     case fd if fd.hasBody =>
       def rec(e: Expr): Seq[Lambda] = e match {
-        case finv: FunctionInvocation if isIsFun(finv)(prog) => Seq() //skip
-        case finv: FunctionInvocation if isFunMatch(finv)(prog) => Seq() //skip
+        case finv: FunctionInvocation if isIsFun(finv) => Seq() //skip
+        case finv: FunctionInvocation if isFunMatch(finv) => Seq() //skip
         case l: Lambda => Seq(l)
         case Operator(args, _) => args flatMap rec
       }
@@ -117,17 +117,17 @@ class FunctionsManager(p: Program) {
     var readRoots = Set[FunDef]()
     var updateRoots = Set[FunDef]()
     userLevelFunctions(p).foreach { fd =>
-      if (fd.params.exists(vd => isFunSetType(vd.getType)(p))) // functions that use `stateType` args need `stateParams`
+      if (fd.params.exists(vd => isFunSetType(vd.getType))) // functions that use `stateType` args need `stateParams`
         needTargsRoots += fd
       fd.fullBody match {
         case NoTree(_) =>
         case _ =>
           def rec(e: Expr)(implicit inspec: Boolean): Unit = e match {
             // skip recursing into the following functions
-            case f: FunctionInvocation if isIsFun(f)(p)            =>
-            case cc: CaseClass if isFunCons(cc)(p)                 =>
-            case cc @ CaseClass(_, args) if isWithStateCons(cc)(p) =>
-            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv)(p) =>
+            case f: FunctionInvocation if isIsFun(f)            =>
+            case cc: CaseClass if isFunCons(cc)                 =>
+            case cc @ CaseClass(_, args) if isWithStateCons(cc) =>
+            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(finv) =>
               needTargsRoots += fd
               invExpr match {
                 case Application(l, args) => // we need to prevent the application here from being treated as a `read/write` root
@@ -135,7 +135,7 @@ class FunctionsManager(p: Program) {
                 case FunctionInvocation(_, args) =>
                   args foreach rec
               }
-            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv)(p) =>
+            case finv @ FunctionInvocation(_, args) if cachedInvocation(finv) =>
               readRoots += fd
               args foreach rec
             case Application(l, args) if !inspec => // note: not all applications need to update state but is hard to determine this upfront
@@ -190,7 +190,7 @@ class FunctionsManager(p: Program) {
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
-          case finv: FunctionInvocation if cachedInvocation(finv)(p) =>
+          case finv: FunctionInvocation if cachedInvocation(finv) =>
             roots += fd
           case _ =>
             ;

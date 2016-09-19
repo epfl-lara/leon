@@ -27,18 +27,6 @@ class CallGraph(p: Program) {
     case _ => Set()
   }*/
 
- def cachedInvocation(e: Expr): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fd.id.name == "cached" &&  (fd.annotations contains "library")
-    case _ => false
-  }
-
-  def isIsFun(e: Expr): Boolean = e match {
-   case FunctionInvocation(TypedFunDef(fd, _), _)  =>
-      fd.id.name == "is" &&  (fd.annotations contains "library")
-    case _ => false
-  }
-
   // do a pre-order traversal so as handle extensions for handling `memoized` benchmarks
   private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] ={
     e match {

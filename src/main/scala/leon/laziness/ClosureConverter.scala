@@ -61,7 +61,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       } else Seq()
     // (a) replace closure types, memoFunTypes in parameters and return values
     val nparams = fd.params map {
-      case ValDef(id) if isFunSetType(id.getType)(p) => // replace this with set of memoAbs
+      case ValDef(id) if isFunSetType(id.getType) => // replace this with set of memoAbs
         ValDef(makeIdOfType(id, stateType(stparams)))
       case vd =>
         ValDef(makeIdOfType(vd.id, replaceClosureTypes(vd.getType)))
@@ -331,7 +331,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       }, false)
 
     // (b) Mem(..) construct ?
-    case memc @ CaseClass(_, Seq(FunctionInvocation(TypedFunDef(target, _), args))) if isFunCons(memc)(p) =>
+    case memc @ CaseClass(_, Seq(FunctionInvocation(TypedFunDef(target, _), args))) if isFunCons(memc) =>
       // in this case target should be a memoized function
       if (!isMemoized(target))
         throw new IllegalStateException("Argument of `Mem` should be a memoized function: " + memc)
@@ -342,7 +342,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     // (c) isCached check
-    case cach @ FunctionInvocation(_, args) if cachedInvocation(cach)(p) =>
+    case cach @ FunctionInvocation(_, args) if cachedInvocation(cach) =>
       val op = (nargs: Seq[Expr]) => ((stOpt: Option[Expr]) => {
         val memClosure = nargs.head // `narg` must be a memoized closure
         ElementOfSet(memClosure, stOpt.get)
@@ -350,7 +350,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     // (d) Pattern matching on lambdas
-    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), Lambda(_, MatchExpr(_, mcases)))) if isFunMatch(finv)(p) =>
+    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), Lambda(_, MatchExpr(_, mcases)))) if isFunMatch(finv) =>
       val ncases = mcases.map {
         case MatchCase(pat @ WildcardPattern(None), None, body) =>
           MatchCase(pat, None, body)
@@ -365,7 +365,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             case _                               => Set()
           }
           guard match {
-            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(`cl`)), l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
+            case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(`cl`)), l @ Lambda(args, lbody))) if isIsFun(finv) =>
               val envVarsInGuard = (variablesOf(lbody) -- (args.map(_.id).toSet ++ freevars))
               if (!envVarsInGuard.isEmpty) {
                 throw new IllegalStateException(s"Guard of $finv uses variables from the environment: $envVarsInGuard")
@@ -390,7 +390,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapExpr(MatchExpr(cl, ncases))
 
     // a solitary `is` fun invocation
-    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), l @ Lambda(args, lbody))) if isIsFun(finv)(p) =>
+    case finv @ FunctionInvocation(_, Seq(CaseClass(_, Seq(cl)), l @ Lambda(args, lbody))) if isIsFun(finv) =>
       try {
         val tname = uninstantiatedFunctionTypeName(l.getType).get
         val uninstType = functionType(tname)
@@ -407,7 +407,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       }
 
     // (e) withState construct
-    case withst @ FunctionInvocation(_, Seq(recvr, stArg)) if isWithStateFun(withst)(p) =>
+    case withst @ FunctionInvocation(_, Seq(recvr, stArg)) if isWithStateFun(withst) =>
       // recvr is a `WithStateCaseClass` and `stArg` could be arbitrary expressions returning a set of memClosures
       val CaseClass(_, Seq(exprNeedingState)) = recvr
       val (nexprCons, exprReturnsState) = mapExpr(exprNeedingState)
@@ -435,7 +435,7 @@ class ClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(lambdaExpr +: args, op)
 
     // (g) `*` invocation ?
-    case star @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invokeExpr)))) if isStarInvocation(star)(p) =>
+    case star @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invokeExpr)))) if isStarInvocation(star) =>
       val id = (e: Expr) => e
       val (target, targs, args, retCons) = invokeExpr match {
         case Application(lambdaExpr, args) =>
@@ -719,8 +719,8 @@ class ClosureConverter(p: Program, ctx: LeonContext,
             val (npostFun, postUpdatesState) = mapExpr(post)(stTparams)
             // bind calls to instate and outstate calls to their respective values
             val tpost = simplePostTransform {
-              case e if isInStateCall(e)(p)  => stateParam.get
-              case e if isOutStateCall(e)(p) => outState.get
+              case e if isInStateCall(e)  => stateParam.get
+              case e if isOutStateCall(e) => outState.get
               case e                         => e
             }(replace(paramMap ++ Map(resid.toVariable -> resval), npostFun(outState)))
             val npost =

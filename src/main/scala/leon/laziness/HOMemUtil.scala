@@ -71,74 +71,75 @@ object HOMemUtil {
     ctx.reporter.info("Output written on " + outputFolder)
   }
 
-  def isLazyInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def isLazyInvocation(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.$"
+      fd.id.name == "$" && (fd.annotations contains "library")
     case _ =>
       false
   }
 
-  def isEagerInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def isEagerInvocation(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.eager"
+      fd.id.name == "eager" && (fd.annotations contains "library")
     case _ =>
       false
   }
 
-  def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
+  def isInStateCall(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.inState" || fn == "leon.mem.inSt")
+      val fn = fd.id.name
+      (fn == "inState" || fn == "inSt") && (fd.annotations contains "library")
     case _ =>
       false
   }
 
-  def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
+  def isOutStateCall(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.outState" || fn == "leon.mem.outSt")
+      val fn = fd.id.name
+      (fn == "outState" || fn == "outSt") && (fd.annotations contains "library")
     case _ =>
       false
   }
 
-  def cachedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def cachedInvocation(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.cached"
+      fd.id.name == "cached" && (fd.annotations contains "library")
     case _ => false
   }
 
-  def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
+  def isWithStateCons(e: Expr): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      val fn = fullName(cct.classDef)(p)
-      (fn == "leon.lazyeval.WithState" || fn == "leon.mem.memWithState")
+      val fn = cct.classDef.id.name
+      (fn == "WithState" || fn == "memWithState") && (cct.classDef.annotations contains "library")
     case _ => false
   }
 
-  def isFunType(t: TypeTree)(implicit p: Program) = t match {
-    case cct: CaseClassType => fullName(cct.classDef)(p) == "leon.mem.Fun"
+  def isFunType(t: TypeTree) = t match {
+    case cct: CaseClassType =>
+      cct.classDef.id.name == "Fun" && (cct.classDef.annotations contains "library")
     case _ => false
   }
 
-  def isFunSetType(t: TypeTree)(implicit p: Program) = t match {
+  def isFunSetType(t: TypeTree) = t match {
     case SetType(baseType) => isFunType(baseType)
     case _ => false
   }
 
-  def isFunCons(e: Expr)(implicit p: Program): Boolean = e match {
+  def isFunCons(e: Expr): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.mem.Fun"
+      cct.classDef.id.name == "Fun" &&  (cct.classDef.annotations contains "library")
     case _ => false
   }
 
-  def isFunMatch(e: Expr)(implicit p: Program): Boolean = e match {
+  def isFunMatch(e: Expr): Boolean = e match {
    case FunctionInvocation(TypedFunDef(fd, _), _)  =>
-      fullName(fd)(p) == "leon.higherorder.Fmatch.fmatch"
+      fd.id.name == "fmatch" && (fd.annotations contains "library")
     case _ => false
   }
 
-  def isIsFun(e: Expr)(implicit p: Program): Boolean = e match {
+  def isIsFun(e: Expr): Boolean = e match {
    case FunctionInvocation(TypedFunDef(fd, _), _)  =>
-      fullName(fd)(p) == "leon.higherorder.Is.is"
+      fd.id.name == "is" && (fd.annotations contains "library")
     case _ => false
   }
 
@@ -146,23 +147,22 @@ object HOMemUtil {
    * There are many overloads of withState functions with different number
    * of arguments. All of them should pass this check.
    */
-  def isWithStateFun(e: Expr)(implicit p: Program): Boolean = e match {
+  def isWithStateFun(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), _) =>
-      val fn = fullName(fd)(p)
-      (fn == "leon.lazyeval.WithState.withState" ||
-          fn == "leon.mem.memWithState.in")
+      val fn = fd.id.name
+      (fn == "withState" || fn == "in") && (fd.annotations contains "library")
     case _ => false
   }
 
-  def isValueInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def isValueInvocation(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.lazyeval.Lazy.value"
+      fd.id.name == "value" && (fd.annotations contains "library")
     case _ => false
   }
 
-  def isStarInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+  def isStarInvocation(e: Expr): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
-      fullName(fd)(p) == "leon.mem.Star.*"
+      fd.id.name == "*" && (fd.annotations contains "library")
     case _ => false
   }
 

@@ -154,7 +154,7 @@ object ExpressionLifter {
 
           def rec(skipLambda: Boolean)(e: Expr): Expr = e match {
             // skip `fmatch` and `is` function calls
-            case finv@FunctionInvocation(tfd, args) if isIsFun(finv)(prog) || isFunMatch(finv)(prog) =>
+            case finv@FunctionInvocation(tfd, args) if isIsFun(finv) || isFunMatch(finv) =>
               FunctionInvocation(tfd, args map rec(true))
             case Operator(args, op) =>
               val nargs = args map rec(skipLambda)

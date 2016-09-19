@@ -134,7 +134,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
          * 'argMem' = true implies fail if the argument is a memoized function
          */
         def failOnClosures(argMem: Boolean, e: Expr) = e match {
-          case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
+          case finv: FunctionInvocation if isLazyInvocation(finv) =>
             finv match {
               case FunctionInvocation(_, Seq(Lambda(_, FunctionInvocation(callee, _)))) if isMemoized(callee.fd) => argMem
               case _ => !argMem
@@ -154,7 +154,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
             false
           } else {
             def nestedSusp(e: Expr) = e match {
-              case finv @ FunctionInvocation(_, Seq(Lambda(_, call: FunctionInvocation))) if isLazyInvocation(finv)(p) && isLazyInvocation(call)(p) => true
+              case finv @ FunctionInvocation(_, Seq(Lambda(_, call: FunctionInvocation))) if isLazyInvocation(finv) && isLazyInvocation(call) => true
               case _ => false
             }
             val nestedCheckFailed = exists(nestedSusp)(fd.body.getOrElse(Util.tru))
