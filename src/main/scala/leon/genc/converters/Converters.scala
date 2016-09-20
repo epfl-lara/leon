@@ -32,14 +32,18 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
       case IntegerType => CAST.unsupported(s"BigInt")
 
       case ArrayType(base) =>
-        val typ = CAST.Array(convertToType(base))
-        registerType(typ)
-        typ
+        val array = CAST.Array(convertToType(base))
+        getType(array.id) getOrElse {
+          registerType(array)
+          array
+        }
 
       case TupleType(bases) =>
-        val typ = CAST.Tuple(bases map convertToType)
-        registerType(typ)
-        typ
+        val tuple = CAST.Tuple(bases map convertToType)
+        getType(tuple.id) getOrElse {
+          registerType(tuple)
+          tuple
+        }
 
       case cd: ClassDef => convertClass(cd)
       case CaseClassType(cd, _) => convertClass(cd)
