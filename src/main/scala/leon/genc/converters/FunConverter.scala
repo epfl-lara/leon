@@ -14,7 +14,7 @@ import utils.Position
 import ExtraOps._
 
 private[converters] trait FunConverter {
-  this: Converters with TypeAnalyser with Builder with SimpleReporter =>
+  this: Converters with TypeAnalyser with Builder with MiniReporter =>
 
   // Extra information about inner functions' context
   // See classes VarInfo and FunCtx and functions convertToFun and

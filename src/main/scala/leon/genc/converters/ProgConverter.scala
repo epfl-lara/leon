@@ -9,7 +9,7 @@ import purescala.Definitions._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
 private[converters] trait ProgConverter {
-  this: Converters with SimpleReporter =>
+  this: Converters with MiniReporter =>
 
   val prog: Program // the program to be converted
   // This is needed as a "global" for the converters mechanism

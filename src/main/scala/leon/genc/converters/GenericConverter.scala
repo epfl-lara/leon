@@ -10,7 +10,7 @@ import purescala.Common._
 import scala.reflect.ClassTag
 
 private[converters] trait GenericConverter {
-  this: Converters with SimpleReporter =>
+  this: Converters with MiniReporter =>
 
   // Apply the conversion function and make sure the resulting AST matches our expectation
   def convertTo[T](tree: Tree)(implicit funCtx: FunCtx, ct: ClassTag[T]): T = convert(tree) match {
