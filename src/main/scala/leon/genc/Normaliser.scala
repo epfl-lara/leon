@@ -6,7 +6,7 @@ package genc
 import purescala.Expressions._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
-private[genc] trait Normalizer {
+private[genc] trait Normaliser {
   this: CConverter =>
 
   // Flattened represents a non-empty statement { a; b; ...; y; z }
