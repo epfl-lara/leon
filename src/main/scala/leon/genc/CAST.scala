@@ -47,9 +47,12 @@ object CAST { // C Abstract Syntax Tree
   case object Void extends Type("void")
 
   /* Compound Types */
-  case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
+  // In order to identify structs and unions, we need to make sure they have an Id (this is used by ProgConverter).
+  trait Identification { val id: Id }
+  type TypeWithId = Type with Identification
+  case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name) with Identification
   // For union, use the factory
-  class Union private (val id: Id, val fields: Seq[(Type, Id)]) extends Type(id.name)
+  class Union private (val id: Id, val fields: Seq[(Type, Id)]) extends Type(id.name) with Identification
 
   /* (Basic) String Type */
   // NOTE It might be better to have data+length structure
@@ -60,7 +63,7 @@ object CAST { // C Abstract Syntax Tree
   }
 
   /* Typedef */
-  case class TypeDef(orig: Id, alias: Id) extends Type(alias.name)
+  case class Typedef(orig: Id, alias: Id) extends Type(alias.name)
 
   /* Enum */
   case class Enum(id: Id, values: Seq[Id]) extends Type(id.name)
@@ -89,8 +92,9 @@ object CAST { // C Abstract Syntax Tree
 
   case class Prog(
     includes:  Set[Include],
-    structs:   Seq[Struct],
-    typedefs:  Seq[TypeDef],
+    typedefs:  Seq[Typedef],
+    enums:     Seq[Enum],
+    types:     Seq[Type],
     functions: Seq[Fun]
   ) extends Def
 
@@ -248,6 +252,10 @@ object CAST { // C Abstract Syntax Tree
     def apply(id: Id, types: Seq[Type]): Union = {
       val unionMembers = types map { t => (t, unionValueFor(t)) }
       new Union(id, unionMembers)
+    }
+
+    def unapply(u: Union): Option[(Id, Seq[(Type, Id)])] = {
+      Some((u.id, u.fields))
     }
 
     def unionValueFor(t: Type) = CAST.Id(t.name + "_value")

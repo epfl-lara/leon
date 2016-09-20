@@ -13,7 +13,8 @@ import xlang.Expressions._
 
 import ExtraOps._
 
-private[genc] trait Converters extends GenericConverter with FunConverter with ProgConverter {
+private[genc] trait Converters
+extends GenericConverter with FunConverter with ClassConverter with ProgConverter {
   this: CConverter =>
 
   override def convert(tree: Tree)(implicit funCtx: FunCtx): CAST.Tree = {
@@ -32,41 +33,16 @@ private[genc] trait Converters extends GenericConverter with FunConverter with P
 
       case ArrayType(base) =>
         val typ = CAST.Array(convertToType(base))
-        registerStruct(typ)
+        registerType(typ)
         typ
 
       case TupleType(bases) =>
         val typ = CAST.Tuple(bases map convertToType)
-        registerStruct(typ)
+        registerType(typ)
         typ
 
-      case cd: CaseClassDef =>
-        debug(s"Processing ${cd.id} with annotations: ${cd.annotations}")
-
-        if (cd.isManuallyTyped && cd.isDropped)
-          CAST.unsupported(s"${cd.id} cannot be both dropped and manually defined")
-
-        if (cd.isDropped) {
-          debug(s"${cd.id} is dropped")
-          CAST.NoType
-        } else getTypedef(cd) getOrElse {
-          if (cd.isAbstract)         CAST.unsupported("Abstract types")
-          if (cd.hasParent)          CAST.unsupported("Inheritance")
-          if (cd.isCaseObject)       CAST.unsupported("Case Objects")
-          if (cd.tparams.length > 0) CAST.unsupported("Type Parameters")
-          if (cd.methods.length > 0) CAST.unsupported("Methods") // TODO is it?
-
-          val id     = convertToId(cd.id)
-          val fields = cd.fields map convertToVar
-          val typ    = CAST.Struct(id, fields)
-
-          registerStruct(typ)
-          typ
-        }
-
-      case CaseClassType(cd, _) => convertToType(cd) // reuse `case CaseClassDef`
-
-      case act: AbstractClassType => CAST.unsupported(s"Abstract type ${act.id}")
+      case cd: ClassDef => convertClass(cd)
+      case CaseClassType(cd, _) => convertClass(cd)
 
 
       /* ------------------------------------------------------- Literals ----- */

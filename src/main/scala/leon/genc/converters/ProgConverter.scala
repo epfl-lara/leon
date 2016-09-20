@@ -26,32 +26,31 @@ private[converters] trait ProgConverter {
 
   // Global data: keep track of the custom types and functions of the input program
   // Using sequences and not sets to keep track of order/dependencies
-  private var typedefs  = Seq[CAST.TypeDef]()
-  private var structs   = Seq[CAST.Struct]()
-  private var unions    = Seq[CAST.Union]()
-  private var enums     = Seq[CAST.Enum]()
+  private var typedefs = Seq[CAST.Typedef]() // typedef to standard types only
+  private var enums = Seq[CAST.Enum]()
+  private var types = Seq[CAST.TypeWithId]() // both structs and unions
   private var functions = Seq[CAST.Fun]()
   // Includes don't need specific orders, hence we use a set
-  private var includes  = Set[CAST.Include]() // for manually defined functions
+  private var includes = Set[CAST.Include]() // for manually defined functions
 
 
   def registerInclude(incl: CAST.Include) {
     includes = includes + incl
   }
 
-  def registerTypedef(typedef: CAST.TypeDef) {
+  def registerTypedef(typedef: CAST.Typedef) {
     if (!typedefs.contains(typedef)) {
       typedefs = typedefs :+ typedef
     }
   }
 
   // Return the manual C typedef contained in the class annotation, if any.
-  def getTypedef(cd: ClassDef): Option[CAST.TypeDef] = {
+  def getTypedef(cd: ClassDef): Option[CAST.Typedef] = {
     import ExtraOps._
 
     if (cd.isManuallyTyped) {
       val manualType = cd.getManualType
-      val typedef = CAST.TypeDef(convertToId(cd.id), CAST.Id(manualType.alias))
+      val typedef = CAST.Typedef(convertToId(cd.id), CAST.Id(manualType.alias))
 
       if (!manualType.include.isEmpty)
         registerInclude(CAST.Include(manualType.include))
@@ -62,33 +61,27 @@ private[converters] trait ProgConverter {
     } else None
   }
 
-  def registerStruct(typ: CAST.Struct) {
-    // Types might be processed more than once as the corresponding CAST type
-    // is not cached and need to be reconstructed several time if necessary
-    if (!structs.contains(typ)) {
-      structs = structs :+ typ
-    }
-  }
-
-  def registerUnion(union: CAST.Union) {
-    // Like structs
-    if (!unions.contains(union)) {
-      unions = unions :+ union
-    }
-  }
-
   def registerEnum(enum: CAST.Enum) {
-    // Like structs
-    if (!enums.contains(enum)) {
-      enums = enums :+ enum
-    }
+    debug(s"Registering enum $enum")
+    enums = enums :+ enum
   }
+
+  def registerType(typ: CAST.TypeWithId) {
+    debug(s"Registering type $typ")
+
+    if (getType(typ.id).isDefined)
+      internalError(s"Type $typ redefined")
+
+    types = types :+ typ
+  }
+
+  def getType(id: CAST.Id): Option[CAST.Type] = types find { _.id == id }
 
   def registerFun(fun: CAST.Fun) {
-    // Unlike types, functions should not get defined multiple times as this
+    // Functions should not get defined multiple times as this
     // would imply invalidating funExtraArgss
     if (functions contains fun)
-      internalError("Function ${fun.id} defined more than once")
+      internalError(s"Function ${fun.id} defined more than once")
     else
       functions = functions :+ fun
   }
@@ -129,7 +122,7 @@ private[converters] trait ProgConverter {
     markUnitForProcessing(mainUnit)
     processRequiredUnits()
 
-    CAST.Prog(includes, structs, typedefs, functions)
+    CAST.Prog(includes, typedefs, enums, types, functions)
   }
 
   // Process units until dependency list is empty

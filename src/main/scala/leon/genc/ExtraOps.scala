@@ -4,6 +4,7 @@ package leon
 package genc
 
 import purescala.Definitions._
+import purescala.Types._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
 private[genc] object ExtraOps {
@@ -52,6 +53,10 @@ private[genc] object ExtraOps {
     }
 
     case class ManualType(alias: String, include: String)
+
+    def getTopParent: ClassDef = {
+      cd.parent map { case AbstractClassType(acd, _) => acd.getTopParent } getOrElse { cd }
+    }
 
     private def hasAnnotation(annot: String) = cd.annotations contains annot
     private val manualTypeAnnotation = "cCode.typedef"
