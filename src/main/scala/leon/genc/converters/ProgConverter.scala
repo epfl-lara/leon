@@ -28,6 +28,8 @@ private[converters] trait ProgConverter {
   // Using sequences and not sets to keep track of order/dependencies
   private var typedefs  = Seq[CAST.TypeDef]()
   private var structs   = Seq[CAST.Struct]()
+  private var unions    = Seq[CAST.Union]()
+  private var enums     = Seq[CAST.Enum]()
   private var functions = Seq[CAST.Fun]()
   // Includes don't need specific orders, hence we use a set
   private var includes  = Set[CAST.Include]() // for manually defined functions
@@ -44,7 +46,7 @@ private[converters] trait ProgConverter {
   }
 
   // Return the manual C typedef contained in the class annotation, if any.
-  def getTypedef(cd: CaseClassDef): Option[CAST.TypeDef] = {
+  def getTypedef(cd: ClassDef): Option[CAST.TypeDef] = {
     import ExtraOps._
 
     if (cd.isManuallyTyped) {
@@ -65,6 +67,20 @@ private[converters] trait ProgConverter {
     // is not cached and need to be reconstructed several time if necessary
     if (!structs.contains(typ)) {
       structs = structs :+ typ
+    }
+  }
+
+  def registerUnion(union: CAST.Union) {
+    // Like structs
+    if (!unions.contains(union)) {
+      unions = unions :+ union
+    }
+  }
+
+  def registerEnum(enum: CAST.Enum) {
+    // Like structs
+    if (!enums.contains(enum)) {
+      enums = enums :+ enum
     }
   }
 
@@ -139,8 +155,9 @@ private[converters] trait ProgConverter {
     unit.defs foreach {
       case ModuleDef(id, defs, _) =>
         defs foreach {
-          case fd: FunDef       => convertToFun(fd)
-          case cc: CaseClassDef => convertToType(cc)
+          case fd: FunDef => convertToFun(fd)
+
+          case cd: ClassDef => convertToType(cd)
 
           case x =>
             implicit val pos = x.getPos

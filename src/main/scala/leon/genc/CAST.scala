@@ -27,12 +27,18 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------ Types ----- */
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
+
+    def name: String = rep // usefull when the type name should be used as a variable identifier
   }
   case object NoType extends Type("???") // Used in place of a dropped type
 
   /* Type Modifiers */
-  case class Const(typ: Type) extends Type(s"$typ const")
-  case class Pointer(typ: Type) extends Type(s"$typ*")
+  case class Const(typ: Type) extends Type(s"$typ const") {
+    override def name: String = s"${typ.name}_const"
+  }
+  case class Pointer(typ: Type) extends Type(s"$typ*") {
+    override def name: String = s"${typ.name}_ptr"
+  }
 
   /* Primitive Types */
   case object Char extends Type("char")     // See NOTE on char & string
@@ -42,15 +48,22 @@ object CAST { // C Abstract Syntax Tree
 
   /* Compound Types */
   case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
+  // For union, use the factory
+  class Union private (val id: Id, val fields: Seq[(Type, Id)]) extends Type(id.name)
 
   /* (Basic) String Type */
   // NOTE It might be better to have data+length structure
   // NOTE Currently, only string literals are supported, hence they can legally
   //      be returned from functions.
-  case object String extends Type("char*")
+  case object String extends Type("char*") {
+    override def name: String = "string"
+  }
 
   /* Typedef */
   case class TypeDef(orig: Id, alias: Id) extends Type(alias.name)
+
+  /* Enum */
+  case class Enum(id: Id, values: Seq[Id]) extends Type(id.name)
 
 
   /* --------------------------------------------------------- Literals ----- */
@@ -229,6 +242,15 @@ object CAST { // C Abstract Syntax Tree
 
     def lengthId = Id("length")
     def dataId   = Id("data")
+  }
+
+  object Union {
+    def apply(id: Id, types: Seq[Type]): Union = {
+      val unionMembers = types map { t => (t, unionValueFor(t)) }
+      new Union(id, unionMembers)
+    }
+
+    def unionValueFor(t: Type) = CAST.Id(t.name + "_value")
   }
 
 
