@@ -3,7 +3,7 @@
 import leon.annotation.extern
 import leon.lang._
 
-object Inheritance1 {
+object Inheritance4 {
 
   abstract class Base {
     def get: Int = this match {
