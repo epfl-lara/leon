@@ -37,7 +37,7 @@ private[genc] trait TypeAnalyser {
       else cd.fields map { _.getType } exists containsArrayType
 
     case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")
-    case _                    => internalError(s"Unexpected TypeTree '$typ': ${typ.getClass}")
+    case _                    => CAST.unsupported(s"Unexpected TypeTree '$typ': ${typ.getClass}")
   }
 
 }

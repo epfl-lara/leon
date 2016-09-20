@@ -143,15 +143,17 @@ private[converters] trait ProgConverter {
           case cc: CaseClassDef => convertToType(cc)
 
           case x =>
+            implicit val pos = x.getPos
             val prefix = s"[unit = ${unit.id}, module = $id]"
-            internalError(s"$prefix Unexpected definition $x: ${x.getClass}")
+            CAST.unsupported(s"$prefix Unexpected definition $x: ${x.getClass}")
         }
 
       case cc: CaseClassDef => convertToType(cc)
 
       case x =>
+        implicit val pos = x.getPos
         val prefix = s"[unit = ${unit.id}]"
-        internalError(s"$prefix Unexpected definition $x: ${x.getClass}")
+        CAST.unsupported(s"$prefix Unexpected definition $x: ${x.getClass}")
     }
   }
 

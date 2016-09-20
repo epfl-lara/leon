@@ -7,9 +7,21 @@ private[genc] trait MiniReporter {
 
   val ctx: LeonContext
 
-  def internalError(msg: String) = ctx.reporter.internalError(msg)
-  def fatalError(msg: String)    = ctx.reporter.fatalError(msg)
-  def debug(msg: String)         = ctx.reporter.debug(msg)(utils.DebugSectionGenC)
+  def internalError(msg: String) = {
+    import java.lang.Thread
+
+    val stack = Thread.currentThread.getStackTrace
+
+    debug(s"internal error `$msg` from:")
+    for (s <- stack)
+      debug(s.toString)
+
+    ctx.reporter.internalError(msg)
+  }
+
+  def fatalError(msg: String) = ctx.reporter.fatalError(msg)
+
+  def debug(msg: String) = ctx.reporter.debug(msg)(utils.DebugSectionGenC)
 
   def debug(e: Throwable) {
     import java.io.{ StringWriter, PrintWriter }
