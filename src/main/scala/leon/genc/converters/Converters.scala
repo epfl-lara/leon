@@ -285,8 +285,11 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
         fs.bodies ~~ CAST.Call(id, args)
 
 
-      case _: StringConcat  => CAST.unsupported("String manipulations")
-      case _: MatchExpr     => CAST.unsupported("Pattern matching")
+      case _: StringConcat => CAST.unsupported("String manipulations")
+
+      case m: MatchExpr =>
+        val rewrite = ExprOps.matchToIfThenElse(m)
+        convert(rewrite)
 
       case IsInstanceOf(expr, ct) => convertIsInstanceOf(expr, ct.classDef)
       case AsInstanceOf(expr, ct) => convertAsInstanceOf(expr, ct.classDef)
