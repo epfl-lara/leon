@@ -105,6 +105,8 @@ object CAST { // C Abstract Syntax Tree
   case class Fun(id: Id, retType: Type, params: Seq[Var], body: Either[Stmt, String]) extends Def
 
   case class Id(name: String) extends Def {
+    // TODO add check on name's domain for conformance
+
     // `|` is used as the margin delimiter and can cause trouble in some situations
     def fixMargin =
       if (name.size > 0 && name(0) == '|') "| " + name
