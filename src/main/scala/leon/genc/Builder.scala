@@ -184,6 +184,10 @@ private[genc] trait Builder {
       case CAST.IfElse(cond, thn, elze) =>
         f.body ~~ CAST.IfElse(cond, injectReturn(thn), injectReturn(elze))
 
+      // FIXME this is an hugly hack. Fix it when Error are supported in `convert`
+      case CAST.NoStmt =>
+        f.body ~~ CAST.NoStmt
+
       case _ =>
         f.body ~~ CAST.Return(f.value)
     }

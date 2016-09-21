@@ -294,6 +294,10 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
       case IsInstanceOf(expr, ct) => convertIsInstanceOf(expr, ct.classDef)
       case AsInstanceOf(expr, ct) => convertAsInstanceOf(expr, ct.classDef)
 
+      case e @ Error(typ, desc) =>
+        debug(s"WARNING: `$e` is currently ignored")
+        CAST.NoStmt
+
       case unsupported =>
         CAST.unsupported(s"$unsupported (of type ${unsupported.getClass})")
     }
