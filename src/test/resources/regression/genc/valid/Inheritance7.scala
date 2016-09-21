@@ -3,10 +3,10 @@
 import leon.annotation.extern
 import leon.lang._
 
-object BadInheritance2 {
+object Inheritance7 {
 
   abstract class Base {
-    def get: Int // Defining abstract method is not supported
+    def get: Int // Defining abstract method IS supported
   }
 
   case class Derived1(x: Int) extends Base {
@@ -17,8 +17,11 @@ object BadInheritance2 {
     override def get: Int = 1
   }
 
+  def test1 = Derived1(42).get     // == 0
+  def test2 = Derived2(58).get - 1 // == 0
+
   def _main() = {
-    0
+    test1 + test2
   } ensuring { _ == 0 }
 
   @extern
