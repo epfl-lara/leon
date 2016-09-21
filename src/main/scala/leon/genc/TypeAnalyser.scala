@@ -3,6 +3,7 @@
 package leon
 package genc
 
+import purescala.Definitions._
 import purescala.Types._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
@@ -28,16 +29,19 @@ private[genc] trait TypeAnalyser {
     case ArrayType(_)         => true
     case TupleType(bases)     => bases exists containsArrayType
 
-    case CaseClassType(cd, _) =>
-      if (cd.isDropped)
-        CAST.unsupported(s"Using a dropped type")
+    case CaseClassType(cd, _) => classContainsArrayType(cd)
+    case AbstractClassType(cd, _) => classContainsArrayType(cd)
 
-      // If a case class is manually typdef'd, consider it to be a "returnable" type
-      if (getTypedef(cd).isDefined) false
-      else cd.fields map { _.getType } exists containsArrayType
-
-    case _: AbstractClassType => CAST.unsupported(s"abstract classes $typ")
     case _                    => CAST.unsupported(s"Unexpected TypeTree '$typ': ${typ.getClass}")
+  }
+
+  private def classContainsArrayType(cd: ClassDef)(implicit pos: Position): Boolean = {
+    if (cd.isDropped)
+      CAST.unsupported(s"Using a dropped type")
+
+    // If a case class is manually typdef'd, consider it to be a "returnable" type
+    if (getTypedef(cd).isDefined) false
+    else cd.fields map { _.getType } exists containsArrayType
   }
 
 }
