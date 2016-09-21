@@ -77,6 +77,12 @@ private[converters] trait ProgConverter {
 
   def getType(id: CAST.Id): Option[CAST.Type] = types find { _.id == id }
 
+  def getStruct(id: CAST.Id): Option[CAST.Struct] = getType(id) match {
+    case Some(s: CAST.Struct) => Some(s)
+    case Some(x) => internalError(s"$id matches something $x: ${x.getClass} and not a CAST.Struct")
+    case None => None
+  }
+
   def registerFun(fun: CAST.Fun) {
     // Functions should not get defined multiple times as this
     // would imply invalidating funExtraArgss

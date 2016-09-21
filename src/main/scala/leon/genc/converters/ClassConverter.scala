@@ -49,12 +49,14 @@ private[converters] trait ClassConverter {
       debug(s"Top = ${top.id}")
       debug(s"Children = ${ children map { _.id } mkString ", " }")
 
+      val childrenStructs = children map registerClass
+
       val name = id.name
       val enumId = CAST.Id(s"tag_${name}_t")
-      val enumValues = children map { c => CAST.Id("tag_" + convertToId(c.id).name) }
+
+      val enumValues = childrenStructs map { s => CAST.Enum.tagForType(s) }
       val enumType = CAST.Enum(enumId, enumValues)
 
-      val childrenStructs = children map registerClass
       val unionType = CAST.Union(CAST.Id(s"union_$name"), childrenStructs)
 
       val tag = CAST.Var(CAST.Id("tag"), enumType)
@@ -116,21 +118,51 @@ private[converters] trait ClassConverter {
   }
 
   // Instanciate a given case class, taking into account the inheritance model
-  def instanciateCaseClass(typ: CaseClassDef, args: Seq[Expr])(implicit funCtx: FunCtx): CAST.Stmt = {
-    getTopStruct(typ) match {
-      case None => normalInstanciation(typ, args)
-      case Some(top) => ???
+  def instanciateCaseClass(typ: CaseClassDef, args1: Seq[Expr])(implicit funCtx: FunCtx): CAST.Stmt = {
+    def details(struct: CAST.Struct): (Seq[CAST.Stmt], CAST.StructInit) = {
+      val types = struct.fields map { _.typ }
+      val argsFs = convertAndNormaliseExecution(args1, types)
+      val fieldsIds = typ.fieldsIds map convertToId
+      val args = fieldsIds zip argsFs.values
+
+      (argsFs.bodies, CAST.StructInit(args, struct))
     }
-  }
 
-  private def normalInstanciation(typ: CaseClassDef, args1: Seq[Expr])(implicit funCtx: FunCtx): CAST.Stmt = {
-    val struct    = convertToStruct(typ)
-    val types     = struct.fields map { _.typ }
-    val argsFs    = convertAndNormaliseExecution(args1, types)
-    val fieldsIds = typ.fieldsIds map convertToId
-    val args      = fieldsIds zip argsFs.values
+    def normalInstantiation: CAST.Stmt = {
+      val struct = convertToStruct(typ)
+      val (pre, act) = details(struct)
 
-    argsFs.bodies ~~ CAST.StructInit(args, struct)
+      pre ~~ act
+    }
+
+    def abstractInstantiation(top: CAST.Struct): CAST.Stmt = {
+      // Here is an example of how such init might look like:
+      // struct T t = (struct T){ .tag = INT, .value.t1 = (struct TINT){ .x = 42 } };
+      //
+      // We need to identify the tag and the value name first,
+      // then how to init the value properly.
+
+      debug(s"Instantiating ${typ.id} with arguments $args1.")
+
+      val dataStruct = getStruct(convertToId(typ.id)).get // if None, then internalError anyway
+      val tag = CAST.Enum.tagForType(dataStruct)
+      val value = CAST.Union.valuePathForType(dataStruct)
+
+      debug(s"Concreate struct: $dataStruct")
+      debug(s"Tag: $tag, value: $value")
+
+      val (pre, dataInit) = details(dataStruct)
+      val args = (CAST.Id("tag") -> tag) :: (value -> dataInit) :: Nil
+
+      debug(s"dataInit: $dataInit")
+
+      pre ~~ CAST.StructInit(args, top)
+    }
+
+    getTopStruct(typ) match {
+      case None => normalInstantiation
+      case Some(top) => abstractInstantiation(top)
+    }
   }
 
 }

@@ -66,7 +66,7 @@ object CAST { // C Abstract Syntax Tree
   case class Typedef(orig: Id, alias: Id) extends Type(alias.name)
 
   /* Enum */
-  case class Enum(id: Id, values: Seq[Id]) extends Type(id.name)
+  case class Enum(id: Id, values: Seq[EnumLiteral]) extends Type(id.name)
 
 
   /* --------------------------------------------------------- Literals ----- */
@@ -81,6 +81,8 @@ object CAST { // C Abstract Syntax Tree
   case class StringLiteral(s: String) extends Stmt {
     require(isASCII(s)) // See NOTE on char & string
   }
+
+  case class EnumLiteral(id: Id) extends Stmt
 
 
   /* ----------------------------------------------------- Definitions  ----- */
@@ -250,7 +252,7 @@ object CAST { // C Abstract Syntax Tree
 
   object Union {
     def apply(id: Id, types: Seq[Type]): Union = {
-      val unionMembers = types map { t => (t, unionValueFor(t)) }
+      val unionMembers = types map { t => (t, valueForType(t)) }
       new Union(id, unionMembers)
     }
 
@@ -258,7 +260,14 @@ object CAST { // C Abstract Syntax Tree
       Some((u.id, u.fields))
     }
 
-    def unionValueFor(t: Type) = CAST.Id(t.name + "_value")
+    // The "value" here refers to the identifier inside the union for inheritance.
+    def valueForType(t: Type) = Id(t.name + "_value")
+    def valuePathForType(t: Type) = Id("value." + t.name + "_value")
+  }
+
+  object Enum {
+    // The "tag" here refers to the enumeration value used to identify a type for inheritance.
+    def tagForType(t: Type) = EnumLiteral(Id("tag_" + t.name))
   }
 
 
@@ -269,6 +278,7 @@ object CAST { // C Abstract Syntax Tree
       case _: IntLiteral    => true
       case _: BoolLiteral   => true
       case _: StringLiteral => true
+      case _: EnumLiteral   => true
       case _                => false
     }
 

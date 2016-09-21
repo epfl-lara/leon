@@ -41,6 +41,8 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     // Mind the fourth and eighth double quotes
     case StringLiteral(s) => c""""${escape(s)}""""
 
+    case EnumLiteral(id)  => c"$id"
+
 
     /* --------------------------------------------------- Definitions  ----- */
     case Prog(includes, typedefs, enums, types, functions) =>
