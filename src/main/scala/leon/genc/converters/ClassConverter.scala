@@ -8,10 +8,12 @@ import purescala.Definitions._
 import purescala.Expressions._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
+import utils.Position
+
 import ExtraOps._
 
 private[converters] trait ClassConverter {
-  this: Converters with Normaliser with MiniReporter =>
+  this: Converters with Normaliser with Builder with MiniReporter =>
 
   // This registery keeps track of the "top" C structure that represents the class hierarchy.
   private var classRegistery = Map[CaseClassDef, CAST.Struct]()
@@ -112,7 +114,7 @@ private[converters] trait ClassConverter {
       if (cd.methods.length > 0) CAST.unsupported("Methods") // TODO is it?
 
       // Handle inheritance
-      if (cd.isAbstract || cd.hasParent) registerClassHierarchy(cd)
+      if (cd.isCandidateForInheritance) registerClassHierarchy(cd)
       else registerClass(cd)
     }
   }
@@ -163,6 +165,44 @@ private[converters] trait ClassConverter {
       case None => normalInstantiation
       case Some(top) => abstractInstantiation(top)
     }
+  }
+
+  // Convert the expr.isInstanceOf[cd] for types involving inheritance into the proper check
+  // of the tag value.
+  def convertIsInstanceOf(expr: Expr, cd: ClassDef)(implicit pos: Position, funCtx: FunCtx): CAST.Stmt = {
+    checksForInstanceOf(cd)
+
+    val exprF = convertAndFlatten(expr)
+
+    val dataStruct = getStruct(convertToId(cd.id)).get // if None, then internalError anyway
+    val tag = CAST.Enum.tagForType(dataStruct)
+
+    val tagField = CAST.AccessField(exprF.value, CAST.Id("tag"))
+
+    exprF.body ~~ buildBinOp(tagField, "==", tag)
+  }
+
+  // The conversion of expr.asInstanceOf[cd] is rather straighforward: we simply access the proper value
+  // from the instance's union.
+  def convertAsInstanceOf(expr: Expr, cd: ClassDef)(implicit pos: Position, funCtx: FunCtx): CAST.Stmt = {
+    checksForInstanceOf(cd)
+
+    val exprF = convertAndFlatten(expr)
+
+    val dataStruct = getStruct(convertToId(cd.id)).get // if None, then internalError anyway
+    val valuePath = CAST.Union.valuePathForType(dataStruct)
+
+    val valueField = CAST.AccessField(exprF.value, valuePath)
+
+    exprF.body ~~ valueField
+  }
+
+  private def checksForInstanceOf(cd: ClassDef)(implicit pos: Position) = {
+    if (!cd.isCandidateForInheritance)
+      CAST.unsupported(s"IsInstanceOf w/ ${cd.id} doesn't involve inheritance")
+
+    if (cd.isAbstract)
+      CAST.unsupported(s"IsInstanceOf w/ ${cd.id} doesn't work on abstract types")
   }
 
 }

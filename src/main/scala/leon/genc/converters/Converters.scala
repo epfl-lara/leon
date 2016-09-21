@@ -7,6 +7,7 @@ package converters
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.ExprOps
 import purescala.Types._
 import xlang.Expressions._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
@@ -286,6 +287,9 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
 
       case _: StringConcat  => CAST.unsupported("String manipulations")
       case _: MatchExpr     => CAST.unsupported("Pattern matching")
+
+      case IsInstanceOf(expr, ct) => convertIsInstanceOf(expr, ct.classDef)
+      case AsInstanceOf(expr, ct) => convertAsInstanceOf(expr, ct.classDef)
 
       case unsupported =>
         CAST.unsupported(s"$unsupported (of type ${unsupported.getClass})")

@@ -58,6 +58,8 @@ private[genc] object ExtraOps {
       cd.parent map { case AbstractClassType(acd, _) => acd.getTopParent } getOrElse { cd }
     }
 
+    def isCandidateForInheritance = cd.isAbstract || cd.hasParent
+
     private def hasAnnotation(annot: String) = cd.annotations contains annot
     private val manualTypeAnnotation = "cCode.typedef"
     private val droppedAnnotation = "cCode.drop"

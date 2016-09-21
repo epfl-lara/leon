@@ -67,6 +67,10 @@ private[genc] trait Builder {
     buildMultiOp(op, lhs :: rhs :: Nil)
   }
 
+  def buildBinOp(lhs: CAST.Stmt, op: String, rhs: CAST.Stmt) = {
+    CAST.Op(op, lhs, rhs)
+  }
+
   def buildUnOp(op: String, rhs1: Expr)(implicit funCtx: FunCtx) = {
     val rhsF = convertAndFlatten(rhs1)
     rhsF.body ~~ CAST.Op(op, rhsF.value)
