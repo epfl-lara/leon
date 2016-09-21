@@ -5,12 +5,28 @@ package genc
 package converters
 
 import purescala.Definitions._
+import purescala.Expressions._
 // NOTE don't import CAST._ to decrease possible confusion between the two ASTs
 
 import ExtraOps._
 
 private[converters] trait ClassConverter {
-  this: Converters with MiniReporter =>
+  this: Converters with Normaliser with MiniReporter =>
+
+  // This registery keeps track of the "top" C structure that represents the class hierarchy.
+  private var classRegistery = Map[CaseClassDef, CAST.Struct]()
+
+  // Add the given set of ClassDef into the registery
+  private def registerFullHierarchy(top: CAST.Struct, set: Seq[CaseClassDef]) {
+    debug(s"Registering hierarchy with $top for ${set map { _.id }}")
+
+    for (clazz <- set)
+      classRegistery = classRegistery + (clazz -> top)
+  }
+
+  // Find the matching "top" C struct for a given class definition. If none exists,
+  // the definition needs to be processed through convertClass.
+  private def getTopStruct(cd: CaseClassDef): Option[CAST.Struct] = classRegistery.get(cd)
 
   // Register a hierarchy of class.
   //
@@ -19,7 +35,8 @@ private[converters] trait ClassConverter {
   // - Create a C enum with a value for each concreate class
   // - Create a C struct for each child
   // - Create a C struct with a union member having an entry for each concreate class
-  // - Register the enum, union & the structs
+  // - Register the enum, union & the structs to ProgConverter
+  // - Register the class hierarchy as well
   // - Return the struct representing this class hierarchy
   private def registerClassHierarchy(cd: ClassDef): CAST.Type = {
     val top = cd.getTopParent
@@ -48,6 +65,8 @@ private[converters] trait ClassConverter {
       registerEnum(enumType)
       registerType(unionType)
       registerType(typ)
+
+      registerFullHierarchy(typ, children)
 
       typ
     }
@@ -94,6 +113,24 @@ private[converters] trait ClassConverter {
       if (cd.isAbstract || cd.hasParent) registerClassHierarchy(cd)
       else registerClass(cd)
     }
+  }
+
+  // Instanciate a given case class, taking into account the inheritance model
+  def instanciateCaseClass(typ: CaseClassDef, args: Seq[Expr])(implicit funCtx: FunCtx): CAST.Stmt = {
+    getTopStruct(typ) match {
+      case None => normalInstanciation(typ, args)
+      case Some(top) => ???
+    }
+  }
+
+  private def normalInstanciation(typ: CaseClassDef, args1: Seq[Expr])(implicit funCtx: FunCtx): CAST.Stmt = {
+    val struct    = convertToStruct(typ)
+    val types     = struct.fields map { _.typ }
+    val argsFs    = convertAndNormaliseExecution(args1, types)
+    val fieldsIds = typ.fieldsIds map convertToId
+    val args      = fieldsIds zip argsFs.values
+
+    argsFs.bodies ~~ CAST.StructInit(args, struct)
   }
 
 }

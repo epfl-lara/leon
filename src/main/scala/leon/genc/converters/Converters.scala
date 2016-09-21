@@ -47,6 +47,7 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
 
       case cd: ClassDef => convertClass(cd)
       case CaseClassType(cd, _) => convertClass(cd)
+      case AbstractClassType(cd, _) => convertClass(cd)
 
 
       /* ------------------------------------------------------- Literals ----- */
@@ -201,14 +202,9 @@ extends GenericConverter with FunConverter with ClassConverter with ProgConverte
             fs.bodies ~~ assign
         }
 
-      case CaseClass(typ, args1) =>
-        val struct    = convertToStruct(typ)
-        val types     = struct.fields map { _.typ }
-        val argsFs    = convertAndNormaliseExecution(args1, types)
-        val fieldsIds = typ.classDef.fieldsIds map convertToId
-        val args      = fieldsIds zip argsFs.values
-
-        argsFs.bodies ~~ CAST.StructInit(args, struct)
+      case CaseClass(typ, args) =>
+        debug(s"CaseClass($typ, $args)")
+        instanciateCaseClass(typ.classDef, args)
 
       case CaseClassSelector(_, x1, fieldId) =>
         val struct = convertToStruct(x1.getType)
