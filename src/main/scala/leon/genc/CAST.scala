@@ -27,12 +27,18 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------ Types ----- */
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
+
+    def name: String = rep // usefull when the type name should be used as a variable identifier
   }
   case object NoType extends Type("???") // Used in place of a dropped type
 
   /* Type Modifiers */
-  case class Const(typ: Type) extends Type(s"$typ const")
-  case class Pointer(typ: Type) extends Type(s"$typ*")
+  case class Const(typ: Type) extends Type(s"$typ const") {
+    override def name: String = s"${typ.name}_const"
+  }
+  case class Pointer(typ: Type) extends Type(s"$typ*") {
+    override def name: String = s"${typ.name}_ptr"
+  }
 
   /* Primitive Types */
   case object Char extends Type("char")     // See NOTE on char & string
@@ -41,16 +47,26 @@ object CAST { // C Abstract Syntax Tree
   case object Void extends Type("void")
 
   /* Compound Types */
-  case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name)
+  // In order to identify structs and unions, we need to make sure they have an Id (this is used by ProgConverter).
+  trait Identification { val id: Id }
+  type TypeWithId = Type with Identification
+  case class Struct(id: Id, fields: Seq[Var]) extends Type(id.name) with Identification
+  // For union, use the factory
+  class Union private (val id: Id, val fields: Seq[(Type, Id)]) extends Type(id.name) with Identification
 
   /* (Basic) String Type */
   // NOTE It might be better to have data+length structure
   // NOTE Currently, only string literals are supported, hence they can legally
   //      be returned from functions.
-  case object String extends Type("char*")
+  case object String extends Type("char*") {
+    override def name: String = "string"
+  }
 
   /* Typedef */
-  case class TypeDef(orig: Id, alias: Id) extends Type(alias.name)
+  case class Typedef(orig: Id, alias: Id) extends Type(alias.name)
+
+  /* Enum */
+  case class Enum(id: Id, values: Seq[EnumLiteral]) extends Type(id.name)
 
 
   /* --------------------------------------------------------- Literals ----- */
@@ -66,6 +82,8 @@ object CAST { // C Abstract Syntax Tree
     require(isASCII(s)) // See NOTE on char & string
   }
 
+  case class EnumLiteral(id: Id) extends Stmt
+
 
   /* ----------------------------------------------------- Definitions  ----- */
   abstract class Def extends Tree
@@ -76,8 +94,9 @@ object CAST { // C Abstract Syntax Tree
 
   case class Prog(
     includes:  Set[Include],
-    structs:   Seq[Struct],
-    typedefs:  Seq[TypeDef],
+    typedefs:  Seq[Typedef],
+    enums:     Seq[Enum],
+    types:     Seq[Type],
     functions: Seq[Fun]
   ) extends Def
 
@@ -86,6 +105,8 @@ object CAST { // C Abstract Syntax Tree
   case class Fun(id: Id, retType: Type, params: Seq[Var], body: Either[Stmt, String]) extends Def
 
   case class Id(name: String) extends Def {
+    // TODO add check on name's domain for conformance
+
     // `|` is used as the margin delimiter and can cause trouble in some situations
     def fixMargin =
       if (name.size > 0 && name(0) == '|') "| " + name
@@ -231,6 +252,26 @@ object CAST { // C Abstract Syntax Tree
     def dataId   = Id("data")
   }
 
+  object Union {
+    def apply(id: Id, types: Seq[Type]): Union = {
+      val unionMembers = types map { t => (t, valueForType(t)) }
+      new Union(id, unionMembers)
+    }
+
+    def unapply(u: Union): Option[(Id, Seq[(Type, Id)])] = {
+      Some((u.id, u.fields))
+    }
+
+    // The "value" here refers to the identifier inside the union for inheritance.
+    def valueForType(t: Type) = Id(t.name + "_value")
+    def valuePathForType(t: Type) = Id("value." + t.name + "_value")
+  }
+
+  object Enum {
+    // The "tag" here refers to the enumeration value used to identify a type for inheritance.
+    def tagForType(t: Type) = EnumLiteral(Id("tag_" + t.name))
+  }
+
 
   /* ---------------------------------------------------- Introspection ----- */
   implicit class IntrospectionOps(val stmt: Stmt) {
@@ -239,6 +280,7 @@ object CAST { // C Abstract Syntax Tree
       case _: IntLiteral    => true
       case _: BoolLiteral   => true
       case _: StringLiteral => true
+      case _: EnumLiteral   => true
       case _                => false
     }
 
