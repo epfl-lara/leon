@@ -878,6 +878,14 @@ trait ASTExtractors {
       }
     }
 
+    object ExTypeDef {
+      /** Extracts val's in the head of blocks. */
+      def unapply(tree: TypeDef): Option[(Symbol,Tree)] = tree match {
+        case td @ TypeDef(mods, name, tps, rhs) => Some((td.symbol, rhs))
+        case _ => None
+      }
+    }
+
     object ExValDef {
       /** Extracts val's in the head of blocks. */
       def unapply(tree: ValDef): Option[(Symbol,Tree,Tree)] = tree match {

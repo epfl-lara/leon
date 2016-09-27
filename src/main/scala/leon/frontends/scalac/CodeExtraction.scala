@@ -304,9 +304,14 @@ trait CodeExtraction extends ASTExtractors {
             case d if d.symbol.isVar =>
               None
 
+            // ignore: type X = Y
+            case ExTypeDef(sym, tpe2) =>
+              None
+
             // Everything else is unexpected
             case tree =>
               println(tree)
+              println(tree.getClass)
               outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
           }
 
@@ -318,7 +323,6 @@ trait CodeExtraction extends ASTExtractors {
 
         // Unexpected
         case tree =>
-          println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
 
@@ -1363,8 +1367,10 @@ trait CodeExtraction extends ASTExtractors {
           }
 
         case ExValDef(vs, tpt, bdy) =>
+
           val binderTpe = extractType(tpt)
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
+
           val valTree = extractTree(bdy)
 
           val restTree = rest match {
