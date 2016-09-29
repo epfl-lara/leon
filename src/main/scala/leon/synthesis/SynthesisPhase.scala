@@ -25,10 +25,11 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optSTEVanuatoo     = LeonFlagOptionDef("ste:vanuatoo",   "Generate inputs using new korat-style generator",        false)
   val optSTENaiveGrammar = LeonFlagOptionDef("ste:naive",      "Use the old naive grammar for STE",                      false)
   val optSTEMaxSize      = LeonLongOptionDef("ste:maxsize",    "Maximum size of expressions synthesized by STE", 7L, "N")
+  val optSTEUserDefined  = LeonFlagOptionDef("ste:userdefined","Use user-defined grammars", false)
 
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
     optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls,
-    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize
+    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize, optSTEUserDefined
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
@@ -62,7 +63,8 @@ object SynthesisPhase extends UnitPhase[Program] {
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       steUseOptTimeout = ctx.findOptionOrDefault(optSTEOptTimeout),
       steUseVanuatoo = ctx.findOptionOrDefault(optSTEVanuatoo),
-      steMaxSize = ctx.findOptionOrDefault(optSTEMaxSize).toInt
+      steMaxSize = ctx.findOptionOrDefault(optSTEMaxSize).toInt,
+      steUserDefinedGrammar = ctx.findOptionOrDefault(optSTEUserDefined)
     )
   }
 

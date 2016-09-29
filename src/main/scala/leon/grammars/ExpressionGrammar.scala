@@ -11,7 +11,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
 /** Represents a context-free grammar of expressions */
 abstract class ExpressionGrammar {
 
-  private[this] val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
+  protected val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
 
   /** The list of production rules for this grammar for a given nonterminal.
     *

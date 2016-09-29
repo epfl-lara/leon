@@ -226,6 +226,7 @@ object Definitions {
   case object IsSynthetic extends FunctionFlag
   // Is inlined
   case object IsInlined extends FunctionFlag
+  case object IsImplicit extends FunctionFlag
   // Is private
   case object IsPrivate extends FunctionFlag with ClassFlag
   // Is an ADT invariant method

@@ -841,8 +841,9 @@ trait CodeExtraction extends ASTExtractors {
       fd.addFlags(annotationsOf(sym).map { case (name, args) => FunctionFlag.fromName(name, args) }.toSet)
 
       if (sym.isImplicit) {
-        fd.addFlag(IsInlined)
+        fd.addFlag(IsImplicit)
       }
+
       if(sym.isPrivate)
         fd.addFlag(IsPrivate)
       // extract more modifiers here if needed
