@@ -5,10 +5,11 @@ package genc
 
 import leon.test.LeonRegressionSuite
 
+import leon.DefaultReporter
 import leon.frontends.scalac.ExtractionPhase
 import leon.regression.verification.XLangVerificationSuite
 import leon.purescala.Definitions.Program
-import leon.utils.{ PreprocessingPhase, UniqueCounter }
+import leon.utils.{ InterruptManager, PreprocessingPhase, UniqueCounter }
 
 import scala.concurrent._
 import ExecutionContext.Implicits.global
@@ -20,11 +21,12 @@ import scala.io.Source
 import java.io.{ ByteArrayInputStream, File }
 import java.nio.file.{ Files, Path, Paths }
 
+import scala.language.postfixOps
+
 class GenCSuite extends LeonRegressionSuite {
 
   private val testDir = "regression/genc/"
   private lazy val tmpDir = Files.createTempDirectory("genc")
-  private val ccflags = "-std=c99 -g -O0"
   private val timeout = 60 // seconds, for processes execution
 
   private val counter = new UniqueCounter[Unit]
@@ -32,10 +34,31 @@ class GenCSuite extends LeonRegressionSuite {
 
   private case class ExtendedContext(
     leon: LeonContext,
-    progName: String,            // name of the source file, without extention
-    sourceDir: String,           // directory in which the source lives
-    inputFileOpt: Option[String] // optional path to an file to be used as stdin at runtime
+    progName: String, // name of the source file, without extention
+    sourceDir: String, // directory in which the source lives
+    inputFileOpt: Option[String], // optional path to an file to be used as stdin at runtime
+    disabledCompilers: Seq[String] // List of compiler (title) that should not be used for this test
   )
+
+  private case class Compiler(title: String, name: String, options: String*) {
+    lazy val flags = options mkString " "
+
+    override def toString = title
+  }
+
+  private object WarningOrAboveReporter extends DefaultReporter(Set()) {
+    override def emit(msg: Message): Unit = msg.severity match {
+      case this.WARNING | this.FATAL | this.ERROR | this.INTERNAL =>
+        super.emit(msg)
+      case _ =>
+    }
+  }
+
+  override def createLeonContext(opts: String*): LeonContext = {
+    val reporter = WarningOrAboveReporter
+    Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
+  }
+
 
   // Tests are run as follows:
   // - before mkTest is run, all valid test are verified using XLangVerificationSuite
@@ -79,8 +102,13 @@ class GenCSuite extends LeonRegressionSuite {
         val inputName  = filePrefix + ".input"
         val inputOpt   = if (Files.isReadable(Paths.get(inputName))) Some(inputName) else None
 
+        val disabledCompilersName = filePrefix + ".disabled"
+        val disabledCompilers =
+          if (Files.isReadable(Paths.get(disabledCompilersName))) Source.fromFile(disabledCompilersName).getLines.toSeq
+          else Nil
+
         val ctx  = createLeonContext(s"--o=$tmpDir/$name.c")
-        val xCtx = ExtendedContext(ctx, name, sourceDir, inputOpt)
+        val xCtx = ExtendedContext(ctx, name, sourceDir, inputOpt, disabledCompilers)
 
         val displayName = s"$cat/$name.scala"
         val index       = counter.nextGlobal
@@ -98,10 +126,12 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   // Run a process with a timeout and return the status code
-  private def runProcess(pb: ProcessBuilder): Int =
-    runProcess(pb.run)
+  private def runProcess(pb: ProcessBuilder): Int = {
+    val logger = ProcessLogger(stdout => info(s"[from process] $stdout"), stderr => () /* screem silently */)
+    runProcessImpl(pb.run(logger))
+  }
 
-  private def runProcess(p: Process): Int = {
+  private def runProcessImpl(p: Process): Int = {
     val f = Future(blocking(p.exitValue()))
     try {
       Await.result(f, duration.Duration(timeout, "sec"))
@@ -112,31 +142,84 @@ class GenCSuite extends LeonRegressionSuite {
     }
   }
 
-  // Determine which C compiler is available
-  private def detectCompiler: Option[String] = {
+  // Determine which C compilers are available
+  private def detectCompilers: Seq[Compiler] = {
+    import org.apache.commons.lang3.SystemUtils._
+
     val testCode = "int main() { return 0; }"
+    val testSource = Files.createTempFile(tmpDir, "test", ".c")
     val testBinary = s"$tmpDir/test"
+
+    // Because not all compiler understand `-xc` we write the test code into a file.
+    Files.write(testSource, testCode.getBytes)
 
     // NOTE this code might print error on stderr when a non-existing compiler
     // is used. It seems that even with a special ProcessLogger the RuntimeException
     // is printed for some reason.
 
-    def testCompiler(cc: String): Boolean = try {
-      def input = new ByteArrayInputStream(testCode.getBytes())
-      val process = s"$cc $ccflags -o $testBinary -xc -" #< input #&& s"$testBinary"
+    def testCompiler(cc: Compiler): Boolean = {
+      info(s"Testing presence of ${cc.name}")
+
+      val result = testCompilerImpl(cc)
+
+      if (result)
+        info(s"${cc.name} is supported with parameters ${cc.flags}")
+      else
+        info(s"Failed to detect ${cc.name}")
+
+      result
+    }
+
+    def testCompilerImpl(cc: Compiler): Boolean = try {
+      val process =
+        (if (IS_OS_UNIX) s"which ${cc.name}" else s"where.exe ${cc.name}") #&&
+        s"${cc.name} ${cc.flags} -o $testBinary $testSource" #&&
+        s"$testBinary" #&&
+        s"${cc.name} --version"
+
       runProcess(process) == 0
     } catch {
       case _: java.lang.RuntimeException => false
     }
 
-    val knownCompiler = "cc" :: "clang" :: "gcc" :: "mingw" :: Nil
+    val std99 = "-std=c99"
+    val clangSanitizerAddress = "-fsanitize=address"
+    val clangSanitizerOthers = "-fsanitize=undefined,safe-stack" // address mode incompatible with those
+    val gccSanitizer = "-fsanitize=address,undefined"
+
+    // For clang on OS X we make sure to use the one from brew instead of the one from Xcode
+    val brewClangBin = "/usr/local/opt/llvm/bin/clang"
+    val brewClangCompiler = "-I/usr/local/opt/llvm/include"
+    val brewClangLinker = "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+    val brewClang1 = Compiler("brew.clang.address", brewClangBin, std99, clangSanitizerAddress, brewClangCompiler, brewClangLinker)
+    val brewClang2 = Compiler("brew.clang.others", brewClangBin, std99, clangSanitizerOthers, brewClangCompiler, brewClangLinker)
+
+    // Similarly for GCC, we avoid the default one on OS X
+    val brewGccBin = "gcc-6" // assuming it's still version 6
+    val brewGcc = Compiler("brew.gcc-6", brewGccBin, std99, gccSanitizer)
+
+    val clang1 = Compiler("clang.address", "clang", std99, clangSanitizerAddress)
+    val clang2 = Compiler("clang.other", "clang", std99, clangSanitizerOthers)
+    val gcc1 = Compiler("gcc", "gcc", std99)
+    val gcc2 = Compiler("gcc", "gcc", std99, gccSanitizer)
+    val mingw = Compiler("mingw", "mingw", std99)
+
+    val compcert = Compiler("compcert", "ccomp", "-fno-unprototyped", "-fstruct-passing")
+
+    val compilers: Seq[Compiler] =
+      if (IS_OS_MAC_OSX) brewClang1 :: brewClang2 :: brewGcc :: compcert :: Nil
+      else if (IS_OS_LINUX) clang1 :: clang2 :: gcc1 :: gcc2 :: compcert :: Nil
+      else if (IS_OS_WINDOWS) mingw :: compcert :: Nil
+      else fail(s"unknown operating system $OS_NAME")
+
     // Note that VS is not in the list as we cannot specify C99 dialect
 
-    knownCompiler find testCompiler
+    compilers filter testCompiler
   }
 
-  private def convert(xCtx: ExtendedContext)(prog: Program) = {
+  private def convert(xCtx: ExtendedContext)(prog: Program): CAST.Prog = {
     try {
+      info(s"(CAST)${xCtx.progName}")
       GenerateCPhase(xCtx.leon, prog)
     } catch {
       case fe: LeonFatalError =>
@@ -148,37 +231,49 @@ class GenCSuite extends LeonRegressionSuite {
     CFileOutputPhase(xCtx.leon, cprog)
   }
 
-  private def compile(xCtx: ExtendedContext, cc: String)(unused: Unit) = {
-    val basename     = s"$tmpDir/${xCtx.progName}"
-    val sourceFile   = s"$basename.c"
-    val compiledProg = basename
+  // Check whether a regression test is disabled for a given compiler.
+  // NOTE this is useful to disable error when using VLA with compcert (which doesn't all them).
+  private def enabled(xCtx: ExtendedContext, cc: Compiler): Boolean = !(xCtx.disabledCompilers contains cc.title)
 
-    val process = Process(s"$cc $ccflags $sourceFile -o $compiledProg")
+  // Return the list of compiled programs
+  private def compile(xCtx: ExtendedContext, compilers: Seq[Compiler])(unused: Unit): Seq[String] = for { cc <- compilers if enabled(xCtx, cc) } yield {
+    val basename = s"$tmpDir/${xCtx.progName}"
+    val sourceFile = s"$basename.c"
+    val bin = s"$basename.${cc.title}"
+
+    info(s"Compiling program for compiler ${cc.title}")
+    val cmd = s"${cc.name} ${cc.flags} $sourceFile -o $bin"
+
+    val process = Process(cmd)
     val status = runProcess(process)
 
-    assert(status == 0, "Compilation of converted program failed")
+    if (status != 0)
+      fail(s"Compilation of converted program failed with ${cc.title}. Command was: $cmd")
+
+    bin
   }
 
   // Evaluate the C program, making sure it succeeds, and return the file containing the output
-  private def evaluateC(xCtx: ExtendedContext): File = {
-    val compiledProg = s"$tmpDir/${xCtx.progName}"
-
+  private def evaluateC(xCtx: ExtendedContext, bin: String): File = {
     // If available, use the given input file
     val baseCommand = xCtx.inputFileOpt match {
-      case Some(inputFile) => compiledProg #< new File(inputFile)
-      case None            => Process(compiledProg)
+      case Some(inputFile) => bin #< new File(inputFile)
+      case None            => Process(bin)
     }
 
     // Redirect output to a tmp file
-    val outputFile = new File(s"$compiledProg.c_output")
+    val outputFile = new File(s"$bin.c_output")
     val command    = baseCommand #> outputFile
 
-    // println(s"Using input file for ${xCtx.progName}: ${xCtx.inputFileOpt.isDefined}")
+    // info(s"Using input file for ${xCtx.progName}: ${xCtx.inputFileOpt.isDefined}")
+    info(s"Evaluating binary ${bin split "/" last}")
 
     // TODO add a memory limit
 
     val status = runProcess(command)
-    assert(status == 0, s"Evaluation of converted program failed with status [$status]")
+
+    if (status != 0)
+      fail(s"Evaluation of $bin failed with status [$status]")
 
     outputFile
   }
@@ -202,44 +297,47 @@ class GenCSuite extends LeonRegressionSuite {
       case None            => Process(runBase)
     }
 
-    // println(s"COMPILE: $compile")
-    // println(s"RUN: $run")
+    // info(s"COMPILE: $compile")
+    // info(s"RUN: $run")
 
     val outputFile = new File(s"$tmpDir/${xCtx.progName}.scala_output")
     val command    = compile #&& (run #> outputFile)
 
     val status = runProcess(command)
-    assert(status == 0, s"Compilation or evaluation of the source program failed")
+
+    if (status != 0)
+      fail(s"Compilation or evaluation of the source program failed")
 
     outputFile
   }
 
   // Evaluate both Scala and C programs, making sure their output matches
-  private def evaluate(xCtx: ExtendedContext)(unused: Unit) = {
-    val c     = Source.fromFile(evaluateC(xCtx)).getLines
+  private def evaluate(xCtx: ExtendedContext)(binaries: Seq[String]) = {
+    val cOuts = binaries map { bin => Source.fromFile(evaluateC(xCtx, bin)).getLines }
     val scala = Source.fromFile(evaluateScala(xCtx)).getLines
 
     // Compare outputs
-    assert((c zip scala) forall { case (c, s) => c == s }, "Output mismatch")
+    for { (c, bin) <- cOuts zip binaries } {
+      info(s"Checking the result of ${bin split '/' last}")
+      assert((c zip scala) forall { case (c, s) => c == s }, s"Output mismatch for $bin")
+    }
   }
 
   private def forEachFileIn(cat: String)(block: (ExtendedContext, Program) => Unit) {
     val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
-    fs foreach { file =>
-      assert(file.exists && file.isFile && file.canRead,
-        s"Benchmark ${file.getName} is not a readable file")
-    }
+    for { file <- fs }
+      assert(file.exists && file.isFile && file.canRead, s"Benchmark ${file.getName} is not a readable file")
 
     val files = fs map { _.getPath }
 
     mkTest(files, cat)(block)
   }
 
-  protected def testDirectory(cc: String, cat: String) = forEachFileIn(cat) { (xCtx, prog) =>
+  protected def testDirectory(compilers: Seq[Compiler], cat: String) = forEachFileIn(cat) { (xCtx, prog) =>
     val converter = convert(xCtx) _
     val saver     = saveToFile(xCtx) _
-    val compiler  = compile(xCtx, cc) _
+    val compiler  = compile(xCtx, compilers) _
     val evaluator = evaluate(xCtx) _
 
     val pipeline  = converter andThen saver andThen compiler andThen evaluator
@@ -247,8 +345,8 @@ class GenCSuite extends LeonRegressionSuite {
     pipeline(prog)
   }
 
-  protected def testValid(cc: String) = testDirectory(cc, "valid")
-  protected def testUnverified(cc: String) = testDirectory(cc, "unverified");
+  protected def testValid(compilers: Seq[Compiler]) = testDirectory(compilers, "valid")
+  protected def testUnverified(compilers: Seq[Compiler]) = testDirectory(compilers, "unverified");
 
   protected def testInvalid() = forEachFileIn("invalid") { (xCtx, prog) =>
     intercept[LeonFatalError] {
@@ -273,12 +371,14 @@ class GenCSuite extends LeonRegressionSuite {
 
   protected def testAll() = {
     // Set C compiler according to the platform we're currently running on
-    detectCompiler match {
-      case Some(cc) =>
-        testValid(cc)
-        testUnverified(cc)
-      case None     =>
+    detectCompilers match {
+      case Nil =>
         test("dectecting C compiler") { fail("no C compiler found") }
+
+      case compilers =>
+        info(s"Compiler(s) used: ${compilers mkString ", "}")
+        testValid(compilers)
+        testUnverified(compilers)
     }
 
     testInvalid()
