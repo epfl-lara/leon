@@ -12,6 +12,7 @@ import leon.purescala.TypeOps.isSubtypeOf
 import leon.purescala.Definitions._
 import leon.xlang.Expressions._
 import leon.xlang.ExprOps._
+import leon.xlang.Constructors._
 
 class ExprOpsSuite extends FunSuite with helpers.ExpressionsDSL {
 
@@ -47,6 +48,30 @@ class ExprOpsSuite extends FunSuite with helpers.ExpressionsDSL {
 
   test("flattenBlocks should not eliminate trailing UnitLiteral") {
     assert(flattenBlocks(Block(Seq(x), UnitLiteral())) === Block(Seq(x), UnitLiteral()))
+  }
+
+  test("block Constructor should simplify an empty list to unit") {
+    assert(block(Seq()) === UnitLiteral())
+  }
+
+  test("block Constructor should create a normal block for a simple block") {
+    assert(block(Seq(y, z)) === Block(Seq(y), z))
+  }
+
+  test("block Constructor should eliminate a unit in a simple block") {
+    assert(block(Seq(y, UnitLiteral(), z)) === Block(Seq(y), z))
+  }
+
+  test("block Constructor should transform a single element list to that elemetn") {
+    assert(block(Seq(y)) === y)
+  }
+
+  test("block Constructor should filter units from a single element list and return a non-block") {
+    assert(block(Seq(UnitLiteral(), y)) === y)
+  }
+
+  test("block Constructor should transform a list of units to unit") {
+    assert(block(Seq(UnitLiteral(), UnitLiteral())) === UnitLiteral())
   }
 
 }
