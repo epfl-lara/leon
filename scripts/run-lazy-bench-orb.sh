@@ -1,17 +1,20 @@
-./leon --mem --benchmark --timeout=1800 ./testcases/lazy-datastructures/withOrb/SortingnConcat.scala | tee SortingnConcat.out # runs in a few seconds
-./leon --mem --benchmark --unrollfactor=2  --timeout=1800 ./testcases/lazy-datastructures/withOrb/RealTimeQueue.scala | tee  RealTimeQueue.out # take ~1min
-./leon --mem --benchmark --unrollfactor=4  --timeout=1800 ./testcases/lazy-datastructures/withOrb/CyclicFibStream.scala  | tee CyclicFibStream.out # a few secs
-./leon --mem --benchmark --unrollfactor=2  --timeout=1800 ./testcases/lazy-datastructures/withOrb/PreciseBottomUpMegeSort.scala | tee PreciseBottomUpMegeSort.out
-./leon --mem --benchmark --unrollfactor=5  --timeout=1800 ./testcases/lazy-datastructures/withOrb/LazyNumericalRep.scala  | tee LazyNumericalRep.out # in a few secs
-./leon --mem --benchmark --unrollfactor=4   --timeout=1800 ./testcases/lazy-datastructures/withOrb/Deque.scala | tee Deque.out # takes ~ 2min
-./leon --mem --benchmark --unrollfactor=4  --timeout=1800 ./testcases/lazy-datastructures/withOrb/CyclicHammingStream.scala  | tee CyclicHammingStream.out # takes about 2 min
-./leon --mem --benchmark  --timeout=1800 ./testcases/lazy-datastructures/withOrb/RunningExample.scala | tee RunningExample.out # a few secs
-./leon --mem --benchmark  --timeout=1800 ./testcases/lazy-datastructures/withOrb/Knapsack.scala  | tee Knapsack.out # a few seconds
-./leon --mem --benchmark  --timeout=1800 ./testcases/lazy-datastructures/withOrb/WeightedScheduling.scala | tee Sched.out # a few seconds
-./leon --mem --benchmark --unrollfactor=2  --timeout=1800 ./testcases/lazy-datastructures/withOrb/LongestCommonSubsequence.scala  | tee LongestCommonSubsequence.out # a few seconds
-./leon --mem --benchmark --unrollfactor=2  --timeout=1800 ./testcases/lazy-datastructures/withOrb/LevenshteinDistance.scala  | tee LevenshteinDistance.out # a few seconds
-./leon --mem --benchmark --unrollfactor=4  --timeout=1800 ./testcases/lazy-datastructures/withOrb/PackratParsing.scala  | tee PackratParsing.out # ~ 1min
-./leon --mem --benchmark  --timeout=1800 ./testcases/lazy-datastructures/withOrb/Haskell-Library/StreamLibrary.scala ./testcases/lazy-datastructures/withOrb/Haskell-Library/StreamClient.scala | tee StreamLibrary.out
-./leon --mem --benchmark --unrollfactor=5  --timeout=1800 ./testcases/lazy-datastructures/conc/ConcTrees.scala ./testcases/lazy-datastructures/conc/Conqueue.scala | tee Conqueue.out
-./leon --mem --benchmark --unrollfactor=3  --timeout=1800 ./testcases/lazy-datastructures/withOrb/HammingMemoized.scala | tee HammingMemoized.out   # may take up to 1000s need to optimize
-#./leon --mem --benchmark --unrollfactor=3 --vcTimeout=35 ./testcases/lazy-datastructures/withOrb/BottomUpMegeSort.scala | tee BottomUpMegeSort.out	# works in ~ 5 min, but a time bound of a function is manually provided
+LEON_HOME="../../"
+# lazy data structures
+${LEON_HOME}/leon --mem --benchmark --timeout=1800 ${LEON_HOME}testcases/benchmarks/LazySelectionSort.scala | tee LazySelectionSort.out # runs in a few seconds
+${LEON_HOME}/leon --mem --benchmark  --timeout=1800 ${LEON_HOME}testcases/benchmarks/PrimeStream.scala | tee PrimeStream.out # a few secs
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=4  --timeout=1800 ${LEON_HOME}testcases/benchmarks/CyclicFibStream.scala  | tee CyclicFibStream.out # a few secs
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=3  --timeout=1800 ${LEON_HOME}testcases/benchmarks/CyclicHammingStream.scala  | tee CyclicHammingStream.out # takes about 2 min
+${LEON_HOME}/leon --mem --benchmark  --timeout=1800 ${LEON_HOME}testcases/benchmarks/StreamLibrary/StreamLibrary.scala ${LEON_HOME}testcases/benchmarks/StreamLibrary/StreamClient.scala | tee StreamLibrary.out
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=2  --timeout=1800 ${LEON_HOME}testcases/benchmarks/RealTimeQueue.scala | tee  RealTimeQueue.out # take ~1min
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=2  --timeout=1800 ${LEON_HOME}testcases/benchmarks/BottomUpMergeSort.scala | tee BottomUpMergeSort.out
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=4   --timeout=1800 ${LEON_HOME}testcases/benchmarks/Deque.scala | tee Deque.out # takes ~ 2min
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=5  --timeout=1800 ${LEON_HOME}testcases/benchmarks/LazyNumericalRep.scala  | tee LazyNumericalRep.out # in a few secs
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=5  --timeout=1800 ${LEON_HOME}testcases/benchmarks/Conqueue/ConcTrees.scala ${LEON_HOME}testcases/benchmarks/Conqueue/Conqueue.scala | tee Conqueue.out
+# Dynamic programming
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=2  --timeout=1800 ${LEON_HOME}testcases/benchmarks/LongestCommonSubsequence.scala  | tee LongestCommonSubsequence.out # a few seconds
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=2  --timeout=1800 ${LEON_HOME}testcases/benchmarks/LevenshteinDistance.scala  | tee LevenshteinDistance.out # a few seconds
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=3  --timeout=1800 ${LEON_HOME}testcases/benchmarks/HammingMemoized.scala | tee HammingMemoized.out  
+${LEON_HOME}/leon --mem --benchmark  --timeout=1800 ${LEON_HOME}testcases/benchmarks/WeightedScheduling.scala | tee Sched.out # a few seconds
+${LEON_HOME}/leon --mem --benchmark  --timeout=1800 ${LEON_HOME}testcases/benchmarks/Knapsack.scala  | tee Knapsack.out # a few seconds
+${LEON_HOME}/leon --mem --benchmark --unrollfactor=4  --timeout=1800 ${LEON_HOME}testcases/benchmarks/PackratParsing.scala  | tee PackratParsing.out # ~ 1min
+${LEON_HOME}/leon --mem --benchmark  --timeout=1800 ${LEON_HOME}testcases/benchmarks/Viterbi.scala  | tee Viterbi.out # a few seconds
