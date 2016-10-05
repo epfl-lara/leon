@@ -14,12 +14,13 @@ import utils._
 import java.io._
 import invariant.engine.InferenceReport
 import transformations._
+import ProgramUtil._
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
 object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] {
-  val dumpInputProg = false
+  val dumpInlinedProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
@@ -66,9 +67,17 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   }
 
   def genVerifiablePrograms(ctx: LeonContext, prog: Program): (ClosureFactory, Program, Program) = {
-    val inprog = HOInliningPhase(ctx, prog)
-    if (dumpInputProg)
-      println("Input prog: \n" + ScalaPrinter.apply(inprog))
+    // convert question marks to templates, if any, right here before inlining.
+    val funToTmpl = userLevelFunctions(prog).collect {
+      case fd if fd.hasTemplate =>
+        fd -> fd.getTemplate
+    }.toMap
+    val qfreeProg = ProgramUtil.assignTemplateAndCojoinPost(funToTmpl, prog)
+    println("Qfree prog: \n" + ScalaPrinter.apply(qfreeProg))
+
+    val inprog = HOInliningPhase(ctx, qfreeProg)
+    if (dumpInlinedProg)
+      println("Inlined prog: \n" + ScalaPrinter.apply(inprog))
 
     val (pass, msg) = sanityChecks(inprog, ctx)
     assert(pass, msg)

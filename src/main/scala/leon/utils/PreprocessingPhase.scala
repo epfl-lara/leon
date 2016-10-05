@@ -23,8 +23,13 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
       debugTrees("Program after extraction")      andThen
       MethodLifting                               andThen
       TypingPhase                                 andThen
-      synthesis.ConversionPhase                   andThen
-      InliningPhase
+      synthesis.ConversionPhase
+
+    val pipeBeginWithInlining =
+      if(ctx.findOption(Main.MainComponent.optLazyEval).get) {
+        // here disable inlining
+        pipeBegin
+      } else pipeBegin andThen InliningPhase
 
     // Do not desugar xlang when generating C code
     val pipeX = (
@@ -40,7 +45,7 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
     ) when (!genc)
 
     val phases =
-      pipeBegin andThen
+      pipeBeginWithInlining andThen
       pipeX andThen
       pipeEnd andThen
       debugTrees("Program after pre-processing")
