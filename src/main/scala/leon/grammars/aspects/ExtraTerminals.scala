@@ -12,7 +12,7 @@ import purescala.TypeOps.isSubtypeOf
  * Informs sub-productions that there are extra terminals available (used by
  * grammars.ExtraTerminals).
  */
-case class ExtraTerminals(s: Set[Expr]) extends PersistentAspect {
+case class ExtraTerminals(s: Set[Expr]) extends PersistentAspect(20) {
   def asString(implicit ctx: LeonContext) = {
     s.toList.map(_.asString).mkString("{", ",", "}")
   }

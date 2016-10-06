@@ -17,7 +17,7 @@ package aspects
  * like:
  *   e + 1
  */
-abstract class PersistentAspect extends Aspect {
+abstract class PersistentAspect(order: Int) extends Aspect(order) {
   def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     ps.map { p =>
       p.copy(subTrees = p.subTrees.map(lab => lab.withAspect(this)))

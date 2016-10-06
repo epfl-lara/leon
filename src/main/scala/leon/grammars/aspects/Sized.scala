@@ -9,7 +9,7 @@ import utils.SeqUtils._
 /**
  * Attach sizes to labels and transmit them down accordingly
  */
-case class Sized(size: Int, optimizeCommut: Boolean) extends Aspect {
+case class Sized(size: Int, optimizeCommut: Boolean) extends Aspect(100) {
   def asString(implicit ctx: LeonContext) = "|"+size+"|"
 
   def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {

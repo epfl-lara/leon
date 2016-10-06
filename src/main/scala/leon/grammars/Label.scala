@@ -14,5 +14,5 @@ case class Label(tpe: TypeTree, aspects: List[Aspect] = Nil) extends Typed {
     ts + aspects.map(_.asString).mkString
   }
 
-  def withAspect(a: Aspect) = Label(tpe, aspects :+ a)
+  def withAspect(a: Aspect) = Label(tpe, (a :: aspects).sortBy(_.order))
 }

@@ -25,7 +25,8 @@ import Tags._
  */
 
 
-abstract class Aspect extends Printable {
+abstract class Aspect(val order: Int) extends Printable {
+
   final type Production = ProductionRule[Label, Expr]
 
   def applyTo(l: Label, ps: Seq[Production])(implicit ctx: LeonContext): Seq[Production]

@@ -6,7 +6,7 @@ package aspects
 
 import purescala.TypeOps.depth
 
-case class TypeDepthBound(bound: Int) extends PersistentAspect {
+case class TypeDepthBound(bound: Int) extends PersistentAspect(40) {
   override def asString(implicit ctx: LeonContext): String = "" // This is just debug pollution to print
 
   override def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
