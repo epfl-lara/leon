@@ -1,0 +1,104 @@
+State-Verification-Time: 2.146s
+Total-Time: 4.061s
+Total-VCs-Generated: 30
+Z3SolvedVCs: 26
+CVC4SolvedVCs: 4
+procs: 3
+VC-refinement: 6
+disjuncts: 19
+TotalVCCTime: 0.274s
+Total-AxiomChoose-Time: 0.001s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.099s
+UneliminatedEqualities: 6
+ElimTime: 0.122s
+Total-Choose-Time: 0.254s
+BinarySearchTime: 0.231s
+Resource-Inference-Time: 1.915s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 66.25
+Max.CVC4-Time: 265
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 72.34615384615384
+Max.Z3-Time: 1881
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 85.66666666666667
+Max.VC-size: 187
+Avg.UIF+ADT: 16.833333333333332
+Max.UIF+ADT: 28
+Avg.TemplateIds: 1.3333333333333333
+Max.TemplateIds: 2
+Avg.unflatSize: 16.666666666666668
+Max.unflatSize: 38
+Avg.UnflatTime: 0.017833333333333333s
+Max.UnflatTime: 0.032s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.014421052631578947s
+Max.VC-check-time: 0.029s
+Avg.CallADT-Constraints: 26.0
+Max.CallADT-Constraints: 86
+Avg.CtrsBeforeElim: 34.578947368421055
+Max.CtrsBeforeElim: 115
+Avg.EliminatedAtoms: 32.78947368421053
+Max.EliminatedAtoms: 112
+Avg.Param-Atoms: 1.0526315789473684
+Max.Param-Atoms: 3
+Avg.NonParam-Atoms: 1.7894736842105263
+Max.NonParam-Atoms: 6
+Avg.Disj-choosing-time: 0.01336842105263158s
+Max.Disj-choosing-time: 0.048s
+Avg.NLsize: 11.736842105263158
+Max.NLsize: 38
+Avg.NL-solving-time: 0.01631578947368421s
+Max.NL-solving-time: 0.013s
+########## Outputs ############
+########## State Verification ############
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                            ║
+║ WeightedSched.allEval$5    postcondition                                                    ?:?  valid  U:orb-smt-z3          0.049 ║
+║ WeightedSched.allEval$5    precond. (call allEval$5(i - BigInt(1), st@))                    ?:?  valid  U:orb-smt-z3          0.034 ║
+║ WeightedSched.depsEval$5   postcondition                                                    ?:?  valid  U:orb-smt-z3          0.181 ║
+║ WeightedSched.depsEval$5   precond. (call allEval$5(i - BigInt(1), st@))                    ?:?  valid  U:orb-smt-z3          0.034 ║
+║ WeightedSched.evalLem$5    precond. (call allEval$5(x, st@))                                ?:?  valid  U:orb-smt-z3          0.040 ║
+║ WeightedSched.evalLem$5    precond. (call allEval$5(y, st@))                                ?:?  valid  U:orb-smt-z3          0.028 ║
+║ WeightedSched.evalLem$5    tact (postcondition)                                             ?:?  valid  U:orb-smt-orb-cvc4    0.090 ║
+║ WeightedSched.evalLem$5    tact (precond. (call allEval$5(x, st@)))                         ?:?  valid  U:orb-smt-z3          0.057 ║
+║ WeightedSched.evalLem$5    tact (precond. (call allEval$5(y, st@)))                         ?:?  valid  U:orb-smt-z3          0.054 ║
+║ WeightedSched.evalLem$5    tact (precond. (call evalLem-VCTact(x, y - BigInt(1), st@)))     ?:?  valid  U:orb-smt-orb-cvc4    0.047 ║
+║ WeightedSched.evalMono$5   precond. (call allEval$5(i, st1))                                ?:?  valid  U:orb-smt-z3          0.039 ║
+║ WeightedSched.evalMono$5   precond. (call allEval$5(i, st2))                                ?:?  valid  U:orb-smt-z3          0.046 ║
+║ WeightedSched.evalMono$5   tact (postcondition)                                             ?:?  valid  U:orb-smt-z3          0.118 ║
+║ WeightedSched.evalMono$5   tact (precond. (call allEval$5(i, st1)))                         ?:?  valid  U:orb-smt-z3          0.052 ║
+║ WeightedSched.evalMono$5   tact (precond. (call allEval$5(i, st2)))                         ?:?  valid  U:orb-smt-orb-cvc4    0.058 ║
+║ WeightedSched.evalMono$5   tact (precond. (call evalMono-VCTact(i - BigInt(1), st1, st2)))  ?:?  valid  U:orb-smt-z3          0.036 ║
+║ WeightedSched.invoke$5     postcondition                                                    ?:?  valid  U:orb-smt-z3          0.084 ║
+║ WeightedSched.invoke$5     precond. (call evalMono$5(jobIndex - BigInt(1), st@, re ...)     ?:?  valid  U:orb-smt-orb-cvc4    0.070 ║
+║ WeightedSched.invoke$5     precond. (call sched-mem$3(jobIndex, st@))                       ?:?  valid  U:orb-smt-z3          0.050 ║
+║ WeightedSched.sched-mem$3  postcondition                                                    ?:?  valid  U:orb-smt-z3          0.229 ║
+║ WeightedSched.sched-mem$3  precond. (call evalLem$5(prevCompatibleJob$4(jobIndex), ...)     ?:?  valid  U:orb-smt-z3          0.055 ║
+║ WeightedSched.sched-mem$3  precond. (call sched-mem$3(a$177, st@))                          ?:?  valid  U:orb-smt-z3          0.100 ║
+║ WeightedSched.sched-mem$3  precond. (call sched-mem$3(a$178, dres$0._2 ++ Set[Memo ...)     ?:?  valid  U:orb-smt-z3          0.158 ║
+║ WeightedSched.schedBU$5    postcondition                                                    ?:?  valid  U:orb-smt-z3          0.169 ║
+║ WeightedSched.schedBU$5    precond. (call allEval$5(jobi, x$4$7._2))                        ?:?  valid  U:orb-smt-z3          0.053 ║
+║ WeightedSched.schedBU$5    precond. (call invoke$5(jobi, st@))                              ?:?  valid  U:orb-smt-z3          0.038 ║
+║ WeightedSched.schedBU$5    precond. (call invoke$5(jobi, tailRes$1._2))                     ?:?  valid  U:orb-smt-z3          0.066 ║
+║ WeightedSched.schedBU$5    precond. (call schedBU$5(jobi - BigInt(1), st@))                 ?:?  valid  U:orb-smt-z3          0.033 ║
+║ IList.size$10              match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.034 ║
+║ IList.size$10              postcondition                                                    ?:?  valid  U:orb-smt-z3          0.044 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 30     valid: 30     invalid: 0      unknown 0                                                                         2.146 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+########## Resource Verification ############
+. ┌─────────┐
+╔═╡ Summary ╞═════════════════════════════════════════════╗
+║ └─────────┘                                             ║
+║ invoke          steps <= 14                0.220        ║
+║ sched           steps <= 11                1.215        ║
+║ schedBU         steps <= 20 * jobi + 19    0.480        ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 3     inferred: 3     unknown: 0     time: 1.915 ║
+╚═════════════════════════════════════════════════════════╝

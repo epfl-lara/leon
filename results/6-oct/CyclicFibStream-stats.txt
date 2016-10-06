@@ -1,0 +1,123 @@
+State-Verification-Time: 6.611s
+Total-Time: 82.081s
+Total-VCs-Generated: 45
+Z3SolvedVCs: 38
+CVC4SolvedVCs: 7
+procs: 7
+VC-refinement: 14
+disjuncts: 47
+TotalVCCTime: 69.58s
+Total-AxiomChoose-Time: 0.014s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 1.126s
+UneliminatedEqualities: 42
+ElimTime: 0.266s
+Total-Choose-Time: 1.464s
+BinarySearchTime: 0.552s
+vcTimeouts: 4
+Resource-Inference-Time: 75.47s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 366.85714285714283
+Max.CVC4-Time: 2568
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 106.39473684210526
+Max.Z3-Time: 4043
+### Statistics for counter: vcTimeouts ####
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 121.35714285714286
+Max.VC-size: 413
+Avg.UIF+ADT: 45.357142857142854
+Max.UIF+ADT: 171
+Avg.TemplateIds: 1.4285714285714286
+Max.TemplateIds: 2
+Avg.unflatSize: 18.857142857142858
+Max.unflatSize: 73
+Avg.UnflatTime: 0.032928571428571425s
+Max.UnflatTime: 0.103s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 1.4804255319148936s
+Max.VC-check-time: 15.026s
+Avg.CallADT-Constraints: 22.127659574468087
+Max.CallADT-Constraints: 166
+Avg.CtrsBeforeElim: 26.51063829787234
+Max.CtrsBeforeElim: 168
+Avg.EliminatedAtoms: 24.53191489361702
+Max.EliminatedAtoms: 164
+Avg.Param-Atoms: 0.6595744680851063
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 1.9787234042553192
+Max.NonParam-Atoms: 7
+Avg.Disj-choosing-time: 0.031148936170212766s
+Max.Disj-choosing-time: 0.503s
+Avg.NLsize: 12.170212765957446
+Max.NLsize: 40
+Avg.NL-solving-time: 0.016361702127659576s
+Max.NL-solving-time: 0.015s
+########## Outputs ############
+########## State Verification ############
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                             ║
+║ ZipWithAndFibStream.argChainedStreamProp$5     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.067 ║
+║ ZipWithAndFibStream.argChainedStreamProp$5     postcondition                                                 ?:?  valid  U:orb-smt-z3          0.072 ║
+║ ZipWithAndFibStream.argChainedStreamProp$5     precond. (call argChainedStreamProp$5(s.tailFun match { ...)  ?:?  valid  U:orb-smt-z3          0.055 ║
+║ ZipWithAndFibStream.argChainingIsTransitive$5  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ║
+║ ZipWithAndFibStream.argChainingIsTransitive$5  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.316 ║
+║ ZipWithAndFibStream.argChainingIsTransitive$5  precond. (call argChainedStreamProp$5(s, n))                  ?:?  valid  U:orb-smt-z3          0.093 ║
+║ ZipWithAndFibStream.argChainingIsTransitive$5  precond. (call argChainingIsTransitive$5(s.tailFun matc ...)  ?:?  valid  U:orb-smt-orb-cvc4    1.131 ║
+║ ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.071 ║
+║ ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.071 ║
+║ ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.053 ║
+║ ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-orb-cvc4    0.067 ║
+║ ZipWithAndFibStream.argChainingProp$5          postcondition                                                 ?:?  valid  U:orb-smt-z3          0.104 ║
+║ ZipWithAndFibStream.fibStreamSatisfiesProp$5   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.180 ║
+║ ZipWithAndFibStream.fibStreamSatisfiesProp$5   precond. (call argChainedStreamProp$5(fibs$3, n))             ?:?  valid  U:orb-smt-z3          0.056 ║
+║ ZipWithAndFibStream.fibStreamSatisfiesProp$5   precond. (call argChainingIsTransitive$5(fibs$3, n))          ?:?  valid  U:orb-smt-orb-cvc4    0.525 ║
+║ ZipWithAndFibStream.fibstream$5                postcondition                                                 ?:?  valid  U:orb-smt-z3          0.040 ║
+║ ValOrSusp.fval-mem$3                           match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.039 ║
+║ ValOrSusp.fval-mem$3                           postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.142 ║
+║ ZipWithAndFibStream.genNext$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.036 ║
+║ ZipWithAndFibStream.genNext$5                  postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.119 ║
+║ ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.058 ║
+║ ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.072 ║
+║ ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.054 ║
+║ ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.039 ║
+║ ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.060 ║
+║ ZipWithAndFibStream.next$7                     postcondition                                                 ?:?  valid  U:orb-smt-z3          0.220 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.079 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.048 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.061 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.066 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        postcondition                                                 ?:?  valid  U:orb-smt-z3          0.385 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        precond. (call argChainedStreamProp$5(f, n))                  ?:?  valid  U:orb-smt-z3          0.069 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        precond. (call next$7(f, s, t, st@))                          ?:?  valid  U:orb-smt-z3          0.191 ║
+║ ZipWithAndFibStream.nthElemAfterThird$5        precond. (call nthElemAfterThird$5(n - BigInt(1), s, t, ...)  ?:?  valid  U:orb-smt-z3          0.319 ║
+║ ZipWithAndFibStream.nthFib$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.047 ║
+║ ZipWithAndFibStream.nthFib$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.057 ║
+║ ZipWithAndFibStream.nthFib$5                   postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.538 ║
+║ ZipWithAndFibStream.nthFib$5                   precond. (call fibStreamSatisfiesProp$5(n))                   ?:?  valid  U:orb-smt-z3          0.027 ║
+║ ZipWithAndFibStream.nthFib$5                   precond. (call nthElemAfterThird$5(n, first$3, second$3 ...)  ?:?  valid  U:orb-smt-z3          0.260 ║
+║ ZipWithAndFibStream.zipWithFun$5               match exhaustiveness                                          ?:?  valid  U:orb-smt-orb-cvc4    0.046 ║
+║ ZipWithAndFibStream.zipWithFun$5               postcondition                                                 ?:?  valid  U:orb-smt-z3          0.237 ║
+║ ZipWithAndFibStream.zipWithSusp$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ║
+║ ZipWithAndFibStream.zipWithSusp$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.038 ║
+║ ZipWithAndFibStream.zipWithSusp$5              postcondition                                                 ?:?  valid  U:orb-smt-z3          0.276 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 45     valid: 45     invalid: 0      unknown 0                                                                                          6.611 ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+########## Resource Verification ############
+. ┌─────────┐
+╔═╡ Summary ╞══════════════════════════════════════════════╗
+║ └─────────┘                                              ║
+║ genNext         steps <= 24              0.447           ║
+║ next            steps <= 37              70.615          ║
+║ nthElemAfterTh… steps <= 45 * n + -92    1.297           ║
+║ nthFib          steps <= 45 * n + 4      2.736           ║
+║ zipWithFun      steps <= 15              0.375           ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 5     inferred: 5     unknown: 0     time: 75.470 ║
+╚══════════════════════════════════════════════════════════╝

@@ -1,0 +1,194 @@
+State-Verification-Time: 74.073s
+Total-Time: 302.477s
+Total-VCs-Generated: 105
+Z3SolvedVCs: 94
+CVC4SolvedVCs: 11
+procs: 17
+VC-refinement: 27
+disjuncts: 117
+TotalVCCTime: 196.112s
+Total-AxiomChoose-Time: 0.043s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 2.047s
+UneliminatedEqualities: 134
+ElimTime: 0.45s
+Total-Choose-Time: 2.708s
+BinarySearchTime: 2.01s
+vcTimeouts: 11
+Resource-Inference-Time: 228.404s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 1716.0
+Max.CVC4-Time: 18876
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 587.2021276595744
+Max.Z3-Time: 55197
+### Statistics for counter: vcTimeouts ####
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 134.1851851851852
+Max.VC-size: 631
+Avg.UIF+ADT: 31.40740740740741
+Max.UIF+ADT: 115
+Avg.TemplateIds: 1.2592592592592593
+Max.TemplateIds: 2
+Avg.unflatSize: 16.703703703703702
+Max.unflatSize: 77
+Avg.UnflatTime: 0.04307407407407408s
+Max.UnflatTime: 0.185s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 1.6761709401709401s
+Max.VC-check-time: 15.057s
+Avg.CallADT-Constraints: 13.452991452991453
+Max.CallADT-Constraints: 125
+Avg.CtrsBeforeElim: 22.666666666666668
+Max.CtrsBeforeElim: 219
+Avg.EliminatedAtoms: 19.418803418803417
+Max.EliminatedAtoms: 197
+Avg.Param-Atoms: 0.6153846153846154
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 3.247863247863248
+Max.NonParam-Atoms: 22
+Avg.Disj-choosing-time: 0.023145299145299145s
+Max.Disj-choosing-time: 0.461s
+Avg.NLsize: 17.034188034188034
+Max.NLsize: 114
+Avg.NL-solving-time: 0.020487179487179485s
+Max.NL-solving-time: 0.028s
+########## Outputs ############
+########## State Verification ############
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                         ║
+║ RealTimeDeque.RotateDropL@rotateDropPre$1  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.088 ║
+║ RealTimeDeque.RotateDropL@rotateDropPre$1  postcondition                                                 ?:?  valid  U:orb-smt-z3          2.106 ║
+║ RealTimeDeque.RotateDropL@rotateDropPre$1  precond. (call drop$9[T](BigInt(2), f, nr$19._2))             ?:?  valid  U:orb-smt-orb-cvc4    1.628 ║
+║ RealTimeDeque.RotateRevL@rotateRevPre$1    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.081 ║
+║ RealTimeDeque.RotateRevL@rotateRevPre$1    postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    3.581 ║
+║ RealTimeDeque.RotateRevL@rotateRevPre$1    precond. (call drop$9[T](BigInt(2), f, nr$17._2))             ?:?  valid  U:orb-smt-z3          1.392 ║
+║ RealTimeDeque.RotateRevL@rotateRevPre$1    precond. (call revAppend$5[T](a$225._1, a, a$225._2))         ?:?  valid  U:orb-smt-orb-cvc4    4.042 ║
+║ RealTimeDeque.RotateRevL@rotateRevPre$1    precond. (call take$9[T](BigInt(2), f, nf$17._2))             ?:?  valid  U:orb-smt-z3          0.559 ║
+║ RealTimeDeque.TakeLazyL@takeLazyPre$1      match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.099 ║
+║ RealTimeDeque.TakeLazyL@takeLazyPre$1      postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    1.299 ║
+║ RealTimeDeque.cons$5                       postcondition                                                 ?:?  valid  U:orb-smt-z3          2.432 ║
+║ RealTimeDeque.cons$5                       precond. (call createQueue$5[T](SCons[T](x, Val[T](q.f) ...)  ?:?  valid  U:orb-smt-z3          2.249 ║
+║ RealTimeDeque.cons$5                       precond. (call force$5[T](q.sf, q.f, q.r, q.sr, st@))         ?:?  valid  U:orb-smt-z3          0.398 ║
+║ RealTimeDeque.cons$5                       precond. (call force$5[T](q.sr, q.r, q.f, nsf$7._1, nsf ...)  ?:?  valid  U:orb-smt-z3          1.021 ║
+║ RealTimeDeque.createQueue$5                division by zero                                              ?:?  valid  U:orb-smt-z3          0.094 ║
+║ RealTimeDeque.createQueue$5                division by zero                                              ?:?  valid  U:orb-smt-z3          0.103 ║
+║ RealTimeDeque.createQueue$5                postcondition                                                 ?:?  valid  U:orb-smt-z3          2.020 ║
+║ RealTimeDeque.createQueue$5                precond. (call rotateDrop$5[T](f, j, r, st@))                 ?:?  valid  U:orb-smt-z3          1.181 ║
+║ RealTimeDeque.createQueue$5                precond. (call rotateDrop$5[T](r, i, f, st@))                 ?:?  valid  U:orb-smt-z3          0.980 ║
+║ RealTimeDeque.createQueue$5                precond. (call takeLazy$5[T](i, f, nr$20._2))                 ?:?  valid  U:orb-smt-z3          1.352 ║
+║ RealTimeDeque.createQueue$5                precond. (call takeLazy$5[T](j, r, nf$21._2))                 ?:?  valid  U:orb-smt-z3          1.409 ║
+║ RealTimeDeque.drop$9                       match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.085 ║
+║ RealTimeDeque.drop$9                       match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.081 ║
+║ RealTimeDeque.drop$9                       postcondition                                                 ?:?  valid  U:orb-smt-z3          0.595 ║
+║ RealTimeDeque.drop$9                       precond. (call drop$9[T](n - BigInt(1), a$221._1, a$221 ...)  ?:?  valid  U:orb-smt-orb-cvc4    1.205 ║
+║ RealTimeDeque.empty$8                      postcondition                                                 ?:?  valid  U:orb-smt-z3          0.457 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.104 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.038 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.096 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.034 ║
+║ RealTimeDeque.firstUneval$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.094 ║
+║ RealTimeDeque.firstUneval$5                postcondition                                                 ?:?  valid  U:orb-smt-z3          1.073 ║
+║ RealTimeDeque.force$5                      match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.079 ║
+║ RealTimeDeque.force$5                      match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.079 ║
+║ RealTimeDeque.force$5                      postcondition                                                 ?:?  valid  U:orb-smt-z3          1.794 ║
+║ RealTimeDeque.force$5                      precond. (call funeMonotone$5[T](other, hother, st@, ou ...)  ?:?  valid  U:orb-smt-z3          1.056 ║
+║ RealTimeDeque.force$5                      precond. (call funeMonotone$5[T](tar, htar, st@, out$1))      ?:?  valid  U:orb-smt-z3          0.824 ║
+║ RealTimeDeque.forceTwice$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.114 ║
+║ RealTimeDeque.forceTwice$5                 postcondition                                                 ?:?  valid  U:orb-smt-z3          2.318 ║
+║ RealTimeDeque.forceTwice$5                 precond. (call force$5[T](a$230._1, q.f, q.r, q.sr, a$2 ...)  ?:?  valid  U:orb-smt-z3          1.121 ║
+║ RealTimeDeque.forceTwice$5                 precond. (call force$5[T](a$231._1, q.r, q.f, nsf$6._1, ...)  ?:?  valid  U:orb-smt-z3          2.012 ║
+║ RealTimeDeque.forceTwice$5                 precond. (call force$5[T](q.sf, q.f, q.r, q.sr, st@))         ?:?  valid  U:orb-smt-z3          0.387 ║
+║ RealTimeDeque.forceTwice$5                 precond. (call force$5[T](q.sr, q.r, q.f, nsf$6._1, nsf ...)  ?:?  valid  U:orb-smt-z3          1.586 ║
+║ RealTimeDeque.funeCompose$5                tact (match exhaustiveness)                                   ?:?  valid  U:orb-smt-z3          0.055 ║
+║ RealTimeDeque.funeCompose$5                tact (match exhaustiveness)                                   ?:?  valid  U:orb-smt-z3          0.057 ║
+║ RealTimeDeque.funeCompose$5                tact (match exhaustiveness)                                   ?:?  valid  U:orb-smt-z3          0.038 ║
+║ RealTimeDeque.funeCompose$5                tact (match exhaustiveness)                                   ?:?  valid  U:orb-smt-z3          0.031 ║
+║ RealTimeDeque.funeCompose$5                tact (match exhaustiveness)                                   ?:?  valid  U:orb-smt-z3          0.029 ║
+║ RealTimeDeque.funeCompose$5                tact (postcondition)                                          ?:?  valid  U:orb-smt-z3          1.165 ║
+║ RealTimeDeque.funeCompose$5                tact (precond. (call funeCompose-VCTact[T](c match { ...))    ?:?  valid  U:orb-smt-z3          0.051 ║
+║ RealTimeDeque.funeEqual$5                  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.091 ║
+║ RealTimeDeque.funeMonotone$5               postcondition                                                 ?:?  valid  U:orb-smt-z3          0.991 ║
+║ RealTimeDeque.funeMonotone$5               precond. (call funeCompose$5[T](l1, st1, st2))                ?:?  valid  U:orb-smt-z3          0.087 ║
+║ RealTimeDeque.funeMonotone$5               precond. (call funeCompose$5[T](l2, st1, st2))                ?:?  valid  U:orb-smt-z3          0.093 ║
+║ ValOrFun.get-mem$3                         match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.028 ║
+║ ValOrFun.get-mem$3                         postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.638 ║
+║ RealTimeDeque.head$15                      match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.385 ║
+║ RealTimeDeque.head$15                      postcondition                                                 ?:?  valid  U:orb-smt-z3          0.434 ║
+║ RealTimeDeque.isConcrete$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.050 ║
+║ RealTimeDeque.isConcrete$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.038 ║
+║ RealTimeDeque.isConcrete$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.039 ║
+║ RealTimeDeque.isConcrete$5                 postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.260 ║
+║ Queue.isEmpty$13                           postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.044 ║
+║ RealTimeDeque.revAppend$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.102 ║
+║ RealTimeDeque.revAppend$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.091 ║
+║ RealTimeDeque.revAppend$5                  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.780 ║
+║ RealTimeDeque.revAppend$5                  precond. (call revAppend$5[T](a$220._1, SCons[T](x, Val ...)  ?:?  valid  U:orb-smt-orb-cvc4    1.303 ║
+║ RealTimeDeque.reverse$7                    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.407 ║
+║ RealTimeDeque.rotateDrop$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.084 ║
+║ RealTimeDeque.rotateDrop$5                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.092 ║
+║ RealTimeDeque.rotateDrop$5                 postcondition                                                 ?:?  valid  U:orb-smt-z3          1.153 ║
+║ RealTimeDeque.rotateDrop$5                 precond. (call drop$9[T](BigInt(2), f, nr$19._2))             ?:?  valid  U:orb-smt-z3          0.688 ║
+║ RealTimeDeque.rotateDrop$5                 precond. (call drop$9[T](i, f, st@))                          ?:?  valid  U:orb-smt-z3          0.083 ║
+║ RealTimeDeque.rotateDrop$5                 precond. (call rotateRev$5[T](r, a$227._1, SNil[T](), a ...)  ?:?  valid  U:orb-smt-z3          0.502 ║
+║ RealTimeDeque.rotateRev$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.093 ║
+║ RealTimeDeque.rotateRev$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.083 ║
+║ RealTimeDeque.rotateRev$5                  postcondition                                                 ?:?  valid  U:orb-smt-z3          1.340 ║
+║ RealTimeDeque.rotateRev$5                  precond. (call drop$9[T](BigInt(2), f, nr$17._2))             ?:?  valid  U:orb-smt-orb-cvc4    0.782 ║
+║ RealTimeDeque.rotateRev$5                  precond. (call revAppend$5[T](a$225._1, a, a$225._2))         ?:?  valid  U:orb-smt-orb-cvc4    4.094 ║
+║ RealTimeDeque.rotateRev$5                  precond. (call revAppend$5[T](f, a, st@))                     ?:?  valid  U:orb-smt-z3          0.085 ║
+║ RealTimeDeque.rotateRev$5                  precond. (call take$9[T](BigInt(2), f, nf$17._2))             ?:?  valid  U:orb-smt-z3          0.570 ║
+║ Stream.size$10                             match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.038 ║
+║ Stream.size$10                             match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.045 ║
+║ Stream.size$10                             postcondition                                                 ?:?  valid  U:orb-smt-z3          0.316 ║
+║ RealTimeDeque.snoc$5                       postcondition                                                 ?:?  valid  U:orb-smt-z3          1.908 ║
+║ RealTimeDeque.snoc$5                       precond. (call cons$5[T](x, reverse$7[T](q, st@), st@))       ?:?  valid  U:orb-smt-z3          0.771 ║
+║ RealTimeDeque.snoc$5                       precond. (call reverse$7[T](a$233._1, a$233._2))              ?:?  valid  U:orb-smt-z3          1.504 ║
+║ RealTimeDeque.snoc$5                       precond. (call reverse$7[T](q, st@))                          ?:?  valid  U:orb-smt-z3          0.090 ║
+║ RealTimeDeque.tail$20                      postcondition                                                 ?:?  valid  U:orb-smt-z3          1.404 ║
+║ RealTimeDeque.tail$20                      precond. (call tailSub$5[T](q, st@))                          ?:?  valid  U:orb-smt-z3          0.089 ║
+║ RealTimeDeque.tailSub$5                    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.042 ║
+║ RealTimeDeque.tailSub$5                    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.098 ║
+║ RealTimeDeque.tailSub$5                    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.095 ║
+║ RealTimeDeque.tailSub$5                    postcondition                                                 ?:?  valid  U:orb-smt-z3          2.486 ║
+║ RealTimeDeque.tailSub$5                    precond. (call createQueue$5[T](a$232._1, q.lenf - BigI ...)  ?:?  valid  U:orb-smt-z3          2.139 ║
+║ RealTimeDeque.tailSub$5                    precond. (call forceTwice$5[T](q, st@))                       ?:?  valid  U:orb-smt-z3          0.084 ║
+║ RealTimeDeque.take$9                       match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.101 ║
+║ RealTimeDeque.take$9                       match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.090 ║
+║ RealTimeDeque.take$9                       postcondition                                                 ?:?  valid  U:orb-smt-z3          0.652 ║
+║ RealTimeDeque.take$9                       precond. (call take$9[T](n - BigInt(1), a$222._1, a$222 ...)  ?:?  valid  U:orb-smt-z3          0.716 ║
+║ RealTimeDeque.takeLazy$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.127 ║
+║ RealTimeDeque.takeLazy$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.236 ║
+║ RealTimeDeque.takeLazy$5                   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.625 ║
+║ Queue.valid$6                              postcondition                                                 ?:?  valid  U:orb-smt-z3          0.100 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 105    valid: 105    invalid: 0      unknown 0                                                                                     74.073 ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+########## Resource Verification ############
+. ┌─────────┐
+╔═╡ Summary ╞═══════════════════════════════════════════════╗
+║ └─────────┘                                               ║
+║ cons            steps <= 535                 2.852        ║
+║ createQueue     steps <= 186                 2.998        ║
+║ drop            steps <= 16 * n + 2          1.739        ║
+║ empty           steps <= 2                   0.299        ║
+║ force           steps <= 166                 1.639        ║
+║ forceTwice      steps <= 681                 3.174        ║
+║ head            steps <= 11                  78.011       ║
+║ revAppend       steps <= 15 * l1.size + 2    3.352        ║
+║ reverse         steps <= 7                   0.485        ║
+║ rotateDrop      steps <= 150                 117.311      ║
+║ rotateRev       steps <= 124                 6.041        ║
+║ snoc            steps <= 552                 1.942        ║
+║ tail            steps <= 893                 1.652        ║
+║ tailSub         steps <= 892                 3.013        ║
+║ take            steps <= 18 * n + 3          1.740        ║
+║ takeLazy        steps <= 18                  2.156        ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 16    inferred: 16    unknown: 0     time: 228.404 ║
+╚═══════════════════════════════════════════════════════════╝
