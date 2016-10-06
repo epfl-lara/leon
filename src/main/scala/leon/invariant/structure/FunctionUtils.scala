@@ -137,18 +137,33 @@ object FunctionUtils {
           }
         case other => other
       }
-      //the 'body' could be a template or 'And(pred, template)'
+      //the 'body' could be a template or 'And(pred, template)' or 'let ... and(...)'
       postWoQmarks match {
-        case finv @ FunctionInvocation(_, args) if isTemplateInvocation(finv) =>
-          (None, Some(finv))
-        case And(args) if args.exists(isTemplateInvocation) =>
-          val (tempFuns, otherPreds) = args.partition(isTemplateInvocation)
-          if (tempFuns.size > 1) {
-            throw new IllegalStateException("Multiple template functions used in the postcondition: " + postBody)
-          } else {
-            val rest = if (otherPreds.size <= 1) otherPreds(0) else And(otherPreds)
-            (Some(rest), Some(tempFuns(0).asInstanceOf[FunctionInvocation]))
-          }
+        case e if exists(isTemplateInvocation)(e) => e match {
+          case finv @ FunctionInvocation(_, args) if isTemplateInvocation(finv) =>
+            (None, Some(finv))
+          case And(args) =>
+            val (tempFuns, otherPreds) = args.partition(isTemplateInvocation)
+            if (tempFuns.size > 1) {
+              throw new IllegalStateException("Multiple template functions used in the postcondition: " + postBody)
+            } else {
+              val rest = if (otherPreds.size <= 1) otherPreds(0) else And(otherPreds)
+              (Some(rest), Some(tempFuns(0).asInstanceOf[FunctionInvocation]))
+            }
+          case l: Let =>
+            val (letsCons, letsBody) = letStarUnapplyWithSimplify(l)
+            letsBody match {
+              case And(args) =>
+                val (tempFuns, rest) = args.partition(exists(isTemplateInvocation))
+                if (tempFuns.size > 1) {
+                  throw new IllegalStateException("Multiple template functions used in the postcondition: " + postBody)
+                }
+                val FunctionInvocation(tfd, Seq(Lambda(tids, body))) = tempFuns.head
+                (Some(letsCons(createAnd(rest))), Some(FunctionInvocation(tfd, Seq(Lambda(tids, letsCons(body))))))
+              case finv @ FunctionInvocation(tfd, Seq(Lambda(tids, body))) if isTemplateInvocation(finv) =>
+                (None, Some(FunctionInvocation(tfd, Seq(Lambda(tids, letsCons(body))))))
+            }
+        }
         case pb =>
           (Some(pb), None)
       }
