@@ -15,11 +15,13 @@ import java.io._
 import invariant.engine.InferenceReport
 import transformations._
 import ProgramUtil._
+import invariant.structure.FunctionUtils
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  * TODO: pull all ands and ors up so that  there are not nested ands/ors
  */
 object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] {
+  val dumpQFreeProg = false
   val dumpInlinedProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = false
@@ -41,7 +43,18 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(optRefEquality, optCheckTerm)
 
   def apply(ctx: LeonContext, prog: Program): MemVerificationReport = {
-    val (clFac, progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, prog)
+    // convert question marks to templates, if any, right here before inlining.
+    val funToTmplFun = userLevelFunctions(prog).flatMap { fd =>
+      val (_, tmplOpt) = FunctionUtils.tmplAndPost(fd)
+      tmplOpt.map(tmpl => fd -> tmpl).toList
+    }.toMap
+    val funToTmpl = funToTmplFun.map {
+      case (k, FunctionInvocation(_, Seq(Lambda(_, body)))) => k -> body
+    }.toMap
+    val qfreeProg = ProgramUtil.assignTemplateAndCojoinPost(funToTmpl, prog)
+    if (dumpQFreeProg)
+      prettyPrintProgramToFile(qfreeProg, ctx, "-qfree")
+    val (clFac, progWOInstSpecs, instProg) = genVerifiablePrograms(ctx, qfreeProg)
     val checkCtx = contextForChecks(ctx)
     val stateVeri =
       if (!skipStateVerification)
@@ -52,30 +65,30 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       if (!skipResourceVerification)
         Some(checkInstrumentationSpecs(clFac, instProg, checkCtx))
       else None
+    // return a report
+    val memrep = new MemVerificationReport(stateVeri, resourceVeri, funToTmplFun, qfreeProg)
+    if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false))
+      println("Resource Verification Results: \n" + memrep.resourceReport.map(_.summaryString).getOrElse(""))
     // dump stats if enabled
     if (ctx.findOption(GlobalOptions.optBenchmark).getOrElse(false)) {
       val modid = prog.units.find(_.isMainUnit).get.id
       val filename = modid + "-stats.txt"
       val pw = new PrintWriter(filename)
       Stats.dumpStats(pw)
-      SpecificStats.dumpOutputs(pw)
+      // dump output
+      pw.println("########## Outputs ############")
+      pw.println("########## State Verification ############")
+      pw.println(memrep.stateVerification.map(_.summaryString).getOrElse(""))
+      pw.println("########## Resource Verification ############")
+      pw.println(memrep.resourceReport.map(_.summaryString).getOrElse(""))
       ctx.reporter.info("Stats dumped to file: " + filename)
       pw.close()
     }
-    // return a report
-    new MemVerificationReport(stateVeri, resourceVeri)
+    memrep
   }
 
   def genVerifiablePrograms(ctx: LeonContext, prog: Program): (ClosureFactory, Program, Program) = {
-    // convert question marks to templates, if any, right here before inlining.
-    val funToTmpl = userLevelFunctions(prog).collect {
-      case fd if fd.hasTemplate =>
-        fd -> fd.getTemplate
-    }.toMap
-    val qfreeProg = ProgramUtil.assignTemplateAndCojoinPost(funToTmpl, prog)
-    println("Qfree prog: \n" + ScalaPrinter.apply(qfreeProg))
-
-    val inprog = HOInliningPhase(ctx, qfreeProg)
+    val inprog = HOInliningPhase(ctx, prog) // Caution: Inlining mutates the program inplace
     if (dumpInlinedProg)
       println("Inlined prog: \n" + ScalaPrinter.apply(inprog))
 

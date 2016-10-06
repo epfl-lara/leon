@@ -21,8 +21,41 @@ object HOMemVerificationPhase {
   val debugInferProgram = false
 
   class MemVerificationReport(val stateVerification: Option[VerificationReport],
-                              val resourceVeri: Option[VerificationReport]) {
-    def inferReport = resourceVeri match {
+                              resourceVeri: Option[VerificationReport],
+                              userTmplMap: Map[FunDef, Expr],
+                              initProg: Program) {
+    val resourceReport = resourceVeri match {
+      case Some(inf: InferenceReport) =>
+        // create new inference report by pushing the inferred values to the user-level templates.
+        val nfvcs = inf.fvcs map {
+          case (fd, ics) =>
+            // note that the initProg would not have question marks
+            val funName = HOMemUtil.userFunctionName(fd)
+            val (userFun, tmplInvc) = userTmplMap.find(_._1.id.name == funName).get
+            //println("User template: "+userTmpl)
+            val nics = if (fd.hasTemplate) {
+              ics.map {
+                case ic if ic.solved =>
+                  val model = ic.invariants.head._2
+                  val userInv = tmplInvc match {
+                    case FunctionInvocation(_, Seq(Lambda(args, tmplbody))) =>
+                      val repmap = args.map { case ValDef(argid) =>
+                          val value = model.collectFirst { case (id, value) if id.name == argid.name + "?" => value }.get
+                          (argid -> value)
+                      }.toMap
+                      replaceFromIDs(repmap, tmplbody)
+                  }
+                  new InferenceCondition(Some((userInv, model)), userFun, ic.time)
+                case ic => new InferenceCondition(None, userFun, ic.time)
+              }
+            } else ics
+            (userFun -> nics)
+        }
+        Some(new InferenceReport(nfvcs, initProg)(inf.ctx))
+      case _ => None
+    }
+
+    def inferReport = resourceReport match {
       case Some(inf: InferenceReport) => Some(inf)
       case _                          => None
     }
@@ -64,7 +97,7 @@ object HOMemVerificationPhase {
   }
 
   def collectCumulativeStats(rep: VerificationReport) {
-    Stats.updateCumTime(rep.totalTime, "Total-Verification-Time")
+    Stats.updateCumTime(rep.totalTime, "Total-Time")
     Stats.updateCumStats(rep.totalConditions, "Total-VCs-Generated")
     val (withz3, withcvc) = rep.vrs.partition {
       case (vc, vr) =>
@@ -75,7 +108,7 @@ object HOMemVerificationPhase {
     Stats.updateCounterStats(withz3.map(_._2.timeMs.getOrElse(0L)).sum, "Z3-Time", "Z3SolvedVCs")
     Stats.updateCounterStats(withcvc.map(_._2.timeMs.getOrElse(0L)).sum, "CVC4-Time", "CVC4SolvedVCs")
   }
-  
+
   def mapCounterExample(vr: VerificationReport, clFactory: ClosureFactory): VerificationReport = {
     val prog = vr.program
     val nrep = vr.results.map {
@@ -86,22 +119,22 @@ object HOMemVerificationPhase {
             val nk =
               if (isStateParam(k))
                 FreshIdentifier("cacheKeys", k.getType)
-              else k 
-            (nk -> simplePostTransform{
-              case cc@CaseClass(cct, args) =>               
+              else k
+            (nk -> simplePostTransform {
+              case cc @ CaseClass(cct, args) =>
                 val cname = cct.classDef.id.name
                 clFactory.lambdaOfClosureByName(cname) match {
-                  case Some(lam) => 
+                  case Some(lam) =>
                     replaceFromIDs((capturedVars(lam) zip args).toMap, lam)
-                  case None => 
+                  case None =>
                     clFactory.memoClasesByName.get(cname) match {
-                      case Some(fd) =>                         
+                      case Some(fd) =>
                         FunctionInvocation(TypedFunDef(fd, Seq()), args) // type params are not very important herec
                       case None => cc
                     }
                 }
               case e => e
-            }(v))          
+            }(v))
         }.toMap)
         //println("New model: "+nmodel.toMap.map{ case (k,v) => k +" -> "+ v }.mkString("\n"))
         val nstatus = VCStatus.Invalid(nmodel)
@@ -109,7 +142,7 @@ object HOMemVerificationPhase {
         (vc -> Some(nres))
       case r => r
     }.toMap
-    VerificationReport(prog, nrep)    
+    VerificationReport(prog, nrep)
   }
 
   def checkSpecifications(clFac: ClosureFactory, prog: Program, checkCtx: LeonContext): VerificationReport = {
@@ -120,6 +153,7 @@ object HOMemVerificationPhase {
     }
     val report = mapCounterExample(VerificationPhase.apply(checkCtx, prog), clFac)
     // collect stats
+    Stats.updateCumTime(report.totalTime, "State-Verification-Time")
     collectCumulativeStats(report)
     if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false)) {
       println(report.summaryString)
@@ -134,21 +168,22 @@ object HOMemVerificationPhase {
     }
     val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
     val useOrb = funsToCheck.exists(_.template.isDefined)
-    val rep =
-      if (useOrb) {
-        val inferctx = getInferenceContext(checkCtx, p)
-        checkUsingOrb(new InferenceEngine(inferctx), inferctx)
-      } else {
-        val rep = mapCounterExample(
-            checkVCs(funsToCheck.map(vcForFun), checkCtx, p),
-            clFac)
-        // record some stats
-        collectCumulativeStats(rep)
-        rep
-      }
-    if (!checkCtx.findOption(GlobalOptions.optSilent).getOrElse(false))
-      println("Resource Verification Results: \n" + rep.summaryString)
-    rep
+    if (useOrb) {
+      val inferctx = getInferenceContext(checkCtx, p)
+      val rep = checkUsingOrb(new InferenceEngine(inferctx), inferctx)
+      // collect some stats
+      Stats.updateCumTime(rep.totalTime, "Resource-Inference-Time")
+      Stats.updateCumTime(rep.totalTime, "Total-Time")
+      rep
+    } else {
+      val rep = mapCounterExample(
+        checkVCs(funsToCheck.map(vcForFun), checkCtx, p),
+        clFac)
+      // record some stats
+      Stats.updateCumTime(rep.totalTime, "Resource-Verification-Time")
+      collectCumulativeStats(rep)
+      rep
+    }
   }
 
   def getInferenceContext(checkCtx: LeonContext, p: Program): InferenceContext = {
@@ -168,7 +203,7 @@ object HOMemVerificationPhase {
     val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
     val results = infEngine.analyseProgram(inferctx.inferProgram,
       funsToCheck.map(InstUtil.userFunctionName), vcSolver, progressCallback)
-    new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, inferctx.inferProgram)(inferctx)
+    new InferenceReport(results.map { case (fd, ic) => (fd -> List(ic)) }, inferctx.inferProgram)(inferctx)
   }
 
   def accessesSecondRes(e: Expr, resid: Identifier): Boolean =

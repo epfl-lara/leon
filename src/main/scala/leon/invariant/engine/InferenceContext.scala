@@ -49,7 +49,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val webMode = leonContext.findOptionOrDefault(optWebMode)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
-  // converts qmarks to templates
+  // converts qmarks to templates and make all template variables have real type
   val (qMarksRemovedProg, progWOTemplate) = {
     val funToTmpl = userLevelFunctions(instrumentedProg).collect {
       case fd if fd.hasTemplate =>
@@ -120,7 +120,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
           case (Some(false), _) if vc.kind == VCKinds.Postcondition =>
             validPosts.update(funName, true)
             true
-          case _ => acc // here, we have verified a VC that is not post, so skip it            
+          case _ => acc // here, we have verified a VC that is not post, so skip it
         }
       }
     }

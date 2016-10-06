@@ -26,7 +26,7 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
       synthesis.ConversionPhase
 
     val pipeBeginWithInlining =
-      if(ctx.findOption(Main.MainComponent.optLazyEval).get) {
+      if(ctx.findOptionOrDefault(Main.MainComponent.optLazyEval)) {
         // here disable inlining
         pipeBegin
       } else pipeBegin andThen InliningPhase

@@ -18,19 +18,21 @@ import PredicateUtil._
 import ProgramUtil._
 import FunctionUtils._
 import purescala._
+import solvers.Model
 
-class InferenceCondition(invs: Seq[Expr], funDef: FunDef)
+class InferenceCondition(invMod: Option[(Expr, Model)], funDef: FunDef, val time: Long)
     extends VC(BooleanLiteral(true), funDef, null) {
 
-  var time: Option[Double] = None
-  var invariants = invs
+  //var time: Option[Double] = None
+  var invariants = invMod.toSeq
 
-  def addInv(invs: Seq[Expr]) {
-    invariants ++= invs
+  def solved = invariants.nonEmpty
+
+  def addInv(inv: Expr, mod: Model) {
+    invariants :+= (inv, mod)
   }
 
-  lazy val prettyInv = invariants.map(inv =>
-    simplifyArithmetic(InstUtil.replaceInstruVars(multToTimes(inv), fd))) match {
+  lazy val prettyInv = invariants.map{ case (inv, _) => simplifyArithmetic(InstUtil.replaceInstruVars(multToTimes(inv), fd)) }  match {
     case Seq() => None
     case invs =>
       invs.map(ExpressionTransformer.simplify _).filter(_ != tru) match {
@@ -47,12 +49,14 @@ class InferenceCondition(invs: Seq[Expr], funDef: FunDef)
   }
 }
 
-class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ctx: InferenceContext)
+class InferenceReport(val fvcs: Map[FunDef, List[InferenceCondition]], program: Program)(implicit val ctx: InferenceContext)
     extends VerificationReport(program, Map()) {
 
   import scala.math.Ordering.Implicits._
   val conditions: Seq[InferenceCondition] =
-    fvcs.flatMap(_._2.map(_.asInstanceOf[InferenceCondition])).toSeq.sortBy(vc => vc.fd.id.name)
+    fvcs.flatMap(_._2).toSeq.sortBy(vc => vc.fd.id.name)
+
+  override lazy val totalTime = conditions.foldLeft(0L)((a, ic) => a + ic.time)
 
   private def infoSep(size: Int): String = "╟" + ("┄" * size) + "╢\n"
   private def infoFooter(size: Int): String = "╚" + ("═" * size) + "╝"
@@ -77,14 +81,13 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
   override def summaryString: String = if (conditions.nonEmpty) {
     val maxTempSize = (conditions.map(_.status.length).max + 3)
     val outputStrs = conditions.map(vc => {
-      val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
+      val timeStr = "%-3.3f".format(vc.time / 1000.0)
       "%-15s %s %-4s".format(fit(funName(vc.fd), 15), vc.status + (" " * (maxTempSize - vc.status.length)), timeStr)
     })
     val summaryStr = {
-      val totalTime = conditions.foldLeft(0.0)((a, ic) => a + ic.time.getOrElse(0.0))
       val inferredConds = conditions.count((ic) => ic.prettyInv.isDefined)
       "total: %-4d  inferred: %-4d  unknown: %-4d  time: %-3.3f".format(
-        conditions.size, inferredConds, conditions.size - inferredConds, totalTime)
+        conditions.size, inferredConds, conditions.size - inferredConds, (totalTime / 1000.0))
     }
     val entrySize = (outputStrs :+ summaryStr).map(_.length).max + 2
 

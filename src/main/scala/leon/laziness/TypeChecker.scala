@@ -8,9 +8,10 @@ import purescala.Extractors._
 import purescala.Types._
 import purescala.TypeOps._
 import invariant.util.TypeUtil._
+import invariant.factories.TemplateIdFactory._
 
 object TypeChecker {
-   /**
+  /**
    * `gamma` is the initial type environment which has
    * type bindings for free variables of `ine`.
    * It is not necessary that gamma should match the types of the
@@ -118,10 +119,10 @@ object TypeChecker {
           val (ncltype: ClassType, nclExpr) = rec(clExpr)
           // this is a hack. TODO: fix this
           subcast(cltype, ncltype) match {
-            case Some(ntype : CaseClassType) =>
+            case Some(ntype: CaseClassType) =>
               val nop = CaseClassSelector(ntype, nclExpr, fld)
               (nop.getType, nop)
-            case  _ =>
+            case _ =>
               throw new IllegalStateException(s"$nclExpr : $ncltype cannot be cast to case class type: $cltype")
           }
 
@@ -146,30 +147,31 @@ object TypeChecker {
         case FunctionInvocation(TypedFunDef(fd, oldTparams), args) =>
           //println(s"Consider expr: $e initial type: ${e.getType}")
           val nargs = args.map(arg => rec(arg)._2)
-          val tpmap = (fd.params zip nargs).flatMap { case (ref, arg) =>
-             //println(s"Computing inst. for $ref: ${ref.getType} $arg: ${arg.getType}")
-             typeInstMap(arg.getType, ref.getType).get
+          val tpmap = (fd.params zip nargs).flatMap {
+            case (ref, arg) =>
+              //println(s"Computing inst. for $ref: ${ref.getType} $arg: ${arg.getType}")
+              typeInstMap(arg.getType, ref.getType).get
           }.toMap
           // for uninterpreted functions, we could have a type parameter used only in the return type
           val dummyTParam = TypeParameter.fresh("R@")
-          val ntparams = fd.tparams.map(_.tp).zipAll(oldTparams, dummyTParam, dummyTParam).map{
+          val ntparams = fd.tparams.map(_.tp).zipAll(oldTparams, dummyTParam, dummyTParam).map {
             case (tparam, targ) =>
-              tpmap.getOrElse(tparam /* in this case we inferred the type parameter */,
-                  targ /* in this case we reuse the argument type parameter */ )
+              tpmap.getOrElse(tparam /* in this case we inferred the type parameter */ ,
+                targ /* in this case we reuse the argument type parameter */ )
           }
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
           if (nexpr.getType == Untyped) {
-            throw new IllegalStateException(s"Cannot infer type for expression: $e "+
-                s"arg types: ${nargs.map(_.getType).mkString(",")} \n Callee: ${fd} \n caller: ${nexpr}")
+            throw new IllegalStateException(s"Cannot infer type for expression: $e " +
+              s"arg types: ${nargs.map(_.getType).mkString(",")} \n Callee: ${fd} \n caller: ${nexpr}")
           }
           (nexpr.getType, nexpr)
 
         case FiniteSet(els, baseType) =>
           val nels = els.map(rec(_)._2)
           // make sure every element has the same type (upcast it to the rootType)
-          val nbaseType  = bestRealType(nels.head.getType)
-          if(!nels.forall(el => bestRealType(el.getType) == nbaseType))
-            throw new IllegalStateException("Not all elements in the set have the same type: "+nbaseType)
+          val nbaseType = bestRealType(nels.head.getType)
+          if (!nels.forall(el => bestRealType(el.getType) == nbaseType))
+            throw new IllegalStateException("Not all elements in the set have the same type: " + nbaseType)
           val nop = FiniteSet(nels, nbaseType)
           (nop.getType, nop)
 
@@ -177,6 +179,7 @@ object TypeChecker {
         case TupleSelect(tup, i) =>
           val nop = TupleSelect(rec(tup)._2, i)
           (nop.getType, nop)
+
         case Operator(args, op) =>
           val nargs = args.map(arg => rec(arg)._2)
           val nop = op(nargs)
