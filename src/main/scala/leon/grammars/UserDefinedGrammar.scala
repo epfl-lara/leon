@@ -89,7 +89,7 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
   }
 
   val productions: Map[Label, Seq[Prod]] = {
-    userProductions.flatMap { case UserProduction(fd, isTerm, isCommut, _) =>
+    val ps = userProductions.flatMap { case UserProduction(fd, isTerm, isCommut, ow) =>
       val lab = tpeToLabel(fd.returnType)
 
       val tag = if (isCommut) {
@@ -105,14 +105,14 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
           case Nil =>
             val expr = unwrapLabels(fd.body.get, Map())
 
-            Some(lab -> terminal(expr, tag))
+            Some(lab -> (terminal(expr, tag), ow))
 
           case Seq(param) =>
             inputs.find(_.name == param.id.name) match {
               case Some(a) =>
                 val expr = unwrapLabels(a.toVariable, Map())
 
-                Some(lab -> terminal(expr, tag))
+                Some(lab -> (terminal(expr, tag), ow))
               case _ =>
                 None
             }
@@ -133,9 +133,55 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
 
         val body = unwrapLabels(fd.body.get, m)
 
-        Some(lab -> nonTerminal(subs, { sexprs => replaceFromIDs((holes zip sexprs).toMap, body) }, tag))
+        val cost = if (fd.flags(IsImplicit)) {
+          -1
+        } else {
+          1
+        }
+
+        Some(lab -> (nonTerminal(subs, { sexprs => replaceFromIDs((holes zip sexprs).toMap, body) }, tag, cost), ow))
       }
     }.groupBy(_._1).mapValues(_.map(_._2))
+
+    // Normalize weights as costs
+    def normalizedCost(cost: Int, ow: Option[Int], max: Int, factor: Int) = {
+      if (cost <= 0) {
+        cost
+      } else {
+        ow match {
+          case Some(w) =>
+            (max-w)/factor + 1
+          case None =>
+            max/factor
+        }
+      }
+    }
+
+    def gcd(a: Int,b: Int): Int = {
+      if(b ==0) a else gcd(b, a%b)
+    }
+
+    for ((l, pw) <- ps) yield {
+      val ws = pw.flatMap(_._2);
+
+
+      val prods = if (ws.nonEmpty) {
+
+        val factor = ws.reduceLeft(gcd)
+        var sum = ws.sum;
+        var max = ws.max;
+
+        println("Factor/Sum/Max: "+factor+"/"+sum+"/"+max)
+
+        for ((p, ow) <- pw) yield {
+          p.copy(cost = normalizedCost(p.cost, ow, max, factor))
+        }
+      } else {
+        pw.map(_._1)
+      }
+
+      l -> prods
+    }
   }
 
   def computeProductions(lab: Label)(implicit ctx: LeonContext) = {
