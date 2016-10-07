@@ -61,7 +61,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
             val instId = FreshIdentifier("instd", instExpr.getType, true)
             val instExprs = instrumenters map { m =>
               val hitCost = InfiniteIntegerLiteral(costOfMemoization(m.inst))
-              val missCost = m.missCost() //InfiniteIntegerLiteral(2 * costOfMemoization(m.inst))
+              val missCost = m.missCost() 
               IfExpr(ElementOfSet(cc, stExpr), hitCost,
                 Plus(missCost, selectInst(instId.toVariable, m.inst)))
             }
