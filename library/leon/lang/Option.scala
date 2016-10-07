@@ -11,9 +11,7 @@ sealed abstract class Option[T] {
 
   def get : T = {
     require(this.isDefined)
-    (this : @unchecked) match {
-      case Some(x) => x
-    }
+    this.asInstanceOf[Some[T]].v
   }
 
   @inline
