@@ -38,12 +38,12 @@ object WeightedSched {
   @extern
   def jobInfo(i: BigInt) = {
     jobs(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
 
   @extern
   def prevCompatibleJob(i: BigInt) = {
     BigInt(p(i.toInt))
-  } ensuring (res => res >= 0 && res < i && alloc <= 1)
+  } ensuring (res => res >= 0 && res < i && alloc <= 0)
 
   @inline
   def max(x: BigInt, y: BigInt) = if (x >= y) x else y

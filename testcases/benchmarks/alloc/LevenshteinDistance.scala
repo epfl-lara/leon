@@ -17,7 +17,7 @@ object LevenshteinDistance {
   @extern
   def lookup(i: BigInt, j: BigInt) = {
     (xstring(i.toInt), ystring(j.toInt))
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
 
   // deps and it's lemmas
   def deps(i: BigInt, j: BigInt): Boolean = {

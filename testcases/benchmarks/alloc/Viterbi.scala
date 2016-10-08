@@ -25,14 +25,14 @@ object Viterbi {
   @extern
   def O(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
   /**
    * State space, S
    */
   @extern
   def S(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
   /** 
    * Let K be the size of the state space. Then the transition matrix
    * A of size K * K such that A_{ij} stores the transition probability 
@@ -41,7 +41,7 @@ object Viterbi {
   @extern
   def A(i: BigInt, j: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
   /**
    * Let N be the size of the observation space. Emission matrix B of 
    * size K * N such that B_{ij} stores the probability of observing o_j 
@@ -50,7 +50,7 @@ object Viterbi {
   @extern
   def B(i: BigInt, j: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
   /**
    * An array of initial probabilities C of size K such that C_i stores 
    * the probability that x_1 == s_i 
@@ -58,14 +58,14 @@ object Viterbi {
   @extern
   def C(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
   /**
    * Generated observations, Y
    */
   @extern
   def Y(i: BigInt) = {
     xstring(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
 
 
 	def deps(j: BigInt, K: BigInt): Boolean = {
@@ -127,8 +127,8 @@ object Viterbi {
     else {
       val a2 = fillEntry(l + 1, i, j, K) 
       if(a1 > a2) a1 else a2
-    }
-  } ensuring(res => alloc <= ? * (K - l) + ?)
+    } 
+  } ensuring(res => alloc <= 0)  // no allocations are done here
 
   @invstate
   @memoize
@@ -139,7 +139,7 @@ object Viterbi {
     } else {
       fillEntry(0, i, j, K)
     }
-  } ensuring(res => alloc <= ? * K + ?)
+  } ensuring(res => alloc <= 0) // no allocations are done here
 
   def invoke(i: BigInt, j: BigInt, K: BigInt): BigInt = {
     require(i >= 0 && j >= 0 && K >= i && deps(j, K) && (i == 0 || i > 0 && columnCached(i - 1, j, K)))
@@ -149,7 +149,7 @@ object Viterbi {
     val out = outSt[BigInt]
     (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) && 
     (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) && 
-    alloc <= ? * K + ?
+    alloc <= ? // just some memoization may happen
   }) 
 
   def fillColumn(i: BigInt, j: BigInt, K: BigInt): List[BigInt] = {
@@ -166,8 +166,7 @@ object Viterbi {
   } ensuring(res => {
   	columnLem(j, K) && 
   	deps(j + 1, K) && 
-  	//alloc <= ? * ((K - i) * K) + ? * K + ?
-    alloc <= ? * K + ?
+    alloc <= ? * (K - i) + ?
   })
 
   @invisibleBody

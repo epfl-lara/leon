@@ -36,7 +36,7 @@ object PackratParsing {
   @extern
   def lookup(i: BigInt): Terminal = {
     string(i.toInt)
-  } ensuring (_ => alloc <= 1)
+  } ensuring (_ => alloc <= 0)
 
   sealed abstract class Result {
     /**
