@@ -8,10 +8,12 @@ import instrumentation._
 import invariant._
 
 /**
- * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
- * The implementation is almost exactly as it was presented in the paper, but
- * here indices are passed around between parse functions, instead of strings.
- * Proof hint: --unrollfactor = 4
+ * An instance of a packrat parser that uses the Expressions grammar presented in Bryan Ford ICFP 
+ * 2002 paper "Simple, powerful, lazy, linear time, functional pearl".
+ * The implementation is almost exactly as the memoized implementation that was presented in the paper, 
+ * but here indices are passed around between parse functions, instead of strings.
+ * The input list of tokens is represented as an array of tokens which can be looked up based on an index
+ * in constant time and zero memory usage (and so is marked as @exten).
  */
 object PackratParsing {
 
@@ -76,7 +78,7 @@ object PackratParsing {
       case _ =>
         mulRes
     }
-  } ensuring (res => res.smallerIndex(i) && alloc <= ?) // alloc <= 35
+  } ensuring (res => res.smallerIndex(i) && alloc <= ?) 
 
   @invisibleBody
   @memoize
@@ -102,7 +104,7 @@ object PackratParsing {
       case _ =>
         primRes
     }
-  } ensuring (res => res.smallerIndex(i) && alloc <= ?) // alloc <= 35
+  } ensuring (res => res.smallerIndex(i) && alloc <= ?) 
 
   @invisibleBody
   @memoize
@@ -124,7 +126,7 @@ object PackratParsing {
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && alloc <= ?) // alloc <= 32
+  } ensuring (res => res.smallerIndex(i) && alloc <= ?) 
 
   def depsEval(i: BigInt) =
     if (i == 0) true
@@ -153,7 +155,6 @@ object PackratParsing {
   /**
    * Instantiates the lemma `depsLem` on the result index (if any)
    */
-  //@inline
   def resEval(i: BigInt, res: Result) = {
     (res match {
       case Parsed(j) =>
@@ -195,13 +196,12 @@ object PackratParsing {
     val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      alloc <= ? // 136
+      alloc <= ? 
   }
 
   /**
    * Parsing a string of length 'n+1'.
    * Word is represented as an array indexed by 'n'. We only pass around the index.
-   * The 'lookup' function will return a character of the array.
    */
   def parse(n: BigInt): Result = {
     require(n >= 0)
@@ -213,7 +213,7 @@ object PackratParsing {
       }
     }
   } ensuring (_ => allEval(n) &&
-    alloc <= ? * n + ?) // 145 * n + 139
+    alloc <= ? * n + ?) 
 
   @ignore
   def main(args: Array[String]) {

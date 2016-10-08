@@ -9,7 +9,10 @@ import invariant._
 import leon.collection._
 
 /**
- * This benchmark requires an unrollfactor of 5
+ * An implementation of persisten, lazy binary number increment.
+ * Here, increment happens in worst case constant time: function `incAndPay`.
+ * This is an abstraction of data structures like lazy binomial heap.
+ * Has very complex data structure invariants.
  */
 
 object DigitObject {

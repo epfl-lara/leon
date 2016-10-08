@@ -13,8 +13,12 @@ import invariant._
 import conctrees.ConcTrees._
 
 /**
- * This data structure is a queue of ConcTrees.
- * Here, we prove that enqueing an element into the tree will take constant time.
+ * This is file uses `ConcTrees` defined in file ConcTrees.scala.
+ * This data structure is a queue of ConcTrees. 
+ * The startegy used here is similar to `LazyNumericalRepresentation` but the contents
+ * of the queue are not numbers but `ConcTrees` (see file ConTrees.scala).
+ * Here, we prove that persistently enqueing an element into the tree will take constant time
+ * in the worst case: function `pushLeftAndPay`.
  */
 object Conqueue {
 

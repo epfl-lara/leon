@@ -10,7 +10,8 @@ import collection._
 import invariant._
 
 /**
- * Hint: requires unrollfactor=4
+ * A implementation of a cyclic, infinite stream of fibonacci numbers. 
+ * Implementation obtained from ESOP 2015 paper type-based allocation analysis for co-recursion. 
  */
 object ZipWithAndFibStream {
   /**
@@ -23,7 +24,7 @@ object ZipWithAndFibStream {
       case s@Susp(f) => s.fval
       case Val(x) => x
     }
-    // this will not modify state
+    // this will not modify state and is used in specs
     @inline
     def tailVal = tailFun match {
       case s@Susp(f) => s.fval*
@@ -122,7 +123,7 @@ object ZipWithAndFibStream {
   def next(f: SCons, s: SCons, t: SCons): SCons = {
     require(firstThreeEval(f, s, t) && argChainingProp(f))
     t.tail
-  } ensuring(_ => alloc <= ?) // alloc <= 73
+  } ensuring(_ => alloc <= ?) 
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
@@ -137,7 +138,7 @@ object ZipWithAndFibStream {
         else
           nthElemAfterThird(n - 1, s, t, fourth)
     }
-  } ensuring(_ => alloc <= ? * n + ?) // 84 * n - 167
+  } ensuring(_ => alloc <= ? * n + ?) 
 
   /**
    * Using a `zipWithFun` function to implement a fibonacci stream.
@@ -175,7 +176,7 @@ object ZipWithAndFibStream {
         else nthElemAfterThird(n, first, second, third)
       }
     }
-  } ensuring(_ => alloc <= ? * n + ?) // 84 * n + 6
+  } ensuring(_ => alloc <= ? * n + ?) 
 
   @ignore
   def main(args: List[Any]): Unit = {

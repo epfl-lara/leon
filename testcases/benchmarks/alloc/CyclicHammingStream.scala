@@ -10,7 +10,8 @@ import collection._
 import invariant._
 
 /**
- * Hint: requires unrollfactor=3, and vcTimeout=15
+ * An implementation of cyclic stream of numbers of the form 2^i3^j5^k taken in ascending order.
+ * Such numbers are called Hamming numbers. 
  * Implementation obtained from ESOP 2015 paper type-based allocation analysis for co-recursion.
  */
 object MergeAndHammingNumbers {
@@ -24,7 +25,7 @@ object MergeAndHammingNumbers {
       case s@Susp(f) => s.fval
       case Val(x) => x
     }
-    // this will not modify state
+    // this will not modify state and is used in specs
     @inline
     def tailVal = tailFun match {
       case s@Susp(f) => s.fval*
@@ -58,7 +59,7 @@ object MergeAndHammingNumbers {
       case SCons(x, _) =>
         SCons(f(x), Susp(() => mapSusp(f, xs)))
     }
-  } ensuring(alloc <= ?) // Orb result: 11
+  } ensuring(alloc <= ?) 
 
   private def mapSusp(f: BigInt => BigInt, xs: SCons): SCons = {
     map(f, xs.tail)
@@ -93,7 +94,7 @@ object MergeAndHammingNumbers {
   @invisibleBody
   def mergeSusp(a: SCons, b: SCons, c: SCons): SCons = {
     val m = min(a.x, b.x, c.x)
-    val nexta = if (a.x == m) force(a) else a //.tail
+    val nexta = if (a.x == m) force(a) else a 
     val nextb = if (b.x == m) force(b) else b
     val nextc = if (c.x == m) force(c) else c
     merge(nexta, nextb, nextc)
@@ -175,7 +176,7 @@ object MergeAndHammingNumbers {
   def next(f: SCons, s: SCons): SCons = {
     require(f.tailVal == s && f.tailCached && mergeMapProp(f))
     s.tail
-  } ensuring(_ => alloc <= ?) // Orb result: alloc <= 250
+  } ensuring(_ => alloc <= ?) 
 
   /**
    * Given the first three elements, reading the nth element (s.t. n >= 4) from a
@@ -190,7 +191,7 @@ object MergeAndHammingNumbers {
         else
           nthElemAfterSecond(n - 1, s, t)
     }
-  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 261 * n - 260
+  } ensuring(_ => alloc <= ? * n + ?) 
 
    /**
    * A stream generating hamming numbers
@@ -200,7 +201,7 @@ object MergeAndHammingNumbers {
   def hamGen = {
     val hs = this.hamstream
     merge(map(2 * _, hs), map(3 * _, hs), map(5 * _, hs))
-  } ensuring(_ => alloc <= ?) // Orb result: 63
+  } ensuring(_ => alloc <= ?)
 
   @invisibleBody
   def hamStreamSatisfiesProp(n: BigInt): Boolean = {
@@ -221,5 +222,5 @@ object MergeAndHammingNumbers {
       if(n == 1) second.x
       else nthElemAfterSecond(n, first, second)
     }
-  } ensuring(_ => alloc <= ? * n + ?) // Orb result: 84 * n + 6
+  } ensuring(_ => alloc <= ? * n + ?) 
 }

@@ -11,13 +11,10 @@ import math._
 import invariant._
 
 /**
- * A constant time deque based on Okasaki's implementation: Fig.8.4 Pg. 112.
- * Here, both front and rear streams are scheduled.
- * We require both the front and the rear streams to be of almost equal
- * size. If not, we lazily rotate the streams.
- * The invariants are a lot more complex than in `RealTimeQueue`.
- * The program also fixes a bug in Okasaki's implementatin: see function `rotateDrop`.
- * Proof Hint: requires unrollfactor = 4
+ * A worst-case constant time, presistent deque based on Okasaki's implementation: Fig.8.4 Pg. 112
+ * of book "Purely Functional Data Structures, by Chris Okasaki". 
+ * Supposts persistent `cons`, `tail` and `reverse` in worst case constant time.
+ * The program also fixes a bug in Okasaki's implementation: see function `rotateDrop`.
  */
 object RealTimeDeque {
   sealed abstract class Stream[T] {
@@ -41,6 +38,7 @@ object RealTimeDeque {
       }
     }
 
+    // a function that computes tail without modifying the state. Used in specs
     @inline
     def stailVal: Stream[T] = {
       this match {
@@ -288,8 +286,7 @@ object RealTimeDeque {
     firstUneval(q.f) == firstUneval(nsf) &&
       firstUneval(q.r) == firstUneval(nsr) &&
       (ssize(nsf) == 0 || ssize(nsf) == ssize(q.sf) - 2) &&
-      (ssize(nsr) == 0 || ssize(nsr) == ssize(q.sr) - 2) &&
-      alloc <= 1500
+      (ssize(nsr) == 0 || ssize(nsr) == ssize(q.sr) - 2)
   })*/
 
   def empty[T] = {
@@ -320,11 +317,8 @@ object RealTimeDeque {
    * Removing the element at the front, and returning the tail
    */
   def tail[T](q: Queue[T]): Queue[T] = {
-    require(!q.isEmpty && q.valid)
-    // force(q.f, q.sf, q.r, q.sr) match { // force 'f'
-    //   case _ =>
+    require(!q.isEmpty && q.valid)    
         tailSub(q)
-    // }
   } ensuring (res => res.valid && alloc <= ?)
 
   def tailSub[T](q: Queue[T]): Queue[T] = {

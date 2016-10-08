@@ -132,7 +132,6 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
     def costOf(e: Expr)(implicit currFun: FunDef): Int = {
       val cost = e match {
         case CaseClass(cct, _) if isMemoClosure(cct.root) => 0
-          //|| clFactory.closureNames.contains(cct.id.name) => 0 
         case CaseClass(_, _) => 1 
         case _ => 0
       }

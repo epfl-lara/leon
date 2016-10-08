@@ -9,6 +9,12 @@ import instrumentation._
 import invariant._
 import collection._
 
+/**
+* A lazy selection sorting algorithm that allows accessing the kth minimum 
+* in O(k.n) time, where `n` is the number of elements in the list.
+* See file BottomUpMergeSort for a more optimal algorithm for accessing 
+* the kth element.
+**/
 object SortingnConcat {
 
   sealed abstract class LList {

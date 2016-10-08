@@ -13,6 +13,7 @@ import invariant._
 /**
  * A constant time deque based on Okasaki's implementation: Fig.8.4 Pg. 112.
  * Here, both front and rear streams are scheduled.
+ * 
  * We require both the front and the rear streams to be of almost equal
  * size. If not, we lazily rotate the streams.
  * The invariants are a lot more complex than in `RealTimeQueue`.

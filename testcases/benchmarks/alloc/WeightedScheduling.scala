@@ -7,6 +7,11 @@ import annotation._
 import instrumentation._
 import invariant._
 
+/**
+* Memoized implementation of the recurrence of `weighted interval Scheduleing` algorithm.
+* The `jobs` and their info: start time and end time, and the compatibility array
+* are stored as arrays that can be indexed in contanst time and zero memory.
+**/
 object WeightedSched {
   sealed abstract class IList {
     def size: BigInt = {

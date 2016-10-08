@@ -8,8 +8,10 @@ import instrumentation._
 import invariant._
 
 /**
- * A memoized version of the implementation of Hamming problem shown in
- * section 4.3 of Type-based allocation analysis for Co-recursion.
+ * An implementation of finding the nth hamming number (numbers of the form 
+ * 2^i3^j5^k taken in ascending order) using top down memoization.
+ * This is more efficient and less complicated than an implementation based on cyclic streams
+ * shown in `CyclicHammingStream`.
  */
 object Hamming {
   sealed abstract class IList

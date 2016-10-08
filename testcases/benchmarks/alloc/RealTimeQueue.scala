@@ -10,7 +10,8 @@ import instrumentation._
 import invariant._
 
 /**
- * Requires unrollfactor=2
+ * A persistent queue with worst-case, constant time enqueue, dequeue.
+ * Based on the implementation shown in the book "Purely Functional Data Structures, by Chris Okasaki". 
  */
 object RealTimeQueue {
 
@@ -59,12 +60,11 @@ object RealTimeQueue {
         val rot = () => rotate(ftail, r1, newa)
         SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
     }
-  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && alloc <= ?) // Orb results: alloc <= 31
+  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && alloc <= ?) 
 
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  // @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
@@ -84,7 +84,6 @@ object RealTimeQueue {
     @inline
     def isEmpty = f.isEmpty
 
-    //@inline
     def valid = {
       (firstUnevaluated(f) == firstUnevaluated(s)) &&
         s.size == f.size - r.size //invariant: |s| = |f| - |r|
@@ -111,7 +110,7 @@ object RealTimeQueue {
     q.f match {
       case SCons(x, _) => x
     }
-  } //ensuring (res => res.valid && alloc <= ?)
+  } 
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
@@ -119,7 +118,7 @@ object RealTimeQueue {
   } ensuring { res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && alloc <= ?
-  } // Orb results: alloc <= 62
+  } 
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -130,7 +129,7 @@ object RealTimeQueue {
   } ensuring{res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && alloc <= ?
-  } // Orb results: alloc <= 119
+  } 
 
    // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
   /**

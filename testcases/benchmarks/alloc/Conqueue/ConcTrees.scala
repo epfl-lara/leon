@@ -7,6 +7,16 @@ import ListSpecs._
 import leon.annotation._
 import leon.invariant._
 
+/**
+* A purely function data strucuture that provides an abstraction of a array list that allows 
+* efficient `insert at an index`, `lookup at an index`, `update at an index`, `median split` and
+* `concatenation` Operations. A part of the Scala data parallel libaray and proposed by 
+* Alexander Prokopec in his Thesis "Data Structures and Algorithms for Data-Parallel 
+* Computing in a Managed Runtime. PhD thesis, EPFL, 2014."
+* The list is implementated using balanced trees to efficiently support the above mentioned
+* operations. We verify the precise running time bounds and correctness properties of all the 
+* functions.
+**/
 object ConcTrees {
 
   @inline

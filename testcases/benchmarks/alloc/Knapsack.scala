@@ -7,6 +7,10 @@ import annotation._
 import instrumentation._
 import invariant._
 
+/**
+* Knapsack dynamic programming algorithm.
+* Written in a purely functional way using memoization.
+*/
 object Knapscak {
   
   sealed abstract class IList { // a list of pairs: (weight, value)
