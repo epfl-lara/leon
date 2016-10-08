@@ -10,9 +10,10 @@ import collection._
 import invariant._
 
 /**
+ * This program should be analyzed together with StreamClient.
  * This is a collection of methods translated to Scala from the haskell stream library.
  * To prove a running time bound, we impose a precondition that the input stream is an infinite
- * stream of natural numbers, and the higher-order function parameters are constant time functions
+ * stream of natural numbers, and the higher-order function parameters are known constant time functions.
  * We ignored methods that are not guaranteed to terminate on all streams e.g. `filter`, `dropWhile` etc.
  */
 object StreamLibrary {    

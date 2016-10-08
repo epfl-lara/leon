@@ -13,8 +13,12 @@ import invariant._
 import conctrees.ConcTrees._
 
 /**
- * This data structure is a queue of ConcTrees.
- * Here, we prove that enqueing an element into the tree will take constant time.
+ * This is file uses `ConcTrees` defined in file ConcTrees.scala.
+ * This data structure is a queue of ConcTrees. 
+ * The startegy used here is similar to `LazyNumericalRepresentation` but the contents
+ * of the queue are not numbers but `ConcTrees` (see file ConTrees.scala).
+ * Here, we prove that persistently enqueing an element into the tree will take constant time
+ * in the worst case: function `pushLeftAndPay`.
  */
 object Conqueue {
 
@@ -196,18 +200,15 @@ object Conqueue {
         val carry = CC(head, ys) //here, head and ys are of the same level
         rear.get match {
           case Tip(tree) =>
-            //Spine(Zero(), Val(Spine(carry, rear)))
             if (tree.level > carry.level) { // here tree is of level at least two greater than rear ?              
               Spine(Empty[T](), Val(Spine(carry, rear)))
             } else { // here tree level and carry level are equal              
               Spine(Empty[T](), Val(Spine(Empty[T](), Val(Tip(CC(tree, carry))))))
             }
           case Spine(Empty(), srearfun) =>
-            //Spine(Zero(), Val(Spine(carry, srearfun)))            
             Spine(Empty[T](), Val(Spine(carry, srearfun)))
 
           case s =>
-            //Spine(Zero(), Susp(() => incLazy(rear)))
             Spine(Empty[T](), Susp(() => pushLeftLazy(carry, rear)))            
         }
     }

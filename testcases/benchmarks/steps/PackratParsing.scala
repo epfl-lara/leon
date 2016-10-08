@@ -8,10 +8,12 @@ import instrumentation._
 import invariant._
 
 /**
- * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
- * The implementation is almost exactly as it was presented in the paper, but
- * here indices are passed around between parse functions, instead of strings.
- * Proof hint: --unrollfactor = 4
+ * An instance of a packrat parser that uses the Expressions grammar presented in Bryan Ford ICFP 
+ * 2002 paper "Simple, powerful, lazy, linear time, functional pearl".
+ * The implementation is almost exactly as the memoized implementation that was presented in the paper, 
+ * but here indices are passed around between parse functions, instead of strings.
+ * The input list of tokens is represented as an array of tokens which can be looked up based on an index
+ * in constant time and zero memory usage (and so is marked as @exten).
  */
 object PackratParsing {
 
@@ -102,7 +104,7 @@ object PackratParsing {
       case _ =>
         primRes
     }
-  } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 35
+  } ensuring (res => res.smallerIndex(i) && steps <= ?) 
 
   @invisibleBody
   @memoize
@@ -124,7 +126,7 @@ object PackratParsing {
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res.smallerIndex(i) && steps <= ?) // steps <= 32
+  } ensuring (res => res.smallerIndex(i) && steps <= ?) 
 
   def depsEval(i: BigInt) =
     if (i == 0) true
@@ -195,7 +197,7 @@ object PackratParsing {
     val out = outSt[Result]
     (if (i > 0) evalMono(i - 1, in, out) else true) &&
       allEval(i) &&
-      steps <= ? // 136
+      steps <= ? 
   }
 
   /**
@@ -213,7 +215,7 @@ object PackratParsing {
       }
     }
   } ensuring (_ => allEval(n) &&
-    steps <= ? * n + ?) // 145 * n + 139
+    steps <= ? * n + ?) 
 
   @ignore
   def main(args: Array[String]) {

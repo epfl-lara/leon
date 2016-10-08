@@ -10,9 +10,10 @@ import invariant._
 import collection._
 
 /**
- * The running examples used in the paper
+ * The running example shown in Fig. 1 of the paper.
+ * The function creates an infinite stream of numbers that flagged if they are prime.
  */
-object RunningExample {
+object PrimeStream {
 
   sealed abstract class Bool
   case class True() extends Bool

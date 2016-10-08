@@ -8,6 +8,15 @@ import instrumentation._
 import invariant._
 import collection._
 
+/**
+* A memoized implementation of computing `Levenshtein` distance between 
+* two strings. Here, the strings are represented as integer arrays
+* whose elements can be looked up in unit time and zero memory allocations.
+* The lookup function is not verified by algorithm (so is marked as @extern) 
+* as it uses mutable variables and arrays. 
+* Rest of the implementation for computing the optimal distances using a recurrence 
+* relation is purely functional and uses memoization.
+**/
 object LevenshteinDistance {
 
   @ignore
@@ -108,6 +117,12 @@ object LevenshteinDistance {
       depsLem(m, 0, m, j)
   }
 
+/**
+  * The returned list has the solution to all the sub-problems of the dynammic progamming 
+  * algrithm. Its size if quadratic in this case. 
+  * The levenshtein distance between the strings: xstring of length m and 
+  * ystring of length n is given by the first entry of the returned list.  
+  **/
   def levDistSols(m: BigInt, n: BigInt): List[BigInt] = {
     require(0 <= m && 0 <= n)
     bottomup(m, n, n)

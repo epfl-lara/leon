@@ -27,7 +27,7 @@ object RunningExample2 {
     l match {
       case c @ SCons(_, _) =>
         if (i > 0){
-          cached(c.tail) && concUntil(c.tail, i - 1) // replacing `t` by `l` will produce a counter-example
+          cached(c.tail) && concUntil(c.tail, i - 1) 
         } else true
       case _ => true
     }

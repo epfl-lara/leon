@@ -15,7 +15,7 @@ import collection._
 * See file BottomUpMergeSort for a more optimal algorithm for accessing 
 * the kth element.
 **/
-object SortingnConcat {
+object LazySelectionSort {
 
   sealed abstract class LList {
     def size: BigInt = {

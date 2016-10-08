@@ -14,7 +14,7 @@ import invariant._
  * Such numbers are called Hamming numbers. 
  * Implementation obtained from ESOP 2015 paper type-based allocation analysis for co-recursion.
  */
-object MergeAndHammingNumbers {
+object CyclicHammingStream {
   /**
    *  An infinite integer stream.
    *  Technically, the data structure is *not* infinite but the tail has a higher-order function.

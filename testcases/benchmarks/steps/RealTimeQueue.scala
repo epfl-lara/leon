@@ -10,7 +10,8 @@ import instrumentation._
 import invariant._
 
 /**
- * Requires unrollfactor=2
+ * A persistent queue with worst-case, constant time enqueue, dequeue.
+ * Based on the implementation shown in the book "Purely Functional Data Structures, by Chris Okasaki". 
  */
 object RealTimeQueue {
 
@@ -34,7 +35,6 @@ object RealTimeQueue {
       }
     }
   }
-  // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
   private case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
   private case class SNil[T]() extends Stream[T]
 
@@ -52,19 +52,18 @@ object RealTimeQueue {
     require(r.size == f.size + 1 && isConcrete(f))
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, lift(a)) //  rank: a.rank + 1
+        SCons[T](y, lift(a)) 
       case (c@SCons(x, _), Cons(y, r1)) =>
-        val newa = SCons[T](y, lift(a)) // rank : a.rank + 1
+        val newa = SCons[T](y, lift(a)) 
         val ftail = c.tail
         val rot = () => rotate(ftail, r1, newa)
-        SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
+        SCons[T](x, rot) 
     }
-  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && steps <= ?) // Orb results: steps <= 31
+  } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && steps <= ?) 
 
   /**
    * Returns the first element of the stream whose tail is not evaluated.
    */
-  // @invisibleBody
   def firstUnevaluated[T](l: Stream[T]): Stream[T] = {
     l match {
       case c @ SCons(_, _) =>
@@ -111,7 +110,7 @@ object RealTimeQueue {
     q.f match {
       case SCons(x, _) => x
     }
-  } //ensuring (res => res.valid && steps <= ?)
+  } 
 
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
@@ -119,7 +118,7 @@ object RealTimeQueue {
   } ensuring { res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
-  } // Orb results: steps <= 62
+  } 
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -130,7 +129,7 @@ object RealTimeQueue {
   } ensuring{res =>
     funeMonotone(q.f, q.s, inSt[T], outSt[T]) &&
     res.valid && steps <= ?
-  } // Orb results: steps <= 119
+  } 
 
    // Properties of `firstUneval`. We use `fune` as a shorthand for `firstUneval`
   /**

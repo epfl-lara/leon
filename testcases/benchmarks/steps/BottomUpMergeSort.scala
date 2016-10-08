@@ -10,12 +10,15 @@ import higherorder._
 import stats._
 
 /**
- * Computing the kth min using a version of merge sort that operates bottom-up.
- * This allows accessing the first element in the sorted list in O(n) time,
- * and kth element in O(klog(n)+n) time.
- * Needs unrollfactor = 3
+ * Computing the kth min using a lazy merge sort algorithm that operates bottom-up.
+ * This allows accessing the minimum element in O(n) time, where n is the number of 
+ * elements in the input list.
+ * It allows accessing all elements until the kth minimum in O(k.log(n)+n) time:
+ * see function `kthMin`
+ * Note that accessing the last element takes O(n.log(n)) which is the complexity of 
+ * sorting all elements using merge sort.
  */
-object BottomUpMergeSortPrecise {
+object BottomUpMergeSort {
 
   @inline
   def max(x:BigInt, y:BigInt) = if (x >= y) x else y
@@ -182,7 +185,7 @@ object BottomUpMergeSortPrecise {
     reslist.size == range &&
     rest.size == l.size - range  &&
     reslist.weightBalanced &&
-    steps <= ? * range + ? // 56 * to - 56 * from + 12 
+    steps <= ? * range + ? 
   }
 
   @invisibleBody
@@ -200,7 +203,7 @@ object BottomUpMergeSortPrecise {
         }
     }
   } ensuring{res => a.size + b.size == res.size &&
-    steps <= ? // steps <= 16
+    steps <= ? 
   }
 
   /**
@@ -215,7 +218,7 @@ object BottomUpMergeSortPrecise {
   } ensuring {res =>
     res != SNil() &&
     res.height <= max(a.height, b.height) + 1 &&
-    steps <= ? * b.height + ? // 22 * b.height + 23
+    steps <= ? * b.height + ? 
   }
 
   /**
@@ -232,7 +235,7 @@ object BottomUpMergeSortPrecise {
       logHeightProperty(res) &&
       l.size == res.size &&
       res.height <= log(l.size - 1) &&
-      steps <= ? * l.size + ?) // 56 * l.size + 3
+      steps <= ? * l.size + ?) 
 
   private def kthMinRec(l: LList, k: BigInt): BigInt = { 
     require(k >= 0)
@@ -243,7 +246,7 @@ object BottomUpMergeSortPrecise {
           kthMinRec(xs.list, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => steps <= ? * (k * l.height) + ?) //  steps <= 36 * (k * l.height) + 17
+  } ensuring (_ => steps <= ? * (k * l.height) + ?) 
 
   /**
    * A function that accesses the kth element of a list using lazy sorting.
@@ -251,7 +254,7 @@ object BottomUpMergeSortPrecise {
   def kthMin(l: List[BigInt], k: BigInt): BigInt = {
     require(k >= 0)
     kthMinRec(mergeSort(l), k)
-  } ensuring(_ => steps <= ? * (k * log(l.size - 1)) + ? * (l.size) + ?) // 36 * (k * log(l.size - 1)) + 56 * l.size + 22
+  } ensuring(_ => steps <= ? * (k * log(l.size - 1)) + ? * (l.size) + ?) 
 
   // @ignore
   // def main(args: Array[String]) {

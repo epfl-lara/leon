@@ -11,16 +11,12 @@ import math._
 import invariant._
 
 /**
- * A constant time deque based on Okasaki's implementation: Fig.8.4 Pg. 112.
- * Here, both front and rear streams are scheduled.
- * 
- * We require both the front and the rear streams to be of almost equal
- * size. If not, we lazily rotate the streams.
- * The invariants are a lot more complex than in `RealTimeQueue`.
- * The program also fixes a bug in Okasaki's implementatin: see function `rotateDrop`.
- * Proof Hint: requires unrollfactor = 4
+ * A worst-case constant time, presistent deque based on Okasaki's implementation: Fig.8.4 Pg. 112
+ * of book "Purely Functional Data Structures, by Chris Okasaki". 
+ * Supposts persistent `cons`, `tail` and `reverse` in worst case constant time.
+ * The program also fixes a bug in Okasaki's implementation: see function `rotateDrop`.
  */
-object RealTimeDeque {
+object Deque {
   sealed abstract class Stream[T] {
     @inline
     def isEmpty: Boolean = this == SNil[T]()

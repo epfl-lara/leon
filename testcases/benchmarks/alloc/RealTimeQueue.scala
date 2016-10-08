@@ -35,7 +35,6 @@ object RealTimeQueue {
       }
     }
   }
-  // wellfoundedness prop: (tailFun*).rank < this.rank && \forall x. rank >= 0 && tailFun*.satisfies prop
   private case class SCons[T](x: T, tailFun: () => Stream[T]) extends Stream[T]
   private case class SNil[T]() extends Stream[T]
 
@@ -53,12 +52,12 @@ object RealTimeQueue {
     require(r.size == f.size + 1 && isConcrete(f))
     (f, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, lift(a)) //  rank: a.rank + 1
+        SCons[T](y, lift(a)) 
       case (c@SCons(x, _), Cons(y, r1)) =>
-        val newa = SCons[T](y, lift(a)) // rank : a.rank + 1
+        val newa = SCons[T](y, lift(a)) 
         val ftail = c.tail
         val rot = () => rotate(ftail, r1, newa)
-        SCons[T](x, rot) // @ rank == f.rank + r.rank + a.rank
+        SCons[T](x, rot) 
     }
   } ensuring (res => res.size == f.size + r.size + a.size && res.isCons && alloc <= ?) 
 

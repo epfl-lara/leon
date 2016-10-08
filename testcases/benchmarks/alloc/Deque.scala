@@ -16,7 +16,7 @@ import invariant._
  * Supposts persistent `cons`, `tail` and `reverse` in worst case constant time.
  * The program also fixes a bug in Okasaki's implementation: see function `rotateDrop`.
  */
-object RealTimeDeque {
+object Deque {
   sealed abstract class Stream[T] {
     @inline
     def isEmpty: Boolean = this == SNil[T]()

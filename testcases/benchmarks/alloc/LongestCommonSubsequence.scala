@@ -117,7 +117,7 @@ object LongestCommonSubsequence {
   }
 
   /**
-  * The returned list is the solution to all the sub-problems of the dynammic progamming 
+  * The returned list has the solution to all the sub-problems of the dynammic progamming 
   * algrithm. Its size if quadratic in this case. 
   * The length of the longest common subsequence between the sequences: xstring of length m and 
   * ystring of length n is given by first entry of the returned list.  

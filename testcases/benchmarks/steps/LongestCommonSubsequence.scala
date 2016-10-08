@@ -8,6 +8,16 @@ import instrumentation._
 import invariant._
 import collection._
 
+/**
+* A memoized implementation of computing the length of the 
+* longest common subsequence between two sequences. Here, 
+* the sequences are represented as integer arrays
+* whose elements can be looked up in unit time and zero memory allocations.
+* The lookup function is not verified by the algorithm (and so is marked as @extern),
+* as it uses mutable variables and arrays. 
+* Rest of the implementation for computing the optimal length using a recurrence 
+* relation is purely functional and uses memoization.
+**/
 object LongestCommonSubsequence {
 
   @ignore
@@ -106,6 +116,12 @@ object LongestCommonSubsequence {
       depsLem(m, 0, m, j)
   }
 
+ /**
+  * The returned list has the solution to all the sub-problems of the dynammic progamming 
+  * algrithm. Its size if quadratic in this case. 
+  * The length of the longest common subsequence between the sequences: xstring of length m and 
+  * ystring of length n is given by first entry of the returned list.  
+  **/
   def lcsSols(m: BigInt, n: BigInt): List[BigInt] = {
     require(0 <= m && 0 <= n)
     bottomup(m, n, n)

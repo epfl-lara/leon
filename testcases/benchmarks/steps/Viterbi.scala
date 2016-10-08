@@ -9,9 +9,12 @@ import invariant._
 import collection._
 
 /**
- * Implementation of the Viterbi algorithm 
- * Wiki - https://en.wikipedia.org/wiki/Viterbi_algorithm
- * The probabilities are in logarithms.
+ * A memoized implementation that solves the recurrence relation of the  Viterbi algorithm.
+ * Source: https://en.wikipedia.org/wiki/Viterbi_algorithm.
+ * There are set of vector inputs to the algorithm each of which is represented as an array with 
+ * indexed lookup that takes constant time and performs zero allocations.
+ * The functions are `O`, `S`, `A`, `B`, `C`.
+ * The rest of the algorithm is purely functional and solves the recurrence relation.
  */
 object Viterbi {
 

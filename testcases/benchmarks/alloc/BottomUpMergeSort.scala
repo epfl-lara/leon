@@ -18,7 +18,7 @@ import stats._
  * Note that accessing the last element takes O(n.log(n)) which is the complexity of 
  * sorting all elements using merge sort.
  */
-object BottomUpMergeSortPrecise {
+object BottomUpMergeSort {
 
   @inline
   def max(x:BigInt, y:BigInt) = if (x >= y) x else y

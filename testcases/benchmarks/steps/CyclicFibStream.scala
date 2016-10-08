@@ -10,9 +10,10 @@ import collection._
 import invariant._
 
 /**
- * Hint: requires unrollfactor=4
+ * A implementation of a cyclic, infinite stream of fibonacci numbers. 
+ * Implementation obtained from ESOP 2015 paper type-based allocation analysis for co-recursion. 
  */
-object ZipWithAndFibStream {
+object CyclicFibStream {
   /**
    *  An infinite integer stream.
    *  Technically, the data structure is *not* infinite but the tail has a higher-order function.
@@ -23,7 +24,7 @@ object ZipWithAndFibStream {
       case s@Susp(f) => s.fval
       case Val(x) => x
     }
-    // this will not modify state
+    // this will not modify state, and is used only in specs
     @inline
     def tailVal = tailFun match {
       case s@Susp(f) => s.fval*
@@ -175,7 +176,7 @@ object ZipWithAndFibStream {
         else nthElemAfterThird(n, first, second, third)
       }
     }
-  } ensuring(_ => steps <= ? * n + ?) // 84 * n + 6
+  } ensuring(_ => steps <= ? * n + ?) 
 
   @ignore
   def main(args: List[Any]): Unit = {

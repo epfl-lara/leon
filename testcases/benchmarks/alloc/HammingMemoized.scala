@@ -13,7 +13,7 @@ import invariant._
  * This is more efficient and less complicated than an implementation based on cyclic streams
  * shown in `CyclicHammingStream`.
  */
-object Hamming {
+object HammingMemoized {
   sealed abstract class IList
   case class Cons(x: BigInt, tail: IList) extends IList {
     @ignore

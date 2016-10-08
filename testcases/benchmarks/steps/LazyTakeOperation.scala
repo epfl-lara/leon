@@ -10,6 +10,11 @@ import instrumentation._
 import math._
 import invariant._
 
+/**
+* This the small running example shown in Fig. 7. This is not evaluted
+* in experiments as it is subsumed by several other complex benchmarks.
+* For instance, one of the functions in the `Dequeue` benchamrk has this function.
+**/
 object RunningExample2 {
   sealed abstract class Stream
 
@@ -22,7 +27,7 @@ object RunningExample2 {
     l match {
       case c @ SCons(_, _) =>
         if (i > 0){
-          cached(c.tail) && concUntil(c.tail, i - 1) // replacing `t` by `l` will produce a counter-example
+          cached(c.tail) && concUntil(c.tail, i - 1) 
         } else true
       case _ => true
     }
