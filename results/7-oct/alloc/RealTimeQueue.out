@@ -1,0 +1,276 @@
+[[33mWarning [0m] warning: there were 5 feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isConcrete$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$23.tail-mem$3(uiState$2[T]))' VC for isConcrete$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isConcrete$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for rotate$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$24.tail-mem$3(st@))' VC for rotate$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for rotate$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for RotateL@rotatePre$1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$24.tail-mem$3(st@))' VC for RotateL@rotatePre$1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for firstUnevaluated$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$25.tail-mem$3(uiState$2[T]))' VC for firstUnevaluated$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$26.tail-mem$3(st@))' VC for firstUnevaluated$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for firstUnevaluated$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for firstUnevaluated$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for empty$8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for head$15 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for head$15 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for enqueue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$27.tail-mem$3(st@))' VC for enqueue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call rotate$7[T](q.f, a$229, SNil[T](), st@))' VC for enqueue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call funeMonotone$5[T](q.f, q.s, st@, res$216 ...)' VC for enqueue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for enqueue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$28.tail-mem$3(st@))' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$29.tail-mem$3(a$233._2))' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call rotate$7[T](dres$10._1, q.r, SNil[T](),  ...)' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call funeMonotone$5[T](q.f, q.s, st@, res$217 ...)' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for dequeue$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for funeCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call funeCompose-VCTact[T](c.tail-mem$3(uiSta ...))' VC for funeCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call c.tail-mem$3(uiState$2[T])))' VC for funeCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for funeCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for funeMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call funeCompose$5[T](l1, st1, st2))' VC for funeMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call funeCompose$5[T](l2, st1, st2))' VC for funeMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$30.tail-mem$3(uiState$2[T]))' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for tail-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for tail-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for valid$6 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                        ?
+? RealTimeQueue.RotateL@rotatePre$1  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.263 ?
+? RealTimeQueue.RotateL@rotatePre$1  precond. (call c$24.tail-mem$3(st@))                                 ?:?  valid  U:orb-smt-z3          0.068 ?
+? RealTimeQueue.dequeue$5            match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.061 ?
+? RealTimeQueue.dequeue$5            match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.057 ?
+? RealTimeQueue.dequeue$5            postcondition                                                        ?:?  valid  U:orb-smt-orb-cvc4    1.275 ?
+? RealTimeQueue.dequeue$5            precond. (call c$28.tail-mem$3(st@))                                 ?:?  valid  U:orb-smt-z3          0.052 ?
+? RealTimeQueue.dequeue$5            precond. (call c$29.tail-mem$3(a$233._2))                            ?:?  valid  U:orb-smt-z3          0.049 ?
+? RealTimeQueue.dequeue$5            precond. (call funeMonotone$5[T](q.f, q.s, st@, res$217 ...)         ?:?  valid  U:orb-smt-z3          0.177 ?
+? RealTimeQueue.dequeue$5            precond. (call rotate$7[T](dres$10._1, q.r, SNil[T](),  ...)         ?:?  valid  U:orb-smt-orb-cvc4    0.374 ?
+? RealTimeQueue.empty$8              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.029 ?
+? RealTimeQueue.enqueue$5            match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.050 ?
+? RealTimeQueue.enqueue$5            postcondition                                                        ?:?  valid  U:orb-smt-z3          0.687 ?
+? RealTimeQueue.enqueue$5            precond. (call c$27.tail-mem$3(st@))                                 ?:?  valid  U:orb-smt-z3          0.057 ?
+? RealTimeQueue.enqueue$5            precond. (call funeMonotone$5[T](q.f, q.s, st@, res$216 ...)         ?:?  valid  U:orb-smt-z3          0.137 ?
+? RealTimeQueue.enqueue$5            precond. (call rotate$7[T](q.f, a$229, SNil[T](), st@))              ?:?  valid  U:orb-smt-z3          0.094 ?
+? RealTimeQueue.firstUnevaluated$5   match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.057 ?
+? RealTimeQueue.firstUnevaluated$5   match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.045 ?
+? RealTimeQueue.firstUnevaluated$5   postcondition                                                        ?:?  valid  U:orb-smt-z3          0.145 ?
+? RealTimeQueue.firstUnevaluated$5   precond. (call c$25.tail-mem$3(uiState$2[T]))                        ?:?  valid  U:orb-smt-z3          0.032 ?
+? RealTimeQueue.firstUnevaluated$5   precond. (call c$26.tail-mem$3(st@))                                 ?:?  valid  U:orb-smt-z3          0.062 ?
+? RealTimeQueue.funeCompose$5        tact (match exhaustiveness)                                          ?:?  valid  U:orb-smt-z3          0.031 ?
+? RealTimeQueue.funeCompose$5        tact (postcondition)                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.164 ?
+? RealTimeQueue.funeCompose$5        tact (precond. (call c.tail-mem$3(uiState$2[T])))                    ?:?  valid  U:orb-smt-z3          0.033 ?
+? RealTimeQueue.funeCompose$5        tact (precond. (call funeCompose-VCTact[T](c.tail-mem$3(uiSta ...))  ?:?  valid  U:orb-smt-z3          0.032 ?
+? RealTimeQueue.funeMonotone$5       postcondition                                                        ?:?  valid  U:orb-smt-z3          0.120 ?
+? RealTimeQueue.funeMonotone$5       precond. (call funeCompose$5[T](l1, st1, st2))                       ?:?  valid  U:orb-smt-z3          0.044 ?
+? RealTimeQueue.funeMonotone$5       precond. (call funeCompose$5[T](l2, st1, st2))                       ?:?  valid  U:orb-smt-z3          0.050 ?
+? RealTimeQueue.head$15              match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.057 ?
+? RealTimeQueue.head$15              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.079 ?
+? RealTimeQueue.isConcrete$5         match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.038 ?
+? RealTimeQueue.isConcrete$5         postcondition                                                        ?:?  valid  U:orb-smt-orb-cvc4    0.475 ?
+? RealTimeQueue.isConcrete$5         precond. (call c$23.tail-mem$3(uiState$2[T]))                        ?:?  valid  U:orb-smt-z3          0.042 ?
+? RealTimeQueue.rotate$7             match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.096 ?
+? RealTimeQueue.rotate$7             postcondition                                                        ?:?  valid  U:orb-smt-orb-cvc4   10.175 ?
+? RealTimeQueue.rotate$7             precond. (call c$24.tail-mem$3(st@))                                 ?:?  valid  U:orb-smt-z3          0.066 ?
+? Stream.size$10                     match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.037 ?
+? Stream.size$10                     postcondition                                                        ?:?  valid  U:orb-smt-z3          0.061 ?
+? Stream.size$10                     precond. (call c$30.tail-mem$3(uiState$2[T]))                        ?:?  valid  U:orb-smt-z3          0.033 ?
+? Stream.tail-mem$3                  match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.029 ?
+? Stream.tail-mem$3                  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.074 ?
+? Queue.valid$6                      postcondition                                                        ?:?  valid  U:orb-smt-z3          0.045 ?
+???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 41     valid: 41     invalid: 0      unknown 0                                                                                    15.552 ?
+???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function rotate-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: rotate-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: rotate-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 10
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: rotate-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: rotate-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 7
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] rotate-alloc-->1 * res$219._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: rotate-alloc --> alloc + BigInt(-4) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function tail-mem-alloc...
+[[34m  Info  [0m] - considering function enqueue-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 8
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.042s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.028s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 14
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.123s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.208s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 10
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.185s
+[[34m  Info  [0m] Function: enqueue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 21
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] enqueue-alloc-->1 * res$220._2 + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] - Found inductive invariant: enqueue-alloc --> alloc + BigInt(-8) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function dequeue-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 8
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.088s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.065s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 11
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.281s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.291s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 8
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.767s
+[[34m  Info  [0m] Function: dequeue-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.306s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] dequeue-alloc-->1 * res$224._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.162s
+[[34m  Info  [0m] - Found inductive invariant: dequeue-alloc --> alloc + BigInt(-7) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ???????????????????????????????????????????????
+? ???????????                                             ?
+? dequeue         alloc <= 7    6.450                     ?
+? enqueue         alloc <= 8    1.796                     ?
+? rotate          alloc <= 4    0.706                     ?
+???????????????????????????????????????????????????????????
+? total: 3     inferred: 3     unknown: 0     time: 8.952 ?
+???????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: RealTimeQueue-stats.txt

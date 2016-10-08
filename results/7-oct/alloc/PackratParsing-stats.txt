@@ -1,0 +1,135 @@
+State-Verification-Time: 14.77s
+Total-Time: 47.944s
+Total-VCs-Generated: 57
+Z3SolvedVCs: 52
+CVC4SolvedVCs: 5
+procs: 5
+VC-refinement: 13
+disjuncts: 39
+TotalVCCTime: 11.071s
+Total-AxiomChoose-Time: 0.07s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 1.834s
+UneliminatedEqualities: 153
+ElimTime: 0.476s
+Total-Choose-Time: 2.544s
+BinarySearchTime: 1.572s
+Resource-Inference-Time: 33.174s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 1802.4
+Max.CVC4-Time: 9012
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 110.73076923076923
+Max.Z3-Time: 5758
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 2.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 569.6923076923077
+Max.VC-size: 941
+Avg.UIF+ADT: 81.23076923076923
+Max.UIF+ADT: 97
+Avg.TemplateIds: 2.1538461538461537
+Max.TemplateIds: 3
+Avg.unflatSize: 106.53846153846153
+Max.unflatSize: 181
+Avg.UnflatTime: 0.123s
+Max.UnflatTime: 0.223s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.28387179487179487s
+Max.VC-check-time: 1.725s
+Avg.CallADT-Constraints: 148.92307692307693
+Max.CallADT-Constraints: 1632
+Avg.CtrsBeforeElim: 82.07692307692308
+Max.CtrsBeforeElim: 565
+Avg.EliminatedAtoms: 76.92307692307692
+Max.EliminatedAtoms: 552
+Avg.Param-Atoms: 4.666666666666667
+Max.Param-Atoms: 14
+Avg.NonParam-Atoms: 5.153846153846154
+Max.NonParam-Atoms: 13
+Avg.Disj-choosing-time: 0.06523076923076923s
+Max.Disj-choosing-time: 0.306s
+Avg.NLsize: 28.23076923076923
+Max.NLsize: 93
+Avg.NL-solving-time: 0.04466666666666667s
+Max.NL-solving-time: 0.902s
+########## Outputs ############
+########## State Verification ############
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                              ?
+? PackratParsing.allEval$5     postcondition                                                    ?:?  valid  U:orb-smt-z3          0.047 ?
+? PackratParsing.allEval$5     precond. (call allEval$5(i - BigInt(1), st@))                    ?:?  valid  U:orb-smt-z3          0.038 ?
+? PackratParsing.depsEval$5    postcondition                                                    ?:?  valid  U:orb-smt-z3          0.034 ?
+? PackratParsing.depsEval$5    precond. (call allEval$5(i - BigInt(1), st@))                    ?:?  valid  U:orb-smt-z3          0.029 ?
+? PackratParsing.depsLem$5     precond. (call allEval$5(x, st@))                                ?:?  valid  U:orb-smt-z3          0.047 ?
+? PackratParsing.depsLem$5     precond. (call allEval$5(y, st@))                                ?:?  valid  U:orb-smt-z3          0.032 ?
+? PackratParsing.depsLem$5     tact (postcondition)                                             ?:?  valid  U:orb-smt-z3          0.091 ?
+? PackratParsing.depsLem$5     tact (precond. (call allEval$5(x, st@)))                         ?:?  valid  U:orb-smt-z3          0.040 ?
+? PackratParsing.depsLem$5     tact (precond. (call allEval$5(y, st@)))                         ?:?  valid  U:orb-smt-z3          0.048 ?
+? PackratParsing.depsLem$5     tact (precond. (call depsLem-VCTact(x, y - BigInt(1), st@)))     ?:?  valid  U:orb-smt-z3          0.038 ?
+? PackratParsing.evalMono$5    precond. (call allEval$5(i, st1))                                ?:?  valid  U:orb-smt-z3          0.045 ?
+? PackratParsing.evalMono$5    precond. (call allEval$5(i, st2))                                ?:?  valid  U:orb-smt-z3          0.050 ?
+? PackratParsing.evalMono$5    tact (postcondition)                                             ?:?  valid  U:orb-smt-z3          0.088 ?
+? PackratParsing.evalMono$5    tact (precond. (call allEval$5(i, st1)))                         ?:?  valid  U:orb-smt-z3          0.037 ?
+? PackratParsing.evalMono$5    tact (precond. (call allEval$5(i, st2)))                         ?:?  valid  U:orb-smt-z3          0.039 ?
+? PackratParsing.evalMono$5    tact (precond. (call evalMono-VCTact(i - BigInt(1), st1, st2)))  ?:?  valid  U:orb-smt-z3          0.030 ?
+? PackratParsing.invoke$5      match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.034 ?
+? PackratParsing.invoke$5      postcondition                                                    ?:?  valid  U:orb-smt-z3          0.342 ?
+? PackratParsing.invoke$5      precond. (call allEval$5(i, res._2))                             ?:?  valid  U:orb-smt-z3          0.302 ?
+? PackratParsing.invoke$5      precond. (call evalMono$5(i - BigInt(1), st@, res._2))           ?:?  valid  U:orb-smt-z3          0.067 ?
+? PackratParsing.invoke$5      precond. (call invokeMul$5(i, st@))                              ?:?  valid  U:orb-smt-z3          0.038 ?
+? PackratParsing.invoke$5      precond. (call pAdd-mem$3(i, scr._2))                            ?:?  valid  U:orb-smt-z3          0.340 ?
+? PackratParsing.invokeMul$5   match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.046 ?
+? PackratParsing.invokeMul$5   postcondition                                                    ?:?  valid  U:orb-smt-z3          0.284 ?
+? PackratParsing.invokeMul$5   precond. (call evalMono$5(i - BigInt(1), st@, res._2))           ?:?  valid  U:orb-smt-z3          0.080 ?
+? PackratParsing.invokeMul$5   precond. (call invokePrim$5(i, st@))                             ?:?  valid  U:orb-smt-z3          0.047 ?
+? PackratParsing.invokeMul$5   precond. (call pMul-mem$3(i, scr._2))                            ?:?  valid  U:orb-smt-z3          0.236 ?
+? PackratParsing.invokePrim$5  postcondition                                                    ?:?  valid  U:orb-smt-z3          0.195 ?
+? PackratParsing.invokePrim$5  precond. (call evalMono$5(i - BigInt(1), st@, res._2))           ?:?  valid  U:orb-smt-z3          0.082 ?
+? PackratParsing.invokePrim$5  precond. (call pPrim-mem$3(i, st@))                              ?:?  valid  U:orb-smt-z3          0.037 ?
+? PackratParsing.pAdd-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.084 ?
+? PackratParsing.pAdd-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.073 ?
+? PackratParsing.pAdd-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.076 ?
+? PackratParsing.pAdd-mem$3    postcondition                                                    ?:?  valid  U:orb-smt-orb-cvc4    5.803 ?
+? PackratParsing.pAdd-mem$3    precond. (call pAdd-mem$3(a$181, mulRes$1._2))                   ?:?  valid  U:orb-smt-orb-cvc4    1.845 ?
+? PackratParsing.pAdd-mem$3    precond. (call pMul-mem$3(i, st@))                               ?:?  valid  U:orb-smt-z3          0.250 ?
+? PackratParsing.pAdd-mem$3    precond. (call pMul-mem$3(i, st@))                               ?:?  valid  U:orb-smt-z3          0.371 ?
+? PackratParsing.pMul-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.062 ?
+? PackratParsing.pMul-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.077 ?
+? PackratParsing.pMul-mem$3    match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.067 ?
+? PackratParsing.pMul-mem$3    postcondition                                                    ?:?  valid  U:orb-smt-orb-cvc4    0.788 ?
+? PackratParsing.pMul-mem$3    precond. (call pMul-mem$3(a$188, primRes$1._2))                  ?:?  valid  U:orb-smt-orb-cvc4    0.488 ?
+? PackratParsing.pMul-mem$3    precond. (call pPrim-mem$3(i, st@))                              ?:?  valid  U:orb-smt-z3          0.145 ?
+? PackratParsing.pMul-mem$3    precond. (call pPrim-mem$3(i, st@))                              ?:?  valid  U:orb-smt-z3          0.045 ?
+? PackratParsing.pPrim-mem$3   match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.056 ?
+? PackratParsing.pPrim-mem$3   match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.089 ?
+? PackratParsing.pPrim-mem$3   postcondition                                                    ?:?  valid  U:orb-smt-z3          0.247 ?
+? PackratParsing.pPrim-mem$3   precond. (call pAdd-mem$3(a$185, st@))                           ?:?  valid  U:orb-smt-z3          0.243 ?
+? PackratParsing.parse$5       match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.052 ?
+? PackratParsing.parse$5       postcondition                                                    ?:?  valid  U:orb-smt-z3          0.478 ?
+? PackratParsing.parse$5       precond. (call allEval$5(n, x$2._2))                             ?:?  valid  U:orb-smt-orb-cvc4    0.088 ?
+? PackratParsing.parse$5       precond. (call invoke$5(n, scr._2))                              ?:?  valid  U:orb-smt-z3          0.271 ?
+? PackratParsing.parse$5       precond. (call invoke$5(n, st@))                                 ?:?  valid  U:orb-smt-z3          0.058 ?
+? PackratParsing.parse$5       precond. (call parse$5(n - BigInt(1), st@))                      ?:?  valid  U:orb-smt-z3          0.032 ?
+? PackratParsing.resEval$5     match exhaustiveness                                             ?:?  valid  U:orb-smt-z3          0.029 ?
+? PackratParsing.resEval$5     postcondition                                                    ?:?  valid  U:orb-smt-z3          0.058 ?
+? PackratParsing.resEval$5     precond. (call depsLem$5(j, i - BigInt(1), st@))                 ?:?  valid  U:orb-smt-z3          0.032 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 57     valid: 57     invalid: 0      unknown 0                                                                          14.770 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+########## Resource Verification ############
+. ???????????
+??? Summary ????????????????????????????????????????????????
+? ???????????                                              ?
+? invoke          alloc <= 10             0.605            ?
+? invokeMul       alloc <= 7              0.515            ?
+? invokePrim      alloc <= 4              0.370            ?
+? pAdd            alloc <= 2              28.519           ?
+? pMul            alloc <= 2              0.000            ?
+? pPrim           alloc <= 3              0.000            ?
+? parse           alloc <= 10 * n + 10    3.165            ?
+????????????????????????????????????????????????????????????
+? total: 7     inferred: 7     unknown: 0     time: 33.174 ?
+????????????????????????????????????????????????????????????

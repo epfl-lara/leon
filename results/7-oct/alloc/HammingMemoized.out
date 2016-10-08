@@ -1,0 +1,224 @@
+[[33mWarning [0m] warning: there were two feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(n - BigInt(1), st@))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call ham-mem$3(a$178, st@))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call ham-mem$3(i2, x$1$30._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call ham-mem$3(i3, a$180._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call ham-mem$3(i5, a$184._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsLem$5(res._1.i2, n, res._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsLem$5(res._1.i3, n, res._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsLem$5(res._1.i5, n, res._2))' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for ham-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for depsEval$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(i - BigInt(1), st@))' VC for depsEval$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsEvalMono-VCTact(i - BigInt(1), st1,  ...))' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsEval$5(i, st1)))' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsEval$5(i, st2)))' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(i, st1))' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(i, st2))' VC for depsEvalMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsLem-VCTact(x, y - BigInt(1), st@)))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsEval$5(y, st@)))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsEval$5(x, st@)))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(y, st@))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(x, st@))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(n - BigInt(1), st@))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call ham-mem$3(n, st@))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEvalMono$5(n - BigInt(1), st@, res._ ...)' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for hammingList$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke$5(n, st@))' VC for hammingList$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call hammingList$5(n - BigInt(1), st@))' VC for hammingList$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke$5(n, tailRes$1._2))' VC for hammingList$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsEval$5(n, x$3$10._2))' VC for hammingList$5 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                             ?
+? Hamming.depsEval$5      postcondition                                                        ?:?  valid  U:orb-smt-z3          0.035 ?
+? Hamming.depsEval$5      precond. (call depsEval$5(i - BigInt(1), st@))                       ?:?  valid  U:orb-smt-z3          0.030 ?
+? Hamming.depsEvalMono$5  precond. (call depsEval$5(i, st1))                                   ?:?  valid  U:orb-smt-z3          0.029 ?
+? Hamming.depsEvalMono$5  precond. (call depsEval$5(i, st2))                                   ?:?  valid  U:orb-smt-z3          0.035 ?
+? Hamming.depsEvalMono$5  tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.084 ?
+? Hamming.depsEvalMono$5  tact (precond. (call depsEval$5(i, st1)))                            ?:?  valid  U:orb-smt-z3          0.038 ?
+? Hamming.depsEvalMono$5  tact (precond. (call depsEval$5(i, st2)))                            ?:?  valid  U:orb-smt-z3          0.042 ?
+? Hamming.depsEvalMono$5  tact (precond. (call depsEvalMono-VCTact(i - BigInt(1), st1,  ...))  ?:?  valid  U:orb-smt-z3          0.029 ?
+? Hamming.depsLem$5       precond. (call depsEval$5(x, st@))                                   ?:?  valid  U:orb-smt-z3          0.048 ?
+? Hamming.depsLem$5       precond. (call depsEval$5(y, st@))                                   ?:?  valid  U:orb-smt-z3          0.034 ?
+? Hamming.depsLem$5       tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.087 ?
+? Hamming.depsLem$5       tact (precond. (call depsEval$5(x, st@)))                            ?:?  valid  U:orb-smt-z3          0.035 ?
+? Hamming.depsLem$5       tact (precond. (call depsEval$5(y, st@)))                            ?:?  valid  U:orb-smt-z3          0.041 ?
+? Hamming.depsLem$5       tact (precond. (call depsLem-VCTact(x, y - BigInt(1), st@)))         ?:?  valid  U:orb-smt-z3          0.030 ?
+? Hamming.ham-mem$3       match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.029 ?
+? Hamming.ham-mem$3       match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.095 ?
+? Hamming.ham-mem$3       postcondition                                                        ?:?  valid  U:orb-smt-z3          3.539 ?
+? Hamming.ham-mem$3       precond. (call depsEval$5(n - BigInt(1), st@))                       ?:?  valid  U:orb-smt-z3          0.030 ?
+? Hamming.ham-mem$3       precond. (call depsLem$5(res._1.i2, n, res._2))                      ?:?  valid  U:orb-smt-z3          0.176 ?
+? Hamming.ham-mem$3       precond. (call depsLem$5(res._1.i3, n, res._2))                      ?:?  valid  U:orb-smt-z3          0.187 ?
+? Hamming.ham-mem$3       precond. (call depsLem$5(res._1.i5, n, res._2))                      ?:?  valid  U:orb-smt-z3          0.181 ?
+? Hamming.ham-mem$3       precond. (call ham-mem$3(a$178, st@))                                ?:?  valid  U:orb-smt-z3          0.074 ?
+? Hamming.ham-mem$3       precond. (call ham-mem$3(i2, x$1$30._2))                             ?:?  valid  U:orb-smt-orb-cvc4    9.086 ?
+? Hamming.ham-mem$3       precond. (call ham-mem$3(i3, a$180._2))                              ?:?  valid  U:orb-smt-orb-cvc4    6.689 ?
+? Hamming.ham-mem$3       precond. (call ham-mem$3(i5, a$184._2))                              ?:?  valid  U:orb-smt-orb-cvc4    4.429 ?
+? Hamming.hammingList$5   postcondition                                                        ?:?  valid  U:orb-smt-z3          0.316 ?
+? Hamming.hammingList$5   precond. (call depsEval$5(n, x$3$10._2))                             ?:?  valid  U:orb-smt-z3          0.099 ?
+? Hamming.hammingList$5   precond. (call hammingList$5(n - BigInt(1), st@))                    ?:?  valid  U:orb-smt-z3          0.027 ?
+? Hamming.hammingList$5   precond. (call invoke$5(n, st@))                                     ?:?  valid  U:orb-smt-z3          0.044 ?
+? Hamming.hammingList$5   precond. (call invoke$5(n, tailRes$1._2))                            ?:?  valid  U:orb-smt-z3          0.206 ?
+? Hamming.invoke$5        postcondition                                                        ?:?  valid  U:orb-smt-z3          0.456 ?
+? Hamming.invoke$5        precond. (call depsEval$5(n - BigInt(1), st@))                       ?:?  valid  U:orb-smt-z3          0.029 ?
+? Hamming.invoke$5        precond. (call depsEvalMono$5(n - BigInt(1), st@, res._ ...)         ?:?  valid  U:orb-smt-z3          0.088 ?
+? Hamming.invoke$5        precond. (call ham-mem$3(n, st@))                                    ?:?  valid  U:orb-smt-z3          0.037 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 34     valid: 34     invalid: 0      unknown 0                                                                         26.414 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function ham-mem-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.047s
+[[34m  Info  [0m] Function: ham-mem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.096s
+[[34m  Info  [0m] Function: ham-mem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.06s
+[[34m  Info  [0m] Function: ham-mem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.832s
+[[34m  Info  [0m] Function: ham-mem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 19 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.091s
+[[34m  Info  [0m] Function: ham-mem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.066s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] ham-mem-alloc-->1 * res$203._2 + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.058s
+[[34m  Info  [0m] - Found inductive invariant: ham-mem-alloc --> alloc + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function invoke-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-alloc-->1 * res$204._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] Function: invoke-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-alloc-->1 * res$204._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-alloc-->1 * res$204._2 + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: invoke-alloc --> alloc + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function hammingList-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(0 * n + 1 * x$3$11._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(0 * n + 1 * x$3$11._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 10
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(0 * n + 1 * x$3$11._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 19 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(0 * n + 1 * x$3$11._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 20
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-4 * n + 1 * x$3$11._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-1 * n + 1 * x$3$11._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.059s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 18 + 46
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-4 * n + 1 * x$3$11._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-1 * n + 1 * x$3$11._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: hammingList-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 64
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-4 * n + 1 * x$3$11._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] hammingList-alloc-->(-3 * n + 1 * x$3$11._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] - Found inductive invariant: hammingList-alloc --> (BigInt(-3) * n + alloc) + BigInt(-4) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ???????????????????????????????????????????????
+? ???????????                                             ?
+? ham             alloc <= 1            4.847             ?
+? hammingList     alloc <= 3 * n + 4    1.433             ?
+? invoke          alloc <= 2            0.588             ?
+???????????????????????????????????????????????????????????
+? total: 3     inferred: 3     unknown: 0     time: 6.868 ?
+???????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: HammingMemoized-stats.txt
