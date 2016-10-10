@@ -218,6 +218,10 @@ trait CodeExtraction extends ASTExtractors {
       val valDefs = constructor.vparamss.flatten
       if (valDefs.nonEmpty)
         outOfSubsetError(tmpl.pos, "Abstract class with fields are not supported")
+
+      val vars = tmpl.body collect { case vd @ ValDef(mods, _, _, _) if mods.isMutable => vd }
+      if (vars.nonEmpty)
+        outOfSubsetError(tmpl.pos, "Abstract class with variable fields are not supported")
     }
 
     private def collectClassSymbols(defs: List[Tree]) {
