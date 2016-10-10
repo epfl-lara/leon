@@ -16,7 +16,7 @@ object TypingPhase extends SimpleLeonPhase[Program, Program] {
   val description = "Ensure and enforce certain Leon typing rules"
 
   /**
-   * This phase does 2 different things:
+   * This phase does 3 different things:
    *
    * 1) Ensure that functions that take and/or return a specific ADT subtype
    *    have this encoded explicitly in pre/postconditions. Solvers such as Z3

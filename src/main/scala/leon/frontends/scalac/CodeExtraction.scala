@@ -209,6 +209,17 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
+    // Make sure no abstract class has fields (not supported feature)
+    private def checkAbstractClassFields(tmpl: Template) {
+      val constructor: DefDef = tmpl.children.collectFirst {
+        case ctor @ExConstructorDef() => ctor
+      }.get.asInstanceOf[DefDef]
+
+      val valDefs = constructor.vparamss.flatten
+      if (valDefs.nonEmpty)
+        outOfSubsetError(tmpl.pos, "Abstract class with fields are not supported")
+    }
+
     private def collectClassSymbols(defs: List[Tree]) {
       // We collect all defined classes
       for (t <- defs if !t.isEmpty) t match {
@@ -216,6 +227,7 @@ trait CodeExtraction extends ASTExtractors {
           // ignore
 
         case ExAbstractClass(o2, sym, tmpl) =>
+          checkAbstractClassFields(tmpl)
           seenClasses += sym -> ((Nil, tmpl))
 
         case ExCaseClass(o2, sym, args, tmpl) =>
@@ -227,6 +239,7 @@ trait CodeExtraction extends ASTExtractors {
               // ignore
 
             case ExAbstractClass(_, sym, tmpl) =>
+              checkAbstractClassFields(tmpl)
               seenClasses += sym -> ((Nil, tmpl))
 
             case ExCaseClass(_, sym, args, tmpl) =>
