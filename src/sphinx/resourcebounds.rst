@@ -21,7 +21,7 @@ For these reasons, resource usage of programs are often assessed using more abst
 algorithmic metrics that are fairly independent of the runtime infrastructure.
 These metrics helps establish the asymptotic behavior of the programs, and also can provide more concrete 
 information such as the number of instructions executed by a program in the worst care, 
-or the number of object allocated in heap. What Leon provides you is a way to establish bounds on 
+or the number of objects allocated in heap. What Leon provides you is a way to establish bounds on 
 such algorithmic metrics. 
 For instance, you can state and prove that a function `sorting a list of integers using insertion sort 
 takes time quadratic in size of the list`.
@@ -29,7 +29,7 @@ After all most of the  development effort is spent on making implementations eff
 now you can verify the efficiency of your implementations!
 
 The rest of this documentation presents a brief overview of verifying resource usage of programs using Leon. 
-More illustrations are available under the `Resourcebounds` section of `leon web <http://leon.epfl.ch>`_
+More illustrations are available under the `Resourcebounds` section of `leon web <http://leondev.epfl.ch>`_
 
 
 Proving Abstract Bounds on Resources
@@ -69,7 +69,7 @@ However, the minimality of the inferred constants is only "best-effort" and not 
 
 Importing Inferred Bounds
 -------------------------
-The `leon web <http://leon.epfl.ch>`_ interface allows importing the inferred resource bounds and correctness invariants (if any)
+The `leon web <http://leondev.epfl.ch>`_ interface allows importing the inferred resource bounds and correctness invariants (if any)
 automatically into the program. To do so click on a tick mark on the right pane, and choose `import all invariants`.
 Once all invariants have been imported, the verification phase will get initiated, which may serve to cross check the results.
 
@@ -78,7 +78,7 @@ Finding Counter-examples for Concrete Bounds
 --------------------------------------------
 
 For concrete bounds that do not have holes, Leon can discover counter-examples, which are inputs that violate the specification.
-For instance, Leon will report a counter-example on the following code snippet: (Try it here: `leon web <http://leon.epfl.ch>`_)
+For instance, Leon will report a counter-example on the following code snippet: (Try it here: `leon web <http://leondev.epfl.ch>`_)
 
 .. code-block:: scala
 
@@ -182,7 +182,7 @@ This constraint is because Leon uses induction over the recursive calls made by 
 is sound only when the function is terminating.
 Therefore, users are advised to verify the termination of their programs when proving resource 
 or correctness properties. 
-In `leon web <http://leon.epfl.ch>`_ you can turn on termination from the *params* memu. 
+In `leon web <http://leondev.epfl.ch>`_ you can turn on termination from the *params* memu. 
 To run the Leon termination checker from command line  see :ref:`cmdlineoptions`.
 
 Running from Command Line
@@ -227,6 +227,14 @@ Common Pitfalls
 	  }
 
 	To prove a linear bound for ``countUntilN``, one should use either ``steps <= ? * (n - i) + ?`` or more generally ``steps <= ? * n + ? * i + ?``
+
+Support for Higher-order Functions and Memoization
+--------------------------------------------------
+
+We have recently extended the tool to verify resource bounds of higher-order functions in the presence of memoization
+and lazy evaluation. Some examples are available under the heading `Memresources` in `leon web <http://leondev.epfl.ch>`_.
+The technical report `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_ 
+provides more details on this extension. 
 
 Limitations
 -----------
