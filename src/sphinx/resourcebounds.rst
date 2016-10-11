@@ -13,20 +13,20 @@ upper bounds on resources consumed by programs.
 Why Verify Resource Bounds?
 ---------------------------
 
-Statically proving bounds on resources such as time and space consumed by softwares is considered too difficult 
-a task to accomplish due to the complexities of the hardware and operating environments that 
-the modern day softwares are deployed on.
-This is true to an extent only if one wants to precisely estimate the resource usage in terms of the actual
-physical units such as wall-clock time or bytes.
-However, as shown by decades of research in theoretically computer science, it is possible to assess
-resource usage of programs using more abstract, algorithmic metrics that are fairly independent of the runtime
-infrastructure.
-These metrics often characterize the asymptotic behavior of the programs.
-What Leon provides you is a way to establish bounds on such algorithmic metrics. 
+Statically establishing bounds on resources such as time and space consumed by softwares
+is an important problem. 
+While it is desirable to compute resource usage in terms of physical units such as wall-clock time
+or bytes, this task is often dependent on the underlying hardware and operating environments.
+For these reasons, resource usage of programs are often assessed using more abstract, 
+algorithmic metrics that are fairly independent of the runtime infrastructure.
+These metrics helps establish the asymptotic behavior of the programs, and also can provide more concrete 
+information such as the number of instructions executed by a program in the worst care, 
+or the number of object allocated in heap. What Leon provides you is a way to establish bounds on 
+such algorithmic metrics. 
 For instance, you can state and prove that a function `sorting a list of integers using insertion sort 
 takes time quadratic in size of the list`.
-After all most of the  development effort is spent on making implementations efficient, and now you can verify the 
-efficiency of your implementations!
+After all most of the  development effort is spent on making implementations efficient, and 
+now you can verify the efficiency of your implementations!
 
 The rest of this documentation presents a brief overview of verifying resource usage of programs using Leon. 
 More illustrations are available under the `Resourcebounds` section of `leon web <http://leon.epfl.ch>`_
@@ -227,7 +227,6 @@ Common Pitfalls
 	  }
 
 	To prove a linear bound for ``countUntilN``, one should use either ``steps <= ? * (n - i) + ?`` or more generally ``steps <= ? * n + ? * i + ?``
- 	
 
 Limitations
 -----------
@@ -237,7 +236,6 @@ Unfortunately, certain features that are supported in correctness verification a
 verification as yet. Below are a set of features that are not supported currently.
 
 * `xlang` and mutable state
-* Higher-order functions and `lazy val`. (To be included in the next update).
 * Choose operations
 * Class invariants
 * Strings
@@ -251,7 +249,7 @@ For any questions, please consult  `Ravi Madhavan <http://lara.epfl.ch/~kandhada
 check the following publications that explain the underlying techniques.
 
 	* `Symbolic resource bound inference for functional programs <http://lara.epfl.ch/~kuncak/papers/MadhavanKuncak14SymbolicResourceBoundInferenceFunctionalPrograms.pdf>`_, by *Ravichandhran Madhavan* and *Viktor Kuncak*. Computer Aided Verification (CAV), 2014.
-	* `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_, by *Ravichandhran Madhavan*, *Sumith Kulal*, and *Viktor Kuncak*. EPFL Technical Report, 2016.
+	* `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_, by *Ravichandhran Madhavan*, *Sumith Kulal*, and *Viktor Kuncak*. EPFL Technical Report, 2016.	
 
 Contributors
 ------------
