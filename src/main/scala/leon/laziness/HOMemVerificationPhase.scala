@@ -21,7 +21,7 @@ object HOMemVerificationPhase {
   val debugInferProgram = false
 
   class MemVerificationReport(val stateVerification: Option[VerificationReport],
-                              resourceVeri: Option[VerificationReport],
+                              val resourceVeri: Option[VerificationReport],
                               userTmplMap: Map[FunDef, Expr],
                               initProg: Program) {
     val resourceReport = resourceVeri match {
@@ -145,6 +145,7 @@ object HOMemVerificationPhase {
     VerificationReport(prog, nrep)
   }
 
+  // TODO: set a per VC timeout
   def checkSpecifications(clFac: ClosureFactory, prog: Program, checkCtx: LeonContext): VerificationReport = {
     // convert 'axiom annotation to library
     prog.definedFunctions.foreach { fd =>
