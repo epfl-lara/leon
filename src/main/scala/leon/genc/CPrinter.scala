@@ -41,24 +41,26 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     // Mind the fourth and eighth double quotes
     case StringLiteral(s) => c""""${escape(s)}""""
 
+    case EnumLiteral(id)  => c"$id"
+
 
     /* --------------------------------------------------- Definitions  ----- */
-    case Prog(includes, structs, typedefs, functions) =>
+    case Prog(includes, typedefs, enums, types, functions) =>
       c"""|/* ------------------------------------ includes ----- */
           |
           |${nary(buildIncludes(includes), sep = "\n")}
           |
-          |/* ---------------------- data type declarations ----- */
-          |
-          |${nary(structs map StructDecl, sep = "\n")}
-          |
           |/* -------------------------------- type aliases ----- */
           |
-          |${nary(typedefs map TypeDefDecl, sep = "\n")}
+          |${nary(typedefs map TypedefDecl, sep = "\n")}
+          |
+          |/* --------------------------------------- enums ----- */
+          |
+          |${nary(enums map EnumDef, sep = "\n")}
           |
           |/* ----------------------- data type definitions ----- */
           |
-          |${nary(structs map StructDef, sep = "\n")}
+          |${nary(types map TypeDef, sep = "\n")}
           |
           |/* ----------------------- function declarations ----- */
           |
@@ -192,7 +194,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
 
   private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
-    case TypeDefDecl(TypeDef(Id(orig), Id(alias))) =>
+    case TypedefDecl(Typedef(Id(orig), Id(alias))) =>
       c"typedef $alias $orig;"
 
     case FunDecl(f) =>
@@ -209,14 +211,32 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case DeclParam(Var(id, typ)) =>
       c"$typ $id"
 
-    case StructDecl(s) =>
-      c"struct $s;"
+    case EnumDef(Enum(name, values)) =>
+      c"""|typedef enum $name {
+          |  ${nary(values, sep = ",\n")}
+          |} $name;
+          |"""
+
+    case TypeDef(s: Struct) =>
+      c"${StructDef(s)}"
+
+    case TypeDef(u: Union) =>
+      c"${UnionDef(u)}"
 
     case StructDef(Struct(name, fields)) =>
-      c"""|typedef struct $name {
+      c"""|typedef struct {
           |  ${nary(fields map DeclParam, sep = ";\n", closing = ";")}
           |} $name;
           |"""
+
+    case UnionDef(Union(name, fields)) =>
+      c"""|typedef union {
+          |  ${nary(fields map { case (typ, id) => UnionValueDef(typ, id) }, sep = "\n")}
+          |} $name;
+          |"""
+
+    case UnionValueDef(typ, id) =>
+      c"$typ $id;"
 
     case NewLine =>
       c"""|
@@ -231,12 +251,15 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
-  private case class TypeDefDecl(td: TypeDef) extends WrapperTree
+  private case class TypedefDecl(td: Typedef) extends WrapperTree
   private case class FunDecl(f: Fun) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
   private case class DeclParam(x: Var) extends WrapperTree
-  private case class StructDecl(s: Struct) extends WrapperTree
+  private case class EnumDef(u: Enum) extends WrapperTree
+  private case class TypeDef(t: Type) extends WrapperTree // This is not Typedef!!!
   private case class StructDef(s: Struct) extends WrapperTree
+  private case class UnionDef(u: Union) extends WrapperTree
+  private case class UnionValueDef(typ: Type, id: Id) extends WrapperTree
   private case object NewLine extends WrapperTree
 }
 
