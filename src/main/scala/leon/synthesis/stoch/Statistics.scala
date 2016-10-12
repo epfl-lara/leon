@@ -17,16 +17,18 @@ object Statistics {
   def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = {
     for {
       unit <- p.units
-      f <- unit.definedFunctions if ctx.files.contains(f.getPos.file)
+      f <- unit.definedFunctions
       e <- allSubExprs(f.fullBody)
     } yield e
   }
 
   def allSubExprsByType(ctx: LeonContext, p: Program): Map[TypeTree, Seq[Expr]] = {
-    val ans = allSubExprs(ctx, p).groupBy(_.getType)
-    for (typeTree <- ans.keys) {
+    val ase = allSubExprs(ctx, p)
+    val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
+    val ans = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
+    /* for (typeTree <- ans.keys) {
       println(s"${typeTree}: ${getTypeParams(typeTree)}")
-    }
+    } */
     ans
   }
 
@@ -55,8 +57,10 @@ object Statistics {
 
   def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
     val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(ctx, p)
-    val getExprType: Expr => Class[_ <: Expr] = _.getClass 
-    val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = asebt.mapValues(_.map(getExprType))
+    val relevantSubExprs = asebt.mapValues(_.filter(expr => ctx.files.contains(expr.getPos.file)))
+                                .filter { case (tt, se) => se.nonEmpty }
+    val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
+    val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = relevantSubExprs.mapValues(_.map(getExprConstr))
     asecbt.mapValues(_.groupBy(identity).mapValues(_.size))
   }
 
@@ -94,18 +98,23 @@ object Statistics {
     TypeOps.collectPreorder{ tt => List(tt) }(typeTree)
            .filter(isTypeParameter)
            .map(asTypeParameter)
+           .distinct
   }
 
-  def normalizeType(
-      allParams: Seq[TypeParameter],
-      renamingContext: Map[TypeParameter, TypeParameter],
-      typeTree: TypeTree): TypeTree = {
-    null
+  def normalizeType(allParams: Seq[TypeParameter], typeTree: TypeTree): TypeTree = {
+    val thisParams = getTypeParams(typeTree).distinct
+    require(thisParams.toSet.subsetOf(allParams.toSet))
+    val renaming = thisParams.zip(allParams)
+                             .map { case (x, y) => (x.asInstanceOf[TypeTree], y.asInstanceOf[TypeTree]) }
+                             .toMap
+    val ans = TypeOps.replace(renaming, typeTree)
+    // println(s"Normalizing ${typeTree}: ${ans}")
+    ans
   }
 
   def normalizeTypes(seq: Seq[TypeTree]): Seq[TypeTree] = {
     val allParams = seq.flatMap(getTypeParams).distinct
-    seq.map(typeTree => normalizeType(allParams, Map(), typeTree))
+    seq.map(typeTree => normalizeType(allParams, typeTree))
   }
 
 }
