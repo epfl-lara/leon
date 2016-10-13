@@ -32,55 +32,6 @@ object Statistics {
     ans
   }
 
-  // Expression constructor statistics
-  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Int]]
-
-  def ++(stats1: ExprConstrStats, stats2: ExprConstrStats): ExprConstrStats = {
-    def addMaps[K](map1: Map[K, Int], map2: Map[K, Int]): Map[K, Int] = {
-      map1 ++ map2.map{ case (k, v) => k -> (map1.getOrElse(k, 0) + v) }
-    }
-
-    stats1 ++ stats2.map{ case (k1, k2v) => k1 -> (addMaps(stats1.getOrElse(k1, Map()), k2v)) }
-  }
-
-  def exprConstrStatsToString(stats: ExprConstrStats): String = {
-    val ans = new StringBuilder()
-    def total[K](map: Map[K, Int]): Int = map.values.fold(0)(_ + _)
-    for (typeConstrs <- stats.toList.sortBy(typeExpr => -total(typeExpr._2))) {
-      val typeTotal = total(typeConstrs._2)
-      for (constr <- typeConstrs._2.toList.sortBy(-_._2)) {
-        ans.append(s"${typeConstrs._1}, ${typeTotal}, ${constr._1}, ${constr._2}\n")
-      }
-    }
-    ans.toString()
-  }
-
-  def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
-    val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(ctx, p)
-    val relevantSubExprs = asebt.mapValues(_.filter(expr => ctx.files.contains(expr.getPos.file)))
-                                .filter { case (tt, se) => se.nonEmpty }
-    val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
-    val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = relevantSubExprs.mapValues(_.map(getExprConstr))
-    asecbt.mapValues(_.groupBy(identity).mapValues(_.size))
-  }
-
-  def getExprConstrStatsPretty(ctx: LeonContext, p: Program): String = {
-    exprConstrStatsToString(getExprConstrStats(ctx, p))
-  }
-
-  // Type statistics
-  def getTypeStats(ctx: LeonContext, p: Program): Map[TypeTree, Int] = {
-    allSubExprs(ctx, p).groupBy(_.getType).mapValues(_.size)
-  }
-
-  def getTypeStatsPretty(ctx: LeonContext, p: Program): String = {
-    val ans = new StringBuilder()
-    for (typeFreq <- getTypeStats(ctx, p).toList.sortBy(-_._2)) {
-      ans.append(s"${typeFreq._1} -> ${typeFreq._2}\n")
-    }
-    ans.toString()
-  }
-
   // Type normalization
   // We assume that all type parameters are ordered: T, U, V, ...
   // Each type is converted into the lexicographically smallest type where equality / inequality constraints are
@@ -115,6 +66,67 @@ object Statistics {
   def normalizeTypes(seq: Seq[TypeTree]): Seq[TypeTree] = {
     val allParams = seq.flatMap(getTypeParams).distinct
     seq.map(typeTree => normalizeType(allParams, typeTree))
+  }
+
+  // Expression constructor statistics
+  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Int]]
+
+  def addStats(stats1: ExprConstrStats, stats2: ExprConstrStats): ExprConstrStats = {
+    type HashMap[K, V] = scala.collection.mutable.HashMap[K, V]
+    val ans = new HashMap[TypeTree, HashMap[Class[_ <: Expr], Int]]()
+
+    def addMap(stats: ExprConstrStats) = {
+      for (typeTree <- stats.keys) {
+        val typeStats = ans.getOrElse(typeTree, new HashMap())
+        for (constr <- stats(typeTree).keys) {
+          val freq = typeStats.getOrElse(constr, 0) + stats(typeTree)(constr)
+          typeStats.put(constr, freq)
+        }
+        ans.put(typeTree, typeStats)
+      }
+    }
+
+    addMap(stats1)
+    addMap(stats2)
+    ans.mapValues(_.toMap).toMap
+  }
+
+  def exprConstrStatsToString(stats: ExprConstrStats): String = {
+    val ans = new StringBuilder()
+    def total[K](map: Map[K, Int]): Int = map.values.fold(0)(_ + _)
+    for (typeConstrs <- stats.toList.sortBy(typeExpr => -total(typeExpr._2))) {
+      val typeTotal = total(typeConstrs._2)
+      for (constr <- typeConstrs._2.toList.sortBy(-_._2)) {
+        ans.append(s"${typeConstrs._1}\t${typeTotal}\t${constr._1}\t${constr._2}\n")
+      }
+    }
+    ans.toString()
+  }
+
+  def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
+    val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(ctx, p)
+    val relevantSubExprs = asebt.mapValues(_.filter(expr => ctx.files.contains(expr.getPos.file)))
+                                .filter { case (tt, se) => se.nonEmpty }
+    val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
+    val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = relevantSubExprs.mapValues(_.map(getExprConstr))
+    asecbt.mapValues(_.groupBy(identity).mapValues(_.size))
+  }
+
+  def getExprConstrStatsPretty(ctx: LeonContext, p: Program): String = {
+    exprConstrStatsToString(getExprConstrStats(ctx, p))
+  }
+
+  // Type statistics
+  def getTypeStats(ctx: LeonContext, p: Program): Map[TypeTree, Int] = {
+    allSubExprs(ctx, p).groupBy(_.getType).mapValues(_.size)
+  }
+
+  def getTypeStatsPretty(ctx: LeonContext, p: Program): String = {
+    val ans = new StringBuilder()
+    for (typeFreq <- getTypeStats(ctx, p).toList.sortBy(-_._2)) {
+      ans.append(s"${typeFreq._1} -> ${typeFreq._2}\n")
+    }
+    ans.toString()
   }
 
 }

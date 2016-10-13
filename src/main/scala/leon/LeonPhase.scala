@@ -47,3 +47,9 @@ case class SimplePrinterPhase[T, V](f: (LeonContext, T) => V) extends UnitPhase[
     println(f(ctx, p))
   }
 }
+
+case class SimpleFunctionApplicatorPhase[F, T](f: (LeonContext, F) => T) extends SimpleLeonPhase[F, T] {
+  val name = "simple-function-applicator-phase"
+  val description = "simple-function-applicator"
+  def apply(ctx: LeonContext, v: F): T = f(ctx, v)
+}
