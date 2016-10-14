@@ -770,7 +770,7 @@ abstract class STELike(name: String) extends Rule(name) {
         }
       }
 
-      filteredEnough
+      filteredEnough()
     }
 
     updateCTree()

@@ -5,14 +5,12 @@ package grammars
 
 import aspects._
 
-import purescala.Expressions._
 import purescala.Common._
 import purescala.DefOps._
 import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
-import purescala.Constructors.caseClassSelector
 
 /** Represents a user-defined context-free grammar of expressions */
 case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
@@ -47,7 +45,7 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
   def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[Label, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost)
+    ProductionRule[Label, Expr](Nil, _ => builder, tag, cost)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
@@ -158,20 +156,19 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
     }
 
     def gcd(a: Int,b: Int): Int = {
-      if(b ==0) a else gcd(b, a%b)
+      if(b == 0) a else gcd(b, a%b)
     }
 
     for ((l, pw) <- ps) yield {
-      val ws = pw.flatMap(_._2);
-
+      val ws = pw.flatMap(_._2)
 
       val prods = if (ws.nonEmpty) {
 
         val factor = ws.reduceLeft(gcd)
-        var sum = ws.sum;
-        var max = ws.max;
+        val sum = ws.sum
+        val max = ws.max
 
-        println("Factor/Sum/Max: "+factor+"/"+sum+"/"+max)
+        println(s"Factor/Sum/Max: $factor/$sum/$max")
 
         for ((p, ow) <- pw) yield {
           p.copy(cost = normalizedCost(p.cost, ow, max, factor))

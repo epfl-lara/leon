@@ -2,29 +2,16 @@ package leon
 package synthesis.disambiguation
 
 import purescala.Expressions._
-import purescala.ExprOps
 import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Types._
 import purescala.Common._
-import purescala.Definitions.{FunDef, Program, TypedFunDef, ValDef}
-import purescala.DefOps
-import scala.collection.mutable.ListBuffer
-import leon.LeonContext
-import leon.purescala.Definitions._
-import leon.verification.VerificationContext
-import leon.verification.VerificationPhase
-import leon.solvers._
-import scala.concurrent.duration._
-import leon.verification.VCStatus
-import leon.verification.VCResult
-import leon.evaluators.AbstractEvaluator
-import java.util.IdentityHashMap
-import leon.utils.Position
-import scala.collection.JavaConversions._
+import purescala.Definitions.{Program, TypedFunDef, ValDef}
 import leon.evaluators.DefaultEvaluator
 import leon.grammars.ValueGrammar
 import leon.datagen.GrammarDataGen
+
+import scala.language.implicitConversions
 
 class InputPatternCoverageException(msg: String) extends
   Exception(msg)
@@ -40,7 +27,6 @@ case class PatternExtractionErrorException(p: Pattern, msg: String) extends
  * If possible, synthesizes a set of inputs for the function so that they cover all parts of the function.
  * Requires the function to only have pattern matchings without conditions, functions with single variable calls.
  * 
- * @param fds The set of functions to cover
  * @param fd The calling function
  */
 class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program) {

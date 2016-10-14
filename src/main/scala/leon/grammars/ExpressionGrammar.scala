@@ -72,14 +72,14 @@ abstract class ExpressionGrammar {
         printer(s"${lhs}ε")
       } else {
         val rhs = for (g <- gs) yield {
-        val subs = g.subTrees.map { t =>
-          FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+          val subs = g.subTrees.map { t =>
+            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+          }
+          s"(${g.cost}) " + g.builder(subs).asString
         }
 
-          g.builder(subs).asString
-      }
         printer(lhs + rhs.mkString("\n" + " " * 55))
+      }
     }
-  }
   }
 }

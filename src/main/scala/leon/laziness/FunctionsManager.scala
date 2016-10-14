@@ -41,12 +41,12 @@ class FunctionsManager(p: Program) {
             case cc: CaseClass if isFunCons(cc)      =>
             // other calls may be tagged by labels
             case cc @ CaseClass(_, args) if isWithStateCons(cc) =>
-              args map rec(WithState())
+              args foreach rec(WithState())
             case f @ FunctionInvocation(_, Seq(CaseClass(_, Seq(invExpr)))) if isStarInvocation(f) =>
               rec(Star())(invExpr)
             case f @ FunctionInvocation(TypedFunDef(callee, _), args) => //if !callee.canBeStrictField
               dg.addEdge(fd, callee, l)
-              args map rec(l)
+              args foreach rec(l)
             case Ensuring(e, Lambda(_, post)) =>
               rec(l)(e)
               rec(Specs())(post)
@@ -62,7 +62,7 @@ class FunctionsManager(p: Program) {
                 case _ =>
                   rec(LambWoPre())(body)
               }
-            case Operator(args, _) => args map rec(l)
+            case Operator(args, _) => args foreach rec(l)
           }
           rec(NoLabel())(body)
       }
