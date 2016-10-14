@@ -71,6 +71,4 @@ object Matrix {
     in21 == in22 || 
     in00 == in10
   } holds
-  } holds
-
 }
