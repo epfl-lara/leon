@@ -75,10 +75,10 @@ object QuestionBuilder {
     def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
       case StringType =>
         List(
-          terminal(StringLiteral("")),
-          terminal(StringLiteral("a")),
-          terminal(StringLiteral("\"'\n\t")),
-          terminal(StringLiteral("Lara 2007"))
+          terminal(StringLiteral(""), classOf[StringLiteral]),
+          terminal(StringLiteral("a"), classOf[StringLiteral]),
+          terminal(StringLiteral("\"'\n\t"), classOf[StringLiteral]),
+          terminal(StringLiteral("Lara 2007"), classOf[StringLiteral])
         )
       case _ => ValueGrammar.computeProductions(t)
     }

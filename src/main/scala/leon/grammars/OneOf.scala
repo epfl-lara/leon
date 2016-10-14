@@ -12,7 +12,7 @@ case class OneOf(inputs: Seq[Expr]) extends SimpleExpressionGrammar {
   def computeProductions(lab: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
     inputs.collect {
       case i if isSubtypeOf(i.getType, lab.getType) =>
-        terminal(i)
+        terminal(i, i.getClass)
     }
   }
 }

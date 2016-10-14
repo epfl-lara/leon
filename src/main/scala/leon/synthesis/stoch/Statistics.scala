@@ -1,13 +1,15 @@
 package leon
 package synthesis.stoch
 
+import scala.collection.mutable.HashMap
+
+import leon.LeonContext
 import purescala.Definitions.Program
-import purescala.Expressions.Expr
 import purescala.ExprOps
-import purescala.Types.StringType
+import purescala.Expressions.Expr
+import purescala.TypeOps
 import purescala.Types.TypeParameter
 import purescala.Types.TypeTree
-import purescala.TypeOps
 
 object Statistics {
 

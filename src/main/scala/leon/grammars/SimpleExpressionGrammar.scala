@@ -14,13 +14,22 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
   type Prod = ProductionRule[TypeTree, Expr]
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost)
+  def terminal(
+      builder: => Expr,
+      outType: Class[_ <: Expr],
+      tag: Tags.Tag = Tags.Top,
+      cost: Int = 1) = {
+    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, outType, tag, cost)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[TypeTree], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[TypeTree, Expr](subs, builder, tag, cost)
+  def nonTerminal(
+      subs: Seq[TypeTree],
+      builder: (Seq[Expr] => Expr),
+      outType: Class[_ <: Expr],
+      tag: Tags.Tag = Tags.Top,
+      cost: Int = 1) = {
+    ProductionRule[TypeTree, Expr](subs, builder, outType, tag, cost)
   }
 
   def filter(f: Prod => Boolean) = {
@@ -34,7 +43,7 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
   // Finalize this to depend only on the type of the label
   final def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
     computeProductions(lab.getType).map { p =>
-      ProductionRule(p.subTrees.map(Label(_)), p.builder, p.tag, p.cost)
+      ProductionRule(p.subTrees.map(Label(_)), p.builder, p.outType, p.tag, p.cost)
     }
   }
 

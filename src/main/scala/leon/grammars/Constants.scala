@@ -28,6 +28,6 @@ case class Constants(e: Expr) extends SimpleExpressionGrammar {
       case _ => Set()
     }(e)
 
-    (literals -- excluded map (terminal(_, Tags.Constant))).toSeq
+    (literals -- excluded map (e => terminal(e, e.getClass, Tags.Constant))).toSeq
   }
 }

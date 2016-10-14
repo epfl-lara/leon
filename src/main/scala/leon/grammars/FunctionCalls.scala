@@ -78,7 +78,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
     val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
 
     funcs.map{ tfd =>
-      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
+      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), classOf[FunctionInvocation], Tags.tagOf(tfd.fd, isSafe = false))
     }
   }
 }

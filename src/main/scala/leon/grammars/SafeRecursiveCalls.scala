@@ -26,6 +26,7 @@ case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path) extends SimpleE
         nonTerminal(
           freeSeq.map(_.getType),
           sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi),
+          fi.getClass,
           Tags.tagOf(fi.tfd.fd, isSafe = true),
           formulaSize(fi) - freeSeq.size
         )
