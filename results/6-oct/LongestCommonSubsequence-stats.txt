@@ -1,0 +1,127 @@
+State-Verification-Time: 6.006s
+Total-Time: 28.563s
+Total-VCs-Generated: 52
+Z3SolvedVCs: 49
+CVC4SolvedVCs: 3
+procs: 4
+VC-refinement: 11
+disjuncts: 41
+TotalVCCTime: 1.64s
+Total-AxiomChoose-Time: 0.02s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.237s
+UneliminatedEqualities: 74
+ElimTime: 0.222s
+Total-Choose-Time: 0.601s
+BinarySearchTime: 1.722s
+Resource-Inference-Time: 22.557s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 411.0
+Max.CVC4-Time: 1233
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 97.40816326530613
+Max.Z3-Time: 4773
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 4.181818181818182
+Max.AxiomBlowup: 36
+Avg.VC-size: 214.0
+Max.VC-size: 508
+Avg.UIF+ADT: 12.727272727272727
+Max.UIF+ADT: 24
+Avg.TemplateIds: 2.090909090909091
+Max.TemplateIds: 4
+Avg.unflatSize: 25.272727272727273
+Max.unflatSize: 123
+Avg.UnflatTime: 0.07027272727272728s
+Max.UnflatTime: 0.153s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.04s
+Max.VC-check-time: 0.208s
+Avg.CallADT-Constraints: 17.121951219512194
+Max.CallADT-Constraints: 70
+Avg.CtrsBeforeElim: 35.53658536585366
+Max.CtrsBeforeElim: 114
+Avg.EliminatedAtoms: 29.926829268292682
+Max.EliminatedAtoms: 87
+Avg.Param-Atoms: 1.2195121951219512
+Max.Param-Atoms: 3
+Avg.NonParam-Atoms: 5.609756097560975
+Max.NonParam-Atoms: 27
+Avg.Disj-choosing-time: 0.014658536585365853s
+Max.Disj-choosing-time: 0.077s
+Avg.NLsize: 24.975609756097562
+Max.NLsize: 145
+Avg.NL-solving-time: 0.038609756097560975s
+Max.NL-solving-time: 0.023s
+########## Outputs ############
+########## State Verification ############
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                              ║
+║ LongestCommonSubsequence.bottomUpPost$5  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.051 ║
+║ LongestCommonSubsequence.bottomUpPost$5  precond. (call deps$5(m - BigInt(1), n, st@))                        ?:?  valid  U:orb-smt-z3          0.049 ║
+║ LongestCommonSubsequence.bottomUpPost$5  precond. (call deps$5(m, j, st@))                                    ?:?  valid  U:orb-smt-z3          0.058 ║
+║ LongestCommonSubsequence.bottomUpPost$5  precond. (call depsLem$5(m - BigInt(1), j + BigInt(1),  ...)         ?:?  valid  U:orb-smt-z3          0.067 ║
+║ LongestCommonSubsequence.bottomUpPost$5  precond. (call depsLem$5(m, BigInt(0), m, j, st@))                   ?:?  valid  U:orb-smt-z3          0.060 ║
+║ LongestCommonSubsequence.bottomup$5      postcondition                                                        ?:?  valid  U:orb-smt-z3          0.264 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call bottomUpPost$5(m, j, n, x$4$7._2))                    ?:?  valid  U:orb-smt-z3          0.079 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call bottomup$5(m - BigInt(1), n, n, st@))                 ?:?  valid  U:orb-smt-z3          0.030 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call bottomup$5(m, j - BigInt(1), n, st@))                 ?:?  valid  U:orb-smt-z3          0.050 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call invoke$5(m, j, n, st@))                               ?:?  valid  U:orb-smt-z3          0.037 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call invoke$5(m, j, n, tail$17._2))                        ?:?  valid  U:orb-smt-z3          0.779 ║
+║ LongestCommonSubsequence.bottomup$5      precond. (call invoke$5(m, j, n, tail$18._2))                        ?:?  valid  U:orb-smt-orb-cvc4    1.142 ║
+║ LongestCommonSubsequence.deps$5          postcondition                                                        ?:?  valid  U:orb-smt-z3          0.537 ║
+║ LongestCommonSubsequence.deps$5          precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.043 ║
+║ LongestCommonSubsequence.deps$5          precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.041 ║
+║ LongestCommonSubsequence.deps$5          precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.041 ║
+║ LongestCommonSubsequence.deps$5          precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.053 ║
+║ LongestCommonSubsequence.depsLem$5       precond. (call deps$5(i, j, st@))                                    ?:?  valid  U:orb-smt-z3          0.041 ║
+║ LongestCommonSubsequence.depsLem$5       precond. (call deps$5(m, n, st@))                                    ?:?  valid  U:orb-smt-z3          0.031 ║
+║ LongestCommonSubsequence.depsLem$5       tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.122 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call deps$5(i, j, st@)))                             ?:?  valid  U:orb-smt-z3          0.059 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call deps$5(m, n, st@)))                             ?:?  valid  U:orb-smt-z3          0.051 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m - BigInt(1), n, s ...))  ?:?  valid  U:orb-smt-z3          0.037 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m - BigInt(1), n, s ...))  ?:?  valid  U:orb-smt-orb-cvc4    0.031 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m, n - BigInt(1), s ...))  ?:?  valid  U:orb-smt-z3          0.041 ║
+║ LongestCommonSubsequence.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m, n - BigInt(1), s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LongestCommonSubsequence.depsMono$5      precond. (call deps$5(i, j, st1))                                    ?:?  valid  U:orb-smt-z3          0.037 ║
+║ LongestCommonSubsequence.depsMono$5      precond. (call deps$5(i, j, st2))                                    ?:?  valid  U:orb-smt-z3          0.049 ║
+║ LongestCommonSubsequence.depsMono$5      tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.285 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call deps$5(i, j, st1)))                             ?:?  valid  U:orb-smt-z3          0.062 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call deps$5(i, j, st2)))                             ?:?  valid  U:orb-smt-orb-cvc4    0.060 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call depsMono-VCTact(i - BigInt(1), j, st1, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call depsMono-VCTact(i - BigInt(1), j, st1, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call depsMono-VCTact(i, j - BigInt(1), st1, s ...))  ?:?  valid  U:orb-smt-z3          0.052 ║
+║ LongestCommonSubsequence.depsMono$5      tact (precond. (call depsMono-VCTact(i, j - BigInt(1), st1, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LongestCommonSubsequence.invoke$5        postcondition                                                        ?:?  valid  U:orb-smt-z3          0.173 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.035 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.054 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call deps$5(i, j, res._2))                                 ?:?  valid  U:orb-smt-z3          0.057 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call depsMono$5(i - BigInt(1), j, st@, out$1))             ?:?  valid  U:orb-smt-z3          0.053 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call depsMono$5(i - BigInt(1), n, st@, out$1))             ?:?  valid  U:orb-smt-z3          0.066 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call depsMono$5(i, j - BigInt(1), st@, out$1))             ?:?  valid  U:orb-smt-z3          0.060 ║
+║ LongestCommonSubsequence.invoke$5        precond. (call lcs-mem$3(i, j, st@))                                 ?:?  valid  U:orb-smt-z3          0.044 ║
+║ LongestCommonSubsequence.lcs-mem$3       match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.028 ║
+║ LongestCommonSubsequence.lcs-mem$3       postcondition                                                        ?:?  valid  U:orb-smt-z3          0.294 ║
+║ LongestCommonSubsequence.lcs-mem$3       precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.034 ║
+║ LongestCommonSubsequence.lcs-mem$3       precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.041 ║
+║ LongestCommonSubsequence.lcs-mem$3       precond. (call lcs-mem$3(a$175, j, st@))                             ?:?  valid  U:orb-smt-z3          0.101 ║
+║ LongestCommonSubsequence.lcs-mem$3       precond. (call lcs-mem$3(a$179, a$178, st@))                         ?:?  valid  U:orb-smt-z3          0.118 ║
+║ LongestCommonSubsequence.lcs-mem$3       precond. (call lcs-mem$3(i, a$176, dres$0._2 ++ Set[Mem ...)         ?:?  valid  U:orb-smt-z3          0.214 ║
+║ LongestCommonSubsequence.lcsSols$5       postcondition                                                        ?:?  valid  U:orb-smt-z3          0.134 ║
+║ LongestCommonSubsequence.lcsSols$5       precond. (call bottomup$5(m, n, n, st@))                             ?:?  valid  U:orb-smt-z3          0.029 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 52     valid: 52     invalid: 0      unknown 0                                                                                           6.006 ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+########## Resource Verification ############
+. ┌─────────┐
+╔═╡ Summary ╞════════════════════════════════════════════════════════════════╗
+║ └─────────┘                                                                ║
+║ bottomup        steps <= ((30 * (m * n) + 30 * m) + 30 * j) + 27    18.101 ║
+║ invoke          steps <= 20                                         0.301  ║
+║ lcs             steps <= 17                                         3.656  ║
+║ lcsSols         steps <= ((30 * (m * n) + 30 * m) + 30 * n) + 28    0.499  ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 4     inferred: 4     unknown: 0     time: 22.557                   ║
+╚════════════════════════════════════════════════════════════════════════════╝

@@ -71,7 +71,8 @@ class FunctionsManager(p: Program) {
   }
 
   /**
-   * all lambdas in the program
+   * all lambdas in the program.
+   * Note: function specifications cannot create lambdas.
    */
   val lambdasList = userLevelFunctions(p).flatMap {
     case fd if fd.hasBody =>

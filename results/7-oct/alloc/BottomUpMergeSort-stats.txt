@@ -1,0 +1,133 @@
+State-Verification-Time: 18.792s
+Total-Time: 57.178s
+Total-VCs-Generated: 56
+Z3SolvedVCs: 51
+CVC4SolvedVCs: 5
+procs: 7
+VC-refinement: 15
+disjuncts: 45
+TotalVCCTime: 1.925s
+Total-AxiomChoose-Time: 0.051s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.422s
+UneliminatedEqualities: 105
+ElimTime: 0.367s
+Total-Choose-Time: 0.913s
+BinarySearchTime: 1.445s
+Resource-Inference-Time: 38.386s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 201.8
+Max.CVC4-Time: 1009
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 348.6862745098039
+Max.Z3-Time: 17783
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 9.933333333333334
+Max.AxiomBlowup: 76
+Avg.VC-size: 176.46666666666667
+Max.VC-size: 713
+Avg.UIF+ADT: 34.2
+Max.UIF+ADT: 106
+Avg.TemplateIds: 2.066666666666667
+Max.TemplateIds: 3
+Avg.unflatSize: 54.666666666666664
+Max.unflatSize: 356
+Avg.UnflatTime: 0.032933333333333335s
+Max.UnflatTime: 0.133s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.042777777777777776s
+Max.VC-check-time: 0.223s
+Avg.CallADT-Constraints: 22.11111111111111
+Max.CallADT-Constraints: 80
+Avg.CtrsBeforeElim: 47.68888888888889
+Max.CtrsBeforeElim: 192
+Avg.EliminatedAtoms: 41.888888888888886
+Max.EliminatedAtoms: 180
+Avg.Param-Atoms: 0.9333333333333333
+Max.Param-Atoms: 3
+Avg.NonParam-Atoms: 5.8
+Max.NonParam-Atoms: 22
+Avg.Disj-choosing-time: 0.020288888888888888s
+Max.Disj-choosing-time: 0.098s
+Avg.NLsize: 21.91111111111111
+Max.NLsize: 94
+Avg.NL-solving-time: 0.032377777777777776s
+Max.NL-solving-time: 0.015s
+########## Outputs ############
+########## State Verification ############
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                              ?
+? BottomUpMergeSortPrecise.MergeSuspL@mergePre$2  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.063 ?
+? BottomUpMergeSortPrecise.MergeSuspL@mergePre$3  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.053 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   division by zero                                              ?:?  valid  U:orb-smt-z3          0.039 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.048 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.618 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   precond. (call constructMergeTree$5(l, from, mid, st@))       ?:?  valid  U:orb-smt-z3          0.238 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   precond. (call constructMergeTree$5(midlist$2, mid + Bi ...)  ?:?  valid  U:orb-smt-z3          0.105 ?
+? Stream.height$14                                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.height$13                                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.height$13                                 postcondition                                                 ?:?  valid  U:orb-smt-z3          0.041 ?
+? Stream.height$14                                postcondition                                                 ?:?  valid  U:orb-smt-z3          0.053 ?
+? BottomUpMergeSortPrecise.kthMin$5               postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.152 ?
+? BottomUpMergeSortPrecise.kthMin$5               precond. (call kthMinRec$5(mergeSort$5(l, st@), k, st@))      ?:?  valid  U:orb-smt-z3          0.030 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.034 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.122 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            precond. (call kthMinRec$5(dres$2._1, k - BigInt(1), dr ...)  ?:?  valid  U:orb-smt-z3          0.031 ?
+? List.length$8                                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? List.length$8                                   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.048 ?
+? Stream.list-mem$3                               postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.070 ?
+? BottomUpMergeSortPrecise.log$5                  division by zero                                              ?:?  valid  U:orb-smt-z3          0.034 ?
+? BottomUpMergeSortPrecise.log$5                  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.205 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.056 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.130 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    precond. (call logMonotonicity$5(lsz - BigInt(2), lsz - ...)  ?:?  valid  U:orb-smt-z3          0.075 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    precond. (call recSize$5(t$454))                              ?:?  valid  U:orb-smt-z3          0.073 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      division by zero                                              ?:?  valid  U:orb-smt-orb-cvc4    0.034 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      postcondition                                                 ?:?  valid  U:orb-smt-z3          0.090 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      precond. (call logMonotonicity$5({ ...)                       ?:?  valid  U:orb-smt-z3          0.040 ?
+? BottomUpMergeSortPrecise.merge$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.042 ?
+? BottomUpMergeSortPrecise.merge$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.042 ?
+? BottomUpMergeSortPrecise.merge$5                postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.631 ?
+? BottomUpMergeSortPrecise.mergeSort$5            match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.049 ?
+? BottomUpMergeSortPrecise.mergeSort$5            postcondition                                                 ?:?  valid  U:orb-smt-z3          0.149 ?
+? BottomUpMergeSortPrecise.mergeSort$5            precond. (call constructMergeTree$5(l, BigInt(0), l.len ...)  ?:?  valid  U:orb-smt-z3          0.054 ?
+? BottomUpMergeSortPrecise.mergeSort$5            precond. (call logHeightProperty$5(res$222))                  ?:?  valid  U:orb-smt-z3          0.059 ?
+? BottomUpMergeSortPrecise.mergeSusp$5            postcondition                                                 ?:?  valid  U:orb-smt-z3          0.179 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.177 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.074 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ?
+? BottomUpMergeSortPrecise.recSize$5              postcondition                                                 ?:?  valid  U:orb-smt-z3         13.312 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call logMonotonicity$5(BigInt(2) * (recSize$5 ...)  ?:?  valid  U:orb-smt-z3          0.199 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call logMonotonicity$5(BigInt(2) * ({ ...)          ?:?  valid  U:orb-smt-z3          0.228 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(b$23))                               ?:?  valid  U:orb-smt-z3          0.082 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(b$24))                               ?:?  valid  U:orb-smt-z3          0.198 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(t$452))                              ?:?  valid  U:orb-smt-z3          0.094 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(t$453))                              ?:?  valid  U:orb-smt-z3          0.162 ?
+? List.size$22                                    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.028 ?
+? LList.size$23                                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.029 ?
+? LList.size$23                                   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.056 ?
+? List.size$22                                    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.040 ?
+? Stream.weightBalanced$13                        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.weightBalanced$12                         match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.049 ?
+? Stream.weightBalanced$13                        postcondition                                                 ?:?  valid  U:orb-smt-z3          0.052 ?
+? LList.weightBalanced$12                         postcondition                                                 ?:?  valid  U:orb-smt-z3          0.046 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 56     valid: 56     invalid: 0      unknown 0                                                                                          18.792 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+########## Resource Verification ############
+. ???????????
+??? Summary ???????????????????????????????????????????????????????????????????????
+? ???????????                                                                     ?
+? constructMerge? alloc <= 6 * ((to - from) + 1) + -3                      1.827  ?
+? kthMin          alloc <= (6 * (k * log(l.size - 1)) + 6 * l.size) + 3    16.303 ?
+? kthMinRec       alloc <= 6 * (k * l.height) + 2                          17.843 ?
+? merge           alloc <= 3                                               0.315  ?
+? mergeSort       alloc <= 6 * l.size + 1                                  0.376  ?
+? mergeSusp       alloc <= 4 * b.height + 5                                1.722  ?
+???????????????????????????????????????????????????????????????????????????????????
+? total: 6     inferred: 6     unknown: 0     time: 38.386                        ?
+???????????????????????????????????????????????????????????????????????????????????

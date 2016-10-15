@@ -1,0 +1,382 @@
+[[33mWarning [0m] warning: there were two feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for deps$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(i - BigInt(1), items, st@))' VC for deps$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsMono-VCTact(i - BigInt(1), items, st ...))' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call deps$5(i, items, st1)))' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call deps$5(i, items, st2)))' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(i, items, st1))' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(i, items, st2))' VC for depsMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call depsLem-VCTact(x, y - BigInt(1), items,  ...))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call deps$5(y, items, st@)))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call deps$5(x, items, st@)))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(y, items, st@))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(x, items, st@))' VC for depsLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for solveForWeight-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(w - BigInt(1), items, st@))' VC for solveForWeight-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call maxOverItems$5(items, w, items, st@))' VC for solveForWeight-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(w - BigInt(1), items, st@))' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsLem$5(w - wi, w - BigInt(1), items,  ...)' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call maxOverItems$5(items, w, tail$20, st@))' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveForWeight-mem$3(a$175, items, maxWi ...)' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for maxOverItems$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for solveForWeightHelper$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(i - BigInt(1), items, st@))' VC for solveForWeightHelper$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveForWeight-mem$3(i, items, st@))' VC for solveForWeightHelper$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call depsMono$5(i - BigInt(1), items, st@, re ...)' VC for solveForWeightHelper$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(i, items, res._2))' VC for solveForWeightHelper$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for solveUptoWeight$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveForWeightHelper$5(w, items, st@))' VC for solveUptoWeight$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveUptoWeight$5(w - BigInt(1), items,  ...)' VC for solveUptoWeight$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveForWeightHelper$5(w, items, tail$19 ...)' VC for solveUptoWeight$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(w, items, x$4$7._2))' VC for solveUptoWeight$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for knapsack$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call solveUptoWeight$5(w, items, st@))' VC for knapsack$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                      ║
+║ Knapscak.deps$5                  postcondition                                                        ?:?  valid  U:orb-smt-orb-cvc4    0.202 ║
+║ Knapscak.deps$5                  precond. (call deps$5(i - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.045 ║
+║ Knapscak.depsLem$5               precond. (call deps$5(x, items, st@))                                ?:?  valid  U:orb-smt-z3          0.037 ║
+║ Knapscak.depsLem$5               precond. (call deps$5(y, items, st@))                                ?:?  valid  U:orb-smt-z3          0.031 ║
+║ Knapscak.depsLem$5               tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.082 ║
+║ Knapscak.depsLem$5               tact (precond. (call deps$5(x, items, st@)))                         ?:?  valid  U:orb-smt-orb-cvc4    0.053 ║
+║ Knapscak.depsLem$5               tact (precond. (call deps$5(y, items, st@)))                         ?:?  valid  U:orb-smt-z3          0.046 ║
+║ Knapscak.depsLem$5               tact (precond. (call depsLem-VCTact(x, y - BigInt(1), items,  ...))  ?:?  valid  U:orb-smt-z3          0.035 ║
+║ Knapscak.depsMono$5              precond. (call deps$5(i, items, st1))                                ?:?  valid  U:orb-smt-orb-cvc4    0.040 ║
+║ Knapscak.depsMono$5              precond. (call deps$5(i, items, st2))                                ?:?  valid  U:orb-smt-z3          0.042 ║
+║ Knapscak.depsMono$5              tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.132 ║
+║ Knapscak.depsMono$5              tact (precond. (call deps$5(i, items, st1)))                         ?:?  valid  U:orb-smt-z3          0.056 ║
+║ Knapscak.depsMono$5              tact (precond. (call deps$5(i, items, st2)))                         ?:?  valid  U:orb-smt-z3          0.061 ║
+║ Knapscak.depsMono$5              tact (precond. (call depsMono-VCTact(i - BigInt(1), items, st ...))  ?:?  valid  U:orb-smt-z3          0.040 ║
+║ Knapscak.knapsack$5              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.061 ║
+║ Knapscak.knapsack$5              precond. (call solveUptoWeight$5(w, items, st@))                     ?:?  valid  U:orb-smt-z3          0.028 ║
+║ Knapscak.maxOverItems$5          match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.045 ║
+║ Knapscak.maxOverItems$5          match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.036 ║
+║ Knapscak.maxOverItems$5          postcondition                                                        ?:?  valid  U:orb-smt-z3          0.223 ║
+║ Knapscak.maxOverItems$5          precond. (call deps$5(w - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.034 ║
+║ Knapscak.maxOverItems$5          precond. (call depsLem$5(w - wi, w - BigInt(1), items,  ...)         ?:?  valid  U:orb-smt-z3          0.041 ║
+║ Knapscak.maxOverItems$5          precond. (call maxOverItems$5(items, w, tail$20, st@))               ?:?  valid  U:orb-smt-z3          0.072 ║
+║ Knapscak.maxOverItems$5          precond. (call solveForWeight-mem$3(a$175, items, maxWi ...)         ?:?  valid  U:orb-smt-z3          0.141 ║
+║ IList.size$10                    match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.028 ║
+║ IList.size$10                    postcondition                                                        ?:?  valid  U:orb-smt-z3          0.037 ║
+║ Knapscak.solveForWeight-mem$3    postcondition                                                        ?:?  valid  U:orb-smt-z3          0.108 ║
+║ Knapscak.solveForWeight-mem$3    precond. (call deps$5(w - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.032 ║
+║ Knapscak.solveForWeight-mem$3    precond. (call maxOverItems$5(items, w, items, st@))                 ?:?  valid  U:orb-smt-z3          0.082 ║
+║ Knapscak.solveForWeightHelper$5  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.084 ║
+║ Knapscak.solveForWeightHelper$5  precond. (call deps$5(i - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.028 ║
+║ Knapscak.solveForWeightHelper$5  precond. (call deps$5(i, items, res._2))                             ?:?  valid  U:orb-smt-z3          0.055 ║
+║ Knapscak.solveForWeightHelper$5  precond. (call depsMono$5(i - BigInt(1), items, st@, re ...)         ?:?  valid  U:orb-smt-z3          0.053 ║
+║ Knapscak.solveForWeightHelper$5  precond. (call solveForWeight-mem$3(i, items, st@))                  ?:?  valid  U:orb-smt-z3          0.039 ║
+║ Knapscak.solveUptoWeight$5       postcondition                                                        ?:?  valid  U:orb-smt-z3          0.121 ║
+║ Knapscak.solveUptoWeight$5       precond. (call deps$5(w, items, x$4$7._2))                           ?:?  valid  U:orb-smt-z3          0.064 ║
+║ Knapscak.solveUptoWeight$5       precond. (call solveForWeightHelper$5(w, items, st@))                ?:?  valid  U:orb-smt-z3          0.037 ║
+║ Knapscak.solveUptoWeight$5       precond. (call solveForWeightHelper$5(w, items, tail$19 ...)         ?:?  valid  U:orb-smt-orb-cvc4    0.081 ║
+║ Knapscak.solveUptoWeight$5       precond. (call solveUptoWeight$5(w - BigInt(1), items,  ...)         ?:?  valid  U:orb-smt-z3          0.031 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 38     valid: 38     invalid: 0      unknown 0                                                                                   2.463 ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] - considering function solveForWeight-mem-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -1 * items.size) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Creating VC for maxOverItems-steps
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -2 * items.size) + -3 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-1 * remItems.size + 1 * x$3$10._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 24 + 18
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -2 * items.size) + -3 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 31 + 18
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -2 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-13 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 46 + 49
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -19 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-18 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 95
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -2 * items.size) + -3 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 32 + 18
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -2 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-14 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 45 + 50
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -19 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-18 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] checked VC inst... in 0.028s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 29 + 95
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -23 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-22 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 39 + 124
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.059s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.039s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + -4 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(0 * remItems.size + 1 * x$3$10._2) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 32 + 17
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + 0 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-14 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.043s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: maxOverItems-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 46 + 49
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -22 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-18 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -17 * items.size) + -8 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-17 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.053s
+[[34m  Info  [0m] Function: solveForWeight-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] # of atomic predicates: 27 + 95
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -21 * items.size) + -9 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-18 * remItems.size + 1 * x$3$10._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeight-mem-steps-->(1 * x$2$20._2 + -17 * items.size) + -8 <= 0
+[[34m  Info  [0m] maxOverItems-steps-->(-17 * remItems.size + 1 * x$3$10._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] - Found inductive invariant: solveForWeight-mem-steps --> (steps + BigInt(-17) * items.size) + BigInt(-8) <= BigInt(0)
+[[34m  Info  [0m] - Found inductive invariant: maxOverItems-steps --> (BigInt(-17) * remItems.size + steps) + BigInt(-5) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function maxOverItems-steps...
+[[34m  Info  [0m] - considering function solveForWeightHelper-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeightHelper-steps-->(1 * res$203._2 + 0 * items.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: solveForWeightHelper-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeightHelper-steps-->(1 * res$203._2 + -1 * items.size) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] Function: solveForWeightHelper-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 11
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeightHelper-steps-->(1 * res$203._2 + -18 * items.size) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveForWeightHelper-steps-->(1 * res$203._2 + -17 * items.size) + -11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: solveForWeightHelper-steps --> (steps + BigInt(-17) * items.size) + BigInt(-11) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function solveUptoWeight-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((0 * items.size + 0 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-18 * items.size + 0 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + -19 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((0 * items.size + 0 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.023s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-19 * items.size + -1 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 16
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((0 * items.size + 0 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.032s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-19 * items.size + 0 * mult(w, items.size)) + 0 * w) + 1 * x$4$8._2) + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 29 + 15
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-19 * items.size + -1 * mult(w, items.size)) + -22 * w) + 1 * x$4$8._2) + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 30 + 44
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-36 * items.size + -74 * mult(w, items.size)) + -40 * w) + 2 * x$4$8._2) + -37 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-17 * items.size + 99 * mult(w, items.size)) + -134 * w) + 1 * x$4$8._2) + -17 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: solveUptoWeight-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 74
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-36 * items.size + -36 * mult(w, items.size)) + -40 * w) + 2 * x$4$8._2) + -37 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] solveUptoWeight-steps-->(((-17 * items.size + -17 * mult(w, items.size)) + -18 * w) + 1 * x$4$8._2) + -17 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] - Found inductive invariant: solveUptoWeight-steps --> (((BigInt(-17) * items.size + BigInt(-17) * (w * items.size)) + BigInt(-18) * w) + steps) + BigInt(-17) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function knapsack-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] knapsack-steps-->(((0 * w + 0 * items.size) + 1 * x$5$6._2) + 0 * mult(w, items.size)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: knapsack-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] knapsack-steps-->(((-19 * w + -18 * items.size) + 1 * x$5$6._2) + -17 * mult(w, items.size)) + -20 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] knapsack-steps-->(((-18 * w + -17 * items.size) + 1 * x$5$6._2) + -17 * mult(w, items.size)) + -18 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: knapsack-steps --> (((BigInt(-18) * w + BigInt(-17) * items.size) + steps) + BigInt(-17) * (w * items.size)) + BigInt(-18) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞═════════════════════════════════════════════════════════════════════════════════╗
+║ └─────────┘                                                                                 ║
+║ knapsack        steps <= ((17 * (w * items.size) + 17 * items.size) + 18 * w) + 18    0.406 ║
+║ maxOverItems    steps <= 17 * remItems.size + 5                                       0.000 ║
+║ solveForWeight  steps <= 17 * items.size + 8                                          3.842 ║
+║ solveForWeight… steps <= 17 * items.size + 11                                         0.333 ║
+║ solveUptoWeight steps <= ((17 * (w * items.size) + 17 * items.size) + 18 * w) + 17    2.368 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 5     inferred: 5     unknown: 0     time: 6.949                                     ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: Knapsack-stats.txt

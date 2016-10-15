@@ -153,9 +153,8 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
         newfd.postcondition = if (fd.postcondition.isDefined) {
           //we need to handle template and postWoTemplate specially
           val Lambda(resultBinders, _) = fd.postcondition.get
-          val tmplExpr = fd.templateExpr
           val newpost = if (fd.hasTemplate) {
-            val FunctionInvocation(tmpfd, Seq(Lambda(tmpvars, tmpbody))) = tmplExpr.get
+            val FunctionInvocation(tmpfd, Seq(Lambda(tmpvars, tmpbody))) = fd.templateExpr.get
             val newtmp = FunctionInvocation(tmpfd, Seq(Lambda(tmpvars,
               replaceFun(tmpbody, tmpvars.map(_.id).toSet))))
             fd.postWoTemplate match {

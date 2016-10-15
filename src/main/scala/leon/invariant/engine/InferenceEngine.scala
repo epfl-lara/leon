@@ -84,7 +84,7 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
       reporter.info("- Dumping statistics")
       dumpStats(ctx.statsSuffix)
     }
-    new InferenceReport(results.map { case (fd, ic) => (fd -> List[VC](ic)) }, program)(ctx)
+    new InferenceReport(results.map { case (fd, ic) => (fd -> List(ic)) }, program)(ctx)
   }
 
   def dumpStats(statsSuffix: String) = {
@@ -163,8 +163,7 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
 
       if (ctx.abort) {
         reporter.info("- Aborting analysis of " + origFun.id.name)
-        val ic = new InferenceCondition(Seq(), origFun)
-        ic.time = Some(0)
+        val ic = new InferenceCondition(None, origFun, 0)
         prog
       } else if (origFun.getPostWoTemplate == tru && !origFun.hasTemplate) {
         reporter.info("- Nothing to solve for " + origFun.id.name)
@@ -215,11 +214,10 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
                       // record the inferred invariants
                       val inferCond = if (analyzedSet.contains(origFd)) {
                         val ic = analyzedSet(origFd)
-                        ic.addInv(Seq(inv))
+                        ic.addInv(inv, model.get)
                         ic
                       } else {
-                        val ic = new InferenceCondition(Seq(inv), origFd)
-                        ic.time = if (first) Some(funcTime / 1000.0) else Some(0.0)
+                        val ic = new InferenceCondition(Some((inv , model.get)), origFd, if (first) funcTime else 0)
                         // update analyzed set
                         analyzedSet += (origFd -> ic)
                         first = false
@@ -233,8 +231,7 @@ class InferenceEngine(val ctx: InferenceContext) extends Interruptible {
 
               case _ =>
                 reporter.info("- Exhausted all templates, cannot infer invariants")
-                val ic = new InferenceCondition(Seq(), origFun)
-                ic.time = Some(funcTime / 1000.0)
+                val ic = new InferenceCondition(None, origFun, funcTime)
                 analyzedSet += (origFun -> ic)
                 prog
             }

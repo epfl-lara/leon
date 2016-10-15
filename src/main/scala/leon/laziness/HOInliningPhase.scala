@@ -15,7 +15,7 @@ import invariant.util.LetTupleSimplification._
 
 /**
  * Recursive functions are inlined once. A function with contracts is inlined only if
- * it is invocations are top level expression of the body. Otherwise, we throw an error.
+ * its invocations are top level expression of the body. Otherwise, we throw an error.
  */
 object HOInliningPhase extends TransformationPhase {
 
@@ -65,10 +65,10 @@ object HOInliningPhase extends TransformationPhase {
               case (arg, (fargs, lcons)) =>
                 val id = FreshIdentifier("a", arg.getType, true)
                 (id.toVariable +: fargs, e => Let(id, arg, lcons(e)))
-            }            
+            }
             val formalToActual = (tfd.params.map(_.id) zip flatArgs).toMap
-            val substExpr = letCons(replaceFromIDs(formalToActual, body))            
-            val nexpr = simplerLet(substExpr)            
+            val substExpr = letCons(replaceFromIDs(formalToActual, body))
+            val nexpr = simplerLet(substExpr)
             rec(topLevel, inlinedFuns)(nexpr)
           }
         }
@@ -84,7 +84,7 @@ object HOInliningPhase extends TransformationPhase {
     for (fd <- p.definedFunctions) {
       fd.fullBody = rec(true, Set())(fd.fullBody)
     }
-    filterFunDefs(p, fd => !doInline(fd) || inlineOnce(fd))    
+    filterFunDefs(p, fd => !doInline(fd) || inlineOnce(fd))
   }
 
 }

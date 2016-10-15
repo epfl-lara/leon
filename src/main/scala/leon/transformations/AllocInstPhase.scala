@@ -67,7 +67,7 @@ class AllocInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter
   }
 
   override def missCost() = {
-    InfiniteIntegerLiteral(0)
+    InfiniteIntegerLiteral(1)
   } 
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {

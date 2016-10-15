@@ -1,0 +1,278 @@
+State-Verification-Time: 171.5s
+Total-Time: 259.853s
+Total-VCs-Generated: 195
+Z3SolvedVCs: 191
+CVC4SolvedVCs: 4
+procs: 14
+VC-refinement: 36
+disjuncts: 109
+TotalVCCTime: 11.467s
+Total-AxiomChoose-Time: 0.182s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 1.461s
+UneliminatedEqualities: 325
+ElimTime: 1.369s
+Total-Choose-Time: 3.234s
+BinarySearchTime: 2.51s
+Resource-Inference-Time: 88.353s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 513.75
+Max.CVC4-Time: 2055
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 887.1465968586388
+Max.Z3-Time: 169445
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.0
+Max.AxiomBlowup: 1
+Avg.VC-size: 450.44444444444446
+Max.VC-size: 2499
+Avg.UIF+ADT: 55.5
+Max.UIF+ADT: 228
+Avg.TemplateIds: 1.7777777777777777
+Max.TemplateIds: 4
+Avg.unflatSize: 75.36111111111111
+Max.unflatSize: 426
+Avg.UnflatTime: 0.09513888888888888s
+Max.UnflatTime: 0.489s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.10520183486238532s
+Max.VC-check-time: 0.951s
+Avg.CallADT-Constraints: 21.30275229357798
+Max.CallADT-Constraints: 108
+Avg.CtrsBeforeElim: 65.11009174311927
+Max.CtrsBeforeElim: 573
+Avg.EliminatedAtoms: 58.596330275229356
+Max.EliminatedAtoms: 562
+Avg.Param-Atoms: 0.9724770642201835
+Max.Param-Atoms: 2
+Avg.NonParam-Atoms: 6.513761467889908
+Max.NonParam-Atoms: 45
+Avg.Disj-choosing-time: 0.0296697247706422s
+Max.Disj-choosing-time: 0.346s
+Avg.NLsize: 21.38532110091743
+Max.NLsize: 199
+Avg.NL-solving-time: 0.025293577981651376s
+Max.NL-solving-time: 0.044s
+########## Outputs ############
+########## State Verification ############
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                          ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.146 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.074 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.088 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.058 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.327 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.060 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.117 ?
+? Conqueue.Pay$5                            postcondition                                                 ?:?  valid    U:orb-smt-z3          0.871 ?
+? Conqueue.Pay$5                            precond. (call schedMonotone$5[T](st@, a$207, rtail$4,  ...)  ?:?  valid    U:orb-smt-z3          0.469 ?
+? Conqueue.Pay$5                            precond. (call suffixZeroLemma$5[T](q, head$120, rhead$ ...)  ?:?  valid    U:orb-smt-z3          0.773 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.083 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.062 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.310 ?
+? ConcTrees.abs$6                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.029 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.050 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.063 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.059 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.038 ?
+? ConcTrees.appendAssocInst$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          2.617 ?
+? ConcTrees.appendInsertIndex$5             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.041 ?
+? ConcTrees.appendInsertIndex$5             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.561 ?
+? ConcTrees.appendInsertIndex$5             precond. (call appendInsertIndex$5[T](xs$198, l2, i - B ...)  ?:?  valid    U:orb-smt-z3          0.056 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T]((l1 ++ l2), i, y))          ?:?  valid    U:orb-smt-z3          0.389 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T](l1, i, y))                  ?:?  valid    U:orb-smt-z3          0.057 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T](l2, i - l1.size, y))        ?:?  valid    U:orb-smt-z3          0.055 ?
+? Conc.balanced$6                           match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conc.balanced$6                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.040 ?
+? Conc.concInv$6                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.070 ?
+? Conc.concInv$6                            postcondition                                                 ?:?  valid    U:orb-smt-z3          0.051 ?
+? Conqueue.concUntilCompose$5               tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.056 ?
+? Conqueue.concUntilCompose$5               tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.252 ?
+? Conqueue.concUntilConcreteExten$5         tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.071 ?
+? Conqueue.concUntilConcreteExten$5         tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.264 ?
+? Conqueue.concUntilExtenLemma$5            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.043 ?
+? Conqueue.concUntilExtenLemma$5            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.053 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.062 ?
+? Conqueue.concUntilExtenLemma$5            tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.249 ?
+? Conqueue.concUntilMonotone$5              tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.109 ?
+? Conqueue.concUntilMonotone$5              tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.214 ?
+? ConcTrees.concatCorrectness$5             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.035 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.521 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          2.201 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.376 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.407 ?
+? ConcTrees.concatNonEmpty$5                postcondition                                                 ?:?  valid    U:orb-smt-z3         13.013 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](r$220, ys))                ?:?  valid    U:orb-smt-z3          0.630 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](rr$4, ys))                 ?:?  valid    U:orb-smt-z3          0.715 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](xs, l$371))                ?:?  valid    U:orb-smt-z3          0.648 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](xs, ll$4))                 ?:?  valid    U:orb-smt-z3          0.617 ?
+? ConcTrees.concatNormalized$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.046 ?
+? ConcTrees.concatNormalized$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          3.967 ?
+? ConcTrees.concatNormalized$5              precond. (call concatNonEmpty$5[T](xs, ys))                   ?:?  valid    U:orb-smt-z3          0.357 ?
+? Conqueue.concreteMonotone$5               tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.concreteMonotone$5               tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.210 ?
+? Conqueue.concreteUntil$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          1.048 ?
+? Conqueue.concreteUntil$5                  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.079 ?
+? Conqueue.concreteUntilIsSuffix$5          tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.concreteUntilIsSuffix$5          tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.200 ?
+? Conqueue.concreteZeroPredLemma$5          tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.concreteZeroPredLemma$5          tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.194 ?
+? Conqueue.emptyNum$5                       postcondition                                                 ?:?  valid    U:orb-smt-orb-cvc4    0.166 ?
+? Stream.fval-mem$3                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.037 ?
+? Stream.fval-mem$3                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Stream.fval-mem$3                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.221 ?
+? Stream.get$11                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.032 ?
+? Stream.get$11                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.177 ?
+? Stream.get$11                             precond. (call thiss.fval-mem$3(st@))                         ?:?  valid    U:orb-smt-z3          0.031 ?
+? Stream.getV$6                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.030 ?
+? Stream.getV$6                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.065 ?
+? Stream.getV$6                             precond. (call thiss.fval-mem$3(uiState$2[T]))                ?:?  valid    U:orb-smt-z3          0.039 ?
+? Conqueue.head$143                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.056 ?
+? Conqueue.head$143                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.031 ?
+? Conqueue.head$143                         postcondition                                                 ?:?  unknown  Pfolio                0.083 ?
+? ConcTrees.insert$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.036 ?
+? ConcTrees.insert$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3         32.142 ?
+? ConcTrees.insert$5                        precond. (call concatNonEmpty$5[T](insert$5[T](l$375, i ...)  ?:?  valid    U:orb-smt-z3          7.266 ?
+? ConcTrees.insert$5                        precond. (call concatNonEmpty$5[T](l$375, insert$5[T](r ...)  ?:?  valid    U:orb-smt-z3          7.490 ?
+? ConcTrees.insert$5                        precond. (call insert$5[T](l$375, i, y))                      ?:?  valid    U:orb-smt-z3          0.482 ?
+? ConcTrees.insert$5                        precond. (call insert$5[T](r$224, i - l$375.size$10, y))      ?:?  valid    U:orb-smt-z3          0.485 ?
+? ConcTrees.insert$5                        precond. (call insertAppendAxiomInst$5[T](xs, i, y))          ?:?  valid    U:orb-smt-z3          0.081 ?
+? ConcTrees.insert$5                        precond. (call insertAtIndex$5[T](xs.toList$8, i, y))         ?:?  valid    U:orb-smt-z3         26.316 ?
+? ConcTrees.insertAppendAxiomInst$5         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.032 ?
+? ConcTrees.insertAppendAxiomInst$5         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.946 ?
+? ConcTrees.insertAppendAxiomInst$5         precond. (call appendInsertIndex$5[T](l$383.toList$8, r ...)  ?:?  valid    U:orb-smt-z3          1.385 ?
+? ConcTrees.insertAtIndex$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.035 ?
+? ConcTrees.insertAtIndex$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.050 ?
+? ConcTrees.insertAtIndex$5                 precond. (call insertAtIndex$5[T](tail$30, i - BigInt(1 ...)  ?:?  valid    U:orb-smt-z3          0.089 ?
+? ConcTrees.instAppendIndexAxiom$5          match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.031 ?
+? ConcTrees.instAppendIndexAxiom$5          postcondition                                                 ?:?  valid    U:orb-smt-z3          0.795 ?
+? ConcTrees.instAppendIndexAxiom$5          precond. (call appendIndex[T](l$367.toList$8, r$217.toL ...)  ?:?  valid    U:orb-smt-z3          0.711 ?
+? ConcTrees.instAppendUpdateAxiom$5         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.034 ?
+? ConcTrees.instAppendUpdateAxiom$5         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.876 ?
+? ConcTrees.instAppendUpdateAxiom$5         precond. (call appendUpdate[T](l$369.toList$8, r$219.to ...)  ?:?  valid    U:orb-smt-z3          0.728 ?
+? ConcTrees.instSplitAxiom$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-orb-cvc4    0.033 ?
+? ConcTrees.instSplitAxiom$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          1.128 ?
+? Stream.isCached$6                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Stream.isCached$6                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.039 ?
+? Conqueue.isConcrete$5                     match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.077 ?
+? Conqueue.isConcrete$5                     postcondition                                                 ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conc.isEmpty$10                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.036 ?
+? Conc.isLeaf$6                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.042 ?
+? Conc.isLeaf$6                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.032 ?
+? Conc.level$6                              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.030 ?
+? Conc.level$6                              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.187 ?
+? ConcTrees.lookup$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.240 ?
+? ConcTrees.lookup$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3          1.497 ?
+? ConcTrees.lookup$5                        precond. (call instAppendIndexAxiom$5[T](xs, i))              ?:?  valid    U:orb-smt-z3          0.048 ?
+? ConcTrees.lookup$5                        precond. (call lookup$5[T](l$366, i))                         ?:?  valid    U:orb-smt-z3          0.508 ?
+? ConcTrees.lookup$5                        precond. (call lookup$5[T](r$216, i - l$366.size$10))         ?:?  valid    U:orb-smt-z3          0.514 ?
+? ConcTrees.lookup$5                        precond. (call xs.toList$8.apply(i))                          ?:?  valid    U:orb-smt-z3          0.641 ?
+? Conqueue.properSuffix$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.076 ?
+? Conqueue.properSuffix$5                   postcondition                                                 ?:?  valid    U:orb-smt-z3          0.241 ?
+? Conqueue.properSuffix$5                   precond. (call suffixDisequality$5[T](l, suf))                ?:?  valid    U:orb-smt-z3          0.206 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.080 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.098 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.089 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.pushLeft$5                       postcondition                                                 ?:?  valid    U:orb-smt-orb-cvc4    1.773 ?
+? Conqueue.pushLeft$5                       precond. (call pushLeftLazyLemma$5[T](ys, w.trees, head ...)  ?:?  valid    U:orb-smt-z3          0.442 ?
+? Conqueue.pushLeft$5                       precond. (call pushLeftStream$5[T](ys, w.trees, st@))         ?:?  valid    U:orb-smt-z3          0.221 ?
+? Conqueue.pushLeftAndPay$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conqueue.pushLeftAndPay$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          1.130 ?
+? Conqueue.pushLeftAndPay$5                 precond. (call Pay$5[T](q$320, x$3$11._1._2, x$3$11._2))      ?:?  valid    U:orb-smt-z3          0.627 ?
+? Conqueue.pushLeftAndPay$5                 precond. (call pushLeft$5[T](ys, w, st@))                     ?:?  valid    U:orb-smt-z3          0.191 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.202 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.093 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.100 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.074 ?
+? Conqueue.pushLeftLazy$5                   postcondition                                                 ?:?  valid    U:orb-smt-z3          0.881 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.087 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.065 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.073 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.849 ?
+? Conqueue.pushLeftLazyLemma$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.891 ?
+? Conqueue.pushLeftLazyLemma$5              precond. (call pushLeftLazy$5[T](ys, xs, a$208._2))           ?:?  valid    U:orb-smt-z3          0.651 ?
+? Conqueue.pushLeftLazyLemma$5              precond. (call pushLeftLazyLemma$5[T](CC[T](head$124, y ...)  ?:?  valid    U:orb-smt-z3          0.265 ?
+? Conqueue.pushLeftStream$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.pushLeftStream$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.570 ?
+? Conqueue.pushLeftStream$5                 precond. (call pushLeftLazy$5[T](ys, xs, scr$8._2))           ?:?  valid    U:orb-smt-z3          0.288 ?
+? Conqueue.pushUntilCarry$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.060 ?
+? Conqueue.pushUntilCarry$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.schedMonotone$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.059 ?
+? Conqueue.schedMonotone$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.065 ?
+? Conqueue.schedMonotone$5                  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.376 ?
+? Conqueue.schedMonotone$5                  precond. (call schedMonotone$5[T](st1, st2, tail$28, pu ...)  ?:?  valid    U:orb-smt-z3          0.360 ?
+? Conqueue.schedulesProperty$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.041 ?
+? Conqueue.schedulesProperty$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.035 ?
+? Conqueue.schedulesProperty$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.095 ?
+? Conc.size$10                              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Conc.size$10                              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.160 ?
+? ConcTrees.split$7                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.039 ?
+? ConcTrees.split$7                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.033 ?
+? ConcTrees.split$7                         postcondition                                                 ?:?  valid    U:orb-smt-z3         15.360 ?
+? ConcTrees.split$7                         precond. (call concatNormalized$5[T](l$384, rl$6))            ?:?  valid    U:orb-smt-z3          4.302 ?
+? ConcTrees.split$7                         precond. (call concatNormalized$5[T](lr$6, r$228))            ?:?  valid    U:orb-smt-z3          3.987 ?
+? ConcTrees.split$7                         precond. (call split$7[T](l$384, n))                          ?:?  valid    U:orb-smt-z3          0.487 ?
+? ConcTrees.split$7                         precond. (call split$7[T](r$228, n - l$384.size$10))          ?:?  valid    U:orb-smt-z3          0.444 ?
+? ConcTrees.splitCorrectness$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.055 ?
+? Conqueue.strongSchedsProp$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.044 ?
+? Conqueue.strongSchedsProp$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          0.088 ?
+? Conqueue.suffix$5                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.suffix$5                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.suffixCompose$5                  tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.061 ?
+? Conqueue.suffixCompose$5                  tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.316 ?
+? Conqueue.suffixDisequality$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.087 ?
+? Conqueue.suffixDisequality$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.283 ?
+? Conqueue.suffixDisequality$5              precond. (call suffixDisequality$5[T](rear$143, sufRear ...)  ?:?  valid    U:orb-smt-z3          0.267 ?
+? Conqueue.suffixTrans$5                    match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.suffixTrans$5                    tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.058 ?
+? Conqueue.suffixTrans$5                    tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.066 ?
+? Conqueue.suffixTrans$5                    tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.213 ?
+? Conqueue.suffixZeroLemma$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.076 ?
+? Conqueue.suffixZeroLemma$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.092 ?
+? Conqueue.suffixZeroLemma$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          0.359 ?
+? Conqueue.suffixZeroLemma$5                precond. (call suffixZeroLemma$5[T](tail$29, suf, suf2))      ?:?  valid    U:orb-smt-z3          0.351 ?
+? Conc.toList$8                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conc.toList$8                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.711 ?
+? ConcTrees.update$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.257 ?
+? ConcTrees.update$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3          5.579 ?
+? ConcTrees.update$5                        precond. (call instAppendUpdateAxiom$5[T](xs, i, y))          ?:?  valid    U:orb-smt-z3          0.076 ?
+? ConcTrees.update$5                        precond. (call update$5[T](l$368, i, y))                      ?:?  valid    U:orb-smt-z3          0.541 ?
+? ConcTrees.update$5                        precond. (call update$5[T](r$218, i - l$368.size$10, y))      ?:?  valid    U:orb-smt-z3          0.532 ?
+? ConcTrees.update$5                        precond. (call xs.toList$8.updated(i, y))                     ?:?  valid    U:orb-smt-z3          2.986 ?
+? Conqueue.valid$9                          postcondition                                                 ?:?  valid    U:orb-smt-z3          0.071 ?
+? Conqueue.zeroPrecedesLazy$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.zeroPrecedesLazy$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          0.104 ?
+? Conqueue.zeroPrecedesSuf$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.073 ?
+? Conqueue.zeroPrecedesSuf$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          0.090 ?
+? Conqueue.zeroPredSufConcreteUntilLemma$5  tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.072 ?
+? Conqueue.zeroPredSufConcreteUntilLemma$5  tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.210 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 195    valid: 194    invalid: 0      unknown 1                                                                                     171.500 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+########## Resource Verification ############
+. ???????????
+??? Summary ??????????????????????????????????????????????????????????????????????????????????
+? ???????????                                                                                ?
+? Pay             alloc <= 11                                                         1.068  ?
+? concatNonEmpty  alloc <= 2 * abs(xs.level - ys.level) + 1                           24.991 ?
+? concatNormaliz? alloc <= 2 * abs(xs.level - ys.level) + 1                           4.071  ?
+? emptyNum        alloc <= 5                                                          0.166  ?
+? insert          alloc <= 5 * xs.level + 2                                           24.668 ?
+? lookup          alloc <= 0 * xs.level + 0                                           2.195  ?
+? pushLeft        alloc <= 11                                                         0.547  ?
+? pushLeftAndPay  alloc <= 23                                                         1.407  ?
+? pushLeftLazy    alloc <= 9                                                          3.411  ?
+? pushLeftStream  alloc <= 9                                                          2.276  ?
+? split           alloc <= ((3 * xs.level + 2 * res.level) + 2 * res._2.level) + 2    19.108 ?
+? update          alloc <= 1 * xs.level + 1                                           4.445  ?
+??????????????????????????????????????????????????????????????????????????????????????????????
+? total: 12    inferred: 12    unknown: 0     time: 88.353                                   ?
+??????????????????????????????????????????????????????????????????????????????????????????????

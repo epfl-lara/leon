@@ -1,0 +1,534 @@
+[[33mWarning [0m] warning: there were four feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for deps$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)' VC for deps$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for columnsCachedfrom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(K, j, K, st@))' VC for columnsCachedfrom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)' VC for columnsCachedfrom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for columnCached$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i - BigInt(1), j, K, st@))' VC for columnCached$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnMono-VCTact(i - BigInt(1), j, K, s ...))' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnCached$5(i, j, K, st1)))' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnCached$5(i, j, K, st2)))' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i, j, K, st1))' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i, j, K, st2))' VC for columnMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnLem-VCTact(j - BigInt(1), K, st@)))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnCached$5(K, j, K, st@)))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnsCachedfrom$5(j, K, st@)))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnCached$5(K, j, K, st@)))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (precond. (call columnsCachedfrom$5(j, K, st@)))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(K, j, K, st@))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j, K, st@))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(K, j, K, st@))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j, K, st@))' VC for columnLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call cachedLem$5(l + BigInt(1), j, K, st@))' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call cachedLem$5(l + BigInt(1), j, K, st@))' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call cachedLem$5(l - BigInt(1), j, K, st@))' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(K, j, K, st@))' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(l, j, K, st@))' VC for cachedLem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for columnsCachedfromMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnMono$5(K, j, K, st1, st2))' VC for columnsCachedfromMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfromMono$5(j - BigInt(1), K ...)' VC for columnsCachedfromMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j, K, st1))' VC for columnsCachedfromMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfrom$5(j, K, st2))' VC for columnsCachedfromMono$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fillEntry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j, K, st@))' VC for fillEntry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call cachedLem$5(l, j - BigInt(1), K, st@))' VC for fillEntry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call viterbi-mem$3(l, a$181, K, st@))' VC for fillEntry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillEntry$5(l + BigInt(1), i, j, K, a$18 ...)' VC for fillEntry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for viterbi-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j, K, st@))' VC for viterbi-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillEntry$5(BigInt(0), i, j, K, st@))' VC for viterbi-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j, K, st@))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i - BigInt(1), j, K, st@))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call viterbi-mem$3(i, j, K, st@))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfromMono$5(j - BigInt(1), K ...)' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnsCachedfromMono$5(j, K, st@, out$1 ...)' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnMono$5(i - BigInt(1), j, K, st@, o ...)' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i, j, K, res._2))' VC for invoke$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j, K, st@))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnCached$5(i - BigInt(1), j, K, st@))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke$5(i, j, K, st@))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call invoke$5(i, j, K, st@))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillColumn$5(i + BigInt(1), j, K, x$416. ...)' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call columnLem$5(j, K, res$216._2))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j + BigInt(1), K, res$216._2))' VC for fillColumn$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(j, K, st@))' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillColumn$5(BigInt(0), j, K, st@))' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillColumn$5(BigInt(0), j, K, st@))' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillTable$5(j + BigInt(1), T, K, x$418._ ...)' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(T + BigInt(1), K, res$217._2))' VC for fillTable$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for viterbiSols$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fillTable$5(BigInt(0), T, K, st@))' VC for viterbiSols$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call deps$5(T + BigInt(1), K, res._2))' VC for viterbiSols$5 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                      ║
+║ Viterbi.cachedLem$5              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.129 ║
+║ Viterbi.cachedLem$5              precond. (call cachedLem$5(l + BigInt(1), j, K, st@))                ?:?  valid  U:orb-smt-z3          0.041 ║
+║ Viterbi.cachedLem$5              precond. (call cachedLem$5(l + BigInt(1), j, K, st@))                ?:?  valid  U:orb-smt-z3          0.031 ║
+║ Viterbi.cachedLem$5              precond. (call cachedLem$5(l - BigInt(1), j, K, st@))                ?:?  valid  U:orb-smt-z3          0.039 ║
+║ Viterbi.cachedLem$5              precond. (call columnCached$5(K, j, K, st@))                         ?:?  valid  U:orb-smt-z3          0.042 ║
+║ Viterbi.cachedLem$5              precond. (call columnCached$5(l, j, K, st@))                         ?:?  valid  U:orb-smt-z3          0.044 ║
+║ Viterbi.columnCached$5           postcondition                                                        ?:?  valid  U:orb-smt-z3          0.055 ║
+║ Viterbi.columnCached$5           precond. (call columnCached$5(i - BigInt(1), j, K, st@))             ?:?  valid  U:orb-smt-orb-cvc4    0.044 ║
+║ Viterbi.columnLem$5              precond. (call columnCached$5(K, j, K, st@))                         ?:?  valid  U:orb-smt-z3          0.031 ║
+║ Viterbi.columnLem$5              precond. (call columnCached$5(K, j, K, st@))                         ?:?  valid  U:orb-smt-z3          0.046 ║
+║ Viterbi.columnLem$5              precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)         ?:?  valid  U:orb-smt-orb-cvc4    0.052 ║
+║ Viterbi.columnLem$5              precond. (call columnsCachedfrom$5(j, K, st@))                       ?:?  valid  U:orb-smt-z3          0.049 ║
+║ Viterbi.columnLem$5              precond. (call columnsCachedfrom$5(j, K, st@))                       ?:?  valid  U:orb-smt-z3          0.051 ║
+║ Viterbi.columnLem$5              tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.091 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnCached$5(K, j, K, st@)))                  ?:?  valid  U:orb-smt-z3          0.054 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnCached$5(K, j, K, st@)))                  ?:?  valid  U:orb-smt-z3          0.047 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnLem-VCTact(j - BigInt(1), K, st@)))       ?:?  valid  U:orb-smt-z3          0.029 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...))  ?:?  valid  U:orb-smt-z3          0.054 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnsCachedfrom$5(j, K, st@)))                ?:?  valid  U:orb-smt-z3          0.047 ║
+║ Viterbi.columnLem$5              tact (precond. (call columnsCachedfrom$5(j, K, st@)))                ?:?  valid  U:orb-smt-z3          0.047 ║
+║ Viterbi.columnMono$5             precond. (call columnCached$5(i, j, K, st1))                         ?:?  valid  U:orb-smt-z3          0.031 ║
+║ Viterbi.columnMono$5             precond. (call columnCached$5(i, j, K, st2))                         ?:?  valid  U:orb-smt-z3          0.036 ║
+║ Viterbi.columnMono$5             tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.121 ║
+║ Viterbi.columnMono$5             tact (precond. (call columnCached$5(i, j, K, st1)))                  ?:?  valid  U:orb-smt-z3          0.050 ║
+║ Viterbi.columnMono$5             tact (precond. (call columnCached$5(i, j, K, st2)))                  ?:?  valid  U:orb-smt-z3          0.054 ║
+║ Viterbi.columnMono$5             tact (precond. (call columnMono-VCTact(i - BigInt(1), j, K, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ Viterbi.columnsCachedfrom$5      postcondition                                                        ?:?  valid  U:orb-smt-z3          0.049 ║
+║ Viterbi.columnsCachedfrom$5      precond. (call columnCached$5(K, j, K, st@))                         ?:?  valid  U:orb-smt-z3          0.032 ║
+║ Viterbi.columnsCachedfrom$5      precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)         ?:?  valid  U:orb-smt-orb-cvc4    0.046 ║
+║ Viterbi.columnsCachedfromMono$5  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.087 ║
+║ Viterbi.columnsCachedfromMono$5  precond. (call columnMono$5(K, j, K, st1, st2))                      ?:?  valid  U:orb-smt-z3          0.029 ║
+║ Viterbi.columnsCachedfromMono$5  precond. (call columnsCachedfrom$5(j, K, st1))                       ?:?  valid  U:orb-smt-z3          0.055 ║
+║ Viterbi.columnsCachedfromMono$5  precond. (call columnsCachedfrom$5(j, K, st2))                       ?:?  valid  U:orb-smt-z3          0.049 ║
+║ Viterbi.columnsCachedfromMono$5  precond. (call columnsCachedfromMono$5(j - BigInt(1), K ...)         ?:?  valid  U:orb-smt-z3          0.036 ║
+║ Viterbi.deps$5                   postcondition                                                        ?:?  valid  U:orb-smt-z3          0.170 ║
+║ Viterbi.deps$5                   precond. (call columnsCachedfrom$5(j - BigInt(1), K, st ...)         ?:?  valid  U:orb-smt-z3          0.032 ║
+║ Viterbi.fillColumn$5             postcondition                                                        ?:?  valid  U:orb-smt-z3          0.211 ║
+║ Viterbi.fillColumn$5             precond. (call columnCached$5(i - BigInt(1), j, K, st@))             ?:?  valid  U:orb-smt-z3          0.050 ║
+║ Viterbi.fillColumn$5             precond. (call columnLem$5(j, K, res$216._2))                        ?:?  valid  U:orb-smt-z3          0.070 ║
+║ Viterbi.fillColumn$5             precond. (call deps$5(j + BigInt(1), K, res$216._2))                 ?:?  valid  U:orb-smt-z3          0.077 ║
+║ Viterbi.fillColumn$5             precond. (call deps$5(j, K, st@))                                    ?:?  valid  U:orb-smt-z3          0.042 ║
+║ Viterbi.fillColumn$5             precond. (call fillColumn$5(i + BigInt(1), j, K, x$416. ...)         ?:?  valid  U:orb-smt-z3          0.130 ║
+║ Viterbi.fillColumn$5             precond. (call invoke$5(i, j, K, st@))                               ?:?  valid  U:orb-smt-z3          0.044 ║
+║ Viterbi.fillColumn$5             precond. (call invoke$5(i, j, K, st@))                               ?:?  valid  U:orb-smt-z3          0.042 ║
+║ Viterbi.fillEntry$5              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.194 ║
+║ Viterbi.fillEntry$5              precond. (call cachedLem$5(l, j - BigInt(1), K, st@))                ?:?  valid  U:orb-smt-z3          0.041 ║
+║ Viterbi.fillEntry$5              precond. (call deps$5(j, K, st@))                                    ?:?  valid  U:orb-smt-z3          0.032 ║
+║ Viterbi.fillEntry$5              precond. (call fillEntry$5(l + BigInt(1), i, j, K, a$18 ...)         ?:?  valid  U:orb-smt-z3          0.184 ║
+║ Viterbi.fillEntry$5              precond. (call viterbi-mem$3(l, a$181, K, st@))                      ?:?  valid  U:orb-smt-z3          0.093 ║
+║ Viterbi.fillTable$5              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.121 ║
+║ Viterbi.fillTable$5              precond. (call deps$5(T + BigInt(1), K, res$217._2))                 ?:?  valid  U:orb-smt-z3          0.079 ║
+║ Viterbi.fillTable$5              precond. (call deps$5(j, K, st@))                                    ?:?  valid  U:orb-smt-z3          0.028 ║
+║ Viterbi.fillTable$5              precond. (call fillColumn$5(BigInt(0), j, K, st@))                   ?:?  valid  U:orb-smt-z3          0.047 ║
+║ Viterbi.fillTable$5              precond. (call fillColumn$5(BigInt(0), j, K, st@))                   ?:?  valid  U:orb-smt-z3          0.058 ║
+║ Viterbi.fillTable$5              precond. (call fillTable$5(j + BigInt(1), T, K, x$418._ ...)         ?:?  valid  U:orb-smt-z3          0.096 ║
+║ Viterbi.invoke$5                 postcondition                                                        ?:?  valid  U:orb-smt-z3          0.121 ║
+║ Viterbi.invoke$5                 precond. (call columnCached$5(i - BigInt(1), j, K, st@))             ?:?  valid  U:orb-smt-z3          0.036 ║
+║ Viterbi.invoke$5                 precond. (call columnCached$5(i, j, K, res._2))                      ?:?  valid  U:orb-smt-z3          0.063 ║
+║ Viterbi.invoke$5                 precond. (call columnMono$5(i - BigInt(1), j, K, st@, o ...)         ?:?  valid  U:orb-smt-z3          0.073 ║
+║ Viterbi.invoke$5                 precond. (call columnsCachedfromMono$5(j - BigInt(1), K ...)         ?:?  valid  U:orb-smt-z3          0.057 ║
+║ Viterbi.invoke$5                 precond. (call columnsCachedfromMono$5(j, K, st@, out$1 ...)         ?:?  valid  U:orb-smt-z3          0.062 ║
+║ Viterbi.invoke$5                 precond. (call deps$5(j, K, st@))                                    ?:?  valid  U:orb-smt-z3          0.030 ║
+║ Viterbi.invoke$5                 precond. (call viterbi-mem$3(i, j, K, st@))                          ?:?  valid  U:orb-smt-z3          0.042 ║
+║ Viterbi.viterbi-mem$3            postcondition                                                        ?:?  valid  U:orb-smt-z3          0.080 ║
+║ Viterbi.viterbi-mem$3            precond. (call deps$5(j, K, st@))                                    ?:?  valid  U:orb-smt-orb-cvc4    0.030 ║
+║ Viterbi.viterbi-mem$3            precond. (call fillEntry$5(BigInt(0), i, j, K, st@))                 ?:?  valid  U:orb-smt-z3          0.055 ║
+║ Viterbi.viterbiSols$5            postcondition                                                        ?:?  valid  U:orb-smt-z3          0.083 ║
+║ Viterbi.viterbiSols$5            precond. (call deps$5(T + BigInt(1), K, res._2))                     ?:?  valid  U:orb-smt-z3          0.081 ║
+║ Viterbi.viterbiSols$5            precond. (call fillTable$5(BigInt(0), T, K, st@))                    ?:?  valid  U:orb-smt-z3          0.051 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 69     valid: 69     invalid: 0      unknown 0                                                                                   4.436 ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] - considering function fillEntry-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + 0 * K) + 0 * l) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((2 * res$220._2 + 0 * K) + 0 * l) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 23
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Creating VC for viterbi-mem-steps
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + 0 * K) + 0 * l) + 0 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(0 * K + 1 * res$219._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.032s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 36 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + 0 * K) + 0 * l) + 0 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(0 * K + 1 * res$219._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.099s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.032s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 44 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + 0 * K) + 0 * l) + -15 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(2 * K + 1 * res$219._2) + -15 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.069s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 57 + 45
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((4 * res$220._2 + -55 * K) + 55 * l) + -48 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-17 * K + 1 * res$219._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.082s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] # of atomic predicates: 29 + 102
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + -22 * K) + 22 * l) + -9 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-23 * K + 1 * res$219._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.066s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] # of atomic predicates: 41 + 131
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + 0 * K) + 0 * l) + 0 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(0 * K + 1 * res$219._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.129s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 36 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((2 * res$220._2 + 0 * K) + 0 * l) + -21 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-1 * K + 2 * res$219._2) + -14 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.094s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 60 + 37
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((8 * res$220._2 + -201 * K) + 201 * l) + -104 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-1 * K + 8 * res$219._2) + -96 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.049s
+[[34m  Info  [0m] checked VC inst... in 0.035s
+[[34m  Info  [0m] Function: viterbi-mem-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 38 + 97
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((8 * res$220._2 + -90 * K) + 90 * l) + -124 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-18 * K + 1 * res$219._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.122s
+[[34m  Info  [0m] Function: fillEntry-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] # of atomic predicates: 32 + 135
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((8 * res$220._2 + -108 * K) + 108 * l) + -122 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-20 * K + 1 * res$219._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.056s
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillEntry-steps-->((1 * res$220._2 + -13 * K) + 13 * l) + -9 <= 0
+[[34m  Info  [0m] viterbi-mem-steps-->(-14 * K + 1 * res$219._2) + -12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.045s
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] - Found inductive invariant: fillEntry-steps --> ((steps + BigInt(-13) * K) + BigInt(13) * l) + BigInt(-9) <= BigInt(0)
+[[34m  Info  [0m] - Found inductive invariant: viterbi-mem-steps --> (BigInt(-14) * K + steps) + BigInt(-12) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function viterbi-mem-steps...
+[[34m  Info  [0m] - considering function invoke-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-steps-->(0 * K + 1 * res$218._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: invoke-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-steps-->(-2 * K + 1 * res$218._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] Function: invoke-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-steps-->(-15 * K + 1 * res$218._2) + -16 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] invoke-steps-->(-14 * K + 1 * res$218._2) + -15 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: invoke-steps --> (BigInt(-14) * K + steps) + BigInt(-15) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function fillColumn-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + 0 * mult(K - i, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + 0 * mult(K - i, K)) + -22 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -16 * K) + 0 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 23
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + 0 * mult(K - i, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.045s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 18 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + 0 * mult(K - i, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.459s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + -40 * mult(K - i, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.061s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 23
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + -40 * mult(K - i, K)) + -22 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.112s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 36
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -29 * K) + -40 * mult(K - i, K)) + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.157s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 48
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -15 * K) + -40 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 100 * K) + -7 * mult(K - i, K)) + -134 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.217s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 23 + 59
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -15 * K) + -40 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 100 * K) + -14 * mult(K - i, K)) + -134 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.22s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 21 + 82
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -15 * K) + -40 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 100 * K) + -15 * mult(K - i, K)) + -134 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.277s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 103
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -15 * K) + -39 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 100 * K) + -34 * mult(K - i, K)) + -134 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.075s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 128
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -14 * K) + -40 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + 0 * K) + -34 * mult(K - i, K)) + -34 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.215s
+[[34m  Info  [0m] Function: fillColumn-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 142
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -14 * K) + -39 * mult(K - i, K)) + -21 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillColumn-steps-->((1 * res$221._2 + -14 * K) + -34 * mult(K - i, K)) + -20 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] - Found inductive invariant: fillColumn-steps --> ((steps + BigInt(-14) * K) + BigInt(-34) * ((K - i) * K)) + BigInt(-20) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function fillTable-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((0 * K + 0 * j) + 0 * mult(K, K)) + 0 * mult(mult(K, K), T - j)) + 1 * res$223._2) + 0 * T) + 0 * mult(T - j, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((0 * K + 0 * j) + 0 * mult(K, K)) + 0 * mult(mult(K, K), T - j)) + 1 * res$223._2) + 0 * T) + 0 * mult(T - j, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.084s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 52 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((0 * K + 0 * j) + 0 * mult(K, K)) + 0 * mult(mult(K, K), T - j)) + 1 * res$223._2) + 0 * T) + 0 * mult(T - j, K)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.395s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 34 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((0 * K + 0 * j) + 0 * mult(K, K)) + 0 * mult(mult(K, K), T - j)) + 1 * res$223._2) + 0 * T) + 0 * mult(T - j, K)) + -28 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.441s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 69 + 35
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((0 * K + 240 * j) + 0 * mult(K, K)) + -4 * mult(mult(K, K), T - j)) + 8 * res$223._2) + -240 * T) + -6 * mult(T - j, K)) + -224 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.416s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 30 + 104
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-544 * K + 960 * j) + -1312 * mult(K, K)) + -8 * mult(mult(K, K), T - j)) + 32 * res$223._2) + -960 * T) + -4 * mult(T - j, K)) + -832 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.794s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 80 + 134
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-136 * K + 216 * j) + -320 * mult(K, K)) + -344 * mult(mult(K, K), T - j)) + 8 * res$223._2) + -216 * T) + -1 * mult(T - j, K)) + -208 <= 0
+[[34m  Info  [0m] checked VC inst... in 2.114s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 75 + 214
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-136 * K + 216 * j) + -328 * mult(K, K)) + -384 * mult(mult(K, K), T - j)) + 8 * res$223._2) + -216 * T) + -1 * mult(T - j, K)) + -208 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.873s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-14 * K + 60 * j) + -34 * mult(K, K)) + -34 * mult(mult(K, K), T - j)) + 1 * res$223._2) + -60 * T) + 20 * mult(T - j, K)) + -25 <= 0
+[[34m  Info  [0m] checked VC inst... in 1.529s
+[[34m  Info  [0m] Function: fillTable-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 79 + 289
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-136 * K + 216 * j) + -320 * mult(K, K)) + -384 * mult(mult(K, K), T - j)) + 8 * res$223._2) + -216 * T) + -1 * mult(T - j, K)) + -208 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.533s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] fillTable-steps-->((((((-14 * K + 47 * j) + -34 * mult(K, K)) + -34 * mult(mult(K, K), T - j)) + 1 * res$223._2) + -47 * T) + 6 * mult(T - j, K)) + -25 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.648s
+[[34m  Info  [0m] - Found inductive invariant: fillTable-steps --> ((((((BigInt(-14) * K + BigInt(47) * j) + BigInt(-34) * (K * K)) + BigInt(-34) * ((K * K) * (T - j))) + steps) + BigInt(-47) * T) + BigInt(6) * ((T - j) * K)) + BigInt(-25) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function viterbiSols-steps...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((0 * T + 0 * K) + 0 * mult(mult(K, K), T)) + 0 * mult(K, K)) + 0 * mult(T, K)) + 1 * res$222._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: viterbiSols-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((-1 * T + -136 * K) + -272 * mult(mult(K, K), T)) + -656 * mult(K, K)) + 56 * mult(T, K)) + 8 * res$222._2) + 167 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: viterbiSols-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 23
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((-2 * T + -1024 * K) + -544 * mult(mult(K, K), T)) + -560 * mult(K, K)) + 112 * mult(T, K)) + 16 * res$222._2) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: viterbiSols-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 21 + 49
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((-74 * T + -43 * K) + -34 * mult(mult(K, K), T)) + -34 * mult(K, K)) + 6 * mult(T, K)) + 1 * res$222._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] Function: viterbiSols-steps--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 70
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((-48 * T + -16 * K) + -34 * mult(mult(K, K), T)) + -34 * mult(K, K)) + 6 * mult(T, K)) + 1 * res$222._2) + -27 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] viterbiSols-steps-->(((((-47 * T + -14 * K) + -34 * mult(mult(K, K), T)) + -34 * mult(K, K)) + 6 * mult(T, K)) + 1 * res$222._2) + -26 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: viterbiSols-steps --> (((((BigInt(-47) * T + BigInt(-14) * K) + BigInt(-34) * ((K * K) * T)) + BigInt(-34) * (K * K)) + BigInt(6) * (T * K)) + steps) + BigInt(-26) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ┌─────────┐
+╔═╡ Summary ╞══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └─────────┘                                                                                                                          ║
+║ fillColumn      steps <= (34 * ((K - i) * K) + 14 * K) + 20                                                                   6.100  ║
+║ fillEntry       steps <= 13 * (K - l) + 9                                                                                     3.878  ║
+║ fillTable       steps <= ((((34 * ((K * K) * (T - j)) + -6 * ((T - j) * K)) + 47 * (T - j)) + 34 * (K * K)) + 14 * K) + 25    17.654 ║
+║ invoke          steps <= 14 * K + 15                                                                                          0.350  ║
+║ viterbi         steps <= 14 * K + 12                                                                                          0.000  ║
+║ viterbiSols     steps <= ((((34 * ((K * K) * T) + -6 * (T * K)) + 47 * T) + 34 * (K * K)) + 14 * K) + 26                      1.201  ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 6     inferred: 6     unknown: 0     time: 29.183                                                                             ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Stats dumped to file: Viterbi-stats.txt
