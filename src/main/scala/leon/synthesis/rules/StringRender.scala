@@ -71,6 +71,7 @@ case object StringRender extends Rule("StringRender") {
   
   def EDIT_ME(n: Int): String = "_edit_me"+n+"_"
   val EDIT_ME_REGEXP = "_edit_me\\d+_".r
+  val EDIT_ME_REGEXP_MULTIPLE = "(?:_edit_me\\d+_)+".r
   def contains_EDIT_ME(s: String): Boolean = EDIT_ME_REGEXP.findFirstIn(s).nonEmpty
   
   var enforceDefaultStringMethodsIfAvailable = true

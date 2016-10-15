@@ -29,6 +29,12 @@ case class LeonContext(
     findOption(optDef).getOrElse(optDef.default)
 
   def toSctx = solvers.SolverContext(this, new evaluators.EvaluationBank)
+  
+  /** Merges this context with another one, the new one having the priority */
+  def ++(overridingOptions: Seq[LeonOption[Any]]): LeonContext = {
+    val newOptions = options.filterNot(oldOption => overridingOptions.exists(option => oldOption.optionDef.name == option.optionDef.name)) ++ overridingOptions
+    LeonContext(reporter, interruptManager, newOptions, files, classDir, timers)
+  }
 }
 
 object LeonContext {
