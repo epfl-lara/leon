@@ -18,6 +18,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optCostModel    = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
   val optDerivTrees   = LeonFlagOptionDef("derivtrees", "Generate derivation trees", false)
   val optAllowPartial = LeonFlagOptionDef("partial", "Allow partial solutions", true)
+  val optSTEOnly      = LeonFlagOptionDef("steonly", "Only use symbolic term exploration", false)
   val optIntroduceRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of STE", true)
 
   // STE-related options
@@ -28,7 +29,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optSTEUserDefined  = LeonFlagOptionDef("ste:userdefined","Use user-defined grammars", false)
 
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
-    optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls,
+    optManual, optCostModel, optDerivTrees, optAllowPartial, optSTEOnly, optIntroduceRecCalls,
     optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize, optSTEUserDefined
   )
 
@@ -58,7 +59,11 @@ object SynthesisPhase extends UnitPhase[Program] {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(ctx.findOptionOrDefault(optSTENaiveGrammar), ctx.findOptionOrDefault(optIntroduceRecCalls)),
+      rules = Rules.all(
+        ctx.findOptionOrDefault(optSTEOnly),
+        ctx.findOptionOrDefault(optSTENaiveGrammar),
+        ctx.findOptionOrDefault(optIntroduceRecCalls)
+      ),
       manualSearch = ms,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       steUseOptTimeout = ctx.findOptionOrDefault(optSTEOptTimeout),

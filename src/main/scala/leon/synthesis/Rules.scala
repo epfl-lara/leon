@@ -33,36 +33,38 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false, true)
+  def all: List[Rule] = all(false, false, true)
   /** Returns the list of all available rules for synthesis */
-  def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = List[Rule](
-    StringRender,
-    Unification.DecompTrivialClash,
-    Unification.OccursCheck, // probably useless
-    Disunification.Decomp,
-    ADTDual,
-    OnePoint,
-    Ground,
-    CaseSplit,
-    IndependentSplit,
-    //HOFDecomp,
-    //ExampleGuidedTermExploration,
-    //BottomUpETE,
-    IfSplit,
-    InputSplit,
-    UnusedInput,
-    EquivalentInputs,
-    UnconstrainedOutput,
-    if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration,
-    OptimisticGround,
-    GenericTypeEqualitySplit,
-    InequalitySplit,
-    rules.Assert,
-    DetupleInput,
-    ADTSplit,
-    InnerCaseSplit
-  ) ++ introduceRecCalls.option(IntroduceRecCalls)
-
+  def all(steOnly: Boolean, naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
+    val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
+    if (steOnly) List(ste) else List(
+      StringRender,
+      Unification.DecompTrivialClash,
+      Unification.OccursCheck, // probably useless
+      Disunification.Decomp,
+      ADTDual,
+      OnePoint,
+      Ground,
+      CaseSplit,
+      IndependentSplit,
+      //HOFDecomp,
+      //ExampleGuidedTermExploration,
+      //BottomUpETE,
+      IfSplit,
+      InputSplit,
+      UnusedInput,
+      EquivalentInputs,
+      UnconstrainedOutput,
+      ste,
+      OptimisticGround,
+      GenericTypeEqualitySplit,
+      InequalitySplit,
+      rules.Assert,
+      DetupleInput,
+      ADTSplit,
+      InnerCaseSplit
+    ) ++ introduceRecCalls.option(IntroduceRecCalls)
+  }
 }
 
 /** When applying this to a [SearchContext] it returns a wrapped stream of solutions or a new list of problems. */
