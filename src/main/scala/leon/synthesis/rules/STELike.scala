@@ -28,6 +28,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
 abstract class STELike(name: String) extends Rule(name) {
 
   class NonDeterministicProgram(
+    params: STEParams,
     interruptManager: InterruptManager,
     outerCtx: SearchContext,
     outerP: Problem,
@@ -117,8 +118,6 @@ abstract class STELike(name: String) extends Rule(name) {
     }
 
     private val spec = letTuple(p.xs, solutionBox, p.phi)
-
-    val params = getParams(sctx, p)
 
     val evaluator = new DefaultEvaluator(sctx, program)
 
@@ -771,7 +770,7 @@ abstract class STELike(name: String) extends Rule(name) {
         }
       }
 
-      filteredEnough
+      filteredEnough()
     }
 
     updateCTree()
@@ -799,8 +798,9 @@ abstract class STELike(name: String) extends Rule(name) {
       return Nil
     }
 
+    val params = getParams(hctx, p)
 
-    val sizes = getParams(hctx, p).sizes
+    val sizes = params.sizes
 
     sizes.collect { case (sizeFrom, sizeTo, cost) if sizeFrom <= sizeTo =>
       val solBuilder = SolutionBuilderCloser(extraCost = Cost(cost))
@@ -856,6 +856,7 @@ abstract class STELike(name: String) extends Rule(name) {
 
           // Represents a non-deterministic program
           val ndProgram = new NonDeterministicProgram(
+            params = params,
             interruptManager = interruptManager,
             outerCtx = hctx,
             outerP   = p,

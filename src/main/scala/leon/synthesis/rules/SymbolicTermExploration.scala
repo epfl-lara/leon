@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import leon.purescala.Types._
 import leon.grammars._
 import leon.grammars.aspects._
 
@@ -32,9 +33,16 @@ case object SymbolicTermExploration extends STELike("Symbolic Term Expl.") {
 
     val sizes = List((1, maxSize, 0))
 
+
+    val rootLabel = if (sctx.settings.steUserDefinedGrammar) {
+      { (tpe: TypeTree) => Label(tpe) }
+    } else {
+      { (tpe: TypeTree) => Label(tpe).withAspect(Tagged(Tags.Top, 0, None)) }
+    }
+
     STEParams(
       grammar = grammars.default(sctx, p),
-      rootLabel = Label(_).withAspect(Tagged(Tags.Top, 0, None)),
+      rootLabel = rootLabel,
       optimizations = true,
       sizes = sizes.toList
     )

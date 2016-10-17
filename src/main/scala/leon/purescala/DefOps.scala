@@ -10,8 +10,6 @@ import ExprOps.{preMap, functionCallsOf}
 import leon.purescala.Types.AbstractClassType
 import leon.purescala.Types._
 
-import scala.collection.mutable.{Map => MutableMap}
-
 object DefOps {
 
   private def packageOf(df: Definition)(implicit pgm: Program): PackageRef = {
@@ -50,8 +48,7 @@ object DefOps {
     rec(pgm)
   }
 
-  def unitsInPackage(p: Program, pack: PackageRef) = p.units filter { _.pack  == pack }
-
+  def unitsInPackage(p: Program, pack: PackageRef) = p.units filter { _.pack == pack }
 
 
   /** Returns the set of definitions directly visible from the current definition
@@ -59,16 +56,16 @@ object DefOps {
    */
   def visibleDefsFrom(df: Definition)(implicit pgm: Program): Set[Definition] = {
     var toRet = Map[String,Definition]()
-    val asList = 
-      (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ {
-        unitsInPackage(pgm, packageOf(df)) flatMap { _.subDefinitions } 
-      } ++
-      List(pgm) ++
-      ( for ( u <- unitOf(df).toSeq;
-              imp <- u.imports;
-              impDf <- imp.importedDefs(u)
-            ) yield impDf
-      )
+    val asList = {
+      val inPath = (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ List(pgm)
+      val inUnits = unitsInPackage(pgm, packageOf(df)) flatMap { _.subDefinitions }
+      val imported = for {
+        u <- unitOf(df).toSeq
+        imp <- u.imports
+        impDf <- imp.importedDefs(u)
+      } yield impDf
+      inPath ++ inUnits ++ imported
+    }
     for (
       df <- asList;
       name = df.id.toString
@@ -718,6 +715,7 @@ object DefOps {
   }
   
   /** Returns the set of all reachable inner functions of a given one.
+    *
     * @param initial The initial set of inline function definitions. You can set it to Set(container)*/
   def getAllReachableInlineFunctions(inside: FunDef, initial: Set[FunDef]): Set[FunDef] = {
     var inlineFunDefs = initial
@@ -734,6 +732,7 @@ object DefOps {
   }
   
   /** Returns the set of all reachable inner functions of a given one.
+    *
     * @param initial The initial set of inline function definitions. You can set it to Set(container)*/
   def getAllInlineFunctionInvocations(body: Expr, inside: FunDef): Set[FunDef] = {
     ExprOps.collect{

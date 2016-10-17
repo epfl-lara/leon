@@ -304,9 +304,14 @@ trait CodeExtraction extends ASTExtractors {
             case d if d.symbol.isVar =>
               None
 
+            // ignore: type X = Y
+            case ExTypeDef(sym, tpe2) =>
+              None
+
             // Everything else is unexpected
             case tree =>
               println(tree)
+              println(tree.getClass)
               outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
           }
 
@@ -318,7 +323,6 @@ trait CodeExtraction extends ASTExtractors {
 
         // Unexpected
         case tree =>
-          println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
 
@@ -415,14 +419,14 @@ trait CodeExtraction extends ASTExtractors {
       val allSels = sels map { prefix :+ _.name.toString }
 
       // Make a different import for each selector at the end of the chain
-      allSels flatMap { selectors =>
+      allSels map { selectors =>
         assert(selectors.nonEmpty)
         val (thePath, isWild) = selectors.last match {
-          case "_" => (selectors.dropRight(1), true)
+          case "_" => (selectors.init, true)
           case _   => (selectors, false)
         }
 
-        Some(LeonImport(thePath, isWild))
+        LeonImport(thePath, isWild)
       }
     }
 
@@ -837,8 +841,9 @@ trait CodeExtraction extends ASTExtractors {
       fd.addFlags(annotationsOf(sym).map { case (name, args) => FunctionFlag.fromName(name, args) }.toSet)
 
       if (sym.isImplicit) {
-        fd.addFlag(IsInlined)
+        fd.addFlag(IsImplicit)
       }
+
       if(sym.isPrivate)
         fd.addFlag(IsPrivate)
       // extract more modifiers here if needed
@@ -1363,8 +1368,10 @@ trait CodeExtraction extends ASTExtractors {
           }
 
         case ExValDef(vs, tpt, bdy) =>
+
           val binderTpe = extractType(tpt)
           val newID = FreshIdentifier(vs.name.toString, binderTpe)
+
           val valTree = extractTree(bdy)
 
           val restTree = rest match {

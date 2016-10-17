@@ -24,7 +24,7 @@ object InliningPhase extends TransformationPhase {
       fd
     }).toSet
 
-    def doInline(fd: FunDef) = fd.flags(IsInlined) && !doNotInline(fd)
+    def doInline(fd: FunDef) = (fd.flags(IsInlined) || fd.flags(IsImplicit)) && !doNotInline(fd)
 
     for (fd <- p.definedFunctions) {
       fd.fullBody = preMap ({
@@ -42,7 +42,7 @@ object InliningPhase extends TransformationPhase {
       }, applyRec = true)(fd.fullBody)
     }
 
-    filterFunDefs(p, fd => !doInline(fd))
+    filterFunDefs(p, fd => !fd.flags(IsInlined))
   }
 
 }

@@ -24,6 +24,8 @@ object Tags {
   case object Div       extends Tag
   case object Variable  extends Tag // Tag for variables
   case object Equals    extends Tag // Tag for equality
+
+  case object Commut    extends Tag // Tag for commutativity
   /** Constructors like Tuple, CaseClass... 
     * 
     * @param isTerminal If true, this constructor represents a terminal symbol
@@ -43,7 +45,7 @@ object Tags {
   val isConst: Set[Tag] = Set(Zero, One, Constant, BooleanC, Constructor(true))
 
   /** The set of tags that represent commutative operations */
-  val isCommut: Set[Tag] = Set(Plus, Times, Equals)
+  val isCommut: Set[Tag] = Set(Plus, Times, Equals, Commut)
 
   /** The set of tags which have trivial results for equal arguments */
   val symmetricTrivial = Set(Minus, And, Or, Equals, Div, Mod)

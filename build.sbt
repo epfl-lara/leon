@@ -186,7 +186,7 @@ parallelExecution in GenCTest := false
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
 lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10eaaee4ea0ff6567f4f866922cb871bae2da0ac")
-lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "88835c02ca2528e888b06bc48e4e93e52dc5f4b5")
+lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "567ede66f8df3e5cfc3dbcd5d01b4e7a65fd0719")
 lazy val cafebabe    = ghProject("git://github.com/psuter/cafebabe.git",   "49dce3c83450f5fa0b5e6151a537cc4b9f6a79a6")
 
 lazy val root = (project in file(".")).

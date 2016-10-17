@@ -18,6 +18,7 @@ case class SynthesisSettings(
   // STE related options
   steUseOptTimeout: Boolean = true,
   steUseVanuatoo  : Boolean = false,
+  steUserDefinedGrammar: Boolean = false,
   steMaxSize: Int           = 7
 
 )

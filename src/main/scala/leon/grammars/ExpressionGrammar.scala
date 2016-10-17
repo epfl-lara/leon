@@ -11,7 +11,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
 /** Represents a context-free grammar of expressions */
 abstract class ExpressionGrammar {
 
-  private[this] val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
+  protected val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
 
   /** The list of production rules for this grammar for a given nonterminal.
     *
@@ -72,14 +72,14 @@ abstract class ExpressionGrammar {
         printer(s"${lhs}ε")
       } else {
         val rhs = for (g <- gs) yield {
-        val subs = g.subTrees.map { t =>
-          FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+          val subs = g.subTrees.map { t =>
+            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+          }
+          f"(${g.cost}%3d, ${g.weight}%2.3f) " + g.builder(subs).asString
         }
 
-          g.builder(subs).asString
-      }
         printer(lhs + rhs.mkString("\n" + " " * 55))
+      }
     }
-  }
   }
 }

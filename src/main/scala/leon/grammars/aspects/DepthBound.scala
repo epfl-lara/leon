@@ -5,7 +5,7 @@ package grammars
 package aspects
 
 /** Limits a grammar by depth */
-case class DepthBound(depth: Int) extends Aspect {
+case class DepthBound(depth: Int) extends Aspect(10) {
   require(depth >= 0)
 
   def asString(implicit ctx: LeonContext): String = s"D$depth"

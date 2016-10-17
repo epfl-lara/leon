@@ -24,11 +24,11 @@ object SortedListInsert {
     case Cons(_, xs) => isSorted(xs)
   }
 
-  def insert(in1: List, v: BigInt): List = {
-    require(isSorted(in1))
+  def insert(in: List, v: BigInt): List = {
+    require(isSorted(in))
 
     choose { (out : List) =>
-      (content(out) == content(in1) ++ Set(v)) && isSorted(out)
+      (content(out) == content(in) ++ Set(v)) && isSorted(out) && size(out) == size(in) + 1
     }
   }
 }
