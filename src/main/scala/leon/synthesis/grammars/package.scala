@@ -11,12 +11,13 @@ import Witnesses.Hint
 package object grammars {
 
   def default(sctx: SynthesisContext, p: Problem, extraHints: Seq[Expr] = Seq()): ExpressionGrammar = {
+    val TopLevelAnds(ws) = p.ws
+    val hints = ws.collect { case Hint(e) if formulaSize(e) >= 4 => e }
+    val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
     if (sctx.settings.steUserDefinedGrammar) {
-      UserDefinedGrammar(sctx, sctx.program, Some(sctx.functionContext), p.as)
+      UserDefinedGrammar(sctx, sctx.program, Some(sctx.functionContext), p.as) ||
+      OneOf(inputs)
     } else {
-      val TopLevelAnds(ws) = p.ws
-      val hints = ws.collect{ case Hint(e) if formulaSize(e) >= 4 => e }
-      val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
       val exclude = sctx.settings.functionsToIgnore
       val recCalls = {
         if (sctx.findOptionOrDefault(SynthesisPhase.optIntroduceRecCalls)) Empty()
