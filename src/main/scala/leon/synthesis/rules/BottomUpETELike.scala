@@ -118,7 +118,11 @@ abstract class BottomUpETELike(name: String) extends Rule(name) {
               val label = Label(tpe)
 
               val cs = grammar.getProductions(label).collect {
+<<<<<<< HEAD
                 case ProductionRule(subLabels, builder, _, _, _, _) if subLabels.nonEmpty =>
+=======
+                case ProductionRule(subLabels, builder, _, _, _) if subLabels.nonEmpty =>
+>>>>>>> Fix incorrect patterns
                   compose(subLabels.map(sl => getClasses(sl.getType)), builder)
               }.flatten
 
