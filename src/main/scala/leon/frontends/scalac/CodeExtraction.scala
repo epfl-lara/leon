@@ -419,14 +419,14 @@ trait CodeExtraction extends ASTExtractors {
       val allSels = sels map { prefix :+ _.name.toString }
 
       // Make a different import for each selector at the end of the chain
-      allSels flatMap { selectors =>
+      allSels map { selectors =>
         assert(selectors.nonEmpty)
         val (thePath, isWild) = selectors.last match {
-          case "_" => (selectors.dropRight(1), true)
+          case "_" => (selectors.init, true)
           case _   => (selectors, false)
         }
 
-        Some(LeonImport(thePath, isWild))
+        LeonImport(thePath, isWild)
       }
     }
 
