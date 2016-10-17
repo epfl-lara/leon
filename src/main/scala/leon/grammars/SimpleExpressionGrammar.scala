@@ -15,12 +15,12 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
   def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost)
+    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight = 0.1)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
   def nonTerminal(subs: Seq[TypeTree], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[TypeTree, Expr](subs, builder, tag, cost)
+    ProductionRule[TypeTree, Expr](subs, builder, tag, cost, weight = 0.1)
   }
 
   def filter(f: Prod => Boolean) = {

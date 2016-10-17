@@ -3,19 +3,23 @@ package grammar
 
 import leon.lang.synthesis._
 import annotation.grammar._
-import Grammar._
 
 object Grammar {
+
   @terminal
-  @weight(10)
+  @weight(22)
+  def vr = variable[BigInt]
+
+  @terminal
+  @weight(7)
   def zero = BigInt(0)
 
   @production
-  @weight(10)
+  @weight(12)
   def plus(b1: BigInt, b2: BigInt) = b1 + b2
 
   @production
-  @weight(5)
+  @weight(2)
   def minus(b1: BigInt, b2: BigInt) = b1 - b2
 
   @production

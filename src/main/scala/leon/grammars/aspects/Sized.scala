@@ -34,7 +34,7 @@ case class Sized(size: Int, optimizeCommut: Boolean) extends Aspect(100) {
             case (lab, s) => lab.withAspect(Sized(s, optimizeCommut))
           }
 
-          ProductionRule(newSubTrees, p.builder, p.tag, p.cost)
+          ProductionRule(newSubTrees, p.builder, p.tag, p.cost, p.weight)
         }
       }
     }

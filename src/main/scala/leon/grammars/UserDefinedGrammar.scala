@@ -12,8 +12,10 @@ import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
 
+import synthesis.SynthesisContext
+
 /** Represents a user-defined context-free grammar of expressions */
-case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
+case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
 
   type Prod = ProductionRule[Label, Expr]
 
@@ -44,13 +46,13 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
 
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[Label, Expr](Nil, _ => builder, tag, cost)
+  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
+    ProductionRule[Label, Expr](Nil, _ => builder, tag, cost, weight)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int = 1) = {
-    ProductionRule[Label, Expr](subs, builder, tag, cost)
+  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
+    ProductionRule[Label, Expr](subs, builder, tag, cost, weight)
   }
 
   def tpeToLabel(tpe: TypeTree): Label = {
@@ -96,27 +98,20 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
         Tags.Top
       }
 
+      val w = ow.getOrElse(1).toDouble
+
       if (isTerm) {
         // if the function has one argument, we look for an input to p of the same name
 
-        fd.params match {
-          case Nil =>
-            val expr = unwrapLabels(fd.body.get, Map())
-
-            Some(lab -> (terminal(expr, tag), ow))
-
-          case Seq(param) =>
-            inputs.find(_.name == param.id.name) match {
-              case Some(a) =>
-                val expr = unwrapLabels(a.toVariable, Map())
-
-                Some(lab -> (terminal(expr, tag), ow))
-              case _ =>
-                None
-            }
-
+        fd.fullBody match {
+          // Special built-in "variable" case, which tells us how often to generate variables of specific type
+          case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+            val vars = inputs.filter(_.getType == tp)
+            val size = vars.size.toDouble
+            vars map (v => lab -> terminal(v.toVariable, tag, cost = 1, w/size))
           case _ =>
-            None
+            val expr = unwrapLabels(fd.body.get, Map())
+            Some(lab -> terminal(expr, tag, cost = 1, w))
         }
       } else {
         val subs = fd.params.map(p => tpeToLabel(p.getType))
@@ -131,50 +126,28 @@ case class UserDefinedGrammar(ctx: LeonContext, program: Program, visibleFrom: O
 
         val body = unwrapLabels(fd.body.get, m)
 
-        val cost = if (fd.flags(IsImplicit)) {
-          -1
-        } else {
-          1
-        }
-
-        Some(lab -> (nonTerminal(subs, { sexprs => replaceFromIDs((holes zip sexprs).toMap, body) }, tag, cost), ow))
+        Some(lab -> nonTerminal(subs, { sexprs => replaceFromIDs((holes zip sexprs).toMap, body) }, tag, cost = 1, w))
       }
     }.groupBy(_._1).mapValues(_.map(_._2))
 
-    // Normalize weights as costs
-    def normalizedCost(cost: Int, ow: Option[Int], max: Int, factor: Int) = {
-      if (cost <= 0) {
-        cost
-      } else {
-        ow match {
-          case Some(w) =>
-            (max-w)/factor + 1
-          case None =>
-            max/factor
-        }
-      }
-    }
-
-    def gcd(a: Int,b: Int): Int = {
-      if(b == 0) a else gcd(b, a%b)
-    }
-
     for ((l, pw) <- ps) yield {
-      val ws = pw.flatMap(_._2)
+      val ws = pw map (_.weight)
 
       val prods = if (ws.nonEmpty) {
 
-        val factor = ws.reduceLeft(gcd)
         val sum = ws.sum
-        val max = ws.max
+        // Cost = -log(prob) = -log(weight/Σ(weights))
+        val costs = ws.map(w => -Math.log(w/sum.toDouble))
+        //println(costs)
+        val minCost = costs.min
+        val normalizedCosts = costs.map(p => (p/minCost).round.toInt)
 
-        println(s"Factor/Sum/Max: $factor/$sum/$max")
-
-        for ((p, ow) <- pw) yield {
-          p.copy(cost = normalizedCost(p.cost, ow, max, factor))
+        for (((p, cost), ncost) <- pw zip costs zip normalizedCosts) yield {
+          //println(s"$l -> ${p.weight}, $cost, $ncost")
+          p.copy(cost = ncost)
         }
       } else {
-        pw.map(_._1)
+        sys.error("Whoot???")
       }
 
       l -> prods
