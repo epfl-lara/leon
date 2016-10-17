@@ -140,9 +140,9 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         val costs = ws.map(w => -Math.log(w/sum.toDouble))
         //println(costs)
         val minCost = costs.min
-        val normalizedCosts = costs.map(p => (p/minCost).round.toInt)
 
-        for (((p, cost), ncost) <- pw zip costs zip normalizedCosts) yield {
+        for ((p, cost) <- pw zip costs) yield {
+          val ncost = (cost/minCost).round.toInt
           //println(s"$l -> ${p.weight}, $cost, $ncost")
           p.copy(cost = ncost)
         }

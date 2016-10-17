@@ -59,7 +59,6 @@ object DefOps {
     val asList = {
       val inPath = (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ List(pgm)
       val inUnits = unitsInPackage(pgm, packageOf(df)) flatMap { _.subDefinitions }
-      println(unitOf(df).get.imports)
       val imported = for {
         u <- unitOf(df).toSeq
         imp <- u.imports
