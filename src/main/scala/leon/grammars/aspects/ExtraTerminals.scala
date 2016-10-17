@@ -21,7 +21,14 @@ case class ExtraTerminals(s: Set[Expr]) extends PersistentAspect {
   override def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     super.applyTo(lab, ps) ++ {
       s.filter(e => isSubtypeOf(e.getType, lab.getType)).map { e =>
-        ProductionRule[Label, Expr](Nil, { (es: Seq[Expr]) => e }, e.getClass, Tags.Top, formulaSize(e))
+        ProductionRule[Label, Expr](
+            Nil,
+            { (es: Seq[Expr]) => e },
+            e.getClass,
+            Tags.Top,
+            formulaSize(e),
+            1.0 / formulaSize(e)
+        )
       }
     }
   }

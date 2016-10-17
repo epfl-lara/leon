@@ -18,7 +18,7 @@ case object Closures extends ExpressionGrammar {
       val rlab = Label(ret).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
       applyAspects(lab, List(
-        ProductionRule(List(rlab), { case Seq(body) => Lambda(args, body) }, classOf[Lambda], Tags.Top, 1)
+        ProductionRule(List(rlab), { case Seq(body) => Lambda(args, body) }, classOf[Lambda], Tags.Top, 1, 1.0)
       ))
 
     case _ =>

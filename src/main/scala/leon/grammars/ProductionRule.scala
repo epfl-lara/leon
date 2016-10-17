@@ -20,5 +20,6 @@ case class ProductionRule[T, R](
     override val builder: Seq[R] => R,
     outType: Class[_ <: R],
     tag: Tags.Tag,
-    cost: Int)
+    cost: Int,
+    weight: Double)
   extends Generator[T,R](subTrees, builder)

@@ -80,7 +80,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect {
             lab.withAspect(a)
           }
 
-          ProductionRule(newSubTrees, p.builder, p.outType, p.tag, p.cost)
+          ProductionRule(newSubTrees, p.builder, p.outType, p.tag, p.cost, p.weight)
         }
       } else {
         Nil
