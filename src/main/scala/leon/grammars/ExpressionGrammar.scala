@@ -66,6 +66,7 @@ abstract class ExpressionGrammar {
     }
 
     for ((lab, gs) <- cache.toSeq.sortWith(sorter)) {
+      def lineize(s: String) = s.lines.mkString("\n" + " " * 55)
       val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
 
       if (gs.isEmpty) {
@@ -75,7 +76,7 @@ abstract class ExpressionGrammar {
           val subs = g.subTrees.map { t =>
             FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
           }
-          f"(${g.cost}%3d, ${g.weight}%2.3f) " + g.builder(subs).asString
+          f"(${g.cost}%3d, ${g.weight}%2.3f) " + lineize(g.builder(subs).asString)
         }
 
         printer(lhs + rhs.mkString("\n" + " " * 55))

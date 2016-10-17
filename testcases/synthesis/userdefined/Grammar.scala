@@ -45,7 +45,6 @@ object Grammar {
   def t = true
 
   def min(b1: BigInt, b2: BigInt) = choose( (out: BigInt) => {
-    val x = minus(1,2)
     out >= b1 && out >= b2 && (out == b1 || out == b2)
   })
 }

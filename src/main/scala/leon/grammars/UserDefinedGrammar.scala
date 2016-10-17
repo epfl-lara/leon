@@ -143,12 +143,17 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         val sum = ws.sum
         // Cost = -log(prob) = -log(weight/Σ(weights))
         val costs = ws.map(w => -Math.log(w/sum.toDouble))
-        //println(costs)
         val minCost = costs.min
 
         for ((p, cost) <- pw zip costs) yield {
           val ncost = (cost/minCost).round.toInt
-          //println(s"$l -> ${p.weight}, $cost, $ncost")
+          //locally {
+          //  def complete(p: Prod) = {
+          //    val vars = p.subTrees.map(l => Variable(FreshIdentifier("???", l.getType)))
+          //    p.builder(vars)
+          //  }
+          //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $cost, $ncost")
+          //}
           p.copy(cost = ncost)
         }
       } else {
