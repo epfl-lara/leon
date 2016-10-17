@@ -13,23 +13,23 @@ upper bounds on resources consumed by programs.
 Why Verify Resource Bounds?
 ---------------------------
 
-Statically proving bounds on resources such as time and space consumed by softwares is considered too difficult 
-a task to accomplish due to the complexities of the hardware and operating environments that 
-the modern day softwares are deployed on.
-This is true to an extent only if one wants to precisely estimate the resource usage in terms of the actual
-physical units such as wall-clock time or bytes.
-However, as shown by decades of research in theoretically computer science, it is possible to assess
-resource usage of programs using more abstract, algorithmic metrics that are fairly independent of the runtime
-infrastructure.
-These metrics often characterize the asymptotic behavior of the programs.
-What Leon provides you is a way to establish bounds on such algorithmic metrics. 
+Statically establishing bounds on resources such as time and space consumed by softwares
+is an important problem that developers are often faced with. 
+While it is desirable to compute resource usage in terms of physical units such as wall-clock time
+or bytes, this task is usually dependent on the underlying hardware and operating environments.
+For these reasons, resource usage of programs are often assessed using more abstract, 
+algorithmic metrics that are fairly independent of the runtime infrastructure.
+These metrics helps establish the asymptotic behavior of the programs, and also can provide more concrete 
+information such as the number of instructions executed by a program in the worst case, 
+or the number of objects allocated in the heap. What Leon provides you is a way to establish bounds on 
+such algorithmic metrics. 
 For instance, you can state and prove that a function `sorting a list of integers using insertion sort 
 takes time quadratic in size of the list`.
-After all most of the  development effort is spent on making implementations efficient, and now you can verify the 
-efficiency of your implementations!
+After all, most of the  development effort is spent on making implementations efficient, and 
+now you can verify the efficiency of your implementations!
 
 The rest of this documentation presents a brief overview of verifying resource usage of programs using Leon. 
-More illustrations are available under the `Resourcebounds` section of `leon web <http://leon.epfl.ch>`_
+More illustrations are available under the `Resourcebounds` section of `leon web <http://leondev.epfl.ch>`_
 
 
 Proving Abstract Bounds on Resources
@@ -69,7 +69,7 @@ However, the minimality of the inferred constants is only "best-effort" and not 
 
 Importing Inferred Bounds
 -------------------------
-The `leon web <http://leon.epfl.ch>`_ interface allows importing the inferred resource bounds and correctness invariants (if any)
+The `leon web <http://leondev.epfl.ch>`_ interface allows importing the inferred resource bounds and correctness invariants (if any)
 automatically into the program. To do so click on a tick mark on the right pane, and choose `import all invariants`.
 Once all invariants have been imported, the verification phase will get initiated, which may serve to cross check the results.
 
@@ -78,7 +78,7 @@ Finding Counter-examples for Concrete Bounds
 --------------------------------------------
 
 For concrete bounds that do not have holes, Leon can discover counter-examples, which are inputs that violate the specification.
-For instance, Leon will report a counter-example on the following code snippet: (Try it here: `leon web <http://leon.epfl.ch>`_)
+For instance, Leon will report a counter-example on the following code snippet: (Try it here: `leon web <http://leondev.epfl.ch>`_)
 
 .. code-block:: scala
 
@@ -182,7 +182,7 @@ This constraint is because Leon uses induction over the recursive calls made by 
 is sound only when the function is terminating.
 Therefore, users are advised to verify the termination of their programs when proving resource 
 or correctness properties. 
-In `leon web <http://leon.epfl.ch>`_ you can turn on termination from the *params* memu. 
+In `leon web <http://leondev.epfl.ch>`_ you can turn on termination from the *params* memu. 
 To run the Leon termination checker from command line  see :ref:`cmdlineoptions`.
 
 Running from Command Line
@@ -227,7 +227,14 @@ Common Pitfalls
 	  }
 
 	To prove a linear bound for ``countUntilN``, one should use either ``steps <= ? * (n - i) + ?`` or more generally ``steps <= ? * n + ? * i + ?``
- 	
+
+Support for Higher-order Functions and Memoization
+--------------------------------------------------
+
+We have recently extended the tool to verify resource bounds of higher-order functions in the presence of memoization
+and lazy evaluation. Some examples are available under the heading `Memresources` in `leon web <http://leondev.epfl.ch>`_.
+The technical report `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_ 
+provides more details on this extension. 
 
 Limitations
 -----------
@@ -237,7 +244,6 @@ Unfortunately, certain features that are supported in correctness verification a
 verification as yet. Below are a set of features that are not supported currently.
 
 * `xlang` and mutable state
-* Higher-order functions and `lazy val`. (To be included in the next update).
 * Choose operations
 * Class invariants
 * Strings
@@ -251,7 +257,7 @@ For any questions, please consult  `Ravi Madhavan <http://lara.epfl.ch/~kandhada
 check the following publications that explain the underlying techniques.
 
 	* `Symbolic resource bound inference for functional programs <http://lara.epfl.ch/~kuncak/papers/MadhavanKuncak14SymbolicResourceBoundInferenceFunctionalPrograms.pdf>`_, by *Ravichandhran Madhavan* and *Viktor Kuncak*. Computer Aided Verification (CAV), 2014.
-	* `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_, by *Ravichandhran Madhavan*, *Sumith Kulal*, and *Viktor Kuncak*. EPFL Technical Report, 2016.
+	* `Verifying Resource Bounds of Programs with Lazy Evaluation and Memoization <https://infoscience.epfl.ch/record/215783>`_, by *Ravichandhran Madhavan*, *Sumith Kulal*, and *Viktor Kuncak*. EPFL Technical Report, 2016.	
 
 Contributors
 ------------

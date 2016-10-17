@@ -1,0 +1,1200 @@
+[[33mWarning [0m] warning: there were 10 feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for emptyNum$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zeroPrecedesLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zeroPrecedesLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zeroPrecedesSuf$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zeroPrecedesSuf$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concreteUntil$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concreteUntil$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isConcrete$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isConcrete$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for schedulesProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedulesProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedulesProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for strongSchedsProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for strongSchedsProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushUntilCarry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushUntilCarry$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushLeftStream$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeftLazy$5[T](ys, xs, scr$8._2))' VC for pushLeftStream$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftStream$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazy$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for PushLeftLazyL@pushLeftLazyPre$1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for PushLeftLazyL@pushLeftLazyPre$1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for PushLeftLazyL@pushLeftLazyPre$1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeftStream$5[T](ys, w.trees, st@))' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeftLazyLemma$5[T](ys, w.trees, head ...)' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeft$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call schedMonotone$5[T](st@, a$207, rtail$4,  ...)' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixZeroLemma$5[T](q, head$120, rhead$ ...)' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for Pay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushLeftAndPay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeft$5[T](ys, w, st@))' VC for pushLeftAndPay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call Pay$5[T](q$320, x$3$11._1._2, x$3$11._2))' VC for pushLeftAndPay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftAndPay$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for head$143 @?:?...
+[[33mWarning [0m] Unexpected error from orb-cvc4 solver: Parse Error: Illegal argument detected
+[[33mWarning [0m] std::vector<CVC4::DatatypeType> CVC4::ExprManager::mkMutualDatatypeTypes(const std::vector<CVC4::Datatype>&, const std::set<CVC4::Type>&)
+[[33mWarning [0m] 
+[[33mWarning [0m]   `unresolvedTypes' is a bad argument; expected resolver != nameResolutions.end() to hold
+[[33mWarning [0m] cannot resolve type `Conc!114'; it's not among the datatypes being defined
+[[33mWarning [0m] Unexpected error from z3 solver: line 13 column 19: invalid datatype declaration, unknown sort 'Conc!116'
+[[33mWarning [0m]  => UNKNOWN
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for head$143 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for head$143 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeftLazyLemma$5[T](CC[T](head$124, y ...)' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pushLeftLazy$5[T](ys, xs, a$208._2))' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pushLeftLazyLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for schedMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call schedMonotone$5[T](st1, st2, tail$28, pu ...)' VC for schedMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for schedMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilMonotone$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for properSuffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixDisequality$5[T](l, suf))' VC for properSuffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for properSuffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for suffixTrans$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixTrans$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixTrans$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixTrans$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffixDisequality$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixDisequality$5[T](rear$143, sufRear ...)' VC for suffixDisequality$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixDisequality$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for suffixCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for suffixCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteUntilIsSuffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteUntilIsSuffix$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concUntilExtenLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilConcreteExten$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilConcreteExten$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concUntilCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concUntilCompose$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for zeroPredSufConcreteUntilLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for zeroPredSufConcreteUntilLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for concreteZeroPredLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (match exhaustiveness)' VC for concreteZeroPredLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for suffixZeroLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call suffixZeroLemma$5[T](tail$29, suf, suf2))' VC for suffixZeroLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixZeroLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for suffixZeroLemma$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for valid$9 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for getV$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call thiss.fval-mem$3(uiState$2[T]))' VC for getV$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for getV$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for get$11 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call thiss.fval-mem$3(st@))' VC for get$11 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for get$11 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fval-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fval-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fval-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isCached$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isCached$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for abs$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call lookup$5[T](l$366, i))' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call lookup$5[T](r$216, i - l$366.size$10))' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call instAppendIndexAxiom$5[T](xs, i))' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call xs.toList$8.apply(i))' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for lookup$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for instAppendIndexAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call appendIndex[T](l$367.toList$8, r$217.toL ...)' VC for instAppendIndexAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for instAppendIndexAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call update$5[T](l$368, i, y))' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call update$5[T](r$218, i - l$368.size$10, y))' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call instAppendUpdateAxiom$5[T](xs, i, y))' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call xs.toList$8.updated(i, y))' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for update$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for instAppendUpdateAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call appendUpdate[T](l$369.toList$8, r$219.to ...)' VC for instAppendUpdateAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for instAppendUpdateAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](r$220, ys))' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](rr$4, ys))' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](xs, l$371))' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](xs, ll$4))' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concatNonEmpty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for appendAssocInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for appendAssocInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for appendAssocInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for appendAssocInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for appendAssocInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concatNormalized$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](xs, ys))' VC for concatNormalized$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concatNormalized$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concatCorrectness$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](insert$5[T](l$375, i ...)' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insert$5[T](l$375, i, y))' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNonEmpty$5[T](l$375, insert$5[T](r ...)' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insert$5[T](r$224, i - l$375.size$10, y))' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAppendAxiomInst$5[T](xs, i, y))' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAtIndex$5[T](xs.toList$8, i, y))' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for insert$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for insertAtIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAtIndex$5[T](tail$30, i - BigInt(1 ...)' VC for insertAtIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for insertAtIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call appendInsertIndex$5[T](xs$198, l2, i - B ...)' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAtIndex$5[T]((l1 ++ l2), i, y))' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAtIndex$5[T](l1, i, y))' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call insertAtIndex$5[T](l2, i - l1.size, y))' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for appendInsertIndex$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for insertAppendAxiomInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call appendInsertIndex$5[T](l$383.toList$8, r ...)' VC for insertAppendAxiomInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for insertAppendAxiomInst$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call split$7[T](l$384, n))' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNormalized$5[T](lr$6, r$228))' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call split$7[T](r$228, n - l$384.size$10))' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call concatNormalized$5[T](l$384, rl$6))' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for split$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for splitCorrectness$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for instSplitAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for instSplitAxiom$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for toList$8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for toList$8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isEmpty$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for level$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for level$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for balanced$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for balanced$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$10 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isLeaf$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isLeaf$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concInv$6 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concInv$6 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                          ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.146 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.074 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.088 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.058 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.327 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.060 ?
+? Conqueue.Pay$5                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.117 ?
+? Conqueue.Pay$5                            postcondition                                                 ?:?  valid    U:orb-smt-z3          0.871 ?
+? Conqueue.Pay$5                            precond. (call schedMonotone$5[T](st@, a$207, rtail$4,  ...)  ?:?  valid    U:orb-smt-z3          0.469 ?
+? Conqueue.Pay$5                            precond. (call suffixZeroLemma$5[T](q, head$120, rhead$ ...)  ?:?  valid    U:orb-smt-z3          0.773 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.083 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.062 ?
+? Conqueue.PushLeftLazyL@pushLeftLazyPre$1  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.310 ?
+? ConcTrees.abs$6                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.029 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.050 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.063 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.059 ?
+? ConcTrees.appendAssocInst$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.038 ?
+? ConcTrees.appendAssocInst$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          2.617 ?
+? ConcTrees.appendInsertIndex$5             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.041 ?
+? ConcTrees.appendInsertIndex$5             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.561 ?
+? ConcTrees.appendInsertIndex$5             precond. (call appendInsertIndex$5[T](xs$198, l2, i - B ...)  ?:?  valid    U:orb-smt-z3          0.056 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T]((l1 ++ l2), i, y))          ?:?  valid    U:orb-smt-z3          0.389 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T](l1, i, y))                  ?:?  valid    U:orb-smt-z3          0.057 ?
+? ConcTrees.appendInsertIndex$5             precond. (call insertAtIndex$5[T](l2, i - l1.size, y))        ?:?  valid    U:orb-smt-z3          0.055 ?
+? Conc.balanced$6                           match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conc.balanced$6                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.040 ?
+? Conc.concInv$6                            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.070 ?
+? Conc.concInv$6                            postcondition                                                 ?:?  valid    U:orb-smt-z3          0.051 ?
+? Conqueue.concUntilCompose$5               tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.056 ?
+? Conqueue.concUntilCompose$5               tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.252 ?
+? Conqueue.concUntilConcreteExten$5         tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.071 ?
+? Conqueue.concUntilConcreteExten$5         tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.264 ?
+? Conqueue.concUntilExtenLemma$5            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.043 ?
+? Conqueue.concUntilExtenLemma$5            match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.053 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.concUntilExtenLemma$5            tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.062 ?
+? Conqueue.concUntilExtenLemma$5            tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.249 ?
+? Conqueue.concUntilMonotone$5              tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.109 ?
+? Conqueue.concUntilMonotone$5              tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.214 ?
+? ConcTrees.concatCorrectness$5             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.035 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.521 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          2.201 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.376 ?
+? ConcTrees.concatNonEmpty$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.407 ?
+? ConcTrees.concatNonEmpty$5                postcondition                                                 ?:?  valid    U:orb-smt-z3         13.013 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](r$220, ys))                ?:?  valid    U:orb-smt-z3          0.630 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](rr$4, ys))                 ?:?  valid    U:orb-smt-z3          0.715 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](xs, l$371))                ?:?  valid    U:orb-smt-z3          0.648 ?
+? ConcTrees.concatNonEmpty$5                precond. (call concatNonEmpty$5[T](xs, ll$4))                 ?:?  valid    U:orb-smt-z3          0.617 ?
+? ConcTrees.concatNormalized$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.046 ?
+? ConcTrees.concatNormalized$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          3.967 ?
+? ConcTrees.concatNormalized$5              precond. (call concatNonEmpty$5[T](xs, ys))                   ?:?  valid    U:orb-smt-z3          0.357 ?
+? Conqueue.concreteMonotone$5               tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.concreteMonotone$5               tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.210 ?
+? Conqueue.concreteUntil$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          1.048 ?
+? Conqueue.concreteUntil$5                  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.079 ?
+? Conqueue.concreteUntilIsSuffix$5          tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.concreteUntilIsSuffix$5          tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.200 ?
+? Conqueue.concreteZeroPredLemma$5          tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.concreteZeroPredLemma$5          tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.194 ?
+? Conqueue.emptyNum$5                       postcondition                                                 ?:?  valid    U:orb-smt-orb-cvc4    0.166 ?
+? Stream.fval-mem$3                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.037 ?
+? Stream.fval-mem$3                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Stream.fval-mem$3                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.221 ?
+? Stream.get$11                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.032 ?
+? Stream.get$11                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.177 ?
+? Stream.get$11                             precond. (call thiss.fval-mem$3(st@))                         ?:?  valid    U:orb-smt-z3          0.031 ?
+? Stream.getV$6                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.030 ?
+? Stream.getV$6                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.065 ?
+? Stream.getV$6                             precond. (call thiss.fval-mem$3(uiState$2[T]))                ?:?  valid    U:orb-smt-z3          0.039 ?
+? Conqueue.head$143                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.056 ?
+? Conqueue.head$143                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.031 ?
+? Conqueue.head$143                         postcondition                                                 ?:?  unknown  Pfolio                0.083 ?
+? ConcTrees.insert$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.036 ?
+? ConcTrees.insert$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3         32.142 ?
+? ConcTrees.insert$5                        precond. (call concatNonEmpty$5[T](insert$5[T](l$375, i ...)  ?:?  valid    U:orb-smt-z3          7.266 ?
+? ConcTrees.insert$5                        precond. (call concatNonEmpty$5[T](l$375, insert$5[T](r ...)  ?:?  valid    U:orb-smt-z3          7.490 ?
+? ConcTrees.insert$5                        precond. (call insert$5[T](l$375, i, y))                      ?:?  valid    U:orb-smt-z3          0.482 ?
+? ConcTrees.insert$5                        precond. (call insert$5[T](r$224, i - l$375.size$10, y))      ?:?  valid    U:orb-smt-z3          0.485 ?
+? ConcTrees.insert$5                        precond. (call insertAppendAxiomInst$5[T](xs, i, y))          ?:?  valid    U:orb-smt-z3          0.081 ?
+? ConcTrees.insert$5                        precond. (call insertAtIndex$5[T](xs.toList$8, i, y))         ?:?  valid    U:orb-smt-z3         26.316 ?
+? ConcTrees.insertAppendAxiomInst$5         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.032 ?
+? ConcTrees.insertAppendAxiomInst$5         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.946 ?
+? ConcTrees.insertAppendAxiomInst$5         precond. (call appendInsertIndex$5[T](l$383.toList$8, r ...)  ?:?  valid    U:orb-smt-z3          1.385 ?
+? ConcTrees.insertAtIndex$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.035 ?
+? ConcTrees.insertAtIndex$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.050 ?
+? ConcTrees.insertAtIndex$5                 precond. (call insertAtIndex$5[T](tail$30, i - BigInt(1 ...)  ?:?  valid    U:orb-smt-z3          0.089 ?
+? ConcTrees.instAppendIndexAxiom$5          match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.031 ?
+? ConcTrees.instAppendIndexAxiom$5          postcondition                                                 ?:?  valid    U:orb-smt-z3          0.795 ?
+? ConcTrees.instAppendIndexAxiom$5          precond. (call appendIndex[T](l$367.toList$8, r$217.toL ...)  ?:?  valid    U:orb-smt-z3          0.711 ?
+? ConcTrees.instAppendUpdateAxiom$5         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.034 ?
+? ConcTrees.instAppendUpdateAxiom$5         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.876 ?
+? ConcTrees.instAppendUpdateAxiom$5         precond. (call appendUpdate[T](l$369.toList$8, r$219.to ...)  ?:?  valid    U:orb-smt-z3          0.728 ?
+? ConcTrees.instSplitAxiom$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-orb-cvc4    0.033 ?
+? ConcTrees.instSplitAxiom$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          1.128 ?
+? Stream.isCached$6                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Stream.isCached$6                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.039 ?
+? Conqueue.isConcrete$5                     match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.077 ?
+? Conqueue.isConcrete$5                     postcondition                                                 ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conc.isEmpty$10                           postcondition                                                 ?:?  valid    U:orb-smt-z3          0.036 ?
+? Conc.isLeaf$6                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.042 ?
+? Conc.isLeaf$6                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.032 ?
+? Conc.level$6                              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.030 ?
+? Conc.level$6                              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.187 ?
+? ConcTrees.lookup$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.240 ?
+? ConcTrees.lookup$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3          1.497 ?
+? ConcTrees.lookup$5                        precond. (call instAppendIndexAxiom$5[T](xs, i))              ?:?  valid    U:orb-smt-z3          0.048 ?
+? ConcTrees.lookup$5                        precond. (call lookup$5[T](l$366, i))                         ?:?  valid    U:orb-smt-z3          0.508 ?
+? ConcTrees.lookup$5                        precond. (call lookup$5[T](r$216, i - l$366.size$10))         ?:?  valid    U:orb-smt-z3          0.514 ?
+? ConcTrees.lookup$5                        precond. (call xs.toList$8.apply(i))                          ?:?  valid    U:orb-smt-z3          0.641 ?
+? Conqueue.properSuffix$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.076 ?
+? Conqueue.properSuffix$5                   postcondition                                                 ?:?  valid    U:orb-smt-z3          0.241 ?
+? Conqueue.properSuffix$5                   precond. (call suffixDisequality$5[T](l, suf))                ?:?  valid    U:orb-smt-z3          0.206 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.080 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.098 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.089 ?
+? Conqueue.pushLeft$5                       match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.pushLeft$5                       postcondition                                                 ?:?  valid    U:orb-smt-orb-cvc4    1.773 ?
+? Conqueue.pushLeft$5                       precond. (call pushLeftLazyLemma$5[T](ys, w.trees, head ...)  ?:?  valid    U:orb-smt-z3          0.442 ?
+? Conqueue.pushLeft$5                       precond. (call pushLeftStream$5[T](ys, w.trees, st@))         ?:?  valid    U:orb-smt-z3          0.221 ?
+? Conqueue.pushLeftAndPay$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conqueue.pushLeftAndPay$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          1.130 ?
+? Conqueue.pushLeftAndPay$5                 precond. (call Pay$5[T](q$320, x$3$11._1._2, x$3$11._2))      ?:?  valid    U:orb-smt-z3          0.627 ?
+? Conqueue.pushLeftAndPay$5                 precond. (call pushLeft$5[T](ys, w, st@))                     ?:?  valid    U:orb-smt-z3          0.191 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.202 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.093 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.100 ?
+? Conqueue.pushLeftLazy$5                   match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.074 ?
+? Conqueue.pushLeftLazy$5                   postcondition                                                 ?:?  valid    U:orb-smt-z3          0.881 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.086 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.087 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.065 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.073 ?
+? Conqueue.pushLeftLazyLemma$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.849 ?
+? Conqueue.pushLeftLazyLemma$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.891 ?
+? Conqueue.pushLeftLazyLemma$5              precond. (call pushLeftLazy$5[T](ys, xs, a$208._2))           ?:?  valid    U:orb-smt-z3          0.651 ?
+? Conqueue.pushLeftLazyLemma$5              precond. (call pushLeftLazyLemma$5[T](CC[T](head$124, y ...)  ?:?  valid    U:orb-smt-z3          0.265 ?
+? Conqueue.pushLeftStream$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.pushLeftStream$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.570 ?
+? Conqueue.pushLeftStream$5                 precond. (call pushLeftLazy$5[T](ys, xs, scr$8._2))           ?:?  valid    U:orb-smt-z3          0.288 ?
+? Conqueue.pushUntilCarry$5                 match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.060 ?
+? Conqueue.pushUntilCarry$5                 postcondition                                                 ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.schedMonotone$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.059 ?
+? Conqueue.schedMonotone$5                  match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.065 ?
+? Conqueue.schedMonotone$5                  postcondition                                                 ?:?  valid    U:orb-smt-z3          0.376 ?
+? Conqueue.schedMonotone$5                  precond. (call schedMonotone$5[T](st1, st2, tail$28, pu ...)  ?:?  valid    U:orb-smt-z3          0.360 ?
+? Conqueue.schedulesProperty$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.041 ?
+? Conqueue.schedulesProperty$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.035 ?
+? Conqueue.schedulesProperty$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.095 ?
+? Conc.size$10                              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.029 ?
+? Conc.size$10                              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.160 ?
+? ConcTrees.split$7                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.039 ?
+? ConcTrees.split$7                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.033 ?
+? ConcTrees.split$7                         postcondition                                                 ?:?  valid    U:orb-smt-z3         15.360 ?
+? ConcTrees.split$7                         precond. (call concatNormalized$5[T](l$384, rl$6))            ?:?  valid    U:orb-smt-z3          4.302 ?
+? ConcTrees.split$7                         precond. (call concatNormalized$5[T](lr$6, r$228))            ?:?  valid    U:orb-smt-z3          3.987 ?
+? ConcTrees.split$7                         precond. (call split$7[T](l$384, n))                          ?:?  valid    U:orb-smt-z3          0.487 ?
+? ConcTrees.split$7                         precond. (call split$7[T](r$228, n - l$384.size$10))          ?:?  valid    U:orb-smt-z3          0.444 ?
+? ConcTrees.splitCorrectness$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.055 ?
+? Conqueue.strongSchedsProp$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.044 ?
+? Conqueue.strongSchedsProp$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          0.088 ?
+? Conqueue.suffix$5                         match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.068 ?
+? Conqueue.suffix$5                         postcondition                                                 ?:?  valid    U:orb-smt-z3          0.063 ?
+? Conqueue.suffixCompose$5                  tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.061 ?
+? Conqueue.suffixCompose$5                  tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.316 ?
+? Conqueue.suffixDisequality$5              match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.087 ?
+? Conqueue.suffixDisequality$5              postcondition                                                 ?:?  valid    U:orb-smt-z3          0.283 ?
+? Conqueue.suffixDisequality$5              precond. (call suffixDisequality$5[T](rear$143, sufRear ...)  ?:?  valid    U:orb-smt-z3          0.267 ?
+? Conqueue.suffixTrans$5                    match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.067 ?
+? Conqueue.suffixTrans$5                    tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.058 ?
+? Conqueue.suffixTrans$5                    tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.066 ?
+? Conqueue.suffixTrans$5                    tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.213 ?
+? Conqueue.suffixZeroLemma$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.076 ?
+? Conqueue.suffixZeroLemma$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.092 ?
+? Conqueue.suffixZeroLemma$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          0.359 ?
+? Conqueue.suffixZeroLemma$5                precond. (call suffixZeroLemma$5[T](tail$29, suf, suf2))      ?:?  valid    U:orb-smt-z3          0.351 ?
+? Conc.toList$8                             match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.027 ?
+? Conc.toList$8                             postcondition                                                 ?:?  valid    U:orb-smt-z3          0.711 ?
+? ConcTrees.update$5                        match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.257 ?
+? ConcTrees.update$5                        postcondition                                                 ?:?  valid    U:orb-smt-z3          5.579 ?
+? ConcTrees.update$5                        precond. (call instAppendUpdateAxiom$5[T](xs, i, y))          ?:?  valid    U:orb-smt-z3          0.076 ?
+? ConcTrees.update$5                        precond. (call update$5[T](l$368, i, y))                      ?:?  valid    U:orb-smt-z3          0.541 ?
+? ConcTrees.update$5                        precond. (call update$5[T](r$218, i - l$368.size$10, y))      ?:?  valid    U:orb-smt-z3          0.532 ?
+? ConcTrees.update$5                        precond. (call xs.toList$8.updated(i, y))                     ?:?  valid    U:orb-smt-z3          2.986 ?
+? Conqueue.valid$9                          postcondition                                                 ?:?  valid    U:orb-smt-z3          0.071 ?
+? Conqueue.zeroPrecedesLazy$5               match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.084 ?
+? Conqueue.zeroPrecedesLazy$5               postcondition                                                 ?:?  valid    U:orb-smt-z3          0.104 ?
+? Conqueue.zeroPrecedesSuf$5                match exhaustiveness                                          ?:?  valid    U:orb-smt-z3          0.073 ?
+? Conqueue.zeroPrecedesSuf$5                postcondition                                                 ?:?  valid    U:orb-smt-z3          0.090 ?
+? Conqueue.zeroPredSufConcreteUntilLemma$5  tact (match exhaustiveness)                                   ?:?  valid    U:orb-smt-z3          0.072 ?
+? Conqueue.zeroPredSufConcreteUntilLemma$5  tact (postcondition)                                          ?:?  valid    U:orb-smt-z3          0.210 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 195    valid: 194    invalid: 0      unknown 1                                                                                     171.500 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function pushLeftLazy-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: pushLeftLazy-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.066s
+[[34m  Info  [0m] Function: pushLeftLazy-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.06s
+[[34m  Info  [0m] Function: pushLeftLazy-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.492s
+[[34m  Info  [0m] Function: pushLeftLazy-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.568s
+[[34m  Info  [0m] Function: pushLeftLazy-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 7
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.075s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftLazy-alloc-->1 * res$289._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] - Found inductive invariant: pushLeftLazy-alloc --> alloc + BigInt(-9) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function get-alloc...
+[[34m  Info  [0m] - considering function fval-mem-alloc...
+[[34m  Info  [0m] - considering function Pay-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.038s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.037s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 7
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.041s
+[[34m  Info  [0m] Function: Pay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 15
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] Pay-alloc-->1 * res$295._2 + -11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] - Found inductive invariant: Pay-alloc --> alloc + BigInt(-11) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function concatNonEmpty-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 14
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.042s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.057s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.036s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.085s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.056s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.113s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.061s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-3 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.143s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 17 + 29
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.121s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.067s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-3 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.24s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 23 + 29
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.132s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.075s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-3 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.274s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 23 + 29
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.171s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.107s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-3 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.567s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 46 + 29
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.188s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.114s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-3 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.655s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 47 + 29
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.394s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(0 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.289s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 18 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-10 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.671s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-1 * abs(xs.level - ys.level) + 1 * res$285._2) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.579s
+[[34m  Info  [0m] Function: concatNonEmpty-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 27
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-2 * abs(xs.level - ys.level) + 1 * res$285._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.566s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNonEmpty-alloc-->(-2 * abs(xs.level - ys.level) + 1 * res$285._2) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.951s
+[[34m  Info  [0m] - Found inductive invariant: concatNonEmpty-alloc --> (BigInt(-2) * abs(xs.level - ys.level) + alloc) + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function concatNormalized-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + 0 * abs(xs.level - ys.level)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: concatNormalized-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + -2 * abs(xs.level - ys.level)) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: concatNormalized-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 17
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + 0 * abs(xs.level - ys.level)) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] Function: concatNormalized-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + 0 * abs(xs.level - ys.level)) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.03s
+[[34m  Info  [0m] Function: concatNormalized-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 10
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + -7 * abs(xs.level - ys.level)) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concatNormalized-alloc-->(1 * res$283._2 + -2 * abs(xs.level - ys.level)) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] - Found inductive invariant: concatNormalized-alloc --> (alloc + BigInt(-2) * abs(xs.level - ys.level)) + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function pushLeftStream-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 7
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.04s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 14
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.076s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.063s
+[[34m  Info  [0m] Function: pushLeftStream-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 7
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftStream-alloc-->1 * x$2$23._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] - Found inductive invariant: pushLeftStream-alloc --> alloc + BigInt(-9) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function pushLeft-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeft-alloc-->1 * res$290._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: pushLeft-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeft-alloc-->1 * res$290._2 + -13 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeft-alloc-->1 * res$290._2 + -11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: pushLeft-alloc --> alloc + BigInt(-11) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function pushLeftAndPay-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftAndPay-alloc-->1 * res$297._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: pushLeftAndPay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftAndPay-alloc-->1 * res$297._2 + -14 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: pushLeftAndPay-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 8
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftAndPay-alloc-->1 * res$297._2 + -24 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pushLeftAndPay-alloc-->1 * res$297._2 + -23 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: pushLeftAndPay-alloc --> alloc + BigInt(-23) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function lookup-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: lookup-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 99 * xs.level) + 99 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] Function: lookup-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 0 * xs.level) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 99 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: lookup-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + -3 * xs.level) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] lookup-alloc-->(1 * res$293._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] - Found inductive invariant: lookup-alloc --> alloc <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function emptyNum-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] emptyNum-alloc-->1 * x$1$34._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] Function: emptyNum-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] emptyNum-alloc-->1 * x$1$34._2 + -7 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] emptyNum-alloc-->1 * x$1$34._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: emptyNum-alloc --> alloc + BigInt(-5) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function insert-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -1 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 11
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.064s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + 0 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.033s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -4 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.07s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 54 + 32
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -6 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.083s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 34 + 86
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.162s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + 0 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.09s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -3 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.24s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 48 + 32
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -6 * xs.level) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.177s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -5 * xs.level) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.259s
+[[34m  Info  [0m] Function: insert-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 80
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -6 * xs.level) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.156s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] insert-alloc-->(1 * res$294._2 + -5 * xs.level) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.174s
+[[34m  Info  [0m] - Found inductive invariant: insert-alloc --> (alloc + BigInt(-5) * xs.level) + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m  Info  [0m] - considering function split-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((16 * res$291._2 + -2 * res$291._1._2.level) + -48 * res$291._1._1.level) + -8 * xs.level) + -64 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 25 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.062s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + 0 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.037s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + 0 * xs.level) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.122s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + 0 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.061s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 24 + 13
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + 0 * res$291._1._2.level) + 0 * res$291._1._1.level) + -4 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.132s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 56 + 37
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + -14 * res$291._1._2.level) + 0 * res$291._1._1.level) + -2 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.111s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 51 + 93
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + -7 * res$291._1._2.level) + 0 * res$291._1._1.level) + -4 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.226s
+[[34m  Info  [0m] Function: split-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 55 + 144
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + -7 * res$291._1._2.level) + -19 * res$291._1._1.level) + -4 * xs.level) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.15s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] split-alloc-->(((1 * res$291._2 + -2 * res$291._1._2.level) + -2 * res$291._1._1.level) + -3 * xs.level) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.098s
+[[34m  Info  [0m] - Found inductive invariant: split-alloc --> (((alloc + BigInt(-2) * res._2.level) + BigInt(-2) * res._1.level) + BigInt(-3) * xs.level) + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m  Info  [0m] - considering function update-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(0 * xs.level + 1 * res$287._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: update-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(-1 * xs.level + 1 * res$287._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: update-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 11
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(0 * xs.level + 1 * res$287._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: update-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(0 * xs.level + 1 * res$287._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: update-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(-5 * xs.level + 1 * res$287._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] update-alloc-->(-1 * xs.level + 1 * res$287._2) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] - Found inductive invariant: update-alloc --> (-xs.level + alloc) + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ??????????????????????????????????????????????????????????????????????????????????
+? ???????????                                                                                ?
+? Pay             alloc <= 11                                                         1.068  ?
+? concatNonEmpty  alloc <= 2 * abs(xs.level - ys.level) + 1                           24.991 ?
+? concatNormaliz? alloc <= 2 * abs(xs.level - ys.level) + 1                           4.071  ?
+? emptyNum        alloc <= 5                                                          0.166  ?
+? insert          alloc <= 5 * xs.level + 2                                           24.668 ?
+? lookup          alloc <= 0 * xs.level + 0                                           2.195  ?
+? pushLeft        alloc <= 11                                                         0.547  ?
+? pushLeftAndPay  alloc <= 23                                                         1.407  ?
+? pushLeftLazy    alloc <= 9                                                          3.411  ?
+? pushLeftStream  alloc <= 9                                                          2.276  ?
+? split           alloc <= ((3 * xs.level + 2 * res.level) + 2 * res._2.level) + 2    19.108 ?
+? update          alloc <= 1 * xs.level + 1                                           4.445  ?
+??????????????????????????????????????????????????????????????????????????????????????????????
+? total: 12    inferred: 12    unknown: 0     time: 88.353                                   ?
+??????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: Conqueue-stats.txt

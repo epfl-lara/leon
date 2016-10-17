@@ -161,18 +161,14 @@ class PrettyPrinter(opts: PrinterOptions,
       case e @ CaseClass(cct, args) =>
         opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
           case Some((tpe, elems)) =>
-            val chars = elems.collect { case CharLiteral(ch) => ch }
-            if (chars.length == elems.length && tpe == CharType) {
-              // String literal
-              val str = chars mkString ""
-              val q = '"'
-              p"$q$str$q"
+            if(elems.length > 0 && elems.forall { x => x.getType == tpe }) {
+              printNameWithPath(opgm.get.library.List.get)
+              p"($elems)"
             } else {
               val lclass = AbstractClassType(opgm.get.library.List.get, cct.tps)
-
               p"$lclass($elems)"
             }
-
+              
           case None =>
             if (cct.classDef.isCaseObject) {
               p"$cct"

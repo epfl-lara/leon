@@ -247,13 +247,13 @@ class QuestionBuilder[T <: Expr](
     var inputsToConsider = inputs
     var stopOtherOutputs = false
     var previousAlternativeOutputs = List[T]()
-    for {
+    val res = for {
       alternative              <- alternatives
       _ = (stopOtherOutputs = false)
       possibleInput            <- inputsToConsider
       if !stopOtherOutputs
       currentOutputNonFiltered <- run(solution, possibleInput)
-      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+      currentOutput            <- filter(previousAlternativeOutputs, currentOutputNonFiltered)
       question <- augmentQuestion(possibleInput, currentOutput, previousAlternativeOutputs, List(alternative))
     } yield {
       inputsToConsider = Stream(possibleInput)
@@ -261,6 +261,16 @@ class QuestionBuilder[T <: Expr](
       previousAlternativeOutputs = previousAlternativeOutputs ++ question.other_outputs
       question
     }
+    if(res.isEmpty) {
+      (for {
+        possibleInput            <- inputs
+        currentOutputNonFiltered <- run(solution, possibleInput)
+        currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+        question <- computeQuestion(possibleInput, currentOutput, Nil)
+      } yield {
+        question
+      }).take(1)
+    } else res
   }
   
   

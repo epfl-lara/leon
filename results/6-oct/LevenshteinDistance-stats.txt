@@ -1,0 +1,127 @@
+State-Verification-Time: 6.149s
+Total-Time: 30.347s
+Total-VCs-Generated: 52
+Z3SolvedVCs: 49
+CVC4SolvedVCs: 3
+procs: 4
+VC-refinement: 11
+disjuncts: 40
+TotalVCCTime: 2.848s
+Total-AxiomChoose-Time: 0.019s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.386s
+UneliminatedEqualities: 99
+ElimTime: 0.404s
+Total-Choose-Time: 1.019s
+BinarySearchTime: 1.771s
+Resource-Inference-Time: 24.198s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 43.333333333333336
+Max.CVC4-Time: 130
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 122.83673469387755
+Max.Z3-Time: 6019
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 4.181818181818182
+Max.AxiomBlowup: 36
+Avg.VC-size: 296.1818181818182
+Max.VC-size: 965
+Avg.UIF+ADT: 17.09090909090909
+Max.UIF+ADT: 46
+Avg.TemplateIds: 2.090909090909091
+Max.TemplateIds: 4
+Avg.unflatSize: 33.54545454545455
+Max.unflatSize: 123
+Avg.UnflatTime: 0.08354545454545455s
+Max.UnflatTime: 0.216s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.0712s
+Max.VC-check-time: 0.475s
+Avg.CallADT-Constraints: 51.625
+Max.CallADT-Constraints: 263
+Avg.CtrsBeforeElim: 65.125
+Max.CtrsBeforeElim: 247
+Avg.EliminatedAtoms: 59.0
+Max.EliminatedAtoms: 233
+Avg.Param-Atoms: 1.7
+Max.Param-Atoms: 4
+Avg.NonParam-Atoms: 6.125
+Max.NonParam-Atoms: 28
+Avg.Disj-choosing-time: 0.025475s
+Max.Disj-choosing-time: 0.152s
+Avg.NLsize: 26.75
+Max.NLsize: 142
+Avg.NL-solving-time: 0.041325s
+Max.NL-solving-time: 0.028s
+########## Outputs ############
+########## State Verification ############
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                                         ║
+║ LevenshteinDistance.bottomUpPost$5  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.055 ║
+║ LevenshteinDistance.bottomUpPost$5  precond. (call deps$5(m - BigInt(1), n, st@))                        ?:?  valid  U:orb-smt-z3          0.049 ║
+║ LevenshteinDistance.bottomUpPost$5  precond. (call deps$5(m, j, st@))                                    ?:?  valid  U:orb-smt-z3          0.049 ║
+║ LevenshteinDistance.bottomUpPost$5  precond. (call depsLem$5(m - BigInt(1), j + BigInt(1),  ...)         ?:?  valid  U:orb-smt-z3          0.049 ║
+║ LevenshteinDistance.bottomUpPost$5  precond. (call depsLem$5(m, BigInt(0), m, j, st@))                   ?:?  valid  U:orb-smt-z3          0.056 ║
+║ LevenshteinDistance.bottomup$5      postcondition                                                        ?:?  valid  U:orb-smt-z3          0.288 ║
+║ LevenshteinDistance.bottomup$5      precond. (call bottomUpPost$5(m, j, n, x$4$7._2))                    ?:?  valid  U:orb-smt-z3          0.073 ║
+║ LevenshteinDistance.bottomup$5      precond. (call bottomup$5(m - BigInt(1), n, n, st@))                 ?:?  valid  U:orb-smt-z3          0.030 ║
+║ LevenshteinDistance.bottomup$5      precond. (call bottomup$5(m, j - BigInt(1), n, st@))                 ?:?  valid  U:orb-smt-z3          0.030 ║
+║ LevenshteinDistance.bottomup$5      precond. (call invoke$5(m, j, n, st@))                               ?:?  valid  U:orb-smt-z3          0.040 ║
+║ LevenshteinDistance.bottomup$5      precond. (call invoke$5(m, j, n, tail$17._2))                        ?:?  valid  U:orb-smt-z3          0.952 ║
+║ LevenshteinDistance.bottomup$5      precond. (call invoke$5(m, j, n, tail$18._2))                        ?:?  valid  U:orb-smt-z3          0.990 ║
+║ LevenshteinDistance.deps$5          postcondition                                                        ?:?  valid  U:orb-smt-z3          0.214 ║
+║ LevenshteinDistance.deps$5          precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-orb-cvc4    0.047 ║
+║ LevenshteinDistance.deps$5          precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-orb-cvc4    0.048 ║
+║ LevenshteinDistance.deps$5          precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.042 ║
+║ LevenshteinDistance.deps$5          precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.053 ║
+║ LevenshteinDistance.depsLem$5       precond. (call deps$5(i, j, st@))                                    ?:?  valid  U:orb-smt-z3          0.046 ║
+║ LevenshteinDistance.depsLem$5       precond. (call deps$5(m, n, st@))                                    ?:?  valid  U:orb-smt-z3          0.036 ║
+║ LevenshteinDistance.depsLem$5       tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.138 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call deps$5(i, j, st@)))                             ?:?  valid  U:orb-smt-z3          0.059 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call deps$5(m, n, st@)))                             ?:?  valid  U:orb-smt-z3          0.051 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m - BigInt(1), n, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m - BigInt(1), n, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m, n - BigInt(1), s ...))  ?:?  valid  U:orb-smt-z3          0.044 ║
+║ LevenshteinDistance.depsLem$5       tact (precond. (call depsLem-VCTact(i, j, m, n - BigInt(1), s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LevenshteinDistance.depsMono$5      precond. (call deps$5(i, j, st1))                                    ?:?  valid  U:orb-smt-orb-cvc4    0.035 ║
+║ LevenshteinDistance.depsMono$5      precond. (call deps$5(i, j, st2))                                    ?:?  valid  U:orb-smt-z3          0.039 ║
+║ LevenshteinDistance.depsMono$5      tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.218 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call deps$5(i, j, st1)))                             ?:?  valid  U:orb-smt-z3          0.059 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call deps$5(i, j, st2)))                             ?:?  valid  U:orb-smt-z3          0.064 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call depsMono-VCTact(i - BigInt(1), j, st1, s ...))  ?:?  valid  U:orb-smt-z3          0.034 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call depsMono-VCTact(i - BigInt(1), j, st1, s ...))  ?:?  valid  U:orb-smt-z3          0.033 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call depsMono-VCTact(i, j - BigInt(1), st1, s ...))  ?:?  valid  U:orb-smt-z3          0.039 ║
+║ LevenshteinDistance.depsMono$5      tact (precond. (call depsMono-VCTact(i, j - BigInt(1), st1, s ...))  ?:?  valid  U:orb-smt-z3          0.048 ║
+║ LevenshteinDistance.invoke$5        postcondition                                                        ?:?  valid  U:orb-smt-z3          0.168 ║
+║ LevenshteinDistance.invoke$5        precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.035 ║
+║ LevenshteinDistance.invoke$5        precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.070 ║
+║ LevenshteinDistance.invoke$5        precond. (call deps$5(i, j, res._2))                                 ?:?  valid  U:orb-smt-z3          0.062 ║
+║ LevenshteinDistance.invoke$5        precond. (call depsMono$5(i - BigInt(1), j, st@, out$1))             ?:?  valid  U:orb-smt-z3          0.075 ║
+║ LevenshteinDistance.invoke$5        precond. (call depsMono$5(i - BigInt(1), n, st@, out$1))             ?:?  valid  U:orb-smt-z3          0.081 ║
+║ LevenshteinDistance.invoke$5        precond. (call depsMono$5(i, j - BigInt(1), st@, out$1))             ?:?  valid  U:orb-smt-z3          0.087 ║
+║ LevenshteinDistance.invoke$5        precond. (call levDist-mem$3(i, j, st@))                             ?:?  valid  U:orb-smt-z3          0.054 ║
+║ LevenshteinDistance.levDist-mem$3   match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.026 ║
+║ LevenshteinDistance.levDist-mem$3   postcondition                                                        ?:?  valid  U:orb-smt-z3          0.365 ║
+║ LevenshteinDistance.levDist-mem$3   precond. (call deps$5(i - BigInt(1), j, st@))                        ?:?  valid  U:orb-smt-z3          0.030 ║
+║ LevenshteinDistance.levDist-mem$3   precond. (call deps$5(i, j - BigInt(1), st@))                        ?:?  valid  U:orb-smt-z3          0.038 ║
+║ LevenshteinDistance.levDist-mem$3   precond. (call levDist-mem$3(a$180, a$179, st@))                     ?:?  valid  U:orb-smt-z3          0.091 ║
+║ LevenshteinDistance.levDist-mem$3   precond. (call levDist-mem$3(a$182, j, dres$1._2 ++ Set ...)         ?:?  valid  U:orb-smt-z3          0.263 ║
+║ LevenshteinDistance.levDist-mem$3   precond. (call levDist-mem$3(i, a$183, dres$2._2 ++ Set ...)         ?:?  valid  U:orb-smt-z3          0.460 ║
+║ LevenshteinDistance.levDistSols$5   postcondition                                                        ?:?  valid  U:orb-smt-z3          0.109 ║
+║ LevenshteinDistance.levDistSols$5   precond. (call bottomup$5(m, n, n, st@))                             ?:?  valid  U:orb-smt-z3          0.028 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 52     valid: 52     invalid: 0      unknown 0                                                                                      6.149 ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+########## Resource Verification ############
+. ┌─────────┐
+╔═╡ Summary ╞════════════════════════════════════════════════════════════════╗
+║ └─────────┘                                                                ║
+║ bottomup        steps <= ((36 * (m * n) + 36 * m) + 36 * j) + 33    17.983 ║
+║ invoke          steps <= 26                                         0.327  ║
+║ levDist         steps <= 23                                         5.308  ║
+║ levDistSols     steps <= ((36 * (m * n) + 36 * m) + 36 * n) + 34    0.580  ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 4     inferred: 4     unknown: 0     time: 24.198                   ║
+╚════════════════════════════════════════════════════════════════════════════╝

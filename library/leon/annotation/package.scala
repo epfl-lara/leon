@@ -21,6 +21,8 @@ package object annotation {
   class internal   extends StaticAnnotation
   @ignore
   class pure       extends StaticAnnotation
+  @ignore
+  class options(arg: Any*)    extends StaticAnnotation
 
   // Orb annotations
   @ignore

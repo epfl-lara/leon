@@ -1,0 +1,114 @@
+State-Verification-Time: 4.355s
+Total-Time: 8.192s
+Total-VCs-Generated: 38
+Z3SolvedVCs: 36
+CVC4SolvedVCs: 2
+procs: 4
+VC-refinement: 9
+disjuncts: 24
+TotalVCCTime: 0.503s
+Total-AxiomChoose-Time: 0.004s
+Total-TheoryAxiomatization-Time: 0.0s
+Total-ElimUF-Time: 0.162s
+UneliminatedEqualities: 42
+ElimTime: 0.138s
+Total-Choose-Time: 0.348s
+BinarySearchTime: 0.389s
+Resource-Inference-Time: 3.837s
+### Statistics for counter: CVC4SolvedVCs ####
+Avg.CVC4-Time: 44.5
+Max.CVC4-Time: 89
+### Statistics for counter: procs ####
+### Statistics for counter: Z3SolvedVCs ####
+Avg.Z3-Time: 118.5
+Max.Z3-Time: 4266
+### Statistics for counter: VC-refinement ####
+Avg.AxiomBlowup: 1.4444444444444444
+Max.AxiomBlowup: 1
+Avg.VC-size: 141.55555555555554
+Max.VC-size: 188
+Avg.UIF+ADT: 18.11111111111111
+Max.UIF+ADT: 19
+Avg.TemplateIds: 1.7777777777777777
+Max.TemplateIds: 2
+Avg.unflatSize: 21.77777777777778
+Max.unflatSize: 30
+Avg.UnflatTime: 0.04111111111111111s
+Max.UnflatTime: 0.052s
+### Statistics for counter: disjuncts ####
+Avg.VC-check-time: 0.020958333333333332s
+Max.VC-check-time: 0.047s
+Avg.CallADT-Constraints: 22.791666666666668
+Max.CallADT-Constraints: 91
+Avg.CtrsBeforeElim: 31.958333333333332
+Max.CtrsBeforeElim: 129
+Avg.EliminatedAtoms: 28.458333333333332
+Max.EliminatedAtoms: 117
+Avg.Param-Atoms: 1.25
+Max.Param-Atoms: 3
+Avg.NonParam-Atoms: 3.5
+Max.NonParam-Atoms: 12
+Avg.Disj-choosing-time: 0.0145s
+Max.Disj-choosing-time: 0.061s
+Avg.NLsize: 14.541666666666666
+Max.NLsize: 69
+Avg.NL-solving-time: 0.019875s
+Max.NL-solving-time: 0.015s
+########## Outputs ############
+########## State Verification ############
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                      ?
+? Knapscak.deps$5                  postcondition                                                        ?:?  valid  U:orb-smt-z3          2.070 ?
+? Knapscak.deps$5                  precond. (call deps$5(i - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.044 ?
+? Knapscak.depsLem$5               precond. (call deps$5(x, items, st@))                                ?:?  valid  U:orb-smt-z3          0.035 ?
+? Knapscak.depsLem$5               precond. (call deps$5(y, items, st@))                                ?:?  valid  U:orb-smt-orb-cvc4    0.032 ?
+? Knapscak.depsLem$5               tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.073 ?
+? Knapscak.depsLem$5               tact (precond. (call deps$5(x, items, st@)))                         ?:?  valid  U:orb-smt-z3          0.042 ?
+? Knapscak.depsLem$5               tact (precond. (call deps$5(y, items, st@)))                         ?:?  valid  U:orb-smt-z3          0.043 ?
+? Knapscak.depsLem$5               tact (precond. (call depsLem-VCTact(x, y - BigInt(1), items,  ...))  ?:?  valid  U:orb-smt-z3          0.032 ?
+? Knapscak.depsMono$5              precond. (call deps$5(i, items, st1))                                ?:?  valid  U:orb-smt-z3          0.037 ?
+? Knapscak.depsMono$5              precond. (call deps$5(i, items, st2))                                ?:?  valid  U:orb-smt-z3          0.039 ?
+? Knapscak.depsMono$5              tact (postcondition)                                                 ?:?  valid  U:orb-smt-z3          0.149 ?
+? Knapscak.depsMono$5              tact (precond. (call deps$5(i, items, st1)))                         ?:?  valid  U:orb-smt-z3          0.058 ?
+? Knapscak.depsMono$5              tact (precond. (call deps$5(i, items, st2)))                         ?:?  valid  U:orb-smt-z3          0.056 ?
+? Knapscak.depsMono$5              tact (precond. (call depsMono-VCTact(i - BigInt(1), items, st ...))  ?:?  valid  U:orb-smt-z3          0.041 ?
+? Knapscak.knapsack$5              postcondition                                                        ?:?  valid  U:orb-smt-z3          0.069 ?
+? Knapscak.knapsack$5              precond. (call solveUptoWeight$5(w, items, st@))                     ?:?  valid  U:orb-smt-z3          0.030 ?
+? Knapscak.maxOverItems$5          match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.036 ?
+? Knapscak.maxOverItems$5          match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.044 ?
+? Knapscak.maxOverItems$5          postcondition                                                        ?:?  valid  U:orb-smt-z3          0.212 ?
+? Knapscak.maxOverItems$5          precond. (call deps$5(w - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.029 ?
+? Knapscak.maxOverItems$5          precond. (call depsLem$5(w - wi, w - BigInt(1), items,  ...)         ?:?  valid  U:orb-smt-z3          0.045 ?
+? Knapscak.maxOverItems$5          precond. (call maxOverItems$5(items, w, tail$20, st@))               ?:?  valid  U:orb-smt-z3          0.075 ?
+? Knapscak.maxOverItems$5          precond. (call solveForWeight-mem$3(a$175, items, maxWi ...)         ?:?  valid  U:orb-smt-z3          0.152 ?
+? IList.size$10                    match exhaustiveness                                                 ?:?  valid  U:orb-smt-z3          0.041 ?
+? IList.size$10                    postcondition                                                        ?:?  valid  U:orb-smt-z3          0.061 ?
+? Knapscak.solveForWeight-mem$3    postcondition                                                        ?:?  valid  U:orb-smt-z3          0.111 ?
+? Knapscak.solveForWeight-mem$3    precond. (call deps$5(w - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.033 ?
+? Knapscak.solveForWeight-mem$3    precond. (call maxOverItems$5(items, w, items, st@))                 ?:?  valid  U:orb-smt-z3          0.068 ?
+? Knapscak.solveForWeightHelper$5  postcondition                                                        ?:?  valid  U:orb-smt-z3          0.083 ?
+? Knapscak.solveForWeightHelper$5  precond. (call deps$5(i - BigInt(1), items, st@))                    ?:?  valid  U:orb-smt-z3          0.059 ?
+? Knapscak.solveForWeightHelper$5  precond. (call deps$5(i, items, res._2))                             ?:?  valid  U:orb-smt-orb-cvc4    0.057 ?
+? Knapscak.solveForWeightHelper$5  precond. (call depsMono$5(i - BigInt(1), items, st@, re ...)         ?:?  valid  U:orb-smt-z3          0.056 ?
+? Knapscak.solveForWeightHelper$5  precond. (call solveForWeight-mem$3(i, items, st@))                  ?:?  valid  U:orb-smt-z3          0.037 ?
+? Knapscak.solveUptoWeight$5       postcondition                                                        ?:?  valid  U:orb-smt-z3          0.115 ?
+? Knapscak.solveUptoWeight$5       precond. (call deps$5(w, items, x$4$7._2))                           ?:?  valid  U:orb-smt-z3          0.058 ?
+? Knapscak.solveUptoWeight$5       precond. (call solveForWeightHelper$5(w, items, st@))                ?:?  valid  U:orb-smt-z3          0.037 ?
+? Knapscak.solveUptoWeight$5       precond. (call solveForWeightHelper$5(w, items, tail$19 ...)         ?:?  valid  U:orb-smt-z3          0.067 ?
+? Knapscak.solveUptoWeight$5       precond. (call solveUptoWeight$5(w - BigInt(1), items,  ...)         ?:?  valid  U:orb-smt-z3          0.029 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 38     valid: 38     invalid: 0      unknown 0                                                                                   4.355 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+########## Resource Verification ############
+. ???????????
+??? Summary ???????????????????????????????????????????????
+? ???????????                                             ?
+? knapsack        alloc <= 2 * w + 3    0.261             ?
+? maxOverItems    alloc <= 0            0.000             ?
+? solveForWeight  alloc <= 0            2.738             ?
+? solveForWeight? alloc <= 1            0.223             ?
+? solveUptoWeight alloc <= 2 * w + 3    0.615             ?
+???????????????????????????????????????????????????????????
+? total: 5     inferred: 5     unknown: 0     time: 3.837 ?
+???????????????????????????????????????????????????????????

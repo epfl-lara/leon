@@ -52,15 +52,23 @@ object Matrix {
   
   def wrongMatrixConjecture(in: List[List[Int]]) = {
     require(isMatrix(in, 3, 3))
-    in(0)(0) == in(0)(1) || 
-    in(0)(1) == in(0)(2) || 
-    in(0)(2) == in(0)(0) ||
-    in(1)(0) == in(1)(1) || 
-    in(1)(1) == in(1)(2) || 
-    in(1)(2) == in(1)(0) ||
-    in(2)(0) == in(2)(1) || 
-    in(2)(1) == in(2)(2) || 
-    in(2)(2) == in(2)(0)
+    val in00 = in(0)(0)
+    val in01 = in(0)(1)
+    val in02 = in(0)(2)
+    val in10 = in(1)(0)
+    val in11 = in(1)(1)
+    val in12 = in(1)(2)
+    val in20 = in(2)(0)
+    val in21 = in(2)(1)
+    val in22 = in(2)(2)
+    in00 == in01 || 
+    in01 == in02 || 
+    in02 == in00 ||
+    in10 == in11 || 
+    in11 == in12 || 
+    in12 == in10 ||
+    in20 == in21 || 
+    in21 == in22 || 
+    in00 == in10
   } holds
-
 }

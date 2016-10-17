@@ -103,34 +103,54 @@ object Main {
 
   private def exit(error: Boolean) = sys.exit(if (error) 1 else 0)
 
-  def processOptions(args: Seq[String]): LeonContext = {
-
-    val initReporter = new DefaultReporter(Set())
-
-    val options = args.filter(_.startsWith("--"))
-
-    val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
-
-    val initOptions: Seq[LeonOption[Any]] =  options.map { opt =>
-      val (name, value) = OptionsHelpers.nameValue(opt).getOrElse(
-        initReporter.fatalError(
-          s"Malformed option $opt. Options should have the form --name or --name=value"
-        )
+  def splitOptions(options: String): Seq[String] = {
+    """([^"\s]+(?:"(?:(?!["\\]).|\\\\|\\")*")?)+|(?:"[^"]*"[^"\s]*)+""".r.findAllIn(options).toList
+  }
+  
+  def parseOptions(options: String, dismissErrors: Boolean): Seq[LeonOption[Any]] = {
+    parseOptions(splitOptions(options), dismissErrors)
+  }
+  
+  val initReporter = new DefaultReporter(Set())
+  def parseOption(opt: String, dismissErrors: Boolean): Option[LeonOption[Any]] = {
+    val (name, value) = OptionsHelpers.nameValue(opt).getOrElse{
+      if(dismissErrors) return None
+      initReporter.fatalError(
+        s"Malformed option $opt. Options should have the form --name or --name=value"
       )
-      // Find respective LeonOptionDef, or report an unknown option
-      val df = allOptions.find(_.name == name).getOrElse{
-        initReporter.fatalError(
-          s"Unknown option: $name\n" +
-          "Try 'leon --help' for more information."
-        )
-      }
-      df.parse(value)(initReporter)      
     }
+    // Find respective LeonOptionDef, or report an unknown option
+    val df = allOptions.find(_.name == name).getOrElse{
+      if(dismissErrors) return None
+      initReporter.fatalError(
+        s"Unknown option: $name\n" +
+        "Try 'leon --help' for more information."
+      )
+    }
+    try {
+      Some(df.parse(value)(initReporter)) 
+    } catch {
+      case e: Throwable if dismissErrors => None
+      case e: Throwable => throw e
+    }
+  }
+  
+  def parseOptions(options: Seq[String], dismissErrors: Boolean): Seq[LeonOption[Any]] = {
+    val initOptions: Seq[LeonOption[Any]] =  options.flatMap(parseOption(_, dismissErrors))
     val leonOptions: Seq[LeonOption[Any]] =
       if (initOptions.exists(opt => opt.optionDef == MainComponent.optLazyEval && opt.value == true)) {
         // here, add the `disablePos` option to side step a bug in the scala compiler
         LeonOption(GlobalOptions.optDisablePos)(true) +: initOptions
       } else initOptions
+    leonOptions
+  }
+  
+  def processOptions(args: Seq[String]): LeonContext = {
+    val options = args.filter(_.startsWith("--"))
+
+    val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
+    
+    val leonOptions = parseOptions(options, dismissErrors = false)
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {

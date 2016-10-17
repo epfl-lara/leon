@@ -314,6 +314,15 @@ class ClosureConverter(p: Program, ctx: LeonContext,
   }.toMap
 
   def mapExpr(expr: Expr)(implicit stTparams: Seq[TypeParameter]): (Option[Expr] => Expr, Boolean) = expr match {
+    // ignore closure constructions inside `tmpl`
+    case fi@FunctionInvocation(fd, Seq(Lambda(args, body))) if isTemplateInvocation(fi) =>
+      ((st: Option[Expr]) => {
+        val (tmplBodyCons, updatesState) = mapExpr(body)
+        if(updatesState)
+          LeonFatalError(s"Body of the template: $fi updates state!")
+        FunctionInvocation(fd, Seq(Lambda(args, tmplBodyCons(st))))
+      }, false) // templates cannot update state
+
     // (a) closure construction ?
     case l @ Lambda(_, FunctionInvocation(TypedFunDef(target, _), allArgs)) =>
       ((st: Option[Expr]) => {

@@ -1,0 +1,320 @@
+[[33mWarning [0m] warning: there were three feature warnings; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zipWithFun$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zipWithFun$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zipWithSusp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zipWithSusp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zipWithSusp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for argChainingProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainingProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainingProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainingProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainingProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for argChainedStreamProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainedStreamProp$5(s.tailFun match { ...)' VC for argChainedStreamProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainedStreamProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for argChainingIsTransitive$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainingIsTransitive$5(s.tailFun matc ...)' VC for argChainingIsTransitive$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainedStreamProp$5(s, n))' VC for argChainingIsTransitive$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for argChainingIsTransitive$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for next$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainedStreamProp$5(f, n))' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call next$7(f, s, t, st@))' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call nthElemAfterThird$5(n - BigInt(1), s, t, ...)' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthElemAfterThird$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fibstream$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for genNext$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for genNext$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fibStreamSatisfiesProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainingIsTransitive$5(fibs$3, n))' VC for fibStreamSatisfiesProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call argChainedStreamProp$5(fibs$3, n))' VC for fibStreamSatisfiesProp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nthFib$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call fibStreamSatisfiesProp$5(n))' VC for nthFib$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call nthElemAfterThird$5(n, first$3, second$3 ...)' VC for nthFib$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthFib$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthFib$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fval-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fval-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                             ?
+? ZipWithAndFibStream.argChainedStreamProp$5     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.066 ?
+? ZipWithAndFibStream.argChainedStreamProp$5     postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.080 ?
+? ZipWithAndFibStream.argChainedStreamProp$5     precond. (call argChainedStreamProp$5(s.tailFun match { ...)  ?:?  valid  U:orb-smt-z3          0.069 ?
+? ZipWithAndFibStream.argChainingIsTransitive$5  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.054 ?
+? ZipWithAndFibStream.argChainingIsTransitive$5  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.315 ?
+? ZipWithAndFibStream.argChainingIsTransitive$5  precond. (call argChainedStreamProp$5(s, n))                  ?:?  valid  U:orb-smt-z3          0.064 ?
+? ZipWithAndFibStream.argChainingIsTransitive$5  precond. (call argChainingIsTransitive$5(s.tailFun matc ...)  ?:?  valid  U:orb-smt-orb-cvc4    1.013 ?
+? ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.078 ?
+? ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.061 ?
+? ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.036 ?
+? ZipWithAndFibStream.argChainingProp$5          match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.072 ?
+? ZipWithAndFibStream.argChainingProp$5          postcondition                                                 ?:?  valid  U:orb-smt-z3          0.086 ?
+? ZipWithAndFibStream.fibStreamSatisfiesProp$5   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.180 ?
+? ZipWithAndFibStream.fibStreamSatisfiesProp$5   precond. (call argChainedStreamProp$5(fibs$3, n))             ?:?  valid  U:orb-smt-z3          0.053 ?
+? ZipWithAndFibStream.fibStreamSatisfiesProp$5   precond. (call argChainingIsTransitive$5(fibs$3, n))          ?:?  valid  U:orb-smt-orb-cvc4    0.694 ?
+? ZipWithAndFibStream.fibstream$5                postcondition                                                 ?:?  valid  U:orb-smt-z3          0.030 ?
+? ValOrSusp.fval-mem$3                           match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.029 ?
+? ValOrSusp.fval-mem$3                           postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.125 ?
+? ZipWithAndFibStream.genNext$5                  match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.039 ?
+? ZipWithAndFibStream.genNext$5                  postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.119 ?
+? ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.063 ?
+? ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.055 ?
+? ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.060 ?
+? ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.033 ?
+? ZipWithAndFibStream.next$7                     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.057 ?
+? ZipWithAndFibStream.next$7                     postcondition                                                 ?:?  valid  U:orb-smt-z3          0.228 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.060 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.054 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.068 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        postcondition                                                 ?:?  valid  U:orb-smt-z3          0.397 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        precond. (call argChainedStreamProp$5(f, n))                  ?:?  valid  U:orb-smt-z3          0.063 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        precond. (call next$7(f, s, t, st@))                          ?:?  valid  U:orb-smt-z3          0.171 ?
+? ZipWithAndFibStream.nthElemAfterThird$5        precond. (call nthElemAfterThird$5(n - BigInt(1), s, t, ...)  ?:?  valid  U:orb-smt-z3          0.319 ?
+? ZipWithAndFibStream.nthFib$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.050 ?
+? ZipWithAndFibStream.nthFib$5                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.056 ?
+? ZipWithAndFibStream.nthFib$5                   postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.497 ?
+? ZipWithAndFibStream.nthFib$5                   precond. (call fibStreamSatisfiesProp$5(n))                   ?:?  valid  U:orb-smt-z3          0.029 ?
+? ZipWithAndFibStream.nthFib$5                   precond. (call nthElemAfterThird$5(n, first$3, second$3 ...)  ?:?  valid  U:orb-smt-z3          0.282 ?
+? ZipWithAndFibStream.zipWithFun$5               match exhaustiveness                                          ?:?  valid  U:orb-smt-orb-cvc4    0.037 ?
+? ZipWithAndFibStream.zipWithFun$5               postcondition                                                 ?:?  valid  U:orb-smt-z3          0.220 ?
+? ZipWithAndFibStream.zipWithSusp$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ?
+? ZipWithAndFibStream.zipWithSusp$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.038 ?
+? ZipWithAndFibStream.zipWithSusp$5              postcondition                                                 ?:?  valid  U:orb-smt-z3          0.255 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 45     valid: 45     invalid: 0      unknown 0                                                                                          6.482 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function zipWithFun-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] zipWithFun-alloc-->1 * res$214._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: zipWithFun-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] zipWithFun-alloc-->1 * res$214._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: zipWithFun-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] zipWithFun-alloc-->1 * res$214._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] zipWithFun-alloc-->1 * res$214._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: zipWithFun-alloc --> alloc + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function zipWithSusp-alloc...
+[[34m  Info  [0m] - considering function fval-mem-alloc...
+[[34m  Info  [0m] - considering function next-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: next-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.24s
+[[34m  Info  [0m] Function: next-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.681s
+[[34m  Info  [0m] Function: next-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 10.431s
+[[34m  Info  [0m] Function: next-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + -9 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.175s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] next-alloc-->1 * x$1$31._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.079s
+[[34m  Info  [0m] - Found inductive invariant: next-alloc --> alloc + BigInt(-4) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function nthElemAfterThird-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(1 * x$2$20._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] Function: nthElemAfterThird-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(8 * x$2$20._2 + -16 * n) + -27 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: nthElemAfterThird-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 11
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(1 * x$2$20._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.087s
+[[34m  Info  [0m] Function: nthElemAfterThird-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(8 * x$2$20._2 + -16 * n) + -27 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.097s
+[[34m  Info  [0m] Function: nthElemAfterThird-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 11
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(1 * x$2$20._2 + -5 * n) + 6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthElemAfterThird-alloc-->(1 * x$2$20._2 + -4 * n) + 8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] - Found inductive invariant: nthElemAfterThird-alloc --> (alloc + BigInt(-4) * n) + BigInt(8) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function genNext-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] genNext-alloc-->1 * x$5$6._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: genNext-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] genNext-alloc-->1 * x$5$6._2 + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: genNext-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 8
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] genNext-alloc-->1 * x$5$6._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: genNext-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] genNext-alloc-->1 * x$5$6._2 + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] genNext-alloc-->1 * x$5$6._2 + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: genNext-alloc --> alloc + BigInt(-4) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function nthFib-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.055s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + -8 * n) + 12 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.06s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 13
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(8 * x$6$6._2 + -64 * n) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.092s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 21
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.07s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.121s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(32 * x$6$6._2 + -4 * n) + -184 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.131s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 11
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + -5 * n) + 8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.134s
+[[34m  Info  [0m] Function: nthFib-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 23
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(8 * x$6$6._2 + -40 * n) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nthFib-alloc-->(1 * x$6$6._2 + -4 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] - Found inductive invariant: nthFib-alloc --> alloc + BigInt(-4) * n <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ????????????????????????????????????????????????
+? ???????????                                              ?
+? genNext         alloc <= 4             0.426             ?
+? next            alloc <= 4             13.160            ?
+? nthElemAfterTh? alloc <= 4 * n + -8    1.294             ?
+? nthFib          alloc <= 4 * n + 0     1.854             ?
+? zipWithFun      alloc <= 3             0.404             ?
+????????????????????????????????????????????????????????????
+? total: 5     inferred: 5     unknown: 0     time: 17.138 ?
+????????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: CyclicFibStream-stats.txt

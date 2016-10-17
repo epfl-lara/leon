@@ -13,6 +13,7 @@ import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import HOMemUtil._
 import invariant.util.ProgramUtil._
+import  invariant.structure.FunctionUtils._
 import FreeVariableFactory._
 
 /**
@@ -128,7 +129,6 @@ object ExpressionLifter {
                 else fvVars
               Lambda(args, FunctionInvocation(TypedFunDef(bodyfun, tparams), fargs))
           }
-
         // every other function calls
         case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
           val nargs =
@@ -154,8 +154,11 @@ object ExpressionLifter {
 
           def rec(skipLambda: Boolean)(e: Expr): Expr = e match {
             // skip `fmatch` and `is` function calls
-            case finv@FunctionInvocation(tfd, args) if isIsFun(finv) || isFunMatch(finv) =>
+            case finv @ FunctionInvocation(tfd, args) if isIsFun(finv) || isFunMatch(finv) =>
               FunctionInvocation(tfd, args map rec(true))
+            // skip lambdas in the `tmpl` fun invocations
+            case fi @ FunctionInvocation(tfd, Seq(Lambda(args, body))) if isTemplateInvocation(fi) =>
+              FunctionInvocation(tfd, Seq(Lambda(args, rec(skipLambda)(body))))
             case Operator(args, op) =>
               val nargs = args map rec(skipLambda)
               exprLifter(skipLambda)(fliter)(op(nargs))

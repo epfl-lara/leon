@@ -1,0 +1,437 @@
+[[33mWarning [0m] warning: there were three feature warnings; re-run with -feature for details
+[[33mWarning [0m] Inlining recursive functions only once 'recSizePost'!
+[[33mWarning [0m] Inlining recursive functions only once 'recSizeL'!
+[[33mWarning [0m] Inlining recursive functions only once 'size'!
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for log$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'division by zero' VC for log$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for logMonotonicity$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call logMonotonicity$5({ ...)' VC for logMonotonicity$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'division by zero' VC for logMonotonicity$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'division by zero' VC for logMonotonicity$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call recSize$5(t$452))' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call recSize$5(b$23))' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call logMonotonicity$5(BigInt(2) * ({ ...)' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call recSize$5(t$453))' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call logMonotonicity$5(BigInt(2) * (recSize$5 ...)' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call recSize$5(b$24))' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for recSize$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for logHeightProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call recSize$5(t$454))' VC for logHeightProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call logMonotonicity$5(lsz - BigInt(2), lsz - ...)' VC for logHeightProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for logHeightProperty$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree$5(l, from, mid, st@))' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree$5(midlist$2, mid + Bi ...)' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'division by zero' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for merge$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for MergeSuspL@mergePre$2 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for MergeSuspL@mergePre$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for mergeSusp$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for mergeSort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree$5(l, BigInt(0), l.len ...)' VC for mergeSort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call logHeightProperty$5(res$222))' VC for mergeSort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for mergeSort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for kthMinRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call kthMinRec$5(dres$2._1, k - BigInt(1), dr ...)' VC for kthMinRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for kthMinRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for kthMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call kthMinRec$5(mergeSort$5(l, st@), k, st@))' VC for kthMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$22 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$22 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for length$8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for length$8 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$23 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$23 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for height$13 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for height$13 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for weightBalanced$12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for weightBalanced$12 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for list-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for height$14 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for height$14 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for weightBalanced$13 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for weightBalanced$13 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                                              ?
+? BottomUpMergeSortPrecise.MergeSuspL@mergePre$2  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.063 ?
+? BottomUpMergeSortPrecise.MergeSuspL@mergePre$3  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.053 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   division by zero                                              ?:?  valid  U:orb-smt-z3          0.039 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.048 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.618 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   precond. (call constructMergeTree$5(l, from, mid, st@))       ?:?  valid  U:orb-smt-z3          0.238 ?
+? BottomUpMergeSortPrecise.constructMergeTree$5   precond. (call constructMergeTree$5(midlist$2, mid + Bi ...)  ?:?  valid  U:orb-smt-z3          0.105 ?
+? Stream.height$14                                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.height$13                                 match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.height$13                                 postcondition                                                 ?:?  valid  U:orb-smt-z3          0.041 ?
+? Stream.height$14                                postcondition                                                 ?:?  valid  U:orb-smt-z3          0.053 ?
+? BottomUpMergeSortPrecise.kthMin$5               postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.152 ?
+? BottomUpMergeSortPrecise.kthMin$5               precond. (call kthMinRec$5(mergeSort$5(l, st@), k, st@))      ?:?  valid  U:orb-smt-z3          0.030 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.034 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.122 ?
+? BottomUpMergeSortPrecise.kthMinRec$5            precond. (call kthMinRec$5(dres$2._1, k - BigInt(1), dr ...)  ?:?  valid  U:orb-smt-z3          0.031 ?
+? List.length$8                                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? List.length$8                                   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.048 ?
+? Stream.list-mem$3                               postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.070 ?
+? BottomUpMergeSortPrecise.log$5                  division by zero                                              ?:?  valid  U:orb-smt-z3          0.034 ?
+? BottomUpMergeSortPrecise.log$5                  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.205 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.056 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.130 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    precond. (call logMonotonicity$5(lsz - BigInt(2), lsz - ...)  ?:?  valid  U:orb-smt-z3          0.075 ?
+? BottomUpMergeSortPrecise.logHeightProperty$5    precond. (call recSize$5(t$454))                              ?:?  valid  U:orb-smt-z3          0.073 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      division by zero                                              ?:?  valid  U:orb-smt-orb-cvc4    0.034 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      postcondition                                                 ?:?  valid  U:orb-smt-z3          0.090 ?
+? BottomUpMergeSortPrecise.logMonotonicity$5      precond. (call logMonotonicity$5({ ...)                       ?:?  valid  U:orb-smt-z3          0.040 ?
+? BottomUpMergeSortPrecise.merge$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.042 ?
+? BottomUpMergeSortPrecise.merge$5                match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.042 ?
+? BottomUpMergeSortPrecise.merge$5                postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.631 ?
+? BottomUpMergeSortPrecise.mergeSort$5            match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.049 ?
+? BottomUpMergeSortPrecise.mergeSort$5            postcondition                                                 ?:?  valid  U:orb-smt-z3          0.149 ?
+? BottomUpMergeSortPrecise.mergeSort$5            precond. (call constructMergeTree$5(l, BigInt(0), l.len ...)  ?:?  valid  U:orb-smt-z3          0.054 ?
+? BottomUpMergeSortPrecise.mergeSort$5            precond. (call logHeightProperty$5(res$222))                  ?:?  valid  U:orb-smt-z3          0.059 ?
+? BottomUpMergeSortPrecise.mergeSusp$5            postcondition                                                 ?:?  valid  U:orb-smt-z3          0.179 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.177 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.074 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ?
+? BottomUpMergeSortPrecise.recSize$5              match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.062 ?
+? BottomUpMergeSortPrecise.recSize$5              postcondition                                                 ?:?  valid  U:orb-smt-z3         13.312 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call logMonotonicity$5(BigInt(2) * (recSize$5 ...)  ?:?  valid  U:orb-smt-z3          0.199 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call logMonotonicity$5(BigInt(2) * ({ ...)          ?:?  valid  U:orb-smt-z3          0.228 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(b$23))                               ?:?  valid  U:orb-smt-z3          0.082 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(b$24))                               ?:?  valid  U:orb-smt-z3          0.198 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(t$452))                              ?:?  valid  U:orb-smt-z3          0.094 ?
+? BottomUpMergeSortPrecise.recSize$5              precond. (call recSize$5(t$453))                              ?:?  valid  U:orb-smt-z3          0.162 ?
+? List.size$22                                    match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.028 ?
+? LList.size$23                                   match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.029 ?
+? LList.size$23                                   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.056 ?
+? List.size$22                                    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.040 ?
+? Stream.weightBalanced$13                        match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.030 ?
+? LList.weightBalanced$12                         match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.049 ?
+? Stream.weightBalanced$13                        postcondition                                                 ?:?  valid  U:orb-smt-z3          0.052 ?
+? LList.weightBalanced$12                         postcondition                                                 ?:?  valid  U:orb-smt-z3          0.046 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 56     valid: 56     invalid: 0      unknown 0                                                                                          18.792 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function merge-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-alloc-->1 * res$223._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.008s
+[[34m  Info  [0m] Function: merge-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-alloc-->1 * res$223._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] merge-alloc-->1 * res$223._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] - Found inductive invariant: merge-alloc --> alloc + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function mergeSusp-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(-1 * b.height + 1 * res$226._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 10
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.02s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 15
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.031s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.029s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 10
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.062s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(0 * b.height + 1 * res$226._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.06s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 37 + 10
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(7 * b.height + 1 * res$226._2) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.056s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 47
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(8 * b.height + 1 * res$226._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.047s
+[[34m  Info  [0m] Function: mergeSusp-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 31 + 56
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(-5 * b.height + 1 * res$226._2) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSusp-alloc-->(-4 * b.height + 1 * res$226._2) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] - Found inductive invariant: mergeSusp-alloc --> (BigInt(-4) * b.height + alloc) + BigInt(-5) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function list-mem-alloc...
+[[34m  Info  [0m] - considering function constructMergeTree-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((1 * res$227._2 + 0 * from) + 0 * to) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: constructMergeTree-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((1 * res$227._2 + 1 * from) + -1 * to) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.012s
+[[34m  Info  [0m] Function: constructMergeTree-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 11
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((1 * res$227._2 + 0 * from) + 0 * to) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.043s
+[[34m  Info  [0m] Function: constructMergeTree-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((2 * res$227._2 + 3 * from) + -3 * to) + -10 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.024s
+[[34m  Info  [0m] Function: constructMergeTree-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 28 + 15
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((1 * res$227._2 + 9 * from) + -9 * to) + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] constructMergeTree-alloc-->((1 * res$227._2 + 6 * from) + -6 * to) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] - Found inductive invariant: constructMergeTree-alloc --> ((alloc + BigInt(6) * from) + BigInt(-6) * to) + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function mergeSort-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-alloc-->(0 * l.size + 1 * res$224._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: mergeSort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-alloc-->(-1 * l.size + 1 * res$224._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: mergeSort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 10 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-alloc-->(-7 * l.size + 1 * res$224._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.003s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] mergeSort-alloc-->(-6 * l.size + 1 * res$224._2) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: mergeSort-alloc --> (BigInt(-6) * l.size + alloc) + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function kthMinRec-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.019s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.038s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.05s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.202s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(0 * mult(k, l.height) + 1 * x$10$3._2) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.2s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 26 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(-16 * mult(k, l.height) + 1 * x$10$3._2) + 1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.07s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 7 + 38
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(-16 * mult(k, l.height) + 1 * x$10$3._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.12s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(99 * mult(k, l.height) + 1 * x$10$3._2) + -208 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.112s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 27 + 45
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(-5 * mult(k, l.height) + 1 * x$10$3._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.223s
+[[34m  Info  [0m] Function: kthMinRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 22 + 72
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(-7 * mult(k, l.height) + 1 * x$10$3._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.085s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMinRec-alloc-->(-6 * mult(k, l.height) + 1 * x$10$3._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.067s
+[[34m  Info  [0m] - Found inductive invariant: kthMinRec-alloc --> (BigInt(-6) * (k * l.height) + alloc) + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m  Info  [0m] - considering function kthMin-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * l.size + 0 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * l.size + 0 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.042s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 15 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * l.size + -12 * mult(k, log(l.size - 1))) + 6 * x$11$3._2) + -19 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 16
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-45 * l.size + -16 * mult(k, log(l.size - 1))) + 8 * x$11$3._2) + -24 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.04s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 36
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-8 * l.size + -7 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((99 * l.size + -6 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + -108 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 33 + 56
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-8 * l.size + -7 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-6 * l.size + -6 * mult(k, log(l.size - 1))) + 1 * x$11$3._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] - Found inductive invariant: kthMin-alloc --> ((BigInt(-6) * l.size + BigInt(-6) * (k * log(l.size - BigInt(1)))) + alloc) + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[31m Error  [0m] - Unable to prove or disprove invariant, the invariant is probably true
+Resource Verification Results: 
+. ???????????
+??? Summary ???????????????????????????????????????????????????????????????????????
+? ???????????                                                                     ?
+? constructMerge? alloc <= 6 * ((to - from) + 1) + -3                      1.827  ?
+? kthMin          alloc <= (6 * (k * log(l.size - 1)) + 6 * l.size) + 3    16.303 ?
+? kthMinRec       alloc <= 6 * (k * l.height) + 2                          17.843 ?
+? merge           alloc <= 3                                               0.315  ?
+? mergeSort       alloc <= 6 * l.size + 1                                  0.376  ?
+? mergeSusp       alloc <= 4 * b.height + 5                                1.722  ?
+???????????????????????????????????????????????????????????????????????????????????
+? total: 6     inferred: 6     unknown: 0     time: 38.386                        ?
+???????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: BottomUpMergeSort-stats.txt

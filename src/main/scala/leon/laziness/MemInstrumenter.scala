@@ -61,7 +61,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
             val instId = FreshIdentifier("instd", instExpr.getType, true)
             val instExprs = instrumenters map { m =>
               val hitCost = InfiniteIntegerLiteral(costOfMemoization(m.inst))
-              val missCost = InfiniteIntegerLiteral(2 * costOfMemoization(m.inst))
+              val missCost = m.missCost() 
               IfExpr(ElementOfSet(cc, stExpr), hitCost,
                 Plus(missCost, selectInst(instId.toVariable, m.inst)))
             }
@@ -131,7 +131,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
   object memAllocCostModel {
     def costOf(e: Expr)(implicit currFun: FunDef): Int = {
       val cost = e match {
-        case CaseClass(cct, _) if isMemoClosure(cct.root) || clFactory.closureNames.contains(cct.id.name) => 0 
+        case CaseClass(cct, _) if isMemoClosure(cct.root) => 0
         case CaseClass(_, _) => 1 
         case _ => 0
       }

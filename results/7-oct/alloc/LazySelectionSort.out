@@ -1,0 +1,251 @@
+[[33mWarning [0m] warning: there was one feature warning; re-run with -feature for details
+[[33mWarning [0m] Inlining recursive functions only once 'size'!
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pullMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for sort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for sort$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concat$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concat$7 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for kthMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call kthMin$5(xs$43, k - BigInt(1), scr._2))' VC for kthMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for kthMin$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size$16 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size$16 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for list-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                  ?
+? SortingnConcat.concat$7   match exhaustiveness                                    ?:?  valid  U:orb-smt-z3          0.037 ?
+? SortingnConcat.concat$7   postcondition                                           ?:?  valid  U:orb-smt-z3          0.042 ?
+? SortingnConcat.kthMin$5   match exhaustiveness                                    ?:?  valid  U:orb-smt-orb-cvc4    0.051 ?
+? SortingnConcat.kthMin$5   postcondition                                           ?:?  valid  U:orb-smt-orb-cvc4    0.119 ?
+? SortingnConcat.kthMin$5   precond. (call kthMin$5(xs$43, k - BigInt(1), scr._2))  ?:?  valid  U:orb-smt-z3          0.073 ?
+? Stream.list-mem$3         postcondition                                           ?:?  valid  U:orb-smt-orb-cvc4    0.065 ?
+? SortingnConcat.pullMin$5  match exhaustiveness                                    ?:?  valid  U:orb-smt-z3          0.057 ?
+? SortingnConcat.pullMin$5  match exhaustiveness                                    ?:?  valid  U:orb-smt-z3          0.041 ?
+? SortingnConcat.pullMin$5  postcondition                                           ?:?  valid  U:orb-smt-z3          0.659 ?
+? LList.size$16             match exhaustiveness                                    ?:?  valid  U:orb-smt-z3          0.035 ?
+? LList.size$16             postcondition                                           ?:?  valid  U:orb-smt-z3          0.072 ?
+? SortingnConcat.sort$5     match exhaustiveness                                    ?:?  valid  U:orb-smt-z3          1.713 ?
+? SortingnConcat.sort$5     postcondition                                           ?:?  valid  U:orb-smt-orb-cvc4    0.317 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 13     valid: 13     invalid: 0      unknown 0                                                               3.281 ?
+?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function pullMin-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(0 * l.size + 1 * res$212._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.011s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(0 * l.size + 1 * res$212._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.022s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(5 * l.size + 1 * res$212._2) + 1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(0 * l.size + 1 * res$212._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(5 * l.size + 1 * res$212._2) + 1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.018s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(0 * l.size + 1 * res$212._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.059s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(-4 * l.size + 4 * res$212._2) + -33 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.043s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 13
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(-6 * l.size + 2 * res$212._2) + 1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.048s
+[[34m  Info  [0m] Function: pullMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 27
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(-1512 * l.size + 512 * res$212._2) + -64 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.058s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] pullMin-alloc-->(-2 * l.size + 1 * res$212._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.032s
+[[34m  Info  [0m] - Found inductive invariant: pullMin-alloc --> BigInt(-2) * l.size + alloc <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function sort-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.023s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.027s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.025s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 1 + 9
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.042s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 8 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 0 * l.size) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.038s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 9
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + -5 * l.size) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + 99 * l.size) + -104 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.046s
+[[34m  Info  [0m] Function: sort-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 14 + 23
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + -3 * l.size) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.023s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] sort-alloc-->(1 * res$211._2 + -2 * l.size) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] - Found inductive invariant: sort-alloc --> (alloc + BigInt(-2) * l.size) + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function concat-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-alloc-->1 * res$213._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.007s
+[[34m  Info  [0m] Function: concat-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-alloc-->1 * res$213._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] concat-alloc-->1 * res$213._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] - Found inductive invariant: concat-alloc --> alloc + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function list-mem-alloc...
+[[34m  Info  [0m] - considering function kthMin-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + 0 * k) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.013s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + 0 * k) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + 0 * k) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.043s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + -2 * k) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.034s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 24 + 13
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-1 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + -9 * k) + -8 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.049s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 37
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-40 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 8 * x$2$20._2) + -72 * k) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.042s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 29 + 57
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + 0 * k) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.116s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((0 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + -2 * k) + -6 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.132s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 31 + 14
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-104 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 8 * x$2$20._2) + -32 * k) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.086s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-2 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + 0 * k) + -4 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.109s
+[[34m  Info  [0m] Function: kthMin-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 32 + 45
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-104 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 8 * x$2$20._2) + -32 * k) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.053s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] kthMin-alloc-->((-2 * mult(k, l.list-mem-alloc(uiState)._1._1.size) + 1 * x$2$20._2) + -2 * k) + -2 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.069s
+[[34m  Info  [0m] - Found inductive invariant: kthMin-alloc --> ((BigInt(-2) * (k * l.list-mem-alloc(uiState)._1._1.size) + alloc) + BigInt(-2) * k) + BigInt(-2) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ????????????????????????????????????????????????????????
+? ???????????                                                      ?
+? concat          alloc <= 3                                 0.200 ?
+? kthMin          alloc <= (2 * (k * l.size) + 2 * k) + 2    6.811 ?
+? pullMin         alloc <= 2 * l.size + 0                    1.754 ?
+? sort            alloc <= 2 * l.size + 3                    2.576 ?
+????????????????????????????????????????????????????????????????????
+? total: 4     inferred: 4     unknown: 0     time: 11.341         ?
+????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: LazySelectionSort-stats.txt

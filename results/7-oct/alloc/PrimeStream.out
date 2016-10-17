@@ -1,0 +1,220 @@
+[[33mWarning [0m] warning: there was one feature warning; re-run with -feature for details
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for primeStream$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isPrimeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call isPrimeRec$5(i - BigInt(1), n))' VC for isPrimeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'division by zero' VC for isPrimeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isPrimeNum$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call isPrimeRec$5(n - BigInt(1), n))' VC for isPrimeNum$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nextElem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call isPrimeNum$5(i))' VC for nextElem$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for isPrimeS$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for isPrimeS$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for primesUntilN$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call takeRec$5(BigInt(0), n - BigInt(2), prim ...)' VC for primesUntilN$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for takeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call isPrimeS$5(s, i + BigInt(2)))' VC for takeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$15.tail-mem$3(st@))' VC for takeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call takeRec$5(i + BigInt(1), n, dres$0._1, d ...)' VC for takeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for takeRec$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concUntil$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call c$16.tail-mem$3(uiState$2))' VC for concUntil$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concUntil$5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for tail-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'cast correctness' VC for tail-mem$3 @?:?...
+[[34m  Info  [0m]  => VALID
+  ????????????????????????
+??? Verification Summary ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? ????????????????????????                                                                                                             ?
+? RunningExample.concUntil$5     match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.037 ?
+? RunningExample.concUntil$5     postcondition                                                 ?:?  valid  U:orb-smt-z3          0.055 ?
+? RunningExample.concUntil$5     precond. (call c$16.tail-mem$3(uiState$2))                    ?:?  valid  U:orb-smt-z3          0.038 ?
+? RunningExample.isPrimeNum$5    postcondition                                                 ?:?  valid  U:orb-smt-z3          0.039 ?
+? RunningExample.isPrimeNum$5    precond. (call isPrimeRec$5(n - BigInt(1), n))                ?:?  valid  U:orb-smt-z3          0.034 ?
+? RunningExample.isPrimeRec$5    division by zero                                              ?:?  valid  U:orb-smt-z3          0.034 ?
+? RunningExample.isPrimeRec$5    postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.076 ?
+? RunningExample.isPrimeRec$5    precond. (call isPrimeRec$5(i - BigInt(1), n))                ?:?  valid  U:orb-smt-z3          0.043 ?
+? RunningExample.isPrimeS$5      match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.035 ?
+? RunningExample.isPrimeS$5      postcondition                                                 ?:?  valid  U:orb-smt-z3          0.039 ?
+? RunningExample.nextElem$5      postcondition                                                 ?:?  valid  U:orb-smt-orb-cvc4    0.042 ?
+? RunningExample.nextElem$5      precond. (call isPrimeNum$5(i))                               ?:?  valid  U:orb-smt-z3          0.036 ?
+? RunningExample.primeStream$5   postcondition                                                 ?:?  valid  U:orb-smt-z3          0.192 ?
+? RunningExample.primesUntilN$5  postcondition                                                 ?:?  valid  U:orb-smt-z3          0.155 ?
+? RunningExample.primesUntilN$5  precond. (call takeRec$5(BigInt(0), n - BigInt(2), prim ...)  ?:?  valid  U:orb-smt-z3          0.065 ?
+? Stream.tail-mem$3              cast correctness                                              ?:?  valid  U:orb-smt-z3          0.035 ?
+? Stream.tail-mem$3              postcondition                                                 ?:?  valid  U:orb-smt-z3          0.058 ?
+? RunningExample.takeRec$5       match exhaustiveness                                          ?:?  valid  U:orb-smt-z3          0.041 ?
+? RunningExample.takeRec$5       postcondition                                                 ?:?  valid  U:orb-smt-z3          0.209 ?
+? RunningExample.takeRec$5       precond. (call c$15.tail-mem$3(st@))                          ?:?  valid  U:orb-smt-z3          0.041 ?
+? RunningExample.takeRec$5       precond. (call isPrimeS$5(s, i + BigInt(2)))                  ?:?  valid  U:orb-smt-orb-cvc4    0.035 ?
+? RunningExample.takeRec$5       precond. (call takeRec$5(i + BigInt(1), n, dres$0._1, d ...)  ?:?  valid  U:orb-smt-z3          1.828 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+? total: 22     valid: 22     invalid: 0      unknown 0                                                                          3.167 ?
+????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+[[34m  Info  [0m] - considering function isPrimeRec-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeRec-alloc-->1 * x$1$32._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] Function: isPrimeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeRec-alloc-->1 * x$1$32._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: isPrimeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 16 + 7
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeRec-alloc-->1 * x$1$32._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.01s
+[[34m  Info  [0m] Function: isPrimeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 6 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeRec-alloc-->1 * x$1$32._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeRec-alloc-->1 * x$1$32._2 + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] - Found inductive invariant: isPrimeRec-alloc --> alloc + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[33mWarning [0m] Unexpected error from orb-cvc4 solver: A non-linear fact (involving div/mod/divisibility) was asserted to arithmetic in a linear logic: (INTS_DIVISION_TOTAL n!9 i!90)
+[[33mWarning [0m] if you only use division (or modulus) by a constant value, or if you only use the divisibility-by-k predicate, try using the --rewrite-divk option.
+[[33mWarning [0m] The fact in question: (= termITE_3 (INTS_DIVISION_TOTAL n!9 i!90))
+[[33mWarning [0m] 
+[[33mWarning [0m] Unexpected error from orb-cvc4 solver: Solver encountered exception: java.io.IOException: Stream closed
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function isPrimeNum-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeNum-alloc-->1 * r$176._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.005s
+[[34m  Info  [0m] Function: isPrimeNum-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeNum-alloc-->1 * r$176._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] isPrimeNum-alloc-->1 * r$176._2 + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: isPrimeNum-alloc --> alloc + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function nextElem-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nextElem-alloc-->1 * r$171._2 + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.002s
+[[34m  Info  [0m] Function: nextElem-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nextElem-alloc-->1 * r$171._2 + -5 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] nextElem-alloc-->1 * r$171._2 + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: nextElem-alloc --> alloc + BigInt(-3) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function tail-mem-alloc...
+[[34m  Info  [0m] - considering function takeRec-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((0 * n + 0 * i) + 1 * r$175._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.015s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 12 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((0 * n + 0 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.009s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 13 + 13
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((0 * n + 0 * i) + 1 * r$175._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.021s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-1 * n + 1 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-3 * n + 3 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.016s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 19 + 32
+[[34m  Info  [0m] - More unrollings for invariant inference
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((0 * n + 0 * i) + 1 * r$175._2) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.026s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 11 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-1 * n + 1 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.017s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 21 + 12
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-4 * n + 4 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.014s
+[[34m  Info  [0m] Function: takeRec-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 20 + 33
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-8 * n + 8 * i) + 1 * r$175._2) + -3 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] takeRec-alloc-->((-6 * n + 6 * i) + 1 * r$175._2) + -1 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.006s
+[[34m  Info  [0m] - Found inductive invariant: takeRec-alloc --> ((BigInt(-6) * n + BigInt(6) * i) + alloc) + BigInt(-1) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+[[34m  Info  [0m] - considering function primesUntilN-alloc...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] primesUntilN-alloc-->(1 * r$172._2 + 0 * n) + 0 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.004s
+[[34m  Info  [0m] Function: primesUntilN-alloc--Found candidate invariant is not a real invariant! 
+[[34m  Info  [0m] # of atomic predicates: 9 + 1
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] primesUntilN-alloc-->(1 * r$172._2 + -7 * n) + 11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] minimizing...
+[[34m  Info  [0m] Candidate invariants
+[[34m  Info  [0m] primesUntilN-alloc-->(1 * r$172._2 + -6 * n) + 11 <= 0
+[[34m  Info  [0m] checked VC inst... in 0.001s
+[[34m  Info  [0m] - Found inductive invariant: primesUntilN-alloc --> (alloc + BigInt(-6) * n) + BigInt(11) <= BigInt(0)
+[[34m  Info  [0m] - Verifying Invariants... 
+[[34m  Info  [0m] - Invariant verified
+Resource Verification Results: 
+. ???????????
+??? Summary ???????????????????????????????????????????????
+? ???????????                                             ?
+? isPrimeNum      alloc <= 1                  0.203       ?
+? isPrimeRec      alloc <= 1                  0.456       ?
+? nextElem        alloc <= 3                  0.183       ?
+? primesUntilN    alloc <= 6 * n + -11        0.282       ?
+? takeRec         alloc <= 6 * (n - i) + 1    1.349       ?
+???????????????????????????????????????????????????????????
+? total: 5     inferred: 5     unknown: 0     time: 2.473 ?
+???????????????????????????????????????????????????????????
+[[34m  Info  [0m] Stats dumped to file: PrimeStream-stats.txt

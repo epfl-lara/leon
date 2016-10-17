@@ -83,7 +83,9 @@ object ProgramUtil {
   }
 
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
-    val tmpl = Lambda(getTemplateIds(plainTemp).toSeq.map(id => ValDef(id)), plainTemp)
+    val tempIds = variablesOf(plainTemp).filter(id => TemplateIdFactory.IsTemplateIdentifier(id) ||
+        FunctionUtils.isQMarkId(id))
+    val tmpl = Lambda(tempIds.toSeq.map(id => ValDef(id)), plainTemp)
     val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false), Seq(),
       Seq(ValDef(FreshIdentifier("arg", tmpl.getType))), BooleanType)
     tmplFd.body = Some(BooleanLiteral(true))
