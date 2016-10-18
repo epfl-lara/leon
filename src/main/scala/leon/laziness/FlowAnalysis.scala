@@ -45,7 +45,7 @@ class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
    * A function type escapes if it is a **super type** of an escaping type
    */
   def isEscapingType(ft: FunctionType) = escapingTypes.exists{ escType => 
-    canBeSubtypeOf(escType, ft).isDefined
+    instantiation_<:(escType, ft).isDefined
 //    if(x.isDefined) {
 //      println("Subtype instantiation: "+x.get)
 //      true

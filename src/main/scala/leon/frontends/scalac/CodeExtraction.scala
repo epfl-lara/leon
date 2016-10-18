@@ -1113,8 +1113,10 @@ trait CodeExtraction extends ASTExtractors {
           extractType(up.tpe),
           tupleTypeWrap(args map { tr => extractType(tr.tpe)})
         ))
-        val newTps = canBeSupertypeOf(formalTypes, realTypes) match {
+        val newTps = instantiation_>:(formalTypes, realTypes) match {
           case Some(tmap) =>
+            //println(fd.tparams)
+            //println(tmap)
             fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
           case None =>
             //println(realTypes, formalTypes)
@@ -1720,13 +1722,8 @@ trait CodeExtraction extends ASTExtractors {
           val r2 = extractTree(t2)
           val r3 = extractTree(t3)
           val lub = leastUpperBound(r2.getType, r3.getType)
-          lub match {
-            case Some(lub) =>
-              IfExpr(r1, r2, r3)
-
-            case None =>
-              outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
-          }
+          if (lub != Untyped) IfExpr(r1, r2, r3)
+          else outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
 
         case ExAsInstanceOf(expr, tt) =>
           val eRec = extractTree(expr)

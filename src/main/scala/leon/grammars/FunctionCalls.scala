@@ -28,7 +28,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
       val isDet = fd.body.exists(isDeterministic)
 
       if (!isRecursiveCall && isDet) {
-        canBeSubtypeOf(fd.returnType, t) match {
+        instantiation_>:(fd.returnType, t) match {
           case Some(tpsMap) =>
             val free = fd.tparams.map(_.tp)
             val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
@@ -49,7 +49,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
                 for (ptpe <- tfd.params.map(_.getType).distinct) {
                   unify(atpe, ptpe, finalFree.toSeq) match { // FIXME!!!! this may allow weird things if lub!=ptpe
                     case Some(ntpsMap) =>
-                      finalFree --= ntpsMap.keySet
+                      finalFree --= ntpsMap.map(_._1)
                       finalMap  ++= ntpsMap
                     case _ =>
                   }
