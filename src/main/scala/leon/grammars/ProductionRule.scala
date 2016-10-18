@@ -24,4 +24,4 @@ case class ProductionRule[T, R](
     tag: Tags.Tag,
     cost: Int,
     weight: Double)
-  extends Generator[T,R](subTrees, builder)
+extends Generator[T,R](subTrees, builder)
