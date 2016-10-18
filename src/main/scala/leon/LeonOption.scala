@@ -91,13 +91,10 @@ object OptionParsers {
   }
 
   def seqParser[A](base: OptionParser[A]): OptionParser[Seq[A]] = s => {
-    @inline def foo: Option[Seq[A]] = Some(
-      s.split(",")
-        .filter(_.nonEmpty)
-        .map(base andThen (_.getOrElse(return None)))
-    )
-    foo
+    val parts = s.split(",").toList.filter(_.nonEmpty).map(base)
+    if (parts.forall(_.nonEmpty)) Some(parts.flatten) else None
   }
+
   def setParser[A](base: OptionParser[A]): OptionParser[Set[A]] = {
     seqParser(base)(_).map(_.toSet)
   }

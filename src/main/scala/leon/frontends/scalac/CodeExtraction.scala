@@ -425,7 +425,6 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractImport(i: Import, current: UnitDef)(implicit pgm: Program): Seq[LeonImport] = {
       val Import(expr, sels) = i
-      import DefOps._
 
       val prefix = getSelectChain(expr)
 
@@ -658,17 +657,17 @@ trait CodeExtraction extends ASTExtractors {
       //println("extract cd: " + sym + ". t params: " + tparams)
 
       val mutableTParams: List[TypeParameterDef] = {
-        val constructor: DefDef = tmpl.children.find {
-          case ExConstructorDef() => true
-          case _ => false
-        }.get.asInstanceOf[DefDef]
-        val valDefs = constructor.vparamss.flatten
-        //println("valDefs: " + valDefs)
-        valDefs.filter(vd => vd.symbol.tpe.toString.startsWith("leon.lang.Mutable")).flatMap(vd => {
-          val TypeRef(_, sym, tps) = vd.symbol.tpe
-          val tpSym: String = tps.head.toString
-          tparamsMap.find(_._1.name.toString == tpSym).map(t => TypeParameterDef(t._2))
-        })
+        tmpl.children.collectFirst {
+          case d@ExConstructorDef() => d
+        }.toList.flatMap { constructor =>
+          val valDefs = constructor.vparamss.flatten
+          //println("valDefs: " + valDefs)
+          valDefs.filter(vd => vd.symbol.tpe.toString.startsWith("leon.lang.Mutable")).flatMap(vd => {
+            val TypeRef(_, sym, tps) = vd.symbol.tpe
+            val tpSym: String = tps.head.toString
+            tparamsMap.find(_._1.name.toString == tpSym).map(t => TypeParameterDef(t._2))
+          })
+        }
       }
       //println("mutableTParams: " + mutableTParams)
 
@@ -701,7 +700,7 @@ trait CodeExtraction extends ASTExtractors {
           val fields = args.map { case (fsym, t) =>
             val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
             val id = cachedWithOverrides(fsym, Some(ccd), tpe)
-            if (tpe != id.getType) println(tpe, id.getType)
+            //if (tpe != id.getType) println(tpe, id.getType)
             LeonValDef(id.setPos(t.pos)).setPos(t.pos).setIsVar(fsym.accessed.isVar)
           }
 
@@ -1144,15 +1143,13 @@ trait CodeExtraction extends ASTExtractors {
         }
 
       case a @ Apply(fn, args) =>
-
         extractType(a) match {
           case ct: CaseClassType =>
             assert(args.size == ct.classDef.fields.size)
             val (subPatterns, subDctx) = args.map(extractPattern(_)).unzip
-
             val nctx = subDctx.foldLeft(dctx)(_ union _)
-
             (CaseClassPattern(binder, ct, subPatterns).setPos(p.pos), nctx)
+
           case TupleType(argsTpes) =>
             val (subPatterns, subDctx) = args.map(extractPattern(_)).unzip
 
@@ -1186,8 +1183,10 @@ trait CodeExtraction extends ASTExtractors {
           extractType(up.tpe),
           tupleTypeWrap(args map { tr => extractType(tr.tpe)})
         ))
-        val newTps = canBeSupertypeOf(formalTypes, realTypes) match {
+        val newTps = instantiation_>:(formalTypes, realTypes) match {
           case Some(tmap) =>
+            //println(fd.tparams)
+            //println(tmap)
             fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
           case None =>
             //println(realTypes, formalTypes)
@@ -1202,6 +1201,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractMatchCase(cd: CaseDef)(implicit dctx: DefContext): MatchCase = {
       val (recPattern, ndctx) = extractPattern(cd.pat)
+
       val recBody             = extractTree(cd.body)(ndctx)
 
       if(cd.guard == EmptyTree) {
@@ -1222,7 +1222,6 @@ trait CodeExtraction extends ASTExtractors {
     private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext) = extractTreeOrNoTreeWithFlag(false, tr)
     private def extractTreeOrNoTreeWithFirst(tr: Tree)(implicit dctx: DefContext) = extractTreeOrNoTreeWithFlag(true, tr)
     private def extractTree(tr: Tree)(implicit dctx: DefContext) = extractTreeWithFlag(false, tr)
-    private def extractTreeWithFirst(tr: Tree)(implicit dctx: DefContext) = extractTreeWithFlag(true, tr)
 
     // tree extractors
 
@@ -1832,13 +1831,8 @@ trait CodeExtraction extends ASTExtractors {
           val r2 = extractTree(t2)
           val r3 = extractTree(t3)
           val lub = leastUpperBound(r2.getType, r3.getType)
-          lub match {
-            case Some(lub) =>
-              IfExpr(r1, r2, r3)
-
-            case None =>
-              outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
-          }
+          if (lub != Untyped) IfExpr(r1, r2, r3)
+          else outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
 
         case ExAsInstanceOf(expr, tt) =>
           val eRec = extractTree(expr)
@@ -1875,6 +1869,7 @@ trait CodeExtraction extends ASTExtractors {
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase)
+
           matchExpr(rs, rc)
 
         case t: This =>

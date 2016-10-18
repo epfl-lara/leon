@@ -4,10 +4,7 @@ package leon
 package synthesis
 package rules
 
-import synthesis._
-import leon.evaluators._
 import leon.utils.SeqUtils._
-
 import solvers._
 
 import purescala.Path
@@ -19,7 +16,6 @@ import purescala.TypeOps._
 import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Constructors._
-import purescala.Extractors._
 
 case object HOFDecomp extends Rule("HOFDecomp") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -27,7 +23,6 @@ case object HOFDecomp extends Rule("HOFDecomp") {
     val fd      = hctx.functionContext
     val program = hctx.program
     val tpe     = tupleTypeWrap(p.xs.map(_.getType))
-    val reporter = hctx.reporter
 
     val recursives = program.callGraph.transitiveCallers(hctx.functionContext) + fd
 
@@ -47,10 +42,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
     def getCandidates(fd: FunDef): Seq[RuleInstantiation] = {
       val free = fd.tparams.map(_.tp)
 
-      canBeSubtypeOf(fd.returnType, tpe) match {
+      instantiation_<:(fd.returnType, tpe) match {
         case Some(tpsMap1) =>
-          val stillFree = free.filterNot(tpsMap1.keySet)
-
           /* Finding compatible calls:
            * Example candidate:
            *   map[T, Int](List[T], (T => Int): List[Int]    where T is still free
@@ -64,7 +57,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
 
           // Only one HO-parameter allowed, for now
           if (hofParams.size != 1) {
-            return Nil;
+            return Nil
           }
 
           val hofId = FreshIdentifier("F", hofParams.head.getType, true)
@@ -106,7 +99,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               //
               // We refine later.
               val compatibleInputs = {
-                p.as.filter(a => canBeSupertypeOf(vd.getType, a.getType).nonEmpty)
+                p.as.filter(a => instantiation_>:(vd.getType, a.getType).nonEmpty)
               }
 
               compatibleInputs ++ optFree
@@ -133,7 +126,8 @@ case object HOFDecomp extends Rule("HOFDecomp") {
               //println(s"${paramsTpe.asString} >: ${argsTpe.asString} (${stillFree.map(_.asString).mkString(", ")})")
 
               // Check that all arguments are compatible, together.
-              subtypingInstantiation(paramsTpe, argsTpe, stillFree.toSeq) match {
+              val paramsTpeInst = instantiateType(paramsTpe, tpsMap1)
+              instantiation_<:(paramsTpeInst, argsTpe) match {
                 case Some(tpsMap2) =>
                   val tpsMap = tpsMap1 ++ tpsMap2
                   val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
@@ -205,9 +199,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                   //println("Model: "+model.asString)
 
                   val freeValuations = free.flatMap { id =>
-                    model.get(id).map {
-                      m => id -> m
-                    }
+                    model.get(id).map { m => id -> m }
                   }.toMap
 
                   /* We extract valuations from ''fgen'' which gives us a model
@@ -233,7 +225,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                               val f = Application(fgen.toVariable, envValuation)
                               solver2.assertCnstr(not(equality(Application(f, ins), out)))
 
-                              val isUnique = solver2.check == Some(false)
+                              val isUnique = solver2.check.contains(false)
                               //println("IsUnique? "+isUnique)
                               //if (!isUnique) {
                               //  println("Alternative: "+solver2.getModel.asString)
@@ -275,7 +267,7 @@ case object HOFDecomp extends Rule("HOFDecomp") {
                       case List(sol) =>
 
                         if (sol.pre == BooleanLiteral(true)) {
-                          val term = subst(hofId -> Lambda(ls.map(ValDef(_)), sol.term), cAssigned)
+                          val term = subst(hofId -> Lambda(ls.map(ValDef), sol.term), cAssigned)
 
                           Some(Solution(BooleanLiteral(true), sol.defs, term, sol.isTrusted))
                         } else {
