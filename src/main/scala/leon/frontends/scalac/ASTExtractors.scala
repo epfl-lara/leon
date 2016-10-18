@@ -612,8 +612,6 @@ trait ASTExtractors {
             !sym.isCaseAccessor && !sym.isParamAccessor &&
             !sym.isLazy && !sym.isSynthetic && !sym.isAccessor && sym.isVar
           ) =>
-            println("matched a var accessor field: sym is: " + sym)
-            println("getterIn is: " + sym.getterIn(sym.owner))
             // Since scalac uses the accessor symbol all over the place, we pass that instead:
             Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
           case _ => None

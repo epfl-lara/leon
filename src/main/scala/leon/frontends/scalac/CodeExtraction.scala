@@ -3,7 +3,7 @@
 package leon
 package frontends.scalac
 
-import scala.reflect.internal.util._
+import scala.reflect.internal.util.OffsetPosition
 
 import scala.language.implicitConversions
 
@@ -36,7 +36,6 @@ trait CodeExtraction extends ASTExtractors {
   import global.definitions._
   import StructuralExtractors._
   import ExpressionExtractors._
-  import scala.collection.immutable.Set
 
   val reporter = self.ctx.reporter
 
@@ -154,7 +153,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore")
+      annotationsOf(s) contains "ignore"
     }
 
     private def isLibrary(u: CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
@@ -296,7 +295,7 @@ trait CodeExtraction extends ASTExtractors {
                | ExLazyFieldDef()
                | ExFieldAccessorFunction() =>
               None
-            case d if (d.symbol.isImplicit && d.symbol.isSynthetic) =>
+            case d if d.symbol.isImplicit && d.symbol.isSynthetic =>
               None
 
             //vars are never accessed directly so we extract accessors and mutators and
