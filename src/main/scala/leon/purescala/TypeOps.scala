@@ -40,15 +40,20 @@ object TypeOps extends GenTreeOps[TypeTree] {
                (implicit freeParams: Seq[TypeParameter]): Option[(TypeTree, Map[TypeParameter, TypeTree])] = {
 
     def flatten(res: Seq[Option[(TypeTree, Map[TypeParameter, TypeTree])]]): Option[(Seq[TypeTree], Map[TypeParameter, TypeTree])] = {
-      val (tps, subst) = res.map(_.getOrElse(return None)).unzip
-      val tpsMap = subst.flatMap(_.toSeq).groupBy(_._1).mapValues { vs =>
-        vs.map(_._2).distinct match {
-          case Seq(unique) => unique
-          case _ => return None
+      if (res.exists(_.isEmpty)) None
+      else {
+        val (tps, subst) = res.flatten.unzip
+
+        val seqTpsMap = subst.flatMap(_.toSeq).groupBy(_._1).mapValues {
+          vs => vs.map(_._2).distinct
+        }
+
+        if (seqTpsMap.values.exists(_.size != 1)) None
+        else {
+          val tpsMap = seqTpsMap mapValues (_.head)
+          Some((tps.map(instantiateType(_, tpsMap)), tpsMap))
         }
       }
-
-      Some((tps.map(instantiateType(_, tpsMap)), tpsMap))
     }
 
     (t1, t2) match {
