@@ -18,11 +18,17 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
    */
   def produce: R
 
+  /**
+   * Size of the expansion
+   */
+  def size: Int
+
 }
 
 case class NonTerminalInstance[NT, R](override val nt: NT) extends Expansion[NT, R](nt) {
   override val complete: Boolean = false
   override def produce: R = throw new NoSuchElementException(s"Unable to expand non-terminal ${this}")
+  override val size: Int = 1
 }
 
 case class ProdRuleInstance[NT, R](
@@ -33,7 +39,8 @@ case class ProdRuleInstance[NT, R](
 
   require(children.map(_.nt) == rule.subTrees)
   override val complete: Boolean = children.forall(_.complete)
-  override def produce: R = rule.builder(children.map(_.produce)) 
+  override def produce: R = rule.builder(children.map(_.produce))
+  override val size: Int = 1 + children.map(_.size).sum
 
 }
 
@@ -45,8 +52,11 @@ object Expansion {
   ) = new Iterator[(Expansion[NT, R], Double)](){
 
     type TyEl = (Expansion[NT, R], Double)
-    val ordering = Ordering.by[TyEl, Double](_._2)
+    val ordering = Ordering.by[TyEl, Double](-_._2)
     val worklist = new scala.collection.mutable.PriorityQueue[TyEl]()(ordering)
+
+    worklist.enqueue((NonTerminalInstance[NT, R](nt), 0.0))
+    var lastPrint: Int = 1
 
     def hasNext: Boolean = worklist.nonEmpty
 
@@ -54,7 +64,14 @@ object Expansion {
       while (!worklist.head._1.complete) {
         val head = worklist.dequeue
         for (headNext <- expandNext(head._1, grammar)) {
-          worklist.enqueue((headNext._1, head._2 + headNext._2))
+          val newElem = (headNext._1, head._2 + headNext._2)
+          worklist.enqueue(newElem)
+          // println(s">> Enqueueing ${newElem}")
+
+          if (worklist.size >= lastPrint + lastPrint) {
+            println(s"Worklist size: ${worklist.size}")
+            lastPrint = worklist.size
+          }
         }
       }
       worklist.dequeue

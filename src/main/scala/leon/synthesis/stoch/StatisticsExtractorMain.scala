@@ -9,10 +9,42 @@ import Statistics.exprConstrStatsToString
 import Statistics.getExprConstrStats
 import leon.Main
 import leon.Pipeline
+import leon.purescala.Types.TypeTree
+import leon.grammars.ProductionRule
+import leon.grammars.BaseGrammar
+import leon.purescala.Expressions.Expr
+import leon.purescala.Types.BooleanType
+import leon.grammars.Expansion
 
 object StatisticsExtractorMain {
 
   def main(args: Array[String]): Unit = {
+    mainPCFGExpansionStream(args)
+    // mainExtractGrammar(args)
+  }
+
+  def mainPCFGExpansionStream(args: Array[String]): Unit = {
+    val ctx = Main.processOptions(List())
+
+    type LabelType = TypeTree
+    val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
+      typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
+    val expansionIterator = Expansion.expansionIterator(BooleanType, grammar)
+
+    var maxProdSize = 0
+    for (i <- 1 to 1000000) {
+      val next = expansionIterator.next
+      assert(next ne null)
+      // println(s"${next._1}: ${next._2}")
+
+      if (next._1.size > maxProdSize /* || i % 100 == 0 */ ) {
+        println(s"${i}: (Size: ${next._1.size}, Expr: ${next._1.produce}, Probability: ${next._2})")
+        maxProdSize = next._1.size
+      }
+    }
+  }
+
+  def mainExtractGrammar(args: Array[String]): Unit = {
     var globalStatsTrain: ExprConstrStats = Map()
     var globalStatsTest: ExprConstrStats = Map()
     val random = new Random()
