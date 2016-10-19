@@ -991,8 +991,11 @@ trait CodeExtraction extends ASTExtractors {
       // If this is a lazy field definition, drop the assignment/ accessing
       val body =
         if (funDef.flags.contains(IsField(true))) { body0 match {
-          case Block(List(Assign(_, realBody)),_ ) => realBody
-          case _ => outOfSubsetError(body0, "Wrong form of lazy accessor")
+          case Block(List(Assign(_, realBody)),_ ) =>
+            realBody
+          case _ =>
+            //outOfSubsetError(body0, "Wrong form of lazy accessor")
+            body0 //FIXME is this always right?
         }} else body0
 
       val finalBody = try {
@@ -1797,12 +1800,9 @@ trait CodeExtraction extends ASTExtractors {
 
         case c @ ExCall(rec, sym, tps, args) =>
           // The object on which it is called is null if the symbol sym is a valid function in the scope and not a method.
-          val rrec = rec match {
-            case t if (defsToDefs contains sym) && !isMethod(sym) && !isMutator(sym) =>
-              null
-            case _ =>
-              extractTree(rec)
-          }
+          val rrec =
+            if ((defsToDefs contains sym) && !isMethod(sym) && !isMutator(sym)) null
+            else extractTree(rec)
 
           val rargs = args.map(extractTree)
 
@@ -1836,8 +1836,14 @@ trait CodeExtraction extends ASTExtractors {
 
             //mutable variables
             case (IsTyped(rec, cct: CaseClassType), name, List(e1)) if isMutator(sym) =>
-              val id = cct.classDef.fields.find(_.id.name == name.dropRight(2)).get.id
-              FieldAssignment(rec, id, e1)
+              val fieldName = name.dropRight(2)
+              val ovd = cct.classDef.fields.find(_.id.name == fieldName)
+              ovd match {
+                case None =>
+                  ctx.reporter.fatalError(s"Field $fieldName not found (vars are not allowed within class bodies).")
+                case Some(vd) =>
+                  FieldAssignment(rec, vd.id, e1)
+              }
 
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>
@@ -1854,9 +1860,7 @@ trait CodeExtraction extends ASTExtractors {
               StringLength(a1)
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type))) =>
               val s = FreshIdentifier("s", StringType)
-              let(s, a1,
-              SubString(Variable(s), start, StringLength(Variable(s)))
-              )
+              let(s, a1, SubString(Variable(s), start, StringLength(Variable(s))))
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, Int32Type), IsTyped(end, Int32Type))) =>
               SubString(a1, start, end)
 
@@ -2061,7 +2065,7 @@ trait CodeExtraction extends ASTExtractors {
               val typea1 = a1.getType
               val typea2 = a2.map(_.getType).mkString(",")
               val sa2 = a2.mkString(",")
-              outOfSubsetError(tr, "Unknown call to " + name + s" on $a1 ($typea1) with arguments $sa2 of type $typea2")
+              outOfSubsetError(tr, s"Unknown call to $name on $a1 ($typea1) with arguments $sa2 of type $typea2")
           }
 
         // default behaviour is to complain :)
