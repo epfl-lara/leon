@@ -9,12 +9,12 @@ import Statistics.exprConstrStatsToString
 import Statistics.getExprConstrStats
 import leon.Main
 import leon.Pipeline
-import leon.purescala.Types.TypeTree
-import leon.grammars.ProductionRule
 import leon.grammars.BaseGrammar
+import leon.grammars.ProductionRule
+import leon.grammars.enumerators.ProbwiseTopdownEnumerator
 import leon.purescala.Expressions.Expr
 import leon.purescala.Types.BooleanType
-import leon.grammars.Expansion
+import leon.purescala.Types.TypeTree
 
 object StatisticsExtractorMain {
 
@@ -30,7 +30,7 @@ object StatisticsExtractorMain {
     val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
       typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
     def nthor(label: LabelType): Double = Math.log(grammar(label).size)
-    val expansionIterator = Expansion.expansionIterator(BooleanType, grammar, nthor)
+    val expansionIterator = ProbwiseTopdownEnumerator.iterator(BooleanType, grammar, nthor)
 
     var maxProdSize = 0
     for (i <- 1 to 1000000) {
@@ -38,7 +38,7 @@ object StatisticsExtractorMain {
       assert(next ne null)
       // println(s"${next.expansion}: ${next.cost}")
 
-      if (next.expansion.size > maxProdSize || i % 100 == 0) {
+      if (next.expansion.size > maxProdSize /* || i % 1000 == 0 */ ) {
         println(s"${i}: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Probability: ${next.cost})")
         maxProdSize = next.expansion.size
       }
