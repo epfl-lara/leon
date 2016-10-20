@@ -29,17 +29,18 @@ object StatisticsExtractorMain {
     type LabelType = TypeTree
     val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
       typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
-    val expansionIterator = Expansion.expansionIterator(BooleanType, grammar)
+    def nthor(label: LabelType): Double = Math.log(grammar(label).size)
+    val expansionIterator = Expansion.expansionIterator(BooleanType, grammar, nthor)
 
     var maxProdSize = 0
     for (i <- 1 to 1000000) {
       val next = expansionIterator.next
       assert(next ne null)
-      // println(s"${next._1}: ${next._2}")
+      // println(s"${next.expansion}: ${next.cost}")
 
-      if (next._1.size > maxProdSize /* || i % 100 == 0 */ ) {
-        println(s"${i}: (Size: ${next._1.size}, Expr: ${next._1.produce}, Probability: ${next._2})")
-        maxProdSize = next._1.size
+      if (next.expansion.size > maxProdSize || i % 100 == 0) {
+        println(s"${i}: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Probability: ${next.cost})")
+        maxProdSize = next.expansion.size
       }
     }
   }
