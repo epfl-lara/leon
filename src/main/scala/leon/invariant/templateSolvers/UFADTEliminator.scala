@@ -11,7 +11,6 @@ import invariant.datastructure._
 import invariant.util._
 import leon.purescala.TypeOps
 import PredicateUtil._
-import Stats._
 import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap, MutableList }
 
 class UFADTEliminator(ctx: LeonContext, program: Program) {
@@ -230,7 +229,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     (tps1 zip tps2).forall {
       case (t1, t2) =>
         val lub = TypeOps.leastUpperBound(t1, t2)
-        (lub == Some(t1) || lub == Some(t2)) // is t1 a super type of t2
+        lub == t1 || lub == t2 // is t1 a super type of t2
     }
   }
 
