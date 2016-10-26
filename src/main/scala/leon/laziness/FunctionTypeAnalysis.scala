@@ -3,15 +3,8 @@ package laziness
 
 import invariant.util._
 import purescala.Definitions._
-import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import HOMemUtil._
-import ProgramUtil._
-import invariant.datastructure._
 import purescala.Types._
 import purescala.TypeOps._
-import TypeUtil._
 
 /**
  * Performs type-level analysis to know which types have their targets
@@ -38,14 +31,15 @@ class FunctionTypeAnalysis(p: Program, funsManager: FunctionsManager) {
         fd.params.map(_.getType)
       case _ => Seq()
     }
-  }.groupBy { TypeUtil.canonTypeName(_) }.collect{ 
-    case (k, v) if !v.head.isInstanceOf[TypeParameter] => v.head }
+  }.groupBy { TypeUtil.canonTypeName }.collect {
+    case (k, v) if !v.head.isInstanceOf[TypeParameter] => v.head
+  }
   //println("Escaping types: "+escapingTypes)
   /**
    * A function type escapes if it is a **super type** of an escaping type
    */
   def isEscapingType(ft: FunctionType) = escapingTypes.exists{ escType => 
-    instantiation_<:(escType, ft).isDefined
+    instantiation_>:(ft, escType).isDefined
 //    if(x.isDefined) {
 //      println("Subtype instantiation: "+x.get)
 //      true
