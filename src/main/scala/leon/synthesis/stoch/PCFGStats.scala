@@ -1,17 +1,12 @@
 package leon
 package synthesis.stoch
 
-import scala.collection.mutable.HashMap
-
-import leon.LeonContext
 import purescala.Definitions.Program
-import purescala.ExprOps
 import purescala.Expressions.Expr
-import purescala.TypeOps
-import purescala.Types.TypeParameter
-import purescala.Types.TypeTree
+import purescala.{ExprOps, TypeOps}
+import purescala.Types.{TypeParameter, TypeTree}
 
-object Statistics {
+object PCFGStats {
 
   // All sub-expressions
   def allSubExprs(expr: Expr): Seq[Expr] = ExprOps.collectPreorder{ e => List(e) }(expr)
@@ -112,10 +107,6 @@ object Statistics {
     val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
     val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = relevantSubExprs.mapValues(_.map(getExprConstr))
     asecbt.mapValues(_.groupBy(identity).mapValues(_.size))
-  }
-
-  def getExprConstrStatsPretty(ctx: LeonContext, p: Program): String = {
-    exprConstrStatsToString(getExprConstrStats(ctx, p))
   }
 
   // Type statistics

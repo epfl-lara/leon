@@ -61,10 +61,9 @@ object Main {
     val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
     val optLazyEval    = LeonFlagOptionDef("mem",        "Handles programs that may use the memoization and higher-order programs", false)
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
-    val optPCFGStats   = LeonFlagOptionDef("pcfg-stats",  "Extract PCFG Statistics",                                   false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optRunnable, optInferInv, optLazyEval, optGenc, optPCFGStats)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optRunnable, optInferInv, optLazyEval, optGenc)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -207,7 +206,6 @@ object Main {
     val runnableF = ctx.findOptionOrDefault(optRunnable)
     val lazyevalF = ctx.findOptionOrDefault(optLazyEval)
     val analysisF = verifyF && terminationF
-    val pcfgStatsF = ctx.findOptionOrDefault(optPCFGStats)
     // Check consistency in options
 
     if (helpF) {
@@ -217,7 +215,7 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         ClassgenPhase andThen
         ExtractionPhase andThen
-        (if (!pcfgStatsF) new PreprocessingPhase(genc = gencF) else NoopPhase())
+        new PreprocessingPhase(genc = gencF)
 
       val verification =
         InstrumentationPhase andThen
@@ -239,7 +237,6 @@ object Main {
         else if (runnableF) InstrumentationPhase andThen RunnableCodePhase
         else if (gencF) GenerateCPhase andThen CFileOutputPhase
         else if (lazyevalF) HOInferencePhase
-        else if (pcfgStatsF) SimplePrinterPhase(leon.synthesis.stoch.Statistics.getExprConstrStatsPretty)
         else verification
       }
 

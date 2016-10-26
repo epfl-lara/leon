@@ -1,56 +1,19 @@
 package leon
-package synthesis.stoch
+package synthesis
+package stoch
+
+import PCFGStats.{ExprConstrStats, addStats, exprConstrStatsToString, getExprConstrStats}
 
 import scala.util.Random
 
-import Statistics.ExprConstrStats
-import Statistics.addStats
-import Statistics.exprConstrStatsToString
-import Statistics.getExprConstrStats
-import leon.Main
-import leon.Pipeline
-import leon.grammars.BaseGrammar
-import leon.grammars.ProductionRule
-import leon.grammars.enumerators.ProbwiseTopdownEnumerator
-import leon.purescala.Expressions.Expr
-import leon.purescala.Types.BooleanType
-import leon.purescala.Types.TypeTree
-
-object StatisticsExtractorMain {
+object PCFGStatsExtractorMain {
 
   def main(args: Array[String]): Unit = {
-    mainPCFGExpansionStream(args)
-    // mainExtractGrammar(args)
-  }
-
-  def mainPCFGExpansionStream(args: Array[String]): Unit = {
-    val ctx = Main.processOptions(List())
-
-    type LabelType = TypeTree
-    val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
-      typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
-    def nthor(label: LabelType): Double = Math.log(grammar(label).size)
-    val expansionIterator = ProbwiseTopdownEnumerator.iterator(BooleanType, grammar, nthor)
-
-    var maxProdSize = 0
-    for (i <- 1 to 1000000) {
-      val next = expansionIterator.next
-      assert(next ne null)
-      // println(s"${next.expansion}: ${next.cost}")
-
-      if (next.expansion.size > maxProdSize /* || i % 1000 == 0 */ ) {
-        println(s"${i}: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Probability: ${next.cost})")
-        maxProdSize = next.expansion.size
-      }
-    }
-  }
-
-  def mainExtractGrammar(args: Array[String]): Unit = {
     var globalStatsTrain: ExprConstrStats = Map()
     var globalStatsTest: ExprConstrStats = Map()
     val random = new Random()
 
-    args.par.foreach(fileName => {
+    args.tail.par.foreach(fileName => {
       val fileStats = procFile(fileName)
       if (random.nextDouble() <= 0.9) {
         this.synchronized {
@@ -73,14 +36,13 @@ object StatisticsExtractorMain {
   }
 
   def procFile(fileName: String): ExprConstrStats = {
-    val args = List("--pcfg-stats", fileName)
+    val args = List(fileName)
     val ctx = Main.processOptions(args)
     pipeline.run(ctx, args)._2
   }
 
   def pipeline: Pipeline[List[String], ExprConstrStats] = {
-    import frontends.scalac.ClassgenPhase
-    import frontends.scalac.ExtractionPhase
+    import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getExprConstrStats)
   }
 

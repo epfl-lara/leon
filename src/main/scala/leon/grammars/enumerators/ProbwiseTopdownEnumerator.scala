@@ -2,7 +2,32 @@ package leon
 package grammars
 package enumerators
 
+import purescala.Expressions.Expr
+import purescala.Types.{BooleanType, TypeTree}
+
 object ProbwiseTopdownEnumerator {
+
+  def main(args: Array[String]): Unit = {
+    val ctx = Main.processOptions(List())
+
+    type LabelType = TypeTree
+    val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
+      typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
+    def nthor(label: LabelType): Double = Math.log(grammar(label).size)
+    val expansionIterator = ProbwiseTopdownEnumerator.iterator(BooleanType, grammar, nthor)
+
+    var maxProdSize = 0
+    for (i <- 1 to 1000000) {
+      val next = expansionIterator.next
+      assert(next ne null)
+      // println(s"${next.expansion}: ${next.cost}")
+
+      if (next.expansion.size > maxProdSize /* || i % 1000 == 0 */ ) {
+        println(s"${i}: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Cost: ${next.cost})")
+        maxProdSize = next.expansion.size
+      }
+    }
+  }
 
   /**
    * Represents an element of the worklist
