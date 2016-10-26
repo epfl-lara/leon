@@ -18,7 +18,7 @@ import org.scalatest.{ Args, Status }
 
 import scala.io.Source
 import java.io.{ ByteArrayInputStream, File }
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{ Files, Paths }
 
 class GenCSuite extends LeonRegressionSuite {
 
@@ -248,7 +248,7 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   protected def testValid(cc: String) = testDirectory(cc, "valid")
-  protected def testUnverified(cc: String) = testDirectory(cc, "unverified");
+  protected def testUnverified(cc: String) = testDirectory(cc, "unverified")
 
   protected def testInvalid() = forEachFileIn("invalid") { (xCtx, prog) =>
     intercept[LeonFatalError] {
@@ -278,7 +278,7 @@ class GenCSuite extends LeonRegressionSuite {
         testValid(cc)
         testUnverified(cc)
       case None     =>
-        test("dectecting C compiler") { fail("no C compiler found") }
+        test("detecting C compiler") { fail("no C compiler found") }
     }
 
     testInvalid()
