@@ -28,7 +28,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
       val isDet = fd.body.exists(isDeterministic)
 
       if (!isRecursiveCall && isDet) {
-        instantiation_>:(fd.returnType, t) match {
+        instantiation_<:(fd.returnType, t) match {
           case Some(tpsMap) =>
             val free = fd.tparams.map(_.tp)
             val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
@@ -73,11 +73,11 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
       }
     }
 
-    val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || tfd.fd.isInner || (exclude contains tfd.fd)
+    val filter = (fd: FunDef) => fd.isSynthetic || fd.isInner || (exclude contains fd)
 
-    val funcs = visibleFunDefsFromMain(prog).toSeq.sortBy(_.id).flatMap(getCandidates).filterNot(filter)
+    val funcs = visibleFunDefsFromMain(prog).toSeq.filterNot(filter).sortBy(_.id).flatMap(getCandidates)
 
-    funcs.map{ tfd =>
+    funcs.map { tfd =>
       nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), classOf[FunctionInvocation], Tags.tagOf(tfd.fd, isSafe = false))
     }
   }
