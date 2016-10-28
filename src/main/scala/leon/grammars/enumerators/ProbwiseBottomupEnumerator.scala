@@ -162,10 +162,11 @@ object ProbwiseBottomupEnumerator {
   import leon.purescala.Types._
 
   def main(args: Array[String]) = {
-    val pipeline =  ExtractionPhase andThen
-      new PreprocessingPhase
-    val (ctx_, program) = pipeline.run(LeonContext.empty, List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala"))
-    implicit val ctx = ctx_
+    val pipeline =  ExtractionPhase andThen new PreprocessingPhase
+    implicit val (ctx, program) = pipeline.run(
+      LeonContext.empty,
+      List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala")
+    )
     val fd = program.definedFunctions.find(_.id.name == "min").get
     val sctx = new SynthesisContext(ctx, new SynthesisSettings(), fd, program)
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
