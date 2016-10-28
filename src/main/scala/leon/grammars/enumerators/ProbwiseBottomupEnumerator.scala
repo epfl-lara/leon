@@ -2,8 +2,7 @@ package leon
 package grammars
 package enumerators
 
-import purescala.Expressions._
-
+import purescala.Expressions.Expr
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -29,6 +28,8 @@ class DedupedPriorityQueue[T](ord: Ordering[T]) {
   }
 
   def headOption = underlying.headOption
+
+  def isEmpty = underlying.isEmpty
 }
 
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
@@ -70,27 +71,43 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     }
 
   /** A class that represents the stream of generated elements for a specific nonterminal. */
-  protected class NonTerminalStream(nt: NT) {
+  protected class NonTerminalStream(val nt: NT) {
     private val buffer: ArrayBuffer[(R, Double)] = new ArrayBuffer()
 
     // The first element to be produced will definitely be the terminal symbol with greatest probability.
     private def init(): Unit = {
       firstTerminals(nt).foreach { rule =>
-        buffer += ( (rule.builder(Nil), Math.log(rule.weight)) )
+        buffer += ( (rule.builder(Nil), (rule.weight)) )
+        //println(s"$nt: Adding ${buffer(0)}")
       }
     }
 
     init()
 
-    def populateNext(): Option[R] = {
-      operators(nt).flatMap(_.getBest).sortBy(_._2).lastOption.map { case (r, d, op) =>
-        buffer += ((r, d))
-        op.advance()
-        r
+    def populateNext() = {
+      operators(nt).flatMap(_.getNext).sortBy(_._2).lastOption.map {
+        case (r, d, op) =>
+          buffer += ((r, d))
+          //println(s"$nt: Adding ($r, $d)")
+          op.advance()
+          (r, d)
       }
     }
 
-    def get(i: Int) = buffer(i)
+    @inline def get(i: Int): Option[(R, Double)] = {
+      if (buffer.isEmpty || i > buffer.size) None
+      else if (i < buffer.size) Some(buffer(i))
+      else {
+        populateNext()
+      }
+    }
+
+    private var i = -1
+
+    def getNext(): Option[(R, Double)] = {
+      i += 1
+      get(i)
+    }
 
   }
 
@@ -101,43 +118,80 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     private val typedStreams = rule.subTrees.map(streams)
 
     private def init(): Unit = {
-      frontier += FrontierElem(
-        List.fill(arity)(0),
-        rule.builder(typedStreams.map(_.get(0)._1)),
-        typedStreams.map(_.get(0)._2).sum + Math.log(rule.weight)
-      )
+      val optOps = typedStreams.map(_.get(0))
+      if (optOps.forall(_.isDefined)) {
+        val (operands, probs) = optOps.flatten.unzip
+        frontier += FrontierElem(
+          List.fill(arity)(0),
+          rule.builder(operands),
+          probs.sum + (rule.weight)
+        )
+      }
     }
     init()
 
-    def getBest: Option[(R, Double, OperatorStream)] = {
+    @inline def getNext: Option[(R, Double, OperatorStream)] = {
       frontier.headOption.map(fe => (fe.elem, fe.logProb, this))
     }
 
     def advance(): Unit = {
-      val fe = frontier.dequeue()
-      val newElems = fe.coordinates.zipWithIndex.map{
-        case (elem, index) => fe.coordinates.updated(index, elem+1)
-      }
-      newElems foreach { coords =>
-        val (operands, probs) = typedStreams.zip(coords).map { case (stream, index) =>
-          // @mk: Lecture time: How do we know this will always work?
-          // Notice how the advance() function can only advance each index by 1 at most.
-          // Also, it is only called in NonTerminalStream AFTER it has added an
-          // element to the buffer.
-          // This means that the available indexed grow faster than the requested ones.
-          stream.get(index)
-        }.unzip
-        val elem = rule.builder(operands)
-        val prob = probs.sum + Math.log(rule.weight)
-        frontier += FrontierElem(coords, elem, prob)
+      if (!frontier.isEmpty) {
+        val fe = frontier.dequeue()
+        val newElems = fe.coordinates.zipWithIndex.map {
+          case (elem, index) => fe.coordinates.updated(index, elem + 1)
+        }
+        newElems foreach { coords =>
+          //println("Requesting " + typedStreams.zip(coords).map{case (o,c) => o.nt.toString + s" -> $c"}.mkString(", "))
+          val optFromStreams = typedStreams.zip(coords).map { case (stream, index) =>
+            // @mk: Lecture time: How do we know this will always work?
+            // Notice how the advance() function can only advance each index by 1 at most.
+            // Also, it is only called in NonTerminalStream AFTER it has added an
+            // element to the buffer.
+            // This means that the available indexed grow faster than the requested ones.
+            stream.get(index)
+          }
+          if (optFromStreams.forall(_.isDefined)) {
+            val (operands, probs) = optFromStreams.flatten.unzip
+            val elem = rule.builder(operands)
+            val prob = probs.sum + (rule.weight)
+            frontier += FrontierElem(coords, elem, prob)
+          }
+        }
       }
     }
-
   }
 
-  def getNext(nt: NT) = streams(nt).populateNext()
+  def getNext(nt: NT) = streams(nt).getNext()
 
 }
 
 class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, labels: Seq[Label])(implicit ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](labels.map (l => l -> grammar.getProductions(l)).toMap)
+
+object ProbwiseBottomupEnumerator {
+  import leon.frontends.scalac.ExtractionPhase
+  import leon.synthesis.{SynthesisSettings, SynthesisContext}
+  import leon.utils.PreprocessingPhase
+  import leon.purescala.Types._
+
+  def main(args: Array[String]) = {
+    val pipeline =  ExtractionPhase andThen
+      new PreprocessingPhase
+    val (ctx_, program) = pipeline.run(LeonContext.empty, List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala"))
+    implicit val ctx = ctx_
+    val fd = program.definedFunctions.find(_.id.name == "min").get
+    val sctx = new SynthesisContext(ctx, new SynthesisSettings(), fd, program)
+    val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
+    val labels = List(BooleanType, IntegerType) map (Label(_, Nil))
+    grammar.getProductions(labels(0))
+    grammar.getProductions(labels(1))
+    grammar.printProductions(println)
+    val enum = new ProbwiseBottomupEnumerator(grammar, labels)
+    val before = System.currentTimeMillis()
+    for (label <- labels; i <- 1 to 1000000; (e, prob) <- enum.getNext(label) ) {
+      //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+      println(f"${e.asString}%40s: $prob")
+    }
+    println(s"Time: ${System.currentTimeMillis() - before}")
+  }
+}
