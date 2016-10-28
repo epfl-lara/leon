@@ -3,16 +3,15 @@ package grammars
 package enumerators
 
 import purescala.Expressions.Expr
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ PriorityQueue, HashSet, ArrayBuffer }
 
 /** A priority queue which only allows unique elements.
   *
   * @param ord The ordering with which the elements will be held in the queue.
   */
 class DedupedPriorityQueue[T](ord: Ordering[T]) {
-  private val underlying = new mutable.PriorityQueue[T]()(ord)
-  private val elems = new mutable.HashSet[T]()
+  private val underlying = new PriorityQueue[T]()(ord)
+  private val elems = new HashSet[T]()
 
   def +=(elem: T) = {
     if (!(elems contains elem)) {
@@ -41,15 +40,9 @@ class DedupedPriorityQueue[T](ord: Ordering[T]) {
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[ProductionRule[NT, R]]]) {
 
-  // TODO: Optimize streams to not try to produce more values once they fail
   // TODO: Improve naive representation of frontiers
 
-  /** An element of the frontier of an operator
-    *
-    * @param coordinates
-    * @param elem
-    * @param logProb
-    */
+  /** An element of the frontier of an operator */
   protected case class FrontierElem(coordinates: List[Int], elem: R, logProb: Double)
   protected val ordering = Ordering.by[FrontierElem, Double](_.logProb)
   /** The frontier of coordinates corresponding to an operator */
@@ -77,11 +70,10 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     // The first element to be produced will definitely be the terminal symbol with greatest probability.
     private def init(): Unit = {
       firstTerminals(nt).foreach { rule =>
-        buffer += ( (rule.builder(Nil), (rule.weight)) )
+        buffer += ( (rule.builder(Nil), rule.weight) )
         //println(s"$nt: Adding ${buffer(0)}")
       }
     }
-
     init()
 
     def populateNext() = {
@@ -124,7 +116,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
         frontier += FrontierElem(
           List.fill(arity)(0),
           rule.builder(operands),
-          probs.sum + (rule.weight)
+          probs.sum + rule.weight
         )
       }
     }
@@ -143,17 +135,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
         newElems foreach { coords =>
           //println("Requesting " + typedStreams.zip(coords).map{case (o,c) => o.nt.toString + s" -> $c"}.mkString(", "))
           val optFromStreams = typedStreams.zip(coords).map { case (stream, index) =>
-            // @mk: Lecture time: How do we know this will always work?
-            // Notice how the advance() function can only advance each index by 1 at most.
-            // Also, it is only called in NonTerminalStream AFTER it has added an
-            // element to the buffer.
-            // This means that the available indexed grow faster than the requested ones.
             stream.get(index)
           }
           if (optFromStreams.forall(_.isDefined)) {
             val (operands, probs) = optFromStreams.flatten.unzip
             val elem = rule.builder(operands)
-            val prob = probs.sum + (rule.weight)
+            val prob = probs.sum + rule.weight
             frontier += FrontierElem(coords, elem, prob)
           }
         }
@@ -188,7 +175,7 @@ object ProbwiseBottomupEnumerator {
     grammar.printProductions(println)
     val enum = new ProbwiseBottomupEnumerator(grammar, labels)
     val before = System.currentTimeMillis()
-    for (label <- labels; i <- 1 to 1000000; (e, prob) <- enum.getNext(label) ) {
+    for (label <- labels; i <- 1 to 10; (e, prob) <- enum.getNext(label) ) {
       //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
       println(f"${e.asString}%40s: $prob")
     }
