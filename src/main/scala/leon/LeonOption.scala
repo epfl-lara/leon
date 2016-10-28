@@ -91,8 +91,7 @@ object OptionParsers {
   }
 
   def seqParser[A](base: OptionParser[A]): OptionParser[Seq[A]] = s => {
-    val parts = s.split(",").toList.filter(_.nonEmpty).map(base)
-    if (parts.forall(_.nonEmpty)) Some(parts.flatten) else None
+    s.split(",").toList.filter(_.nonEmpty).mapM(base)
   }
 
   def setParser[A](base: OptionParser[A]): OptionParser[Set[A]] = {

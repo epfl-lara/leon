@@ -96,7 +96,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
 
     private var i = -1
 
-    def getNext(): Option[(R, Double)] = {
+    @inline def getNext(): Option[(R, Double)] = {
       i += 1
       get(i)
     }
@@ -110,15 +110,15 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     private val typedStreams = rule.subTrees.map(streams)
 
     private def init(): Unit = {
-      val optOps = typedStreams.map(_.get(0))
-      if (optOps.forall(_.isDefined)) {
-        val (operands, probs) = optOps.flatten.unzip
+      typedStreams.mapM(_.get(0)) foreach { case ops =>
+        val (operands, probs) = ops.unzip
         frontier += FrontierElem(
           List.fill(arity)(0),
           rule.builder(operands),
           probs.sum + rule.weight
         )
       }
+
     }
     init()
 
@@ -132,17 +132,15 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
         val newElems = fe.coordinates.zipWithIndex.map {
           case (elem, index) => fe.coordinates.updated(index, elem + 1)
         }
-        newElems foreach { coords =>
+        for {
+          coords <- newElems
+          ops <- typedStreams.zip(coords).mapM { case (stream, index) => stream.get(index) }
+        } {
           //println("Requesting " + typedStreams.zip(coords).map{case (o,c) => o.nt.toString + s" -> $c"}.mkString(", "))
-          val optFromStreams = typedStreams.zip(coords).map { case (stream, index) =>
-            stream.get(index)
-          }
-          if (optFromStreams.forall(_.isDefined)) {
-            val (operands, probs) = optFromStreams.flatten.unzip
-            val elem = rule.builder(operands)
-            val prob = probs.sum + rule.weight
-            frontier += FrontierElem(coords, elem, prob)
-          }
+          val (operands, probs) = ops.unzip
+          val elem = rule.builder(operands)
+          val prob = probs.sum + rule.weight
+          frontier += FrontierElem(coords, elem, prob)
         }
       }
     }
