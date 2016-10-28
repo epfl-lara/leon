@@ -142,7 +142,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
         val sum = ws.sum
         // Cost = -log(prob) = -log(weight/Σ(weights))
-        val costs = ws.map(w => -Math.log(w/sum.toDouble))
+        val costs = ws.map(w => -Math.log(w/sum))
         val minCost = costs.min
 
         for ((p, cost) <- pw zip costs) yield {
@@ -154,7 +154,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
           //  }
           //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $cost, $ncost")
           //}
-          p.copy(cost = ncost)
+          p.copy(cost = ncost, weight = -cost)
         }
       } else {
         sys.error("Whoot???")
