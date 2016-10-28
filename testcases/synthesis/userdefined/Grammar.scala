@@ -6,13 +6,18 @@ import annotation.grammar._
 
 object Grammar {
 
+  // BIGINT
   @terminal
-  @weight(22)
+  @weight(68)
   def vr = variable[BigInt]
 
   @terminal
-  @weight(7)
+  @weight(122)
   def zero = BigInt(0)
+
+  @terminal
+  @weight(2)
+  def one = BigInt(1)
 
   @production
   @weight(12)
@@ -24,13 +29,15 @@ object Grammar {
 
   @production
   @weight(4)
-  def smaller(b1: BigInt, b2: BigInt) = b1 < b2
-
-  @production
-  @weight(4)
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
   }
+
+  // BOOLEAN
+
+  @production
+  @weight(4)
+  def smaller(b1: BigInt, b2: BigInt) = b1 < b2
 
   @production
   @weight(5)
