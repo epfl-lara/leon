@@ -71,8 +71,8 @@ object ProbwiseTopdownEnumerator {
       }
 
       val ans = worklist.dequeue
-      assert(ans.cost + 1.0e-6 >= prevAns.cost)
-      assert(ans.horizon <= 1.0e-6)
+      //assert(ans.cost + 1.0e-6 >= prevAns.cost)
+      //assert(ans.horizon <= 1.0e-6)
       prevAns = ans
       ans
     }
@@ -94,13 +94,13 @@ object ProbwiseTopdownEnumerator {
 
       case NonTerminalInstance(nt) => {
         val prodRules = grammar(nt)
-        val totalWeight = prodRules.map(_.weight).sum
-        val logTotalWeight = Math.log(totalWeight)
+        //val totalWeight = prodRules.map(_.weight).sum
+        //val logTotalWeight = Math.log(totalWeight)
         for (rule <- prodRules) yield {
           val expansion = ProdRuleInstance(nt,
                                            rule,
                                            rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList)
-          val minusLogProbPrime = minusLogProb + logTotalWeight - Math.log(rule.weight)
+          val minusLogProbPrime = minusLogProb - rule.weight //+ logTotalWeight - Math.log(rule.weight)
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansion, minusLogProbPrime, horizonPrime)
         }
