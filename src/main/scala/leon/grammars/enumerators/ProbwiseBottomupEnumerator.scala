@@ -179,17 +179,17 @@ object ProbwiseBottomupEnumerator {
     val topDown1 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(1), grammar.getProductions, l => Math.log(grammar.getProductions(l).size))
     val before = System.currentTimeMillis()
 
-    //val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))
-    //val t0 = for( _ <- 1 to 100) yield topDown0.next
+    val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))
+    val t0 = for( _ <- 1 to 100) yield topDown0.next
 
-    /*b0 zip t0 foreach { case (b, t) =>
+    b0 zip t0 foreach { case (b, t) =>
       println(f"${b.get._1}%40s: ${b.get._2}%3.3f vs ${t.expansion.produce}%40s: ${t.cost}%3.3f")
-    }*/
-
-    for (label <- labels; i <- 1 to 1000000; (e, prob) <- bottomUp.getNext(label) ) {
-      if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-      //println(f"${e.asString}%40s: $prob")
     }
-    println(s"Time: ${System.currentTimeMillis() - before}")
+
+    /*for (label <- labels; i <- 1 to 100; (e, prob) <- bottomUp.getNext(label) ) {
+      //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+      println(f"${e.asString}%40s: $prob")
+    }
+    println(s"Time: ${System.currentTimeMillis() - before}")*/
   }
 }

@@ -71,6 +71,8 @@ object ProbwiseTopdownEnumerator {
       }
 
       val ans = worklist.dequeue
+      //println(prevAns.cost)
+      //println(ans.cost)
       //assert(ans.cost + 1.0e-6 >= prevAns.cost)
       //assert(ans.horizon <= 1.0e-6)
       prevAns = ans
