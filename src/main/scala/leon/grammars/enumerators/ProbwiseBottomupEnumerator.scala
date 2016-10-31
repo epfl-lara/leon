@@ -118,7 +118,6 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
           probs.sum + rule.weight
         )
       }
-
     }
     init()
 
@@ -127,14 +126,15 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     }
 
     def advance(): Unit = {
-      if (!frontier.isEmpty) {
-        val fe = frontier.dequeue()
+      frontier.headOption.foreach { fe =>
         val newElems = fe.coordinates.zipWithIndex.map {
           case (elem, index) => fe.coordinates.updated(index, elem + 1)
         }
+        val ops = newElems map (typedStreams.zip(_).mapM { case (stream, index) => stream.get(index) })
+        frontier.dequeue()
         for {
-          coords <- newElems
-          ops <- typedStreams.zip(coords).mapM { case (stream, index) => stream.get(index) }
+          (optOperands, coords) <- ops.zip(newElems)
+          ops <- optOperands
         } {
           //println("Requesting " + typedStreams.zip(coords).map{case (o,c) => o.nt.toString + s" -> $c"}.mkString(", "))
           val (operands, probs) = ops.unzip
@@ -144,6 +144,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
         }
       }
     }
+
+
   }
 
   def getNext(nt: NT) = streams(nt).getNext()
@@ -166,17 +168,27 @@ object ProbwiseBottomupEnumerator {
       List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala")
     )
     val fd = program.definedFunctions.find(_.id.name == "min").get
-    val sctx = new SynthesisContext(ctx, new SynthesisSettings(), fd, program)
+    val sctx = new SynthesisContext(ctx, SynthesisSettings(), fd, program)
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
     val labels = List(BooleanType, IntegerType) map (Label(_, Nil))
     grammar.getProductions(labels(0))
     grammar.getProductions(labels(1))
     grammar.printProductions(println)
-    val enum = new ProbwiseBottomupEnumerator(grammar, labels)
+    val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels)
+    val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0), grammar.getProductions, l => Math.log(grammar.getProductions(l).size))
+    val topDown1 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(1), grammar.getProductions, l => Math.log(grammar.getProductions(l).size))
     val before = System.currentTimeMillis()
-    for (label <- labels; i <- 1 to 10; (e, prob) <- enum.getNext(label) ) {
-      //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-      println(f"${e.asString}%40s: $prob")
+
+    //val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))
+    //val t0 = for( _ <- 1 to 100) yield topDown0.next
+
+    /*b0 zip t0 foreach { case (b, t) =>
+      println(f"${b.get._1}%40s: ${b.get._2}%3.3f vs ${t.expansion.produce}%40s: ${t.cost}%3.3f")
+    }*/
+
+    for (label <- labels; i <- 1 to 1000000; (e, prob) <- bottomUp.getNext(label) ) {
+      if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+      //println(f"${e.asString}%40s: $prob")
     }
     println(s"Time: ${System.currentTimeMillis() - before}")
   }
