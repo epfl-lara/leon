@@ -12,7 +12,19 @@ object DeBruijnStats {
   type Context = List[(Identifier, TypeTree)]
 
   def collectLeafAncestors(expr: Expr, ancs: Seq[Seq[List[Expr]]]): Seq[List[Expr]] = {
-    if (ancs.isEmpty) Seq(List(expr)) else ancs.map(_.map(_ :+ expr)).flatten
+    if (expr.isInstanceOf[Variable]) assert(ancs.isEmpty)
+
+    if (ancs.isEmpty) {
+      Seq(List(expr))
+    } else if (expr.isInstanceOf[Let] ||
+               expr.isInstanceOf[LetDef]) {
+      ancs.dropRight(1).flatten ++ ancs.last.map(_ :+ expr)
+    } else if (expr.isInstanceOf[Forall] ||
+               expr.isInstanceOf[Lambda]) {
+      ancs.flatMap(_.map(_ :+ expr))
+    } else {
+      ancs.flatMap(_.map(_ :+ expr))
+    }
   }
 
   def collectLeafAncestors(expr: Expr): Seq[(Expr, List[Expr])] = {
@@ -74,6 +86,10 @@ object DeBruijnStats {
       // ans.append("---\n")
     }
     ans.toString()
+  }
+
+  def getExprConstrs(ctx: LeonContext, p: Program): Set[Class[_ <: Expr]] = {
+    getDeBruijnStats(ctx, p).flatMap(_._2).map(_.getClass).toSet
   }
 
 }

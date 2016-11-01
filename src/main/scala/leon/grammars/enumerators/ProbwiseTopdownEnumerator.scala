@@ -5,6 +5,8 @@ package enumerators
 import purescala.Expressions.Expr
 import purescala.Types.{BooleanType, TypeTree}
 
+import scala.collection.mutable
+
 object ProbwiseTopdownEnumerator {
 
   def main(args: Array[String]): Unit = {
@@ -71,10 +73,8 @@ object ProbwiseTopdownEnumerator {
       }
 
       val ans = worklist.dequeue
-      //println(prevAns.cost)
-      //println(ans.cost)
-      //assert(ans.cost + 1.0e-6 >= prevAns.cost)
-      //assert(ans.horizon <= 1.0e-6)
+      assert(ans.cost + 1.0e-6 >= prevAns.cost)
+      assert(ans.horizon <= 1.0e-6)
       prevAns = ans
       ans
     }
@@ -96,13 +96,13 @@ object ProbwiseTopdownEnumerator {
 
       case NonTerminalInstance(nt) => {
         val prodRules = grammar(nt)
-        //val totalWeight = prodRules.map(_.weight).sum
-        //val logTotalWeight = Math.log(totalWeight)
+        // val totalWeight = prodRules.map(_.weight).sum
+        // val logTotalWeight = Math.log(totalWeight)
         for (rule <- prodRules) yield {
           val expansion = ProdRuleInstance(nt,
                                            rule,
                                            rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList)
-          val minusLogProbPrime = minusLogProb - rule.weight //+ logTotalWeight - Math.log(rule.weight)
+          val minusLogProbPrime = minusLogProb - rule.weight // + logTotalWeight - Math.log(rule.weight)
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansion, minusLogProbPrime, horizonPrime)
         }
@@ -128,6 +128,55 @@ object ProbwiseTopdownEnumerator {
       }
 
     }
+  }
+
+  def allNTs[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Set[NT] = {
+    val ans = new mutable.HashSet[NT]()
+    val queue = new mutable.Queue[NT]()
+
+    ans += nt
+    queue += nt
+    while (queue.nonEmpty) {
+      val head = queue.dequeue()
+      val newNTs = grammar(head).flatMap(_.subTrees).filterNot(ans).toSet
+      ans ++= newNTs
+      queue ++= newNTs
+    }
+
+    ans.toSet
+  }
+
+  def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, Double] = {
+    val map = new mutable.HashMap[NT, Double]()
+    val ntSet = allNTs(nt, grammar)
+    ntSet.foreach(ntPrime => map.put(ntPrime, Double.NegativeInfinity))
+
+    def relax(ntPrime: NT): Boolean = {
+      require(map.contains(ntPrime))
+
+      var newProb = map(ntPrime)
+      for (rule <- grammar(ntPrime)) {
+        var ruleLogProb = rule.weight
+        for (childNT <- rule.subTrees) {
+          ruleLogProb = ruleLogProb + map(childNT)
+        }
+        newProb = Math.max(newProb, ruleLogProb)
+      }
+
+      val ans = map(ntPrime) < newProb
+      map.put(ntPrime, newProb)
+      ans
+    }
+
+    var done = false
+    while (!done) {
+      done = true
+      for (ntPrime <- ntSet) {
+        done = relax(ntPrime) && done
+      }
+    }
+
+    map.mapValues(-_).toMap
   }
 
 }

@@ -3,7 +3,7 @@ package synthesis
 package stoch
 
 import purescala.Expressions.Expr
-import DeBruijnStats.getDeBruijnStatsPretty
+import DeBruijnStats.{getDeBruijnStatsPretty, getExprConstrs}
 
 object DeBruijnStatsExtractorMain {
 
@@ -25,10 +25,19 @@ object DeBruijnStatsExtractorMain {
       }
     }) */
 
+    val allConstrs = new scala.collection.mutable.HashSet[Class[_ <: Expr]]()
+
     args.tail.par.foreach(fileName => {
-      val res = procFile(fileName)
-      println(s"${fileName}: ${res}")
+      val res: Set[Class[_ <: Expr]] = procFile(fileName)
+      // println(s"${fileName}: ${res}")
+      allConstrs.synchronized {
+        allConstrs.++=(res)
+      }
     })
+
+    for (constr <- allConstrs) {
+      println(constr)
+    }
 
     /* println("Printing training data:")
     println(exprConstrStatsToString(globalStatsTrain))
@@ -39,15 +48,16 @@ object DeBruijnStatsExtractorMain {
     println(s"Score: ${score}") */
   }
 
-  def procFile(fileName: String): String = {
+  def procFile(fileName: String): Set[Class[_ <: Expr]] /* String */ = {
     val args = List(fileName)
     val ctx = Main.processOptions(args)
     pipeline.run(ctx, args)._2
   }
 
-  def pipeline: Pipeline[List[String], String] = {
+  def pipeline: Pipeline[List[String], Set[Class[_ <: Expr]] /* String */ ] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getDeBruijnStatsPretty)
+    // ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getDeBruijnStatsPretty)
+    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getExprConstrs)
   }
 
 }

@@ -175,8 +175,13 @@ object ProbwiseBottomupEnumerator {
     grammar.getProductions(labels(1))
     grammar.printProductions(println)
     val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels)
-    val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0), grammar.getProductions, l => Math.log(grammar.getProductions(l).size))
-    val topDown1 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(1), grammar.getProductions, l => Math.log(grammar.getProductions(l).size))
+    val horMap = (n: Int) => ProbwiseTopdownEnumerator.horizonMap(labels(n), grammar.computeProductions)
+    val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0),
+                                                                   grammar.getProductions,
+                                                                   horMap(0))
+    val topDown1 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(1),
+                                                                   grammar.getProductions,
+                                                                   horMap(1))
     val before = System.currentTimeMillis()
 
     val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))
