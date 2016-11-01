@@ -31,7 +31,7 @@ abstract class ExpressionGrammar {
     * @param lab The nonterminal for which production rules will be generated
     * @note Clients should use the cached version, [[getProductions]] instead
     */
-  def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
+  protected def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
 
   protected def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
     lab.aspects.foldLeft(ps) {

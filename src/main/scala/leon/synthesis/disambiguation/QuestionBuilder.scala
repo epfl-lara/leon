@@ -71,8 +71,8 @@ object QuestionBuilder {
   }
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
-  object SpecialStringValueGrammar extends SimpleExpressionGrammar {
-    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+  object SpecialStringValueGrammar extends ValueGrammar {
+    override protected def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
       case StringType =>
         List(
           terminal(StringLiteral(""), classOf[StringLiteral]),
@@ -80,7 +80,7 @@ object QuestionBuilder {
           terminal(StringLiteral("\"'\n\t"), classOf[StringLiteral]),
           terminal(StringLiteral("Lara 2007"), classOf[StringLiteral])
         )
-      case _ => ValueGrammar.computeProductions(t)
+      case _ => super.computeProductions(t)
     }
   }
   
@@ -110,21 +110,21 @@ object QuestionBuilder {
       case otherLiteral => None
     }
     @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
-          if(genVals contains g)
-            freshenValue(g) match {
-              case None => g
-              case Some(v) => freshValue(v)
-            }
-          else {
-            genVals += g
-            g
-          }
+      if(genVals contains g)
+        freshenValue(g) match {
+          case None => g
+          case Some(v) => freshValue(v)
+        }
+      else {
+        genVals += g
+        g
+      }
     }
-    ExprOps.postMap{ e => e match {
-      case g:Expr with Terminal =>
+    ExprOps.postMap{
+      case g: Terminal =>
         Some(freshValue(g))
       case _ => None
-    }}(a)
+    }(a)
   }
   
 }

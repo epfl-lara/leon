@@ -8,9 +8,11 @@ import leon.purescala.Definitions.ValDef
 import purescala.Types._
 import purescala.Expressions._
 
+case object ValueGrammar extends ValueGrammar
+
 /** A grammar of values (ground terms) */
-case object ValueGrammar extends SimpleExpressionGrammar {
-  def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+abstract class ValueGrammar extends SimpleExpressionGrammar {
+  protected def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
     case BooleanType =>
       List(
         terminal(BooleanLiteral(true), classOf[BooleanLiteral], Tags.One),

@@ -8,11 +8,13 @@ import scala.collection.mutable.{ PriorityQueue, HashSet, ArrayBuffer }
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
   * After initialization, each nonterminal will produce a series of unique elements in decreasing probability order.
   *
-  * @param nts A mapping from each nonterminal to the production rules corresponding to it.
+  * @param nts A mapping from each nonterminal to the production rules corresponding to it,
+  *            and the rule which corresponds to the first element
   * @tparam NT Type of the nonterminal of the production rules.
   * @tparam R The type of enumerated elements.
   */
-abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[ProductionRule[NT, R]]]) {
+abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
+  //nts.keys foreach println
 
   abstract class DedupedPriorityQueue[T](ord: Ordering[T]) {
     def dominates(t1: T, t2: T): Boolean
@@ -35,6 +37,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     def headOption = underlying.headOption
 
     def isEmpty = underlying.isEmpty
+
+    def toSeq = underlying.toSeq
   }
 
   // TODO: Improve naive representation of frontiers
@@ -45,20 +49,17 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
   /** The frontier of coordinates corresponding to an operator */
   protected type Frontier = DedupedPriorityQueue[FrontierElem]
 
-  // The most probable terminal production for each nonterminal
-  protected val firstTerminals = nts.mapValues {
-    _.filter(_.arity == 0).sortBy(_.weight).lastOption
-  }
-
   // The streams of elements corresponding to each nonterminal
   protected val streams: Map[NT, NonTerminalStream] =
     nts.map{ case (nt, _) => (nt, new NonTerminalStream(nt)) }
 
   // The operator streams per nonterminal
   protected val operators: Map[NT, Seq[OperatorStream]] =
-    nts.map { case (nt, prods) =>
-      nt -> (prods diff firstTerminals(nt).toSeq).map(new OperatorStream(_))
+    nts.map { case (nt, (_, prods)) =>
+      nt -> prods.map(new OperatorStream(_))
     }
+
+  //operators.values foreach (_.foreach(_.init()))
 
   /** A class that represents the stream of generated elements for a specific nonterminal. */
   protected class NonTerminalStream(val nt: NT) {
@@ -66,10 +67,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
 
     // The first element to be produced will definitely be the terminal symbol with greatest probability.
     private def init(): Unit = {
-      firstTerminals(nt).foreach { rule =>
-        buffer += ( (rule.builder(Nil), rule.weight) )
-        //println(s"$nt: Adding ${buffer(0)}")
+      def rec(nt: NT): (R, Double) = {
+        val rule = nts(nt)._1
+        val (subs, ds) = rule.subTrees.map(rec).unzip
+        (rule.builder(subs), ds.sum + rule.weight)
       }
+      buffer += rec(nt)
     }
     init()
 
@@ -84,7 +87,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     }
 
     @inline def get(i: Int): Option[(R, Double)] = {
-      if (buffer.isEmpty || i > buffer.size) None
+      if (i > buffer.size) None
       else if (i < buffer.size) Some(buffer(i))
       else {
         populateNext()
@@ -101,7 +104,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
   }
 
   /** Generates elements for a specific operator */
-  protected class OperatorStream(rule: ProductionRule[NT, R]) {
+  protected class OperatorStream(val rule: ProductionRule[NT, R]) {
     private val frontier: Frontier = new Frontier(ordering) {
       def dominates(e1: FrontierElem, e2: FrontierElem) =
         e1.coordinates zip e2.coordinates forall ((_: Int) <= (_: Int)).tupled
@@ -109,7 +112,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
     private val arity = rule.arity
     private val typedStreams = rule.subTrees.map(streams)
 
-    private def init(): Unit = {
+    def init(): Unit = {
       typedStreams.mapM(_.get(0)) foreach { case ops =>
         val (operands, probs) = ops.unzip
         frontier += FrontierElem(
@@ -148,13 +151,48 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
   }
 
   def getNext(nt: NT) = streams(nt).getNext()
+  /*
+  for ((nt, s) <- streams) {
+    println(s"$nt -> ${s.buffer}")
+  }
+
+  for ((nt, ops) <- operators) {
+    println(s"$nt")
+    for (op <- ops) {
+      println("  " + op.rule.outType)
+      println("  " + op.frontier.toSeq.toList)
+    }
+  }
+  */
+
+  private def advance(): Unit = {
+    val rules = nts.values.map(_._1).toSet
+    val ops = operators.mapValues( _.find(rules contains _.rule).get)
+    var toDo = ops.values.toSet
+    def rec(op: OperatorStream): Unit = {
+      if (toDo contains op) {
+        op.rule.subTrees.map(ops).foreach(rec)
+        op.advance()
+        toDo -= op
+      }
+    }
+    while (toDo.nonEmpty) rec(toDo.head)
+  }
+  advance()
 
 }
 
-class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, labels: Seq[Label])(implicit ctx: LeonContext)
-  extends AbstractProbwiseBottomupEnumerator[Label, Expr](labels.map (l => l -> grammar.getProductions(l)).toMap)
+class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
+  extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
 
 object ProbwiseBottomupEnumerator {
+  def productive(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext) = {
+    val ntMap = ProbwiseTopdownEnumerator.horizonMap(init, grammar.getProductions).collect {
+      case (l, (Some(r), d)) => l -> (r, grammar.getProductions(l))
+    }
+    ntMap.mapValues{ case (r, prods) => (r, prods.filter(_.subTrees forall ntMap.contains)) }
+  }
+
   import leon.frontends.scalac.ExtractionPhase
   import leon.synthesis.{SynthesisSettings, SynthesisContext}
   import leon.utils.PreprocessingPhase
@@ -169,18 +207,16 @@ object ProbwiseBottomupEnumerator {
     val fd = program.definedFunctions.find(_.id.name == "min").get
     val sctx = new SynthesisContext(ctx, SynthesisSettings(), fd, program)
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
-    val labels = List(BooleanType, IntegerType) map (Label(_, Nil))
-    grammar.getProductions(labels(0))
-    grammar.getProductions(labels(1))
+    val labels = List(BooleanType, IntegerType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
+    val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(1))
     grammar.printProductions(println)
-    val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels)
-    val horMap = (n: Int) => ProbwiseTopdownEnumerator.horizonMap(labels(n), grammar.computeProductions)
+    val horMap = (n: Int) => ProbwiseTopdownEnumerator.horizonMap(labels(n), grammar.getProductions)
     val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0),
                                                                    grammar.getProductions,
-                                                                   horMap(0))
+                                                                   horMap(0).mapValues(_._2))
     val topDown1 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(1),
                                                                    grammar.getProductions,
-                                                                   horMap(1))
+                                                                   horMap(1).mapValues(_._2))
     val before = System.currentTimeMillis()
 
     val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))

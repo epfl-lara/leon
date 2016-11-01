@@ -14,9 +14,31 @@ import purescala.Expressions._
 
 import synthesis.SynthesisContext
 
+object UserDefinedGrammar {
+  import Tags._
+  def tags = Map(
+    "top" -> Top,
+    "0" -> Zero,
+    "1" -> One,
+    "booleanC" -> BooleanC,
+    "const" -> Constant,
+    "and" -> And,
+    "or" -> Or,
+    "not" -> Not,
+    "plus" -> Plus,
+    "minus" -> Minus,
+    "times" -> Times,
+    "mod" -> Mod,
+    "div" -> Div,
+    "equals" -> Equals,
+    "commut" -> Commut
+  )
+}
+
 /** Represents a user-defined context-free grammar of expressions */
 case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
-
+  import Tags._
+  import UserDefinedGrammar._
   type Prod = ProductionRule[Label, Expr]
 
   val visibleDefs = visibleFrom match {
@@ -26,19 +48,24 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
       visibleFunDefsFromMain(program)
   }
 
-  case class UserProduction(fd: FunDef, isTerminal: Boolean, isCommutative: Boolean, weight: Option[Int])
+  case class UserProduction(fd: FunDef, isCommutative: Boolean, tag: Tag, weight: Int)
 
   val userProductions = visibleDefs.toSeq.sortBy(_.id).flatMap { fd =>
     val as = fd.extAnnotations
 
-    val isTerminal   = as.contains("grammar.terminal")
-    val isProduction = isTerminal || as.contains("grammar.production")
+    val isProduction = as.contains("grammar.production")
 
     if (isProduction) {
       val isCommut   = as.contains("grammar.commutative")
-      val oweight    = as.get("grammar.weight").map(_(0).get.asInstanceOf[Int])
+      val weight    = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
+      val tag = (for {
+        t <- as.get("grammar.tag")
+        t2 <- t.headOption
+        t3 <- t2
+        t4 <- tags.get(t3.asInstanceOf[String])
+      } yield t4).getOrElse(Top)
 
-      Some(UserProduction(fd, isTerminal, isCommut, oweight))
+      Some(UserProduction(fd, isCommut, tag, weight))
     } else {
       None
     }
@@ -89,16 +116,10 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
   }
 
   val productions: Map[Label, Seq[Prod]] = {
-    val ps = userProductions.flatMap { case UserProduction(fd, isTerm, isCommut, ow) =>
+    val ps = userProductions.flatMap { case UserProduction(fd, isCommut, tag, w) =>
       val lab = tpeToLabel(fd.returnType)
 
-      val tag = if (isCommut) {
-        Tags.Commut
-      } else {
-        Tags.Top
-      }
-
-      val w = ow.getOrElse(1).toDouble
+      val isTerm = fd.params.isEmpty
 
       if (isTerm) {
         // if the function has one argument, we look for an input to p of the same name
@@ -142,19 +163,19 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
         val sum = ws.sum
         // Cost = -log(prob) = -log(weight/Σ(weights))
-        val costs = ws.map(w => -Math.log(w/sum))
-        val minCost = costs.min
+        val logProbs = ws.map(w => -Math.log(w/sum))
+        val minLogProb = logProbs.min
 
-        for ((p, cost) <- pw zip costs) yield {
-          val ncost = (cost/minCost).round.toInt
+        for ((p, logProb) <- pw zip logProbs) yield {
+          val cost = (logProb/minLogProb).round.toInt
           //locally {
           //  def complete(p: Prod) = {
           //    val vars = p.subTrees.map(l => Variable(FreshIdentifier("???", l.getType)))
           //    p.builder(vars)
           //  }
-          //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $cost, $ncost")
+          //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $logProb, $cost")
           //}
-          p.copy(cost = ncost, weight = -cost)
+          p.copy(cost = cost, weight = -logProb)
         }
       } else {
         sys.error("Whoot???")
@@ -164,12 +185,12 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }
   }
 
-  def computeProductions(lab: Label)(implicit ctx: LeonContext) = {
+  protected def computeProductions(lab: Label)(implicit ctx: LeonContext) = {
     val lab2 = lab.copy(aspects = lab.aspects.filter {
       case _: Named => true
       case _ => false
     })
-
     productions.getOrElse(lab2, Nil)
   }
+
 }

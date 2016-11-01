@@ -10,15 +10,8 @@ object grammar {
   class label extends StaticAnnotation
 
   @ignore
-  class weight(weight: Int) extends StaticAnnotation
+  class production(weight: Int = 1) extends StaticAnnotation
 
   @ignore
-  class terminal extends StaticAnnotation
-
-  @ignore
-  class production extends StaticAnnotation
-
-  @ignore
-  class commutative extends StaticAnnotation
-
+  class tag(name: String) extends StaticAnnotation
 }

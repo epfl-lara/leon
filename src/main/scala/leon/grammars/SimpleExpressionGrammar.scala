@@ -36,19 +36,19 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
 
   def filter(f: Prod => Boolean) = {
     new SimpleExpressionGrammar {
-      def computeProductions(lab: TypeTree)(implicit ctx: LeonContext) = {
+      protected def computeProductions(lab: TypeTree)(implicit ctx: LeonContext) = {
         SimpleExpressionGrammar.this.computeProductions(lab).filter(f)
       }
     }
   }
 
   // Finalize this to depend only on the type of the label
-  final def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
+  final protected def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
     computeProductions(lab.getType).map { p =>
       ProductionRule(p.subTrees.map(Label(_)), p.builder, p.outType, p.tag, p.cost, p.weight)
     }
   }
 
   /** Version of [[ExpressionGrammar.computeProductions]] which depends only a [[TypeTree]] */
-  def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[Prod]
+  protected def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[Prod]
 }

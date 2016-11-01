@@ -10,13 +10,10 @@ import scala.collection.mutable
 object ProbwiseTopdownEnumerator {
 
   def main(args: Array[String]): Unit = {
-    val ctx = Main.processOptions(List())
-
-    type LabelType = TypeTree
-    val grammar: LabelType => Seq[ProductionRule[LabelType, Expr]] =
-      typeTree => BaseGrammar.computeProductions(typeTree)(ctx)
-    def nthor(label: LabelType): Double = Math.log(grammar(label).size)
-    val expansionIterator = ProbwiseTopdownEnumerator.iterator(BooleanType, grammar, nthor)
+    implicit val ctx = Main.processOptions(List())
+    def t2l(tp: TypeTree) = Label(tp, Nil)
+    def nthor(label: Label): Double = Math.log(BaseGrammar.getProductions(label).size)
+    val expansionIterator = ProbwiseTopdownEnumerator.iterator(t2l(BooleanType), BaseGrammar.getProductions, nthor)
 
     var maxProdSize = 0
     for (i <- 1 to 1000000) {
@@ -25,7 +22,7 @@ object ProbwiseTopdownEnumerator {
       // println(s"${next.expansion}: ${next.cost}")
 
       if (next.expansion.size > maxProdSize /* || i % 1000 == 0 */ ) {
-        println(s"${i}: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Cost: ${next.cost})")
+        println(s"$i: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Cost: ${next.cost})")
         maxProdSize = next.expansion.size
       }
     }
@@ -67,7 +64,7 @@ object ProbwiseTopdownEnumerator {
         val newElems = expandNext(head, grammar, nthor)
         worklist ++= newElems
         if (worklist.size >= 1.5 * lastPrint) {
-          println(s"Worklist size: ${worklist.size}")
+          //println(s"Worklist size: ${worklist.size}")
           lastPrint = worklist.size
         }
       }
@@ -146,10 +143,10 @@ object ProbwiseTopdownEnumerator {
     ans.toSet
   }
 
-  def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, Double] = {
-    val map = new mutable.HashMap[NT, Double]()
+  def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, (Option[ProductionRule[NT, R]], Double)] = {
+    val map = new mutable.HashMap[NT, (Option[ProductionRule[NT, R]], Double)]()
     val ntSet = allNTs(nt, grammar)
-    ntSet.foreach(ntPrime => map.put(ntPrime, Double.NegativeInfinity))
+    ntSet.foreach(ntPrime => map.put(ntPrime, (None, Double.NegativeInfinity)))
 
     def relax(ntPrime: NT): Boolean = {
       require(map.contains(ntPrime))
@@ -158,25 +155,18 @@ object ProbwiseTopdownEnumerator {
       for (rule <- grammar(ntPrime)) {
         var ruleLogProb = rule.weight
         for (childNT <- rule.subTrees) {
-          ruleLogProb = ruleLogProb + map(childNT)
+          ruleLogProb = ruleLogProb + map(childNT)._2
         }
-        newProb = Math.max(newProb, ruleLogProb)
+        if (ruleLogProb > newProb._2) newProb = (Some(rule), ruleLogProb)
       }
-
-      val ans = map(ntPrime) < newProb
-      map.put(ntPrime, newProb)
+      val ans = map(ntPrime)._2 < newProb._2
+      if (ans) map.put(ntPrime, newProb)
       ans
     }
 
-    var done = false
-    while (!done) {
-      done = true
-      for (ntPrime <- ntSet) {
-        done = relax(ntPrime) && done
-      }
-    }
+    while(ntSet exists relax) {}
 
-    map.mapValues(-_).toMap
+    map.toMap.mapValues{ case (o, d) => (o, -d) }
   }
 
 }
