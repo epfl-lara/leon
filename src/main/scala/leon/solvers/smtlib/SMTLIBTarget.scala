@@ -23,8 +23,8 @@ import _root_.smtlib.parser.Commands.{
   Assert => SMTAssert,
   _
 }
+import _root_.smtlib.parser.{Tree => SMTTree}
 import _root_.smtlib.parser.Terms.{
-  Tree => SMTTree,
   Forall => SMTForall,
   Exists => SMTExists,
   Identifier => SMTIdentifier,

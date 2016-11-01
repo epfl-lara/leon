@@ -165,7 +165,7 @@ object ProbwiseBottomupEnumerator {
     val pipeline =  ExtractionPhase andThen new PreprocessingPhase
     implicit val (ctx, program) = pipeline.run(
       LeonContext.empty,
-      List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala")
+      List("/home/manos/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala")
     )
     val fd = program.definedFunctions.find(_.id.name == "min").get
     val sctx = new SynthesisContext(ctx, SynthesisSettings(), fd, program)
@@ -188,7 +188,7 @@ object ProbwiseBottomupEnumerator {
     val t0 = for( _ <- 1 to 100) yield topDown0.next
 
     b0 zip t0 foreach { case (b, t) =>
-      println(f"${b.get._1}%40s: ${b.get._2}%3.3f vs ${t.expansion.produce}%40s: ${t.cost}%3.3f")
+      println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     }
 
     /*for (label <- labels; i <- 1 to 100; (e, prob) <- bottomUp.getNext(label) ) {

@@ -14,7 +14,7 @@ import synthesis.Problem
 
 import leon.solvers.smtlib._
 
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Tree => _, _}
+import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => _, _}
 import _root_.smtlib.parser.Parser.UnexpectedEOFException
