@@ -5,32 +5,6 @@ package enumerators
 import purescala.Expressions.Expr
 import scala.collection.mutable.{ PriorityQueue, HashSet, ArrayBuffer }
 
-/** A priority queue which only allows unique elements.
-  *
-  * @param ord The ordering with which the elements will be held in the queue.
-  */
-class DedupedPriorityQueue[T](ord: Ordering[T]) {
-  private val underlying = new PriorityQueue[T]()(ord)
-  private val elems = new HashSet[T]()
-
-  def +=(elem: T) = {
-    if (!(elems contains elem)) {
-      elems += elem
-      underlying += elem
-    }
-  }
-
-  def dequeue(): T = {
-    val res = underlying.dequeue()
-    elems -= res
-    res
-  }
-
-  def headOption = underlying.headOption
-
-  def isEmpty = underlying.isEmpty
-}
-
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
   * After initialization, each nonterminal will produce a series of unique elements in decreasing probability order.
   *
@@ -39,6 +13,29 @@ class DedupedPriorityQueue[T](ord: Ordering[T]) {
   * @tparam R The type of enumerated elements.
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[ProductionRule[NT, R]]]) {
+
+  abstract class DedupedPriorityQueue[T](ord: Ordering[T]) {
+    def dominates(t1: T, t2: T): Boolean
+    private val underlying = new PriorityQueue[T]()(ord)
+    private val elems = new HashSet[T]()
+
+    def +=(elem: T) = {
+      if (!(elems exists (dominates(_, elem)))) {
+        elems += elem
+        underlying += elem
+      }
+    }
+
+    def dequeue(): T = {
+      val res = underlying.dequeue()
+      elems -= res
+      res
+    }
+
+    def headOption = underlying.headOption
+
+    def isEmpty = underlying.isEmpty
+  }
 
   // TODO: Improve naive representation of frontiers
 
@@ -105,7 +102,10 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
 
   /** Generates elements for a specific operator */
   protected class OperatorStream(rule: ProductionRule[NT, R]) {
-    private val frontier: Frontier = new Frontier(ordering)
+    private val frontier: Frontier = new Frontier(ordering) {
+      def dominates(e1: FrontierElem, e2: FrontierElem) =
+        e1.coordinates zip e2.coordinates forall ((_: Int) <= (_: Int)).tupled
+    }
     private val arity = rule.arity
     private val typedStreams = rule.subTrees.map(streams)
 
@@ -136,7 +136,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
           (optOperands, coords) <- ops.zip(newElems)
           ops <- optOperands
         } {
-          //println("Requesting " + typedStreams.zip(coords).map{case (o,c) => o.nt.toString + s" -> $c"}.mkString(", "))
+          //println(rule.outType + ": " + typedStreams.zip(coords).map{case (o,c) => o.nt.asInstanceOf[Label].getType.toString + s" -> $c"}.mkString(", "))
           val (operands, probs) = ops.unzip
           val elem = rule.builder(operands)
           val prob = probs.sum + rule.weight
@@ -144,7 +144,6 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, Seq[Produc
         }
       }
     }
-
 
   }
 
@@ -191,10 +190,10 @@ object ProbwiseBottomupEnumerator {
       println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     }
 
-    /*for (label <- labels; i <- 1 to 100; (e, prob) <- bottomUp.getNext(label) ) {
+    /*for (label <- labels; i <- 1 to 20; (e, prob) <- bottomUp.getNext(label) ) {
       //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
       println(f"${e.asString}%40s: $prob")
-    }
-    println(s"Time: ${System.currentTimeMillis() - before}")*/
+    }*/
+    println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }
