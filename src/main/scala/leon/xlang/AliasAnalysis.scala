@@ -16,6 +16,7 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 /** Simple alias analysis functions
   *
   * This provides tree level (no solver involved) alias analysis for Leon programs.
+  * The analysis is flow-insensitive, and thus very conservative.
   * We currently only support a very coarse abstraction of aliasing defined as
   * sharing a part of the heap. For example, if a reference points to some object, and
   * another reference points to a sub-part (like tail in a mutable list kind of object)
