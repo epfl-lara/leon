@@ -6,6 +6,7 @@ package purescala
 import Common._
 import Definitions._
 import Expressions._
+import ExprOps._
 import Extractors._
 import Types._
 
@@ -37,6 +38,11 @@ class DependencyFinder {
   def apply(d: Definition): Set[Definition] = deps.getOrElseUpdate(d, {
     new Finder(d).dependencies
   })
+
+  def apply(expr: Expr): Set[Definition] = {
+    val defs = definitionsOf(expr)
+    defs.flatMap(apply) ++ defs
+  }
 
   private class Finder(private var current: Definition) extends TreeTraverser {
     val foundDeps: MutableMap[Definition, MutableSet[Definition]] = MutableMap.empty

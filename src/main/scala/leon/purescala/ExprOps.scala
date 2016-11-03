@@ -89,6 +89,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case LetDef(fds, _) => subvs -- fds.flatMap(_.params.map(_.id))
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i
+          case Assignment(i, _) => subvs + i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Passes(_, _, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Lambda(args, _) => subvs -- args.map(_.id)
@@ -2304,4 +2305,28 @@ object ExprOps extends GenTreeOps[Expr] {
       }
     }(e)
   }
+
+  /** finds all definitions used in expr
+    *
+    * Look for LetDef, FunctionInvocation, MethodInvocation, CaseClass expression, etc.
+    * Does not search for transitive dependencies, only definitions directly used
+    * in the expression. You can use purescala.DependencyFinder if you need to find all dependencies
+    * from an expression.
+    */
+  def definitionsOf(expr: Expr): Set[Definition] = {
+    //def f(e: Expr, rs: Seq[Set[Definition]]): Set[Definition] = e match {
+    //  case FunctionInvocation(tfd, _) => rs.toSet.flatten + tfd.fd
+    //  case MethodInvocation(_, cd, tfd, _) => rs.toSet.flatten + tfd.fd + cd
+    //}
+    //fold(f)(expr)
+    val res = scala.collection.mutable.Set.empty[Definition]
+    val traverser = new TreeTraverser {
+      override def traverse(cd: ClassDef): Unit = res += cd
+      override def traverse(fd: FunDef): Unit = res += fd
+    }
+    traverser.traverse(expr)
+    res.toSet
+  }
+
+
 }

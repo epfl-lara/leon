@@ -32,7 +32,7 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * emit VC to prove that the body does not modify the parameter, even with the presence
   * of mutation operators.
   *
-  * There are actually a very limited number of features relying on global state (epsilon).
+  * There are actually a very limited number of features that rely on global state (epsilon).
   * EffectsAnalysis will not take such effects into account. You need to make sure the
   * program either does not rely on epsilon, or has been rewriting with the IntroduceGlobalStatePhase
   * phase that introduce any global state explicitly as function parameters. In the future,
@@ -51,6 +51,12 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * The EffectsAnalysis also provides functions to analyze the the mutability of a type and expression.
   * The isMutableType function need to perform a graph traversal (explore all the fields recursively
   * to find if one is mutable)
+  *
+  * Throughout the code, we assume that there is no aliasing. This is the global assumption made
+  * in Leon for effects. Some alias analysis to check that property needs to be performed before
+  * relying on the EffectsAnalysis features.
+  * TODO: we might integrate the limited alias analysis for pattern matching with substitution inside here
+  *       Or better, we should introduce a simple AliasAnalysis class that provide functionalities.
   */
 class EffectsAnalysis {
 
@@ -99,13 +105,27 @@ class EffectsAnalysis {
     }.toSet
   }
 
+
+  /** Check if the expression has an effect on free variables
+    *
+    * Conservatively check whether the expression can contains
+    * effect on its environment. An effect is defined as a mutation
+    * of a free variable in the expression.
+    *
+    * It detects assignments to variable defined outside the scope, as
+    * well as the array update and field assignment to some parameters
+    * defined outside of the expression.
+    */
+  def containsEffects(expr: Expr): Boolean = { ???
+
+  }
+
   /*
    * Check if expr is mutating variable id. This only checks if the expression
    * is the mutation operation, and will not perform expression traversal to
    * see if a sub-expression mutates something.
-   * TODO: clarify this with a function that look at the whole expression
    */
-  def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
+  private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
     case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
     case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
     case Application(callee, args) => {

@@ -25,17 +25,6 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
   private val rec1 = new FunDef(FreshIdentifier("rec1"), Seq(), Seq(ValDef(x.id)), IntegerType)
   rec1.body = Some(FunctionInvocation(rec1.typed, List(x)))
 
-  def simplePgm(defs: List[Definition]): Program = 
-    Program(List(UnitDef(FreshIdentifier("pgm"), 
-                         List("leon", "test"),
-                         Seq(),
-                         Seq(ModuleDef(
-                          FreshIdentifier("Test"),
-                          defs,
-                          true
-                         )),
-                         true)))
-
   test("Pure functions have no effects") {
     val effects = new EffectsAnalysis
     assert(effects(fd1) === Set())

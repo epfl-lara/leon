@@ -129,4 +129,9 @@ class DependencyFinderSuite extends FunSuite with helpers.ExpressionsDSL {
     assert(deps(rec1) === Set(rec1, rec2))
     assert(deps(rec2) === Set(rec1, rec2))
   }
+
+  test("Finding all transitive dependencies of a function invocation expression") {
+    val deps = new DependencyFinder
+    assert(deps(FunctionInvocation(fd2.typed, Seq(bi(12)))) === Set(fd1, fd2))
+  }
 }
