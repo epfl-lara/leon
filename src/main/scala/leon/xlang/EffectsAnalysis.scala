@@ -23,14 +23,12 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * The internals make sure to compute only the part of the dependencies graph
   * that is needed to get the effect of the function.
   *
-  * An effect is defined as the impact that a funcion can have on its environment.
+  * An effect is defined as the impact that a function can have on its environment.
   * In the Leon language, there are no global variables that aren't explicit, so
   * the effect of a function is defined as the set of its parameters that are mutated
   * by executing the body. It is a conservative over-abstraction, as some update operations
   * might actually not modify the object, but this will still be considered as an
-  * effect. This is in contrast to the upcomming @pure instruction, that will actually
-  * emit VC to prove that the body does not modify the parameter, even with the presence
-  * of mutation operators.
+  * effect.
   *
   * There are actually a very limited number of features that rely on global state (epsilon).
   * EffectsAnalysis will not take such effects into account. You need to make sure the
@@ -72,6 +70,29 @@ class EffectsAnalysis {
     effectsAnalysis(fd)
   })
 
+  /** Return all effects of expr
+    *
+    * Effects of expr are any free variables in scope (either local vars
+    * already defined in the scope containing expr, or global var) that
+    * are re-assigned by an operation in the expression. An effect is
+    * also a mutation of an object refer by an id defined in the scope.
+    *
+    * This is a conservative analysis, not taking into account control-flow.
+    * The set of effects is not definitely effects, but any identifier
+    * not in the set will for sure have no effect.
+    *
+    * We are assuming no aliasing.
+    */
+  def apply(expr: Expr): Set[Identifier] = {
+    val fds: Set[FunDef] = dependencies(expr).collect{ case (fd: FunDef) => fd }
+    for(fd <- fds) effectsAnalysis(fd)
+    val fdsEffects: Map[FunDef, Set[Identifier]] = cachedEffects.map{ case (fd, idx) => {
+      val ids = idx.map(i => fd.params(i).id)
+      (fd, ids)
+    }}.toMap
+    currentEffects(expr, fdsEffects)
+  }
+
 
 
   /** Determine if the type is mutable
@@ -98,6 +119,8 @@ class EffectsAnalysis {
     *
     * This disregards the actual implementation of a function, and considers only
     * its type to determine a conservative abstraction of its effects.
+    *
+    * In theory this can be overriden to use a different behaviour.
     */
   def functionTypeEffects(ft: FunctionType): Set[Int] = {
     ft.from.zipWithIndex.flatMap{ case (vd, i) =>
@@ -105,20 +128,6 @@ class EffectsAnalysis {
     }.toSet
   }
 
-
-  /** Check if the expression has an effect on free variables
-    *
-    * Conservatively check whether the expression can contains
-    * effect on its environment. An effect is defined as a mutation
-    * of a free variable in the expression.
-    *
-    * It detects assignments to variable defined outside the scope, as
-    * well as the array update and field assignment to some parameters
-    * defined outside of the expression.
-    */
-  def containsEffects(expr: Expr): Boolean = { ???
-
-  }
 
   /*
    * Check if expr is mutating variable id. This only checks if the expression
@@ -136,9 +145,61 @@ class EffectsAnalysis {
         case _ => false
       }
     }
+    case Assignment(i, _) => i == id
     case _ => false
   }
 
+  private def showFunDefWithEffect(fdsEffects: Map[FunDef, Set[Identifier]]): String =
+    fdsEffects.filter(p => p._2.nonEmpty).map(p => (p._1.id, p._2)).toString
+
+  private def findArgumentForParam(fi: FunctionInvocation, param: Identifier): Option[Expr] = {
+    val index = fi.tfd.fd.params.indexWhere(vd => vd.id == param)
+    if(index >= 0) Some(fi.args(index)) else None
+  }
+
+  //compute the effects of an expr, given the currently known fd effects
+  //The fdsEffects params is needed as we are computing a fixpoint (due to
+  //mutually recursive functions) and we want to be able to determine all effects
+  //of an expression, including function calls, while still performing the fixpoint
+  private def currentEffects(expr: Expr, fdsEffects: Map[FunDef, Set[Identifier]]): Set[Identifier] = {
+    //println("computing effects of: " + expr)
+    val freeVars = variablesOf(expr)
+    val localAliases: Map[Identifier, Set[Identifier]] = freeVars.map(id => (id, computeLocalAliases(id, expr))).toMap
+    val firstLevelMutated: Set[Identifier] = freeVars.filter(id => {
+      val aliases = localAliases(id)
+      exists(expr => aliases.exists(id => isMutationOf(expr, id)))(expr)
+    })
+
+    val allCalls: Set[FunctionInvocation] = functionCallsOf(expr)
+
+    val secondLevelMutated: Set[Identifier] = 
+      allCalls.foldLeft(Set[Identifier]())((totalEffects, fi) =>
+        totalEffects ++ freeVars.intersect(invocationCurrentEffects(fi, fdsEffects))
+      )
+
+    firstLevelMutated ++ secondLevelMutated
+  }
+
+  private def invocationCurrentEffects(fi: FunctionInvocation, fdsEffects: Map[FunDef, Set[Identifier]]): Set[Identifier] = {
+    val functionEffects: Set[Identifier] = fdsEffects.get(fi.tfd.fd).getOrElse(Set())
+    val res = functionEffects.flatMap(id =>
+      findArgumentForParam(fi, id) match {
+        case Some(arg) => findReceiverId(arg)
+        case None => Some(id)
+      }
+    )
+    //println(res)
+    res
+  }
+
+  //return the set of modified variables arguments to a function invocation,
+  //given the effect of the fun def invoked.
+  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
+    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
+      case (Some(id), i) if effects.contains(i) => Some(id)
+      case _ => None
+    }
+  }
 
   /*
    * compute effects for each function that from depends on, including any nested
@@ -250,15 +311,6 @@ class EffectsAnalysis {
     case AsInstanceOf(e, ct) => findReceiverId(e)
     case ArraySelect(a, _) => findReceiverId(a)
     case _ => None
-  }
-
-  //return the set of modified variables arguments to a function invocation,
-  //given the effect of the fun def invoked.
-  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
-    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
-      case (Some(id), i) if effects.contains(i) => Some(id)
-      case _ => None
-    }
   }
 
 }
