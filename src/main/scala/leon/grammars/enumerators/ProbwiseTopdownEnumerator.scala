@@ -2,7 +2,6 @@ package leon
 package grammars
 package enumerators
 
-import purescala.Expressions.Expr
 import purescala.Types.{BooleanType, TypeTree}
 
 import scala.collection.mutable
