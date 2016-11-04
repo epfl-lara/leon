@@ -275,9 +275,9 @@ object AntiAliasingPhase extends TransformationPhase {
       if(fiEffects.nonEmpty) {
         val modifiedArgs: Seq[(Identifier, Expr)] =
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
-              .map(arg => {
+              .flatMap(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
-                    (findReceiverId(rArg).get, rArg)
+                    findReceiverId(rArg).map(argId => (argId, rArg))
                    })
 
         val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
@@ -307,15 +307,16 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     //println("aliased params: " + aliasedParams)
-    preMapWithContext[(Set[Identifier], Map[Identifier, Expr], Set[Expr])]((expr, context) => {
+    preMapWithContext[(Set[Identifier], Map[Identifier, Expr], Set[Expr], Boolean)]((expr, context) => {
       val bindings = context._1
       val rewritings = context._2
       val toIgnore = context._3
+      val insideEnsuring = context._4
       expr match {
 
         case l@Let(id, v, b) if effects.isMutableType(id.getType) => {
           val varDecl = LetVar(id, v, b).setPos(l)
-          (Some(varDecl), (bindings + id, rewritings, toIgnore))
+          (Some(varDecl), (bindings + id, rewritings, toIgnore, insideEnsuring))
         }
 
         //case l@Let(id, IsTyped(v, CaseClassType(ccd, _)), b) if ccdMap.contains(ccd) => {
@@ -326,7 +327,7 @@ object AntiAliasingPhase extends TransformationPhase {
         //}
 
         case l@LetVar(id, IsTyped(v, tpe), b) if effects.isMutableType(tpe) => {
-          (None, (bindings + id, rewritings, toIgnore))
+          (None, (bindings + id, rewritings, toIgnore, insideEnsuring))
         }
 
         case m@MatchExpr(scrut, cses) if effects.isMutableType(scrut.getType) => {
@@ -337,7 +338,7 @@ object AntiAliasingPhase extends TransformationPhase {
             //binder -> scrut
           }}.toMap
 
-          (None, (bindings, rewritings ++ tmp, toIgnore))
+          (None, (bindings, rewritings ++ tmp, toIgnore, insideEnsuring))
         }
 
         case up@ArrayUpdate(a, i, v) => {
@@ -388,6 +389,7 @@ object AntiAliasingPhase extends TransformationPhase {
           (Some(LetDef(nfds, body).copiedFrom(l)), context)
         }
 
+        case Ensuring(_, _) => (None, (context._1, context._2, context._3, true))
         case lambda@Lambda(params, body) => {
           val ft@FunctionType(_, _) = lambda.getType
           val ownEffects = effects.functionTypeEffects(ft)
@@ -396,7 +398,7 @@ object AntiAliasingPhase extends TransformationPhase {
             case _ => None
           }.map(_.id)
 
-          if(aliasedParams.isEmpty) {
+          if(insideEnsuring || aliasedParams.isEmpty) {
             (None, context)
           } else {
             val freshLocalVars: Seq[Identifier] = aliasedParams.map(v => v.freshen)
@@ -446,7 +448,7 @@ object AntiAliasingPhase extends TransformationPhase {
               case TupleType(tps) if effects.isMutableType(tps.last) => {
                 val nfi = Application(callee, args.map(arg => replaceFromIDs(rewritings, arg))).copiedFrom(app)
                 val fiEffects = effects.functionTypeEffects(ft)
-                (Some(mapApplication(args, nfi, to, fiEffects, rewritings)), (bindings, rewritings, toIgnore + nfi))
+                (Some(mapApplication(args, nfi, to, fiEffects, rewritings)), (bindings, rewritings, toIgnore + nfi, insideEnsuring))
               }
               case _ => (None, context)
             }
@@ -499,7 +501,7 @@ object AntiAliasingPhase extends TransformationPhase {
         case _ => (None, context)
       }
 
-    })(body, (aliasedParams.toSet, Map(), Set()))
+    })(body, (aliasedParams.toSet, Map(), Set(), false))
   }
 
 
