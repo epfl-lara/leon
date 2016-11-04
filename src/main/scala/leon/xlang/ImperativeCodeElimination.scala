@@ -256,7 +256,14 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
               //if read only, we only need to capture it without returning, but
               //returning it simplifies the code (more consistent) and should
               //not have a big impact on performance
-              val modifiedVars: List[Identifier] = variablesOf(bd).intersect(state.varsInScope).toList
+              val modifiedVars: List[Identifier] = {
+                val freeVars = variablesOf(bd)
+                val transitiveVars = collect[Identifier]({
+                  case FunctionInvocation(tfd, _) => state.funDefsMapping.get(tfd.fd).map(p => p._2.toSet).getOrElse(Set())
+                  case _ => Set()
+                })(bd)
+                (freeVars ++ transitiveVars).intersect(state.varsInScope).toList
+              }
               //val modifiedVars: List[Identifier] =
               //  collect[Identifier]({
               //    case Assignment(v, _) => Set(v)

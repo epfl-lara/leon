@@ -2,7 +2,7 @@
 
 import leon.lang._
 
-object NestedFunState8 {
+object ExpressionOrder1 {
 
   def test1 = {
     var x = 0
