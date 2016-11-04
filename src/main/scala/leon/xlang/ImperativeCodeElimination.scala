@@ -126,7 +126,13 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         }
         val matchE = matchExpr(scrutRes, cses.zip(newRhs).map {
           case (mc @ MatchCase(pat, guard, _), newRhs) =>
-            MatchCase(pat, guard map { replaceNames(scrutFun, _) }, newRhs).setPos(mc)
+            //guard need to update ids (substitution of new names, and new fundef)
+            //but wont have side effects
+            val finalGuard = guard.map(g => {
+              val (resGuard, scopeGuard, _) = toFunction(g)
+              replaceNames(scrutFun, scopeGuard(resGuard))
+            })
+            MatchCase(pat, finalGuard, newRhs).setPos(mc)
         }).setPos(m)
 
         val scope = (body: Expr) => {
