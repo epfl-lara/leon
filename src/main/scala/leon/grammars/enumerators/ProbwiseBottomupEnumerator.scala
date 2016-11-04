@@ -49,12 +49,13 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
     def +=(l: LazyElem) = futureElems ::= l
 
-    def elem(le: LazyElem): Option[(FrontierElem, Int)] = {
-      le.coordinates.zip(streams).mapM { case (index, stream) => stream.get(index) } map {
-        case children =>
-          val (operands, logProbs) = children.unzip
-          (FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
-      }
+    def elem(le: LazyElem): Option[(FrontierElem, Int)] = try {
+      val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
+      val (operands, logProbs) = children.unzip
+      Some(FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
+    } catch {
+      case _: UnsupportedOperationException =>
+        None
     }
 
 
@@ -120,37 +121,39 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       }
       buffer += rec(nt)
     }
+
     init()
 
     private var lock = false
 
-    def populateNext() = if (lock) None else try {
-      lock = true
-      //println(s"$nt: size is ${buffer.size}, populating")
-      val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
-      buffer += ((r, d))
-      //println(s"$nt: Adding ($r, $d)")
-      op.advance()
-      lock = false
-      Some(r, d)
-    } catch {
-      case _: UnsupportedOperationException =>
-        None
-    }
-
-    @inline def get(i: Int): Option[(R, Double)] = {
-      if (i > buffer.size) None
-      else if (i < buffer.size) Some(buffer(i))
-      else {
-        populateNext()
+    def populateNext() = !lock && {
+      try {
+        lock = true
+        //println(s"$nt: size is ${buffer.size}, populating")
+        val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
+        buffer += ((r, d))
+        //println(s"$nt: Adding ($r, $d)")
+        op.advance()
+        lock = false
+      } catch {
+        case _: UnsupportedOperationException =>
       }
+      !lock
     }
 
-    private var i = -1
+    @inline def get(i: Int): (R, Double) = {
+      if (i == buffer.size) populateNext()
+      buffer(i)
+    }
 
-    def getNext(): Option[(R, Double)] = {
-      i += 1
-      get(i)
+    val iterator = new Iterator[(R, Double)] {
+      var i = 0
+      def hasNext = i < buffer.size || i == buffer.size && populateNext()
+      def next = {
+        val res = get(i)
+        i += 1
+        res
+      }
     }
 
   }
@@ -177,21 +180,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     init()
   }
 
-  def getNext(nt: NT) = streams(nt).getNext()
-  /*
-  for ((nt, s) <- streams) {
-    println(s"$nt -> ${s.buffer}")
-  }
-
-  for ((nt, ops) <- operators) {
-    println(s"$nt")
-    for (op <- ops) {
-      println("  " + op.rule.outType)
-      println("  " + op.frontier.toSeq.toList)
-    }
-  }
-  */
-
+  def iterator(nt: NT) = streams.get(nt).map(_.iterator).getOrElse(Iterator())
 }
 
 class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
@@ -231,16 +220,20 @@ object ProbwiseBottomupEnumerator {
                                                                    horMap(1).mapValues(_._2))
     val before = System.currentTimeMillis()
 
-    //val b0 = for(_ <- 1 to 100) yield bottomUp.getNext(labels(0))
-    //val t0 = for(_ <- 1 to 100) yield topDown0.next
-    //b0 zip t0 foreach { case (b, t) =>
-    //  println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
-    //}
-
-    for (label <- labels; i <- 1 to 10; (e, prob) <- bottomUp.getNext(label) ) {
-      //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-      println(f"${e.asString}%40s: $prob")
+    val b0 = for(_ <- 1 to 100) yield bottomUp.iterator(labels(0)).next
+    val t0 = for(_ <- 1 to 100) yield topDown0.next
+    b0 zip t0 foreach { case (b, t) =>
+      println(f"${b._1}%60s: ${b._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     }
-    println(s"Time: ${System.currentTimeMillis() - before}")
+
+    //for (label <- labels; i <- 1 to 10 ) {
+    //  val it = bottomUp.iterator(label)
+    //  if (it.hasNext) {
+    //    val (e, prob) = it.next
+    //    //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+    //    println(f"${e.asString}%40s: $prob")
+    //  }
+    //}
+    //println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }
