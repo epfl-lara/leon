@@ -25,7 +25,7 @@ object ADTWithArray3 {
                                  1, 1, 1))
 
     def nested(): Unit = {
-      require(smoothed.length > 0)
+      require(isKernelValid(kernel) && smoothed.length > 0)
       smoothed(0) = applyFilter(kernel)
     }
     nested()
