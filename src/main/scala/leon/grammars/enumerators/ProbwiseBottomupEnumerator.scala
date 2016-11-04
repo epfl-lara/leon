@@ -122,14 +122,21 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
     init()
 
-    def populateNext() = Try {
+    private var lock = false
+
+    def populateNext() = if (lock) None else try {
+      lock = true
       //println(s"$nt: size is ${buffer.size}, populating")
       val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
       buffer += ((r, d))
       //println(s"$nt: Adding ($r, $d)")
       op.advance()
-      (r, d)
-    }.toOption
+      lock = false
+      Some(r, d)
+    } catch {
+      case _: UnsupportedOperationException =>
+        None
+    }
 
     @inline def get(i: Int): Option[(R, Double)] = {
       if (i > buffer.size) None
@@ -213,7 +220,7 @@ object ProbwiseBottomupEnumerator {
     val sctx = new SynthesisContext(ctx, SynthesisSettings(), fd, program)
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
     val labels = List(BooleanType, IntegerType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
-    val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(1))
+    val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(0))
     grammar.printProductions(println)
     val horMap = (n: Int) => ProbwiseTopdownEnumerator.horizonMap(labels(n), grammar.getProductions)
     val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0),
@@ -224,16 +231,16 @@ object ProbwiseBottomupEnumerator {
                                                                    horMap(1).mapValues(_._2))
     val before = System.currentTimeMillis()
 
-    val b0 = for(_ <- 1 to 100) yield bottomUp.getNext(labels(0))
-    val t0 = for(_ <- 1 to 100) yield topDown0.next
-    b0 zip t0 foreach { case (b, t) =>
-      println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
-    }
-
-    //for (label <- labels; i <- 1 to 1000000; (e, prob) <- bottomUp.getNext(label) ) {
-    //  if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-    //  //println(f"${e.asString}%40s: $prob")
+    //val b0 = for(_ <- 1 to 100) yield bottomUp.getNext(labels(0))
+    //val t0 = for(_ <- 1 to 100) yield topDown0.next
+    //b0 zip t0 foreach { case (b, t) =>
+    //  println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     //}
+
+    for (label <- labels; i <- 1 to 10; (e, prob) <- bottomUp.getNext(label) ) {
+      //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+      println(f"${e.asString}%40s: $prob")
+    }
     println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }

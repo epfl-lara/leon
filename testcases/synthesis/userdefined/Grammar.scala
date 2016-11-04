@@ -17,7 +17,7 @@ object Grammar {
   @production
   @tag("1")
   def one = BigInt(1)
-
+/*
   @production(12)
   @tag("plus")
   def plus(b1: BigInt, b2: BigInt) = b1 + b2
@@ -30,12 +30,12 @@ object Grammar {
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
   }
-
+*/
   // BOOLEAN
 
   @production(4)
   def smaller(b1: BigInt, b2: BigInt) = b1 < b2
-
+/*
   @production(5)
   def and(b1: Boolean, b2: Boolean) = b1 && b2
 
@@ -44,7 +44,7 @@ object Grammar {
 
   //@production(10)
   //def t = true
-
+*/
   def min(b1: BigInt, b2: BigInt) = choose( (out: BigInt) => {
     out >= b1 && out >= b2 && (out == b1 || out == b2)
   })
