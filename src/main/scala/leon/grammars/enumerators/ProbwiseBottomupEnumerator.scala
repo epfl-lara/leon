@@ -16,26 +16,28 @@ import scala.collection.mutable.{ PriorityQueue, HashSet, Set => MutableSet, Has
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
 
-  class Frontier(dim: Int) {
+  type Rule = ProductionRule[NT, R]
+
+  class Frontier(dim: Int, rule: Rule, streams: Seq[NonTerminalStream]) {
     private val ordering = Ordering.by[FrontierElem, Double](_.logProb)
     private val queue = new PriorityQueue[FrontierElem]()(ordering)
+    private var futureElems = List.empty[LazyElem]
 
     private val byDim = Array.fill(dim)(
       HashMap[Int, MutableSet[FrontierElem]]()
         .withDefaultValue(MutableSet[FrontierElem]())
     )
 
-    def init(zeroElem: FrontierElem) = {
-      queue += zeroElem
-      byDim.foreach( _ += 0 -> MutableSet(zeroElem))
-    }
-
     private def dominates(e1: FrontierElem, e2: FrontierElem) =
       e1.coordinates zip e2.coordinates forall ((_: Int) <= (_: Int)).tupled
 
-    def +=(elem: FrontierElem, grownDim: Int) = {
-      val grownTo = elem.coordinates(grownDim)
-      val elems = byDim(grownDim)(grownTo)
+    private def enqueue(elem: FrontierElem, grownDim: Int) = {
+      val elems = if (grownDim >= 0) {
+        val grownTo = elem.coordinates(grownDim)
+        byDim(grownDim)(grownTo)
+      } else {
+        MutableSet()
+      }
       if (!(elems exists (dominates(_, elem)))) {
         queue += elem
         for (i <- 0 until dim) {
@@ -45,20 +47,50 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       }
     }
 
+    def +=(l: LazyElem) = futureElems ::= l
+
+    def elem(le: LazyElem): Option[(FrontierElem, Int)] = {
+      le.coordinates.zip(streams).mapM { case (index, stream) => stream.get(index) } map {
+        case children =>
+          val (operands, logProbs) = children.unzip
+          (FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
+      }
+    }
+
+
+    private def promote() = {
+      for {
+        fe <- futureElems
+        (elem, index) <- elem(fe)
+      } enqueue(elem, index)
+      futureElems = Nil
+    }
+
     def dequeue() = {
+      promote()
       val res = queue.dequeue()
       for (i <- 0 until dim)
         byDim(i)(res.coordinates(i)) -= res
       res
     }
 
-    def headOption = queue.headOption
+    def headOption = {
+      promote()
+      queue.headOption
+    }
 
-    def isEmpty = queue.isEmpty
+    def isEmpty = queue.isEmpty && futureElems.isEmpty
   }
 
   /** An element of the frontier of an operator */
-  protected case class FrontierElem(coordinates: List[Int], elem: R, logProb: Double)
+  protected case class LazyElem(coordinates: List[Int], grownIndex: Int)
+
+  protected case class FrontierElem(coordinates: List[Int], elem: R, logProb: Double) {
+    def nextElems = coordinates.zipWithIndex.map {
+      case (elem, updated) => LazyElem(coordinates.updated(updated, elem + 1), updated)
+    }
+  }
+
   protected val ordering = Ordering.by[FrontierElem, Double](_.logProb)
   /** The frontier of coordinates corresponding to an operator */
   //protected type Frontier = DedupedPriorityQueue[FrontierElem]
@@ -69,8 +101,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
   // The operator streams per nonterminal
   protected val operators: Map[NT, Seq[OperatorStream]] =
-    nts.map { case (nt, (_, prods)) =>
-      nt -> prods.map(new OperatorStream(_))
+    nts.map { case (nt, (advanced, prods)) =>
+      nt -> prods.map(rule => new OperatorStream(rule, rule eq advanced))
     }
 
   //operators.values foreach (_.foreach(_.init()))
@@ -101,7 +133,6 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
     @inline def get(i: Int): Option[(R, Double)] = {
       if (i > buffer.size) None
-
       else if (i < buffer.size) Some(buffer(i))
       else {
         populateNext()
@@ -110,7 +141,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
     private var i = -1
 
-    @inline def getNext(): Option[(R, Double)] = {
+    def getNext(): Option[(R, Double)] = {
       i += 1
       get(i)
     }
@@ -118,50 +149,25 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   }
 
   /** Generates elements for a specific operator */
-  protected class OperatorStream(val rule: ProductionRule[NT, R]) {
+  protected class OperatorStream(rule: ProductionRule[NT, R], isAdvanced: Boolean) {
     private val arity = rule.arity
-    private val frontier: Frontier = new Frontier(arity)
     private val typedStreams = rule.subTrees.map(streams)
-
-    def init(): Unit = {
-      typedStreams.mapM(_.get(0)) foreach { case ops =>
-        val (operands, probs) = ops.unzip
-        frontier.init(
-          FrontierElem(
-            List.fill(arity)(0),
-            rule.builder(operands),
-            probs.sum + rule.weight
-          )
-        )
-      }
-    }
-    init()
+    private val frontier: Frontier = new Frontier(arity, rule, typedStreams)
 
     @inline def getNext: Option[(R, Double, OperatorStream)] = {
       //if (frontier.isEmpty) println(s"$rule was empty")
       frontier.headOption.map(fe => (fe.elem, fe.logProb, this))
     }
 
-    def advance(): Unit = {
-      frontier.headOption.foreach { fe =>
-        val newElems = fe.coordinates.zipWithIndex.map {
-          case (elem, updated) => (fe.coordinates.updated(updated, elem + 1), updated)
-        }
-        val ops = newElems map (_._1.zip(typedStreams).mapM { case (index, stream) => stream.get(index) })
-        frontier.dequeue()
-        for {
-          (optOperands, (coords, updated)) <- ops.zip(newElems)
-          ops <- optOperands
-        } {
-          //println(rule.outType + ": " + typedStreams.zip(coords).map{case (o,c) => o.nt.asInstanceOf[Label].getType.toString + s" -> $c"}.mkString(", "))
-          val (operands, probs) = ops.unzip
-          val elem = rule.builder(operands)
-          val prob = probs.sum + rule.weight
-          frontier += (FrontierElem(coords, elem, prob), updated)
-        }
-      }
+    def advance(): Unit = if (!frontier.isEmpty) {
+      frontier.dequeue().nextElems foreach { frontier += _ }
     }
 
+    private def init(): Unit = {
+      frontier += LazyElem(List.fill(arity)(0), -1)
+      if (isAdvanced) advance()
+    }
+    init()
   }
 
   def getNext(nt: NT) = streams(nt).getNext()
@@ -178,21 +184,6 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
   }
   */
-
-  private def advance(): Unit = {
-    val rules = nts.values.map(_._1).toSet
-    val ops = operators.mapValues( _.find(rules contains _.rule).get)
-    var toDo = ops.values.toSet
-    def rec(op: OperatorStream): Unit = {
-      if (toDo contains op) {
-        op.rule.subTrees.map(ops).foreach(rec)
-        op.advance()
-        toDo -= op
-      }
-    }
-    while (toDo.nonEmpty) rec(toDo.head)
-  }
-  advance()
 
 }
 
@@ -233,17 +224,16 @@ object ProbwiseBottomupEnumerator {
                                                                    horMap(1).mapValues(_._2))
     val before = System.currentTimeMillis()
 
-    //val b0 = for( _ <- 1 to 100) yield bottomUp.getNext(labels(0))
-    //val t0 = for( _ <- 1 to 100) yield topDown0.next
-//
-    //b0 zip t0 foreach { case (b, t) =>
-    //  println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
-    //}
-
-    for (label <- labels; i <- 1 to 1000000; (e, prob) <- bottomUp.getNext(label) ) {
-      if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-      //println(f"${e.asString}%40s: $prob")
+    val b0 = for(_ <- 1 to 100) yield bottomUp.getNext(labels(0))
+    val t0 = for(_ <- 1 to 100) yield topDown0.next
+    b0 zip t0 foreach { case (b, t) =>
+      println(f"${b.get._1}%60s: ${b.get._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     }
+
+    //for (label <- labels; i <- 1 to 1000000; (e, prob) <- bottomUp.getNext(label) ) {
+    //  if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
+    //  //println(f"${e.asString}%40s: $prob")
+    //}
     println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }
