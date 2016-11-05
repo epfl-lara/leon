@@ -1,4 +1,4 @@
-object ArrayConstructor1 {
+object ArrayInitialization2 {
 
   case class A(var x: BigInt)
 
@@ -8,7 +8,7 @@ object ArrayConstructor1 {
 
   def test(): Unit = {
     val a = A(0)
-    val t = Array(a, A(0), A(0))
+    val t = Array(a, a, a)
     foo(t, a)
     assert(t(0).x == a.x)
   }
