@@ -91,8 +91,12 @@ class ArrayEncoder(ctx: LeonContext, p: Program) extends TheoryEncoder {
     override def transformExpr(e: Expr)(implicit binders: Map[Identifier, Identifier]): Option[Expr] = e match {
       case cc @ CaseClass(cct, args) if cct.classDef == ArrayCaseClass =>
         val Seq(rawArray, length) = args
-        val leonArray = fromRaw(rawArray, length)
-        Some(leonArray)
+        try {
+          val leonArray = fromRaw(rawArray, length)
+          Some(leonArray)
+        } catch { //catching negative length, probably not the cleanest and most stable solution :/
+          case (e: Exception) => None
+        }
       //  Some(StringLiteral(convertToString(cc)).copiedFrom(cc))
       //case FunctionInvocation(SizeI, Seq(a)) =>
       //  Some(StringLength(transform(a)).copiedFrom(e))
