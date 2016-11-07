@@ -2,10 +2,12 @@ package leon
 package synthesis.stoch
 
 import purescala.Common.Identifier
-import purescala.Definitions.Program
+import purescala.Definitions.{FunDef, Program}
 import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Types.TypeTree
+
+case class DeBruijnStats(v: Variable, scope: List[Expr], f: FunDef, dist: Int, relDist: Double)
 
 object DeBruijnStats {
 
@@ -22,8 +24,12 @@ object DeBruijnStats {
     } else if (expr.isInstanceOf[Forall] ||
                expr.isInstanceOf[Lambda]) {
       ancs.flatMap(_.map(_ :+ expr))
+    } else if (expr.isInstanceOf[MatchExpr]) {
+      val scrutineeAncs = ancs.head
+      val casesAncs = ancs.tail
+      scrutineeAncs ++ casesAncs.flatMap(_.map(_ :+ expr))
     } else {
-      ancs.flatMap(_.map(_ :+ expr))
+      ancs.flatten
     }
   }
 
@@ -66,30 +72,49 @@ object DeBruijnStats {
                  .map(ele => (ele._1.asInstanceOf[Variable], ele._2))
   }
 
-  def getDeBruijnStats(ctx: LeonContext, p: Program): Seq[(Variable, List[Expr])] = {
+  def getVarDist(v: Variable, scope: List[Expr], f: FunDef, index: Int = 0): Int = scope match {
+    case Nil => Int.MaxValue
+    case Let(binder, _, _) :: scopePrime => if (binder == v.id) index
+                                            else getVarDist(v, scopePrime, f, index + 1)
+    case LetDef(fds, _) :: scopePrime => if (fds.exists(_.id == v.id)) index
+                                         else getVarDist(v, scopePrime, f, index + 1)
+    case Forall(args, _) :: scopePrime => if (args.exists(_.id == v.id)) index
+                                          else getVarDist(v, scopePrime, f, index + 1)
+    case Lambda(args, _) :: scopePrime => if (args.exists(_.id == v.id)) index
+                                          else getVarDist(v, scopePrime, f, index + 1)
+    case MatchExpr(_, cases) :: scopePrime => if (cases.exists(_.pattern.binders.contains(v.id))) index
+                                              else getVarDist(v, scopePrime, f, index + 1)
+    case _ => {
+      assert(false)
+      0
+    }
+  }
+
+  def getDeBruijnStats(ctx: LeonContext, p: Program): Seq[DeBruijnStats] = {
     for {
       unit <- p.units
       f <- unit.definedFunctions
-      ctx <- collectVarAncestors(f.fullBody)
-    } yield ctx
+      scope <- collectVarAncestors(f.fullBody)
+      dist = getVarDist(scope._1, scope._2, f)
+      relDist = dist.toDouble / scope._2.size
+    } yield DeBruijnStats(scope._1, scope._2, f, dist, relDist)
   }
 
   def getDeBruijnStatsPretty(ctx: LeonContext, p: Program): String = {
     val ans = new StringBuilder()
-    for ((v, ctx) <- getDeBruijnStats(ctx, p)) {
+    for (DeBruijnStats(v, scope, f, dist, relDist) <- getDeBruijnStats(ctx, p)) {
       var pre = ">"
-      // ans.append(s"${v}\n")
-      for (e <- ctx) {
-        // ans.append(s"${pre} ${e}\n")
+      ans.append(s"${v}\n")
+      for (e <- scope) {
+        ans.append(s"${pre} ${e}\n")
         pre = pre + ">"
       }
-      // ans.append("---\n")
+      ans.append(s"${f}\n")
+      ans.append(s"Distance: ${dist}\n")
+      ans.append(s"Distance: ${relDist}\n")
+      ans.append("---\n")
     }
     ans.toString()
-  }
-
-  def getExprConstrs(ctx: LeonContext, p: Program): Set[Class[_ <: Expr]] = {
-    getDeBruijnStats(ctx, p).flatMap(_._2).map(_.getClass).toSet
   }
 
 }

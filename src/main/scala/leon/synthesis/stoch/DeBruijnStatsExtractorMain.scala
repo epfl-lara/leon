@@ -2,62 +2,45 @@ package leon
 package synthesis
 package stoch
 
-import purescala.Expressions.Expr
-import DeBruijnStats.{getDeBruijnStatsPretty, getExprConstrs}
+import DeBruijnStats.getDeBruijnStats
+
+import scala.collection.mutable
 
 object DeBruijnStatsExtractorMain {
 
   def main(args: Array[String]): Unit = {
-    /* var globalStatsTrain: ExprConstrStats = Map()
-    var globalStatsTest: ExprConstrStats = Map()
-    val random = new Random()
+    val ans = new mutable.MutableList[(Int, Int, Double)]()
 
     args.tail.par.foreach(fileName => {
-      val fileStats = procFile(fileName)
-      if (random.nextDouble() <= 0.9) {
-        this.synchronized {
-          globalStatsTrain = addStats(globalStatsTrain, fileStats)
-        }
-      } else {
-        this.synchronized {
-          globalStatsTest = addStats(globalStatsTest, fileStats)
+      val res = procFile(fileName)
+      ans.synchronized {
+        for (dbs <- res if dbs.scope.size > 0) {
+          ans += ((dbs.dist, dbs.scope.size, dbs.relDist))
         }
       }
-    }) */
-
-    val allConstrs = new scala.collection.mutable.HashSet[Class[_ <: Expr]]()
-
-    args.tail.par.foreach(fileName => {
-      val res: Set[Class[_ <: Expr]] = procFile(fileName)
-      // println(s"${fileName}: ${res}")
-      allConstrs.synchronized {
-        allConstrs.++=(res)
-      }
+      println(s"Finished processing ${fileName}")
     })
 
-    for (constr <- allConstrs) {
-      println(constr)
+    for (df <- ans.groupBy(_._1)) {
+      println(s"${df._1}, ${df._2.size}")
     }
+    println("---")
 
-    /* println("Printing training data:")
-    println(exprConstrStatsToString(globalStatsTrain))
-    println("Printing test data:")
-    println(exprConstrStatsToString(globalStatsTest))
-    println("Computing score:")
-    val score = dist(globalStatsTrain, globalStatsTest)
-    println(s"Score: ${score}") */
+    for (df <- ans.groupBy(_._3)) {
+      println(s"${df._1}, ${df._2.size}")
+    }
+    println("---")
   }
 
-  def procFile(fileName: String): Set[Class[_ <: Expr]] /* String */ = {
+  def procFile(fileName: String): Seq[DeBruijnStats] = {
     val args = List(fileName)
     val ctx = Main.processOptions(args)
     pipeline.run(ctx, args)._2
   }
 
-  def pipeline: Pipeline[List[String], Set[Class[_ <: Expr]] /* String */ ] = {
+  def pipeline: Pipeline[List[String], Seq[DeBruijnStats]] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    // ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getDeBruijnStatsPretty)
-    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getExprConstrs)
+    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getDeBruijnStats)
   }
 
 }
