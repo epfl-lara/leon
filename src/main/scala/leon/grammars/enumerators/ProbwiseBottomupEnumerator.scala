@@ -3,8 +3,7 @@ package grammars
 package enumerators
 
 import purescala.Expressions.Expr
-import scala.util.Try
-import scala.collection.mutable.{ PriorityQueue, HashSet, Set => MutableSet, HashMap, ArrayBuffer }
+import scala.collection.mutable.{ PriorityQueue, HashSet, Queue => MutableQueue, Set => MutableSet, HashMap, ArrayBuffer }
 
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
   * After initialization, each nonterminal will produce a series of unique elements in decreasing probability order.
@@ -188,11 +187,59 @@ class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, init: Label)(implic
 
 object ProbwiseBottomupEnumerator {
   def productive(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext) = {
-    val ntMap = ProbwiseTopdownEnumerator.horizonMap(init, grammar.getProductions).collect {
+    val ntMap = horizonMap(init, grammar.getProductions).collect {
       case (l, (Some(r), d)) => l -> (r, grammar.getProductions(l))
     }
     ntMap.mapValues{ case (r, prods) => (r, prods.filter(_.subTrees forall ntMap.contains)) }
   }
+
+
+  private def allNTs[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Set[NT] = {
+    val ans = new HashSet[NT]()
+    val queue = new MutableQueue[NT]()
+
+    ans += nt
+    queue += nt
+    while (queue.nonEmpty) {
+      val head = queue.dequeue()
+      val newNTs = grammar(head).flatMap(_.subTrees).filterNot(ans).toSet
+      ans ++= newNTs
+      queue ++= newNTs
+    }
+
+    ans.toSet
+  }
+
+  private def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, (Option[ProductionRule[NT, R]], Double)] = {
+    val map = new HashMap[NT, (Option[ProductionRule[NT, R]], Double)]()
+    val ntSet = allNTs(nt, grammar)
+    ntSet.foreach(ntPrime => map.put(ntPrime, (None, Double.NegativeInfinity)))
+
+    def relax(ntPrime: NT): Boolean = {
+      require(map.contains(ntPrime))
+
+      var newProb = map(ntPrime)
+      for (rule <- grammar(ntPrime)) {
+        var ruleLogProb = rule.weight
+        for (childNT <- rule.subTrees) {
+          ruleLogProb = ruleLogProb + map(childNT)._2
+        }
+        if (ruleLogProb > newProb._2) newProb = (Some(rule), ruleLogProb)
+      }
+      val ans = map(ntPrime)._2 < newProb._2
+      if (ans) map.put(ntPrime, newProb)
+      ans
+    }
+
+    while(ntSet exists relax) {}
+
+    map.toMap.mapValues{ case (o, d) => (o, -d) }
+  }
+
+
+
+  /********** TEST CODE **********/
+
 
   import leon.frontends.scalac.ExtractionPhase
   import leon.synthesis.{SynthesisSettings, SynthesisContext}
@@ -211,6 +258,8 @@ object ProbwiseBottomupEnumerator {
     val labels = List(BooleanType, IntegerType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
     val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(0))
     grammar.printProductions(println)
+
+    /*
     val horMap = (n: Int) => ProbwiseTopdownEnumerator.horizonMap(labels(n), grammar.getProductions)
     val topDown0 = ProbwiseTopdownEnumerator.iterator[Label, Expr](labels(0),
                                                                    grammar.getProductions,
@@ -225,7 +274,7 @@ object ProbwiseBottomupEnumerator {
     b0 zip t0 foreach { case (b, t) =>
       println(f"${b._1}%60s: ${b._2}%3.3f vs ${t.expansion.produce}%60s: ${t.cost}%3.3f")
     }
-
+    */
     //for (label <- labels; i <- 1 to 10 ) {
     //  val it = bottomUp.iterator(label)
     //  if (it.hasNext) {
