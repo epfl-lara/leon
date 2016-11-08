@@ -15,7 +15,9 @@ import purescala.ExprOps.simplestValue
 object PBTE extends Rule("PTBE"){
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val tactic = if (hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)) "top-down" else "bottom-up"
+    val useTopDown = hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)
+    val tactic = if (useTopDown) "top-down" else "bottom-up"
+
     List(new RuleInstantiation(s"Prob. based enum. ($tactic)") {
       def apply(hctx: SearchContext): RuleApplication = {
 
@@ -32,14 +34,14 @@ object PBTE extends Rule("PTBE"){
         val solverF    = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
         val outType    = tupleTypeWrap(p.xs map (_.getType))
         val grammar    = grammars.default(hctx, p)
-        val enumerator = {
-          if (hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum))
-            new ProbwiseBottomupEnumerator(grammar, Label(outType))
-          else
-            new ProbwiseTopdownEnumerator(grammar)
-        }
         var examples   = p.eb.examples.toSet
         val spec       = letTuple(p.xs, _: Expr, p.phi)
+        val enumerator = {
+          if (useTopDown)
+            new ProbwiseTopdownEnumerator(grammar, Label(outType))
+          else
+            new ProbwiseBottomupEnumerator(grammar, Label(outType))
+        }
 
         // Tests a candidate solution against an example in the correct environment
         def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
