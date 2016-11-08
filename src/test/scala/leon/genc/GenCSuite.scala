@@ -220,10 +220,10 @@ class GenCSuite extends LeonRegressionSuite {
   private def convert(xCtx: ExtendedContext)(prog: Program): CAST.Prog = {
     try {
       info(s"(CAST)${xCtx.progName}")
-      GenerateCPhase(xCtx.leon, prog)
+      GenerateCPhase.run(xCtx.leon, prog)._2
     } catch {
       case fe: LeonFatalError =>
-        fail(xCtx.leon, "Convertion to C unexpectedly failed", fe)
+        fail(xCtx.leon, "Conversion to C unexpectedly failed", fe)
     }
   }
 
@@ -350,7 +350,7 @@ class GenCSuite extends LeonRegressionSuite {
 
   protected def testInvalid() = forEachFileIn("invalid") { (xCtx, prog) =>
     intercept[LeonFatalError] {
-      GenerateCPhase(xCtx.leon, prog)
+      GenerateCPhase.run(xCtx.leon, prog)._2
     }
   }
 
