@@ -6,16 +6,17 @@ package rules
 
 import evaluators.{EvaluationResults, DefaultEvaluator}
 import leon.grammars.Label
-import leon.grammars.enumerators.ProbwiseBottomupEnumerator
-import leon.solvers.SolverFactory
-import leon.purescala.Expressions.{BooleanLiteral, Expr}
+import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
+import solvers.SolverFactory
+import purescala.Expressions.{BooleanLiteral, Expr}
 import purescala.Constructors._
 import purescala.ExprOps.simplestValue
 
 object PBTE extends Rule("PTBE"){
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    List(new RuleInstantiation("Prob. based enum.") {
+    val tactic = if (hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)) "top-down" else "bottom-up"
+    List(new RuleInstantiation(s"Prob. based enum. ($tactic)") {
       def apply(hctx: SearchContext): RuleApplication = {
 
         import hctx.reporter._
@@ -27,12 +28,18 @@ object PBTE extends Rule("PTBE"){
         val solverTo = 3000
         val useOptTimeout = hctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
 
-        val evaluator = new DefaultEvaluator(hctx, hctx.program)
-        val solverF = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
-        val outType = tupleTypeWrap(p.xs map (_.getType))
-        val dataGen = new ProbwiseBottomupEnumerator(grammars.default(hctx, p), Label(outType))
-        var examples = p.eb.examples.toSet
-        val spec = letTuple(p.xs, _: Expr, p.phi)
+        val evaluator  = new DefaultEvaluator(hctx, hctx.program)
+        val solverF    = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
+        val outType    = tupleTypeWrap(p.xs map (_.getType))
+        val grammar    = grammars.default(hctx, p)
+        val enumerator = {
+          if (hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum))
+            new ProbwiseBottomupEnumerator(grammar, Label(outType))
+          else
+            new ProbwiseTopdownEnumerator(grammar)
+        }
+        var examples   = p.eb.examples.toSet
+        val spec       = letTuple(p.xs, _: Expr, p.phi)
 
         // Tests a candidate solution against an example in the correct environment
         def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
@@ -106,7 +113,7 @@ object PBTE extends Rule("PTBE"){
         }
 
         val filtered =
-          dataGen.iterator(Label(outType))
+          enumerator.iterator(Label(outType))
             .take(maxGen)
             .map(_._1)
             .filter { expr =>

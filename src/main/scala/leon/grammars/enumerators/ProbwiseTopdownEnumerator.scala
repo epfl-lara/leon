@@ -4,13 +4,14 @@ package enumerators
 
 import purescala.Expressions.Expr
 
-class ProbwiseTopdownEnumerator(grammar: ExpressionGrammar)(implicit ctx: LeonContext)
+class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar)(implicit ctx: LeonContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr]
+  with GrammarEnumerator
 {
   protected def productions(nt: Label) = grammar.getProductions(nt)
 }
 
-trait AbstractProbwiseTopdownEnumerator[NT, R] {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
@@ -33,7 +34,7 @@ trait AbstractProbwiseTopdownEnumerator[NT, R] {
     def get = expansion.produce
   }
 
-  def iterator(nt: NT) = new Iterator[WorklistElement](){
+  def iterator(nt: NT) = new Iterator[(R, Double)](){
     val ordering = Ordering.by[WorklistElement, Double](elem => -(elem.cost + elem.horizon))
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
 
@@ -43,10 +44,10 @@ trait AbstractProbwiseTopdownEnumerator[NT, R] {
 
     def hasNext: Boolean = worklist.nonEmpty
 
-    def next: WorklistElement = {
+    def next: (R, Double) = {
       while (!worklist.head.expansion.complete) {
         val head = worklist.dequeue
-        val newElems = expandNext(head, nthor)
+        val newElems = expandNext(head)
         worklist ++= newElems
         if (worklist.size >= 1.5 * lastPrint) {
           //println(s"Worklist size: ${worklist.size}")
@@ -58,15 +59,12 @@ trait AbstractProbwiseTopdownEnumerator[NT, R] {
       assert(ans.cost + 1.0e-6 >= prevAns.cost)
       assert(ans.horizon <= 1.0e-6)
       prevAns = ans
-      ans
+      (ans.get, ans.cost)
     }
 
   }
 
-  def expandNext(
-    elem: WorklistElement,
-    nthor: NT => Double
-  ): Seq[WorklistElement] = {
+  def expandNext(elem: WorklistElement): Seq[WorklistElement] = {
     val expansion = elem.expansion
     val minusLogProb = elem.cost
 
@@ -79,10 +77,12 @@ trait AbstractProbwiseTopdownEnumerator[NT, R] {
         // val totalWeight = prodRules.map(_.weight).sum
         // val logTotalWeight = Math.log(totalWeight)
         for (rule <- prodRules) yield {
-          val expansion = ProdRuleInstance(nt,
+          val expansion = ProdRuleInstance(
+            nt,
             rule,
-            rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList)
-          val minusLogProbPrime = minusLogProb - rule.weight // + logTotalWeight - Math.log(rule.weight)
+            rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
+          )
+          val minusLogProbPrime = minusLogProb - rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansion, minusLogProbPrime, horizonPrime)
         }
@@ -91,10 +91,12 @@ trait AbstractProbwiseTopdownEnumerator[NT, R] {
         require(children.exists(!_.complete))
 
         def expandChildren(cs: List[Expansion[NT, R]]): Seq[(List[Expansion[NT, R]], Double)] = cs match {
-          case Nil => throw new IllegalArgumentException()
-          case csHd :: csTl if csHd.complete => for (csTlExp <- expandChildren(csTl))
-            yield (csHd :: csTlExp._1, csTlExp._2)
-          case csHd :: csTl => for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0), nthor))
+          case Nil =>
+            throw new IllegalArgumentException()
+          case csHd :: csTl if csHd.complete =>
+            for (csTlExp <- expandChildren(csTl)) yield (csHd :: csTlExp._1, csTlExp._2)
+          case csHd :: csTl =>
+            for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0)))
             yield (csHdExp.expansion :: csTl, csHdExp.cost)
         }
 

@@ -184,8 +184,9 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   def iterator(nt: NT) = streams.get(nt).map(_.iterator).getOrElse(Iterator())
 }
 
-class ProbwiseBottomupEnumerator(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
+class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
+  with GrammarEnumerator
 
 object ProbwiseBottomupEnumerator {
   def productive(grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext) = {
