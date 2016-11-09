@@ -2,6 +2,7 @@ package leon
 package grammars
 package enumerators
 
+import purescala.Expressions.Expr
 import purescala.Types.{BooleanType, TypeTree}
 
 import scala.collection.mutable
@@ -55,20 +56,31 @@ object ProbwiseTopdownEnumerator {
     var lastPrint: Int = 1
     var prevAns = new TyEl(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt))
 
+    /* def printWorklist: Unit = {
+      for (elem <- worklist.toList.sorted(ordering)) {
+        println(elem)
+      }
+      println("---")
+    } */
+
     def hasNext: Boolean = worklist.nonEmpty
 
     def next: TyEl = {
+      // println("Called next!")
+      // printWorklist
       while (!worklist.head.expansion.complete) {
         val head = worklist.dequeue
         val newElems = expandNext(head, grammar, nthor)
         worklist ++= newElems
         if (worklist.size >= 1.5 * lastPrint) {
-          //println(s"Worklist size: ${worklist.size}")
+          // println(s"Worklist size: ${worklist.size}")
           lastPrint = worklist.size
         }
+        // printWorklist
       }
 
       val ans = worklist.dequeue
+      // println(s"Produced result: ${ans}")
       assert(ans.cost + 1.0e-6 >= prevAns.cost)
       assert(ans.horizon <= 1.0e-6)
       prevAns = ans
@@ -147,6 +159,7 @@ object ProbwiseTopdownEnumerator {
     val ntSet = allNTs(nt, grammar)
     ntSet.foreach(ntPrime => map.put(ntPrime, (None, Double.NegativeInfinity)))
 
+    // Returns true if something actually done
     def relax(ntPrime: NT): Boolean = {
       require(map.contains(ntPrime))
 
