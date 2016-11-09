@@ -24,7 +24,7 @@ class SynthesisContext(
     context.timers
 ) {
 
-  val solverFactory = SolverFactory.getFromSettings(context, program)
+  lazy val solverFactory = SolverFactory.getFromSettings(context, program)
 
   lazy val defaultEvaluator = {
     new DefaultEvaluator(context, program)

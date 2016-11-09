@@ -16,9 +16,9 @@ case class SynthesisSettings(
   functionsToIgnore: Set[FunDef]      = Set(),
   
   // STE related options
-  steUseOptTimeout: Boolean = true,
-  steUseVanuatoo  : Boolean = false,
+  steUseOptTimeout: Boolean      = true,
+  steUseVanuatoo: Boolean        = false,
   steUserDefinedGrammar: Boolean = false,
-  steMaxSize: Int           = 7
+  steMaxSize: Int                = 7
 
 )

@@ -1,6 +1,6 @@
-import scala.collection.generic.CanBuildFrom
-
 /* Copyright 2009-2016 EPFL, Lausanne */
+
+import scala.collection.generic.CanBuildFrom
 
 /** Core package of the Leon system 
   *
@@ -21,6 +21,11 @@ package object leon {
         } yield (h +: t).asInstanceOf[S[B]]
       }
     }
+  }
+
+  def passThrough[A](f: A => Unit)(x: A): A = {
+    f(x)
+    x
   }
 
 }

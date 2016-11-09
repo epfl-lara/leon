@@ -33,11 +33,12 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false, false, true)
+  def all: List[Rule] = all(false, true)
   /** Returns the list of all available rules for synthesis */
-  def all(steOnly: Boolean, naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
+  def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
     val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
-    if (steOnly) List(ste) else List(
+    List(
+      ProbDrivenEnumeration,
       StringRender,
       Unification.DecompTrivialClash,
       Unification.OccursCheck, // probably useless

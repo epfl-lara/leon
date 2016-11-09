@@ -48,7 +48,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
       visibleFunDefsFromMain(program)
   }
 
-  case class UserProduction(fd: FunDef, isCommutative: Boolean, tag: Tag, weight: Int)
+  case class UserProduction(fd: FunDef, tag: Tag, weight: Int)
 
   val userProductions = visibleDefs.toSeq.sortBy(_.id).flatMap { fd =>
     val as = fd.extAnnotations
@@ -56,8 +56,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     val isProduction = as.contains("grammar.production")
 
     if (isProduction) {
-      val isCommut   = as.contains("grammar.commutative")
-      val weight    = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
+      val weight   = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
       val tag = (for {
         t <- as.get("grammar.tag")
         t2 <- t.headOption
@@ -65,7 +64,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         t4 <- tags.get(t3.asInstanceOf[String])
       } yield t4).getOrElse(Top)
 
-      Some(UserProduction(fd, isCommut, tag, weight))
+      Some(UserProduction(fd, tag, weight))
     } else {
       None
     }
@@ -116,7 +115,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
   }
 
   val productions: Map[Label, Seq[Prod]] = {
-    val ps = userProductions.flatMap { case UserProduction(fd, isCommut, tag, w) =>
+    val ps = userProductions.flatMap { case UserProduction(fd, tag, w) =>
       val lab = tpeToLabel(fd.returnType)
 
       val isTerm = fd.params.isEmpty
@@ -148,7 +147,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         val body = unwrapLabels(fd.body.get, m)
 
         Some(lab -> nonTerminal(subs,
-                                { sexprs => replaceFromIDs((holes zip sexprs).toMap, body) },
+                                sexprs => replaceFromIDs((holes zip sexprs).toMap, body),
                                 body.getClass,
                                 tag,
                                 cost = 1,
@@ -160,22 +159,15 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
       val ws = pw map (_.weight)
 
       val prods = if (ws.nonEmpty) {
-
         val sum = ws.sum
-        // Cost = -log(prob) = -log(weight/Σ(weights))
-        val logProbs = ws.map(w => -Math.log(w/sum))
-        val minLogProb = logProbs.min
+        // log(prob) = log(weight/Σ(weights))
+        val logProbs = ws.map(w => Math.log(w/sum))
+        val maxLogProb = logProbs.max
 
         for ((p, logProb) <- pw zip logProbs) yield {
-          val cost = (logProb/minLogProb).round.toInt
-          //locally {
-          //  def complete(p: Prod) = {
-          //    val vars = p.subTrees.map(l => Variable(FreshIdentifier("???", l.getType)))
-          //    p.builder(vars)
-          //  }
-          //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $logProb, $cost")
-          //}
-          p.copy(cost = cost, weight = -logProb)
+          // cost = normalized log prob.
+          val cost = (logProb/maxLogProb).round.toInt
+          p.copy(cost = cost, weight = logProb)
         }
       } else {
         sys.error("Whoot???")
