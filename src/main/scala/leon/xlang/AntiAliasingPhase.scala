@@ -291,7 +291,11 @@ object AntiAliasingPhase extends TransformationPhase {
             val resSelect = TupleSelect(freshRes.toVariable, index + 2)
             expr match {
               case cs@CaseClassSelector(_, obj, mid) =>
-                Assignment(id, deepCopy(cs, resSelect))
+                val (rec, path) = fieldPath(cs)
+                Assignment(id, objectUpdateToCopy(rec, path, resSelect))
+              case as@ArraySelect(array, index) =>
+                val (rec, path) = fieldPath(as)
+                Assignment(id, objectUpdateToCopy(rec, path, resSelect))
               case _ =>
                 Assignment(id, resSelect)
             }
@@ -344,37 +348,50 @@ object AntiAliasingPhase extends TransformationPhase {
         case up@ArrayUpdate(a, i, v) => {
           val ra = replaceFromIDs(rewritings, a)
 
-          ra match {
-            case x@Variable(id) =>
-              if(bindings.contains(id))
-                (Some(Assignment(id, ArrayUpdated(x, i, v).setPos(up)).setPos(up)), context)
-              else
-                (None, context)
-            case CaseClassSelector(_, o, id) => //should be a path in an object, with id the array to update in the object
-              findReceiverId(o) match {
-                case None =>
-                  ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
-                case Some(oid) => {
-                  if(bindings.contains(oid))
-                    (Some(Assignment(oid, deepCopy(ArraySelect(ra, i), v).setPos(up))), context)
-                  else
-                    (None, context)
-                }
-              }
-            case _ =>
+          val (receiver, path) = fieldPath(ra, List(ArrayIndex(i)))
+
+          findReceiverId(receiver) match {
+            case Some(id) =>
+              if(bindings.contains(id)) {
+                val assign = Assignment(id, objectUpdateToCopy(receiver, path, v).setPos(up)).setPos(up)
+                (Some(assign), context)
+              } else (None, context)
+            case None =>
               ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
           }
+
+          //  case CaseClassSelector(_, o, id) => //should be a path in an object, with id the array to update in the object
+          //    findReceiverId(o) match {
+          //      case None =>
+          //        ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
+          //      case Some(oid) => {
+          //        if(bindings.contains(oid)) {
+          //          (Some(Assignment(oid, deepCopy(ArraySelect(ra, i), v).setPos(up))), context)
+
+          //          val (rec, path) = fieldPath(cs)
+          //          Assignment(oid, objectUpdateToCopy(rec, path, resSelect))
+          //        else
+          //          (None, context)
+          //      }
+          //    }
+          //  case _ =>
+          //    ctx.reporter.fatalError(up.getPos, "Unsupported form of array update: " + up)
+          //}
         }
 
         case as@FieldAssignment(o, id, v) => {
           val so = replaceFromIDs(rewritings, o)
+
+          val (receiver, path) = fieldPath(so, List(ClassField(id)))
           findReceiverId(so) match {
             case None =>
               ctx.reporter.fatalError(as.getPos, "Unsupported form of field assignment: " + as)
             case Some(oid) => {
-              if(bindings.contains(oid))
-                (Some(Assignment(oid, deepCopy(CaseClassSelector(o.getType.asInstanceOf[CaseClassType], so, id), v))), context)
-              else
+              if(bindings.contains(oid)) {
+                //(Some(Assignment(oid, deepCopy(CaseClassSelector(o.getType.asInstanceOf[CaseClassType], so, id), v))), context)
+                val assign = Assignment(oid, objectUpdateToCopy(receiver, path, v).setPos(as)).setPos(as)
+                (Some(assign), context)
+              } else
                 (None, context)
             }
           }
@@ -611,17 +628,47 @@ object AntiAliasingPhase extends TransformationPhase {
   //  (res._1, res._2.reverse)
   //}
 
+  private sealed trait Field
+  private case class ClassField(id: Identifier) extends Field
+  private case class ArrayIndex(e: Expr) extends Field
 
-  def deepCopy(rec: Expr, nv: Expr): Expr = {
-    rec match {
-      case CaseClassSelector(_, r, id) =>
-        val sub = copy(r, id, nv)
-        deepCopy(r, sub)
-      case as@ArraySelect(a, index) =>
-        deepCopy(a, ArrayUpdated(a, index, nv).setPos(as))
-      case expr => nv
-    }
+  //given a nested arrayselect and class selectors, return the receiver expression along
+  //with the path from left to right
+  //Does not consider FieldAssignment and ArrayUpdate as they only make sense on
+  //the first level, and it seems cleaner to define path only on select operators
+  private def fieldPath(e: Expr, accPath: List[Field] = Nil): (Expr, List[Field]) = e match {
+    case CaseClassSelector(_, r, id) => fieldPath(r, ClassField(id) :: accPath)
+    case as@ArraySelect(a, index) => fieldPath(a, ArrayIndex(index) :: accPath)
+    case e => (e, accPath)
   }
+
+
+  //given a receiver object (mutable class or array, usually as a reference id),
+  //and a path of field/index access, build a copy of the original object, with
+  //properly updated values
+  private def objectUpdateToCopy(receiver: Expr, path: List[Field], newValue: Expr): Expr = path match {
+    case ClassField(id) :: fs =>
+      val ct@CaseClassType(ccd, _) = receiver.getType
+      val rec = objectUpdateToCopy(CaseClassSelector(CaseClassType(ct.classDef, ct.tps), receiver, id), fs, newValue)
+      copy(receiver, id, rec)
+
+    case ArrayIndex(index) :: fs =>
+      val rec = objectUpdateToCopy(ArraySelect(receiver, index), fs, newValue)
+      ArrayUpdated(receiver, index, rec)
+
+    case Nil => newValue
+  }
+
+  //def deepCopy(rec: Expr, nv: Expr): Expr = {
+  //  rec match {
+  //    case CaseClassSelector(_, r, id) =>
+  //      val sub = copy(r, id, nv)
+  //      deepCopy(r, sub)
+  //    case as@ArraySelect(a, index) =>
+  //      deepCopy(a, ArrayUpdated(a, index, nv).setPos(as))
+  //    case expr => nv
+  //  }
+  //}
 
   private def copy(cc: Expr, id: Identifier, nv: Expr): Expr = {
     val ct@CaseClassType(ccd, _) = cc.getType
