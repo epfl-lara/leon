@@ -38,7 +38,7 @@ object Rules {
   def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
     val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
     List(
-      PBTE,
+      ProbDrivenEnumeration,
       StringRender,
       Unification.DecompTrivialClash,
       Unification.OccursCheck, // probably useless

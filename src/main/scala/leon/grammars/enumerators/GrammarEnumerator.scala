@@ -58,8 +58,6 @@ object GrammarEnumerator {
 }
 
 object Tester {
-
-
   /********** TEST CODE **********/
   import leon.frontends.scalac.ExtractionPhase
   import leon.synthesis.{SynthesisSettings, SynthesisContext}
@@ -72,10 +70,10 @@ object Tester {
       LeonContext.empty,
       List("/home/koukouto/Documents/Leon/testcases/synthesis/userdefined/Grammar.scala")
     )
-    val fd = program.definedFunctions.find(_.id.name == "min").get
+    val fd = program.definedFunctions.find(_.id.name == "max").get
     val sctx = new SynthesisContext(ctx, SynthesisSettings(), fd, program)
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
-    val labels = List(BooleanType, IntegerType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
+    val labels = List(IntegerType, BooleanType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
     val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(0)).iterator(labels(0))
     val topDown = new ProbwiseTopdownEnumerator(grammar, labels(0)).iterator(labels(0))
     grammar.printProductions(println)

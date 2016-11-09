@@ -7,18 +7,18 @@ package rules
 import evaluators.{EvaluationResults, DefaultEvaluator}
 import leon.grammars.Label
 import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
-import solvers.SolverFactory
+import solvers._
 import purescala.Expressions.{BooleanLiteral, Expr}
 import purescala.Constructors._
 import purescala.ExprOps.simplestValue
 
-object PBTE extends Rule("PTBE"){
+object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val useTopDown = hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)
     val tactic = if (useTopDown) "top-down" else "bottom-up"
 
-    List(new RuleInstantiation(s"Prob. based enum. ($tactic)") {
+    List(new RuleInstantiation(s"Prob. driven enum. ($tactic)") {
       def apply(hctx: SearchContext): RuleApplication = {
 
         import hctx.reporter._
@@ -42,6 +42,9 @@ object PBTE extends Rule("PTBE"){
           else
             new ProbwiseBottomupEnumerator(grammar, Label(outType))
         }
+
+        debug("Grammar:")
+        grammar.printProductions(debug(_))
 
         // Tests a candidate solution against an example in the correct environment
         def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
@@ -118,9 +121,8 @@ object PBTE extends Rule("PTBE"){
           enumerator.iterator(Label(outType))
             .take(maxGen)
             .map(_._1)
-            .filter { expr =>
-              debug(s"Testing $expr")
-              examples.forall(ex => testCandidate(expr)(ex).contains(true)) }
+            .map(passThrough(expr => debug(s"Testing $expr")))
+            .filter { expr => examples.forall(testCandidate(expr)(_).contains(true)) }
             .map { validateCandidate }
             .flatten
             .toStream
