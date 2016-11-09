@@ -6,7 +6,7 @@ import purescala.Expressions.Expr
 
 class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr]
-    with GrammarEnumerator
+  with GrammarEnumerator
 {
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
   protected def productions(nt: Label) = grammar.getProductions(nt)
@@ -27,10 +27,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
     * @param horizon The minimum cost that this expansion will accumulate before becoming concrete
     */
   case class WorklistElement(
-                              expansion: Expansion[NT, R],
-                              logProb: Double,
-                              horizon: Double
-                            ) {
+    expansion: Expansion[NT, R],
+    logProb: Double,
+    horizon: Double
+  ) {
     require(logProb <= 0 && horizon <= 0)
 
     def get = expansion.produce
@@ -96,7 +96,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
             for (csTlExp <- expandChildren(csTl)) yield (csHd :: csTlExp._1, csTlExp._2)
           case csHd :: csTl =>
             for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0)))
-              yield (csHdExp.expansion :: csTl, csHdExp.logProb)
+            yield (csHdExp.expansion :: csTl, csHdExp.logProb)
         }
 
         for (childExpansion <- expandChildren(children)) yield {
