@@ -8,6 +8,8 @@ import scala.collection.mutable.{HashMap, Queue => MutableQueue, HashSet}
 
 trait GrammarEnumerator {
   protected val grammar: ExpressionGrammar
+
+  /** Returns the iterator of elements corresponding to a specific nonterminal */
   def iterator(l: Label): Iterator[(Expr, Double)]
 }
 

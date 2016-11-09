@@ -16,24 +16,25 @@ import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, Arr
   * @tparam R The type of enumerated elements.
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
-
-  println(nts.keys)
   type Rule = ProductionRule[NT, R]
 
+  // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
+  // such that each other combination that has not been generated yet has an index >= than one element of the frontier
+  // Stores the elements in a priority queue by maximum probability
   class Frontier(dim: Int, rule: Rule, streams: Seq[NonTerminalStream]) {
     private val ordering = Ordering.by[FrontierElem, Double](_.logProb)
     private val queue = new PriorityQueue[FrontierElem]()(ordering)
-    private var futureElems = List.empty[LazyElem]
+    private var futureElems = List.empty[ElemSuspension]
 
     private val byDim = Array.fill(dim)(
       HashMap[Int, MutableSet[FrontierElem]]()
         .withDefaultValue(MutableSet[FrontierElem]())
     )
 
-    private def dominates(e1: FrontierElem, e2: FrontierElem) =
+    @inline private def dominates(e1: FrontierElem, e2: FrontierElem) =
       e1.coordinates zip e2.coordinates forall ((_: Int) <= (_: Int)).tupled
 
-    private def enqueue(elem: FrontierElem, grownDim: Int) = {
+    @inline private def enqueue(elem: FrontierElem, grownDim: Int) = {
       val elems = if (grownDim >= 0) {
         val grownTo = elem.coordinates(grownDim)
         byDim(grownDim)(grownTo)
@@ -49,9 +50,11 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       }
     }
 
-    def +=(l: LazyElem) = futureElems ::= l
+    // Add an element suspension to the frontier
+    @inline def +=(l: ElemSuspension) = futureElems ::= l
 
-    def elem(le: LazyElem): Option[(FrontierElem, Int)] = try {
+    // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
+    @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
       val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
       val (operands, logProbs) = children.unzip
       Some(FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
@@ -60,7 +63,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         None
     }
 
-
+    // promote all elements suspensions to frontier elements
     private def promote() = {
       for {
         fe <- futureElems
@@ -77,26 +80,23 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       res
     }
 
-    def headOption = {
+    @inline def headOption = {
       promote()
       queue.headOption
     }
 
-    def isEmpty = queue.isEmpty && futureElems.isEmpty
+    @inline def isEmpty = queue.isEmpty && futureElems.isEmpty
   }
 
-  /** An element of the frontier of an operator */
-  protected case class LazyElem(coordinates: List[Int], grownIndex: Int)
+  /** A suspension of a frontier element (which has not yet retrieved its operands) */
+  protected case class ElemSuspension(coordinates: List[Int], grownIndex: Int)
 
+  /** An element of the frontier */
   protected case class FrontierElem(coordinates: List[Int], elem: R, logProb: Double) {
     def nextElems = coordinates.zipWithIndex.map {
-      case (elem, updated) => LazyElem(coordinates.updated(updated, elem + 1), updated)
+      case (elem, updated) => ElemSuspension(coordinates.updated(updated, elem + 1), updated)
     }
   }
-
-  protected val ordering = Ordering.by[FrontierElem, Double](_.logProb)
-  /** The frontier of coordinates corresponding to an operator */
-  //protected type Frontier = DedupedPriorityQueue[FrontierElem]
 
   // The streams of elements corresponding to each nonterminal
   protected val streams: Map[NT, NonTerminalStream] =
@@ -108,14 +108,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       nt -> prods.map(rule => new OperatorStream(rule, rule eq advanced))
     }
 
-  //operators.values foreach (_.foreach(_.init()))
-
   /** A class that represents the stream of generated elements for a specific nonterminal. */
-  protected class NonTerminalStream(val nt: NT) {
+  protected class NonTerminalStream(val nt: NT) extends Iterable[(R, Double)] {
     private val buffer: ArrayBuffer[(R, Double)] = new ArrayBuffer()
 
-    // The first element to be produced will definitely be the terminal symbol with greatest probability.
-    private def init(): Unit = {
+    // The first element to be produced will be the one recursively computed by the horizon map.
+    private def initialize(): Unit = {
       def rec(nt: NT): (R, Double) = {
         val rule = nts(nt)._1
         val (subs, ds) = rule.subTrees.map(rec).unzip
@@ -124,11 +122,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       buffer += rec(nt)
     }
 
-    init()
+    initialize()
 
     private var lock = false
 
-    def populateNext() = !lock && {
+    // Add a new element to the buffer
+    private def populateNext() = !lock && {
       try {
         lock = true
         //println(s"$nt: size is ${buffer.size}, populating")
@@ -143,12 +142,13 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       !lock
     }
 
+    // Get the i-th element of the buffer
     @inline def get(i: Int): (R, Double) = {
       if (i == buffer.size) populateNext()
       buffer(i)
     }
 
-    val iterator = new Iterator[(R, Double)] {
+    def iterator: Iterator[(R, Double)] = new Iterator[(R, Double)] {
       var i = 0
       def hasNext = i < buffer.size || i == buffer.size && populateNext()
       def next = {
@@ -167,16 +167,16 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     private val frontier: Frontier = new Frontier(arity, rule, typedStreams)
 
     @inline def getNext: Option[(R, Double, OperatorStream)] = {
-      //if (frontier.isEmpty) println(s"$rule was empty")
       frontier.headOption.map(fe => (fe.elem, fe.logProb, this))
     }
 
+    // Remove the top element of the frontier and add its derivatives
     def advance(): Unit = if (!frontier.isEmpty) {
       frontier.dequeue().nextElems foreach { frontier += _ }
     }
 
     private def init(): Unit = {
-      frontier += LazyElem(List.fill(arity)(0), -1)
+      frontier += ElemSuspension(List.fill(arity)(0), -1)
       if (isAdvanced) advance()
     }
     init()
@@ -197,5 +197,4 @@ object ProbwiseBottomupEnumerator {
     }
     ntMap.mapValues{ case (r, prods) => (r, prods.filter(_.subTrees forall ntMap.contains)) }
   }
-
 }
