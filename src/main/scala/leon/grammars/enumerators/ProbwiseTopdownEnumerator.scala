@@ -3,182 +3,109 @@ package grammars
 package enumerators
 
 import purescala.Expressions.Expr
-import purescala.Types.{BooleanType, TypeTree}
 
-import scala.collection.mutable
+class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr]
+    with GrammarEnumerator
+{
+  val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
+  protected def productions(nt: Label) = grammar.getProductions(nt)
+  protected def nthor(nt: Label): Double = hors(nt)
+}
 
-object ProbwiseTopdownEnumerator {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
 
-  def main(args: Array[String]): Unit = {
-    implicit val ctx = Main.processOptions(List())
-    def t2l(tp: TypeTree) = Label(tp, Nil)
-    def nthor(label: Label): Double = Math.log(BaseGrammar.getProductions(label).size)
-    val expansionIterator = ProbwiseTopdownEnumerator.iterator(t2l(BooleanType), BaseGrammar.getProductions, nthor)
+  protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
-    var maxProdSize = 0
-    for (i <- 1 to 1000000) {
-      val next = expansionIterator.next
-      assert(next ne null)
-      // println(s"${next.expansion}: ${next.cost}")
-
-      if (next.expansion.size > maxProdSize /* || i % 1000 == 0 */ ) {
-        println(s"$i: (Size: ${next.expansion.size}, Expr: ${next.expansion.produce}, Cost: ${next.cost})")
-        maxProdSize = next.expansion.size
-      }
-    }
-  }
+  protected def nthor(nt: NT): Double
 
   /**
-   * Represents an element of the worklist
-   * @param expansion The partial expansion under consideration
-   * @param cost The cost already accumulated by the expansion
-   * @param horizon The minimum cost that this expansion will accumulate before becoming concrete
-   */
-  case class WorklistElement[NT, R](
-      expansion: Expansion[NT, R],
-      cost: Double,
-      horizon: Double
-  ) {
-    require(cost >= 0 && horizon >= 0)
+    * Represents an element of the worklist
+    *
+    * @param expansion The partial expansion under consideration
+    * @param logProb The log probability already accumulated by the expansion
+    * @param horizon The minimum cost that this expansion will accumulate before becoming concrete
+    */
+  case class WorklistElement(
+                              expansion: Expansion[NT, R],
+                              logProb: Double,
+                              horizon: Double
+                            ) {
+    require(logProb <= 0 && horizon <= 0)
+
+    def get = expansion.produce
   }
 
-  def iterator[NT, R](
-      nt: NT,
-      grammar: NT => Seq[ProductionRule[NT, R]],
-      nthor: NT => Double
-  ) = new Iterator[WorklistElement[NT, R]](){
+  def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
+    val ordering = Ordering.by[WorklistElement, Double](elem => elem.logProb + elem.horizon)
+    val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
 
-    type TyEl = WorklistElement[NT, R]
-    val ordering = Ordering.by[TyEl, Double](elem => -(elem.cost + elem.horizon))
-    val worklist = new scala.collection.mutable.PriorityQueue[TyEl]()(ordering)
-
-    worklist.enqueue(new TyEl(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt)))
+    worklist.enqueue(new WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt)))
     var lastPrint: Int = 1
-    var prevAns = new TyEl(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt))
-
-    /* def printWorklist: Unit = {
-      for (elem <- worklist.toList.sorted(ordering)) {
-        println(elem)
-      }
-      println("---")
-    } */
+    var prevAns = new WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt))
 
     def hasNext: Boolean = worklist.nonEmpty
 
-    def next: TyEl = {
-      // println("Called next!")
-      // printWorklist
+    def next: (R, Double) = {
       while (!worklist.head.expansion.complete) {
         val head = worklist.dequeue
-        val newElems = expandNext(head, grammar, nthor)
+        val newElems = expandNext(head)
         worklist ++= newElems
         if (worklist.size >= 1.5 * lastPrint) {
-          // println(s"Worklist size: ${worklist.size}")
+          //println(s"Worklist size: ${worklist.size}")
           lastPrint = worklist.size
         }
-        // printWorklist
       }
 
       val ans = worklist.dequeue
-      // println(s"Produced result: ${ans}")
-      assert(ans.cost + 1.0e-6 >= prevAns.cost)
-      assert(ans.horizon <= 1.0e-6)
+      assert(ans.logProb - 1.0e-6 <= prevAns.logProb)
+      assert(ans.horizon >= -1.0e-6)
       prevAns = ans
-      ans
+      (ans.get, ans.logProb)
     }
 
   }
 
-  def expandNext[NT, R](
-      elem: WorklistElement[NT, R],
-      grammar: NT => Seq[ProductionRule[NT, R]],
-      nthor: NT => Double
-  ): Seq[WorklistElement[NT, R]] = {
+  def expandNext(elem: WorklistElement): Seq[WorklistElement] = {
     val expansion = elem.expansion
-    val minusLogProb = elem.cost
-    val horizon = elem.horizon
 
     require(!expansion.complete)
 
     expansion match {
 
-      case NonTerminalInstance(nt) => {
-        val prodRules = grammar(nt)
-        // val totalWeight = prodRules.map(_.weight).sum
-        // val logTotalWeight = Math.log(totalWeight)
+      case NonTerminalInstance(nt) =>
+        val prodRules = productions(nt)
         for (rule <- prodRules) yield {
-          val expansion = ProdRuleInstance(nt,
-                                           rule,
-                                           rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList)
-          val minusLogProbPrime = minusLogProb - rule.weight // + logTotalWeight - Math.log(rule.weight)
+          val expansion = ProdRuleInstance(
+            nt,
+            rule,
+            rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
+          )
+          val logProbPrime = elem.logProb + rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
-          WorklistElement(expansion, minusLogProbPrime, horizonPrime)
+          WorklistElement(expansion, logProbPrime, horizonPrime)
         }
-      }
 
-      case ProdRuleInstance(nt, rule, children) => {
+      case ProdRuleInstance(nt, rule, children) =>
         require(children.exists(!_.complete))
 
         def expandChildren(cs: List[Expansion[NT, R]]): Seq[(List[Expansion[NT, R]], Double)] = cs match {
-          case Nil => throw new IllegalArgumentException()
-          case csHd :: csTl if csHd.complete => for (csTlExp <- expandChildren(csTl))
-                                                yield (csHd :: csTlExp._1, csTlExp._2)
-          case csHd :: csTl => for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0), grammar, nthor))
-                               yield (csHdExp.expansion :: csTl, csHdExp.cost)
+          case Nil =>
+            throw new IllegalArgumentException()
+          case csHd :: csTl if csHd.complete =>
+            for (csTlExp <- expandChildren(csTl)) yield (csHd :: csTlExp._1, csTlExp._2)
+          case csHd :: csTl =>
+            for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0)))
+              yield (csHdExp.expansion :: csTl, csHdExp.logProb)
         }
-  
+
         for (childExpansion <- expandChildren(children)) yield {
           val expPrime = ProdRuleInstance(nt, rule, childExpansion._1)
-          val minusLogProbPrime = minusLogProb + childExpansion._2
+          val logProbPrime = elem.logProb + childExpansion._2
           val horizonPrime = expPrime.horizon(nthor)
-          WorklistElement[NT, R](expPrime, minusLogProbPrime, horizonPrime)
+          WorklistElement(expPrime, logProbPrime, horizonPrime)
         }
-      }
-
-    }
-  }
-
-  def allNTs[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Set[NT] = {
-    val ans = new mutable.HashSet[NT]()
-    val queue = new mutable.Queue[NT]()
-
-    ans += nt
-    queue += nt
-    while (queue.nonEmpty) {
-      val head = queue.dequeue()
-      val newNTs = grammar(head).flatMap(_.subTrees).filterNot(ans).toSet
-      ans ++= newNTs
-      queue ++= newNTs
     }
 
-    ans.toSet
   }
-
-  def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, (Option[ProductionRule[NT, R]], Double)] = {
-    val map = new mutable.HashMap[NT, (Option[ProductionRule[NT, R]], Double)]()
-    val ntSet = allNTs(nt, grammar)
-    ntSet.foreach(ntPrime => map.put(ntPrime, (None, Double.NegativeInfinity)))
-
-    // Returns true if something actually done
-    def relax(ntPrime: NT): Boolean = {
-      require(map.contains(ntPrime))
-
-      var newProb = map(ntPrime)
-      for (rule <- grammar(ntPrime)) {
-        var ruleLogProb = rule.weight
-        for (childNT <- rule.subTrees) {
-          ruleLogProb = ruleLogProb + map(childNT)._2
-        }
-        if (ruleLogProb > newProb._2) newProb = (Some(rule), ruleLogProb)
-      }
-      val ans = map(ntPrime)._2 < newProb._2
-      if (ans) map.put(ntPrime, newProb)
-      ans
-    }
-
-    while(ntSet exists relax) {}
-
-    map.toMap.mapValues{ case (o, d) => (o, -d) }
-  }
-
 }

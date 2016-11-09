@@ -100,13 +100,13 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
   // The streams of elements corresponding to each nonterminal
   protected val streams: Map[NT, NonTerminalStream] =
-    nts.map{ case (nt, _) => (nt, new NonTerminalStream(nt)) }
+  nts.map{ case (nt, _) => (nt, new NonTerminalStream(nt)) }
 
   // The operator streams per nonterminal
   protected val operators: Map[NT, Seq[OperatorStream]] =
-    nts.map { case (nt, (advanced, prods)) =>
-      nt -> prods.map(rule => new OperatorStream(rule, rule eq advanced))
-    }
+  nts.map { case (nt, (advanced, prods)) =>
+    nt -> prods.map(rule => new OperatorStream(rule, rule eq advanced))
+  }
 
   /** A class that represents the stream of generated elements for a specific nonterminal. */
   protected class NonTerminalStream(val nt: NT) extends Iterable[(R, Double)] {
@@ -187,7 +187,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
 class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
-  with GrammarEnumerator
+    with GrammarEnumerator
 
 object ProbwiseBottomupEnumerator {
   import GrammarEnumerator._
