@@ -5,7 +5,8 @@ package synthesis
 package rules
 
 import evaluators.{EvaluationResults, DefaultEvaluator}
-import leon.grammars.Label
+import leon.grammars._
+import leon.grammars.aspects.Tagged
 import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
 import solvers._
 import purescala.Expressions.{BooleanLiteral, Expr}
@@ -25,22 +26,21 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         import hctx.program
         implicit val hctx0 = hctx
 
-        // Maximum generated # of programs
-        val maxGen = 100000
-        val solverTo = 3000
         val useOptTimeout = hctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-
+        val maxGen     = 100000 // Maximum generated # of programs
+        val solverTo   = 3000
         val evaluator  = new DefaultEvaluator(hctx, hctx.program)
         val solverF    = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
         val outType    = tupleTypeWrap(p.xs map (_.getType))
+        val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
         val grammar    = grammars.default(hctx, p)
         var examples   = p.eb.examples.toSet
         val spec       = letTuple(p.xs, _: Expr, p.phi)
         val enumerator = {
           if (useTopDown)
-            new ProbwiseTopdownEnumerator(grammar, Label(outType))
+            new ProbwiseTopdownEnumerator(grammar, topLabel)
           else
-            new ProbwiseBottomupEnumerator(grammar, Label(outType))
+            new ProbwiseBottomupEnumerator(grammar, topLabel)
         }
 
         debug("Grammar:")
@@ -106,7 +106,6 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                   info("STE could not prove the validity of the resulting expression")
                   // Interpret timeout in CE search as "the candidate is valid"
                   Some(Solution(BooleanLiteral(true), Set(), expr, false))
-
                 } else {
                   // TODO: Make STE fail early when it times out when verifying 1 program?
                   None
@@ -118,7 +117,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         }
 
         val filtered =
-          enumerator.iterator(Label(outType))
+          enumerator.iterator(topLabel)
             .take(maxGen)
             .map(_._1)
             .map(passThrough(expr => debug(s"Testing $expr")))
