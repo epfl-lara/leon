@@ -35,13 +35,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       e1.coordinates zip e2.coordinates forall ((_: Int) <= (_: Int)).tupled
 
     @inline private def enqueue(elem: FrontierElem, grownDim: Int) = {
-      val elems = if (grownDim >= 0) {
+      val approved = grownDim < 0 || {
         val grownTo = elem.coordinates(grownDim)
-        byDim(grownDim)(grownTo)
-      } else {
-        MutableSet()
+        val elems = byDim(grownDim)(grownTo)
+        !(elems exists (dominates(_, elem)))
       }
-      if (!(elems exists (dominates(_, elem)))) {
+      if (approved) {
         queue += elem
         for (i <- 0 until dim) {
           val coord = elem.coordinates(i)
@@ -51,7 +50,9 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
 
     // Add an element suspension to the frontier
-    @inline def +=(l: ElemSuspension) = futureElems ::= l
+    @inline def +=(l: ElemSuspension) = {
+      futureElems ::= l
+    }
 
     // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
     @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
@@ -59,7 +60,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
       val (operands, logProbs) = children.unzip
       Some(FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
     } catch {
-      case _: UnsupportedOperationException =>
+      case _: IndexOutOfBoundsException =>
+        // Thrown by stream.get: A stream has been depleted
         None
     }
 
@@ -70,6 +72,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         (elem, index) <- elem(fe)
       } enqueue(elem, index)
       futureElems = Nil
+      // if (dim > 0) println(f"dim: $dim: 0: ${byDim(0)(0).map(_.coordinates(0)).max}%5d #: ${queue.size}%3d")
     }
 
     def dequeue() = {
@@ -109,7 +112,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
 
   /** A class that represents the stream of generated elements for a specific nonterminal. */
-  protected class NonTerminalStream(val nt: NT) extends Iterable[(R, Double)] {
+  protected class NonTerminalStream(nt: NT) extends Iterable[(R, Double)] {
     private val buffer: ArrayBuffer[(R, Double)] = new ArrayBuffer()
 
     // The first element to be produced will be the one recursively computed by the horizon map.
@@ -138,6 +141,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         lock = false
       } catch {
         case _: UnsupportedOperationException =>
+          // maxBy was called on an empty list, i.e. all operators have been depleted
+          // leave lock at true
       }
       !lock
     }

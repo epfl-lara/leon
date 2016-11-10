@@ -81,20 +81,21 @@ object Tester {
     grammar.printProductions(println)
     val before = System.currentTimeMillis()
 
-    val b0 = for(_ <- 1 to 100) yield bottomUp.next
-    val t0 = for(_ <- 1 to 100) yield topDown.next
-    b0 zip t0 foreach { case ((b1, b2), (t1, t2)) =>
-      println(f"$b1%60s: $b2%3.3f vs $t1%60s: $t2%3.3f")
-    }
-
-    //for (label <- labels; i <- 1 to 10 ) {
-    //  val it = bottomUp.iterator(label)
-    //  if (it.hasNext) {
-    //    val (e, prob) = it.next
-    //    //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-    //    println(f"${e.asString}%40s: $prob")
-    //  }
+    /** Code for comparing **/
+    //val b0 = for(_ <- 1 to 100) yield bottomUp.next
+    //val t0 = for(_ <- 1 to 100) yield topDown.next
+    //b0 zip t0 foreach { case ((b1, b2), (t1, t2)) =>
+    //  println(f"$b1%60s: $b2%3.3f vs $t1%60s: $t2%3.3f")
     //}
-    //println(s"Time: ${System.currentTimeMillis() - before}")
+
+    /** Code for bottom-up **/
+    for (label <- labels; i <- 1 to 100000 ) {
+      if (bottomUp.hasNext) {
+        val (e, prob) = bottomUp.next
+        if (i%20000 == 0)
+          println(f"$i%7d: ${e.asString}%40s: $prob")
+      }
+    }
+    println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }
