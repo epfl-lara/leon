@@ -46,7 +46,7 @@ class GenCSuite extends LeonRegressionSuite {
     override def toString = title
   }
 
-  private object WarningOrAboveReporter extends DefaultReporter(Set()) {
+  private class WarningOrAboveReporter extends DefaultReporter(Set()) {
     override def emit(msg: Message): Unit = msg.severity match {
       case this.WARNING | this.FATAL | this.ERROR | this.INTERNAL =>
         super.emit(msg)
@@ -55,7 +55,7 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   override def createLeonContext(opts: String*): LeonContext = {
-    val reporter = WarningOrAboveReporter
+    val reporter = new WarningOrAboveReporter
     Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
   }
 
