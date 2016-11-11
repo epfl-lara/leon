@@ -238,6 +238,7 @@ object Extractors {
           NonemptyArray(elemsSeq.map(_._1).zip(as.take(l - 2)).toMap, 
                         Some((as(l - 2), as(l - 1))))
         }))
+      case na @ EmptyArray(t) => Some(Seq[Expr](), (_:Seq[Expr]) => na)
       case na @ NonemptyArray(elems, None) =>
         val ArrayType(tpe) = na.getType
         val (indexes, elsOrdered) = elems.toSeq.unzip

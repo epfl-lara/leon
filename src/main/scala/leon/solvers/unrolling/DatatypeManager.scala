@@ -20,6 +20,8 @@ import Template._
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
+import theories.ArrayEncoder
+
 case class FreshFunction(expr: Expr) extends Expr with Extractable {
   val getType = BooleanType
   val extract = Some(Seq(expr), (exprs: Seq[Expr]) => FreshFunction(exprs.head))
@@ -170,6 +172,32 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
     case tpe if !requireTypeUnrolling(tpe) =>
       BooleanLiteral(true)
 
+  
+    case ct: ClassType if ct.classDef == ArrayEncoder.ArrayCaseClass => 
+      import ArrayEncoder._
+      val subArray = FreshIdentifier("array", ct.getType)
+      val fd = new FunDef(
+        FreshIdentifier("arrayTypeUnroller"), Seq(), Seq(ValDef(subArray)), BooleanType)
+
+      fd.body = Some(IfExpr(
+        LessEquals(getLength(subArray.toVariable), IntLiteral(0)),
+        BooleanLiteral(true),
+        And(
+          typeUnroller(select(subArray.toVariable, BVMinus(getLength(subArray.toVariable), IntLiteral(1)))),
+          FunctionInvocation(fd.typed, Seq(CaseClass(subArray.getType.asInstanceOf[CaseClassType], Seq(
+            CaseClassSelector(subArray.getType.asInstanceOf[CaseClassType], subArray.toVariable, rawArrayField),
+            BVMinus(getLength(subArray.toVariable), IntLiteral(1))
+          ))))
+        )
+      ))
+
+      val res = And(
+        GreaterEquals(getLength(expr), IntLiteral(0)),
+        FunctionInvocation(fd.typed, Seq(expr))
+      )
+      res
+
+
     case ct: ClassType =>
       val inv = if (ct.classDef.root.hasInvariant) {
         Seq(FunctionInvocation(ct.root.invariant.get, Seq(expr)))
@@ -209,10 +237,23 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
     case FunctionType(_, _) =>
       FreshFunction(expr)
 
-    case at: ArrayType =>
-      GreaterEquals(ArrayLength(expr), IntLiteral(0))
+    //not needed due to array encoding
+    //case at: ArrayType =>
+    //  GreaterEquals(ArrayLength(expr), IntLiteral(0))
 
-    case _ => scala.sys.error("TODO")
+    case RawArrayType(from, to) => 
+      expr match {
+        case RawArrayValue(_, elems, default) => {
+          and(
+            andJoin(elems.toList.map(p => typeUnroller(p._2))),
+            typeUnroller(default))
+        }
+        case _ => BooleanLiteral(true)
+      }
+
+    case _ => {
+      scala.sys.error("TODO")
+    }
   }
 
   private val typeCache: MutableMap[TypeTree, DatatypeTemplate[T]] = MutableMap.empty

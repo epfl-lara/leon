@@ -23,7 +23,7 @@ case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree with Pret
 }
 
 // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
-case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr with Extractable {
+case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr with Extractable with PrettyPrintable {
 
   override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = {
     val linearized: Seq[Expr] = elems.toVector.flatMap(p => Seq(p._1, p._2)) :+ default
@@ -39,12 +39,16 @@ case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr
     val elemsString = elems.map { case (k, v) => k.asString+" -> "+v.asString } mkString(", ")
     s"RawArray[${keyTpe.asString}]($elemsString, default = ${default.asString})"
   }
+
+  def printWith(implicit pctx: PrinterContext): Unit = {
+    p"RawArray[$keyTpe](${nary(elems.toSeq, ",")})(default=$default)"
+  }
 }
 
 case class RawArraySelect(array: Expr, index: Expr) extends Expr with Extractable with PrettyPrintable {
 
   override def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] =
-    Some((Seq(array, index), es => RawArraySelect(es(0), es(1))))
+    Some(Seq(array, index), es => RawArraySelect(es(0), es(1)))
 
   val getType = array.getType match {
     case RawArrayType(from, to) if isSubtypeOf(index.getType, from) =>
