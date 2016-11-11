@@ -237,9 +237,9 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
     case FunctionType(_, _) =>
       FreshFunction(expr)
 
-    //not needed due to array encoding
-    //case at: ArrayType =>
-    //  GreaterEquals(ArrayLength(expr), IntLiteral(0))
+    //TODO: not needed due to array encoding?
+    case at: ArrayType =>
+      GreaterEquals(ArrayLength(expr), IntLiteral(0))
 
     case RawArrayType(from, to) => 
       expr match {
