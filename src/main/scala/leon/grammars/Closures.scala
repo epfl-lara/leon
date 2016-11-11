@@ -9,7 +9,7 @@ import purescala.Expressions._
 import purescala.Common._
 
 case object Closures extends ExpressionGrammar {
-  protected def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {
+  def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {
     case FunctionType(argsTpes, ret) =>
       val args = argsTpes.zipWithIndex.map { case (tpe, i) =>
         ValDef(FreshIdentifier("a"+i, tpe))
@@ -17,9 +17,9 @@ case object Closures extends ExpressionGrammar {
 
       val rlab = Label(ret).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
-      applyAspects(lab, List(
-        ProductionRule(List(rlab), { case Seq(body) => Lambda(args, body) }, classOf[Lambda], Tags.Top, 1, 1.0)
-      ))
+      List(
+        ProductionRule[Label, Expr](List(rlab), { case Seq(body) => Lambda(args, body) }, classOf[Lambda], Tags.Top, 1, 1.0)
+      )
 
     case _ =>
       Nil

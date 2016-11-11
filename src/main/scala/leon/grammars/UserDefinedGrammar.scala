@@ -8,6 +8,7 @@ import aspects._
 import purescala.Common._
 import purescala.DefOps._
 import purescala.ExprOps._
+import purescala.TypeOps.{instantiateType, instantiation_<:, unify}
 import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
@@ -56,7 +57,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     val isProduction = as.contains("grammar.production")
 
     if (isProduction) {
-      val weight   = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
+      val weight = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
       val tag = (for {
         t <- as.get("grammar.tag")
         t2 <- t.headOption
@@ -81,23 +82,23 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     ProductionRule[Label, Expr](subs, builder, outType, tag, cost, weight)
   }
 
-  def tpeToLabel(tpe: TypeTree): Label = {
-    tpe match {
-      case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
-        Label(ct.fieldsTypes.head).withAspect(Named(ct.classDef.id.name))
-
-      case _ =>
-        Label(tpe)
-    }
-  }
-
-  def labelType(tpe: TypeTree): Option[TypeTree] = {
+  def unwrapType(tpe: TypeTree): Option[TypeTree] = {
     tpe match {
       case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
         Some(ct.fieldsTypes.head)
 
       case _ =>
         None
+    }
+  }
+
+  def tpeToLabel(tpe: TypeTree): Label = {
+    tpe match {
+      case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
+        Label(unwrapType(tpe).get).withAspect(RealTyped(ct))
+
+      case _ =>
+        Label(tpe)
     }
   }
 
@@ -114,75 +115,137 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }, applyRec = true)(e)
   }
 
-  val productions: Map[Label, Seq[Prod]] = {
-    val ps = userProductions.flatMap { case UserProduction(fd, tag, w) =>
-      val lab = tpeToLabel(fd.returnType)
+  def instantiateProductions(tpe: TypeTree, ps: Seq[UserProduction]): Seq[Prod] = {
+    val lab = tpeToLabel(tpe)
 
-      val isTerm = fd.params.isEmpty
+    ps.flatMap { case UserProduction(fd, tag, w) =>
+      instantiation_<:(fd.returnType, tpe) match {
+        case Some(tmap0) =>
 
-      if (isTerm) {
-        // if the function has one argument, we look for an input to p of the same name
+          val free = fd.tparams.map(_.tp) diff tmap0.keySet.toSeq;
 
-        fd.fullBody match {
-          // Special built-in "variable" case, which tells us how often to generate variables of specific type
-          case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
-            val vars = inputs.filter(_.getType == tp)
-            val size = vars.size.toDouble
-            vars map (v => lab -> terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
-          case _ =>
-            val expr = unwrapLabels(fd.body.get, Map())
-            Some(lab -> terminal(expr, expr.getClass, tag, cost = 1, w))
-        }
-      } else {
-        val subs = fd.params.map(p => tpeToLabel(p.getType))
+          val tmaps = if (free.nonEmpty) {
+            // Instantiate type parameters not constrained by the return value
+            // of `fd`
+            //
+            // e.g.:
+            // def countFilter[T](x: List[T], y: T => Boolean): BigInt
+            //
+            // We try to find instantiation of T such that arguments have
+            // candidates
+            //
 
-        val m = fd.params.flatMap(p =>
-          labelType(p.id.getType).map { tpe =>
-            p.id -> FreshIdentifier("p", tpe)
+            // Step 1. We identify the type patterns we need to match:
+            // e.g. (List[T], T => Boolean)
+            val pattern0 = fd.params.map(_.getType).distinct
+
+            // Step 2. We collect a set of interesting types that we can use to
+            // fill our pattern
+            val types = (userProductions.collect {
+              case UserProduction(fd, _, _) if fd.tparams.isEmpty => fd.returnType
+            } ++ inputs.map(_.getType)).toSet
+
+            def discover(free: TypeParameter, fixed: Set[Map[TypeParameter, TypeTree]]): Set[Map[TypeParameter, TypeTree]] = {
+              for {
+                map0 <- fixed
+                p1 = pattern0.map(instantiateType(_, map0))
+                p <- p1
+                t <- types
+                map1 <- unify(p, t, Seq(free))
+              } yield {
+                map0 ++ map1
+              }
+            }
+
+            var tmaps = Set(tmap0)
+
+            for (f <- free) {
+              tmaps = discover(f, tmaps)
+            }
+
+            tmaps
+          } else {
+            List(tmap0)
           }
-        ).toMap
 
-        val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
+          (for (tmap <- tmaps) yield {
+            val m = fd.params.flatMap { p =>
+              val ptype = instantiateType(p.id.getType, tmap)
 
-        val body = unwrapLabels(fd.body.get, m)
+              unwrapType(ptype).map { tpe =>
+                p.id -> FreshIdentifier("p", tpe)
+              }
+            }.toMap
 
-        Some(lab -> nonTerminal(subs,
-                                sexprs => replaceFromIDs((holes zip sexprs).toMap, body),
-                                body.getClass,
-                                tag,
-                                cost = 1,
-                                w))
+
+            val expr = unwrapLabels(fd.fullBody, m)
+
+            if (fd.params.isEmpty) {
+              expr match {
+                // Special built-in "variable" case, which tells us how often to
+                // generate variables of specific type
+                case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+
+                  val targetType = instantiateType(tp, tmap)
+                  val vars = inputs.filter (_.getType == targetType)
+
+                  val size = vars.size.toDouble
+                  vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+
+                case _ =>
+                  List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
+              }
+            } else {
+
+              val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
+              val subs  = fd.params.map {
+                p => tpeToLabel(instantiateType(p.getType, tmap))
+              }
+
+              List(nonTerminal(subs, { sexprs => 
+                val res = instantiateType(replaceFromIDs((holes zip sexprs).toMap, expr), tmap, m) 
+                inlineTrivialities(res)
+              }, classOf[Expr], tag, cost = 1, w))
+            }
+          }).flatten
+
+        case None =>
+          None
       }
-    }.groupBy(_._1).mapValues(_.map(_._2))
-
-    for ((l, pw) <- ps) yield {
-      val ws = pw map (_.weight)
-
-      val prods = if (ws.nonEmpty) {
-        val sum = ws.sum
-        // log(prob) = log(weight/Σ(weights))
-        val logProbs = ws.map(w => Math.log(w/sum))
-        val maxLogProb = logProbs.max
-
-        for ((p, logProb) <- pw zip logProbs) yield {
-          // cost = normalized log prob.
-          val cost = (logProb/maxLogProb).round.toInt
-          p.copy(cost = cost, weight = logProb)
-        }
-      } else {
-        sys.error("Whoot???")
-      }
-
-      l -> prods
     }
   }
 
-  protected def computeProductions(lab: Label)(implicit ctx: LeonContext) = {
-    val lab2 = lab.copy(aspects = lab.aspects.filter {
-      case _: Named => true
-      case _ => false
-    })
-    productions.getOrElse(lab2, Nil)
+  protected[grammars] def computeProductions(lab: Label)(implicit ctx: LeonContext) = {
+    val realType = lab.aspects.collect {
+      case RealTyped(tpe) => tpe
+    }.headOption.getOrElse(lab.getType)
+
+    val prods = instantiateProductions(realType, userProductions)
+
+    val ws = prods map (_.weight)
+
+    if (ws.size == 1) {
+      prods.map(_.copy(cost = 1))
+    } else if (ws.nonEmpty) {
+      val sum = ws.sum
+      // Cost = -log(prob) = -log(weight/Σ(weights))
+      val costs = ws.map(w => -Math.log(w/sum.toDouble))
+      val minCost = costs.min
+
+      for ((p, cost) <- prods zip costs) yield {
+        val ncost = (cost/minCost).round.toInt
+        //locally {
+        //  def complete(p: Prod) = {
+        //    val vars = p.subTrees.map(l => Variable(FreshIdentifier("???", l.getType)))
+        //    p.builder(vars)
+        //  }
+        //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $cost, $ncost")
+        //}
+        p.copy(cost = ncost)
+      }
+    } else {
+      Nil
+    }
   }
 
 }

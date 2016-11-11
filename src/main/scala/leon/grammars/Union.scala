@@ -11,6 +11,6 @@ case class Union(gs: Seq[ExpressionGrammar]) extends ExpressionGrammar {
     case g => Seq(g)
   }
 
-  protected def computeProductions(label: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] =
-    subGrammars.flatMap(_.getProductions(label))
+  protected[grammars] def computeProductions(label: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] =
+    subGrammars.flatMap(_.computeProductions(label))
 }

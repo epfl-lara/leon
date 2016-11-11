@@ -2304,4 +2304,15 @@ object ExprOps extends GenTreeOps[Expr] {
       }
     }(e)
   }
+
+  def inlineTrivialities(e: Expr) = preMap({
+    case CaseClassSelector(cct, cc: CaseClass, id) =>
+      Some(caseClassSelector(cct, cc, id))
+
+    case Application(caller: Lambda, args) =>
+      Some(application(caller, args))
+  
+    case _ =>
+      None
+  }, applyRec = true)(e)
 }
