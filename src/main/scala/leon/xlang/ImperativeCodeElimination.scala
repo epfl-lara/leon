@@ -126,7 +126,13 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         }
         val matchE = matchExpr(scrutRes, cses.zip(newRhs).map {
           case (mc @ MatchCase(pat, guard, _), newRhs) =>
-            MatchCase(pat, guard map { replaceNames(scrutFun, _) }, newRhs).setPos(mc)
+            //guard need to update ids (substitution of new names, and new fundef)
+            //but wont have side effects
+            val finalGuard = guard.map(g => {
+              val (resGuard, scopeGuard, _) = toFunction(g)
+              replaceNames(scrutFun, scopeGuard(resGuard))
+            })
+            MatchCase(pat, finalGuard, newRhs).setPos(mc)
         }).setPos(m)
 
         val scope = (body: Expr) => {
@@ -252,12 +258,24 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           fd.body match {
             case Some(bd) => {
 
-              val modifiedVars: List[Identifier] =
-                collect[Identifier]({
-                  case Assignment(v, _) => Set(v)
+              //we take any vars in scope needed (even for read only).
+              //if read only, we only need to capture it without returning, but
+              //returning it simplifies the code (more consistent) and should
+              //not have a big impact on performance
+              val modifiedVars: List[Identifier] = {
+                val freeVars = variablesOf(bd)
+                val transitiveVars = collect[Identifier]({
                   case FunctionInvocation(tfd, _) => state.funDefsMapping.get(tfd.fd).map(p => p._2.toSet).getOrElse(Set())
                   case _ => Set()
-                })(bd).intersect(state.varsInScope).toList
+                })(bd)
+                (freeVars ++ transitiveVars).intersect(state.varsInScope).toList
+              }
+              //val modifiedVars: List[Identifier] =
+              //  collect[Identifier]({
+              //    case Assignment(v, _) => Set(v)
+              //    case FunctionInvocation(tfd, _) => state.funDefsMapping.get(tfd.fd).map(p => p._2.toSet).getOrElse(Set())
+              //    case _ => Set()
+              //  })(bd).intersect(state.varsInScope).toList
 
               if(modifiedVars.isEmpty) fdWithoutSideEffects else {
 

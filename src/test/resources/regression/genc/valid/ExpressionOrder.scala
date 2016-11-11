@@ -28,7 +28,10 @@ object ExpressionOrder {
     val b = Array(1, 2, 0)
     b(1) = if (bar(b(1)) % 2 == 0) 42 else 58
 
-    def f1 = (if (i < 0) a else b)(0)
+    def f1 = {
+      require(a.length > 0 && b.length > 0)
+      (if (i < 0) a else b)(0)
+    }
     def f2 = (if (i < 0) a else b).length
 
     //def f3 = (if (i < 0) a else b)(0) = 0 // <- not supported

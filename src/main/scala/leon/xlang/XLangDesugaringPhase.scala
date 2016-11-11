@@ -18,6 +18,7 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
 
     val phases =
       debugTrees("Program before starting xlang-desugaring") andThen
+      EffectsChecking andThen
       IntroduceGlobalStatePhase andThen
       debugTrees("Program after introduce-global-state") andThen
       AntiAliasingPhase andThen
