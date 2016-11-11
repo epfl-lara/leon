@@ -292,12 +292,12 @@ object AntiAliasingPhase extends TransformationPhase {
             expr match {
               case cs@CaseClassSelector(_, obj, mid) =>
                 val (rec, path) = fieldPath(cs)
-                Assignment(id, objectUpdateToCopy(rec, path, resSelect))
+                Assignment(id, objectUpdateToCopy(rec, path, resSelect)).setPos(cs)
               case as@ArraySelect(array, index) =>
                 val (rec, path) = fieldPath(as)
-                Assignment(id, objectUpdateToCopy(rec, path, resSelect))
+                Assignment(id, objectUpdateToCopy(rec, path, resSelect)).setPos(as)
               case _ =>
-                Assignment(id, resSelect)
+                Assignment(id, resSelect).setPos(expr)
             }
           }},
           TupleSelect(freshRes.toVariable, 1))
@@ -649,12 +649,12 @@ object AntiAliasingPhase extends TransformationPhase {
   private def objectUpdateToCopy(receiver: Expr, path: List[Field], newValue: Expr): Expr = path match {
     case ClassField(id) :: fs =>
       val ct@CaseClassType(ccd, _) = receiver.getType
-      val rec = objectUpdateToCopy(CaseClassSelector(CaseClassType(ct.classDef, ct.tps), receiver, id), fs, newValue)
+      val rec = objectUpdateToCopy(CaseClassSelector(CaseClassType(ct.classDef, ct.tps), receiver, id), fs, newValue).setPos(newValue)
       copy(receiver, id, rec)
 
     case ArrayIndex(index) :: fs =>
-      val rec = objectUpdateToCopy(ArraySelect(receiver, index), fs, newValue)
-      ArrayUpdated(receiver, index, rec)
+      val rec = objectUpdateToCopy(ArraySelect(receiver, index).setPos(newValue), fs, newValue)
+      ArrayUpdated(receiver, index, rec).setPos(newValue)
 
     case Nil => newValue
   }
@@ -676,7 +676,7 @@ object AntiAliasingPhase extends TransformationPhase {
       if(vd.id == id)
         nv
       else
-        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id)
+        CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id).setPos(cc)
     )
     CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
   }
