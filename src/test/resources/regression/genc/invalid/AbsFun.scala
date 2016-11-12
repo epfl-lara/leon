@@ -1,10 +1,11 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation._
 import leon.lang._
 
 object AbsFun {
 
-  def isPositive(a : Array[Int], size : Int) : Boolean = {
+  def isPositive(a: Array[Int], size: Int) : Boolean = {
     require(a.length >= 0 && size <= a.length)
     rec(0, a, size)
   }
@@ -53,16 +54,12 @@ object AbsFun {
       res._2 <= tab.length &&
       isPositive(res._1, res._2))
 
-  def property(t: Array[Int], k: Int): Boolean = {
-    require(isPositive(t, k) && t.length >= 0 && k >= 0)
-    if(k < t.length) {
-      val nt = if(t(k) < 0) {
-        t.updated(k, -t(k))
-      } else {
-        t.updated(k, t(k))
-      }
-      isPositive(nt, k+1)
-    } else true
-  } holds
+  def _main(): Unit = {
+    val array = Array(0, 5, 3, 10, -5)
+    val absArray = abs(array)
+  }
+
+  @extern
+  def main(args: Array[String]): Unit = _main()
 
 }
