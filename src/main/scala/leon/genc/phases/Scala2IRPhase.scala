@@ -11,6 +11,8 @@ import purescala.{ ExprOps }
 import purescala.Types._
 import xlang.Expressions._
 
+import utils.Position
+
 import ExtraOps._
 
 import ir.{ PrimitiveTypes => PT, Literals => L, Operators => O }
@@ -99,18 +101,47 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     "_" + (tps filterNot { _ == Untyped } map rec map CIR.repId mkString "_")
   }
 
-  private def buildBinOp(lhs: Expr, op: O.BinaryOperator, rhs: Expr)(implicit env: Env) =
-    CIR.BinOp(op, rec(lhs), rec(rhs))
+  // Check validity of the operator
+  private def checkOp(op: O.Operator, isLogical: Boolean, isIntegral: Boolean, pos: Position): Unit = {
+    def check(b: Boolean) = if (!b) {
+      fatalError(s"Invalid use of operator $op with the given operands", pos)
+    }
 
-  private def buildUnOp(op: O.UnaryOperator, expr: Expr)(implicit env: Env) =
-    CIR.UnOp(op, rec(expr))
+    op match {
+      case _: O.FromLogical with O.FromIntegral => check(isLogical || isIntegral)
+      case _: O.FromLogical => check(isLogical)
+      case _: O.FromIntegral => check(isIntegral)
+      case _ => internalError(s"Unhandled check of operator $op")
+    }
+  }
+
+  private def buildBinOp(lhs0: Expr, op: O.BinaryOperator, rhs0: Expr)(pos: Position)(implicit env: Env) = {
+    val lhs = rec(lhs0)
+    val rhs = rec(rhs0)
+
+    val logical = lhs.getType.isLogical && rhs.getType.isLogical
+    val integral = lhs.getType.isIntegral && rhs.getType.isIntegral
+    checkOp(op, logical, integral, pos)
+
+    CIR.BinOp(op, lhs, rhs)
+  }
+
+  private def buildUnOp(op: O.UnaryOperator, expr0: Expr)(pos: Position)(implicit env: Env) = {
+    val expr = rec(expr0)
+
+    val logical = expr.getType.isLogical
+    val integral = expr.getType.isIntegral
+    checkOp(op, logical, integral, pos)
+
+    CIR.UnOp(op, expr)
+  }
 
   // Create a binary AST
-  private def buildMultiOp(op: O.BinaryOperator, exprs: Seq[Expr])(implicit env: Env): CIR.BinOp = exprs.toList match {
+  private def buildMultiOp(op: O.BinaryOperator, exprs: Seq[Expr])(pos: Position)(implicit env: Env): CIR.BinOp = exprs.toList match {
     case Nil => internalError("no operands")
     case a :: Nil => internalError("at least two operands required")
-    case a :: b :: Nil => CIR.BinOp(op, rec(a), rec(b))
-    case a :: xs => CIR.BinOp(op, rec(a), buildMultiOp(op, xs))
+    case a :: b :: Nil => buildBinOp(a, op, b)(pos)
+    case a :: xs => CIR.BinOp(op, rec(a), buildMultiOp(op, xs)(pos))
   }
 
   // Tuples are converted to classes
@@ -259,7 +290,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       case LiteralPattern(b, lit) =>
         update(b, scrutinee)
-        buildBinOp(scrutinee, O.Equals, lit)
+        buildBinOp(scrutinee, O.Equals, lit)(pat.getPos)
 
       case UnapplyPattern(bind, unapply, subs) =>
         fatalError(s"Unapply Pattern, a.k.a. Extractor Objects", pat.getPos)
@@ -488,29 +519,29 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case While(cond, body) => CIR.While(rec(cond), rec(body))
 
-    case LessThan(lhs, rhs)       => buildBinOp(lhs, O.LessThan, rhs)
-    case GreaterThan(lhs, rhs)    => buildBinOp(lhs, O.GreaterThan, rhs)
-    case LessEquals(lhs, rhs)     => buildBinOp(lhs, O.LessEquals, rhs)
-    case GreaterEquals(lhs, rhs)  => buildBinOp(lhs, O.GreaterEquals, rhs)
-    case Equals(lhs, rhs)         => buildBinOp(lhs, O.Equals, rhs)
-    case Not(Equals(lhs, rhs))    => buildBinOp(lhs, O.NotEquals, rhs)
+    case LessThan(lhs, rhs)       => buildBinOp(lhs, O.LessThan, rhs)(e.getPos)
+    case GreaterThan(lhs, rhs)    => buildBinOp(lhs, O.GreaterThan, rhs)(e.getPos)
+    case LessEquals(lhs, rhs)     => buildBinOp(lhs, O.LessEquals, rhs)(e.getPos)
+    case GreaterEquals(lhs, rhs)  => buildBinOp(lhs, O.GreaterEquals, rhs)(e.getPos)
+    case Equals(lhs, rhs)         => buildBinOp(lhs, O.Equals, rhs)(e.getPos)
+    case Not(Equals(lhs, rhs))    => buildBinOp(lhs, O.NotEquals, rhs)(e.getPos)
 
-    case Not(rhs)                 => buildUnOp(O.Not, rhs)
-    case And(exprs)               => buildMultiOp(O.And, exprs)
-    case Or(exprs)                => buildMultiOp(O.Or, exprs)
+    case Not(rhs)                 => buildUnOp(O.Not, rhs)(e.getPos)
+    case And(exprs)               => buildMultiOp(O.And, exprs)(e.getPos)
+    case Or(exprs)                => buildMultiOp(O.Or, exprs)(e.getPos)
 
-    case BVPlus(lhs, rhs)         => buildBinOp(lhs, O.Plus, rhs)
-    case BVMinus(lhs, rhs)        => buildBinOp(lhs, O.Minus, rhs)
-    case BVUMinus(rhs)            => buildUnOp(O.UMinus, rhs)
-    case BVTimes(lhs, rhs)        => buildBinOp(lhs, O.Times, rhs)
-    case BVDivision(lhs, rhs)     => buildBinOp(lhs, O.Div, rhs)
-    case BVRemainder(lhs, rhs)    => buildBinOp(lhs, O.Modulo, rhs)
-    case BVNot(rhs)               => buildUnOp(O.BNot, rhs)
-    case BVAnd(lhs, rhs)          => buildBinOp(lhs, O.BAnd, rhs)
-    case BVOr(lhs, rhs)           => buildBinOp(lhs, O.BOr, rhs)
-    case BVXOr(lhs, rhs)          => buildBinOp(lhs, O.BXor, rhs)
-    case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, O.BLeftShift, rhs)
-    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, O.BRightShift, rhs)
+    case BVPlus(lhs, rhs)         => buildBinOp(lhs, O.Plus, rhs)(e.getPos)
+    case BVMinus(lhs, rhs)        => buildBinOp(lhs, O.Minus, rhs)(e.getPos)
+    case BVUMinus(rhs)            => buildUnOp(O.UMinus, rhs)(e.getPos)
+    case BVTimes(lhs, rhs)        => buildBinOp(lhs, O.Times, rhs)(e.getPos)
+    case BVDivision(lhs, rhs)     => buildBinOp(lhs, O.Div, rhs)(e.getPos)
+    case BVRemainder(lhs, rhs)    => buildBinOp(lhs, O.Modulo, rhs)(e.getPos)
+    case BVNot(rhs)               => buildUnOp(O.BNot, rhs)(e.getPos)
+    case BVAnd(lhs, rhs)          => buildBinOp(lhs, O.BAnd, rhs)(e.getPos)
+    case BVOr(lhs, rhs)           => buildBinOp(lhs, O.BOr, rhs)(e.getPos)
+    case BVXOr(lhs, rhs)          => buildBinOp(lhs, O.BXor, rhs)(e.getPos)
+    case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, O.BLeftShift, rhs)(e.getPos)
+    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, O.BRightShift, rhs)(e.getPos)
     case BVLShiftRight(lhs, rhs)  => fatalError("Operator >>> is not supported", e.getPos)
 
     case MatchExpr(scrutinee, cases) => convertPatMap(scrutinee, cases)

@@ -319,6 +319,17 @@ private[genc] sealed trait IR { ir =>
       case ReferenceType(_) => true
       case _ => false
     }
+
+    // Category test
+    def isLogical: Boolean = this match {
+      case PrimitiveType(pt) => pt.isLogical
+      case _ => false
+    }
+
+    def isIntegral: Boolean = this match {
+      case PrimitiveType(pt) => pt.isIntegral
+      case _ => false
+    }
   }
 
   // Type representing Int32, Boolean, ...

@@ -9,7 +9,17 @@ package ir
  */
 private[genc] object PrimitiveTypes {
 
-  sealed abstract class PrimitiveType
+  sealed abstract class PrimitiveType {
+    def isLogical: Boolean = this match {
+      case BoolType => true
+      case _ => false
+    }
+
+    def isIntegral: Boolean = this match {
+      case CharType | Int32Type => true
+      case _ => false
+    }
+  }
 
   case object CharType extends PrimitiveType
   case object Int32Type extends PrimitiveType
