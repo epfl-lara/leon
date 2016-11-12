@@ -27,6 +27,7 @@ final class IRPrinter[S <: IR](val ir: S) {
     case t: ValDef => rec(t)
     case t: Expr => rec(t)
     case t: Type => rec(t)
+    case t: ArrayAlloc => rec(t)
     case _ => ???
   }
 

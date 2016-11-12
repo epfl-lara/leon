@@ -95,11 +95,16 @@ private[genc] sealed trait IR { ir =>
 
     def getHierarchyLeaves: Set[ClassDef] = getFullHierarchy filter { !_.isAbstract }
 
+    def isHierarchyMutable: Boolean = getHierarchyLeaves exists { c => c.fields exists { _.isMutable } }
+
     // Get the type of a given field
     def getFieldType(fieldId: Id): Type = fields collectFirst { case ValDef(id, typ, _) if id == fieldId => typ } match {
       case Some(typ) => typ
-      case None => ???
+      case None => sys.error(s"no such field $fieldId in class $id")
     }
+
+    // Check whether `this` is the same as `other` or one of its subclasses.
+    def <=(other: ClassDef): Boolean =  (this == other) || (other.getDirectChildren exists { this <= _ })
   }
 
   case class ValDef(id: Id, typ: Type, isVar: Boolean) extends Def {
@@ -119,11 +124,13 @@ private[genc] sealed trait IR { ir =>
     val typ: ArrayType
   }
 
+  def check(t: Tree)(valid: Boolean) { if (!valid) sys.error(s"Invalid $t") }
+
   // Allocate an array with a compile-time size
   case class ArrayAllocStatic(typ: ArrayType, length: Int, values: Seq[Expr]) extends ArrayAlloc {
-    require(
-      // The type of the values should exactly match the type of the array elements
-      (values forall { _.getType == typ.base }) &&
+    check(this)(
+      // The type of the values should match the type of the array elements
+      (values forall { _.getType <= typ.base }) &&
       // The number of values should match the array size
       (length == values.length) &&
       // And empty arrays are forbidden
@@ -305,8 +312,8 @@ private[genc] sealed trait IR { ir =>
     def isMutable: Boolean = this match {
       case PrimitiveType(_) => false
 
-      // We do *NOT* answer this question for the whole class hierarchy!
-      case ClassType(clazz) => clazz.fields exists { _.isMutable }
+      // We do answer this question for the whole class hierarchy!
+      case ClassType(clazz) => clazz.isHierarchyMutable
 
       case ArrayType(_) => true
       case ReferenceType(_) => true
@@ -319,6 +326,12 @@ private[genc] sealed trait IR { ir =>
       case ReferenceType(_) => true
       case _ => false
     }
+
+    // Check that `other` is equivalent to `this` or is a super class of `this`
+    def <=(other: Type): Boolean = (this == other) || ((this, other) match {
+      case (ClassType(cd1), ClassType(cd2)) => cd1 <= cd2
+      case _ => false
+    })
 
     // Category test
     def isLogical: Boolean = this match {
