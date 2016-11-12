@@ -23,8 +23,8 @@ private[genc] object LiftingPhase extends TimedLeonPhase[NIR.ProgDef, LIR.ProgDe
     val reporter = MiniReporter(ctx)
     import reporter._
 
-    val referencing = new ClassLifter(ctx)
-    val lprog = referencing(nprog)
+    val lifter = new ClassLifter(ctx)
+    val lprog = lifter(nprog)
 
     debugTree("RESUTING LIR PROGRAM", lprog)
 
