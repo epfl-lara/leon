@@ -19,9 +19,9 @@ object GenerateCPhase extends LeonPhase[Program, CAST.Prog] {
     ComputeDependenciesPhase andThen
     Pipeline.both(NoopPhase[Dependencies], ComputeFunCtxPhase) andThen
     Scala2IRPhase andThen
-    ReferencingPhase andThen
     NormalisationPhase andThen
     LiftingPhase andThen
+    ReferencingPhase andThen
     IR2CPhase
 
   def run(ctx: LeonContext, prog: Program) = pipeline.run(ctx, prog)

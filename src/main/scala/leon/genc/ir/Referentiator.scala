@@ -21,11 +21,11 @@ import IRs._
  * Array are mutables, but once converted into C they are wrapped into an immutable struct;
  * we therefore do not take array by reference because this would only add an indirection
  */
-final class Referentiator(val ctx: LeonContext) extends Transformer(CIR, RIR) with MiniReporter {
+final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) with MiniReporter {
   import from._
 
-  type Env = Map[CIR.ValDef, RIR.ValDef]
-  val Ø = Map[CIR.ValDef, RIR.ValDef]()
+  type Env = Map[ValDef, to.ValDef]
+  val Ø = Map[ValDef, to.ValDef]()
 
   override def recImpl(fd: FunDef)(implicit env: Env): to.FunDef = {
     val id = fd.id
@@ -71,11 +71,14 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(CIR, RIR) wi
     case Binding(vd0) =>
       // Check the environment for id; if it's a ref we have to reference it.
       val vd = env(vd0)
-      val b = RIR.Binding(vd)
+      val b = to.Binding(vd)
       if (vd.isReference) deref(b) -> env
       else b -> env
 
-    case Decl(_) => internalError("Decl is expected only after normalisation/flattening")
+    case Decl(vd0) =>
+      val vd = rec(vd0)
+      val newEnv = env + (vd0 -> vd)
+      to.Decl(vd) -> newEnv
 
     case DeclInit(vd0, value0) =>
       val vd = rec(vd0)
@@ -103,7 +106,7 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(CIR, RIR) wi
   }
 
   // Adapt the expressions to match w.r.t. references the given parameter types, for argument-like expressions.
-  private def refMatch(params: Seq[RIR.ValDef])(args: Seq[RIR.Expr]): Seq[RIR.Expr] = {
+  private def refMatch(params: Seq[to.ValDef])(args: Seq[to.Expr]): Seq[to.Expr] = {
     (params zip args) map { case (param, arg) =>
       val pr = param.isReference
       val ar = arg.getType.isReference
@@ -117,24 +120,24 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(CIR, RIR) wi
   }
 
   // Build Ref & Deref expression without patterns such as Ref(Deref(_))
-  private def ref(e: RIR.Expr, shortLived: Boolean = false): RIR.Expr = e match {
-    case b @ RIR.Binding(_) => RIR.Ref(b)
-    case RIR.Deref(e) => e
+  private def ref(e: to.Expr, shortLived: Boolean = false): to.Expr = e match {
+    case _: to.Binding | _: to.FieldAccess | _: to.ArrayAccess | _: to.AsA => to.Ref(e)
+    case to.Deref(e) => e
 
     // NOTE Reference can be build on Constructor, but we have to make sure we
     //      don't take the reference of a temporary result for a too long period.
-    case ctor @ RIR.Construct(_, _) if shortLived => RIR.Ref(ctor)
+    case ctor @ to.Construct(_, _) if shortLived => to.Ref(ctor)
 
     case _ => internalError(s"Making reference on an unsupported expression: $e")
   }
 
-  private def deref(e: RIR.Expr): RIR.Expr = e match {
-    case b @ RIR.Binding(vd) if vd.isReference => RIR.Deref(b)
-    case RIR.Ref(e) => e
+  private def deref(e: to.Expr): to.Expr = e match {
+    case b @ to.Binding(vd) if vd.isReference => to.Deref(b)
+    case to.Ref(e) => e
     case _ => internalError(s"Dereferencing an unsupported expression: $e")
   }
 
-  private def toReference(vd: RIR.ValDef) = vd.copy(typ = RIR.ReferenceType(vd.typ))
+  private def toReference(vd: to.ValDef) = vd.copy(typ = to.ReferenceType(vd.typ))
 
 }
 

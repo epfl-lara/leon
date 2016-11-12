@@ -14,7 +14,7 @@ import IRs._
  * condition, ...) and ensure execution order match between Scala & C execution models by
  * adding explicit execution points.
  */
-final class Normaliser(val ctx: LeonContext) extends Transformer(RIR, NIR) with MiniReporter with NoEnv {
+final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with MiniReporter with NoEnv {
   import from._
 
   // Inject return in functions that need it
@@ -283,6 +283,6 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(RIR, NIR) with 
 
   private val freshCounter = new utils.UniqueCounter[String]()
 
-  private val backward = new Transformer(NIR, RIR) with NoEnv
+  private val backward = new Transformer(NIR, CIR) with NoEnv
 }
 

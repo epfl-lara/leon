@@ -4,24 +4,24 @@ package leon
 package genc
 package phases
 
-import ir.IRs.{ LIR }
+import ir.IRs.{ RIR }
 
 import ir.PrimitiveTypes._
 import ir.Literals._
 import ir.Operators._
 
 import genc.{ CAST => C }
-import LIR._
+import RIR._
 
 import collection.mutable.{ Map => MutableMap, Set => MutableSet }
 
-private[genc] object IR2CPhase extends TimedLeonPhase[LIR.ProgDef, CAST.Prog] {
+private[genc] object IR2CPhase extends TimedLeonPhase[RIR.ProgDef, CAST.Prog] {
   val name = "CASTer"
   val description = "Translate the IR tree into the final C AST"
 
-  def getTimer(ctx: LeonContext) = ctx.timers.genc.get("LIR -> CAST")
+  def getTimer(ctx: LeonContext) = ctx.timers.genc.get("RIR -> CAST")
 
-  def apply(ctx: LeonContext, ir: LIR.ProgDef): CAST.Prog = new IR2CImpl(ctx)(ir)
+  def apply(ctx: LeonContext, ir: RIR.ProgDef): CAST.Prog = new IR2CImpl(ctx)(ir)
 }
 
 // This implementation is basically a Transformer that produce something which isn't an IR tree.
@@ -61,7 +61,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
 
   private def rec(prog: ProgDef): C.Prog = {
     // Convert all the functions and types of the input program
-    val finder = new ir.DependencyFinder(LIR)
+    val finder = new ir.DependencyFinder(RIR)
     finder(prog)
 
     finder.getFunctions foreach rec
