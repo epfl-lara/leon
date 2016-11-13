@@ -289,6 +289,8 @@ class GenCSuite extends LeonRegressionSuite {
     val scalac       = "fsc"
     val scala        = "scala"
 
+    info(s"Compiling & evaluating Scala program")
+
     val compile = s"$scalac -deprecation ${libraries.mkString(" ")} $source -d $outClasses"
 
     val runBase = s"$scala -cp $outClasses ${xCtx.progName}"
@@ -296,9 +298,6 @@ class GenCSuite extends LeonRegressionSuite {
       case Some(inputFile) => runBase #< new File(inputFile)
       case None            => Process(runBase)
     }
-
-    // info(s"COMPILE: $compile")
-    // info(s"RUN: $run")
 
     val outputFile = new File(s"$tmpDir/${xCtx.progName}.scala_output")
     val command    = compile #&& (run #> outputFile)
@@ -309,6 +308,12 @@ class GenCSuite extends LeonRegressionSuite {
       fail(s"Compilation or evaluation of the source program failed")
 
     outputFile
+  }
+
+  private def resetFsc() {
+    info(s"Shutting down fsc")
+    val status = runProcess("fsc -shutdown")
+    if (status != 0) info("Failed to shut down fsc")
   }
 
   // Evaluate both Scala and C programs, making sure their output matches
@@ -370,6 +375,8 @@ class GenCSuite extends LeonRegressionSuite {
   }
 
   protected def testAll() = {
+    resetFsc()
+
     // Set C compiler according to the platform we're currently running on
     detectCompilers match {
       case Nil =>
