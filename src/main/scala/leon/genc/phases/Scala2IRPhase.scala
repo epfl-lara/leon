@@ -470,6 +470,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case ArraySelect(array, index) => CIR.ArrayAccess(rec(array), rec(index))
 
+    case ArrayUpdated(array, index, newValue) => fatalError(s"Unsupported copy of array", e.getPos)
+
     case ArrayUpdate(array, index, value) =>
       CIR.Assign(CIR.ArrayAccess(rec(array), rec(index)), rec(value))
 
