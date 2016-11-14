@@ -23,6 +23,7 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
       debugTrees("Program after extraction")      andThen
       MethodLifting                               andThen
       TypingPhase                                 andThen
+      xlang.EffectsChecking                       andThen
       synthesis.ConversionPhase
 
     val pipeBeginWithInlining =
