@@ -161,7 +161,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             .take(maxGen)
             .map(_._1)
             .map(passThrough(expr => debug(s"Testing $expr")))
-            .filterNot { expr => examples.forall(testCandidate(expr)(_).contains(false)) }
+            .filterNot { expr => examples.exists(testCandidate(expr)(_).contains(false)) }
             .map { validateCandidate }
             .flatten
             .toStream
