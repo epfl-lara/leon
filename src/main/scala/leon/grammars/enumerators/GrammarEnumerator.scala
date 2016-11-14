@@ -10,7 +10,7 @@ trait GrammarEnumerator {
   protected val grammar: ExpressionGrammar
 
   /** Returns the iterator of elements corresponding to a specific nonterminal */
-  def iterator(l: Label): Iterator[(Expr, Double)]
+  def iterator(l: Label): Iterator[Expr]
 }
 
 object GrammarEnumerator {
@@ -91,9 +91,9 @@ object Tester {
     /** Code for bottom-up **/
     for (label <- labels; i <- 1 to 100000 ) {
       if (bottomUp.hasNext) {
-        val (e, prob) = bottomUp.next
+        val e = bottomUp.next
         if (i%20000 == 0)
-          println(f"$i%7d: ${e.asString}%40s: $prob")
+          println(f"$i%7d: ${e.asString}")
       }
     }
     println(s"Time: ${System.currentTimeMillis() - before}")

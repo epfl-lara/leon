@@ -36,7 +36,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
     def get = expansion.produce
   }
 
-  def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
+  def iterator(nt: NT): Iterator[R] = new Iterator[R] {
     val ordering = Ordering.by[WorklistElement, Double](elem => elem.logProb + elem.horizon)
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
 
@@ -46,7 +46,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
 
     def hasNext: Boolean = worklist.nonEmpty
 
-    def next: (R, Double) = {
+    def next: R = {
       while (!worklist.head.expansion.complete) {
         val head = worklist.dequeue
         val newElems = expandNext(head)
@@ -61,7 +61,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R] {
       assert(ans.logProb - 1.0e-6 <= prevAns.logProb)
       assert(ans.horizon >= -1.0e-6)
       prevAns = ans
-      (ans.get, ans.logProb)
+      ans.get
     }
 
   }

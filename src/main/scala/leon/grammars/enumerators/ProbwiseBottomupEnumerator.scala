@@ -4,6 +4,10 @@ package leon
 package grammars
 package enumerators
 
+import leon.evaluators.DefaultEvaluator
+import leon.purescala.Common.Identifier
+import leon.purescala.Definitions.Program
+import leon.synthesis.{Example, ExamplesBank}
 import purescala.Expressions.Expr
 import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, ArrayBuffer }
 
@@ -16,7 +20,15 @@ import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, Arr
   * @tparam R The type of enumerated elements.
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
-  type Rule = ProductionRule[NT, R]
+  protected type Rule = ProductionRule[NT, R]
+
+  protected trait ScoredTerm {
+    val r: R
+    val d: Double
+  }
+  protected type Sig <: ScoredTerm
+  protected def toSig(r: R, d: Double): Sig
+  protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean
 
   // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
   // such that each other combination that has not been generated yet has an index >= than one element of the frontier
@@ -57,7 +69,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
     @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
       val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
-      val (operands, logProbs) = children.unzip
+      val operands = children.map(_.r)
+      val logProbs = children.map(_.d)
       Some(FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
     } catch {
       case _: IndexOutOfBoundsException =>
@@ -112,15 +125,17 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
 
   /** A class that represents the stream of generated elements for a specific nonterminal. */
-  protected class NonTerminalStream(nt: NT) extends Iterable[(R, Double)] {
-    private val buffer: ArrayBuffer[(R, Double)] = new ArrayBuffer()
+  protected class NonTerminalStream(nt: NT) extends Iterable[R] {
+
+    protected val buffer: ArrayBuffer[Sig] = new ArrayBuffer()
 
     // The first element to be produced will be the one recursively computed by the horizon map.
     private def initialize(): Unit = {
-      def rec(nt: NT): (R, Double) = {
+      def rec(nt: NT): Sig = {
         val rule = nts(nt)._1
-        val (subs, ds) = rule.subTrees.map(rec).unzip
-        (rule.builder(subs), ds.sum + rule.weight)
+        val (subs, ds) = rule.subTrees.map(rec).map(e => (e.r, e.d)).unzip
+        val e = rule.builder(subs)
+        toSig(e, ds.sum + rule.weight)
       }
       buffer += rec(nt)
     }
@@ -133,11 +148,18 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     private def populateNext() = !lock && {
       try {
         lock = true
-        //println(s"$nt: size is ${buffer.size}, populating")
-        val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
-        buffer += ((r, d))
-        //println(s"$nt: Adding ($r, $d)")
-        op.advance()
+        var found = false
+        while (!found) {
+          //println(s"$nt: size is ${buffer.size}, populating")
+          val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
+          val newE = toSig(r, d)
+          op.advance()
+          if (!redundant(newE, buffer)) {
+            found = true
+            buffer += newE
+          }
+          //println(s"$nt: Adding ($r, $d)")
+        }
         lock = false
       } catch {
         case _: UnsupportedOperationException =>
@@ -148,16 +170,16 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
 
     // Get the i-th element of the buffer
-    @inline def get(i: Int): (R, Double) = {
+    @inline def get(i: Int): Sig = {
       if (i == buffer.size) populateNext()
       buffer(i)
     }
 
-    def iterator: Iterator[(R, Double)] = new Iterator[(R, Double)] {
+    def iterator: Iterator[R] = new Iterator[R] {
       var i = 0
       def hasNext = i < buffer.size || i == buffer.size && populateNext()
       def next = {
-        val res = get(i)
+        val res = get(i).r
         i += 1
         res
       }
@@ -193,6 +215,31 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
+{
+  protected case class Sig(r: Expr, d: Double) extends ScoredTerm
+  @inline protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean = false
+  @inline protected def toSig(r: Expr, d: Double): Sig = Sig(r, d)
+}
+
+
+class EqClassesEnumerator(protected val grammar: ExpressionGrammar, init: Label, as: Seq[Identifier], examples: Seq[Example], program: Program)(implicit ctx: LeonContext)
+  extends AbstractProbwiseBottomupEnumerator(ProbwiseBottomupEnumerator.productive(grammar, init))
+  with GrammarEnumerator
+{
+  protected case class Sig(r: Expr, d: Double, sig: Option[Seq[Expr]]) extends ScoredTerm
+  protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean = {
+    elem.sig.isEmpty ||
+    ( previous exists { prev => elem.sig.get == prev.sig.get })
+  }
+
+  protected lazy val evaluator = new DefaultEvaluator(ctx, program)
+  protected def toSig(r: Expr, d: Double): Sig = {
+    val sig = examples.mapM { ex =>
+      evaluator.eval(r, as.zip(ex.ins).toMap).result
+    }
+    Sig(r, d, sig)
+  }
+}
 
 object ProbwiseBottomupEnumerator {
   import GrammarEnumerator._

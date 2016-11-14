@@ -7,19 +7,18 @@ package rules
 import evaluators.{EvaluationResults, DefaultEvaluator}
 import leon.grammars._
 import leon.grammars.aspects.Tagged
-import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
+import leon.grammars.enumerators.{EqClassesEnumerator, ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
 import solvers._
-import purescala.Expressions.{BooleanLiteral, Expr}
+import leon.purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps.simplestValue
 
 object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val useTopDown = hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)
-    val tactic = if (useTopDown) "top-down" else "bottom-up"
+    val enum = hctx.findOptionOrDefault(SynthesisPhase.optEnum)
 
-    List(new RuleInstantiation(s"Prob. driven enum. ($tactic)") {
+    List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
 
         import hctx.reporter._
@@ -34,14 +33,20 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val outType    = tupleTypeWrap(p.xs map (_.getType))
         val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
         val grammar    = grammars.default(hctx, p)
-        var examples   = p.eb.examples.toSet
         val spec       = letTuple(p.xs, _: Expr, p.phi)
-        val enumerator = {
-          if (useTopDown)
+        var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
+
+        def mkEnum = (enum match {
+          case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, problem.as, examples, program)
+          case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
+          case "topdown"   => new ProbwiseTopdownEnumerator(grammar, topLabel)
+          case _ =>
+            warning("Enumerator not recognized, falling back to top-down...")
             new ProbwiseTopdownEnumerator(grammar, topLabel)
-          else
-            new ProbwiseBottomupEnumerator(grammar, topLabel)
-        }
+        }).iterator(topLabel).take(maxGen)
+        var it = mkEnum
+
+        val restartable = enum == "eqclasses"
 
         debug("Grammar:")
         grammar.printProductions(debug(_))
@@ -71,7 +76,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
             case EvaluationResults.EvaluatorError(err) =>
               debug(s"Error testing CE: $err. Removing $ex")
-              examples -= ex
+              examples = examples diff Seq(ex)
               None
           }
 
@@ -90,12 +95,12 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             solver.assertCnstr(p.pc and not(spec(expr)))
             solver.check match {
               case Some(true) =>
+                // Found counterexample! Exclude this program
                 val model = solver.getModel
                 val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
-                debug(s"Found cex $cex for $expr")
-
-                // Found counterexample! Exclude this program
-                examples += cex
+                debug(s"Found cex $cex for $expr, restarting enum...")
+                examples +:= cex
+                if (restartable) it = mkEnum
                 None
 
               case Some(false) =>
@@ -116,17 +121,18 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
           }
         }
 
-        val filtered =
-          enumerator.iterator(topLabel)
-            .take(maxGen)
-            .map(_._1)
-            .map(passThrough(expr => debug(s"Testing $expr")))
-            .filter { expr => examples.forall(testCandidate(expr)(_).contains(true)) }
-            .map { validateCandidate }
-            .flatten
-            .toStream
 
-        RuleClosed(filtered)
+        RuleClosed (
+          if (!it.hasNext) Stream() else Stream.continually {
+            val expr = it.next
+            debug(s"Testing $expr")
+            if (examples.exists(testCandidate(expr)(_).contains(false))) {
+              None
+            } else {
+              validateCandidate(expr)
+            }
+          }.takeWhile(_ => it.hasNext).collect { case Some(e) => e }
+        )
       }
     })
   }
