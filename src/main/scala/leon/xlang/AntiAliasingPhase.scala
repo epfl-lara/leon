@@ -25,50 +25,18 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, program: Program): Program = {
 
-    //println(program.definedClasses.map(_.mutableTParams))
-    //println(program.definedClasses.map(_.tparams.map(_.tp.isMutable)))
-
     val effectsAnalysis = new EffectsAnalysis
 
-    //we need to perform this now, because as soon as we apply the def transformer
-    //some types will become Untyped and the checkAliasing won't be reliable anymore
-    {
-      val fds = allFunDefs(program)
-      fds.foreach(fd => checkAliasing(fd, effectsAnalysis)(ctx))
-      checkFunctionPureAnnotations(fds, effectsAnalysis)(ctx)
-    }
-
-    //mapping for case classes that needs to be replaced
-    //var ccdMap: Map[CaseClassDef, CaseClassDef] =
-    //  (for {
-    //    ccd <- program.singleCaseClasses
-    //  } yield (ccd, updateCaseClassDef(ccd))).toMap.filter(p => p._1 != p._2)
-
-
-    //println("ccdMap: " + ccdMap)
-    //val ccdBijection: Bijection[ClassDef, ClassDef] = Bijection(ccdMap)
-    //val (pgm, _, _, _) = replaceDefs(program)(fd => None, cd => ccdBijection.getB(cd))
-    //println(pgm)
-
-    //val dependencies = new DependencyFinder
-    //ccdMap = updateCaseClassDefs(ccdMap, dependencies, pgm)
-
-    //val idsMap: Map[Identifier, Identifier] = ccdMap.flatMap(p => {
-    //  p._1.fields.zip(p._2.fields).filter(pvd => pvd._1.id != pvd._2).map(p => (p._1.id, p._2.id))
-    //}).toMap
     val transformer = new DefinitionTransformer {
       override def transformType(tpe: TypeTree): Option[TypeTree] = tpe match {
         case (ft: FunctionType) => Some(makeFunctionTypeExplicit(ft, effectsAnalysis))
         case _ => None
       }
-      //override def transformClassDef(cd: ClassDef): Option[ClassDef] = ccdBijection.getB(cd)
     }
-    //pgm.singleCaseClasses.foreach(ccd => println(ccd + " -> " + defTf.transform(ccd)))
     val cdsMap = program.definedClasses.map(cd => cd -> transformer.transform(cd)).toMap
     val fdsMap = program.definedFunctions.map(fd => fd -> transformer.transform(fd)).toMap
     val pgm = replaceDefsInProgram(program)(fdsMap, cdsMap)
-    //println(leon.purescala.ScalaPrinter(pgm, ctx))//leon.purescala.ScalaPrinter.create(leon.purescala.PrinterOptions(printTypes = true), Some(pgm)).pp(pgm))
-    //println(pgm)
+    //println(leon.purescala.ScalaPrinter(pgm, ctx))
 
     val fds = allFunDefs(pgm)
 
@@ -536,54 +504,6 @@ object AntiAliasingPhase extends TransformationPhase {
   }
 
 
-  private def checkAliasing(fd: FunDef, effects: EffectsAnalysis)(ctx: LeonContext): Unit = {
-    def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
-      getReturnedExpr(body).foreach{
-        case expr if effects.isMutableType(expr.getType) => 
-          findReceiverId(expr).foreach(id =>
-            if(bindings.contains(id))
-              ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
-          )
-        case _ => ()
-      }
-    }
-
-    if(fd.canBeField && effects.isMutableType(fd.returnType))
-      ctx.reporter.fatalError(fd.getPos, "A global field cannot refer to a mutable object")
-    
-    fd.body.foreach(bd => {
-      val params = fd.params.map(_.id).toSet
-      checkReturnValue(bd, params)
-      preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
-        case l@Let(id, v, b) if effects.isMutableType(v.getType) => {
-          if(!isExpressionFresh(v, effects))
-            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          (None, bindings + id)
-        }
-        case l@LetVar(id, v, b) if effects.isMutableType(v.getType) => {
-          if(!isExpressionFresh(v, effects))
-            ctx.reporter.fatalError(v.getPos, "Illegal aliasing: " + v)
-          (None, bindings + id)
-        }
-        case l@LetDef(fds, body) => {
-          fds.foreach(fd => fd.body.foreach(bd => checkReturnValue(bd, bindings)))
-          (None, bindings)
-        }
-
-        case CaseClass(ct, args) => {
-          ct.classDef.tparams.zip(ct.tps).foreach{ case (typeParam, instanceType) => {
-            if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
-              ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
-            }
-          }}
-          (None, bindings)
-        }
-
-        case _ => (None, bindings)
-      })(bd, params)
-    })
-  }
-
   /*
    * A bit hacky, but not sure of the best way to do something like that
    * currently.
@@ -679,51 +599,6 @@ object AntiAliasingPhase extends TransformationPhase {
         CaseClassSelector(CaseClassType(ct.classDef, ct.tps), cc, vd.id).setPos(cc)
     )
     CaseClass(CaseClassType(ct.classDef, ct.tps), newFields).setPos(cc.getPos)
-  }
-
-
-  /*
-   * A fresh expression is an expression that is newly created
-   * and does not share memory with existing values and variables.
-   *
-   * If the expression is made of existing immutable variables (Int or
-   * immutable case classes), it is considered fresh as we consider all
-   * non mutable objects to have a value-copy semantics.
-   *
-   * It turns out that an expression of non-mutable type is always fresh,
-   * as it can not contains reference to a mutable object, by definition
-   */
-  private def isExpressionFresh(expr: Expr, effects: EffectsAnalysis): Boolean = {
-    !effects.isMutableType(expr.getType) || (expr match {
-      case v@Variable(_) => !effects.isMutableType(v.getType)
-      case CaseClass(_, args) => args.forall(arg => isExpressionFresh(arg, effects))
-
-      case FiniteArray(elems, default, _) => elems.forall(p => isExpressionFresh(p._2, effects)) && default.forall(e => isExpressionFresh(e, effects))
-
-      //function invocation always return a fresh expression, by hypothesis (global assumption)
-      case FunctionInvocation(_, _) => true
-
-      //ArrayUpdated returns a mutable array, which by definition is a clone of the original
-      case ArrayUpdated(_, _, _) => true
-
-      //any other expression is conservately assumed to be non-fresh if
-      //any sub-expression is non-fresh (i.e. an if-then-else with a reference in one branch)
-      case Operator(args, _) => args.forall(arg => isExpressionFresh(arg, effects))
-    })
-  }
-
-  /*
-   * Checks and reports error if a function is annotated as pure and still has effects.
-   * Maybe it would be good in the future to merge this @pure annotation with the report
-   * from the AnalysisPhase, but until a good design is found we just implement this quick
-   * error reporting here.
-   */
-  private def checkFunctionPureAnnotations(fds: Seq[FunDef], effects: EffectsAnalysis)(ctx: LeonContext): Unit = {
-    for(fd <- fds if fd.annotations.contains("pure")) {
-      if(effects(fd).nonEmpty) {
-        ctx.reporter.fatalError(fd.getPos, "Function annotated @pure has effects.")
-      }
-    }
   }
 
 }
