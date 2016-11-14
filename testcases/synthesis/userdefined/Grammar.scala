@@ -17,15 +17,15 @@ object Grammar {
   @production
   @tag("1")
   def one = BigInt(1)
-
+/*
   @production(1)
   @tag("plus")
   def plus(b1: BigInt, b2: BigInt) = b1 + b2
 
-  @production(8)
+  @production(1)
   @tag("minus")
   def minus(b1: BigInt, b2: BigInt) = b1 - b2
-
+*/
   @production(21)
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
@@ -42,11 +42,11 @@ object Grammar {
   @production(8)
   def or(b1: Boolean, b2: Boolean) = b1 || b2
 
-  @production(33)
+  @production(20)
   def t = true
 
-  def max(b1: BigInt, b2: BigInt) = choose( (out: BigInt) => {
-    out >= b1 && out >= b2 && (out == b1 || out == b2)
+  def max(b1: BigInt, b2: BigInt, b3: BigInt) = choose( (out: BigInt) => {
+    out >= b1 && out >= b2 && out >= b3 && (out == b1 || out == b2 || out == b3)
   })
 }
 

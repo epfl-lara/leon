@@ -28,7 +28,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   }
   protected type Sig <: ScoredTerm
   protected def toSig(r: R, d: Double): Sig
-  protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean
+  protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean
 
   // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
   // such that each other combination that has not been generated yet has an index >= than one element of the frontier
@@ -133,9 +133,10 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     private def initialize(): Unit = {
       def rec(nt: NT): Sig = {
         val rule = nts(nt)._1
-        val (subs, ds) = rule.subTrees.map(rec).map(e => (e.r, e.d)).unzip
-        val e = rule.builder(subs)
-        toSig(e, ds.sum + rule.weight)
+        val subs = rule.subTrees.map(rec)
+        val e = rule.builder(subs map (_.r))
+        val cost = subs.map(_.d).sum + rule.weight
+        toSig(e, cost)
       }
       buffer += rec(nt)
     }
@@ -154,7 +155,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
           val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
           val newE = toSig(r, d)
           op.advance()
-          if (!redundant(newE, buffer)) {
+          if (isDistinct(newE, buffer)) {
             found = true
             buffer += newE
           }
@@ -217,7 +218,7 @@ class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init:
   with GrammarEnumerator
 {
   protected case class Sig(r: Expr, d: Double) extends ScoredTerm
-  @inline protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean = false
+  @inline protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean = true
   @inline protected def toSig(r: Expr, d: Double): Sig = Sig(r, d)
 }
 
@@ -227,9 +228,13 @@ class EqClassesEnumerator(protected val grammar: ExpressionGrammar, init: Label,
   with GrammarEnumerator
 {
   protected case class Sig(r: Expr, d: Double, sig: Option[Seq[Expr]]) extends ScoredTerm
-  protected def redundant(elem: Sig, previous: Traversable[Sig]): Boolean = {
-    elem.sig.isEmpty ||
-    ( previous exists { prev => elem.sig.get == prev.sig.get })
+  protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean = {
+    elem.sig.isDefined &&
+    (for {
+      s1 <- elem.sig.toSeq
+      prev <- previous
+      s2 <- prev.sig
+    } yield (s1,s2)).forall{ case (s1, s2) => s1 != s2 }
   }
 
   protected lazy val evaluator = new DefaultEvaluator(ctx, program)
@@ -247,6 +252,6 @@ object ProbwiseBottomupEnumerator {
     val ntMap = horizonMap(init, grammar.getProductions).collect {
       case (l, (Some(r), _)) => l -> (r, grammar.getProductions(l))
     }
-    ntMap.mapValues{ case (r, prods) => (r, prods.filter(_.subTrees forall ntMap.contains)) }
+    ntMap.map{ case (k, (r, prods)) => k -> (r, prods.filter(_.subTrees forall ntMap.contains)) }
   }
 }
