@@ -1,6 +1,9 @@
 package leon
 package grammars
 
+import leon.purescala.Expressions.Expr
+import leon.purescala.Types.TypeTree
+
 /**
  * Represents a (partial) expansion of the rules of the grammar
  * @param nt: Non-terminal being expanded at the head
@@ -19,14 +22,20 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
   def produce: R
 
   /**
+    * Produces the expansion, and wraps instances of NonTerminalInstance using ntWrap
+    * @param ntWrap
+    * @return
+    */
+  def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R
+
+  /**
    * Size of the expansion
    */
   def size: Int
 
   /**
-   * Computes the ``horizon'' of this partial expansion. The horizon is the minimum extra negative log probability of
-   * all completed extensions of this expansion.
-   * @param grammar The grammar
+   * Computes the ``horizon'' of this partial expansion. The horizon is the minimum extra log probability of all
+   * completed extensions of this expansion.
    * @param nthor The horizon of each non-terminal
    */
   def horizon(nthor: NT => Double): Double
@@ -36,6 +45,7 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
 case class NonTerminalInstance[NT, R](override val nt: NT) extends Expansion[NT, R](nt) {
   override val complete: Boolean = false
   override def produce: R = throw new NoSuchElementException(s"Unable to expand non-terminal ${this}")
+  override def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = ntWrap(this)
   override val size: Int = 1
   override def horizon(nthor: NT => Double): Double = nthor(nt)
 }
@@ -49,13 +59,21 @@ case class ProdRuleInstance[NT, R](
   require(children.map(_.nt) == rule.subTrees)
   override val complete: Boolean = children.forall(_.complete)
   override def produce: R = rule.builder(children.map(_.produce))
+  override def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = {
+    rule.builder(children.map(_.falseProduce(ntWrap)))
+  }
   override val size: Int = 1 + children.map(_.size).sum
   override def horizon(nthor: NT => Double): Double = children.map(c => c.horizon(nthor)).sum
 
 }
 
-object Expansion {
-
-  
-
+/**
+  * Proxy class that allows us to treat instances of Expansion[NT, Expr] as instances of Expr. This is useful, for
+  * example, in partial evaluation
+  * @param expansion The expansion being wrapped
+  * @param typeTree The type of the produced expression
+  * @tparam NT Type of non-terminal symbols of the grammar
+  */
+case class ExpansionExpr[NT](expansion: Expansion[NT, Expr], typeTree: TypeTree) extends Expr {
+  override def getType: TypeTree = typeTree
 }

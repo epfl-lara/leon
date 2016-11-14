@@ -5,10 +5,10 @@ package synthesis
 
 import purescala.ExprOps.replace
 import purescala.ScalaPrinter
-import purescala.Definitions.{Program, FunDef}
-
+import purescala.Definitions.{FunDef, Program}
 import leon.utils._
 import graph._
+import leon.grammars.enumerators.EnumeratorStats
 
 object SynthesisPhase extends UnitPhase[Program] {
   val name        = "Synthesis"
@@ -115,6 +115,12 @@ object SynthesisPhase extends UnitPhase[Program] {
       ctx.reporter.info("")
     }
 
+    println("-------")
+    println("Evaluator Stats!")
+    println(s"partialEvalRejectionCount: ${EnumeratorStats.partialEvalRejectionCount}")
+    println(s"expandNextCallCount: ${EnumeratorStats.expandNextCallCount}")
+    println(s"iteratorNextCallCount: ${EnumeratorStats.iteratorNextCallCount}")
+    println(s"cegisIterCount: ${EnumeratorStats.cegisIterCount}")
   }
 
 }

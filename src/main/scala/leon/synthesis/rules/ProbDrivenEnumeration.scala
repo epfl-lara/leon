@@ -4,9 +4,10 @@ package leon
 package synthesis
 package rules
 
-import evaluators.{EvaluationResults, DefaultEvaluator}
-import leon.grammars.Label
-import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, ProbwiseBottomupEnumerator}
+import evaluators.{DefaultEvaluator, EvaluationResults, Evaluator, PartialExpansionEvaluator}
+import leon.grammars.{Expansion, ExpansionExpr, Label}
+import leon.grammars.enumerators.{EnumeratorStats, ProbwiseBottomupEnumerator, ProbwiseTopdownEnumerator}
+import leon.purescala.Types.Untyped
 import solvers._
 import purescala.Expressions.{BooleanLiteral, Expr}
 import purescala.Constructors._
@@ -26,28 +27,23 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         implicit val hctx0 = hctx
 
         // Maximum generated # of programs
-        val maxGen = 100000
+        val maxGen = 10000000
         val solverTo = 3000
         val useOptTimeout = hctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
 
-        val evaluator  = new DefaultEvaluator(hctx, hctx.program)
+        val fullEvaluator = new DefaultEvaluator(hctx, hctx.program)
+        val partialEvaluator = new PartialExpansionEvaluator(hctx, hctx.program)
         val solverF    = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
         val outType    = tupleTypeWrap(p.xs map (_.getType))
         val grammar    = grammars.default(hctx, p)
         var examples   = p.eb.examples.toSet
         val spec       = letTuple(p.xs, _: Expr, p.phi)
-        val enumerator = {
-          if (useTopDown)
-            new ProbwiseTopdownEnumerator(grammar, Label(outType))
-          else
-            new ProbwiseBottomupEnumerator(grammar, Label(outType))
-        }
 
         debug("Grammar:")
         grammar.printProductions(debug(_))
 
-        // Tests a candidate solution against an example in the correct environment
-        def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
+        // Evaluates a candidate against an example in the correct environment
+        def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example) = {
           def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
             case ((id, v), bd) => let(id, v, bd)
           }
@@ -59,9 +55,12 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
               equality(expr, tupleWrap(outs))
           }
 
-          val res = evaluator.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+          evalr.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+        }
 
-          res match {
+        // Tests a candidate solution against an example in the correct environment
+        def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
+          evalCandidate(expr, fullEvaluator)(ex) match {
             case EvaluationResults.Successful(ex) =>
               Some(ex == BooleanLiteral(true))
 
@@ -74,9 +73,41 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
               examples -= ex
               None
           }
-
         }
 
+        object MeetsSpec extends Enumeration {
+          type MeetsSpec = Value
+          val YES, NO, NOTYET = Value
+        }
+
+        // Might return none if EvaluatorError occurs
+        def partialTestCandidate(expansion: Expansion[_, Expr])(ex: Example): Option[MeetsSpec.MeetsSpec] = {
+          val expr = ExpansionExpr(expansion, Untyped)
+          val res = evalCandidate(expr, partialEvaluator)(ex)
+          val ans = res match {
+            case EvaluationResults.Successful(BooleanLiteral(true)) => Some(MeetsSpec.YES)
+            case EvaluationResults.Successful(BooleanLiteral(false)) => {
+              debug(s"FL testing CE. Example: $ex. Rejecting partial expansion $expansion")
+              Some(MeetsSpec.NO)
+            }
+            case EvaluationResults.Successful(_) => Some(MeetsSpec.NOTYET)
+
+            case EvaluationResults.RuntimeError(err) =>
+              debug(s"RE testing CE: $err. Example: $ex. Rejecting partial expansion $expansion")
+              Some(MeetsSpec.NO)
+
+            case EvaluationResults.EvaluatorError(err) =>
+              debug(s"Error testing CE: $err. Example: $ex")
+              None
+          }
+
+          ans
+        }
+
+        def scoreTestCandidate(expansion: Expansion[_, Expr]): (Int, Int) = {
+          val results = examples.map(partialTestCandidate(expansion)(_)).flatten
+          (results.count(_ == MeetsSpec.YES), results.count(_ == MeetsSpec.NO))
+        }
 
         /**
           * Second phase of STE: verify a given candidate by looking for CEX inputs.
@@ -85,6 +116,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         def validateCandidate(expr: Expr): Option[Solution] = {
           debug(s"Validating $expr")
           val solver  = solverF.getNewSolver()
+          EnumeratorStats.cegisIterCount += 1
 
           try {
             solver.assertCnstr(p.pc and not(spec(expr)))
@@ -117,12 +149,19 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
           }
         }
 
+        val enumerator = {
+          if (useTopDown)
+            new ProbwiseTopdownEnumerator(grammar, Label(outType), scoreTestCandidate)
+          else
+            new ProbwiseBottomupEnumerator(grammar, Label(outType))
+        }
+
         val filtered =
           enumerator.iterator(Label(outType))
             .take(maxGen)
             .map(_._1)
             .map(passThrough(expr => debug(s"Testing $expr")))
-            .filter { expr => examples.forall(testCandidate(expr)(_).contains(true)) }
+            .filterNot { expr => examples.forall(testCandidate(expr)(_).contains(false)) }
             .map { validateCandidate }
             .flatten
             .toStream
