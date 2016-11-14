@@ -155,6 +155,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case _ => internalError("Unexpected ${typ.getClass} instead of TupleType")
   }
 
+  private def castNotSupported(ct: ClassType): Boolean =
+    ct.classDef.isAbstract && ct.classDef.hasParent
+
   // When converting expressions, we keep track of the variable in scope to build Bindings
   type Env = Map[Identifier, CIR.ValDef]
 
@@ -547,7 +550,15 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case BVLShiftRight(lhs, rhs)  => fatalError("Operator >>> is not supported", e.getPos)
 
     case MatchExpr(scrutinee, cases) => convertPatMap(scrutinee, cases)
+
+    case IsInstanceOf(expr, ct) if castNotSupported(ct) =>
+      fatalError(s"Membership tests on abstract classes are not supported", e.getPos)
+
     case IsInstanceOf(expr, ct) => CIR.IsA(rec(expr), CIR.ClassType(rec(ct)))
+
+    case AsInstanceOf(expr, ct) if castNotSupported(ct) =>
+      fatalError(s"Cast to abstract classes are not supported", e.getPos)
+
     case AsInstanceOf(expr, ct) => CIR.AsA(rec(expr), CIR.ClassType(rec(ct)))
 
     case e => internalError(s"expression `$e` of type ${e.getClass} not handled")
