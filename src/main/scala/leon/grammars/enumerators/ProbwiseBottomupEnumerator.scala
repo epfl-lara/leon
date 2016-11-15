@@ -7,7 +7,7 @@ package enumerators
 import leon.evaluators.DefaultEvaluator
 import leon.purescala.Common.Identifier
 import leon.purescala.Definitions.Program
-import leon.synthesis.{Example, ExamplesBank}
+import leon.synthesis.Example
 import purescala.Expressions.Expr
 import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, ArrayBuffer }
 
@@ -21,20 +21,21 @@ import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, Arr
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
   protected type Rule = ProductionRule[NT, R]
+  protected type Coords = Seq[Int]
 
-  protected trait ScoredTerm {
-    val r: R
-    val d: Double
+  protected abstract class ProbTerm(rule: Rule, subs: Seq[StreamElem]){
+    val r: R = rule.builder(subs map (_.r))
+    val logProb: Double = subs.map(_.logProb).sum + rule.weight
   }
-  protected type Sig <: ScoredTerm
-  protected def toSig(r: R, d: Double): Sig
-  protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean
+  protected type StreamElem <: ProbTerm
+  protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem
+  protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean
 
   // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
   // such that each other combination that has not been generated yet has an index >= than one element of the frontier
   // Stores the elements in a priority queue by maximum probability
   class Frontier(dim: Int, rule: Rule, streams: Seq[NonTerminalStream]) {
-    private val ordering = Ordering.by[FrontierElem, Double](_.logProb)
+    private val ordering = Ordering.by[FrontierElem, Double](_.streamElem.logProb)
     private val queue = new PriorityQueue[FrontierElem]()(ordering)
     private var futureElems = List.empty[ElemSuspension]
 
@@ -69,9 +70,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
     @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
       val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
-      val operands = children.map(_.r)
-      val logProbs = children.map(_.d)
-      Some(FrontierElem(le.coordinates, rule.builder(operands), logProbs.sum + rule.weight), le.grownIndex)
+      Some(FrontierElem(le.coordinates, toElem(rule, children)), le.grownIndex)
     } catch {
       case _: IndexOutOfBoundsException =>
         // Thrown by stream.get: A stream has been depleted
@@ -81,7 +80,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     // promote all elements suspensions to frontier elements
     private def promote() = {
       for {
-        fe <- futureElems
+        fe <- futureElems.reverse
         (elem, index) <- elem(fe)
       } enqueue(elem, index)
       futureElems = Nil
@@ -108,7 +107,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected case class ElemSuspension(coordinates: List[Int], grownIndex: Int)
 
   /** An element of the frontier */
-  protected case class FrontierElem(coordinates: List[Int], elem: R, logProb: Double) {
+  protected case class FrontierElem(coordinates: List[Int], streamElem: StreamElem) {
     def nextElems = coordinates.zipWithIndex.map {
       case (elem, updated) => ElemSuspension(coordinates.updated(updated, elem + 1), updated)
     }
@@ -127,16 +126,13 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   /** A class that represents the stream of generated elements for a specific nonterminal. */
   protected class NonTerminalStream(nt: NT) extends Iterable[R] {
 
-    protected val buffer: ArrayBuffer[Sig] = new ArrayBuffer()
+    protected val buffer: ArrayBuffer[StreamElem] = new ArrayBuffer()
 
     // The first element to be produced will be the one recursively computed by the horizon map.
     private def initialize(): Unit = {
-      def rec(nt: NT): Sig = {
+      def rec(nt: NT): StreamElem = {
         val rule = nts(nt)._1
-        val subs = rule.subTrees.map(rec)
-        val e = rule.builder(subs map (_.r))
-        val cost = subs.map(_.d).sum + rule.weight
-        toSig(e, cost)
+        toElem(rule, rule.subTrees.map(rec))
       }
       buffer += rec(nt)
     }
@@ -152,12 +148,11 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         var found = false
         while (!found) {
           //println(s"$nt: size is ${buffer.size}, populating")
-          val (r, d, op) = operators(nt).flatMap(_.getNext).maxBy(_._2)
-          val newE = toSig(r, d)
+          val (elem, op) = operators(nt).flatMap(_.getNext).maxBy(_._1.logProb)
           op.advance()
-          if (isDistinct(newE, buffer)) {
+          if (isDistinct(elem, buffer)) {
             found = true
-            buffer += newE
+            buffer += elem
           }
           //println(s"$nt: Adding ($r, $d)")
         }
@@ -171,7 +166,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     }
 
     // Get the i-th element of the buffer
-    @inline def get(i: Int): Sig = {
+    @inline def get(i: Int): StreamElem = {
       if (i == buffer.size) populateNext()
       buffer(i)
     }
@@ -194,8 +189,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     private val typedStreams = rule.subTrees.map(streams)
     private val frontier: Frontier = new Frontier(arity, rule, typedStreams)
 
-    @inline def getNext: Option[(R, Double, OperatorStream)] = {
-      frontier.headOption.map(fe => (fe.elem, fe.logProb, this))
+    @inline def getNext: Option[(StreamElem, OperatorStream)] = {
+      frontier.headOption.map(fe => (fe.streamElem, this))
     }
 
     // Remove the top element of the frontier and add its derivatives
@@ -217,9 +212,11 @@ class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init:
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
 {
-  protected case class Sig(r: Expr, d: Double) extends ScoredTerm
-  @inline protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean = true
-  @inline protected def toSig(r: Expr, d: Double): Sig = Sig(r, d)
+  protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]) extends ProbTerm(rule, subs)
+  @inline protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean = true
+  @inline protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem = {
+    StreamElem(rule, subs)
+  }
 }
 
 
@@ -227,22 +224,37 @@ class EqClassesEnumerator(protected val grammar: ExpressionGrammar, init: Label,
   extends AbstractProbwiseBottomupEnumerator(ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
 {
-  protected case class Sig(r: Expr, d: Double, sig: Option[Seq[Expr]]) extends ScoredTerm
-  protected def isDistinct(elem: Sig, previous: Traversable[Sig]): Boolean = {
+  protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]) extends ProbTerm(rule, subs) {
+
+    lazy val sig: Option[Seq[Expr]] = {
+      def evalEx(subs: Seq[Expr], ex: Example) = {
+        evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
+      }
+      if (subs.isEmpty) {
+        examples.mapM(evalEx(Nil, _))
+      } else {
+        for {
+          subSigs0 <- subs mapM (_.sig)
+          subSigs = subSigs0.transpose
+          res <- subSigs zip examples mapM (evalEx _).tupled
+        } yield res
+      }
+    }
+
+  }
+  protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean = {
     elem.sig.isDefined &&
     (for {
-      s1 <- elem.sig.toSeq
       prev <- previous
-      s2 <- prev.sig
+      s1 <- prev.sig
+      s2 <- elem.sig
     } yield (s1,s2)).forall{ case (s1, s2) => s1 != s2 }
   }
 
   protected lazy val evaluator = new DefaultEvaluator(ctx, program)
-  protected def toSig(r: Expr, d: Double): Sig = {
-    val sig = examples.mapM { ex =>
-      evaluator.eval(r, as.zip(ex.ins).toMap).result
-    }
-    Sig(r, d, sig)
+
+  @inline protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem = {
+    StreamElem(rule, subs)
   }
 }
 
