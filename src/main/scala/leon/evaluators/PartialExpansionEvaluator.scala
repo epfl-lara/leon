@@ -16,10 +16,33 @@ class PartialExpansionEvaluator(ctx: LeonContext, prog: Program, bank: Evaluatio
   protected[evaluators] override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {
     // println(s"> Evalling ${expr}")
     val ans = expr match {
+      case Equals(le, re) => {
+        // println("Evalling equals")
+        val lv = e(le)
+        val rv = e(re)
+
+        val ans = if (lv == rv) {
+          BooleanLiteral(true)
+        } else {
+          (lv, rv) match {
+            case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
+            case (FiniteBag(el1, _),FiniteBag(el2, _)) => BooleanLiteral(el1 == el2)
+            case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
+            case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
+            case (ExpansionExpr(_, _), _) => expr
+            case (_, ExpansionExpr(_, _)) => expr
+            case _ => BooleanLiteral(false)
+          }
+        }
+        // println(s"${ans}")
+        ans
+      }
+
       case ExpansionExpr(NonTerminalInstance(_), typeTree) => {
         // println("Immediate return!")
         expr
       }
+
       case ExpansionExpr(ProdRuleInstance(nt, rule, children), typeTree) => {
         val childResults = children.map(child => e(ExpansionExpr(child, Untyped)))
         if (childResults.exists(_.isInstanceOf[ExpansionExpr[_]])) {
@@ -29,7 +52,7 @@ class PartialExpansionEvaluator(ctx: LeonContext, prog: Program, bank: Evaluatio
           // println(s">> Super call 1! expr: ${expr}")
           try {
             val ans = super.e(rule.builder(childResults))
-            // println(s"<< Super call 1! expr: ${expr}")
+            // println(s"<< Super call 1! expr: ${expr}. Ans: ${ans}")
             ans
           } catch {
             case evalError: EvalError => {
@@ -40,11 +63,12 @@ class PartialExpansionEvaluator(ctx: LeonContext, prog: Program, bank: Evaluatio
           }
         }
       }
+
       case _ => {
         // println(s">> Super call 2! expr: ${expr}")
         try {
           val ans = super.e(expr)
-          // println(s"<< Super call 2! expr: ${expr}")
+          // println(s"<< Super call 2! expr: ${expr}. Ans: ${ans}")
           ans
         } catch {
           case evalError: EvalError => {

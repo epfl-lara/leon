@@ -55,7 +55,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
   }
 
   def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
-    val ordering = Ordering.by[WorklistElement, Double](elem => 10 * elem.score + elem.logProb + elem.horizon)
+    val ordering = Ordering.by[WorklistElement, Double](elem => 8 * elem.score + elem.logProb + elem.horizon)
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
     val worklistSeed = WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt), 0)
     var prevAns = worklistSeed
@@ -75,7 +75,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
       EnumeratorStats.iteratorNextCallCount += 1
       while (!worklist.head.expansion.complete) {
         val head = worklist.dequeue
-        val headScore = scoreCandidate(head.expansion)
+        val headScore = scoreCandidate(head.expansion) // (0, 0) to disable partial evaluation
         if (headScore._2 == 0) {
           EnumeratorStats.partialEvalAcceptCount += 1
           val newElems = expandNext(head, headScore._1)
