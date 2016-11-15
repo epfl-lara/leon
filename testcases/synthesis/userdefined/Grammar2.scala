@@ -52,9 +52,11 @@ object Grammar {
 
   def add1(b1: BigInt, b2: BigInt) = {
     ???[BigInt]
+    // choose ((res: BigInt) => res >= b1 && res >= b2)
   } ensuring {
     res => ((b1, b2), res) passes {
       case (BigInt(3), BigInt(4)) => BigInt(7)
+      case (BigInt(4), BigInt(7)) => BigInt(11)
     }
   }
 

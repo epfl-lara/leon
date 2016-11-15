@@ -115,12 +115,12 @@ object SynthesisPhase extends UnitPhase[Program] {
       ctx.reporter.info("")
     }
 
-    println("-------")
+    /* println("-------")
     println("Evaluator Stats!")
     println(s"partialEvalRejectionCount: ${EnumeratorStats.partialEvalRejectionCount}")
     println(s"expandNextCallCount: ${EnumeratorStats.expandNextCallCount}")
     println(s"iteratorNextCallCount: ${EnumeratorStats.iteratorNextCallCount}")
-    println(s"cegisIterCount: ${EnumeratorStats.cegisIterCount}")
+    println(s"cegisIterCount: ${EnumeratorStats.cegisIterCount}") */
   }
 
 }

@@ -105,7 +105,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         }
 
         def scoreTestCandidate(expansion: Expansion[_, Expr]): (Int, Int) = {
-          val results = examples.map(partialTestCandidate(expansion)(_)).flatten
+          val results = examples.par.map(partialTestCandidate(expansion)(_)).flatten
           (results.count(_ == MeetsSpec.YES), results.count(_ == MeetsSpec.NO))
         }
 

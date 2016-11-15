@@ -82,8 +82,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
           worklist ++= newElems
           if (worklist.size >= 1.5 * lastPrint) {
             debug(s"Worklist size: ${worklist.size}")
-            println(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                    s"${EnumeratorStats.partialEvalRejectionCount}")
+            debug("Accept / reject ratio: " +
+                  s"${EnumeratorStats.partialEvalAcceptCount} /" +
+                  s"${EnumeratorStats.partialEvalRejectionCount}")
             lastPrint = worklist.size
           }
         } else {
