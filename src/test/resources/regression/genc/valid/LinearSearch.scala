@@ -1,5 +1,6 @@
 /* Copyright 2009-2016 EPFL, Lausanne */
 
+import leon.annotation._
 import leon.lang._
 
 /* The calculus of Computation textbook */
@@ -38,5 +39,14 @@ object LinearSearch {
     }) invariant(i >= 0 && i <= size)
     set
   }
+
+  def _main() = {
+    val array = Array(55, 0, -5, 9, 13, 42, -27, 0)
+    if (linearSearch(array, 42) && !linearSearch(array, 58)) 0
+    else 1
+  }
+
+  @extern
+  def main(args: Array[String]) = _main()
 
 }

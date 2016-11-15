@@ -4,7 +4,7 @@ import leon.annotation.extern
 import leon.lang._
 
 object Generics3 {
-  case class Dummy[T](val t: T)
+  case class Dummy[T](t: T)
 
   def fun[T](t: Option[T]): Option[Dummy[T]] = {
     if (t.isDefined) Some(Dummy(t.get))

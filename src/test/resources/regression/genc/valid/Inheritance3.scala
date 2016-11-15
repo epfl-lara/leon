@@ -14,7 +14,11 @@ object Inheritance3 {
   case class Three(x: Int, y: Int, z: Int) extends Derived
 
   def _main() = {
-    0
+    val a = One(1)
+    val b = Two(2, 2)
+    val c = Three(3, 3, 3)
+    if (a.x + b.x + c.x == 6) 0
+    else 1
   } ensuring { _ == 0 }
 
   @extern

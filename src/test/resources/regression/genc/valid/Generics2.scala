@@ -4,7 +4,7 @@ import leon.annotation.extern
 import leon.lang._
 
 object Generics2 {
-  case class Dummy[T](val t: T)
+  case class Dummy[T](t: T)
 
   def _main() = {
     val d1 = Dummy(true)

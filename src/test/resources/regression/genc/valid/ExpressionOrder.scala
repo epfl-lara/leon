@@ -43,14 +43,16 @@ object ExpressionOrder {
   }
 
   def _main() = {
-      bool2int(test0(false), 1)  +
-      bool2int(test1(42),    2)  +
-      bool2int(test2(58),    4)  +
-      bool2int(test3(false), 8)  +
-      bool2int(test4(false), 16) +
-      bool2int(test6,        32) +
-      bool2int(test7,        64) +
-      bool2int(test8,        128)
+    syntaxCheck(0)
+
+    bool2int(test0(false), 1)  +
+    bool2int(test1(42),    2)  +
+    bool2int(test2(58),    4)  +
+    bool2int(test3(false), 8)  +
+    bool2int(test4(false), 16) +
+    bool2int(test6,        32) +
+    bool2int(test7,        64) +
+    bool2int(test8,        128)
   } ensuring { _ == 0 }
 
   def test0(b: Boolean) = {
