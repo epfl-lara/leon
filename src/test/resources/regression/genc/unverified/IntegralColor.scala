@@ -155,7 +155,9 @@ object IntegralColor {
                                  1, 2, 1,
                                  1, 1, 1))
 
-    val smoothed = Array.fill(gray.length)(0)
+    // val smoothed = Array.fill(gray.length)(0) // This is a VLA
+    assert(gray.length == 4)
+    val smoothed = Array.fill(4)(0)
     assert(smoothed.length == expected.length)
 
     var idx = 0;
