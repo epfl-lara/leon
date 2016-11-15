@@ -35,6 +35,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val grammar    = grammars.default(hctx, p)
         val spec       = letTuple(p.xs, _: Expr, p.phi)
         var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
+        val timers     = hctx.timers.enumeration
 
         def mkEnum = (enum match {
           case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, problem.as, examples, program)
@@ -53,6 +54,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
         // Tests a candidate solution against an example in the correct environment
         def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
+          timers.test.start()
           def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
             case ((id, v), bd) => let(id, v, bd)
           }
@@ -65,6 +67,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
           }
 
           val res = evaluator.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+          timers.test.stop()
 
           res match {
             case EvaluationResults.Successful(ex) =>
@@ -82,12 +85,12 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
         }
 
-
         /**
           * Second phase of STE: verify a given candidate by looking for CEX inputs.
           * Returns the potential solution and whether it is to be trusted.
           */
         def validateCandidate(expr: Expr): Option[Solution] = {
+          timers.validate.start()
           debug(s"Validating $expr")
           val solver  = solverF.getNewSolver()
 
@@ -100,7 +103,9 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                 val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
                 debug(s"Found cex $cex for $expr, restarting enum...")
                 examples +:= cex
-                if (restartable) it = mkEnum
+                if (restartable) {
+                  it = mkEnum
+                }
                 None
 
               case Some(false) =>
@@ -117,6 +122,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                 }
             }
           } finally {
+            timers.validate.stop()
             solverF.reclaim(solver)
           }
         }

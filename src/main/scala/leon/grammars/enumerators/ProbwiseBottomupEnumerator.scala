@@ -9,7 +9,8 @@ import leon.purescala.Common.Identifier
 import leon.purescala.Definitions.Program
 import leon.synthesis.Example
 import purescala.Expressions.Expr
-import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, ArrayBuffer }
+import scala.collection.mutable
+import scala.collection.mutable.{ PriorityQueue, HashSet, HashMap, ArrayBuffer }
 
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
   * After initialization, each nonterminal will produce a series of unique elements in decreasing probability order.
@@ -20,16 +21,23 @@ import scala.collection.mutable.{ PriorityQueue, Set => MutableSet, HashMap, Arr
   * @tparam R The type of enumerated elements.
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
+
+  protected val ctx: LeonContext
   protected type Rule = ProductionRule[NT, R]
   protected type Coords = Seq[Int]
 
-  protected abstract class ProbTerm(rule: Rule, subs: Seq[StreamElem]){
+  protected val timers = ctx.timers.enumeration
+
+  protected type Sig
+  protected def mkSig(elem: StreamElem): Sig
+
+  protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]){
     val r: R = rule.builder(subs map (_.r))
     val logProb: Double = subs.map(_.logProb).sum + rule.weight
+    lazy val sig = mkSig(this)
   }
-  protected type StreamElem <: ProbTerm
-  protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem
-  protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean
+
+  protected def isDistinct(elem: StreamElem, previous: HashSet[Sig]): Boolean
 
   // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
   // such that each other combination that has not been generated yet has an index >= than one element of the frontier
@@ -40,8 +48,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     private var futureElems = List.empty[ElemSuspension]
 
     private val byDim = Array.fill(dim)(
-      HashMap[Int, MutableSet[FrontierElem]]()
-        .withDefaultValue(MutableSet[FrontierElem]())
+      HashMap[Int, HashSet[FrontierElem]]()
+        .withDefaultValue(HashSet[FrontierElem]())
     )
 
     @inline private def dominates(e1: FrontierElem, e2: FrontierElem) =
@@ -70,7 +78,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
     @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
       val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
-      Some(FrontierElem(le.coordinates, toElem(rule, children)), le.grownIndex)
+      Some(FrontierElem(le.coordinates, StreamElem(rule, children)), le.grownIndex)
     } catch {
       case _: IndexOutOfBoundsException =>
         // Thrown by stream.get: A stream has been depleted
@@ -127,12 +135,13 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected class NonTerminalStream(nt: NT) extends Iterable[R] {
 
     protected val buffer: ArrayBuffer[StreamElem] = new ArrayBuffer()
+    protected val hashSet: HashSet[Sig] = new HashSet()
 
     // The first element to be produced will be the one recursively computed by the horizon map.
     private def initialize(): Unit = {
       def rec(nt: NT): StreamElem = {
         val rule = nts(nt)._1
-        toElem(rule, rule.subTrees.map(rec))
+        StreamElem(rule, rule.subTrees.map(rec))
       }
       buffer += rec(nt)
     }
@@ -150,7 +159,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
           //println(s"$nt: size is ${buffer.size}, populating")
           val (elem, op) = operators(nt).flatMap(_.getNext).maxBy(_._1.logProb)
           op.advance()
-          if (isDistinct(elem, buffer)) {
+          if (isDistinct(elem, hashSet)) {
             found = true
             buffer += elem
           }
@@ -208,54 +217,58 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   def iterator(nt: NT) = streams.get(nt).map(_.iterator).getOrElse(Iterator())
 }
 
-class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit ctx: LeonContext)
+class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init: Label)(implicit protected val ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator[Label, Expr](ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
 {
-  protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]) extends ProbTerm(rule, subs)
-  @inline protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean = true
-  @inline protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem = {
-    StreamElem(rule, subs)
-  }
+  type Sig = Unit
+  @inline protected def isDistinct(elem: StreamElem, previous: HashSet[Sig]): Boolean = true
+  @inline protected def mkSig(elem: StreamElem): Sig = ()
 }
 
 
-class EqClassesEnumerator(protected val grammar: ExpressionGrammar, init: Label, as: Seq[Identifier], examples: Seq[Example], program: Program)(implicit ctx: LeonContext)
+class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
+                           init: Label,
+                           as: Seq[Identifier],
+                           examples: Seq[Example],
+                           program: Program
+                         )(implicit protected val ctx: LeonContext)
   extends AbstractProbwiseBottomupEnumerator(ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
 {
-  protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]) extends ProbTerm(rule, subs) {
-
-    lazy val sig: Option[Seq[Expr]] = {
-      def evalEx(subs: Seq[Expr], ex: Example) = {
-        evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
-      }
-      if (subs.isEmpty) {
-        examples.mapM(evalEx(Nil, _))
-      } else {
-        for {
-          subSigs0 <- subs mapM (_.sig)
-          subSigs = subSigs0.transpose
-          res <- subSigs zip examples mapM (evalEx _).tupled
-        } yield res
-      }
-    }
-
-  }
-  protected def isDistinct(elem: StreamElem, previous: Traversable[StreamElem]): Boolean = {
-    elem.sig.isDefined &&
-    (for {
-      prev <- previous
-      s1 <- prev.sig
-      s2 <- elem.sig
-    } yield (s1,s2)).forall{ case (s1, s2) => s1 != s2 }
-  }
-
   protected lazy val evaluator = new DefaultEvaluator(ctx, program)
 
-  @inline protected def toElem(rule: Rule, subs: Seq[StreamElem]): StreamElem = {
-    StreamElem(rule, subs)
+  protected type Sig = Option[Seq[Expr]]
+
+  protected def mkSig(elem: StreamElem): Sig = {
+    import elem._
+
+    def evalEx(subs: Seq[Expr], ex: Example) = {
+      timers.eval.start()
+      val res = evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
+      timers.eval.stop()
+      res
+    }
+    val res = if (subs.isEmpty) {
+      examples.mapM(evalEx(Nil, _))
+    } else {
+      for {
+        subSigs0 <- subs mapM (_.sig)
+        subSigs = subSigs0.transpose
+        res <- subSigs zip examples mapM (evalEx _).tupled
+      } yield res
+    }
+    res
   }
+
+  protected def isDistinct(elem: StreamElem, previous: mutable.HashSet[Sig]): Boolean = {
+    timers.distinct.start()
+    val res = !previous.contains(elem.sig)
+    if (res) previous.add(elem.sig)
+    timers.distinct.stop()
+    res
+  }
+
 }
 
 object ProbwiseBottomupEnumerator {
