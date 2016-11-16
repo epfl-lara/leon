@@ -17,7 +17,7 @@ object Grammar {
   @production
   @tag("1")
   def one = BigInt(1)
-/*
+
   @production(1)
   @tag("plus")
   def plus(b1: BigInt, b2: BigInt) = b1 + b2
@@ -25,7 +25,7 @@ object Grammar {
   @production(1)
   @tag("minus")
   def minus(b1: BigInt, b2: BigInt) = b1 - b2
-*/
+
   @production(21)
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
