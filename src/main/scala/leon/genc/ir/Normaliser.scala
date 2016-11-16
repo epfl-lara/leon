@@ -40,17 +40,21 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
       val (preAlloc, alloc) = alloc0 match {
         case ArrayAllocStatic(typ, length, values0) =>
-          val (preValues, values) = flattens(values0)
+          val (preValues, values) = flattenArgs(values0)
           val alloc = to.ArrayAllocStatic(recAT(typ), length, values)
 
           preValues -> alloc
 
         case ArrayAllocVLA(typ, length0, valueInit0) =>
-          val (preLength, length) = flatten(length0)
-          val (preValueInit, valueInit) = flatten(valueInit0)
+          // Here it's fine to do two independent normalisations because there will be a
+          // sequence point between the length and the value in the C code anyway.
+          val (preLength, length) = flatten(length0, allowTopLevelApp = true)
+          val (preValueInit, valueInit) = flatten(valueInit0, allowTopLevelApp = true)
 
-          if (preValueInit.nonEmpty)
+          if (preValueInit.nonEmpty) {
+            debug(s"VLA Elements init not supported: ${preValueInit mkString " ~ "} ~ $valueInit")
             fatalError(s"VLA elements cannot be initialised with a complex expression")
+          }
 
           val alloc = to.ArrayAllocVLA(recAT(typ), length, valueInit)
 
@@ -63,7 +67,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
     case DeclInit(vd0, value0) =>
       val vd = rec(vd0)
-      val (pre, value) = flatten(value0)
+      val (pre, value) = flatten(value0, allowTopLevelApp = true)
 
       val declinit = to.DeclInit(vd, value)
 
@@ -72,14 +76,14 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
     case App(fd0, extra0, args0) =>
       val fd = rec(fd0)
       val extra = extra0 map rec // context argument are trivial enough to not require special handling
-      val (preArgs, args) = flattens(args0)
+      val (preArgs, args) = flattenArgs(args0)
       val app = to.App(fd, extra, args)
 
       combine(preArgs :+ app) -> env
 
     case Construct(cd0, args0) =>
       val cd = rec(cd0)
-      val (preArgs, args) = flattens(args0)
+      val (preArgs, args) = flattenArgs(args0)
       val ctor = to.Construct(cd, args)
 
       combine(preArgs :+ ctor) -> env
@@ -93,8 +97,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
       combine(preObjekt :+ access) -> env
 
     case ArrayAccess(array0, index0) =>
-      val (preArray, array) = flatten(array0)
-      val (preIndex, index) = flatten(index0)
+      val (Seq(preArray, preIndex), Seq(array, index)) = flattenAll(array0, index0)
       val access = to.ArrayAccess(array, index)
 
       combine(preArray ++ preIndex :+ access) -> env
@@ -105,16 +108,34 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
       combine(preArray :+ length) -> env
 
+    case Assign(ArrayAccess(array0, index0), rhs0) =>
+      // Add sequence point for index and rhs, but we assume array is simple enough to not require normalisation.
+      val (preArray, array) = flatten(array0)
+      val (Seq(preIndex, preRhs), Seq(index, rhs)) = flattenAll(index0, rhs0)
+
+      if (preArray.nonEmpty)
+        fatalError(s"Unsupported form of array update: $e")
+
+      val assign = to.Assign(to.ArrayAccess(array, index), rhs)
+
+      combine(preIndex ++ preRhs :+ assign) -> env
+
     case Assign(lhs0, rhs0) =>
       val (preLhs, lhs) = flatten(lhs0)
+
+      if (preLhs.nonEmpty) {
+        debug(s"When processing:\n$e")
+        internalError(s"Assumed to be invalid Scala code is apparently present in the AST")
+      }
+
       val (preRhs, rhs) = flatten(rhs0)
+
       val assign = to.Assign(lhs, rhs)
 
-      combine(preLhs ++ preRhs :+ assign) -> env
+      combine(preRhs :+ assign) -> env
 
     case BinOp(op, lhs0, rhs0) =>
-      val (preLhs, lhs) = flatten(lhs0)
-      val (preRhs, rhs) = flatten(rhs0)
+      val (Seq(preLhs, preRhs), Seq(lhs, rhs)) = flattenAll(lhs0, rhs0)
 
       def default = {
         val binop = to.BinOp(op, lhs, rhs)
@@ -141,7 +162,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
       combine(pre :+ unop) -> env
 
     case If(cond0, thenn0) =>
-      val (preCond, cond) = flatten(cond0)
+      val (preCond, cond) = flatten(cond0, allowTopLevelApp = true)
       val thenn = rec(thenn0)
 
       val fi = to.If(cond, thenn)
@@ -149,7 +170,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
       combine(preCond :+ fi) -> env
 
     case IfElse(cond0, thenn0, elze0) =>
-      val (preCond, cond) = flatten(cond0)
+      val (preCond, cond) = flatten(cond0, allowTopLevelApp = true)
       val thenn = rec(thenn0)
       val elze = rec(elze0)
 
@@ -158,7 +179,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
       combine(preCond :+ fi) -> env
 
     case While(cond0, body0) =>
-      val (preCond, cond) = flatten(cond0)
+      val (preCond, cond) = flatten(cond0, allowTopLevelApp = true)
       val body = rec(body0)
 
       val loop = preCond match {
@@ -200,21 +221,47 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
     case es => to.buildBlock(es)
   }
 
-  private def flatten(e: Expr)(implicit env: Env): (Seq[to.Expr], to.Expr) = rec(e) match {
-    case to.Block(init :+ last) => normalise(init, last)
-    case e => normalise(Seq.empty, e)
-  }
-
-  // Extract all "init" together
-  private def flattens(es: Seq[Expr])(implicit env: Env): (Seq[to.Expr], Seq[to.Expr]) = {
-    val empty = (Seq[to.Expr](), Seq[to.Expr]()) // initS + lastS
-    (empty /: es) { case ((inits, lasts), e) =>
-      val (init, last) = flatten(e)
-      (inits ++ init, lasts :+ last)
+  // In most cases, we should add an explicit sequence point when calling a function (i.e. by introducing
+  // a variable holding the result of the function call). However, in a few cases this is not required;
+  // e.g. when declaring a variable we can directly call a function without needing a (duplicate) sequence
+  // point. Caller can therefore carefully set `allowTopLevelApp` to true in those cases.
+  private def flatten(e: Expr, allowTopLevelApp: Boolean = false)(implicit env: Env): (Seq[to.Expr], to.Expr) = {
+    val (init, last) = rec(e) match {
+      case to.Block(init :+ last) => (init, last)
+      case e => (Seq.empty, e)
     }
+
+    normalise(init, last, allowTopLevelApp)
   }
 
-  private def normalise(pre: Seq[to.Expr], value: to.Expr): (Seq[to.Expr], to.Expr) = value match {
+  // Flatten all the given arguments, adding strict normalisation is needed and returning two lists of:
+  //  - the init statements for each argument
+  //  - the arguments themselves
+  private def flattenAll(args0: Expr*)(implicit env: Env): (Seq[Seq[to.Expr]], Seq[to.Expr]) = {
+    val empty = (Seq[Seq[to.Expr]](), Seq[to.Expr]()) // initSS + lastS
+    val (initss1, args1) = (empty /: args0) { case ((initss, lasts), e) =>
+      val (init, last) = flatten(e)
+      (initss :+ init, lasts :+ last)
+    }
+
+    val initssArgs = for (i <- 0 until args1.length) yield {
+      val (argDeclOpt, arg) = strictNormalisation(args1(i), initss1:_*)
+      val init = initss1(i) ++ argDeclOpt
+      (init, arg)
+    }
+
+    initssArgs.unzip
+  }
+
+  // Extract all "init" together; first regular flatten then a strict normalisation.
+  private def flattenArgs(args0: Seq[Expr])(implicit env: Env): (Seq[to.Expr], Seq[to.Expr]) = {
+    val (initss, args) = flattenAll(args0:_*)
+    val allInit = initss.flatten
+
+    (allInit, args)
+  }
+
+  private def normalise(pre: Seq[to.Expr], value: to.Expr, allowTopLevelApp: Boolean): (Seq[to.Expr], to.Expr) = value match {
     case fi0 @ to.IfElse(_, _, _) =>
       val norm = freshNormVal(fi0.getType, isVar = true)
       val decl = to.Decl(norm)
@@ -223,7 +270,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
       (pre :+ decl :+ fi, binding)
 
-    case app @ to.App(fd, _, _) =>
+    case app @ to.App(fd, _, _) if !allowTopLevelApp =>
       // Add explicit execution point by saving the result in a temporary variable
       val norm = freshNormVal(fd.returnType, isVar = false)
       val declinit = to.DeclInit(norm, app)
@@ -247,6 +294,22 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
     case to.Assign(_, _) => internalError("unexpected assignement")
 
     case value => (pre, value)
+  }
+
+  // Strict normalisation: create a normalisation variable to save the result of an argument if it could be modified
+  // by an init segment (from any argument) extracted during regular normalisation.
+  private def strictNormalisation(value: to.Expr, inits: Seq[to.Expr]*): (Option[to.DeclInit], to.Expr) = {
+    if (inits exists { _.nonEmpty }) {
+      // We need to store the result in a temporary variable.
+      val norm = freshNormVal(value.getType, isVar = false)
+      val binding = to.Binding(norm)
+      val declinit = to.DeclInit(norm, value)
+
+      (Some(declinit), binding)
+    } else {
+      // No init segment, so we can safely use the given value as is.
+      (None, value)
+    }
   }
 
   // Apply `action` on the AST leaf expressions.
