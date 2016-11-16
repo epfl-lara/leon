@@ -234,7 +234,6 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
     case ai @ to.ArrayInit(_) =>
       // Attach the ArrayInit to a DeclInit
       // Go backwards to reuse code from the main recImpl function
-      debug(s"going backward on $ai")
       val ai0 = backward(ai)
       val norm = freshNormVal(ai.getType, isVar = false)
       val norm0 = backward(norm)

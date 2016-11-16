@@ -33,7 +33,7 @@ final class IRPrinter[S <: IR](val ir: S) {
 
   private def rec(prog: ProgDef)(implicit ptx: Context): String = {
     val deps = new DependencyFinder(ir)
-    deps(prog.asInstanceOf[deps.ir.ProgDef]) // Weird cast we have to live with...
+    deps(prog.asInstanceOf[deps.ir.ProgDef]) // Hugly cast we have to live with...
 
     val funs = deps.getFunctions map { _.asInstanceOf[FunDef] } map rec
     val classes = deps.getClasses map { _.asInstanceOf[ClassDef] } map rec
@@ -78,7 +78,7 @@ final class IRPrinter[S <: IR](val ir: S) {
   }
 
   private def rec(e: Expr)(implicit ptx: Context): String = (e: @unchecked) match {
-    case Binding(vd) => vd.id
+    case Binding(vd) => "[[ " + vd.id + ": " + rec(vd.getType) + " ]]"
     case Block(exprs) => "{{ " + (exprs map rec mkString ptx.newLine) + " }}"
     case Decl(vd) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " // no value"
     case DeclInit(vd, value) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " = " + rec(value)
