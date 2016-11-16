@@ -31,7 +31,8 @@ object UserDefinedGrammar {
     "mod" -> Mod,
     "div" -> Div,
     "equals" -> Equals,
-    "commut" -> Commut
+    "commut" -> Commut,
+    "ite" -> ITE
   )
 }
 

@@ -24,6 +24,7 @@ object Tags {
   case object Div       extends Tag
   case object Variable  extends Tag // Tag for variables
   case object Equals    extends Tag // Tag for equality
+  case object ITE       extends Tag
 
   case object Commut    extends Tag // Tag for commutativity
   /** Constructors like Tuple, CaseClass... 
