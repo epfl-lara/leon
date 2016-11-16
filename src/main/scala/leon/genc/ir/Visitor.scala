@@ -20,6 +20,7 @@ abstract class Visitor[S <: IR](final val ir: S) {
 
   // Entry point for the visit
   final def apply(prog: ProgDef): Unit = rec(prog)
+  final def apply(e: Expr): Unit = rec(e)
 
   protected def visit(prog: ProgDef): Unit = ()
   protected def visit(fd: FunDef): Unit = ()

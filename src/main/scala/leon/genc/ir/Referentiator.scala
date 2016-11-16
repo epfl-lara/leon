@@ -9,6 +9,8 @@ import Literals._
 import Operators._
 import IRs._
 
+import collection.mutable.{ Stack => MutableStack, Set => MutableSet }
+
 /*
  * The main idea is to add ReferenceType on functions' parameters when either:
  *  - the parameter is not an array (C array are always passed by reference using a different mechanism)
@@ -19,13 +21,38 @@ import IRs._
  * take a reference or dereference it before using it.
  *
  * Array are mutables, but once converted into C they are wrapped into an immutable struct;
- * we therefore do not take array by reference because this would only add an indirection
+ * we therefore do not take array by reference because this would only add an indirection.
+ *
+ * When normalisation kicks in, we might face the following pattern:
+ *   var norm // no value
+ *   if (cond) norm = v1 else norm = v2
+ * If v1 & v2 are:
+ *  - both of reference type, then norm also is a reference;
+ *  - both of non-reference type, then norm is not a regerence either;
+ *  - a mix of reference/non-reference types, then we stop due to a C type conflict.
+ *
+ * NOTE The last case could be hanlded with something like what follows, but this is too complex for now.
+ *      Also, this can be solved on the user side trivially.
+ *   var norm: T*;
+ *   var normHelper: T;
+ *   if (cond) norm = ptr; else { normHelper = value; norm = &normHelper }
+ *
+ * NOTE It is also possible to have more than two assignment points. This is handled below.
  */
 final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) with MiniReporter {
   import from._
 
   type Env = Map[ValDef, to.ValDef]
   val Ø = Map[ValDef, to.ValDef]()
+
+  // Keep track of the block we are traversing right now
+  private val blocks = MutableStack[Block]()
+
+  // When looking ahead (for declImpl purposes), binding should not get derefenced.
+  private var lookingAhead = false
+
+  // Registry of ValDef declared using Decl and which are references.
+  private val knownDeclRef = MutableSet[to.ValDef]()
 
   override def recImpl(fd: FunDef)(implicit env: Env): to.FunDef = {
     val id = fd.id
@@ -52,9 +79,14 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
 
     // Handle recursive functions
     val newer = to.FunDef(id, returnType, ctx, params, null)
-    registerFunction(fd, newer)
 
-    newer.body = rec(fd.body)(newEnv)
+    // Don't traverse nor register the body if we are looking ahead. It would be useless and wrong, resp.
+    if (lookingAhead) {
+      newer.body = to.FunBodyAST(to.Block(to.Lit(Literals.UnitLit) :: Nil))
+    } else {
+      registerFunction(fd, newer)
+      newer.body = rec(fd.body)(newEnv)
+    }
 
     newer
   }
@@ -68,15 +100,31 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
   // or Ref(Deref(_)). This is of course not what we want so we fix it
   // right away using the ref & deref factory functions.
   final override def recImpl(e: Expr)(implicit env: Env): (to.Expr, Env) = e match {
+    case Binding(vd0) if lookingAhead =>
+      to.Binding(env(vd0)) -> env // "Simply" use the env to build the binding, without deferencing anything
+
     case Binding(vd0) =>
-      // Check the environment for id; if it's a ref we have to reference it.
+      // Check the environment for id; if it's a ref we have to reference it (expect when looking ahead).
       val vd = env(vd0)
       val b = to.Binding(vd)
       if (vd.isReference) deref(b) -> env
       else b -> env
 
-    case Decl(vd0) =>
+    case b @ Block(es0) =>
+      // Keep track of the current block to "read ahead" and handle the special case for normalisation.
+      blocks.push(b)
+      val res = super.recImpl(b)
+      val popped = blocks.pop()
+      assert(b == popped)
+      res
+
+    case Decl(vd0) if lookingAhead =>
       val vd = rec(vd0)
+      val newEnv = env + (vd0 -> vd)
+      to.Decl(vd) -> newEnv
+
+    case Decl(vd0) => // When not looking ahead already.
+      val vd = declImpl(vd0)
       val newEnv = env + (vd0 -> vd)
       to.Decl(vd) -> newEnv
 
@@ -101,6 +149,15 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
       val args = refMatch(cd.fields)(args0 map rec)
 
       to.Construct(cd, args) -> env
+
+    case Assign(Binding(vd0), rhs0) if !lookingAhead && knownDeclRef(env(vd0)) =>
+      // Here we handle the special case that derives from declImpl.
+      val rhs = rec(rhs0) match {
+        case to.Deref(rhs) => rhs // We do *not* want this deferencing
+        case e => internalError(s"Unhandled case $e: ${e.getClass}")
+      }
+
+      to.Assign(to.Binding(env(vd0)), rhs) -> env
 
     case e => super.recImpl(e)
   }
@@ -138,6 +195,60 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
   }
 
   private def toReference(vd: to.ValDef) = vd.copy(typ = to.ReferenceType(vd.typ))
+
+  // Here we handle the three main cases about normalisation described in the preamble
+  private def declImpl(vd0: ValDef)(implicit env: Env): to.ValDef = {
+    require(blocks.nonEmpty && !lookingAhead)
+    lookingAhead = true
+
+    // Find where we are in the current block
+    val block = blocks.top
+    val currentAndNexts = block.exprs dropWhile {
+      case Decl(vd1) if vd1 == vd0 => false
+      case _ => true
+    }
+
+    // Look ahead using "normal" recursion
+    val vd = rec(vd0) // The type might not be correct here, but it doesn't matter as we will "fix" it later.
+    val newEnv = env + (vd0 -> vd)
+    val nexts = rec(Block(currentAndNexts.tail))(newEnv)
+
+    // Collect all assignment right hand sides for vd
+    val assignments = MutableSet[to.Expr]()
+    val visitor = new Visitor(to) {
+      override def visit(e: to.Expr): Unit = e match {
+        case to.Assign(lhs, rhs) if lhs == to.Binding(vd) => assignments += rhs
+        case _ =>
+      }
+    }
+
+    visitor(nexts)
+
+    assert(assignments.nonEmpty)
+
+    // Make sure that all types are equals;
+    // this of course implies that they are either all references or all non references.
+    val typeInfos = assignments map { _.getType.isReference }
+    val isRef = typeInfos.head
+    if (typeInfos exists { _ != isRef }) {
+      fatalError(s"Cannot apply reference because of normalisation inconsistency on types. " +
+                 s"Inciminated variable: ${vd.id}; Use `--debug=trees` option to learn why it failed.")
+    }
+
+    lookingAhead = false
+
+    // Build the ValDef with the correct type.
+    val res =
+      if (isRef) toReference(vd)
+      else vd
+
+    // In case we just created a normalisation variable of reference type, we register it
+    // to avoid illegal `*norm = *ptr`.
+    if (isRef)
+      knownDeclRef += res
+
+    res
+  }
 
 }
 
