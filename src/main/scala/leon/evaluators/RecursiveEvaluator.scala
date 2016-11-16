@@ -14,9 +14,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
 import solvers.TimeoutableSolverFactory
-import solvers.{PartialModel, SolverFactory}
-import purescala.DefOps
-import solvers.{PartialModel, Model, SolverFactory, SolverContext}
+import solvers.{PartialModel, SolverFactory, SolverContext}
 import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._

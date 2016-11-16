@@ -4,7 +4,7 @@ package leon
 package grammars
 package enumerators
 
-import leon.evaluators.DefaultEvaluator
+import leon.evaluators.{TableEvaluator, DefaultEvaluator}
 import leon.purescala.Common.Identifier
 import leon.purescala.Definitions.Program
 import leon.synthesis.Example
@@ -236,17 +236,17 @@ class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
   extends AbstractProbwiseBottomupEnumerator(ProbwiseBottomupEnumerator.productive(grammar, init))
   with GrammarEnumerator
 {
-  protected lazy val evaluator = new DefaultEvaluator(ctx, program)
-
+  protected lazy val evaluator = //new DefaultEvaluator(ctx, program)
+                                 new TableEvaluator(ctx, program)
   protected type Sig = Option[Seq[Expr]]
 
   protected def mkSig(elem: StreamElem): Sig = {
     import elem._
 
     def evalEx(subs: Seq[Expr], ex: Example) = {
-      timers.eval.start()
+      //timers.eval.start()
       val res = evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
-      timers.eval.stop()
+      //timers.eval.stop()
       res
     }
     val res = if (subs.isEmpty) {

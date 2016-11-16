@@ -32,7 +32,7 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
   def eval(ex: Expr, model: Model) = {
     try {
       lastGC = Some(initGC(model, check = true))
-      ctx.timers.evaluators.recursive.runtime.start()
+      //ctx.timers.evaluators.recursive.runtime.start()
       EvaluationResults.Successful(e(ex)(initRC(model.toMap), lastGC.get))
     } catch {
       case EvalError(msg) =>
@@ -48,7 +48,7 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
       case jre: java.lang.RuntimeException =>
         EvaluationResults.RuntimeError(jre.getMessage)
     } finally {
-      ctx.timers.evaluators.recursive.runtime.stop()
+      //ctx.timers.evaluators.recursive.runtime.stop()
     }
   }
 
