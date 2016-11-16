@@ -45,14 +45,16 @@ object ExpressionOrder {
   def _main() = {
     syntaxCheck(0)
 
-    bool2int(test0(false), 1)  +
-    bool2int(test1(42),    2)  +
-    bool2int(test2(58),    4)  +
-    bool2int(test3(false), 8)  +
-    bool2int(test4(false), 16) +
-    bool2int(test6,        32) +
-    bool2int(test7,        64) +
-    bool2int(test8,        128)
+    printOnFailure(
+      bool2int(test0(false), 1)  +
+      bool2int(test1(42),    2)  +
+      bool2int(test2(58),    4)  +
+      bool2int(test3(false), 8)  +
+      bool2int(test4(false), 16) +
+      bool2int(test6,        32) +
+      bool2int(test7,        64) +
+      bool2int(test8,        128)
+    )
   } ensuring { _ == 0 }
 
   def test0(b: Boolean) = {
@@ -157,8 +159,20 @@ object ExpressionOrder {
 
   def bool2int(b: Boolean, f: Int) = if (b) 0 else f;
 
+  // Because on Unix, exit code should be in [0, 255], we print the exit code on failure
+  // and return 1. On success, we do nothing special.
+  def printOnFailure(exitCode: Int): Int = {
+    if (exitCode == 0) 0
+    else {
+      implicit val state = leon.io.newState
+      leon.io.StdOut.print("Error code: ")
+      leon.io.StdOut.print(exitCode)
+      leon.io.StdOut.println()
+      1
+    }
+  }
+
   @extern
   def main(args: Array[String]): Unit = _main()
 }
-
 

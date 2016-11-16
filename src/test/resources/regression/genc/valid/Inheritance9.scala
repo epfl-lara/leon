@@ -135,7 +135,20 @@ object Inheritance9 {
     } else 1
   } ensuring { _ == 0 }
 
-  def _main() = testCalls + testAssign + testArrayField + testNestedConcreteTypes
+  // Because on Unix, exit code should be in [0, 255], we print the exit code on failure
+  // and return 1. On success, we do nothing special.
+  def printOnFailure(exitCode: Int): Int = {
+    if (exitCode == 0) 0
+    else {
+      implicit val state = leon.io.newState
+      leon.io.StdOut.print("Error code: ")
+      leon.io.StdOut.print(exitCode)
+      leon.io.StdOut.println()
+      1
+    }
+  }
+
+  def _main() = printOnFailure(testCalls + testAssign + testArrayField + testNestedConcreteTypes)
 
   @extern
   def main(args: Array[String]): Unit = _main()
