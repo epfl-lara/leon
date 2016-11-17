@@ -263,11 +263,11 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
               //returning it simplifies the code (more consistent) and should
               //not have a big impact on performance
               val modifiedVars: List[Identifier] = {
-                val freeVars = variablesOf(bd)
+                val freeVars = variablesOf(fd.fullBody)
                 val transitiveVars = collect[Identifier]({
                   case FunctionInvocation(tfd, _) => state.funDefsMapping.get(tfd.fd).map(p => p._2.toSet).getOrElse(Set())
                   case _ => Set()
-                })(bd)
+                })(fd.fullBody)
                 (freeVars ++ transitiveVars).intersect(state.varsInScope).toList
               }
               //val modifiedVars: List[Identifier] =
