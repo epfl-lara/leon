@@ -338,11 +338,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
    ****************************************************************************************************/
   private def rec(id: Identifier): CIR.Id = {
     if (id.name == "_main") "_main"
-    else {
-      val uniqueId = id.uniqueNameDelimited("_")
-      if (uniqueId endsWith "_0") id.name // when possible, keep the id as clean as possible
-      else uniqueId
-    }
+    else id.uniqueNameDelimited("_")
   }
 
   // Try first to fetch the function from cache to handle recursive funcitons.
