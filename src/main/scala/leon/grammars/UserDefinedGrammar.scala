@@ -115,10 +115,12 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }, applyRec = true)(e)
   }
 
-  def instantiateProductions(tpe: TypeTree, ps: Seq[UserProduction]): Seq[Prod] = {
+  private[this] var prodsCache = Map[TypeTree, Seq[Prod]]();
+
+  def instantiateProductions(tpe: TypeTree): Seq[Prod] = {
     val lab = tpeToLabel(tpe)
 
-    ps.flatMap { case UserProduction(fd, tag, w) =>
+    userProductions.flatMap { case UserProduction(fd, tag, w) =>
       instantiation_<:(fd.returnType, tpe) match {
         case Some(tmap0) =>
 
@@ -180,32 +182,81 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
             val expr = unwrapLabels(fd.fullBody, m)
 
-            if (fd.params.isEmpty) {
-              expr match {
-                // Special built-in "variable" case, which tells us how often to
-                // generate variables of specific type
-                case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+            expr match {
+              // Special built-in "constructor" case, which tells us how often to
+              // generate constructors of specific type
+              case FunctionInvocation(TypedFunDef(fd, Seq(tp1, tp2)), Seq(rec)) if program.library.selector contains fd =>
+                val recType    = instantiateType(tp1, tmap)
+                val targetType = instantiateType(tp2, tmap)
 
-                  val targetType = instantiateType(tp, tmap)
-                  val vars = inputs.filter (_.getType == targetType)
+                def selectors(rec: Expr, cct: CaseClassType, targetType: TypeTree): Seq[Prod] = {
+                  cct.fields.filter(_.getType == targetType).map { f =>
+                    val subs  = List(tpeToLabel(instantiateType(rec.getType, tmap)))
 
-                  val size = vars.size.toDouble
-                  vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+                    nonTerminal(subs, { case List(rec) =>
+                      val res = CaseClassSelector(cct, rec, f.id)
+                      inlineTrivialities(res)
+                    }, classOf[CaseClassSelector], tag, cost = 1, w)
+                  }
+                }
 
-                case _ =>
+                recType match {
+                  case cct: CaseClassType =>
+                    selectors(rec, cct, targetType)
+
+                  case act: AbstractClassType =>
+                    act.knownCCDescendants.flatMap{ cct =>
+                      selectors(rec, cct, targetType)
+                    }
+
+                  case _ =>
+                    Nil
+                }
+
+              // Special built-in "constructor" case, which tells us how often to
+              // generate constructors of specific type
+              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.constructor contains fd =>
+
+                instantiateType(tp, tmap) match {
+                  case cct: CaseClassType =>
+                    List(
+                      nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1)
+                    )
+
+                  case act: AbstractClassType =>
+                    val descendents = act.knownCCDescendants;
+
+                    descendents.map { cct =>
+                      nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1/descendents.size)
+                    }
+
+                  case _ =>
+                    Nil
+                }
+
+              // Special built-in "variable" case, which tells us how often to
+              // generate variables of specific type
+              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+                val targetType = instantiateType(tp, tmap)
+                val vars = inputs.filter (_.getType == targetType)
+
+                val size = vars.size.toDouble
+                vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+
+              case _ =>
+                if (fd.params.isEmpty) {
                   List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
-              }
-            } else {
+                } else {
+                  val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
+                  val subs  = fd.params.map {
+                    p => tpeToLabel(instantiateType(p.getType, tmap))
+                  }
 
-              val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
-              val subs  = fd.params.map {
-                p => tpeToLabel(instantiateType(p.getType, tmap))
-              }
-
-              List(nonTerminal(subs, { sexprs => 
-                val res = instantiateType(replaceFromIDs((holes zip sexprs).toMap, expr), tmap, m) 
-                inlineTrivialities(res)
-              }, classOf[Expr], tag, cost = 1, w))
+                  List(nonTerminal(subs, { sexprs => 
+                    val res = instantiateType(replaceFromIDs((holes zip sexprs).toMap, expr), tmap, m) 
+                    inlineTrivialities(res)
+                  }, classOf[Expr], tag, cost = 1, w))
+                }
             }
           }).flatten
 
@@ -220,11 +271,19 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
       case RealTyped(tpe) => tpe
     }.headOption.getOrElse(lab.getType)
 
-    val prods = instantiateProductions(realType, userProductions)
+    val prods = prodsCache.getOrElse(realType, {
+      val res = instantiateProductions(realType)
+      prodsCache += realType -> res
+      res
+    })
 
     val ws = prods map (_.weight)
 
-    if (ws.nonEmpty) {
+    if (ws.isEmpty) {
+      Nil
+    } else if (ws.size == 1) {
+      prods.map(_.copy(weight = 1))
+    } else {
       val sum = ws.sum
       // log(prob) = log(weight/Σ(weights))
       val logProbs = ws.map(w => Math.log(w/sum))
@@ -235,8 +294,6 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         val cost = (logProb/maxLogProb).round.toInt
         p.copy(cost = cost, weight = logProb)
       }
-    } else {
-      Nil
     }
   }
 
