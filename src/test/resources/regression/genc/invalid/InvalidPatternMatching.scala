@@ -3,6 +3,7 @@
 import leon.annotation.extern
 import leon.lang._
 
+// Unapply pattern is not supported by GenC
 object Odd {
   def unapply(p: (Int, Int)): Option[Int] = {
     val x = p._1
@@ -10,7 +11,7 @@ object Odd {
   }
 }
 
-object InvalidPatternMatching1 {
+object InvalidPatternMatching {
 
   def test(x: Option[(Int, Int)]) = x match {
     case None() => 0
@@ -56,5 +57,4 @@ object InvalidPatternMatching1 {
   def main(args: Array[String]): Unit = _main()
 
 }
-
 
