@@ -7,44 +7,46 @@ package rules
 import evaluators.{DefaultEvaluator, EvaluationResults, Evaluator, PartialExpansionEvaluator}
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import leon.grammars.{Expansion, ExpansionExpr, Label}
-import leon.grammars.enumerators.{CandidateScorer, EnumeratorStats, ProbwiseBottomupEnumerator, ProbwiseTopdownEnumerator}
+import leon.grammars.enumerators._
 import leon.purescala.Types.Untyped
 import solvers._
-import purescala.Expressions.{BooleanLiteral, Expr}
+import leon.purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps.simplestValue
 
 object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val useTopDown = hctx.findOptionOrDefault(SynthesisPhase.optTopdownEnum)
-    val tactic = if (useTopDown) "top-down" else "bottom-up"
+    val enum = hctx.findOptionOrDefault(SynthesisPhase.optEnum)
 
-    List(new RuleInstantiation(s"Prob. driven enum. ($tactic)") {
+    List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
 
         import hctx.reporter._
         import hctx.program
         implicit val hctx0 = hctx
 
-        // Maximum generated # of programs
-        val maxGen = 10000000
-        val solverTo = 3000
         val useOptTimeout = hctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-
+        val maxGen     = 100000 // Maximum generated # of programs
+        val solverTo   = 3000
         val fullEvaluator = new DefaultEvaluator(hctx, hctx.program)
         val partialEvaluator = new PartialExpansionEvaluator(hctx, hctx.program)
         val solverF    = SolverFactory.getFromSettings(hctx, program).withTimeout(solverTo)
         val outType    = tupleTypeWrap(p.xs map (_.getType))
+        val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
         val grammar    = grammars.default(hctx, p)
-        var examples   = p.eb.examples.toSet
         val spec       = letTuple(p.xs, _: Expr, p.phi)
+        var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
+        val timers     = hctx.timers.enumeration
+
+        val restartable = enum == "eqclasses"
 
         debug("Grammar:")
         grammar.printProductions(debug(_))
 
         // Evaluates a candidate against an example in the correct environment
-        def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example) = {
+        def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example): evalr.EvaluationResult = {
+          timers.test.start()
           def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
             case ((id, v), bd) => let(id, v, bd)
           }
@@ -69,7 +71,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
               Some(false)
             case EvaluationResults.EvaluatorError(err) =>
               debug(s"Error testing CE: $err. Removing $ex")
-              examples -= ex
+              examples = examples diff Seq(ex)
               None
           }
         }
@@ -89,12 +91,22 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         }
 
         val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples)
+        def mkEnum = (enum match {
+          case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, problem.as, examples, program)
+          case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
+          case "topdown"   => new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
+          case _ =>
+            warning("Enumerator not recognized, falling back to top-down...")
+            new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
+        }).iterator(topLabel).take(maxGen)
+        var it = mkEnum
 
         /**
           * Second phase of STE: verify a given candidate by looking for CEX inputs.
           * Returns the potential solution and whether it is to be trusted.
           */
         def validateCandidate(expr: Expr): Option[Solution] = {
+          timers.validate.start()
           debug(s"Validating $expr")
           val solver  = solverF.getNewSolver()
           EnumeratorStats.cegisIterCount += 1
@@ -103,13 +115,14 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             solver.assertCnstr(p.pc and not(spec(expr)))
             solver.check match {
               case Some(true) =>
+                // Found counterexample! Exclude this program
                 val model = solver.getModel
                 val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
-                debug(s"Found cex $cex for $expr")
-                // println(s"Found cex $cex for $expr")
-
-                // Found counterexample! Exclude this program
-                examples += cex
+                debug(s"Found cex $cex for $expr, restarting enum...")
+                examples +:= cex
+                if (restartable) {
+                  it = mkEnum
+                }
                 None
 
               case Some(false) =>
@@ -120,35 +133,28 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                   info("STE could not prove the validity of the resulting expression")
                   // Interpret timeout in CE search as "the candidate is valid"
                   Some(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false))
-
                 } else {
                   // TODO: Make STE fail early when it times out when verifying 1 program?
                   None
                 }
             }
           } finally {
+            timers.validate.stop()
             solverF.reclaim(solver)
           }
         }
 
-        val enumerator = {
-          if (useTopDown)
-            new ProbwiseTopdownEnumerator(grammar, Label(outType), scorer)
-          else
-            new ProbwiseBottomupEnumerator(grammar, Label(outType))
-        }
-
-        val filtered =
-          enumerator.iterator(Label(outType))
-            .take(maxGen)
-            .map(_._1)
-            .map(passThrough(expr => debug(s"Testing $expr")))
-            .filterNot { expr => examples.exists(testCandidate(expr)(_).contains(false)) }
-            .map { validateCandidate }
-            .flatten
-            .toStream
-
-        RuleClosed(filtered)
+        RuleClosed (
+          if (!it.hasNext) Stream() else Stream.continually {
+            val expr = it.next
+            debug(s"Testing $expr")
+            if (examples.exists(testCandidate(expr)(_).contains(false))) {
+              None
+            } else {
+              validateCandidate(expr)
+            }
+          }.takeWhile(_ => it.hasNext).collect { case Some(e) => e }
+        )
       }
     })
   }

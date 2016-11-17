@@ -59,7 +59,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     }
   }
 
-  def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
+  def iterator(nt: NT): Iterator[R] = new Iterator[R] {
     val ordering = Ordering.by[WorklistElement, Double](_.priority)
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
 
@@ -74,7 +74,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       worklist.nonEmpty
     }
 
-    def next: (R, Double) = {
+    def next: R = {
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
       assert(worklist.nonEmpty)
@@ -82,7 +82,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       // assert(ans.logProb - 1.0e-6 <= prevAns.logProb)
       // assert(ans.horizon >= -1.0e-6)
       prevAns = ans
-      (ans.get, ans.logProb)
+      ans.get
     }
 
     def prepareNext(): Unit = {

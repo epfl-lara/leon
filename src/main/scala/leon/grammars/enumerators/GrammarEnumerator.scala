@@ -3,6 +3,7 @@ package grammars
 package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
+import leon.synthesis.Example
 import purescala.Expressions.Expr
 
 import scala.collection.mutable.{HashMap, HashSet, Queue => MutableQueue}
@@ -11,7 +12,7 @@ trait GrammarEnumerator {
   protected val grammar: ExpressionGrammar
 
   /** Returns the iterator of elements corresponding to a specific nonterminal */
-  def iterator(l: Label): Iterator[(Expr, Double)]
+  def iterator(l: Label): Iterator[Expr]
 }
 
 object GrammarEnumerator {
@@ -78,25 +79,26 @@ object Tester {
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
     val labels = List(IntegerType, BooleanType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
     val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(0)).iterator(labels(0))
-    val scorer = new CandidateScorer[Expr]((_, _) => MeetsSpec.NOTYET, _ => Set())
+    val scorer = new CandidateScorer[Expr]((_, _) => MeetsSpec.NOTYET, _ => Seq())
     val topDown = new ProbwiseTopdownEnumerator(grammar, labels(0), scorer).iterator(labels(0))
     grammar.printProductions(println)
     val before = System.currentTimeMillis()
 
-    val b0 = for(_ <- 1 to 100) yield bottomUp.next
-    val t0 = for(_ <- 1 to 100) yield topDown.next
-    b0 zip t0 foreach { case ((b1, b2), (t1, t2)) =>
-      println(f"$b1%60s: $b2%3.3f vs $t1%60s: $t2%3.3f")
-    }
-
-    //for (label <- labels; i <- 1 to 10 ) {
-    //  val it = bottomUp.iterator(label)
-    //  if (it.hasNext) {
-    //    val (e, prob) = it.next
-    //    //if (i%20000 == 0) println(f"$i: ${e.asString}%40s: $prob")
-    //    println(f"${e.asString}%40s: $prob")
-    //  }
+    /** Code for comparing **/
+    //val b0 = for(_ <- 1 to 100) yield bottomUp.next
+    //val t0 = for(_ <- 1 to 100) yield topDown.next
+    //b0 zip t0 foreach { case ((b1, b2), (t1, t2)) =>
+    //  println(f"$b1%60s: $b2%3.3f vs $t1%60s: $t2%3.3f")
     //}
-    //println(s"Time: ${System.currentTimeMillis() - before}")
+
+    /** Code for bottom-up **/
+    for (label <- labels; i <- 1 to 100000 ) {
+      if (bottomUp.hasNext) {
+        val e = bottomUp.next
+        if (i%20000 == 0)
+          println(f"$i%7d: ${e.asString}")
+      }
+    }
+    println(s"Time: ${System.currentTimeMillis() - before}")
   }
 }

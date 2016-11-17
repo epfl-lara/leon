@@ -11,7 +11,7 @@ import scala.util.control.Breaks
 
 class CandidateScorer[R](
   evalCandidate: (Expansion[_, R], Example) => MeetsSpec,
-  getExs: Unit => Set[Example]
+  getExs: Unit => Seq[Example]
 )(implicit ctx: LeonContext) {
 
   def score(expansion: Expansion[_, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
@@ -24,7 +24,7 @@ class CandidateScorer[R](
       yesExs ++= skipExs
       val scoreBreaks = new Breaks
       scoreBreaks.breakable {
-        for (ex <- getExs(()) -- skipExs) {
+        for (ex <- getExs(()) if !skipExs.contains(ex)) {
           evalCandidate(expansion, ex) match {
             case MeetsSpec.YES => yesExs += ex
             case MeetsSpec.NO =>
@@ -39,9 +39,9 @@ class CandidateScorer[R](
     } else {
       def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
       val results = getExs(()).par.groupBy(classify).mapValues(_.seq)
-      Score(results.getOrElse(MeetsSpec.YES, Set()),
-        results.getOrElse(MeetsSpec.NO, Set()),
-        results.getOrElse(MeetsSpec.NOTYET, Set()))
+      Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
+        results.getOrElse(MeetsSpec.NO, Seq()).toSet,
+        results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
     }
     ctx.timers.eval.stop()
     ans

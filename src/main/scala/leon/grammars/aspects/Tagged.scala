@@ -27,6 +27,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(1
       case (And,   1)             => Set(BooleanC)
       case (Or,    0)             => Set(Or, BooleanC)
       case (Or,    1)             => Set(BooleanC)
+      case (ITE,   0)             => Set(BooleanC)
       case (Plus,  0)             => Set(Plus, Zero, One)
       case (Plus,  1)             => Set(Zero)
       case (Minus, 1)             => Set(Zero)
