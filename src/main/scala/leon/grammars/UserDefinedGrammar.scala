@@ -224,24 +224,16 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
     val ws = prods map (_.weight)
 
-    if (ws.size == 1) {
-      prods.map(_.copy(cost = 1))
-    } else if (ws.nonEmpty) {
+    if (ws.nonEmpty) {
       val sum = ws.sum
-      // Cost = -log(prob) = -log(weight/Σ(weights))
-      val costs = ws.map(w => -Math.log(w/sum.toDouble))
-      val minCost = costs.min
+      // log(prob) = log(weight/Σ(weights))
+      val logProbs = ws.map(w => Math.log(w/sum))
+      val maxLogProb = logProbs.max
 
-      for ((p, cost) <- prods zip costs) yield {
-        val ncost = (cost/minCost).round.toInt
-        //locally {
-        //  def complete(p: Prod) = {
-        //    val vars = p.subTrees.map(l => Variable(FreshIdentifier("???", l.getType)))
-        //    p.builder(vars)
-        //  }
-        //  println(s"${l.getType} (${complete(p)}) -> ${p.weight}, $cost, $ncost")
-        //}
-        p.copy(cost = ncost)
+      for ((p, logProb) <- prods zip logProbs) yield {
+        // cost = normalized log prob.
+        val cost = (logProb/maxLogProb).round.toInt
+        p.copy(cost = cost, weight = logProb)
       }
     } else {
       Nil
