@@ -45,8 +45,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         grammar.printProductions(debug(_))
 
         // Evaluates a candidate against an example in the correct environment
-        def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example): evalr.EvaluationResult = {
-          timers.test.start()
+        def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example): evalr.EvaluationResult = timers.eval.timed {
           def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
             case ((id, v), bd) => let(id, v, bd)
           }
