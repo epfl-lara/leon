@@ -37,7 +37,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val grammar    = grammars.default(hctx, p)
         val spec       = letTuple(p.xs, _: Expr, p.phi)
         var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
-        val timers     = hctx.timers.enumeration
+        val timers     = hctx.timers.synthesis.applications.get(this.description)
 
         val restartable = enum == "eqclasses"
 
@@ -153,7 +153,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             } else {
               validateCandidate(expr)
             }
-          }.takeWhile(_ => it.hasNext).collect { case Some(e) => e }
+          }.takeWhile(_ => timers.next.timed { it.hasNext }).collect { case Some(e) => e }
         )
       }
     })

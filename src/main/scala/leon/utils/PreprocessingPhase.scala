@@ -14,15 +14,15 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
   val name = "preprocessing"
   val description = "Various preprocessings on Leon programs"
 
-  override def run(ctx: LeonContext, p: Program): (LeonContext, Program) = {
+  override def run(ctx: LeonContext, p: Program): (LeonContext, Program) = ctx.timers.preprocessing.timed {
 
     def debugTrees(title: String) =
       PrintTreePhase(title).when(ctx.reporter.isDebugEnabled(DebugSectionTrees))
 
     val pipeBegin =
-      debugTrees("Program after extraction")      andThen
-      MethodLifting                               andThen
-      TypingPhase                                 andThen
+      debugTrees("Program after extraction") andThen
+      MethodLifting                          andThen
+      TypingPhase                            andThen
       synthesis.ConversionPhase
 
     val pipeBeginWithInlining =

@@ -72,10 +72,10 @@ object SynthesisPhase extends UnitPhase[Program] {
     )
   }
 
-  def apply(ctx: LeonContext, program: Program): Unit = {
+  def apply(ctx: LeonContext, program: Program): Unit = ctx.timers.synthesis.timed {
     val options = processOptions(ctx)
 
-    val chooses = SourceInfo.extractFromProgram(ctx, program)
+    val chooses = ctx.timers.synthesis.discovery.timed { SourceInfo.extractFromProgram(ctx, program) }
 
     var functions = Set[FunDef]()
 

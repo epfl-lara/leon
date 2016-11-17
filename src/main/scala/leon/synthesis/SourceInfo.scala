@@ -5,7 +5,6 @@ package synthesis
 
 import purescala.Path
 import purescala.Definitions._
-import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import Witnesses._
@@ -34,7 +33,7 @@ object SourceInfo {
     }
 
     // Look for choose()
-    val results = for (f <- prog.definedFunctions if f.body.isDefined && fdFilter(f);
+    val results = for (f <- prog.definedFunctions if ctx.timers.synthesis.discovery.filter.timed {f.body.isDefined && fdFilter(f)};
                        ci <- extractFromFunction(ctx, prog, f)) yield {
       ci
     }
@@ -46,7 +45,7 @@ object SourceInfo {
     results.sortBy(_.source.getPos)
   }
 
-  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[SourceInfo] = {
+  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[SourceInfo] = ctx.timers.synthesis.discovery.extract.timed {
 
     val term = Terminating(fd.applied)
 

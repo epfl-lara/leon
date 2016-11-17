@@ -4,11 +4,11 @@ package leon
 package grammars
 package enumerators
 
-import leon.evaluators.{TableEvaluator, DefaultEvaluator}
-import leon.purescala.Common.Identifier
-import leon.purescala.Definitions.Program
-import leon.synthesis.Example
+import purescala.Common.Identifier
+import purescala.Definitions.Program
 import purescala.Expressions.Expr
+import evaluators.{TableEvaluator, DefaultEvaluator}
+import synthesis.Example
 import scala.collection.mutable
 import scala.collection.mutable.{ PriorityQueue, HashSet, HashMap, ArrayBuffer }
 
@@ -25,8 +25,6 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected val ctx: LeonContext
   protected type Rule = ProductionRule[NT, R]
   protected type Coords = Seq[Int]
-
-  protected val timers = ctx.timers.enumeration
 
   protected type Sig
   protected def mkSig(elem: StreamElem): Sig
@@ -244,10 +242,7 @@ class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
     import elem._
 
     def evalEx(subs: Seq[Expr], ex: Example) = {
-      //timers.eval.start()
-      val res = evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
-      //timers.eval.stop()
-      res
+      evaluator.eval(rule.builder(subs), as.zip(ex.ins).toMap).result
     }
     val res = if (subs.isEmpty) {
       examples.mapM(evalEx(Nil, _))
@@ -262,11 +257,11 @@ class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
   }
 
   protected def isDistinct(elem: StreamElem, previous: mutable.HashSet[Sig]): Boolean = {
-    timers.distinct.start()
-    val res = !previous.contains(elem.sig)
-    if (res) previous.add(elem.sig)
-    timers.distinct.stop()
-    res
+    ctx.timers.synthesis.applications.get("Prob. driven enum. (eqclasses)").distinct.timed {
+      val res = !previous.contains(elem.sig)
+      if (res) previous.add(elem.sig)
+      res
+    }
   }
 
 }
