@@ -23,27 +23,27 @@ object Grammar {
   @tag("plus")
   def plus(b1: BigInt, b2: BigInt) = b1 + b2
 
-  @production(1)
+  @production(2)
   @tag("minus")
   def minus(b1: BigInt, b2: BigInt) = b1 - b2
 
-  @production(21)
+  @production(40)
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
   }
 
   // BOOLEAN
 
-  @production(17)
+  @production(41)
   def smaller(b1: BigInt, b2: BigInt) = b1 < b2
 
-  @production(10)
+  @production(5)
   def and(b1: Boolean, b2: Boolean) = b1 && b2
 
-  @production(8)
+  @production(1)
   def or(b1: Boolean, b2: Boolean) = b1 || b2
 
-  @production(20)
+  @production(1)
   def t = true
 
   def max(b1: BigInt, b2: BigInt, b3: BigInt) = choose( (out: BigInt) => {

@@ -36,7 +36,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
         val grammar    = grammars.default(hctx, p)
         val spec       = letTuple(p.xs, _: Expr, p.phi)
-        var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
+        var examples   = p.eb.examples
         val timers     = hctx.timers.enumeration
 
         val restartable = enum == "eqclasses"
@@ -58,7 +58,9 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
               equality(expr, tupleWrap(outs))
           }
 
-          evalr.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+          val ans = evalr.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
+          timers.test.stop()
+          ans
         }
 
         // Tests a candidate solution against an example in the correct environment
