@@ -106,7 +106,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                 val model = solver.getModel
                 val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
                 debug(s"Found cex $cex for $expr")
-                println(s"Found cex $cex for $expr")
+                // println(s"Found cex $cex for $expr")
 
                 // Found counterexample! Exclude this program
                 examples += cex
