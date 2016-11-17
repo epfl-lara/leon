@@ -1,6 +1,7 @@
 package leon
 package grammar
 
+import leon.lang._
 import leon.lang.synthesis._
 import annotation.grammar._
 
@@ -56,18 +57,18 @@ object Grammar {
       case BigInt(3) => BigInt(4)
       case BigInt(4) => BigInt(5)
     }
-  }
+  } */
 
-  def add2Ex(b1: BigInt, b2: BigInt) = {
+  /* def add2Ex(b1: BigInt, b2: BigInt) = {
     ???[BigInt]
   } ensuring {
     res => ((b1, b2), res) passes {
       case (BigInt(3), BigInt(4)) => BigInt(7)
       case (BigInt(4), BigInt(7)) => BigInt(11)
     }
-  }
+  } */
 
-  def funny(b1: BigInt, b2: BigInt) = {
+  /* def funny(b1: BigInt, b2: BigInt) = {
     choose ((res: BigInt) => res >= b1 && res >= b2)
   } ensuring {
     res => ((b1, b2), res) passes {
