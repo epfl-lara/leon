@@ -14,10 +14,17 @@ object InjectAsserts extends SimpleLeonPhase[Program, Program] {
   val name = "Asserts"
   val description = "Inject asserts for various correctness conditions (map accesses, array accesses, divisions by zero,..)"
 
+  val optOverflowChecking = LeonFlagOptionDef("overflow", "Check arithmetic overflow", default = false)  
+  
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optOverflowChecking)
+
   def apply(ctx: LeonContext, pgm: Program): Program = {
+    val overflowChecking: Boolean = ctx.findOptionOrDefault(optOverflowChecking)
     def indexUpTo(i: Expr, e: Expr) = {
       and(GreaterEquals(i, IntLiteral(0)), LessThan(i, e))
     }
+    val mask = IntLiteral(0x80000000)
+    def applyMask(a: Expr): Expr = BVAnd(a, mask)
 
     pgm.definedFunctions.foreach(fd => {
       fd.body = fd.body.map(postMap {
@@ -64,6 +71,29 @@ object InjectAsserts extends SimpleLeonPhase[Program, Program] {
                       Some("Remainder by zero"),
                       e
                      ).setPos(e))
+
+        case e @ BVPlus(x, y) if overflowChecking =>
+          Some(assertion(
+            Implies(equality(applyMask(x), applyMask(y)),
+                    equality(applyMask(x), applyMask(e))),
+            Some("Bit-vector arithmetic overflow"),
+            e
+          ).setPos(e))
+        case e @ BVMinus(x, y) if overflowChecking =>
+          Some(assertion(
+            Implies(not(equality(applyMask(x), applyMask(y))),
+                    equality(applyMask(x), applyMask(e)))
+            ,
+            Some("Bit-vector arithmetic overflow"),
+            e
+          ).setPos(e))
+        case e @ BVTimes(x, y) if overflowChecking =>
+          Some(assertion(
+            or(equality(x, IntLiteral(0)),
+               equality(BVDivision(BVTimes(x,y), x), y)),
+            Some("Bit-vector arithmetic overflow"),
+            e
+          ).setPos(e))
 
         case e @ RealDivision(_, d)  =>
           Some(assertion(not(equality(d, FractionalLiteral(0, 1))),

@@ -51,6 +51,7 @@ object VCKinds {
   case object RemainderByZero extends VCKind("remainder by zero", "rem 0")
   case object CastError       extends VCKind("cast correctness", "cast")
   case object PostTactVC          extends VCKind("Postcondition Tactic", "tact")
+  case object ArithmeticOverflow extends VCKind("arithmetic overflow", "overflow")
 }
 
 case class VCResult(status: VCStatus, solvedWith: Option[Solver], timeMs: Option[Long]) {
