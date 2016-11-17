@@ -7,7 +7,7 @@ package phases
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.{ ExprOps }
+import purescala.{ ExprOps, TypeOps }
 import purescala.Types._
 import xlang.Expressions._
 
@@ -26,7 +26,7 @@ import scala.collection.mutable.{ Map => MutableMap }
  */
 private[genc] object Scala2IRPhase extends TimedLeonPhase[(Dependencies, FunCtxDB), CIR.ProgDef] {
   val name = "Scala to IR converter"
-  val description = "Convert the Scala AST into GenC's 'generic' IR"
+  val description = "Convert the Scala AST into GenC's IR"
 
   def getTimer(ctx: LeonContext) = ctx.timers.genc.get("Scala -> CIR")
 
@@ -61,14 +61,19 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   /****************************************************************************************************
    *                                                       Entry point of conversion                  *
    ****************************************************************************************************/
-  def apply(entryPoint: FunDef): CIR.FunDef = rec(entryPoint.typed)
+  def apply(entryPoint: FunDef): CIR.FunDef = rec(entryPoint.typed)(Map.empty)
 
 
 
   /****************************************************************************************************
    *                                                       Caches                                     *
    ****************************************************************************************************/
-  private val funCache = MutableMap[TypedFunDef, CIR.FunDef]()
+
+  // For functions, we associate each TypedFunDef to a CIR.FunDef for each "type context" (TypeMapping).
+  // This is very important for (non-generic) functions nested in a generic function because for N
+  // instantiation of the outer function we have only one TypedFunDef for the inner function.
+  private val funCache = MutableMap[(TypedFunDef, TypeMapping), CIR.FunDef]()
+
   private val classCache = MutableMap[ClassType, CIR.ClassDef]()
 
 
@@ -76,29 +81,48 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   /****************************************************************************************************
    *                                                       Helper functions                           *
    ****************************************************************************************************/
-  private def convertVarInfoToArg(vi: VarInfo) = CIR.ValDef(rec(vi.id), rec(vi.typ), vi.isVar)
-  private def convertVarInfoToParam(vi: VarInfo) = CIR.Binding(convertVarInfoToArg(vi))
+  // When converting expressions, we keep track of the variable in scope to build Bindings
+  // Also, the identifier might not have the correct type (e.g. when generic). We therefore
+  // need an external *concrete* type.
+  private type Env = Map[(Identifier, TypeTree), CIR.ValDef]
+
+  // Keep track of generic to concrete type mapping
+  private type TypeMapping = Map[TypeParameter, TypeTree]
+
+  private def instantiate(typ: TypeTree, tm: TypeMapping): TypeTree =
+    TypeOps.instantiateType(typ, tm)
+
+  // Here, when context are translated, there might remain some generic types. We use `tm` to make them disapear.
+  private def convertVarInfoToArg(vi: VarInfo)(implicit tm: TypeMapping) = CIR.ValDef(rec(vi.id), rec(vi.typ), vi.isVar)
+  private def convertVarInfoToParam(vi: VarInfo)(implicit tm: TypeMapping) = CIR.Binding(convertVarInfoToArg(vi))
 
   // Extract the ValDef from the known one
-  private def buildBinding(id: Identifier)(implicit env: Env) = CIR.Binding(env(id))
+  private def buildBinding(id: Identifier)(implicit env: Env, tm: TypeMapping) =
+    CIR.Binding(env(id -> instantiate(id.getType, tm)))
 
-  private def buildLet(x: Identifier, e: Expr, body: Expr, isVar: Boolean)(implicit env: Env): CIR.Expr = {
+  private def buildLet(x: Identifier, e: Expr, body: Expr, isVar: Boolean)
+                      (implicit env: Env, tm: TypeMapping): CIR.Expr = {
     val vd = CIR.ValDef(rec(x), rec(x.getType), isVar)
     val decl = CIR.DeclInit(vd, rec(e))
-    val newEnv = env + (x -> vd)
-    val rest = rec(body)(newEnv)
+    val newEnv = env + ((x, instantiate(x.getType, tm)) -> vd)
+    val rest = rec(body)(newEnv, tm)
 
     CIR.buildBlock(Seq(decl, rest))
   }
 
-  private def buildId(tfd: TypedFunDef): CIR.Id =
-    rec(tfd.fd.id) + buildIdPostfix(tfd.tps)
+  // Include the "nesting path" in case of generic functions to avoid ambiguity
+  private def buildId(tfd: TypedFunDef)(implicit tm: TypeMapping): CIR.Id =
+    rec(tfd.fd.id) + (if (tfd.tps.nonEmpty) buildIdPostfix(tfd.tps) else buildIdFromTypeMapping(tm))
 
-  private def buildId(ct: ClassType): CIR.Id =
+  private def buildId(ct: ClassType)(implicit tm: TypeMapping): CIR.Id =
     rec(ct.classDef.id) + buildIdPostfix(ct.tps)
 
-  private def buildIdPostfix(tps: Seq[TypeTree]): CIR.Id = if (tps.isEmpty) "" else {
+  private def buildIdPostfix(tps: Seq[TypeTree])(implicit tm: TypeMapping): CIR.Id = if (tps.isEmpty) "" else {
     "_" + (tps filterNot { _ == Untyped } map rec map CIR.repId mkString "_")
+  }
+
+  private def buildIdFromTypeMapping(tm: TypeMapping): CIR.Id = if (tm.isEmpty) "" else {
+    "_" + (tm.values map { t => CIR.repId(rec(t)(tm)) } mkString "_")
   }
 
   // Check validity of the operator
@@ -115,7 +139,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     }
   }
 
-  private def buildBinOp(lhs0: Expr, op: O.BinaryOperator, rhs0: Expr)(pos: Position)(implicit env: Env) = {
+  private def buildBinOp(lhs0: Expr, op: O.BinaryOperator, rhs0: Expr)
+                        (pos: Position)
+                        (implicit env: Env, tm: TypeMapping) = {
     val lhs = rec(lhs0)
     val rhs = rec(rhs0)
 
@@ -126,7 +152,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     CIR.BinOp(op, lhs, rhs)
   }
 
-  private def buildUnOp(op: O.UnaryOperator, expr0: Expr)(pos: Position)(implicit env: Env) = {
+  private def buildUnOp(op: O.UnaryOperator, expr0: Expr)
+                       (pos: Position)
+                       (implicit env: Env, tm: TypeMapping) = {
     val expr = rec(expr0)
 
     val logical = expr.getType.isLogical
@@ -137,7 +165,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   // Create a binary AST
-  private def buildMultiOp(op: O.BinaryOperator, exprs: Seq[Expr])(pos: Position)(implicit env: Env): CIR.BinOp = exprs.toList match {
+  private def buildMultiOp(op: O.BinaryOperator, exprs: Seq[Expr])
+                          (pos: Position)
+                          (implicit env: Env, tm: TypeMapping): CIR.BinOp = exprs.toList match {
     case Nil => internalError("no operands")
     case a :: Nil => internalError("at least two operands required")
     case a :: b :: Nil => buildBinOp(a, op, b)(pos)
@@ -145,7 +175,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   // Tuples are converted to classes
-  private def tuple2Class(typ: TypeTree): CIR.ClassDef = typ match {
+  private def tuple2Class(typ: TypeTree)(implicit tm: TypeMapping): CIR.ClassDef = typ match {
     case TupleType(bases) =>
       val types = bases map rec
       val fields = types.zipWithIndex map { case (typ, i) => CIR.ValDef("_" + (i+1), typ, isVar = false) }
@@ -157,9 +187,6 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
   private def castNotSupported(ct: ClassType): Boolean =
     ct.classDef.isAbstract && ct.classDef.hasParent
-
-  // When converting expressions, we keep track of the variable in scope to build Bindings
-  type Env = Map[Identifier, CIR.ValDef]
 
 
 
@@ -184,7 +211,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     }
   }
 
-  private def convertPatMap(scrutinee0: Expr, cases0: Seq[MatchCase])(implicit env: Env): CIR.Expr = {
+  private def convertPatMap(scrutinee0: Expr, cases0: Seq[MatchCase])(implicit env: Env, tm: TypeMapping): CIR.Expr = {
     require(cases0.nonEmpty)
 
     def withTmp(typ: TypeTree, value: Expr, env: Env): (Variable, Some[CIR.DeclInit], Env) = {
@@ -192,9 +219,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       val tmpId = rec(tmp0)
       val tmpTyp = rec(typ)
       val tmp = CIR.ValDef(tmpId, tmpTyp, isVar = false)
-      val pre = CIR.DeclInit(tmp, rec(value)(env))
+      val pre = CIR.DeclInit(tmp, rec(value)(env, tm))
 
-      (tmp0.toVariable, Some(pre), env + (tmp0 -> tmp))
+      (tmp0.toVariable, Some(pre), env + ((tmp0, instantiate(typ, tm)) -> tmp))
     }
 
     val (scrutinee, preOpt, newEnv) = scrutinee0 match {
@@ -208,7 +235,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       case e => internalError(s"scrutinee = $e of type ${e.getClass} is not supported")
     }
 
-    val cases = cases0 map { caze => convertCase(scrutinee, caze)(newEnv) }
+    val cases = cases0 map { caze => convertCase(scrutinee, caze)(newEnv, tm) }
 
     // Identify the last case
     val last = cases.last match {
@@ -238,7 +265,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   // Extract the condition, guard and body (rhs) of a match case
-  private def convertCase(initialScrutinee: Expr, caze: MatchCase)(implicit env: Env): PMCase = {
+  private def convertCase(initialScrutinee: Expr, caze: MatchCase)(implicit env: Env, tm: TypeMapping): PMCase = {
     // We need to keep track of binder (and binders in sub-patterns) and their appropriate
     // substitution. We do so in an Imperative manner with variables -- sorry FP, but it's
     // much simpler that way! However, to encapsulate things a bit, we use the `update`
@@ -313,30 +340,32 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     if (id.name == "_main") "_main"
     else {
       val uniqueId = id.uniqueNameDelimited("_")
-      if (uniqueId endsWith "_1") id.name // when possible, keep the id as clean as possible
+      if (uniqueId endsWith "_0") id.name // when possible, keep the id as clean as possible
       else uniqueId
     }
-
   }
 
   // Try first to fetch the function from cache to handle recursive funcitons.
-  private def rec(tfd: TypedFunDef): CIR.FunDef = funCache get tfd getOrElse {
+  private def rec(tfd: TypedFunDef)(implicit tm0: TypeMapping): CIR.FunDef = funCache get tfd -> tm0 getOrElse {
     val id = buildId(tfd)
 
+    // We have to manually specify tm1 from now on to avoid using tm0. We mark tm1 as
+    // implicit as well to generate ambiguity at compile time to avoid forgetting a call site.
+    implicit val tm1 = tm0 ++ tfd.typesMap
+
     // Make sure to get the id from the function definition, not the typed one, as they don't always match.
-    val paramTypes = tfd.params map { p => rec(p.getType) }
-    val paramIds = tfd/*.fd*/.params map { p => rec(p.id) }
+    val paramTypes = tfd.fd.params map { p => rec(p.getType)(tm1) }
+    val paramIds = tfd.fd.params map { p => rec(p.id) }
     val params = (paramIds zip paramTypes) map { case (id, typ) => CIR.ValDef(id, typ, isVar = false) }
 
-    // Extract the context for the function definition.
-    val ctx = ctxDB(tfd.fd) map convertVarInfoToArg
-    // TODO THERE MIGHT BE SOME GENERICS IN THE CONTEXT!!!
+    // Extract the context for the function definition, taking care of the remaining generic types in the context.
+    val ctx = ctxDB(tfd.fd) map { c => convertVarInfoToArg(c)(tm1) }
 
-    val returnType = rec(tfd.returnType)
+    val returnType = rec(tfd.returnType)(tm1)
 
     // Build a partial function without body in order to support recursive functions
     val fun = CIR.FunDef(id, returnType, ctx, params, null)
-    funCache.update(tfd, fun)
+    funCache.update(tfd -> tm0, fun) // Register with the callee TypeMapping, *not* the newer
 
     // Now proceed with the body
     val body: CIR.FunBody =
@@ -344,14 +373,17 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
         val impl = tfd.fd.getManualDefinition
         CIR.FunBodyManual(impl.includes, impl.code)
       } else {
-        val ctxEnv = (ctxDB(tfd.fd) map { _.id }) zip ctx
-        val paramEnv = (tfd/*.fd*/.params map { _.id }) zip params
+        // Build the new environment from context and parameters
+        val ctxKeys = ctxDB(tfd.fd) map { c => c.id -> instantiate(c.typ, tm1) }
+        val ctxEnv = ctxKeys zip ctx
+
+        val paramKeys = tfd.fd.params map { p => p.id -> instantiate(p.getType, tm1) }
+        val paramEnv = paramKeys zip params
+
         val env = (ctxEnv ++ paramEnv).toMap
 
-        // TODO Find out if this is an issue or not by writing a regression test.
-        warning(s"we are invalidating the ctx names because we are using the translated version of the body of $id")
-
-        CIR.FunBodyAST(rec(tfd.fullBody)(env))
+        // Recurse on the FunDef body, and not the TypedFunDef one, in order to keep the correct identifiers.
+        CIR.FunBodyAST(rec(tfd.fd.fullBody)(env, tm1))
       }
 
     // Now that we have a body, we can fully build the FunDef
@@ -360,14 +392,13 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     fun
   }
 
-  private def rec(typ: TypeTree): CIR.Type = typ match {
+  // We need a type mapping only when converting context argument to remove the remaining generics.
+  private def rec(typ: TypeTree)(implicit tm: TypeMapping): CIR.Type = typ match {
     case UnitType => CIR.PrimitiveType(PT.UnitType)
     case BooleanType => CIR.PrimitiveType(PT.BoolType)
     case Int32Type => CIR.PrimitiveType(PT.Int32Type)
     case CharType => CIR.PrimitiveType(PT.CharType)
     case StringType => CIR.PrimitiveType(PT.StringType)
-
-    // case tp @ TypeParameter(_) => CIR.ParametricType(convertId(tp.id))
 
     // For both case classes and abstract classes:
     case ct: ClassType =>
@@ -387,10 +418,12 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case FunctionType(from, to) => internalError(s"what shoud I do with $from -> $to")
 
+    case tp: TypeParameter => rec(instantiate(tp, tm))
+
     case t => internalError(s"type tree of type ${t.getClass} not handled")
   }
 
-  private def rec(ct: ClassType): CIR.ClassDef = {
+  private def rec(ct: ClassType)(implicit tm: TypeMapping): CIR.ClassDef = {
     // Convert the whole class hierarchy to register all siblings, in a top down fasion, that way
     // each children class in the the CIR hierarchy get registered to its parent and we can keep track
     // of all of them.
@@ -422,7 +455,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     translation(ct)
   }
 
-  private def rec(e: Expr)(implicit env: Env): CIR.Expr = e match {
+  private def rec(e: Expr)(implicit env: Env, tm0: TypeMapping): CIR.Expr = e match {
     case UnitLiteral() => CIR.Lit(L.UnitLit)
     case BooleanLiteral(v) => CIR.Lit(L.BoolLit(v))
     case IntLiteral(v) => CIR.Lit(L.IntLit(v))
@@ -447,8 +480,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case FunctionInvocation(tfd, args0) =>
       val fun = rec(tfd)
-      val extra = ctxDB(tfd.fd) map convertVarInfoToParam
-      val args = args0 map rec
+      implicit val tm1 = tm0 ++ tfd.typesMap
+      val extra = ctxDB(tfd.fd) map { c => convertVarInfoToParam(c)(tm1) }
+      val args = args0 map { a0 => rec(a0)(env, tm1) }
 
       CIR.App(fun, extra, args)
 
@@ -499,10 +533,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       CIR.ArrayInit(alloc)
 
-
     case NonemptyArray(_, Some(_)) =>
       internalError("Inconsistent state of NonemptyArray")
-
 
     case array @ NonemptyArray(elems, None) => // Here elems is non-empty
       val arrayType = rec(array.getType).asInstanceOf[CIR.ArrayType]
@@ -517,7 +549,6 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       val alloc = CIR.ArrayAllocStatic(arrayType, values.length, values)
       CIR.ArrayInit(alloc)
-
 
     case IfExpr(cond, thenn, NoTree(_)) => CIR.If(rec(cond), rec(thenn))
     case IfExpr(cond, thenn, elze) => CIR.IfElse(rec(cond), rec(thenn), rec(elze))
