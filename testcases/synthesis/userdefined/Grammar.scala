@@ -45,8 +45,36 @@ object Grammar {
   @production(1)
   def t = true
 
-  def max(b1: BigInt, b2: BigInt) = choose( (out: BigInt) => {
-    out >= b1 && out >= b2 && (out == b1 || out == b2)
+  def max(b1: BigInt, b2: BigInt, b3: BigInt) = choose( (out: BigInt) => {
+    out >= b1 && out >= b2 && out >= b3 && (out == b1 || out == b2 || out == b3)
   })
+
+  /* def add1Ex(b: BigInt) = {
+    ???[BigInt]
+  } ensuring {
+    res => (b1, res) passes {
+      case BigInt(3) => BigInt(4)
+      case BigInt(4) => BigInt(5)
+    }
+  }
+
+  def add2Ex(b1: BigInt, b2: BigInt) = {
+    ???[BigInt]
+  } ensuring {
+    res => ((b1, b2), res) passes {
+      case (BigInt(3), BigInt(4)) => BigInt(7)
+      case (BigInt(4), BigInt(7)) => BigInt(11)
+    }
+  }
+
+  def funny(b1: BigInt, b2: BigInt) = {
+    choose ((res: BigInt) => res >= b1 && res >= b2)
+  } ensuring {
+    res => ((b1, b2), res) passes {
+      case (BigInt(3), BigInt(4)) => BigInt(7)
+      case (BigInt(4), BigInt(7)) => BigInt(11)
+    }
+  } */
+
 }
 

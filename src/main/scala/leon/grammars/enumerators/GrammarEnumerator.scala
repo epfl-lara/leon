@@ -2,9 +2,10 @@ package leon
 package grammars
 package enumerators
 
+import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import purescala.Expressions.Expr
 
-import scala.collection.mutable.{HashMap, Queue => MutableQueue, HashSet}
+import scala.collection.mutable.{HashMap, HashSet, Queue => MutableQueue}
 
 trait GrammarEnumerator {
   protected val grammar: ExpressionGrammar
@@ -77,7 +78,8 @@ object Tester {
     val grammar = UserDefinedGrammar(sctx, program, Some(fd), fd.paramIds)
     val labels = List(IntegerType, BooleanType) map (Label(_, List()))//aspects.Tagged(Tags.Top, 0, None))))
     val bottomUp = new ProbwiseBottomupEnumerator(grammar, labels(0)).iterator(labels(0))
-    val topDown = new ProbwiseTopdownEnumerator(grammar, labels(0), _ => (0, 0)).iterator(labels(0))
+    val scorer = new CandidateScorer[Expr]((_, _) => MeetsSpec.NOTYET, _ => Set())
+    val topDown = new ProbwiseTopdownEnumerator(grammar, labels(0), scorer).iterator(labels(0))
     grammar.printProductions(println)
     val before = System.currentTimeMillis()
 

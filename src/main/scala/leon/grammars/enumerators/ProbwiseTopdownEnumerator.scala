@@ -2,14 +2,15 @@ package leon
 package grammars
 package enumerators
 
+import leon.grammars.enumerators.CandidateScorer.Score
 import purescala.Expressions.Expr
 
 class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
     init: Label,
-    scoreCandidate: Expansion[Label, Expr] => (Int, Int)
+    scorer: CandidateScorer[Expr]
   )(implicit ctx: LeonContext)
-  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scoreCandidate)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer)
   with GrammarEnumerator
 {
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
@@ -25,9 +26,7 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](
-    scoreCandidate: Expansion[NT, R] => (Int, Int)
-  )(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[R])(implicit ctx: LeonContext) {
 
   import ctx.reporter._
   implicit val debugSection = leon.utils.DebugSectionSynthesis
@@ -47,51 +46,33 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
     expansion: Expansion[NT, R],
     logProb: Double,
     horizon: Double,
-    score: Int
+    score: Score
   ) {
     require(logProb <= 0 && horizon <= 0)
-
     def get = expansion.produce
+    val yesScore = score.yesExs.size
+    val priority = 8 * yesScore + logProb + horizon
   }
 
   def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
-    val ordering = Ordering.by[WorklistElement, Double](elem => 8 * elem.score + elem.logProb + elem.horizon)
+    val ordering = Ordering.by[WorklistElement, Double](_.priority)
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
-    val worklistSeed = WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt), 0)
-    var prevAns = worklistSeed
 
+    val worklistSeed = WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt), CandidateScorer.SEED_SCORE)
+    var prevAns = worklistSeed
     worklist.enqueue(worklistSeed)
 
     var lastPrint: Int = 1
 
     def hasNext: Boolean = {
-      while (worklist.nonEmpty && scoreCandidate(worklist.head.expansion)._2 > 0) {
-        worklist.dequeue
-      }
+      prepareNext()
       worklist.nonEmpty
     }
 
     def next: (R, Double) = {
       EnumeratorStats.iteratorNextCallCount += 1
-      while (!worklist.head.expansion.complete) {
-        val head = worklist.dequeue
-        val headScore = scoreCandidate(head.expansion) // (0, 0) to disable partial evaluation
-        if (headScore._2 == 0) {
-          EnumeratorStats.partialEvalAcceptCount += 1
-          val newElems = expandNext(head, headScore._1)
-          worklist ++= newElems
-          if (worklist.size >= 1.5 * lastPrint) {
-            debug(s"Worklist size: ${worklist.size}")
-            debug("Accept / reject ratio: " +
-                  s"${EnumeratorStats.partialEvalAcceptCount} /" +
-                  s"${EnumeratorStats.partialEvalRejectionCount}")
-            lastPrint = worklist.size
-          }
-        } else {
-          EnumeratorStats.partialEvalRejectionCount += 1
-        }
-      }
-
+      prepareNext()
+      assert(worklist.nonEmpty)
       val ans = worklist.dequeue
       // assert(ans.logProb - 1.0e-6 <= prevAns.logProb)
       // assert(ans.horizon >= -1.0e-6)
@@ -99,9 +80,30 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
       (ans.get, ans.logProb)
     }
 
+    def prepareNext(): Unit = {
+      while (worklist.nonEmpty && !worklist.head.expansion.complete) {
+        val head = worklist.dequeue
+        val headScore = scorer.score(head.expansion, head.score.maybeExs, eagerReturnOnFalse = false)
+        if (headScore.noExs.isEmpty) {
+          val newElems = expandNext(head, headScore)
+          worklist ++= newElems
+
+          EnumeratorStats.partialEvalAcceptCount += 1
+          if (worklist.size >= 1.5 * lastPrint) {
+            debug(s"Worklist size: ${worklist.size}")
+            debug(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+              s"${EnumeratorStats.partialEvalRejectionCount}")
+            lastPrint = worklist.size
+          }
+        } else {
+          EnumeratorStats.partialEvalRejectionCount += 1
+        }
+      }
+    }
+
   }
 
-  def expandNext(elem: WorklistElement, elemScore: Int): Seq[WorklistElement] = {
+  def expandNext(elem: WorklistElement, elemScore: Score): Seq[WorklistElement] = {
     EnumeratorStats.expandNextCallCount += 1
     val expansion = elem.expansion
 
@@ -131,7 +133,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](
           case csHd :: csTl if csHd.complete =>
             for (csTlExp <- expandChildren(csTl)) yield (csHd :: csTlExp._1, csTlExp._2)
           case csHd :: csTl =>
-            for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, 0), 0))
+            for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore))
             yield (csHdExp.expansion :: csTl, csHdExp.logProb)
         }
 
