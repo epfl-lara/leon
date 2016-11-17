@@ -31,7 +31,8 @@ object Main {
       invariant.engine.InferInvariantsPhase,
       laziness.HOInferencePhase,
       genc.GenerateCPhase,
-      genc.CFileOutputPhase
+      genc.CFileOutputPhase,
+      verification.InjectAsserts
     )
   }
 

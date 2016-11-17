@@ -41,7 +41,8 @@ trait VerificationSuite extends LeonRegressionSuite {
       VerificationPhase andThen
       FixReportLabels.when(desugarXLang)
 
-    val ctx = createLeonContext(files:_*).copy(reporter = new TestErrorReporter)
+    val defaultOptions: List[String] = optionVariants.headOption.getOrElse(List())
+    val ctx = createLeonContext((files++defaultOptions):_*).copy(reporter = new TestErrorReporter)
 
     try {
       val (_, ast) = extraction.run(ctx, files)
