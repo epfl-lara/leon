@@ -51,7 +51,10 @@ class CandidateScorer[R](
 
 object CandidateScorer {
 
-  case class Score(yesExs: Set[Example], noExs: Set[Example], maybeExs: Set[Example])
+  case class Score(yesExs: Set[Example], noExs: Set[Example], maybeExs: Set[Example]) {
+    def nYes: Int = yesExs.size
+    def nExs: Int = yesExs.size + noExs.size + maybeExs.size
+  }
 
   val SEED_SCORE: Score = Score(Set(), Set(), Set())
 

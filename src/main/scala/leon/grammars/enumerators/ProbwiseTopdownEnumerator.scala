@@ -50,8 +50,13 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   ) {
     require(logProb <= 0 && horizon <= 0)
     def get = expansion.produce
-    val yesScore = score.yesExs.size
-    val priority = 8 * yesScore + logProb + horizon
+    val yesScore = score.nYes
+    // val priority = 8 * yesScore + logProb + horizon
+    val priority = {
+      val t1 = 16 * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
+      val t2 = logProb + horizon
+      t1 + t2
+    }
   }
 
   def iterator(nt: NT): Iterator[(R, Double)] = new Iterator[(R, Double)] {
