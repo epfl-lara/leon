@@ -29,7 +29,6 @@ abstract class STELike(name: String) extends Rule(name) {
 
   class NonDeterministicProgram(
     params: STEParams,
-    interruptManager: InterruptManager,
     outerCtx: SearchContext,
     outerP: Problem,
     initSize: Int,
@@ -38,6 +37,8 @@ abstract class STELike(name: String) extends Rule(name) {
     type Candidate = Set[Identifier]
 
     import outerCtx.reporter._
+
+    import outerCtx.interruptManager
 
     // Track non-deterministic candidates up to 100'000 expressions, or give up
     val nCandidatesLimit = 100000
@@ -857,7 +858,6 @@ abstract class STELike(name: String) extends Rule(name) {
           // Represents a non-deterministic program
           val ndProgram = new NonDeterministicProgram(
             params = params,
-            interruptManager = interruptManager,
             outerCtx = hctx,
             outerP   = p,
             initSize = sizeFrom - 1,
