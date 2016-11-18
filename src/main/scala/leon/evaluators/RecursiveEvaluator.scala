@@ -13,13 +13,14 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
+import purescala.TypeOps
 import solvers.TimeoutableSolverFactory
 import solvers.{PartialModel, SolverFactory, SolverContext}
 import solvers.unrolling.UnrollingProcedure
 import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.duration._
 import org.apache.commons.lang3.StringEscapeUtils
-import leon.purescala.TypeOps
+
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: EvaluationBank, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
