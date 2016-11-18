@@ -49,7 +49,7 @@ object FileOutputStream {
 
 @library
 @cCode.typedef(alias = "FILE*", include = "stdio.h")
-case class FileOutputStream(var filename: Option[String]) {
+case class FileOutputStream private (var filename: Option[String]) {
 
   /**
    * Close the stream; return `true` on success.

@@ -39,8 +39,7 @@ object FileInputStream {
         leon.lang.Some[String](filename)
       } catch {
         case _: Throwable => leon.lang.None[String]
-      },
-      0 // nothing consumed yet
+      }
     )
   }
 
@@ -48,7 +47,7 @@ object FileInputStream {
 
 @library
 @cCode.typedef(alias = "FILE*", include = "stdio.h")
-case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
+case class FileInputStream private (var filename: Option[String], var consumed: BigInt = 0) {
 
   /**
    * Close the stream; return `true` on success.
@@ -65,7 +64,7 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     |}
     """
   )
-  def close(implicit state: State): Boolean = {
+  def close()(implicit state: State): Boolean = {
     state.seed += 1
 
     filename = leon.lang.None[String]
