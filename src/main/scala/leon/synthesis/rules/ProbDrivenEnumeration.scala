@@ -36,7 +36,11 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
         val grammar    = grammars.default(hctx, p)
         val spec       = letTuple(p.xs, _: Expr, p.phi)
-        var examples   = Seq(InExample(p.as.map(_.getType) map simplestValue))//p.eb.examples
+        var examples   = {
+          val fromProblem = p.eb.examples.filter(_.isInstanceOf[InOutExample])
+          if (fromProblem.nonEmpty) fromProblem
+          else Seq(InExample(p.as.map(_.getType) map simplestValue))
+        }
         val timers     = hctx.timers.synthesis.applications.get(this.description)
 
         val restartable = enum == "eqclasses"

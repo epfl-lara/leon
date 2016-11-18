@@ -26,6 +26,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected type Rule = ProductionRule[NT, R]
   protected type Coords = Seq[Int]
 
+  protected val timers = ctx.timers.synthesis.applications.get("Prob. driven enum. (eqclasses)")
+
   protected type Sig
   protected def mkSig(elem: StreamElem): Sig
 
@@ -156,8 +158,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         while (!found) {
           //println(s"$nt: size is ${buffer.size}, populating")
           val (elem, op) = operators(nt).flatMap(_.getNext).maxBy(_._1.logProb)
-          op.advance()
-          if (isDistinct(elem, hashSet)) {
+          timers.advance.timed { op.advance() }
+          if (timers.distinct.timed { isDistinct(elem, hashSet) }) {
             found = true
             buffer += elem
           }
@@ -257,11 +259,9 @@ class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
   }
 
   protected def isDistinct(elem: StreamElem, previous: mutable.HashSet[Sig]): Boolean = {
-    ctx.timers.synthesis.applications.get("Prob. driven enum. (eqclasses)").distinct.timed {
-      val res = !previous.contains(elem.sig)
-      if (res) previous.add(elem.sig)
-      res
-    }
+    val res = !previous.contains(elem.sig)
+    if (res) previous.add(elem.sig)
+    res
   }
 
 }
