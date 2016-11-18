@@ -96,6 +96,8 @@ class TimerStorage extends Dynamic {
     selfTimer.get.stop
   }
 
+  def isRunning = selfTimer.exists(_.isRunning)
+
   def outputTable(printer: String => Unit) = {
     import utils.ASCIIHelpers._
 

@@ -123,12 +123,15 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
                 val cex  = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
                 debug(s"Found cex $cex for $expr, restarting enum...")
                 examples +:= cex
+                timers.cegisIter.stop()
+                timers.cegisIter.start()
                 if (restartable) {
                   it = mkEnum
                 }
                 None
 
               case Some(false) =>
+                timers.cegisIter.stop()
                 Some(Solution(BooleanLiteral(true), Set(), expr, isTrusted = true))
 
               case None =>
@@ -146,6 +149,8 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             solverF.reclaim(solver)
           }
         }
+
+        timers.cegisIter.start()
 
         RuleClosed (
           if (!it.hasNext) Stream() else Stream.continually {
