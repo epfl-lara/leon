@@ -67,6 +67,23 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         }
     },
 
+    classOf[GreaterEquals] -> {
+      (expr, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val lt = expr.asInstanceOf[GreaterEquals]
+        import lt._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 >= i2)
+          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
+            val FractionalLiteral(n, _) = e(RealMinus(a, b))
+            BooleanLiteral(n >= 0)
+          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 >= c2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
     classOf[And] -> {
       (expr, rctx, gctx) =>
         implicit val r = rctx
@@ -376,6 +393,11 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           case _ =>
             throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
         }
+    },
+    
+    classOf[synthesis.utils.MutableExpr] -> {
+      (ex, rctx, gctx) =>
+        e(ex.asInstanceOf[synthesis.utils.MutableExpr].underlying)(rctx, gctx)
     }
 
     // TODO: Rest of the cases
