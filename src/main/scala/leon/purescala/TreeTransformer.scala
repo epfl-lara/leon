@@ -56,7 +56,7 @@ trait TreeTransformer {
       This(transform(ct).asInstanceOf[ClassType]).copiedFrom(e)
     case IsInstanceOf(expr, ct) =>
       IsInstanceOf(transform(expr), transform(ct).asInstanceOf[ClassType]).copiedFrom(e)
-    case AsInstanceOf(expr, ct) => 
+    case AsInstanceOf(expr, ct) =>
       AsInstanceOf(transform(expr), transform(ct).asInstanceOf[ClassType]).copiedFrom(e)
     case MatchExpr(scrutinee, cases) =>
       MatchExpr(transform(scrutinee), for (cse @ MatchCase(pattern, guard, rhs) <- cases) yield {
@@ -152,6 +152,9 @@ trait TreeTraverser {
       traverse(a)
       traverse(expr)
       traverse(body)
+    case LetDef(fds, body) =>
+      fds foreach traverse
+      traverse(body)
     case CaseClass(cct, args) =>
       traverse(cct)
       args foreach traverse
@@ -173,7 +176,7 @@ trait TreeTraverser {
     case IsInstanceOf(expr, ct) =>
       traverse(expr)
       traverse(ct)
-    case AsInstanceOf(expr, ct) => 
+    case AsInstanceOf(expr, ct) =>
       traverse(expr)
       traverse(ct)
     case MatchExpr(scrutinee, cases) =>
