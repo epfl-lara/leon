@@ -3,6 +3,7 @@
 import leon.annotation._
 import leon.io.{ FileOutputStream => FOS, FileInputStream => FIS }
 import leon.io.{ StdIn, StdOut }
+import leon.lang._
 
 object IO {
 
@@ -29,8 +30,10 @@ object IO {
   def echo(): Unit = {
     implicit val state = leon.io.newState
     StdOut.print("ECHOING...")
-    val x = StdIn.readInt
-    StdOut.print(x)
+    StdIn.tryReadInt() match {
+      case Some(x) => StdOut.print(x)
+      case None() => StdOut.print("Nothing to echo")
+    }
     StdOut.print("\n")
   }
 
@@ -51,10 +54,10 @@ object IO {
 
     val in = FIS.open("echo.txt")
     if (in.isOpen) {
-      val x = in.readInt
+      val x = in.tryReadInt()
       in.close()
 
-      if (x == message) {
+      if (x.isDefined && x.get == message) {
         StdOut.print("The echo was slow but successful!\n")
       } else
         StdOut.print("The echo was slow and buggy! :-(\n")
