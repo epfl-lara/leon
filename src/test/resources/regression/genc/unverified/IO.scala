@@ -6,10 +6,9 @@ import leon.io.{ StdIn, StdOut }
 
 object IO {
 
-  def getFileName() = "test.txt"
+  def filename = "test.txt"
 
   def printX(x: Int, c: Char, sep: String): Unit = {
-    val filename = getFileName
     val out = FOS.open(filename)
     if (out.isOpen) {
       out.write(x)
@@ -43,7 +42,7 @@ object IO {
     val out = FOS.open("echo.txt")
     if (out.isOpen) {
       out.write(message)
-      out.close
+      out.close()
 
       ()
     } else {
@@ -53,7 +52,7 @@ object IO {
     val in = FIS.open("echo.txt")
     if (in.isOpen) {
       val x = in.readInt
-      in.close
+      in.close()
 
       if (x == message) {
         StdOut.print("The echo was slow but successful!\n")
