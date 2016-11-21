@@ -291,8 +291,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     * Compatible should evaluate to the same value for the same identifier
     */
   private def isCompatible(m1: Map[Identifier, Expr], m2: Map[Identifier, Expr]) = {
-    val ks = m1.keySet & m2.keySet
-    ks.nonEmpty && ks.map(id => (id, m1(id))) == ks.map(id => (id, m2(id)))
+    val ks = (m1.keySet & m2.keySet).toSeq
+    ks.nonEmpty && ks.map(m1) == ks.map(m2)
   }
 
   /** Merge tests t1 and t2 if they are compatible. Return m1 if not.
