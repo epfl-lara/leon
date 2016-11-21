@@ -7,7 +7,7 @@ import leon.purescala._
 import leon.purescala.Definitions.Program
 import leon.solvers.isabelle.AdaptationPhase
 import leon.verification.InjectAsserts
-import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase, XLangCleanupPhase}
+import leon.xlang.XLangDesugaringPhase
 
 class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Program] {
 
@@ -23,7 +23,8 @@ class PreprocessingPhase(genc: Boolean = false) extends LeonPhase[Program, Progr
       debugTrees("Program after extraction") andThen
       MethodLifting                          andThen
       TypingPhase                            andThen
-      synthesis.ConversionPhase
+      synthesis.ConversionPhase              andThen
+      debugTrees("Program after synthesis conversion")
 
     val pipeBeginWithInlining =
       if(ctx.findOptionOrDefault(Main.MainComponent.optLazyEval)) {

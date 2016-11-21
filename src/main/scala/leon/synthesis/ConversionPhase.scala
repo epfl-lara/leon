@@ -129,7 +129,7 @@ object ConversionPhase extends UnitPhase[Program] {
       }
     }
 
-    val fullBody = body match {
+    val (fullBody, hadHoles) = body match {
       case Some(body) =>
         var holes  = List[Identifier]()
 
@@ -145,7 +145,7 @@ object ConversionPhase extends UnitPhase[Program] {
               val chooseOs = os.map(_.freshen)
 
               val pred = post.getOrElse( // FIXME: We need to freshen variables
-                Lambda(chooseOs.map(ValDef(_)), BooleanLiteral(true))
+                Lambda(chooseOs.map(ValDef), BooleanLiteral(true))
               )
 
               letTuple(os, Choose(pred), b)
@@ -159,13 +159,12 @@ object ConversionPhase extends UnitPhase[Program] {
           val hToFresh = (holes zip cids.map(_.toVariable)).toMap
 
           val spec = post match {
-            case Some(post: Lambda) =>
-              val asLet = letTuple(post.args.map(_.id), withoutHoles, post.body)
-
-              Lambda(cids.map(ValDef(_)), replaceFromIDs(hToFresh, asLet))
+            case Some(Lambda(args, body)) =>
+              val asLet = letTuple(args.map(_.id), withoutHoles, body)
+              Lambda(cids.map(ValDef), replaceFromIDs(hToFresh, asLet))
 
             case _ =>
-              Lambda(cids.map(ValDef(_)), BooleanLiteral(true))
+              Lambda(cids.map(ValDef), BooleanLiteral(true))
           }
 
           val choose = Choose(spec)
@@ -176,18 +175,18 @@ object ConversionPhase extends UnitPhase[Program] {
             letTuple(holes, choose, withoutHoles)
           }
 
-          withPostcondition(withPrecondition(newBody, pre), post)
+          (withPostcondition(withPrecondition(newBody, pre), post), true)
 
         } else {
-          e
+          (e, false)
         }
 
       case None =>
         if (isExtern) {
-          e
+          (e, false)
         } else {
           val newPost = post getOrElse Lambda(Seq(ValDef(FreshIdentifier("res", e.getType))), BooleanLiteral(true))
-          withPrecondition(Choose(newPost), pre)
+          (withPrecondition(Choose(newPost), pre), false)
       }
     }
 
@@ -195,6 +194,12 @@ object ConversionPhase extends UnitPhase[Program] {
     fullBody match {
       case Require(_, Choose(spec)) =>
         withPostcondition(fullBody, Some(spec))
+      case Ensuring(Choose(Lambda(args1, spec1)), Lambda(Seq(arg2), spec2)) if !hadHoles =>
+        val swapArgs = {
+          if (args1.size > 1) letTuple(args1.map(_.id), arg2.toVariable, _: Expr)
+          else replaceFromIDs(Map(args1.head.id -> arg2.toVariable), _: Expr)
+        }
+        withPostcondition(fullBody, Some(Lambda(Seq(arg2), and(swapArgs(spec1), spec2))))
       case Choose(spec) =>
         withPostcondition(fullBody, Some(spec))
       case _ =>
