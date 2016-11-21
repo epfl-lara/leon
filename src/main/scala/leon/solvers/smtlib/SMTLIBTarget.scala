@@ -237,6 +237,7 @@ trait SMTLIBTarget extends Interruptible {
         case BooleanType => Core.BoolSort()
         case IntegerType => Ints.IntSort()
         case RealType    => Reals.RealSort()
+        case Int8Type    => FixedSizeBitVectors.BitVectorSort(8)
         case Int32Type   => FixedSizeBitVectors.BitVectorSort(32)
         case CharType    => FixedSizeBitVectors.BitVectorSort(32)
 
@@ -624,7 +625,7 @@ trait SMTLIBTarget extends Interruptible {
             rSubstBody
           )
         )
-      
+
 
       case BoundedForall(from, to, pred) =>
         val intType = from.getType
