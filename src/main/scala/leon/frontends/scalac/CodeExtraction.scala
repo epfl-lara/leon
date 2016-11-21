@@ -1110,7 +1110,7 @@ trait CodeExtraction extends ASTExtractors {
         val lit = InfiniteIntegerLiteral(BigInt(n.value.stringValue))
         (LiteralPattern(binder, lit), dctx)
 
-      case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
+      case ExIntLiteral(i)     => (LiteralPattern(binder, IntLiteral(i)),     dctx)
       case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
       case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
       case ExStringLiteral(s)  => (LiteralPattern(binder, StringLiteral(s)),  dctx)
@@ -1521,7 +1521,7 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(tr, "Real not build from literals")
           }
 
-        case ExInt32Literal(v) =>
+        case ExIntLiteral(v) =>
           IntLiteral(v)
 
         case ExBooleanLiteral(v) =>

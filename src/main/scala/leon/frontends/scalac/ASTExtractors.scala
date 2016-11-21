@@ -848,16 +848,16 @@ trait ASTExtractors {
                Apply(
                  TypeApply(
                    Select(
-                     Apply(ExSelected("scala", "Predef", s), Seq(lhs)), 
+                     Apply(ExSelected("scala", "Predef", s), Seq(lhs)),
                      n
-                   ), 
+                   ),
                    _
-                 ), 
+                 ),
                  Seq(index, value)
                ),
                List(Apply(_, _))
-             ) if (s.toString contains "Array") && 
-                  (n.toString == "updated") => 
+             ) if (s.toString contains "Array") &&
+                  (n.toString == "updated") =>
           Some((lhs, index, value))
         case Apply(
                Apply(
@@ -867,12 +867,12 @@ trait ASTExtractors {
                      n
                    ),
                    _
-                 ), 
+                 ),
                  Seq(index, value)
                ),
                List(Apply(_, _))
-             ) if (s.toString contains "Array") && 
-                  (n.toString == "updated") => 
+             ) if (s.toString contains "Array") &&
+                  (n.toString == "updated") =>
           Some((lhs, index, value))
         case _ => None
       }
@@ -1030,9 +1030,16 @@ trait ASTExtractors {
       }
     }
 
-    object ExInt32Literal {
+    // Extract any kind of integer literal
+    //
+    // NOTE Because extraction happens after typechecking, expressions such as
+    //      val b: Byte = 128 // out of range
+    //      are not possible. It is therefore okay to lose the actual type of the literal.
+    //
+    // TODO Add support for more integer types
+    object ExIntLiteral {
       def unapply(tree: Literal): Option[Int] = tree match {
-        case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
+        case Literal(c @ Constant(i)) if Set(ByteTpe, IntTpe) contains c.tpe => Some(c.intValue)
         case _ => None
       }
     }
