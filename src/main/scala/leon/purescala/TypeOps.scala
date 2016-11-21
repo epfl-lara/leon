@@ -107,6 +107,10 @@ object TypeOps extends GenTreeOps[TypeTree] {
           }
         }
 
+      case (bv1: BitVectorType, bv2: BitVectorType) =>
+        val largest = if (bv1.size > bv2.size) bv1 else bv2
+        Some((largest, Map.empty))
+
       case Same(t1, t2) =>
         // Only tuples are covariant
         def allowVariance = t1 match {
