@@ -9,129 +9,119 @@ import leon.purescala.Types.Untyped
 // The following code has been grafted together from DefaultEvaluator and RecursiveEvaluator.
 
 class PartialExpansionEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new EvaluationBank)
-  extends RecursiveEvaluator(ctx, prog, bank, 50000)
+  extends TableEvaluator(ctx, prog, bank)
     with HasDefaultGlobalContext
     with HasDefaultRecContext {
 
-  protected[evaluators] override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {
-    // println(s"> Evalling ${expr}")
-    val ans = expr match {
-      case Equals(le, re) => {
-        // println("Evalling equals")
-        val lv = e(le)
-        val rv = e(re)
+  case class PERes(res: Expr, complete: Boolean)
 
-        val ans = if (lv == rv) {
-          BooleanLiteral(true)
-        } else {
-          (lv, rv) match {
-            case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
-            case (FiniteBag(el1, _),FiniteBag(el2, _)) => BooleanLiteral(el1 == el2)
-            case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-            case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
-            case (ExpansionExpr(_, _), _) => expr
-            case (_, ExpansionExpr(_, _)) => expr
-            case _ => BooleanLiteral(false)
-          }
+  val table: Map[Class[_], (Expr, RC, GC) => PERes] = Map(
+    classOf[ExpansionExpr[_]] -> {
+      (expr, rctx, gctx) => expr.asInstanceOf[ExpansionExpr[_]] match {
+        case ExpansionExpr(NonTerminalInstance(_), typeTree) => PERes(expr, complete = false)
+        case ExpansionExpr(ProdRuleInstance(nt, rule, children), typeTree) =>
+          val childExprs = children.map(child => ExpansionExpr(child, Untyped))
+          pe(rule.builder(childExprs))(rctx, gctx)
+      }
+    },
+
+    classOf[IfExpr] -> {
+      (expr, rctx, gctx) => {
+        val IfExpr(cond, thenn, elze) = expr
+        pe(cond)(rctx, gctx) match {
+          case PERes(BooleanLiteral(true), true) => pe(thenn)(rctx, gctx)
+          case PERes(BooleanLiteral(false), true) => pe(elze)(rctx, gctx)
+          case _ => PERes(expr, complete = false)
         }
-        // println(s"${ans}")
-        ans
       }
+    },
 
-      case ExpansionExpr(NonTerminalInstance(_), typeTree) => {
-        // println("Immediate return!")
-        expr
-      }
+    classOf[And] -> {
+      (expr, rctx, gctx) => {
+        val And(exprs) = expr
+        implicit val rc = rctx
+        implicit val gc = gctx
 
-      case ExpansionExpr(ProdRuleInstance(nt, rule, children), typeTree) => {
-        val childResults = children.map(child => e(ExpansionExpr(child, Untyped)))
-        if (childResults.exists(_.isInstanceOf[ExpansionExpr[_]])) {
-          // println("This call!")
-          partialE(rule.builder(childResults), expr)
-        } else {
-          // println(s">> Super call 1! expr: ${expr}")
-          try {
-            val ans = super.e(rule.builder(childResults))
-            // println(s"<< Super call 1! expr: ${expr}. Ans: ${ans}")
-            ans
-          } catch {
-            case evalError: EvalError => {
-              // println(s"EvalError: ${evalError}")
-              // println(s"<< Failed super call 1: ${expr}")
-              expr
+        def pevalAnd(exprs: Seq[Expr], allTrue: Boolean = true): PERes = {
+          if (exprs.isEmpty) PERes(BooleanLiteral(allTrue), complete = allTrue)
+          else {
+            val ehd = exprs.head
+            val etl = exprs.tail
+            pe(ehd) match {
+              case PERes(BooleanLiteral(true), true) => pevalAnd(etl, allTrue)
+              case PERes(BooleanLiteral(false), true) => PERes(BooleanLiteral(false), complete = true)
+              case _ => pevalAnd(etl, allTrue = false)
             }
           }
         }
-      }
 
-      case _ => {
-        // println(s">> Super call 2! expr: ${expr}")
-        try {
-          val ans = super.e(expr)
-          // println(s"<< Super call 2! expr: ${expr}. Ans: ${ans}")
-          ans
-        } catch {
-          case evalError: EvalError => {
-            // println(s"EvalError: ${evalError}")
-            // println(s"<< Failed super call 2: ${expr}")
-            expr
+        pevalAnd(exprs)
+      }
+    },
+
+    classOf[Or] -> {
+      (expr, rctx, gctx) => {
+        val Or(exprs) = expr
+        implicit val rc = rctx
+        implicit val gc = gctx
+
+        def pevalOr(exprs: Seq[Expr], allFalse: Boolean = true): PERes = {
+          if (exprs.isEmpty) PERes(BooleanLiteral(!allFalse), complete = allFalse)
+          else {
+            val ehd = exprs.head
+            val etl = exprs.tail
+            pe(ehd) match {
+              case PERes(BooleanLiteral(true), true) => PERes(BooleanLiteral(true), complete = true)
+              case PERes(BooleanLiteral(false), true) => pevalOr(etl, allFalse)
+              case _ => pevalOr(etl, allFalse = false)
+            }
           }
+        }
+
+        pevalOr(exprs)
+      }
+    },
+
+    classOf[Implies] -> {
+      (expr, rctx, gctx) => {
+        val Implies(lhs, rhs) = expr
+        pe(lhs)(rctx, gctx) match {
+          case PERes(BooleanLiteral(true), true) => pe(rhs)(rctx, gctx)
+          case PERes(BooleanLiteral(false), true) => PERes(BooleanLiteral(true), complete = true)
+          case _ => pe(rhs)(rctx, gctx)
+        }
+      }
+    },
+
+    classOf[Equals] -> {
+      (expr, rctx, gctx) => {
+        val Equals(le, re) = expr
+        val lv = pe(le)(rctx, gctx)
+        val rv = pe(re)(rctx, gctx)
+
+        (lv, rv) match {
+          case (PERes(lve, true), PERes(rve, true)) => PERes(super.e(Equals(lve, rve))(rctx, gctx), complete = true)
+          case _ => PERes(expr, complete = false)
         }
       }
     }
-    // println(s"< Finished evalling ${expr}. Producing result: ${ans}")
-    ans
+  )
+
+  def defaultE(expr: Expr, rctx: RC, gctx: GC): PERes = {
+    try {
+      PERes(super.e(expr)(rctx, gctx), complete = true)
+    } catch {
+      case evalError: EvalError => PERes(expr, complete = false)
+    }
   }
 
-  def partialE(expr: Expr, fallback: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
-    case And(exprs) => {
-      val ee = exprs.map(e)
-      if (ee.contains(BooleanLiteral(false))) {
-        BooleanLiteral(false)
-      } else if (ee.forall(_ == BooleanLiteral(true))) {
-        BooleanLiteral(true)
-      } else {
-        fallback
-      }
-    }
+  def pe(expr: Expr)(implicit rctx: RC, gctx: GC): PERes = {
+    table.getOrElse(expr.getClass, defaultE(_, _, _))(expr, rctx, gctx)
+  }
 
-    case Or(exprs) => {
-      val ee = exprs.map(e)
-      if (ee.contains(BooleanLiteral(true))) {
-        BooleanLiteral(true)
-      } else if (ee.forall(_ == BooleanLiteral(false))) {
-        BooleanLiteral(false)
-      } else {
-        fallback
-      }
-    }
-
-    case Implies(lhs, rhs) => {
-      val elhs = e(lhs)
-      val erhs = e(rhs)
-      if (elhs == BooleanLiteral(false) || erhs == BooleanLiteral(true) || elhs == erhs) {
-        BooleanLiteral(true)
-      } else {
-        fallback
-      }
-    }
-
-    case IfExpr(cond, thenn, elze) => {
-      val econd = e(cond)
-      val ethenn = e(thenn)
-      val eelze = e(elze)
-      if (econd == BooleanLiteral(true)) {
-        ethenn
-      } else if (econd == BooleanLiteral(false)) {
-        eelze
-      } else if (ethenn == eelze) {
-        ethenn
-      } else {
-        fallback
-      }
-    }
-
-    case _ => fallback
+  protected[evaluators] override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = pe(expr) match {
+    case PERes(res, true) => res
+    case PERes(_, false) => throw EvalError(s"Unable to fully evaluate expression ${expr}")
   }
 
 }

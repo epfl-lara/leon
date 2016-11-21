@@ -37,7 +37,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   /**
     * Represents an element of the worklist
-    *
     * @param expansion The partial expansion under consideration
     * @param logProb The log probability already accumulated by the expansion
     * @param horizon The minimum cost that this expansion will accumulate before becoming concrete

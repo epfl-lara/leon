@@ -15,7 +15,8 @@ class CandidateScorer[R](
 )(implicit ctx: LeonContext) {
 
   def score(expansion: Expansion[_, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
-    ctx.timers.eval.start()
+    ctx.timers.score.start()
+    val exs = getExs(())
     val ans = if (eagerReturnOnFalse) {
       val yesExs = new ArrayBuffer[Example]()
       val noExs = new ArrayBuffer[Example]()
@@ -24,7 +25,7 @@ class CandidateScorer[R](
       yesExs ++= skipExs
       val scoreBreaks = new Breaks
       scoreBreaks.breakable {
-        for (ex <- getExs(()) if !skipExs.contains(ex)) {
+        for (ex <- exs if !skipExs.contains(ex)) {
           evalCandidate(expansion, ex) match {
             case MeetsSpec.YES => yesExs += ex
             case MeetsSpec.NO =>
@@ -38,12 +39,12 @@ class CandidateScorer[R](
       Score(yesExs.toSet, noExs.toSet, maybeExs.toSet)
     } else {
       def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
-      val results = getExs(()).par.groupBy(classify).mapValues(_.seq)
+      val results = exs.par.groupBy(classify).mapValues(_.seq)
       Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
         results.getOrElse(MeetsSpec.NO, Seq()).toSet,
         results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
     }
-    ctx.timers.eval.stop()
+    ctx.timers.score.stop()
     ans
   }
 
