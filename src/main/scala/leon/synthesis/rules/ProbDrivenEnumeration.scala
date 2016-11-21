@@ -105,9 +105,6 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     }
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
 
-    debug("Grammar:")
-    grammar.printProductions(debug(_))
-
     // Evaluates a candidate against an example in the correct environment
     def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example): evalr.EvaluationResult = timers.eval.timed {
       setSolution(expr)
@@ -156,16 +153,18 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     }
 
     val restartable = enum == "eqclasses"
-    val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples)
+
     def mkEnum = (enum match {
       case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
       case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
-      case "topdown"   => new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
-      case _ =>
-        warning("Enumerator not recognized, falling back to top-down...")
+      case other =>
+        if (other != "topdown") warning("Enumerator not recognized, falling back to top-down...")
+        val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples)
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
     }).iterator(topLabel).take(maxGen)
     var it = mkEnum
+    debug("Grammar:")
+    grammar.printProductions(debug(_))
 
     /**
       * Second phase of STE: verify a given candidate by looking for CEX inputs.
