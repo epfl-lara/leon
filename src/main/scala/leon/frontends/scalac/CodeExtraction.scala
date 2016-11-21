@@ -1916,6 +1916,20 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, RealType), "<=", List(IsTyped(a2, RealType))) =>
               LessEquals(a1, a2)
 
+            // Byte methods
+            // TODO add more of those
+
+            case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int8Type))) =>
+              BVRemainder(a1, a2)
+            case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int32Type))) =>
+              BVRemainder(a1, a2)
+
+            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int8Type))) =>
+              GreaterThan(a1, a2)
+            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int32Type))) =>
+              GreaterThan(a1, a2)
+
+
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
               BVPlus(a1, a2)
@@ -1942,6 +1956,8 @@ trait CodeExtraction extends ASTExtractors {
               BVLShiftRight(a1, a2)
 
             case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int32Type))) =>
+              GreaterThan(a1, a2)
+            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int8Type))) =>
               GreaterThan(a1, a2)
             case (IsTyped(a1, Int32Type), ">=", List(IsTyped(a2, Int32Type))) =>
               GreaterEquals(a1, a2)
