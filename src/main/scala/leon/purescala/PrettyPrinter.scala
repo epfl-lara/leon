@@ -106,7 +106,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Require(BooleanLiteral(true), body) =>
         p"|$body"
-        
+
       case Require(pre, body) =>
         p"""|require($pre)
             |$body"""
@@ -168,7 +168,7 @@ class PrettyPrinter(opts: PrinterOptions,
               val lclass = AbstractClassType(opgm.get.library.List.get, cct.tps)
               p"$lclass($elems)"
             }
-              
+
           case None =>
             if (cct.classDef.isCaseObject) {
               p"$cct"
@@ -216,18 +216,18 @@ class PrettyPrinter(opts: PrinterOptions,
           p"$dbquote$escaped$dbquote"
         }
 
-      case ArrayForall(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+      case ArrayForall(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 =>
         p"$a.forall($pred)"
-      case ArrayForall(a, from, to, pred) => 
+      case ArrayForall(a, from, to, pred) =>
         p"$a.forall($from, $to, $pred)"
-      case BoundedForall(from, to, pred) => 
+      case BoundedForall(from, to, pred) =>
         p"forall($from, $to, $pred)"
 
-      case ArrayExists(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+      case ArrayExists(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 =>
         p"$a.exists($pred)"
-      case ArrayExists(a, from, to, pred) => 
+      case ArrayExists(a, from, to, pred) =>
         p"$a.exists($from, $to, $pred)"
-      case BoundedExists(from, to, pred) => 
+      case BoundedExists(from, to, pred) =>
         p"exists($from, $to, $pred)"
 
       case GenericValue(tp, id) => p"$tp#$id"
@@ -493,6 +493,7 @@ class PrettyPrinter(opts: PrinterOptions,
       // Types
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
+      case Int8Type              => p"Byte"
       case Int32Type             => p"Int"
       case IntegerType           => p"BigInt"
       case RealType              => p"Real"
