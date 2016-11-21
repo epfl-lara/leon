@@ -17,7 +17,7 @@ import purescala.Common.Identifier
 import utils.MutableExpr
 import solvers._
 
-object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){ self =>
+object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
   class NonDeterministicProgram(
     outerCtx: SearchContext,
@@ -104,7 +104,6 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){ self =>
       else Seq(InExample(p.as.map(_.getType) map simplestValue))
     }
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
-
 
     debug("Grammar:")
     grammar.printProductions(debug(_))
