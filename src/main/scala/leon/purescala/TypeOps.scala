@@ -191,6 +191,11 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case NAryType(tps, builder) => tps.exists(isParametricType)
   }
 
+  def isBVType(tpe: TypeTree): Boolean = tpe match {
+    case bv: BitVectorType => true
+    case _ => false
+  }
+
   // Helpers for instantiateType
   private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
     case (tp: TypeParameter) => map.getOrElse(tp, tp)
@@ -261,7 +266,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
       }.product)
     case act: AbstractClassType =>
       val possibleChildTypes = leon.utils.fixpoint((tpes: Set[TypeTree]) => {
-        tpes.flatMap(tpe => 
+        tpes.flatMap(tpe =>
           Set(tpe) ++ (tpe match {
             case cct: CaseClassType => cct.fieldsTypes
             case act: AbstractClassType => Set(act) ++ act.knownCCDescendants

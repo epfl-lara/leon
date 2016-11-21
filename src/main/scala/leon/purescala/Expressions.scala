@@ -405,7 +405,7 @@ object Expressions {
     def isSome(scrut: Expr) = IsInstanceOf(FunctionInvocation(unapplyFun, Seq(scrut)), someType)
 
   }
-  
+
   // Extracts without taking care of the binder. (contrary to Extractos.Pattern)
   object PatternExtractor extends TreeExtractor[Pattern] {
     def unapply(e: Pattern): Option[(Seq[Pattern], (Seq[Pattern]) => Pattern)] = e match {
@@ -420,7 +420,7 @@ object Expressions {
       case _ => None
     }
   }
-  
+
   object PatternOps extends GenTreeOps[Pattern] {
     val Deconstructor = PatternExtractor
   }
@@ -611,12 +611,12 @@ object Expressions {
       else Untyped
     }
   }
-  
+
   abstract class ConverterToString(fromType: TypeTree, toType: TypeTree) extends Expr {
     def expr: Expr
     val getType = if(expr.getType == fromType) toType else Untyped
   }
-  
+
   /* String Theory */
   /** $encodingof `expr.toString` for Int32 to String */
   case class Int32ToString(expr: Expr) extends ConverterToString(Int32Type, StringType)
@@ -756,34 +756,36 @@ object Expressions {
 
 
   /* Bit-vector arithmetic */
+  // TODO if Long is supported, most getType should be updated to return Long
+  //      if one of the operand is of Long type.
   /** $encodingof `... + ...` $noteBitvector*/
   case class BVPlus(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    require(isBVType(lhs.getType) && isBVType(rhs.getType))
     val getType = Int32Type
   }
   /** $encodingof `... - ...` $noteBitvector*/
   case class BVMinus(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    require(isBVType(lhs.getType) && isBVType(rhs.getType))
     val getType = Int32Type
   }
   /** $encodingof `- ...` $noteBitvector*/
   case class BVUMinus(expr: Expr) extends Expr {
-    require(expr.getType == Int32Type)
+    require(isBVType(expr.getType))
     val getType = Int32Type
   }
   /** $encodingof `... * ...` $noteBitvector*/
   case class BVTimes(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    require(isBVType(lhs.getType) && isBVType(rhs.getType))
     val getType = Int32Type
   }
   /** $encodingof `... / ...` $noteBitvector*/
   case class BVDivision(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    require(isBVType(lhs.getType) && isBVType(rhs.getType))
     val getType = Int32Type
   }
   /** $encodingof `... % ...` $noteBitvector*/
   case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    require(isBVType(lhs.getType) && isBVType(rhs.getType))
     val getType = Int32Type
   }
   /** $encodingof `! ...` $noteBitvector */
