@@ -2100,6 +2100,9 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def extractType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = tpt match {
+      case ByteTpe =>
+        Int8Type
+
       case CharTpe =>
         CharType
 
