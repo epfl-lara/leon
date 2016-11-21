@@ -292,7 +292,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     */
   private def isCompatible(m1: Map[Identifier, Expr], m2: Map[Identifier, Expr]) = {
     val ks = m1.keySet & m2.keySet
-    ks.nonEmpty && ks.map(m1) == ks.map(m2)
+    ks.nonEmpty && ks.map(id => (id, m1(id))) == ks.map(id => (id, m2(id)))
   }
 
   /** Merge tests t1 and t2 if they are compatible. Return m1 if not.
