@@ -9,8 +9,7 @@ import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import evaluators.{TableEvaluator, DefaultEvaluator}
 import synthesis.Example
-import scala.collection.mutable
-import scala.collection.mutable.{ PriorityQueue, HashSet, HashMap, ArrayBuffer }
+import scala.collection.{mutable => mut}
 
 /** An enumerator that jointly enumerates elements from a number of production rules by employing a bottom-up strategy.
   * After initialization, each nonterminal will produce a series of unique elements in decreasing probability order.
@@ -26,7 +25,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected type Rule = ProductionRule[NT, R]
   protected type Coords = Seq[Int]
 
-  protected val timers = ctx.timers.synthesis.applications.get("Prob. driven enum. (eqclasses)")
+  protected val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
 
   protected type Sig
   protected def mkSig(elem: StreamElem): Sig
@@ -37,19 +36,19 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     lazy val sig = mkSig(this)
   }
 
-  protected def isDistinct(elem: StreamElem, previous: HashSet[Sig]): Boolean
+  protected def isDistinct(elem: StreamElem, previous: mut.HashSet[Sig]): Boolean
 
   // Represents the frontier of an operator, i.e. a set of the most probable combinations of operand indexes
   // such that each other combination that has not been generated yet has an index >= than one element of the frontier
   // Stores the elements in a priority queue by maximum probability
   class Frontier(dim: Int, rule: Rule, streams: Seq[NonTerminalStream]) {
     private val ordering = Ordering.by[FrontierElem, Double](_.streamElem.logProb)
-    private val queue = new PriorityQueue[FrontierElem]()(ordering)
+    private val queue = new mut.PriorityQueue[FrontierElem]()(ordering)
     private var futureElems = List.empty[ElemSuspension]
 
     private val byDim = Array.fill(dim)(
-      HashMap[Int, HashSet[FrontierElem]]()
-        .withDefaultValue(HashSet[FrontierElem]())
+     mut.HashMap[Int, mut.HashSet[FrontierElem]]()
+        .withDefaultValue(mut.HashSet[FrontierElem]())
     )
 
     @inline private def dominates(e1: FrontierElem, e2: FrontierElem) =
@@ -134,8 +133,8 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   /** A class that represents the stream of generated elements for a specific nonterminal. */
   protected class NonTerminalStream(nt: NT) extends Iterable[R] {
 
-    protected val buffer: ArrayBuffer[StreamElem] = new ArrayBuffer()
-    protected val hashSet: HashSet[Sig] = new HashSet()
+    protected val buffer: mut.ArrayBuffer[StreamElem] = new mut.ArrayBuffer()
+    protected val hashSet: mut.HashSet[Sig] = new mut.HashSet()
 
     // The first element to be produced will be the one recursively computed by the horizon map.
     private def initialize(): Unit = {
@@ -222,7 +221,7 @@ class ProbwiseBottomupEnumerator(protected val grammar: ExpressionGrammar, init:
   with GrammarEnumerator
 {
   type Sig = Unit
-  @inline protected def isDistinct(elem: StreamElem, previous: HashSet[Sig]): Boolean = true
+  @inline protected def isDistinct(elem: StreamElem, previous: mut.HashSet[Sig]): Boolean = true
   @inline protected def mkSig(elem: StreamElem): Sig = ()
 }
 
@@ -258,10 +257,8 @@ class EqClassesEnumerator( protected val grammar: ExpressionGrammar,
     res
   }
 
-  protected def isDistinct(elem: StreamElem, previous: mutable.HashSet[Sig]): Boolean = {
-    val res = !previous.contains(elem.sig)
-    if (res) previous.add(elem.sig)
-    res
+  protected def isDistinct(elem: StreamElem, previous: mut.HashSet[Sig]): Boolean = {
+    previous.add(elem.sig)
   }
 
 }
