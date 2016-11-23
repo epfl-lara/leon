@@ -1917,18 +1917,80 @@ trait CodeExtraction extends ASTExtractors {
               LessEquals(a1, a2)
 
             // Byte methods
-            // TODO add more of those
+            case (IsTyped(a1, Int8Type), "+", List(IsTyped(a2, Int8Type))) =>
+              BVPlus(a1, a2)
+            case (IsTyped(a1, Int8Type), "+", List(IsTyped(a2, Int32Type))) =>
+              BVPlus(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "-", List(IsTyped(a2, Int8Type))) =>
+              BVMinus(a1, a2)
+            case (IsTyped(a1, Int8Type), "-", List(IsTyped(a2, Int32Type))) =>
+              BVMinus(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "*", List(IsTyped(a2, Int8Type))) =>
+              BVTimes(a1, a2)
+            case (IsTyped(a1, Int8Type), "*", List(IsTyped(a2, Int32Type))) =>
+              BVTimes(a1, a2)
 
             case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int8Type))) =>
               BVRemainder(a1, a2)
             case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int32Type))) =>
               BVRemainder(a1, a2)
 
+            case (IsTyped(a1, Int8Type), "/", List(IsTyped(a2, Int8Type))) =>
+              BVDivision(a1, a2)
+            case (IsTyped(a1, Int8Type), "/", List(IsTyped(a2, Int32Type))) =>
+              BVDivision(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "|", List(IsTyped(a2, Int8Type))) =>
+              BVOr(a1, a2)
+            case (IsTyped(a1, Int8Type), "|", List(IsTyped(a2, Int32Type))) =>
+              BVOr(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "&", List(IsTyped(a2, Int8Type))) =>
+              BVAnd(a1, a2)
+            case (IsTyped(a1, Int8Type), "&", List(IsTyped(a2, Int32Type))) =>
+              BVAnd(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "^", List(IsTyped(a2, Int8Type))) =>
+              BVXOr(a1, a2)
+            case (IsTyped(a1, Int8Type), "^", List(IsTyped(a2, Int32Type))) =>
+              BVXOr(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "<<", List(IsTyped(a2, Int8Type))) =>
+              BVShiftLeft(a1, a2)
+            case (IsTyped(a1, Int8Type), "<<", List(IsTyped(a2, Int32Type))) =>
+              BVShiftLeft(a1, a2)
+
+            case (IsTyped(a1, Int8Type), ">>", List(IsTyped(a2, Int8Type))) =>
+              BVAShiftRight(a1, a2)
+            case (IsTyped(a1, Int8Type), ">>", List(IsTyped(a2, Int32Type))) =>
+              BVAShiftRight(a1, a2)
+
+            case (IsTyped(a1, Int8Type), ">>>", List(IsTyped(a2, Int8Type))) =>
+              BVLShiftRight(a1, a2)
+            case (IsTyped(a1, Int8Type), ">>>", List(IsTyped(a2, Int32Type))) =>
+              BVLShiftRight(a1, a2)
+
             case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int8Type))) =>
               GreaterThan(a1, a2)
             case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int32Type))) =>
               GreaterThan(a1, a2)
 
+            case (IsTyped(a1, Int8Type), ">=", List(IsTyped(a2, Int8Type))) =>
+              GreaterEquals(a1, a2)
+            case (IsTyped(a1, Int8Type), ">=", List(IsTyped(a2, Int32Type))) =>
+              GreaterEquals(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "<", List(IsTyped(a2, Int8Type))) =>
+              LessThan(a1, a2)
+            case (IsTyped(a1, Int8Type), "<", List(IsTyped(a2, Int32Type))) =>
+              LessThan(a1, a2)
+
+            case (IsTyped(a1, Int8Type), "<=", List(IsTyped(a2, Int8Type))) =>
+              LessEquals(a1, a2)
+            case (IsTyped(a1, Int8Type), "<=", List(IsTyped(a2, Int32Type))) =>
+              LessEquals(a1, a2)
 
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
@@ -1956,8 +2018,6 @@ trait CodeExtraction extends ASTExtractors {
               BVLShiftRight(a1, a2)
 
             case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int32Type))) =>
-              GreaterThan(a1, a2)
-            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int8Type))) =>
               GreaterThan(a1, a2)
             case (IsTyped(a1, Int32Type), ">=", List(IsTyped(a2, Int32Type))) =>
               GreaterEquals(a1, a2)
