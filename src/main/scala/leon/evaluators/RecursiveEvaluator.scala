@@ -483,7 +483,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     case RealTimes(l,r) =>
       (e(l), e(r)) match {
         case (FractionalLiteral(ln, ld), FractionalLiteral(rn, rd)) =>
-          normalizeFraction(FractionalLiteral((ln * rn), (ld * rd)))
+          normalizeFraction(FractionalLiteral(ln * rn, ld * rd))
         case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
       }
 

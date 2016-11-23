@@ -50,23 +50,6 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         expr
     },
 
-    classOf[LessThan] -> {
-      (expr, rctx, gctx) =>
-        implicit val r = rctx
-        implicit val g = gctx
-        val lt = expr.asInstanceOf[LessThan]
-        import lt._
-        (e(lhs), e(rhs)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
-          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 < i2)
-          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
-            val FractionalLiteral(n, _) = e(RealMinus(a, b))
-            BooleanLiteral(n < 0)
-          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 < c2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-    },
-
     classOf[GreaterEquals] -> {
       (expr, rctx, gctx) =>
         implicit val r = rctx
@@ -380,6 +363,454 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         import expr._
         e(RealPlus(lhs, RealUMinus(rhs)))
     },
+
+    classOf[BVPlus] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVPlus]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
+    classOf[BVMinus] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVMinus]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[UMinus] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[UMinus]
+        e(expr.expr) match {
+          case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(-i)
+          case re => throw EvalError(typeErrorMsg(re, IntegerType))
+        }
+    },
+    classOf[BVUMinus] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVUMinus]
+        e(expr.expr) match {
+          case IntLiteral(i) => IntLiteral(-i)
+          case re => throw EvalError(typeErrorMsg(re, Int32Type))
+        }
+    },
+    classOf[RealUMinus] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[RealUMinus]
+        e(expr.expr) match {
+          case FractionalLiteral(n, d) => FractionalLiteral(-n, d)
+          case re => throw EvalError(typeErrorMsg(re, RealType))
+        }
+    },
+    classOf[BVNot] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVNot]
+        e(expr.expr) match {
+          case IntLiteral(i) => IntLiteral(~i)
+          case re => throw EvalError(typeErrorMsg(re, Int32Type))
+        }
+    },
+    classOf[Times] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Times]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 * i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+    },
+
+
+    classOf[Division] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Division]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+            if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+    },
+
+    classOf[Remainder] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Remainder]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+            if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+    },
+
+    classOf[Modulo] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Modulo]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+            if(i2 < 0)
+              InfiniteIntegerLiteral(i1 mod (-i2))
+            else if(i2 != BigInt(0))
+              InfiniteIntegerLiteral(i1 mod i2)
+            else
+              throw RuntimeError("Modulo of division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+    },
+    classOf[Remainder] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Remainder]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+            if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+        }
+    },
+    classOf[BVTimes] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVTimes]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[BVDivision] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVDivision]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) =>
+            if(i2 != 0) IntLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
+    classOf[BVRemainder] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVRemainder]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) =>
+            if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[RealTimes] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[RealTimes]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (FractionalLiteral(ln, ld), FractionalLiteral(rn, rd)) =>
+            normalizeFraction(FractionalLiteral(ln * rn, ld * rd))
+          case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+        }
+    },
+    classOf[RealDivision] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[RealDivision]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (FractionalLiteral(ln, ld), FractionalLiteral(rn, rd)) =>
+            if (rn != 0)
+              normalizeFraction(FractionalLiteral(ln * rd, ld * rn))
+            else throw RuntimeError("Division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+        }
+    },
+    classOf[BVAnd] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVAnd]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 & i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[BVOr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVOr]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[BVXOr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVXOr]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 << i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[BVAShiftRight] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVAShiftRight]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 >> i2)
+          case (le, re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[BVLShiftRight] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVLShiftRight]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 >>> i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
+    classOf[LessThan] -> {
+      (expr, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val lt = expr.asInstanceOf[LessThan]
+        import lt._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 < i2)
+          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
+            val FractionalLiteral(n, _) = e(RealMinus(a, b))
+            BooleanLiteral(n < 0)
+          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 < c2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
+    classOf[GreaterThan] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[GreaterThan]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 > i2)
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 > i2)
+          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
+            val FractionalLiteral(n, _) = e(RealMinus(a, b))
+            BooleanLiteral(n > 0)
+          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 > c2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[LessEquals] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[LessEquals]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 <= i2)
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 <= i2)
+          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
+            val FractionalLiteral(n, _) = e(RealMinus(a, b))
+            BooleanLiteral(n <= 0)
+          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 <= c2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[GreaterEquals] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[GreaterEquals]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
+          case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 >= i2)
+          case (a @ FractionalLiteral(_, _), b @ FractionalLiteral(_, _)) =>
+            val FractionalLiteral(n, _) = e(RealMinus(a, b))
+            BooleanLiteral(n >= 0)
+          case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 >= c2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[SetAdd] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[SetAdd]
+        import expr._
+        (e(set), e(elem)) match {
+          case (FiniteSet(els1, tpe), evElem) => FiniteSet(els1 + evElem, tpe)
+          case (le, re) => throw EvalError(typeErrorMsg(le, set.getType))
+        }
+    },
+    classOf[BVOr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVOr]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[SetIntersection] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[SetIntersection]
+        import expr._
+        (e(set1), e(set2)) match {
+          case (FiniteSet(els1, tpe), FiniteSet(els2, _)) => FiniteSet(els1 intersect els2, tpe)
+          case (le,re) => throw EvalError(typeErrorMsg(le, set1.getType))
+        }
+    },
+    classOf[BVOr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVOr]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[SetDifference] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[SetDifference]
+        import expr._
+        (e(set1), e(set2)) match {
+          case (FiniteSet(els1, tpe), FiniteSet(els2, _)) => FiniteSet(els1 -- els2, tpe)
+          case (le,re) => throw EvalError(typeErrorMsg(le, set1.getType))
+        }
+    },
+    classOf[BVOr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVOr]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+    classOf[ElementOfSet] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[ElementOfSet]
+        import expr._
+        (e(element), e(set)) match {
+          case (e, FiniteSet(els, _)) => BooleanLiteral(els.contains(e))
+          case (l,r) => throw EvalError(typeErrorMsg(r, SetType(l.getType)))
+        }
+    },
+
+    classOf[SubsetOf] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[SubsetOf]
+        import expr._
+        (e(set1), e(set2)) match {
+          case (FiniteSet(els1, _),FiniteSet(els2, _)) => BooleanLiteral(els1.subsetOf(els2))
+          case (le,re) => throw EvalError(typeErrorMsg(le, set1.getType))
+        }
+    },
+
+    classOf[SetCardinality] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[SetCardinality]
+        e(expr.set) match {
+          case FiniteSet(els, _) => InfiniteIntegerLiteral(els.size)
+          case other => throw EvalError(typeErrorMsg(other, SetType(Untyped)))
+        }
+    },
+    classOf[FiniteSet] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[FiniteSet]
+        import expr._
+        FiniteSet(elements map e, base)
+    },
+
+    classOf[Lambda] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val l = ex.asInstanceOf[Lambda]
+        val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
+        replaceFromIDs(mapping, l).asInstanceOf[Lambda]
+    },
+    classOf[FiniteLambda] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[FiniteLambda]
+        import expr._
+        FiniteLambda(mapping.map(p => p._1.map(e) -> e(p._2)), e(default), tpe)
+    },
+    classOf[Passes] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[Passes]
+        e(expr.asConstraint)
+    },
+
     classOf[MatchExpr] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
@@ -400,7 +831,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         e(ex.asInstanceOf[synthesis.utils.MutableExpr].underlying)(rctx, gctx)
     }
 
-    // TODO: Rest of the cases
+    // TODO: Strings, bags, arrays, maps, forall
 
   )
 
