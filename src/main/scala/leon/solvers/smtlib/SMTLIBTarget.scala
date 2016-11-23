@@ -509,11 +509,14 @@ trait SMTLIBTarget extends Interruptible {
 
       case Not(u)          => Core.Not(toSMT(u))
       case UMinus(u)       => Ints.Neg(toSMT(u))
-      case BVUMinus(u)     => FixedSizeBitVectors.Neg(toSMT(u))
-      case BVNot(u)        => FixedSizeBitVectors.Not(toSMT(u))
+      case BVUMinus(u)     => FixedSizeBitVectors.Neg(extendTo32(toSMT(u), u))
+      case BVNot(u)        => FixedSizeBitVectors.Not(extendTo32(toSMT(u), u))
       case Assert(a, _, b) => toSMT(IfExpr(a, b, Error(b.getType, "assertion failed")))
 
-      case Equals(a, b)    => Core.Equals(toSMT(a), toSMT(b))
+      case Equals(a, b)    =>
+        if (isBVType(a.getType)) Core.Equals(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+        else Core.Equals(toSMT(a), toSMT(b))
+
       case Implies(a, b)   => Core.Implies(toSMT(a), toSMT(b))
       case Plus(a, b)      => Ints.Add(toSMT(a), toSMT(b))
       case Minus(a, b)     => Ints.Sub(toSMT(a), toSMT(b))
@@ -535,40 +538,41 @@ trait SMTLIBTarget extends Interruptible {
         Ints.Mod(toSMT(a), toSMT(b))
       }
       case LessThan(a, b) => a.getType match {
-        case Int32Type   => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
+        case t if isBVType(t) => FixedSizeBitVectors.SLessThan(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
         case IntegerType => Ints.LessThan(toSMT(a), toSMT(b))
         case RealType    => Reals.LessThan(toSMT(a), toSMT(b))
         case CharType    => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
       }
       case LessEquals(a, b) => a.getType match {
-        case Int32Type   => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
+        case t if isBVType(t) => FixedSizeBitVectors.SLessEquals(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
         case IntegerType => Ints.LessEquals(toSMT(a), toSMT(b))
         case RealType    => Reals.LessEquals(toSMT(a), toSMT(b))
         case CharType    => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
       }
       case GreaterThan(a, b) => a.getType match {
-        case Int32Type   => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
+        case t if isBVType(t) => FixedSizeBitVectors.SGreaterThan(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
         case IntegerType => Ints.GreaterThan(toSMT(a), toSMT(b))
         case RealType    => Reals.GreaterThan(toSMT(a), toSMT(b))
         case CharType    => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
       }
       case GreaterEquals(a, b) => a.getType match {
-        case Int32Type   => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
+        case t if isBVType(t) => FixedSizeBitVectors.SGreaterEquals(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
         case IntegerType => Ints.GreaterEquals(toSMT(a), toSMT(b))
         case RealType    => Reals.GreaterEquals(toSMT(a), toSMT(b))
         case CharType    => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
       }
-      case BVPlus(a, b)              => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
-      case BVMinus(a, b)             => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
-      case BVTimes(a, b)             => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
-      case BVDivision(a, b)          => FixedSizeBitVectors.SDiv(toSMT(a), toSMT(b))
-      case BVRemainder(a, b)         => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
-      case BVAnd(a, b)               => FixedSizeBitVectors.And(toSMT(a), toSMT(b))
-      case BVOr(a, b)                => FixedSizeBitVectors.Or(toSMT(a), toSMT(b))
-      case BVXOr(a, b)               => FixedSizeBitVectors.XOr(toSMT(a), toSMT(b))
-      case BVShiftLeft(a, b)         => FixedSizeBitVectors.ShiftLeft(toSMT(a), toSMT(b))
-      case BVAShiftRight(a, b)       => FixedSizeBitVectors.AShiftRight(toSMT(a), toSMT(b))
-      case BVLShiftRight(a, b)       => FixedSizeBitVectors.LShiftRight(toSMT(a), toSMT(b))
+
+      case BVPlus(a, b)              => FixedSizeBitVectors.Add(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVMinus(a, b)             => FixedSizeBitVectors.Sub(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVTimes(a, b)             => FixedSizeBitVectors.Mul(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVDivision(a, b)          => FixedSizeBitVectors.SDiv(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVRemainder(a, b)         => FixedSizeBitVectors.SRem(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVAnd(a, b)               => FixedSizeBitVectors.And(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVOr(a, b)                => FixedSizeBitVectors.Or(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVXOr(a, b)               => FixedSizeBitVectors.XOr(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVShiftLeft(a, b)         => FixedSizeBitVectors.ShiftLeft(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVAShiftRight(a, b)       => FixedSizeBitVectors.AShiftRight(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
+      case BVLShiftRight(a, b)       => FixedSizeBitVectors.LShiftRight(extendTo32(toSMT(a), a), extendTo32(toSMT(b), b))
 
       case RealPlus(a, b)            => Reals.Add(toSMT(a), toSMT(b))
       case RealMinus(a, b)           => Reals.Sub(toSMT(a), toSMT(b))
@@ -783,7 +787,7 @@ trait SMTLIBTarget extends Interruptible {
       case (SHexadecimal(h), Some(CharType)) =>
         CharLiteral(h.toInt.toChar)
 
-      case (SHexadecimal(hexa), Some(Int32Type)) =>
+      case (SHexadecimal(hexa), Some(t)) if isBVType(t) =>
         IntLiteral(hexa.toInt)
 
       case (SDecimal(d), Some(RealType)) =>
@@ -980,6 +984,12 @@ trait SMTLIBTarget extends Interruptible {
 
   final protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
     fromSMT(s, Some(tpe))
+  }
+
+  private def extendTo32(arg: Term, orig: Expr): Term = orig.getType match {
+    case Int32Type => arg
+    case Int8Type => FixedSizeBitVectors.ZeroExtend(24, arg)
+    case t =>  context.reporter.internalError(s"Unexpected type $t for $orig")
   }
 }
 
