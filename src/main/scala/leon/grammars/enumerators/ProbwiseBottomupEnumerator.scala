@@ -77,7 +77,12 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
     // Calculate an element from a suspension by retrieving elements from the respective nonterminal streams
     @inline private def elem(le: ElemSuspension): Option[(FrontierElem, Int)] = try {
       val children = le.coordinates.zip(streams).map { case (index, stream) => stream.get(index) }
-      Some(FrontierElem(le.coordinates, StreamElem(rule, children)), le.grownIndex)
+      if (children.map(_.rule.tag).zipWithIndex exists { case (t, ind) =>
+        Tags.excludedTags((rule.tag, ind)) contains t
+      })
+        None
+      else
+        Some(FrontierElem(le.coordinates, StreamElem(rule, children)), le.grownIndex)
     } catch {
       case _: IndexOutOfBoundsException =>
         // Thrown by stream.get: A stream has been depleted

@@ -65,4 +65,26 @@ object Tags {
 
   def tagOf(cct: CaseClassType) = Constructor(cct.fields.isEmpty)
   def tagOf(fd: FunDef, isSafe: Boolean) = FunCall(fd.methodOwner.isDefined, isSafe)
+
+  import Tags._
+  // Tags to avoid depending on parent aspect
+  val excludedTags = Map[(Tag, Int), Set[Tag]](
+    (And,   0) -> Set(And, BooleanC),
+    (And,   1) -> Set(BooleanC),
+    (Or,    0) -> Set(Or, BooleanC),
+    (Or,    1) -> Set(BooleanC),
+    (Plus,  0) -> Set(Plus, Zero, One),
+    (Plus,  1) -> Set(Zero),
+    (Minus, 1) -> Set(Zero),
+    (Not,   0) -> Set(Not, BooleanC),
+    (Times, 0) -> Set(Times, Zero, One),
+    (Times, 1) -> Set(Zero, One),
+    (Equals,0) -> Set(Not, BooleanC),
+    (Equals,1) -> Set(Not, BooleanC),
+    (ITE,   0) -> Set(BooleanC, Not, ITE),
+    (Div,   0) -> Set(Zero, One),
+    (Div,   1) -> Set(Zero, One),
+    (Mod,   0) -> Set(Zero, One),
+    (Mod,   1) -> Set(Zero, One)
+  ).withDefaultValue(Set())
 }

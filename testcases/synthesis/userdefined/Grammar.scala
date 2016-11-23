@@ -7,7 +7,8 @@ import annotation.grammar._
 
 
 object Grammar {
-   // BIGINT
+
+  // BIGINT
   @production(68)
   def vr = variable[BigInt]
 
@@ -28,6 +29,7 @@ object Grammar {
   def minus(b1: BigInt, b2: BigInt) = b1 - b2
 
   @production(40)
+  @tag("ite")
   def ite(cond: Boolean, thenn: BigInt, elze: BigInt) = {
     if(cond) thenn else elze
   }
@@ -53,6 +55,7 @@ object Grammar {
   def minusI(i1: Int, i2: Int) = i1 - i2
 
   @production(40)
+  @tag("ite")
   def iteI(cond: Boolean, thenn: Int, elze: Int) = {
     if(cond) thenn else elze
   }
@@ -65,12 +68,15 @@ object Grammar {
   def smallerI(i1: Int, i2: Int) = i1 < i2
 
   @production(5)
+  @tag("and")
   def and(b1: Boolean, b2: Boolean) = b1 && b2
 
   @production(1)
+  @tag("or")
   def or(b1: Boolean, b2: Boolean) = b1 || b2
 
   @production(1)
+  @tag("booleanC")
   def t = true
 
   // SPECIFICATIONS
