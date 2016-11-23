@@ -787,7 +787,10 @@ trait SMTLIBTarget extends Interruptible {
       case (SHexadecimal(h), Some(CharType)) =>
         CharLiteral(h.toInt.toChar)
 
-      case (SHexadecimal(hexa), Some(t)) if isBVType(t) =>
+      case (SHexadecimal(hexa), Some(Int8Type)) =>
+        IntLiteral(hexa.toInt.toByte.toInt) // Ensure the integer falls in the right range.
+
+      case (SHexadecimal(hexa), Some(Int32Type)) =>
         IntLiteral(hexa.toInt)
 
       case (SDecimal(d), Some(RealType)) =>
