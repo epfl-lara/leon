@@ -52,6 +52,13 @@ object Types {
   case object Int32Type extends BitVectorType(32)
   case object StringType extends TypeTree
 
+  object BVType {
+    def unapply(typ: TypeTree): Option[Int] = typ match {
+      case bv: BitVectorType => Some(bv.size)
+      case _ => None
+    }
+  }
+
   class TypeParameter private (name: String) extends TypeTree {
     val id = FreshIdentifier(name, this)
 

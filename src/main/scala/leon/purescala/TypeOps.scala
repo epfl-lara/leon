@@ -200,6 +200,11 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case _ => false
   }
 
+  def areSameBVType(tpe1: TypeTree, tpe2: TypeTree): Boolean = (tpe1, tpe2) match {
+    case (BVType(s1), BVType(s2)) if s1 == s2 => true
+    case _ => false
+  }
+
   // Helpers for instantiateType
   private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
     case (tp: TypeParameter) => map.getOrElse(tp, tp)

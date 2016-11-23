@@ -739,82 +739,91 @@ object Expressions {
   }
   /** $encodingof `... < ...`*/
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... > ...`*/
   case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... <= ...`*/
   case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... >= ...`*/
   case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
 
 
   /* Bit-vector arithmetic */
-  // TODO if Long is supported, most getType should be updated to return Long
-  //      if one of the operand is of Long type.
   /** $encodingof `... + ...` $noteBitvector*/
   case class BVPlus(lhs: Expr, rhs: Expr) extends Expr {
-    require(isBVType(lhs.getType) && isBVType(rhs.getType))
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... - ...` $noteBitvector*/
   case class BVMinus(lhs: Expr, rhs: Expr) extends Expr {
-    require(isBVType(lhs.getType) && isBVType(rhs.getType))
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `- ...` $noteBitvector*/
   case class BVUMinus(expr: Expr) extends Expr {
     require(isBVType(expr.getType))
-    val getType = Int32Type
+    val getType = expr.getType
   }
   /** $encodingof `... * ...` $noteBitvector*/
   case class BVTimes(lhs: Expr, rhs: Expr) extends Expr {
-    require(isBVType(lhs.getType) && isBVType(rhs.getType))
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... / ...` $noteBitvector*/
   case class BVDivision(lhs: Expr, rhs: Expr) extends Expr {
-    require(isBVType(lhs.getType) && isBVType(rhs.getType))
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... % ...` $noteBitvector*/
   case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr {
-    require(isBVType(lhs.getType) && isBVType(rhs.getType))
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `! ...` $noteBitvector */
   case class BVNot(expr: Expr) extends Expr {
-    val getType = Int32Type
+    require(isBVType(expr.getType))
+    val getType = expr.getType
   }
   /** $encodingof `... & ...` $noteBitvector */
   case class BVAnd(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... | ...` $noteBitvector */
   case class BVOr(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... ^ ...` $noteBitvector */
   case class BVXOr(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... << ...` $noteBitvector */
   case class BVShiftLeft(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
   case class BVAShiftRight(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
   /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
   case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(areSameBVType(lhs.getType, rhs.getType))
+    val getType = lhs.getType
   }
 
 
