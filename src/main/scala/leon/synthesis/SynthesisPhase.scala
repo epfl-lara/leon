@@ -28,9 +28,12 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optSTEMaxSize      = LeonLongOptionDef("ste:maxsize",    "Maximum size of expressions synthesized by STE", 7L, "N")
   val optSTEUserDefined  = LeonFlagOptionDef("ste:userdefined","Use user-defined grammars", false)
 
+  val optProbwiseTopdownCoeff = LeonLongOptionDef("probwiseTopdownCoeff", "Priority coefficient for ProbwiseTopdownEnumerator (default: 24)", 24, "[value]")
+
   override val definedOptions : Set[LeonOptionDef[Any]] = Set(
     optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls, optEnum,
-    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize, optSTEUserDefined
+    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize, optSTEUserDefined,
+    optProbwiseTopdownCoeff
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {

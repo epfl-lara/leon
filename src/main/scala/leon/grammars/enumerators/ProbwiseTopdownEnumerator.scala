@@ -3,6 +3,7 @@ package grammars
 package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
+import leon.synthesis.SynthesisPhase
 import purescala.Expressions.Expr
 
 class ProbwiseTopdownEnumerator(
@@ -35,6 +36,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   protected def nthor(nt: NT): Double
 
+  val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+
   /**
     * Represents an element of the worklist
     * @param expansion The partial expansion under consideration
@@ -52,7 +55,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     val yesScore = score.nYes
     // val priority = 8 * yesScore + logProb + horizon
     val priority = {
-      val t1 = 16 * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
+      val t1 = coeff * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
       val t2 = logProb + horizon
       t1 + t2
     }
