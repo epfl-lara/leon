@@ -739,22 +739,18 @@ object Expressions {
   }
   /** $encodingof `... < ...`*/
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... > ...`*/
   case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... <= ...`*/
   case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
   /** $encodingof `... >= ...`*/
   case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == rhs.getType)
     val getType = BooleanType
   }
 
