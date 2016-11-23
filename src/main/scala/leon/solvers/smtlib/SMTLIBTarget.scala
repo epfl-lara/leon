@@ -569,6 +569,8 @@ trait SMTLIBTarget extends Interruptible {
       case BVShiftLeft(a, b)         => FixedSizeBitVectors.ShiftLeft(toSMT(a), toSMT(b))
       case BVAShiftRight(a, b)       => FixedSizeBitVectors.AShiftRight(toSMT(a), toSMT(b))
       case BVLShiftRight(a, b)       => FixedSizeBitVectors.LShiftRight(toSMT(a), toSMT(b))
+      case c @ BVWideningCast(e, _)  => FixedSizeBitVectors.SignExtend(c.to - c.from, toSMT(e))
+      case c @ BVNarrowingCast(e, _) => FixedSizeBitVectors.Extract(c.to - 1, 0, toSMT(e))
 
       case RealPlus(a, b)            => Reals.Add(toSMT(a), toSMT(b))
       case RealMinus(a, b)           => Reals.Sub(toSMT(a), toSMT(b))

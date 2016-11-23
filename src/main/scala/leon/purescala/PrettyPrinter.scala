@@ -348,6 +348,10 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVShiftLeft(l, r)        => optP { p"$l << $r" }
       case BVAShiftRight(l, r)      => optP { p"$l >> $r" }
       case BVLShiftRight(l, r)      => optP { p"$l >>> $r" }
+      case BVNarrowingCast(e, Int32Type) => p"$e.toInt"
+      case BVNarrowingCast(e, Int8Type)  => p"$e.toByte"
+      case BVWideningCast(e, Int32Type)  => p"$e.toInt"
+      case BVWideningCast(e, Int8Type)   => p"$e.toByte"
       case RealPlus(l, r)           => optP { p"$l + $r" }
       case RealMinus(l, r)          => optP { p"$l - $r" }
       case RealTimes(l, r)          => optP { p"$l * $r" }

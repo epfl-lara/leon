@@ -82,6 +82,10 @@ object Extractors {
         Some((subArgs :+ dflt, builder))
       case Forall(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
+      case BVNarrowingCast(expr, newType) =>
+        Some((Seq(expr), (es: Seq[Expr]) => BVNarrowingCast(es.head, newType)))
+      case BVWideningCast(expr, newType) =>
+        Some((Seq(expr), (es: Seq[Expr]) => BVWideningCast(es.head, newType)))
 
       /* Binary operators */
       case LetDef(fds, rest) => Some((
@@ -235,7 +239,7 @@ object Extractors {
         val all = elemsSeq.map(_._2) :+ default :+ length
         Some((all, as => {
           val l = as.length
-          NonemptyArray(elemsSeq.map(_._1).zip(as.take(l - 2)).toMap, 
+          NonemptyArray(elemsSeq.map(_._1).zip(as.take(l - 2)).toMap,
                         Some((as(l - 2), as(l - 1))))
         }))
       case na @ EmptyArray(t) => Some(Seq[Expr](), (_:Seq[Expr]) => na)
@@ -309,13 +313,13 @@ object Extractors {
         None
     }
   }
-  
+
   // Extractors for types are available at Types.NAryType
 
   trait Extractable {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)]
   }
-  
+
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Let(i, e, TopLevelOrs(bs)) => Some(bs map (let(i,e,_)))
@@ -338,7 +342,7 @@ object Extractors {
   object IsTyped {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
   }
-  
+
   object WithStringconverter {
     def unapply(t: TypeTree): Option[Expr => Expr] = t match {
       case BooleanType => Some(BooleanToString)
@@ -352,13 +356,13 @@ object Extractors {
 
   object FiniteArray {
     def unapply(e: Expr): Option[(Map[Int, Expr], Option[Expr], Expr)] = e match {
-      case EmptyArray(_) => 
+      case EmptyArray(_) =>
         Some((Map(), None, IntLiteral(0)))
       case NonemptyArray(els, Some((default, length))) =>
         Some((els, Some(default), length))
       case NonemptyArray(els, None) =>
         Some((els, None, IntLiteral(els.size)))
-      case _ => 
+      case _ =>
         None
     }
   }
@@ -370,7 +374,7 @@ object Extractors {
       case _ => None
     }
   }
-  
+
   object GuardedCase {
     def apply(p : Pattern, g: Expr, rhs : Expr) = MatchCase(p, Some(g), rhs)
     def unapply(c : MatchCase) = c match {
@@ -378,11 +382,11 @@ object Extractors {
       case _ => None
     }
   }
-  
+
   object Pattern {
     def unapply(p : Pattern) : Option[(
-      Option[Identifier], 
-      Seq[Pattern], 
+      Option[Identifier],
+      Seq[Pattern],
       (Option[Identifier], Seq[Pattern]) => Pattern
     )] = Option(p) map {
       case InstanceOfPattern(b, ct)       => (b, Seq(), (b, _)  => InstanceOfPattern(b,ct))
@@ -395,8 +399,8 @@ object Extractors {
   }
 
   def unwrapTuple(e: Expr, isTuple: Boolean): Seq[Expr] = e.getType match {
-    case TupleType(subs) if isTuple => 
-      for (ind <- 1 to subs.size) yield { tupleSelect(e, ind, isTuple) }      
+    case TupleType(subs) if isTuple =>
+      for (ind <- 1 to subs.size) yield { tupleSelect(e, ind, isTuple) }
     case _ if !isTuple => Seq(e)
     case tp => sys.error(s"Calling unwrapTuple on non-tuple $e of type $tp")
   }
@@ -417,7 +421,7 @@ object Extractors {
   }
   def unwrapTuplePattern(p: Pattern, expectedSize: Int): Seq[Pattern] =
     unwrapTuplePattern(p, expectedSize > 1)
-  
+
   object LetPattern {
     def apply(patt : Pattern, value: Expr, body: Expr) : Expr = {
       patt match {
@@ -438,7 +442,7 @@ object Extractors {
     def unapply(me : MatchExpr) : Option[(Seq[Identifier], Expr, Expr)] = {
       Option(me) collect {
         case LetPattern(TuplePattern(None,subPatts), value, body) if
-            subPatts forall { case WildcardPattern(Some(_)) => true; case _ => false } => 
+            subPatts forall { case WildcardPattern(Some(_)) => true; case _ => false } =>
           (subPatts map { _.binder.get }, value, body )
       }
     }

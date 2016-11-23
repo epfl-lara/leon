@@ -826,6 +826,27 @@ object Expressions {
     val getType = lhs.getType
   }
 
+  /** TODO Doc (format???) */
+  case class BVNarrowingCast(expr: Expr, newType: BitVectorType) extends Expr {
+    require(expr.getType match {
+      case BVType(size) if size > newType.size => true
+      case _ => false
+    })
+    val getType = newType
+    val from = expr.getType.asInstanceOf[BitVectorType].size
+    val to = newType.size
+  }
+  /** TODO Doc (format???) */
+  case class BVWideningCast(expr: Expr, newType: BitVectorType) extends Expr {
+    require(expr.getType match {
+      case BVType(size) if size < newType.size => true
+      case _ => false
+    })
+    val getType = newType
+    val from = expr.getType.asInstanceOf[BitVectorType].size
+    val to = newType.size
+  }
+
 
   /* Real arithmetic */
   /** $encodingof `... + ...` $noteReal */
