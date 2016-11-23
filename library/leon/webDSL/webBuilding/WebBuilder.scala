@@ -266,10 +266,20 @@ object ^ {
   val borderColor = css("border-color")
   val borderRadius = css("border-radius")
   
-  val fontSize = css("font-size")
+  val outline = css("outline")
+  
+  val letterSpacing = css("letter-spacing")
+  val textTransform = css("textTransform")
+  val backgroundPosition = css("background-position")
   val lineHeight = css("line-height")
+  val font = css("font")
+  val fontStyle = css("font-style")
+  val fontSize = css("font-size")
   val fontWeight = css("font-weight")
   val fontFamily = css("font-family")
+  val clip = css("clip")
+  val zIndex = css("z-index")
+  val content = css("content")
   
   val verticalAlign = css("vertical-align")
   
@@ -285,7 +295,14 @@ object ^ {
   
   val whiteSpace = css("whiteSpace")
   val overflow = css("overflow")
+  val textOverflow = css("textOverflow")
 
+  val clear = css("clear")
+  val float = css("float")
+  val textDecoration = css("textDecoration")
+  
+  val cursor = css("cursor")
+  
 }
 /*
 object svg {

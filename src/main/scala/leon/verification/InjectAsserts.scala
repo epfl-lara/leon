@@ -37,7 +37,7 @@ object InjectAsserts extends SimpleLeonPhase[Program, Program] {
             v
           ).setPos(e))
         case e @ MapApply(m,k) =>
-          Some(Assert(MapIsDefinedAt(m, k), Some("Map undefined at this index"), e).setPos(e))
+          Some(Assert(MapIsDefinedAt(m, k), Some("Map undefined at index "+k), e).setPos(e))
 
         case e @ AsInstanceOf(expr, ct)  =>
           Some(Assert(IsInstanceOf(expr, ct),
