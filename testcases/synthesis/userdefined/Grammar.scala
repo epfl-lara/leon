@@ -118,6 +118,16 @@ object Grammar {
     }) && res >= b1 && res >= b2 && res >= b3
   }
 
+  def max3ExOnlyInt(b1: Int, b2: Int, b3: Int) = {
+    ???[Int]
+  } ensuring {
+    res => (((b1, b2, b3), res) passes {
+      case (1, 2, 3) => 3
+      case (1, 3, 2) => 3
+      case (3, 1, 2) => 3
+    })
+  }
+
   def add1Ex(b: BigInt) = {
     ???[BigInt]
   } ensuring {

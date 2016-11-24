@@ -3,6 +3,7 @@ package grammars
 package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
+import leon.synthesis.SynthesisPhase
 import purescala.Expressions.Expr
 
 class ProbwiseTopdownEnumerator(
@@ -35,6 +36,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   protected def nthor(nt: NT): Double
 
+  val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+
   /**
     * Represents an element of the worklist
     * @param expansion The partial expansion under consideration
@@ -51,8 +54,21 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     def get = expansion.produce
     val yesScore = score.nYes
     // val priority = 8 * yesScore + logProb + horizon
+
+    def priorityExplanation = {
+      val t1 = coeff * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
+      val t2 = logProb + horizon
+      Map("Priority" -> (t1 + t2),
+          "nYes" -> score.nYes,
+          "nExs" -> score.nExs,
+          "t1" -> t1,
+          "logProb" -> logProb,
+          "horizon" -> horizon,
+          "t2" -> t2)
+    }
+
     val priority = {
-      val t1 = 16 * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
+      val t1 = coeff * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
       val t2 = logProb + horizon
       t1 + t2
     }
@@ -62,7 +78,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     val ordering = Ordering.by[WorklistElement, Double](_.priority)
     val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
 
-    val worklistSeed = WorklistElement(NonTerminalInstance[NT, R](nt), 0.0, nthor(nt), CandidateScorer.SEED_SCORE)
+    val seedExpansion = NonTerminalInstance[NT, R](nt)
+    val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = false)
+    val worklistSeed = WorklistElement(seedExpansion, 0.0, nthor(nt), seedScore)
+
     var prevAns = worklistSeed
     worklist.enqueue(worklistSeed)
 
@@ -87,7 +106,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     def prepareNext(): Unit = {
       while (worklist.nonEmpty && !worklist.head.expansion.complete) {
         val head = worklist.dequeue
-        val headScore = scorer.score(head.expansion, head.score.maybeExs, eagerReturnOnFalse = false)
+        val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
+
         if (headScore.noExs.isEmpty) {
           val newElems = expandNext(head, headScore)
           worklist ++= newElems

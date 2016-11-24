@@ -159,7 +159,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
       case other =>
         if (other != "topdown") warning("Enumerator not recognized, falling back to top-down...")
-        val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples)
+        val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples, _.falseProduce(nt => ExpansionExpr(nt, Untyped)))
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
     }).iterator(topLabel).take(maxGen)
     var it = mkEnum
