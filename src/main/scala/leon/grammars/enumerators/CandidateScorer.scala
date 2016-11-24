@@ -11,7 +11,8 @@ import scala.util.control.Breaks
 
 class CandidateScorer[R](
   evalCandidate: (Expansion[_, R], Example) => MeetsSpec,
-  getExs: Unit => Seq[Example]
+  getExs: Unit => Seq[Example],
+  val falseProduce: Expansion[_, R] => R
 )(implicit ctx: LeonContext) {
 
   def score(expansion: Expansion[_, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
@@ -56,8 +57,6 @@ object CandidateScorer {
     def nYes: Int = yesExs.size
     def nExs: Int = yesExs.size + noExs.size + maybeExs.size
   }
-
-  val SEED_SCORE: Score = Score(Set(), Set(), Set())
 
   object MeetsSpec extends Enumeration {
     type MeetsSpec = Value

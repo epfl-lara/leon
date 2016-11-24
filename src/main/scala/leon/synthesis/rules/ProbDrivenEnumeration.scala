@@ -96,7 +96,9 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
           ans
         }
 
-        val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples)
+        val scorer = new CandidateScorer[Expr](partialTestCandidate,
+                                               _ => examples,
+                                               _.falseProduce(nt => ExpansionExpr(nt, Untyped)))
         def mkEnum = (enum match {
           case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, problem.as, examples, program)
           case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
