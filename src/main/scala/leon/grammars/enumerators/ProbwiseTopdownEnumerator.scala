@@ -107,10 +107,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       while (worklist.nonEmpty && !worklist.head.expansion.complete) {
         val head = worklist.dequeue
         val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
+        println(s"---MDB Dequeuing head! ${head.expansion}.")
 
         if (headScore.noExs.isEmpty) {
           val newElems = expandNext(head, headScore)
           worklist ++= newElems
+          newElems.foreach(elem => println(s"---MDB       Enqueuing ${elem.expansion}."))
 
           EnumeratorStats.partialEvalAcceptCount += 1
           if (worklist.size >= 1.5 * lastPrint) {
@@ -123,8 +125,11 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           EnumeratorStats.partialEvalRejectionCount += 1
         }
       }
-    }
 
+      if (worklist.isEmpty) {
+        println("---MDB Worklist Empty!!!")
+      }
+    }
   }
 
   def expandNext(elem: WorklistElement, elemScore: Score): Seq[WorklistElement] = {
