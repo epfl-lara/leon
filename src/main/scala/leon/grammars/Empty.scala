@@ -5,5 +5,5 @@ package grammars
 
 /** The empty expression grammar */
 case class Empty() extends ExpressionGrammar {
-  protected def computeProductions(l: Label)(implicit ctx: LeonContext) = Nil
+  protected[grammars] def computeProductions(l: Label)(implicit ctx: LeonContext) = Nil
 }

@@ -17,7 +17,8 @@ package object grammars {
     val hints = ws.collect { case Hint(e) if formulaSize(e) >= 4 => e }
     val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
     if (sctx.settings.steUserDefinedGrammar) {
-      UserDefinedGrammar(sctx, sctx.program, Some(sctx.functionContext), p.allAs)
+      UserDefinedGrammar(sctx, sctx.program, Some(sctx.functionContext), p.allAs) ||
+      Closures
     } else {
       val exclude = sctx.settings.functionsToIgnore
       val recCalls = {
