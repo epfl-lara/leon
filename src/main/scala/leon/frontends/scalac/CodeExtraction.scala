@@ -1675,8 +1675,22 @@ trait CodeExtraction extends ASTExtractors {
         case ExNot(e)        => Not(extractTree(e))
         case ExUMinus(e)     => UMinus(extractTree(e))
         case ExRealUMinus(e) => RealUMinus(extractTree(e))
-        case ExBVUMinus(e)   => BVUMinus(extractTree(e))
-        case ExBVNot(e)      => BVNot(extractTree(e))
+
+        case ExBVUMinus(e) =>
+          val re = extractTree(e)
+          re match {
+            case IsTyped(re, Int8Type) => BVUMinus(BVWideningCast(re, Int32Type))
+            case IsTyped(re, Int32Type) => BVUMinus(re)
+            case _ => outOfSubsetError(tr, "Unexpected bit-vector length")
+          }
+
+        case ExBVNot(e) =>
+          val re = extractTree(e)
+          re match {
+            case IsTyped(re, Int8Type) => BVNot(BVWideningCast(re, Int32Type))
+            case IsTyped(re, Int32Type) => BVNot(re)
+            case _ => outOfSubsetError(tr, "Unexpected bit-vector length")
+          }
 
         case ExNotEquals(l, r) =>
           val rl = extractTree(l)

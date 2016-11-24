@@ -36,6 +36,8 @@ trait ASTExtractors {
     }).toMap
   }
 
+  private val integralTypes = Set(ByteTpe, IntTpe)
+
   protected lazy val tuple2Sym          = classFromName("scala.Tuple2")
   protected lazy val tuple3Sym          = classFromName("scala.Tuple3")
   protected lazy val tuple4Sym          = classFromName("scala.Tuple4")
@@ -110,9 +112,9 @@ trait ASTExtractors {
 
   def isArrayClassSym(sym: Symbol): Boolean = sym == arraySym
 
-  def hasIntType(t : Tree) = {
+  def hasIntegralType(t : Tree) = {
    val tpe = t.tpe.widen
-   tpe =:= IntClass.tpe
+   integralTypes contains tpe
   }
 
   def hasBigIntType(t : Tree) = isBigIntSym(t.tpe.typeSymbol)
@@ -1039,7 +1041,7 @@ trait ASTExtractors {
     // TODO Add support for more integer types
     object ExIntLiteral {
       def unapply(tree: Literal): Option[Int] = tree match {
-        case Literal(c @ Constant(i)) if Set(ByteTpe, IntTpe) contains c.tpe => Some(c.intValue)
+        case Literal(c @ Constant(i)) if integralTypes contains c.tpe => Some(c.intValue)
         case _ => None
       }
     }
@@ -1149,14 +1151,14 @@ trait ASTExtractors {
 
     object ExBVUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if n == nme.UNARY_- && hasIntType(t) => Some(t)
+        case Select(t, n) if n == nme.UNARY_- && hasIntegralType(t) => Some(t)
         case _ => None
       }
     }
 
     object ExBVNot {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if n == nme.UNARY_~ && hasIntType(t) => Some(t)
+        case Select(t, n) if n == nme.UNARY_~ && hasIntegralType(t) => Some(t)
         case _ => None
       }
     }
