@@ -147,7 +147,9 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         val rule = nts(nt)._1
         StreamElem(rule, rule.subTrees.map(rec))
       }
-      buffer += rec(nt)
+      val elem = rec(nt)
+      isDistinct(elem, hashSet)
+      buffer += elem
     }
 
     initialize()
@@ -161,7 +163,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
         var found = false
         while (!found) {
           //println(s"$nt: size is ${buffer.size}, populating")
-          val (elem, op) = operators(nt).flatMap(_.getNext).maxBy(_._1.logProb)
+          val (elem, op) = operators(nt).flatMap(_.getNext).maxBy(_._1.logProb) // FIXME Make this more efficient?
           timers.advance.timed { op.advance() }
           if (timers.distinct.timed { isDistinct(elem, hashSet) }) {
             found = true
