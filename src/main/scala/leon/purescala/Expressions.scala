@@ -459,6 +459,10 @@ object Expressions {
   case class CharLiteral(value: Char) extends Literal[Char] {
     val getType = CharType
   }
+  /** $encodingof a 8-bit integer literal */
+  case class ByteLiteral(value: Byte) extends Literal[Byte] {
+    val getType = Int8Type
+  }
   /** $encodingof a 32-bit integer literal */
   case class IntLiteral(value: Int) extends Literal[Int] {
     val getType = Int32Type

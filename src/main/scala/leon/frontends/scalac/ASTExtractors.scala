@@ -1032,16 +1032,16 @@ trait ASTExtractors {
       }
     }
 
-    // Extract any kind of integer literal
-    //
-    // NOTE Because extraction happens after typechecking, expressions such as
-    //      val b: Byte = 128 // out of range
-    //      are not possible. It is therefore okay to lose the actual type of the literal.
-    //
-    // TODO Add support for more integer types
+    object ExByteLiteral {
+      def unapply(tree: Literal): Option[Byte] = tree match {
+        case Literal(c @ Constant(i)) if c.tpe == ByteTpe => Some(c.byteValue)
+        case _ => None
+      }
+    }
+
     object ExIntLiteral {
       def unapply(tree: Literal): Option[Int] = tree match {
-        case Literal(c @ Constant(i)) if integralTypes contains c.tpe => Some(c.intValue)
+        case Literal(c @ Constant(i)) if c.tpe == IntTpe => Some(c.intValue)
         case _ => None
       }
     }

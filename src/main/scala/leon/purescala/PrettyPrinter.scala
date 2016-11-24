@@ -199,6 +199,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case StringLength(expr)             => p"$expr.length"
       case StringBigLength(expr)          => p"$expr.bigLength"
 
+      case ByteLiteral(v)                 => p"$v"
       case IntLiteral(v)                  => p"$v"
       case InfiniteIntegerLiteral(v)      => p"$v"
       case FractionalLiteral(n, d) =>
