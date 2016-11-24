@@ -369,6 +369,7 @@ trait SMTLIBTarget extends Interruptible {
         declareVariable(FreshIdentifier("Unit", UnitType))
 
       case InfiniteIntegerLiteral(i) => if (i >= 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case ByteLiteral(b)            => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromString(toByteHex(b)).get)
       case IntLiteral(i)             => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
       case FractionalLiteral(n, d)   => Reals.Div(Reals.NumeralLit(n), Reals.NumeralLit(d))
       case CharLiteral(c)            => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
