@@ -2,11 +2,14 @@ package leon
 package grammars
 
 import leon.purescala.Expressions.Expr
+import leon.purescala.Extractors.Extractable
+import leon.purescala.{PrinterContext, PrettyPrintable}
 import leon.purescala.Types.TypeTree
 
 /**
  * Represents a (partial) expansion of the rules of the grammar
- * @param nt: Non-terminal being expanded at the head
+  *
+  * @param nt: Non-terminal being expanded at the head
  * @tparam NT The type of non-terminal symbols of the grammar
  * @tparam R The type of syntax trees of the grammar
  */
@@ -17,12 +20,14 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
 
   /**
    * Produces the expansion.
-   * @throws `NoSuchElementException` if the expansion is not complete
+    *
+    * @throws `NoSuchElementException` if the expansion is not complete
    */
   def produce: R
 
   /**
     * Produces the expansion, and wraps instances of NonTerminalInstance using ntWrap
+    *
     * @param ntWrap
     * @return
     */
@@ -34,7 +39,8 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
   def size: Int
 
   /**
-   * Computes the ``horizon'' of this partial expansion. The horizon is the minimum extra log probability of all
+    *
+    * Computes the ``horizon'' of this partial expansion. The horizon is the minimum extra log probability of all
    * completed extensions of this expansion.
    * @param nthor The horizon of each non-terminal
    */
@@ -70,10 +76,23 @@ case class ProdRuleInstance[NT, R](
 /**
   * Proxy class that allows us to treat instances of Expansion[NT, Expr] as instances of Expr. This is useful, for
   * example, in partial evaluation
+  *
   * @param expansion The expansion being wrapped
   * @param typeTree The type of the produced expression
   * @tparam NT Type of non-terminal symbols of the grammar
   */
-case class ExpansionExpr[NT](expansion: Expansion[NT, Expr], typeTree: TypeTree) extends Expr {
+case class ExpansionExpr[NT](expansion: Expansion[NT, Expr], typeTree: TypeTree) extends Expr with Extractable with PrettyPrintable {
   override def getType: TypeTree = typeTree
+
+  def extract: Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expansion match {
+    case NonTerminalInstance(_) =>
+      Some((Nil, (_: Seq[Expr]) => this))
+    case ProdRuleInstance(nt, rule, children) =>
+      None
+  }
+
+  def printWith(implicit pctx: PrinterContext): Unit = {
+    import leon.purescala.PrinterHelpers._
+    p"$expansion"
+  }
 }
