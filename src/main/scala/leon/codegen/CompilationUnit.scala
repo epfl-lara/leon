@@ -185,6 +185,9 @@ class CompilationUnit(val ctx: LeonContext,
     * reflection needs this anyway.
     */
   def valueToJVM(e: Expr)(implicit monitor: Monitor): AnyRef = e match {
+    case ByteLiteral(v) =>
+      new java.lang.Byte(v)
+
     case IntLiteral(v) =>
       new java.lang.Integer(v)
 
@@ -202,7 +205,7 @@ class CompilationUnit(val ctx: LeonContext,
 
     case FractionalLiteral(n, d) =>
       new runtime.Rational(n.toString, d.toString)
-      
+
     case StringLiteral(v) =>
       new java.lang.String(v)
 
@@ -322,6 +325,9 @@ class CompilationUnit(val ctx: LeonContext,
 
   /** Translates JVM objects back to Leon values of the appropriate type */
   def jvmToValue(e: AnyRef, tpe: TypeTree): Expr = (e, tpe) match {
+    case (b: java.lang.Byte, Int8Type) =>
+      ByteLiteral(b.toByte)
+
     case (i: Integer, Int32Type) =>
       IntLiteral(i.toInt)
 

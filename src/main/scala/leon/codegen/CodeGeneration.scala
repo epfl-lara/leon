@@ -60,6 +60,7 @@ trait CodeGeneration {
   lazy val tpsID     = FreshIdentifier("__$tps")
 
   private[codegen] val ObjectClass               = "java/lang/Object"
+  private[codegen] val BoxedByteClass            = "java/lang/Byte"
   private[codegen] val BoxedIntClass             = "java/lang/Integer"
   private[codegen] val BoxedBoolClass            = "java/lang/Boolean"
   private[codegen] val BoxedCharClass            = "java/lang/Character"
@@ -100,13 +101,15 @@ trait CodeGeneration {
 
   protected object ValueType {
     def unapply(tp: TypeTree): Boolean = tp match {
-      case Int32Type | BooleanType | CharType | UnitType => true
+      case Int8Type | Int32Type | BooleanType | CharType | UnitType => true
       case _ => false
     }
   }
 
   /** Return the respective JVM type from a Leon type */
   def typeToJVM(tpe : TypeTree) : String = tpe match {
+    case Int8Type => "B"
+
     case Int32Type => "I"
 
     case BooleanType => "Z"
@@ -146,7 +149,7 @@ trait CodeGeneration {
 
     case TypeParameter(_) =>
       "L" + ObjectClass + ";"
-    
+
     case StringType =>
       "L" + JavaStringClass + ";"
 
@@ -155,6 +158,7 @@ trait CodeGeneration {
 
   /** Return the respective boxed JVM type from a Leon type */
   def typeToJVMBoxed(tpe : TypeTree) : String = tpe match {
+    case Int8Type               => s"L$BoxedByteClass;"
     case Int32Type              => s"L$BoxedIntClass;"
     case BooleanType | UnitType => s"L$BoxedBoolClass;"
     case CharType               => s"L$BoxedCharClass;"
@@ -196,7 +200,7 @@ trait CodeGeneration {
     // An offset we introduce to the parameters:
     // 1 if this is a method, so we need "this" in position 0 of the stack
     val receiverOffset = if (isStatic) 0 else 1
-    val paramIds = Seq(monitorID) ++ 
+    val paramIds = Seq(monitorID) ++
       (if (funDef.tparams.nonEmpty) Seq(tpsID) else Seq.empty) ++
       funDef.paramIds
     val newMapping = paramIds.zipWithIndex.toMap.mapValues(_ + receiverOffset)
@@ -228,7 +232,7 @@ trait CodeGeneration {
       case _ =>
         ch << ARETURN
     }
-    
+
     ch.freeze
   }
 
@@ -277,7 +281,7 @@ trait CodeGeneration {
         for ((id, jvmt) <- closures) {
           cch << ALoad(0)
           cch << (jvmt match {
-            case "I" | "Z" => ILoad(c)
+            case "B" | "I" | "Z" => ILoad(c)
             case _ => ALoad(c)
           })
           cch << PutField(afName, id.uniqueName, jvmt)
@@ -337,7 +341,7 @@ trait CodeGeneration {
             ech << ALoad(castSlot) << GetField(afName, id.uniqueName, jvmt)
 
             jvmt match {
-              case "I" | "Z" =>
+              case "B" | "I" | "Z" =>
                 ech << If_ICmpNe(notEq)
 
               case ot =>
@@ -449,10 +453,10 @@ trait CodeGeneration {
 
       case Let(id, d, Variable(id2)) if id == id2 => // Optimization for local variables.
         mkExpr(d, ch)
-        
+
       case Let(id, d, Let(id3, Variable(id2), Variable(id4))) if id == id2 && id3 == id4 => // Optimization for local variables.
         mkExpr(d, ch)
-        
+
       case Let(i,d,b) =>
         mkExpr(d, ch)
         val slot = ch.getFreshVar
@@ -467,6 +471,9 @@ trait CodeGeneration {
         ch << instr
         mkExpr(b, ch)(locals.withVar(i -> slot))
 
+      case ByteLiteral(v) =>
+        ch << Ldc(v)
+
       case IntLiteral(v) =>
         ch << Ldc(v)
 
@@ -478,7 +485,7 @@ trait CodeGeneration {
 
       case UnitLiteral() =>
         ch << Ldc(1)
-      
+
       case StringLiteral(v) =>
         ch << Ldc(v)
 
@@ -676,11 +683,11 @@ trait CodeGeneration {
             mkUnbox(tpe, ch)
           case _ =>
         }
-        
+
       case FunctionInvocation(TypedFunDef(fd, Nil), Seq(a)) if fd == program.library.escape.get =>
         mkExpr(a, ch)
         ch << InvokeStatic(StrOpsClass, "escape", s"(L$JavaStringClass;)L$JavaStringClass;")
-        
+
       case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq(set)) if fd == program.library.setToList.get =>
 
         val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
@@ -879,15 +886,15 @@ trait CodeGeneration {
         mkExpr(l, ch)
         mkExpr(r, ch)
         ch << InvokeStatic(StrOpsClass, "concat", s"(L$JavaStringClass;L$JavaStringClass;)L$JavaStringClass;")
-        
+
       case StringLength(a) =>
         mkExpr(a, ch)
         ch << InvokeVirtual(JavaStringClass, "length", s"()I")
-        
+
       case StringBigLength(a) =>
         mkExpr(a, ch)
         ch << InvokeStatic(StrOpsClass, "bigLength", s"(L$JavaStringClass;)L$BigIntClass;")
-        
+
       case Int32ToString(a) =>
         mkExpr(a, ch)
         ch << InvokeStatic(StrOpsClass, "intToString", s"(I)L$JavaStringClass;")
@@ -903,19 +910,19 @@ trait CodeGeneration {
       case RealToString(a) =>
         mkExpr(a, ch)
         ch << InvokeStatic(StrOpsClass, "realToString", s"(L$RealClass;)L$JavaStringClass;")
-        
+
       case SubString(a, start, end) =>
         mkExpr(a, ch)
         mkExpr(start, ch)
         mkExpr(end, ch)
         ch << InvokeVirtual(JavaStringClass, "substring", s"(II)L$JavaStringClass;")
-      
+
       case BigSubString(a, start, end) =>
         mkExpr(a, ch)
         mkExpr(start, ch)
         mkExpr(end, ch)
         ch << InvokeStatic(StrOpsClass, "bigSubstring", s"(L$JavaStringClass;L$BigIntClass;L$BigIntClass;)L$JavaStringClass;")
-        
+
       // Arithmetic
       case Plus(l, r) =>
         mkExpr(l, ch)
@@ -1041,6 +1048,14 @@ trait CodeGeneration {
         mkExpr(r, ch)
         ch << ISHR
 
+      case BVNarrowingCast(e, Int8Type) if e.getType == Int32Type =>
+        mkExpr(e, ch)
+        ch << I2B
+
+      case BVWideningCast(e, Int32Type) if e.getType == Int8Type =>
+        mkExpr(e, ch)
+        // This cast is a NOOP
+
       case ArrayLength(a) =>
         mkExpr(a, ch)
         ch << ARRAYLENGTH
@@ -1051,6 +1066,7 @@ trait CodeGeneration {
         ch << (as.getType match {
           case Untyped => throw CompilationException("Cannot compile untyped array access.")
           case CharType => CALOAD
+          case Int8Type => BALOAD
           case Int32Type => IALOAD
           case BooleanType => BALOAD
           case _ => AALOAD
@@ -1062,6 +1078,7 @@ trait CodeGeneration {
         ch << ARRAYLENGTH
         val storeInstr = a.getType match {
           case ArrayType(CharType) => ch << NewArray.primitive("T_CHAR"); CASTORE
+          case ArrayType(Int8Type) => ch << NewArray.primitive("T_BYTE"); BASTORE
           case ArrayType(Int32Type) => ch << NewArray.primitive("T_INT"); IASTORE
           case ArrayType(BooleanType) => ch << NewArray.primitive("T_BOOLEAN"); BASTORE
           case ArrayType(other) => ch << NewArray(typeToJVM(other)); AASTORE
@@ -1086,6 +1103,7 @@ trait CodeGeneration {
 
         val storeInstr = a.getType match {
           case ArrayType(CharType) => ch << NewArray.primitive("T_CHAR"); CASTORE
+          case ArrayType(Int8Type) => ch << NewArray.primitive("T_BYTE"); BASTORE
           case ArrayType(Int32Type) => ch << NewArray.primitive("T_INT"); IASTORE
           case ArrayType(BooleanType) => ch << NewArray.primitive("T_BOOLEAN"); BASTORE
           case ArrayType(other) => ch << NewArray(typeToJVM(other)); AASTORE
@@ -1215,6 +1233,11 @@ trait CodeGeneration {
   // Leaves on the stack a value equal to `e`, always of a type compatible with java.lang.Object.
   private[codegen] def mkBoxedExpr(e: Expr, ch: CodeHandler)(implicit locals: Locals) {
     e.getType match {
+      case Int8Type =>
+        ch << New(BoxedByteClass) << DUP
+        mkExpr(e, ch)
+        ch << InvokeSpecial(BoxedByteClass, constructorName, "(B)V")
+
       case Int32Type =>
         ch << New(BoxedIntClass) << DUP
         mkExpr(e, ch)
@@ -1244,6 +1267,9 @@ trait CodeGeneration {
   // compatible with java.lang.Object.
   private[codegen] def mkBox(tpe: TypeTree, ch: CodeHandler): Unit = {
     tpe match {
+      case Int8Type =>
+        ch << New(BoxedByteClass) << DUP_X1 << SWAP << InvokeSpecial(BoxedByteClass, constructorName, "(B)V")
+
       case Int32Type =>
         ch << New(BoxedIntClass) << DUP_X1 << SWAP << InvokeSpecial(BoxedIntClass, constructorName, "(I)V")
 
@@ -1262,6 +1288,9 @@ trait CodeGeneration {
   // Assumes that the top of the stack contains a value that should be of type `tpe`, and unboxes it to the right (JVM) type.
   private[codegen] def mkUnbox(tpe: TypeTree, ch: CodeHandler): Unit = {
     tpe match {
+      case Int8Type =>
+        ch << CheckCast(BoxedByteClass) << InvokeVirtual(BoxedByteClass, "byteValue", "()B")
+
       case Int32Type =>
         ch << CheckCast(BoxedIntClass) << InvokeVirtual(BoxedIntClass, "intValue", "()I")
 
@@ -1355,7 +1384,7 @@ trait CodeGeneration {
         mkExpr(l, ch)
         mkExpr(r, ch)
         l.getType match {
-          case Int32Type | CharType =>
+          case Int8Type | Int32Type | CharType =>
             ch << If_ICmpLt(thenn) << Goto(elze)
           case IntegerType =>
             ch << InvokeVirtual(BigIntClass, "lessThan", s"(L$BigIntClass;)Z")
@@ -1369,7 +1398,7 @@ trait CodeGeneration {
         mkExpr(l, ch)
         mkExpr(r, ch)
         l.getType match {
-          case Int32Type | CharType =>
+          case Int8Type | Int32Type | CharType =>
             ch << If_ICmpGt(thenn) << Goto(elze)
           case IntegerType =>
             ch << InvokeVirtual(BigIntClass, "greaterThan", s"(L$BigIntClass;)Z")
@@ -1383,7 +1412,7 @@ trait CodeGeneration {
         mkExpr(l, ch)
         mkExpr(r, ch)
         l.getType match {
-          case Int32Type | CharType =>
+          case Int8Type | Int32Type | CharType =>
             ch << If_ICmpLe(thenn) << Goto(elze)
           case IntegerType =>
             ch << InvokeVirtual(BigIntClass, "lessEquals", s"(L$BigIntClass;)Z")
@@ -1397,7 +1426,7 @@ trait CodeGeneration {
         mkExpr(l, ch)
         mkExpr(r, ch)
         l.getType match {
-          case Int32Type | CharType =>
+          case Int8Type | Int32Type | CharType =>
             ch << If_ICmpGe(thenn) << Goto(elze)
           case IntegerType =>
             ch << InvokeVirtual(BigIntClass, "greaterEquals", s"(L$BigIntClass;)Z")
@@ -1780,7 +1809,7 @@ trait CodeGeneration {
       for ((id, jvmt) <- constructorArgs) {
         cch << ALoad(0)
         cch << (jvmt match {
-          case "I" | "Z" => ILoad(c)
+          case "B" | "I" | "Z" => ILoad(c)
           case _ => ALoad(c)
         })
         cch << PutField(cName, id.name, jvmt)
@@ -1911,7 +1940,7 @@ trait CodeGeneration {
           instrumentedGetField(ech, cct, vd.id)(newLocs)
 
           typeToJVM(vd.getType) match {
-            case "I" | "Z" =>
+            case "B" | "I" | "Z" =>
               ech << If_ICmpNe(notEq)
 
             case ot =>

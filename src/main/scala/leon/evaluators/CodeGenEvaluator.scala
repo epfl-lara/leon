@@ -40,12 +40,12 @@ class CodeGenEvaluator(ctx: LeonContext, val unit: CompilationUnit) extends Eval
   }
 
   def eval(expression: Expr, model: solvers.Model) : EvaluationResult = {
-    compile(expression, model.toSeq.map(_._1)).map { e => 
+    compile(expression, model.toSeq.map(_._1)).map { e =>
       ctx.timers.evaluators.codegen.runtime.start()
       val res = e(model)
       ctx.timers.evaluators.codegen.runtime.stop()
       res
-    }.getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
+    }.getOrElse(EvaluationResults.EvaluatorError(s"Couldn't compile expression $expression"))
   }
 
   override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
