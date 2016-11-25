@@ -46,7 +46,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     def unapply(expr: Expr)(implicit rctx: RC, gctx: GC): Option[Expr] = expr match {
     case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
        e(input) match {
-         case StringLiteral(s) => 
+         case StringLiteral(s) =>
            Some(StringLiteral(StringEscapeUtils.escapeJava(s)))
          case _ => throw EvalError(typeErrorMsg(input, StringType))
        }
@@ -59,7 +59,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       println(s"betweenkv_str = $betweenkv_str")
       val mp_map = e(mp) match { case FiniteMap(theMap, keyType, valueType) => theMap case _ => throw EvalError(typeErrorMsg(mp, MapType(ta, tb))) }
       println(s"mp_map = $mp_map")
-      
+
       val res = mp_map.map{ case (k, v) =>
         (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
         inkv_str +
@@ -70,33 +70,33 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
             (e(application(fv, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
           case _ => throw EvalError(typeErrorMsg(v, program.library.Some.get.typed(Seq(tb))))
         })}.toList.sorted.mkString(betweenkv_str)
-      
+
       Some(StringLiteral(res))
-        
+
     case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.setMkString.get =>
       val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
       val mp_set = e(mp) match { case FiniteSet(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
-      
+
       val res = mp_set.map{ case v =>
         e(application(f, Seq(v))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(v, StringType)) } }.toList.sorted.mkString(inf_str)
-      
+
       Some(StringLiteral(res))
-        
+
     case FunctionInvocation(TypedFunDef(fd, Seq(ta)), Seq(mp, inf, f)) if fd == program.library.bagMkString.get =>
       val inf_str = e(inf) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inf, StringType)) }
       val mp_bag = e(mp) match { case FiniteBag(elems, valueType) => elems case _ => throw EvalError(typeErrorMsg(mp, SetType(ta))) }
-      
+
       val res = mp_bag.flatMap{ case (k, v) =>
         val fk = (e(application(f, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) })
         val times = (e(v)) match { case InfiniteIntegerLiteral(i) => i case _ => throw EvalError(typeErrorMsg(k, IntegerType)) }
         List.range(1, times.toString.toInt).map(_ => fk)
       }.toList.sorted.mkString(inf_str)
-        
+
       Some(StringLiteral(res))
     case _ => None
     }
   }
-  
+
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
@@ -308,7 +308,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
 
     case RealMinus(l,r) =>
       e(RealPlus(l, RealUMinus(r)))
-      
+
     case StringConcat(l, r) =>
       (e(l), e(r)) match {
         case (StringLiteral(i1), StringLiteral(i2)) => StringLiteral(i1 + i2)
@@ -336,7 +336,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       case IntLiteral(i) => StringLiteral(i.toString)
       case res =>  throw EvalError(typeErrorMsg(res, Int32Type))
     }
-    case CharToString(a) => 
+    case CharToString(a) =>
       e(a) match {
         case CharLiteral(i) => StringLiteral(i.toString)
         case res =>  throw EvalError(typeErrorMsg(res, CharType))
@@ -352,6 +352,18 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     case RealToString(a) => e(a) match {
         case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
         case res =>  throw EvalError(typeErrorMsg(res, RealType))
+      }
+
+    case BVWideningCast(a, Int32Type) =>
+      e(a) match {
+        case ByteLiteral(b) => IntLiteral(b.toInt)
+        case x => throw EvalError(s"Expected an integral type (e.g. Int8Type) but got $x of type ${x.getType}")
+      }
+
+    case BVNarrowingCast(a, Int8Type) =>
+      e(a) match {
+        case IntLiteral(i) => ByteLiteral(i.toByte)
+        case x => throw EvalError(s"Expected an integral type (e.g. Int32Type) but got $x of type ${x.getType}")
       }
 
     case BVPlus(l,r) =>

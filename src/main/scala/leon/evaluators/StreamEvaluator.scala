@@ -463,6 +463,10 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       if (rn != 0) normalizeFraction(FractionalLiteral(ln * rd, ld * rn))
       else throw RuntimeError("Division by 0.")
 
+    case (BVWideningCast(_, Int32Type), Seq(ByteLiteral(b))) => IntLiteral(b.toInt)
+
+    case (BVNarrowingCast(_, Int8Type), Seq(IntLiteral(i))) => ByteLiteral(i.toByte)
+
     case (BVPlus(_, _), Seq(IntLiteral(i1), IntLiteral(i2))) =>
       IntLiteral(i1 + i2)
 
@@ -630,7 +634,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       IsTyped(FiniteBag(els2, _), BagType(tpe2))
     )) =>
       FiniteBag(
-        els1.flatMap { case (k, e) => 
+        els1.flatMap { case (k, e) =>
           val res = (e, els2.getOrElse(k, InfiniteIntegerLiteral(0))) match {
             case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => i1 min i2
             case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
