@@ -253,9 +253,10 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
                     p => tpeToLabel(instantiateType(p.getType, tmap))
                   }
 
+                  val replacer = variableReplacer(expr, holes)
+
                   List(nonTerminal(subs, { sexprs => 
-                    val res = instantiateType(replaceFromIDs((holes zip sexprs).toMap, expr), tmap, m) 
-                    inlineTrivialities(res)
+                    instantiateType(replacer(sexprs), tmap, m)
                   }, classOf[Expr], tag, cost = 1, w))
                 }
             }

@@ -44,6 +44,28 @@ object ExprOps extends GenTreeOps[Expr] {
     })(expr)
   }
 
+  /** Creates a closure that will replace variables in from with the inputs given
+    * without re-traversing the whole tree.
+    */
+  def variableReplacer(expr: Expr, from: Seq[Identifier]): Seq[Expr] => Expr = {
+    def rec(expr: Expr): Option[Seq[Expr] => Expr] = expr match {
+      case Variable(i) if from contains i =>
+        val index = from.indexOf(i)
+        Some(_(index))
+      case Operator(subs, builder) =>
+        val onSubs = subs map rec
+        if (!(onSubs exists (_.isDefined))) None
+        else {
+          val funs = subs zip onSubs map { case (from, to) =>
+            to getOrElse ((_: Seq[Expr]) => from)
+          }
+          Some { exprs => builder( funs map (_(exprs))) }
+        }
+    }
+
+    rec(expr).getOrElse(_ => expr)
+  }
+
   def preTransformWithBinders(f: (Expr, Set[Identifier]) => Expr, initBinders: Set[Identifier] = Set())(e: Expr) = {
     import xlang.Expressions.LetVar
     def rec(binders: Set[Identifier], e: Expr): Expr = f(e, binders) match {
