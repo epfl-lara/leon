@@ -141,15 +141,13 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     def partialTestCandidate(expansion: Expansion[_, Expr], ex: Example): MeetsSpec.MeetsSpec = {
       val expr = ExpansionExpr(expansion, Untyped)
       val res = evalCandidate(expr, partialEvaluator)(ex)
-      val ans = res match {
+      res match {
         case EvaluationResults.Successful(BooleanLiteral(true)) => MeetsSpec.YES
         case EvaluationResults.Successful(BooleanLiteral(false)) => MeetsSpec.NO
         case EvaluationResults.Successful(_) => MeetsSpec.NOTYET
         case EvaluationResults.RuntimeError(err) => MeetsSpec.NO
         case EvaluationResults.EvaluatorError(err) => MeetsSpec.NOTYET
       }
-
-      ans
     }
 
     val restartable = enum == "eqclasses"

@@ -53,7 +53,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     require(logProb <= 0 && horizon <= 0)
     def get = expansion.produce
     val yesScore = score.nYes
-    // val priority = 8 * yesScore + logProb + horizon
 
     def priorityExplanation = {
       val t1 = coeff * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
@@ -107,12 +106,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       while (worklist.nonEmpty && !worklist.head.expansion.complete) {
         val head = worklist.dequeue
         val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
-        println(s"---MDB Dequeuing head! ${head.expansion}.")
 
         if (headScore.noExs.isEmpty) {
           val newElems = expandNext(head, headScore)
           worklist ++= newElems
-          newElems.foreach(elem => println(s"---MDB       Enqueuing ${elem.expansion}."))
 
           EnumeratorStats.partialEvalAcceptCount += 1
           if (worklist.size >= 1.5 * lastPrint) {
@@ -125,10 +122,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           EnumeratorStats.partialEvalRejectionCount += 1
         }
       }
-
-      if (worklist.isEmpty) {
-        println("---MDB Worklist Empty!!!")
-      }
     }
   }
 
@@ -139,7 +132,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     require(!expansion.complete)
 
     expansion match {
-
       case NonTerminalInstance(nt) =>
         val prodRules = productions(nt)
         for (rule <- prodRules) yield {
@@ -173,6 +165,5 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           WorklistElement(expPrime, logProbPrime, horizonPrime, elemScore)
         }
     }
-
   }
 }
