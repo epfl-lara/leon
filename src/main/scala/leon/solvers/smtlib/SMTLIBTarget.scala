@@ -780,6 +780,9 @@ trait SMTLIBTarget extends Interruptible {
       case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(CharType)) if b == BigInt(32) =>
         CharLiteral(n.toInt.toChar)
 
+      case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(Int8Type)) if b == BigInt(8) =>
+        ByteLiteral(b.toByte)
+
       case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(Int32Type)) if b == BigInt(32) =>
         IntLiteral(n.toInt)
 
@@ -787,7 +790,7 @@ trait SMTLIBTarget extends Interruptible {
         CharLiteral(h.toInt.toChar)
 
       case (SHexadecimal(hexa), Some(Int8Type)) =>
-        IntLiteral(hexa.toInt.toByte.toInt) // Ensure the integer falls in the right range.
+        ByteLiteral(hexa.toInt.toByte)
 
       case (SHexadecimal(hexa), Some(Int32Type)) =>
         IntLiteral(hexa.toInt)
