@@ -14,5 +14,9 @@ object StrictArithmetic1 {
     x >>> y
   }
 
+  def foo4(x: Int, y: Int) = {
+    x % y
+  }
+
 }
 
