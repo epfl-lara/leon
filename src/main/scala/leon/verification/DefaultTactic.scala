@@ -8,6 +8,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Extractors._
+import purescala.Types._
 import leon.synthesis.ExamplesFinder
 
 class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
@@ -84,6 +85,9 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.Assert
         }
 
+      case BVShiftLeft(_, _) | BVAShiftRight(_, _) | BVLShiftRight(_, _) =>
+        VCKinds.StrictArithmetic
+
       case BVPlus(_, _) | BVMinus(_, _) | BVUMinus(_) | BVTimes(_, _) =>
         VCKinds.ArithmeticOverflow
 
@@ -102,6 +106,16 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
 
   private val mask = IntLiteral(0x80000000)
   private def applyMask(a: Expr): Expr = BVAnd(a, mask)
+
+  private def inRange(min: Int, max: Int, e: Expr): Expr = {
+    val (minL, maxL) = e.getType match {
+      case Int32Type => (IntLiteral(min), IntLiteral(max))
+      case t => ctx.reporter.internalError(s"Unexpected type $t")
+    }
+
+    and(LessEquals(minL, e), LessEquals(e, maxL))
+  }
+
 
   /** Collects from within an expression all conditions under which the evaluation of the expression
     * will not fail (e.g. by violating a function precondition or evaluating to an error).
@@ -141,6 +155,22 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
         assert(x.getType == Int32Type) // other kind of bv not covered here
         val cond = not(equality(x, IntLiteral(Int.MinValue))) // -2^31
         (e, cond)
+
+      case e @ BVShiftLeft(x, y) if strictArithmeticChecking =>
+        assert(y.getType == Int32Type) // other kinds of bv shift not covered by this
+        val cond = inRange(0, 31, y)
+        (e, cond)
+
+      case e @ BVAShiftRight(x, y) if strictArithmeticChecking =>
+        assert(y.getType == Int32Type) // other kinds of bv shift not covered by this
+        val cond = inRange(0, 31, y)
+        (e, cond)
+
+      case e @ BVLShiftRight(x, y) if strictArithmeticChecking =>
+        assert(y.getType == Int32Type) // other kinds of bv shift not covered by this
+        val cond = inRange(0, 31, y)
+        (e, cond)
+
 
       /*case e @ Ensuring(body, post) =>
         (e, application(post, Seq(body)))
