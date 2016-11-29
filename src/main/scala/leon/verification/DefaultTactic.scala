@@ -95,5 +95,50 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
     }
   }
 
+  /** Collects from within an expression all conditions under which the evaluation of the expression
+    * will not fail (e.g. by violating a function precondition or evaluating to an error).
+    *
+    * Collection of preconditions of function invocations can be disabled
+    * (mainly for [[leon.verification.Tactic]]).
+    *
+    * @param e The expression for which correctness conditions are calculated.
+    * @param collectFIs Whether we also want to collect preconditions for function invocations
+    * @return A sequence of pairs (expression, condition)
+    */
+  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = false): Seq[(Expr, Expr)] = {
+    val conds = collectWithPC {
+
+      case m @ MatchExpr(scrut, cases) =>
+        (m, orJoin(cases map (matchCaseCondition(scrut, _).toClause)))
+
+      case e @ Error(_, _) =>
+        (e, BooleanLiteral(false))
+
+      case a @ Assert(cond, _, _) =>
+        (a, cond)
+
+      /*case e @ Ensuring(body, post) =>
+        (e, application(post, Seq(body)))
+
+      case r @ Require(pred, e) =>
+        (r, pred)*/
+
+      case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
+        (fi, tfd.withParamSubst(args, tfd.precondition.get))
+    }(e)
+
+    conds map {
+      case ((e, cond), path) =>
+        (e, path implies cond)
+    }
+  }
+
+  /* UNUSED
+   * def simpleCorrectnessCond(e: Expr, path: Path, sf: SolverFactory[Solver]): Expr = {
+   *   simplifyPaths(sf, path)(
+   *     andJoin( collectCorrectnessConditions(e) map { _._2 } )
+   *   )
+   * }
+   */
 
 }

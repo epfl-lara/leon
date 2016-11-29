@@ -114,7 +114,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case _ => Set()
     }(expr)
   }
-  
+
   def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
     collect[FunDef] {
       case LetDef(fds, _) => fds.toSet
@@ -410,7 +410,7 @@ object ExprOps extends GenTreeOps[Expr] {
       case _: Terminal => true
       case _ => false
     }
-    
+
     def inlineLetDefs(fds: Seq[FunDef], body: Expr, toInline: Set[FunDef]): Expr = {
       def inline(e: Expr) = leon.utils.fixpoint(
         ExprOps.preMap{
@@ -419,7 +419,7 @@ object ExprOps extends GenTreeOps[Expr] {
             Some(replaceFromIDs(substs, f.fullBody))
           case _ => None
         } , 64)(e)
-      
+
       val inlined = fds.filter(x => !toInline(x)).map{fd =>
         val newFd = fd.duplicate()
         newFd.fullBody = inline(fd.fullBody)
@@ -447,7 +447,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
     def simplerLet(t: Expr): Option[Expr] = t match {
       case LetDef(fds, body) => // Inline simple functions called only once, or calling another function.
-        
+
         def collectCalls(e: Expr): Set[(FunDef, Int)] = {
           var i = 1
           ExprOps.collect[(FunDef, Int)]{
@@ -469,7 +469,7 @@ object ExprOps extends GenTreeOps[Expr] {
           case FunctionInvocation(TypedFunDef(f, _), _) if calledGraph.getOrElse(f, 0) > 1 => true
           case _ => false
         }}
-        
+
         if(toInline.length > 0) {
           Some(inlineLetDefs(fds, body, toInline.toSet))
         } else None
@@ -1195,7 +1195,7 @@ object ExprOps extends GenTreeOps[Expr] {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
-  
+
   /** Simple, local optimization on string */
   def simplifyString(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = (expr match {
@@ -1325,7 +1325,7 @@ object ExprOps extends GenTreeOps[Expr] {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect {
             case (vd, tpe) if tpe == on.getType => vd.id
           }
 
@@ -1356,14 +1356,14 @@ object ExprOps extends GenTreeOps[Expr] {
     case _ =>
       false
   }
-  
+
   type Apriori = Map[Identifier, Identifier]
-  
+
   /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
   def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
     val freeT1Variables = ExprOps.variablesOf(t1)
     val freeT2Variables = ExprOps.variablesOf(t2)
-    
+
     def mergeContexts(
         a: Option[Apriori],
         b: Apriori => Option[Apriori]):
@@ -1462,10 +1462,10 @@ object ExprOps extends GenTreeOps[Expr] {
           idHomo(i1, i2)(apriori)
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
-          
+
           isHomo(v1, v2)(apriori + (id1 -> id2)) &&
           isHomo(e1, e2)
-          
+
         case (Hole(_, _), Hole(_, _)) =>
           None
 
@@ -1503,7 +1503,7 @@ object ExprOps extends GenTreeOps[Expr] {
               Some(m + (a1 -> a2)) }(apriori)
            && isHomo(body, body2)
           ) -- (defs.map(_.id))
-          
+
         case (v1, v2) if isValue(v1) && isValue(v2) =>
           v1 == v2 && Some(apriori)
 
@@ -1765,7 +1765,7 @@ object ExprOps extends GenTreeOps[Expr] {
         case UnitType =>
           // Anything matches ()
           ps.nonEmpty
-        
+
         case StringType =>
           // Can't possibly pattern match against all Strings one by one
           ps exists (_.isInstanceOf[WildcardPattern])
@@ -2181,52 +2181,6 @@ object ExprOps extends GenTreeOps[Expr] {
       None
   }
 
-
-  /** Collects from within an expression all conditions under which the evaluation of the expression
-    * will not fail (e.g. by violating a function precondition or evaluating to an error).
-    *
-    * Collection of preconditions of function invocations can be disabled
-    * (mainly for [[leon.verification.Tactic]]).
-    *
-    * @param e The expression for which correctness conditions are calculated.
-    * @param collectFIs Whether we also want to collect preconditions for function invocations
-    * @return A sequence of pairs (expression, condition)
-    */
-  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = false): Seq[(Expr, Expr)] = {
-    val conds = collectWithPC {
-
-      case m @ MatchExpr(scrut, cases) =>
-        (m, orJoin(cases map (matchCaseCondition(scrut, _).toClause)))
-
-      case e @ Error(_, _) =>
-        (e, BooleanLiteral(false))
-
-      case a @ Assert(cond, _, _) =>
-        (a, cond)
-
-      /*case e @ Ensuring(body, post) =>
-        (e, application(post, Seq(body)))
-
-      case r @ Require(pred, e) =>
-        (r, pred)*/
-
-      case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
-        (fi, tfd.withParamSubst(args, tfd.precondition.get))
-    }(e)
-
-    conds map {
-      case ((e, cond), path) =>
-        (e, path implies cond)
-    }
-  }
-
-
-  def simpleCorrectnessCond(e: Expr, path: Path, sf: SolverFactory[Solver]): Expr = {
-    simplifyPaths(sf, path)(
-      andJoin( collectCorrectnessConditions(e) map { _._2 } )
-    )
-  }
-
   def tupleWrapArg(fun: Expr) = fun.getType match {
     case FunctionType(args, res) if args.size > 1 =>
       val newArgs = fun match {
@@ -2239,7 +2193,7 @@ object ExprOps extends GenTreeOps[Expr] {
     case _ =>
       fun
   }
-  
+
   // Use this only to debug isValueOfType
   private implicit class BooleanAdder(b: Boolean) {
     @inline def <(msg: String) = {/*if(!b) println(msg); */b}
@@ -2272,10 +2226,10 @@ object ExprOps extends GenTreeOps[Expr] {
         elems.values forall (x => isValueOfType(x, base))
       case (EmptyArray(tpe), ArrayType(base)) =>
         tpe == base
-      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
+      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) =>
         TypeOps.isSubtypeOf(ct, ct2) < s"$ct not a subtype of $ct2" &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2) < s"${argstyped._1} not a value of type ${argstyped._2}" ))
-      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
+      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) =>
         (ct == ct2) <  s"$ct not equal to $ct2" &&
         ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
       case (FiniteLambda(mapping, default, tpe), exTpe@FunctionType(ins, out)) =>
@@ -2290,13 +2244,13 @@ object ExprOps extends GenTreeOps[Expr] {
       case _ => false
     }
   }
-    
+
   /** Returns true if expr is a value. Stronger than isGround */
   val isValue = (e: Expr) => isValueOfType(e, e.getType)
-  
+
   /** Returns a nested string explaining why this expression is typed the way it is.*/
   def explainTyping(e: Expr): String = {
-    leon.purescala.ExprOps.fold[String]{ (e, se) => 
+    leon.purescala.ExprOps.fold[String]{ (e, se) =>
       e match {
         case FunctionInvocation(tfd, args) =>
           s"$e is of type ${e.getType}" + se.map(child => "\n  " + "\n".r.replaceAllIn(child, "\n  ")).mkString + s" because ${tfd.fd.id.name} was instantiated with ${tfd.fd.tparams.zip(args).map(k => k._1 +":="+k._2).mkString(",")} with type ${tfd.fd.params.map(_.getType).mkString(",")} => ${tfd.fd.returnType}"
