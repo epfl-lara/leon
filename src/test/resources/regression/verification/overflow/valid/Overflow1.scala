@@ -52,4 +52,10 @@ object Overflow1 {
   //  val y = 500000
   //  x*y
   //}
+
+  def foo12(x: Int): Int = {
+    require(x != -2147483648) // -2^31
+    -x
+  }
+
 }
