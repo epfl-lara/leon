@@ -85,7 +85,7 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.Assert
         }
 
-      case BVShiftLeft(_, _) | BVAShiftRight(_, _) | BVLShiftRight(_, _) =>
+      case BVRemainder(_, _) | BVShiftLeft(_, _) | BVAShiftRight(_, _) | BVLShiftRight(_, _) =>
         VCKinds.StrictArithmetic
 
       case BVPlus(_, _) | BVMinus(_, _) | BVUMinus(_) | BVTimes(_, _) =>
@@ -152,6 +152,13 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
         (e, cond)
 
       case e @ BVDivision(x, y) if overflowChecking =>
+        assert(x.getType == Int32Type) // other kind of bv not covered here
+        val cond = not(and(equality(x, IntLiteral(Int.MinValue)), equality(y, IntLiteral(-1))))
+        (e, cond)
+
+      // This is not really an overflow, but rather a limitation of C so we treat it as a strict arithmetic problem
+      case e @ BVRemainder(x, y) if strictArithmeticChecking =>
+        assert(x.getType == Int32Type) // other kind of bv not covered here
         val cond = not(and(equality(x, IntLiteral(Int.MinValue)), equality(y, IntLiteral(-1))))
         (e, cond)
 
