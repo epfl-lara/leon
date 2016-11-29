@@ -50,7 +50,8 @@ object VCKinds {
   case object ModuloByZero    extends VCKind("modulo by zero", "mod 0")
   case object RemainderByZero extends VCKind("remainder by zero", "rem 0")
   case object CastError       extends VCKind("cast correctness", "cast")
-  case object PostTactVC          extends VCKind("Postcondition Tactic", "tact")
+  case object PostTactVC         extends VCKind("Postcondition Tactic", "tact")
+  case object StrictArithmetic   extends VCKind("strict arithmetic", "arithmetic")
   case object ArithmeticOverflow extends VCKind("arithmetic overflow", "overflow")
 }
 
