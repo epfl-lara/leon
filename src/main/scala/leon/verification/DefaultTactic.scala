@@ -151,6 +151,10 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
         val cond = or(equality(x, IntLiteral(0)), equality(BVDivision(BVTimes(x,y), x), y))
         (e, cond)
 
+      case e @ BVDivision(x, y) if overflowChecking =>
+        val cond = not(and(equality(x, IntLiteral(Int.MinValue)), equality(y, IntLiteral(-1))))
+        (e, cond)
+
       case e @ BVUMinus(x) if overflowChecking =>
         assert(x.getType == Int32Type) // other kind of bv not covered here
         val cond = not(equality(x, IntLiteral(Int.MinValue))) // -2^31
