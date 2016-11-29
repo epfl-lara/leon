@@ -84,7 +84,7 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.Assert
         }
 
-      case BVPlus(_, _) | BVMinus(_, _) | BVTimes(_, _) =>
+      case BVPlus(_, _) | BVMinus(_, _) | BVUMinus(_) | BVTimes(_, _) =>
         VCKinds.ArithmeticOverflow
 
       case _ =>
@@ -135,6 +135,11 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
 
       case e @ BVTimes(x, y) if overflowChecking =>
         val cond = or(equality(x, IntLiteral(0)), equality(BVDivision(BVTimes(x,y), x), y))
+        (e, cond)
+
+      case e @ BVUMinus(x) if overflowChecking =>
+        assert(x.getType == Int32Type) // other kind of bv not covered here
+        val cond = not(equality(x, IntLiteral(Int.MinValue))) // -2^31
         (e, cond)
 
       /*case e @ Ensuring(body, post) =>
