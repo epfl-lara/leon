@@ -13,6 +13,12 @@ import leon.synthesis.ExamplesFinder
 class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
   val description = "Default verification condition generation approach"
 
+  private val strictArithmeticChecking: Boolean =
+    ctx.findOptionOrDefault(VerificationPhase.optStrictArithmeticChecking)
+
+  private val overflowChecking: Boolean =
+    ctx.findOptionOrDefault(VerificationPhase.optOverflowChecking) || strictArithmeticChecking
+
   def generatePostconditions(fd: FunDef): Seq[VC] = {
     (fd.postcondition, fd.body) match {
       case (Some(post), Some(body)) =>
@@ -72,15 +78,14 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.ModuloByZero
         } else if (err.startsWith("Remainder ")) {
           VCKinds.RemainderByZero
-        } else if (err.startsWith("Strict arithmetic")) {
-          VCKinds.StrictArithmetic
-        } else if (err.startsWith("Bit-vector arithmetic overflow")) {
-          VCKinds.ArithmeticOverflow
         } else if (err.startsWith("Cast ")) {
           VCKinds.CastError
         } else {
           VCKinds.Assert
         }
+
+      case BVPlus(_, _) | BVMinus(_, _) | BVTimes(_, _) =>
+        VCKinds.ArithmeticOverflow
 
       case _ =>
         VCKinds.Assert
@@ -94,6 +99,9 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
         VC(correctnessCond, fd, eToVCKind(e)).setPos(e)
     }
   }
+
+  private val mask = IntLiteral(0x80000000)
+  private def applyMask(a: Expr): Expr = BVAnd(a, mask)
 
   /** Collects from within an expression all conditions under which the evaluation of the expression
     * will not fail (e.g. by violating a function precondition or evaluating to an error).
@@ -116,6 +124,18 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
 
       case a @ Assert(cond, _, _) =>
         (a, cond)
+
+      case e @ BVPlus(x, y) if overflowChecking =>
+        val cond = Implies(equality(applyMask(x), applyMask(y)), equality(applyMask(x), applyMask(e)))
+        (e, cond)
+
+      case e @ BVMinus(x, y) if overflowChecking =>
+        val cond = Implies(not(equality(applyMask(x), applyMask(y))), equality(applyMask(x), applyMask(e)))
+        (e, cond)
+
+      case e @ BVTimes(x, y) if overflowChecking =>
+        val cond = or(equality(x, IntLiteral(0)), equality(BVDivision(BVTimes(x,y), x), y))
+        (e, cond)
 
       /*case e @ Ensuring(body, post) =>
         (e, application(post, Seq(body)))

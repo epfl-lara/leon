@@ -14,12 +14,20 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
   val name = "Verification"
   val description = "Verification of function contracts"
 
-  val optParallelVCs = LeonFlagOptionDef("parallel", "Check verification conditions in parallel", default = false)  
-  
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optParallelVCs)
+  val optParallelVCs = LeonFlagOptionDef("parallel", "Check verification conditions in parallel", default = false)
+
+  val optStrictArithmeticChecking = LeonFlagOptionDef(
+    "strict-arithmetic",
+    "Check arithmetic operations for unintended behaviour (implies --overflow)",
+    default = false
+  )
+
+  val optOverflowChecking = LeonFlagOptionDef("overflow", "Check arithmetic overflow", default = false)
+
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optParallelVCs, optStrictArithmeticChecking, optOverflowChecking)
 
   implicit val debugSection = utils.DebugSectionVerification
-  
+
   /** Solvers selection and validation */
   def getSolverFactory(ctx: LeonContext, program: Program): SolverFactory[Solver] = {
     val timeout:    Option[Long]        = ctx.findOption(GlobalOptions.optTimeout)
@@ -36,7 +44,7 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
   def apply(ctx: LeonContext, program: Program): VerificationReport = {
     val filterFuns: Option[Seq[String]] = ctx.findOption(GlobalOptions.optFunctions)
-    
+
     val reporter = ctx.reporter
 
     val solverF = getSolverFactory(ctx, program)
@@ -83,7 +91,7 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
           inductionTactic
         } else if(funDef.annotations.contains("traceInduct")){
           trInductTactic
-        }else {          
+        }else {
           defaultTactic
         }
 
@@ -142,13 +150,13 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
         val solverF = getSolverFactory(newCtx, _vctx.program)
         val vctx = new VerificationContext(newCtx, _vctx.program, solverF)
         (solverF, vctx)
-      case None => 
+      case None =>
         (_vctx.solverFactory, _vctx)
     }
     import vctx.reporter
     import vctx.solverFactory
     val interruptManager = vctx.interruptManager
-    
+
     val s = finalSolverFactory.getNewSolver
 
     try {
