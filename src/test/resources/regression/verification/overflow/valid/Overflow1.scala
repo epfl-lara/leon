@@ -58,4 +58,9 @@ object Overflow1 {
     -x
   }
 
+  def foo13(x: Int, y: Int) = {
+    require(y != 0 && (x != -2147483648 || y != -1))
+    x / y
+  }
+
 }
