@@ -524,7 +524,19 @@ sealed abstract class List[T] {
     (res.content subsetOf this.content) &&
     (res.isEmpty || !p(res.head))
   }
-
+  
+  def span(p: T => Boolean): (List[T], List[T]) = { this match {
+    case Cons(h,t) if p(h) => 
+      val (fst, snd) = t.span(p)
+      (Cons(h, fst), snd)
+    case _ => (Nil[T](), this)
+  }} ensuring { res =>
+    (res._1 forall p) &&
+    (res._2.isEmpty || !p(res._2.head)) &&
+    (res._1.size + res._2.size == this.size) &&
+    ((res._1.content ++ res._2.content) == this.content)
+  }
+  
   def count(p: T => Boolean): BigInt = { this match {
     case Nil() => BigInt(0)
     case Cons(h, t) =>

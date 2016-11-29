@@ -9,6 +9,7 @@ import scala.language.implicitConversions
 case class Acceptor[T](tag: String) {
   @library
   def :=(v: String) = WebAttribute(tag, v)
+  def apply(v: String) = this := v
 }
 
 @isabelle.typ(name = "Leon_Types.css_acceptor")
@@ -16,6 +17,7 @@ case class Acceptor[T](tag: String) {
 case class CssAcceptor[T](tag: String) {
   @library
   def :=(v: String) = WebStyle(tag, v)
+  def apply(v: String) = this := v
 }
 
 @isabelle.typ(name = "Leon_Types.element_decision")
@@ -70,6 +72,12 @@ object implicits {
       case WebAttribute(tag2, e) if tag2 == tag => acc + e
       case _ => acc
     }}
+  }
+  
+  @isabelle.noBody()
+  implicit def listWebElementToWebTree(l: List[Element]): List[WebTree] = l match {
+    case Nil() => Nil()
+    case Cons(x, xs) => Cons(x, xs)
   }
 }
 
@@ -237,6 +245,7 @@ object ^ {
   val position = css("position")
   val display = css("display")
   
+  val borderSpacing = css("border-spacing")
   val borderCollapse = css("border-collapse")
   val textAlign = css("text-align")
   val width = css("width")

@@ -25,6 +25,7 @@ import scala.collection.JavaConversions._
 import leon.evaluators.DefaultEvaluator
 import leon.grammars.ValueGrammar
 import leon.datagen.GrammarDataGen
+import scala.language.implicitConversions
 
 class InputPatternCoverageException(msg: String) extends
   Exception(msg)
