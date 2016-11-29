@@ -30,7 +30,7 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
               ).copiedFrom(post)
           }}
           else post
-        
+
         val vc = implies(fd.precOrTrue, application(newpost, Seq(body)))
         Seq(VC(vc, fd, VCKinds.Postcondition).setPos(post))
       case _ =>
@@ -72,6 +72,8 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.ModuloByZero
         } else if (err.startsWith("Remainder ")) {
           VCKinds.RemainderByZero
+        } else if (err.startsWith("Strict arithmetic")) {
+          VCKinds.StrictArithmetic
         } else if (err.startsWith("Bit-vector arithmetic overflow")) {
           VCKinds.ArithmeticOverflow
         } else if (err.startsWith("Cast ")) {
