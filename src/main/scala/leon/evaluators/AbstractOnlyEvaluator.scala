@@ -50,7 +50,7 @@ trait HasAbstractOnlyRecContext extends ContextualEvaluator {
 /** The evaluation returns only the abstract value compared to the other implementation of [[leon.evaluators.AbstractEvaluator AbstractEvaluator]]
  *  It also supposes that everything can be computed else (i.e. not possible to add non-bound variables)
  *  @returns the way the expression has been evaluated. */
-class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 150000) extends ContextualEvaluator(ctx, prog, maxSteps) with HasDefaultGlobalContext with HasAbstractOnlyRecContext {
+class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = Int.MaxValue) extends ContextualEvaluator(ctx, prog, maxSteps) with HasDefaultGlobalContext with HasAbstractOnlyRecContext {
   /** Evaluates resuts which can be evaluated directly
     * For example, concatenation of two string literals */
   val underlying = new RecursiveEvaluator(ctx, prog, new EvaluationBank, maxSteps)
@@ -68,116 +68,133 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 150
   var evaluateApplications = true
   
   implicit def aToC(implicit rctx: RC): AbstractOnlyEvaluator.this.underlying.RC = rctx.concMapping
-
-  protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {
-    expr match {
-    case Variable(id) =>
-      rctx.mappingsAbstractOnly.get(id) match {
-        case Some(va) =>
-          (va)
-        case _ =>
-          expr
-      }
-
-    case e : Literal[_] =>
-      e
-      
-    case IfExpr(cond, thenn, elze) =>
-      val first = underlying.e(cond)
-      first match {
-        case BooleanLiteral(true) =>
-          ctx.reporter.ifDebug(printer => printer(thenn))(DebugSectionSynthesis)
-          e(thenn)
-        case BooleanLiteral(false) => e(elze)
-        case _ => throw EvalError(typeErrorMsg(first, BooleanType))
-      }
-      
-    case MatchExpr(scrut, cases) =>
-      val escrut = underlying.e(scrut)
-      val tscrut = e(scrut)
-      cases.toStream.map(c => matchesCaseAbstractOnly(escrut, tscrut, c)).find(_.nonEmpty) match {
-        case Some(Some((c, mappings))) => e(c.rhs)(rctx.withNewVars3(mappings.map(v => v._1 -> underlying.e(v._2)).toMap, mappings.toMap), gctx)
-        case _ => throw RuntimeError("MatchError(AbstractOnly evaluation): "+escrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
-      }
-
-    case FunctionInvocation(tfd, args) =>
-      if (gctx.stepsLeft < 0) {
-        throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
-      }
-      gctx.stepsLeft -= 1
-      
-      val evArgsValues = args map (underlying.e)
-      val evArgsOrigin = args map e
-      
-      // build a mapping for the function...
-      //val frame = rctx.withNewVars2((tfd.paramIds zip evArgs).toMap)
   
-      val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-        functionInvocation(tfd.fd, evArgsOrigin)
-      } else {
-        if((!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) || tfd.body.exists(b => ExprOps.exists(e => e.isInstanceOf[Choose])(b))) {
-          functionInvocation(tfd.fd, evArgsOrigin)
+  @inline def e_bis(input_expr: Expr)(input_rctx: RC, input_gctx: GC): Expr = {
+    var expr = input_expr
+    implicit var rctx = input_rctx
+    implicit var gctx = input_gctx
+    //@inline def e(ex: Expr) = this.e(ex)(rctx, gctx)
+
+    while(true) {
+      expr = expr match {
+      case Variable(id) =>
+        return rctx.mappingsAbstractOnly.get(id) match {
+          case Some(va) =>
+            va
+          case _ =>
+            expr
+        }
+
+      case e : Literal[_] =>
+        return e
+        
+      case IfExpr(cond, thenn, elze) =>
+        val first = underlying.e(cond)
+        first match {
+          case BooleanLiteral(true) =>
+            ctx.reporter.ifDebug(printer => printer(thenn))(DebugSectionSynthesis)
+            thenn
+          case BooleanLiteral(false) =>
+            elze
+          case _ => throw EvalError(typeErrorMsg(first, BooleanType))
+        }
+        
+      case MatchExpr(scrut, cases) =>
+        val escrut = underlying.e(scrut)
+        val tscrut = e(scrut)
+        cases.toStream.map(c => matchesCaseAbstractOnly(escrut, tscrut, c)).find(_.nonEmpty) match {
+          case Some(Some((c, mappings))) =>
+            rctx = rctx.withNewVars3(mappings.map(v => v._1 -> underlying.e(v._2)).toMap, mappings.toMap)
+            c.rhs
+          case _ => throw RuntimeError("MatchError(AbstractOnly evaluation): "+escrut.asString+" did not match any of the cases :\n" + cases.mkString("\n"))
+        }
+  
+      case FunctionInvocation(tfd, args) =>
+        if (gctx.stepsLeft < 0) {
+          throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
+        }
+        gctx.stepsLeft -= 1
+        
+        val evArgsValues = args map (underlying.e)
+        val evArgsOrigin = args map e
+        
+        // build a mapping for the function...
+        //val frame = rctx.withNewVars2((tfd.paramIds zip evArgs).toMap)
+    
+        if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+          return functionInvocation(tfd.fd, evArgsOrigin)
         } else {
-          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          try {
-            val frame = rctx.withNewVars3((tfd.paramIds zip evArgsValues).toMap, (tfd.paramIds zip evArgsOrigin).toMap)
-            e(body)(frame, gctx)
-          } catch {
-            case e: Throwable => 
-              //println("Error during execution of " + expr + ": " + e + ", " + e.getMessage)
-              //println(e.getStackTrace.map(_.toString).mkString("\n"))
-              functionInvocation(tfd.fd, evArgsOrigin)
+          if((!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) || tfd.body.exists(b => ExprOps.exists(e => e.isInstanceOf[Choose])(b))) {
+            return functionInvocation(tfd.fd, evArgsOrigin)
+          } else {
+            val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+            try {
+              rctx = rctx.withNewVars3((tfd.paramIds zip evArgsValues).toMap, (tfd.paramIds zip evArgsOrigin).toMap)
+              body
+            } catch {
+              case e: Throwable => 
+                println("Error during execution of " + expr + ": " + e + ", " + e.getMessage)
+                println(e.getStackTrace.map(_.toString).mkString("\n"))
+                return functionInvocation(tfd.fd, evArgsOrigin)
+            }
           }
         }
-      }
-      callResult
-
-    case Let(i, ex, b) =>
-      val first = underlying.e(ex)
-      val second = e(ex)
-      e(b)(rctx.withNewVar(i, first, second), gctx)
-
-    case Application(caller, args) =>
-      val ecaller = underlying.e(caller)
-      val tcaller = e(caller)
-      val targs = args map e
-      val eargs = args map underlying.e
-      ecaller match {
-        case l @ Lambda(params, body) if evaluateApplications =>
-          val mapping    = (params map (_.id) zip eargs).toMap
-          val mappingAbs = (params map (_.id) zip targs).toMap
-          e(body)(rctx.withNewVars3(mapping, mappingAbs), gctx)
-        case _ =>
-          Application(tcaller, targs)
-      }
-      
-    case l @ Lambda(_, _) =>
-      import ExprOps._
-      val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
-      replaceFromIDs(mapping, l).asInstanceOf[Lambda]
-
-    case Operator(es, builder) =>
-      val ees = es.map(underlying.e)
-      val ts = es.map(e)
+  
+      case Let(i, ex, b) =>
+        val first = underlying.e(ex)
+        val second = e(ex)
+        rctx = rctx.withNewVar(i, first, second)
+        b
+  
+      case Application(caller, args) =>
+        val ecaller = underlying.e(caller)
+        val tcaller = e(caller)
+        val targs = args map e
+        val eargs = args map underlying.e
+        ecaller match {
+          case l @ Lambda(params, body) if evaluateApplications =>
+            val mapping    = (params map (_.id) zip eargs).toMap
+            val mappingAbs = (params map (_.id) zip targs).toMap
+            rctx = rctx.withNewVars3(mapping, mappingAbs) 
+            body
+          case _ =>
+            return Application(tcaller, targs)
+        }
+        
+      case l @ Lambda(_, _) =>
+        import ExprOps._
+        val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
+        return replaceFromIDs(mapping, l).asInstanceOf[Lambda]
+  
+      case Operator(es, builder) =>
+        val ees = es.map(underlying.e)
+        val ts = es.map(e)
         val conc_value = underlying.e(builder(ees))
         val abs_value = builder(ts)
         val final_abs_value = if( evaluateCaseClassSelector) {
-        abs_value match {
-          case CaseClassSelector(cct, CaseClass(ct, args), id) =>
-            args(ct.classDef.selectorID2Index(id))
-          case CaseClassSelector(cct, AsInstanceOf(CaseClass(ct, args), ccct), id) =>
-            args(ct.classDef.selectorID2Index(id))
-          case TupleSelect(Tuple(args), i) =>
-            args(i-1)
-          case Assert(a, error, body) => body
-          case MapApply(FiniteMap(theMap, keyType, valueType), thekey) if theMap contains thekey => 
-            theMap(thekey)
-          case e => e
-        }
-      } else abs_value
-      
-      final_abs_value
+          abs_value match {
+            case CaseClassSelector(cct, CaseClass(ct, args), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case CaseClassSelector(cct, AsInstanceOf(CaseClass(ct, args), ccct), id) =>
+              args(ct.classDef.selectorID2Index(id))
+            case TupleSelect(Tuple(args), i) =>
+              args(i-1)
+            case Assert(a, error, body) =>
+              body
+            case MapApply(FiniteMap(theMap, keyType, valueType), thekey) if theMap contains thekey => 
+              theMap(thekey)
+            case e => e
+          }
+        } else abs_value
+        
+        return final_abs_value
+      }
     }
+    ???
+  }
+  
+  protected def e(input_expr: Expr)(implicit input_rctx: RC, input_gctx: GC): Expr = {
+    e_bis(input_expr)(input_rctx, input_gctx)
   }
 
   def matchesCaseAbstractOnly(scrut: Expr, abstractScrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Iterable[(Identifier, Expr)])] = {

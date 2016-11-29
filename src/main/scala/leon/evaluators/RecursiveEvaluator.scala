@@ -44,6 +44,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
 
   protected[evaluators] object SpecializedFunctionInvocation {
     def unapply(expr: Expr)(implicit rctx: RC, gctx: GC): Option[Expr] = expr match {
+    case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq(set)) if fd == program.library.setToList.get =>
+      val els = e(set) match {
+        case FiniteSet(els, _) => els
+        case _ => throw EvalError(typeErrorMsg(set, SetType(tp)))
+      }
+      val cons = program.library.Cons.get
+      val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
+      def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
+      Some(els.foldRight(nil)(mkCons))
+      
     case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
        e(input) match {
          case StringLiteral(s) => 
@@ -52,13 +62,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
        }
 
     case FunctionInvocation(TypedFunDef(fd, Seq(ta, tb)), Seq(mp, inkv, betweenkv, fk, fv)) if fd == program.library.mapMkString.get =>
-      println("invkv")
       val inkv_str = e(inkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(inkv, StringType)) }
-      println(s"invkv_str = $inkv_str")
       val betweenkv_str = e(betweenkv) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(betweenkv, StringType)) }
-      println(s"betweenkv_str = $betweenkv_str")
       val mp_map = e(mp) match { case FiniteMap(theMap, keyType, valueType) => theMap case _ => throw EvalError(typeErrorMsg(mp, MapType(ta, tb))) }
-      println(s"mp_map = $mp_map")
       
       val res = mp_map.map{ case (k, v) =>
         (e(application(fk, Seq(k))) match { case StringLiteral(s) => s case _ => throw EvalError(typeErrorMsg(k, StringType)) }) +
@@ -97,7 +103,95 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     }
   }
   
-  protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+  @inline private def e_bis(input_expr: Expr)(input_rctx: RC, input_gctx: GC): Expr = {
+    var expr = input_expr
+    implicit var rctx = input_rctx
+    implicit var gctx = input_gctx
+
+    while(true) {
+      expr = expr match {
+        // In this match, everything computed will be reevaluated by e. Partial tail-recursion cases.
+        // If you want to return immediately, use the return keyword.
+    case Application(caller, args) =>
+      e(caller) match {
+        case l @ Lambda(params, body) =>
+          val newArgs = args.map(e)
+          val mapping = l.paramSubst(newArgs)
+          rctx = rctx.withNewVars(mapping)
+          body
+        case FiniteLambda(mapping, dflt, _) =>
+          return mapping.find { case (pargs, res) =>
+            (args zip pargs).forall(p => e(Equals(p._1, p._2)) == BooleanLiteral(true))
+          }.map(_._2).getOrElse(dflt)
+        case f =>
+          throw EvalError("Cannot apply non-lambda function " + f.asString)
+      }
+
+    case Let(i,ex,b) =>
+      val first = e(ex)
+      //println(s"Eval $i to $first")
+      rctx = rctx.withNewVar(i, first)
+      b
+
+    case Assert(cond, oerr, body) =>
+      IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body)
+
+    case en @ Ensuring(body, post) =>
+      en.toAssert
+    
+    case Error(tpe, desc) =>
+      throw RuntimeError("Error reached in evaluation: " + desc)
+
+    case IfExpr(cond, thenn, elze) =>
+      val first = e(cond)
+      first match {
+        case BooleanLiteral(true) => thenn
+        case BooleanLiteral(false) => elze
+        case _ => throw EvalError(typeErrorMsg(first, BooleanType))
+      }
+
+    case And(args) if args.isEmpty => return BooleanLiteral(true)
+    case And(args) =>
+      e(args.head) match {
+        case BooleanLiteral(false) => return BooleanLiteral(false)
+        case BooleanLiteral(true) => andJoin(args.tail)
+        case other => throw EvalError(typeErrorMsg(other, BooleanType))
+      }
+
+    case Or(args) if args.isEmpty => return BooleanLiteral(false)
+    case Or(args) =>
+      e(args.head) match {
+        case BooleanLiteral(true) => return BooleanLiteral(true)
+        case BooleanLiteral(false) => orJoin(args.tail)
+        case other => throw EvalError(typeErrorMsg(other, BooleanType))
+      }
+
+    case Implies(l,r) =>
+      e(l) match {
+        case BooleanLiteral(false) => return BooleanLiteral(true)
+        case BooleanLiteral(true) => r
+        case le => throw EvalError(typeErrorMsg(le, BooleanType))
+      }
+
+    case p : Passes =>
+      p.asConstraint
+
+    case MatchExpr(scrut, cases) =>
+      val rscrut = e(scrut)
+      cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
+        case Some(Some((c, mappings))) =>
+          rctx = rctx.withNewVars(mappings)
+          c.rhs
+        case _ =>
+          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
+      }
+
+    case synthesis.utils.MutableExpr(ex) =>
+      ex
+
+    case _ => // After this, everything returned by the match will be returned by the function
+      
+    return expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
         case Some(v) =>
@@ -105,21 +199,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         case None =>
           throw EvalError("No value for identifier " + id.asString + " in mapping " + rctx.mappings)
       }
-
-    case Application(caller, args) =>
-      e(caller) match {
-        case l @ Lambda(params, body) =>
-          val newArgs = args.map(e)
-          val mapping = l.paramSubst(newArgs)
-          e(body)(rctx.withNewVars(mapping), gctx)
-        case FiniteLambda(mapping, dflt, _) =>
-          mapping.find { case (pargs, res) =>
-            (args zip pargs).forall(p => e(Equals(p._1, p._2)) == BooleanLiteral(true))
-          }.map(_._2).getOrElse(dflt)
-        case f =>
-          throw EvalError("Cannot apply non-lambda function " + f.asString)
-      }
-
     case Tuple(ts) =>
       val tsRec = ts.map(e)
       Tuple(tsRec)
@@ -128,39 +207,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       val Tuple(rs) = e(t)
       rs(i-1)
 
-    case Let(i,ex,b) =>
-      val first = e(ex)
-      //println(s"Eval $i to $first")
-      e(b)(rctx.withNewVar(i, first), gctx)
-
-    case Assert(cond, oerr, body) =>
-      e(IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
-
-    case en @ Ensuring(body, post) =>
-      e(en.toAssert)
-
-    case Error(tpe, desc) =>
-      throw RuntimeError("Error reached in evaluation: " + desc)
-
-    case IfExpr(cond, thenn, elze) =>
-      val first = e(cond)
-      first match {
-        case BooleanLiteral(true) => e(thenn)
-        case BooleanLiteral(false) => e(elze)
-        case _ => throw EvalError(typeErrorMsg(first, BooleanType))
-      }
-
-    case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq(set)) if fd == program.library.setToList.get =>
-      val els = e(set) match {
-        case FiniteSet(els, _) => els
-        case _ => throw EvalError(typeErrorMsg(set, SetType(tp)))
-      }
-      val cons = program.library.Cons.get
-      val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
-      def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
-      els.foldRight(nil)(mkCons)
-
-    case SpecializedFunctionInvocation(result) => result
+    case SpecializedFunctionInvocation(result) =>
+      result
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
@@ -210,33 +258,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
 
       callResult
 
-    case And(args) if args.isEmpty => BooleanLiteral(true)
-    case And(args) =>
-      e(args.head) match {
-        case BooleanLiteral(false) => BooleanLiteral(false)
-        case BooleanLiteral(true) => e(andJoin(args.tail))
-        case other => throw EvalError(typeErrorMsg(other, BooleanType))
-      }
-
-    case Or(args) if args.isEmpty => BooleanLiteral(false)
-    case Or(args) =>
-      e(args.head) match {
-        case BooleanLiteral(true) => BooleanLiteral(true)
-        case BooleanLiteral(false) => e(orJoin(args.tail))
-        case other => throw EvalError(typeErrorMsg(other, BooleanType))
-      }
-
     case Not(arg) =>
       e(arg) match {
         case BooleanLiteral(v) => BooleanLiteral(!v)
         case other => throw EvalError(typeErrorMsg(other, BooleanType))
-      }
-
-    case Implies(l,r) =>
-      e(l) match {
-        case BooleanLiteral(false) => BooleanLiteral(true)
-        case BooleanLiteral(true) => e(r)
-        case le => throw EvalError(typeErrorMsg(le, BooleanType))
       }
 
     case Equals(le,re) =>
@@ -780,9 +805,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       case (l, r) => throw EvalError(typeErrorMsg(l, m.getType))
     }
 
-    case p : Passes =>
-      e(p.asConstraint)
-
     case choose: Choose =>
       if(evaluationFailsOnChoose) {
         throw EvalError("Evaluator set to not solve choose constructs")
@@ -836,24 +858,20 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         }
       })
 
-    case MatchExpr(scrut, cases) =>
-      val rscrut = e(scrut)
-      cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
-        case Some(Some((c, mappings))) =>
-          e(c.rhs)(rctx.withNewVars(mappings), gctx)
-        case _ =>
-          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
-      }
-
-    case synthesis.utils.MutableExpr(ex) =>
-      e(ex)
-
     case gl: GenericValue => gl
     case fl : FractionalLiteral => normalizeFraction(fl)
     case l : Literal[_] => l
 
     case other =>
       throw EvalError("Unhandled case in Evaluator : [" + other.getClass + "] " + other.asString)
+  } // Second match non tail-recursive prefixed by "return".
+      } // First match tail-recursive
+  } // Infinite loop
+    ??? // Don't care about this. Unreachable.
+  }
+  
+  protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {
+    e_bis(expr)(rctx, gctx)
   }
 
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {
