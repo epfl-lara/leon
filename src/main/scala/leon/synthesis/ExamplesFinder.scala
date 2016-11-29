@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Common._
 import purescala.Constructors._
+import purescala.Extractors._
 import evaluators._
 import leon.grammars._
 import codegen._
@@ -208,10 +209,19 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     * cs[=>Case pattExpr if guard => outR]*/
   private def caseToExamples(in: Expr, out: Expr, cs: MatchCase, examplesPerCase: Int = 5): Seq[(Expr,Expr)] = {
 
-    def doSubstitute(subs : Seq[(Identifier, Expr)], e : Expr) = 
-      subs.foldLeft(e) { 
-        case (from, (id, to)) => replaceFromIDs(Map(id -> to), from)
+    // Stable, ordered substitutions:
+    // Map(a -> b, b -> 4) on (a)   yields  (4)
+    // Map(b -> 4, a -> b) on (a)   yields  (4)
+    def doSubstitute(subs : Seq[(Identifier, Expr)], e : Expr): Expr = {
+      subs match {
+        case (id, to) +: t =>
+          val t2 = t.map { case (id2, to2) => id2 -> replaceFromIDs(Map(id -> to), to2) }
+          doSubstitute(t2, replaceFromIDs(Map(id -> to), e))
+
+        case Nil =>
+          e
       }
+    }
 
     if (cs.rhs == out) {
       // The trivial example
@@ -220,70 +230,60 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       // The pattern as expression (input expression)(may contain free variables)
       val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
       val freeVars = variablesOf(pattExpr).toSeq
+
       val res = if (exists(_.isInstanceOf[NoTree])(pattExpr)) {
         reporter.warning(cs.pattern.getPos, "Unapply patterns are not supported in IO-example extraction")
         Seq()
       } else if (freeVars.isEmpty) {
-        // The input contains no free vars. Trivially return input-output pair
-        Seq((pattExpr, doSubstitute(ieMap,cs.rhs)))
+        // The pattern is not symbolic. Trivially return input-output pair
+        Seq((pattExpr, doSubstitute(ieMap, cs.rhs)))
       } else {
-        // Extract test cases such as    case x if x == s =>
-        ((pattExpr, ieMap, cs.optGuard) match {
-          case (Variable(id), Seq(), Some(Equals(Variable(id2), s))) if id == id2 =>
-            Some((Seq((s, doSubstitute(ieMap, cs.rhs)))))
-          case (Variable(id), Seq(), Some(Equals(s, Variable(id2)))) if id == id2 =>
-            Some((Seq((s, doSubstitute(ieMap, cs.rhs)))))
-          case (a, b, c) =>
-            None
-        }) getOrElse {
 
-          if(this.keepAbstractExamples) {
-            cs.optGuard match {
-              case Some(BooleanLiteral(false)) =>
-                Seq()
-              case None =>
-                Seq((pattExpr, cs.rhs))
-              case Some(pred) =>
-                Seq((Require(pred, pattExpr), cs.rhs))
+        if(this.keepAbstractExamples) {
+          cs.optGuard match {
+            case Some(BooleanLiteral(false)) =>
+              Seq()
+            case None =>
+              Seq((pattExpr, cs.rhs))
+            case Some(pred) =>
+              Seq((Require(pred, pattExpr), cs.rhs))
+          }
+        } else {
+          // Detect assignments in the guard, constrainting free variables
+          val assignments = (for (TopLevelAnds(as) <- cs.optGuard.toSeq; a <- as) yield {
+            a match {
+              case Equals(Variable(id), v) if (freeVars contains id) && !(variablesOf(v) contains id) =>
+                Some(id -> v)
+              case Equals(v, Variable(id)) if (freeVars contains id) && !(variablesOf(v) contains id) =>
+                Some(id -> v)
+              case _ =>
+                None
             }
-          } else {
-            // If the input contains free variables, it does not provide concrete examples. 
-            // We will instantiate them according to a simple grammar to get them.
+          }).flatten
 
-            val exs = cs.optGuard match {
-              case Some(g) =>
-                // We have a guard constraining the freeVars, we generate them together
-                val theGuard = replace(Map(in -> pattExpr), g)
+          // We apply these assignments, and compute the set of free variables remaining
+          val pattExpr2 = doSubstitute(assignments, pattExpr)
+          val freeVars2 = variablesOf(pattExpr2).toSeq
+          val guard2    = doSubstitute(assignments, cs.optGuard.getOrElse(BooleanLiteral(true)))
+          val out2      = doSubstitute(ieMap ++ assignments, cs.rhs)
 
-                val dataGen = new GrammarDataGen(evaluator)
-                dataGen.generateFor(freeVars, theGuard, examplesPerCase, 1000)
+          val dataGen = new GrammarDataGen(evaluator)
+          val exs = dataGen.generateFor(freeVars2, guard2, examplesPerCase, 1000)
 
-              case None =>
-                // We have no guard, it boils down to generate bunch of values
-                // per types of freevars and building tuples.
-                //println(s"Found simple in/out testcase: $cs")
-                //println("Free: "+freeVars)
-
-                val dataGen = new VaryingGrammarDataGen(evaluator)
-                dataGen.generateFor(freeVars, BooleanLiteral(true), examplesPerCase, examplesPerCase)
-            }
-
-            exs.toSeq map { vals =>
-              val inst = freeVars.zip(vals).toMap
-              val inR = replaceFromIDs(inst, pattExpr)
-              val outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
-              (inR, outR)
-            }
+          exs.toSeq map { vals =>
+            val inst = freeVars2.zip(vals).toMap
+            val inR = replaceFromIDs(inst, pattExpr2)
+            val outR = replaceFromIDs(inst, out2)
+            (inR, outR)
           }
         }
       }
 
-      //println("Case: "+cs.asString)
-      //val eb = ExamplesBank(res.map(c => InOutExample(Seq(c._1), Seq(c._2))), Nil)
-      //println(eb.asString("Tests"))
-
-      
-      if(this.keepAbstractExamples) res.map(expand) else res
+      if (this.keepAbstractExamples) {
+        res.map(expand)
+      } else {
+        res
+      }
     }
   }
 
