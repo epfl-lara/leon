@@ -111,12 +111,14 @@ trait CodeExtraction extends ASTExtractors {
     case class DefContext(tparams: Map[Symbol, TypeParameter] = Map(),
                           vars: Map[Symbol, () => LeonExpr] = Map(),
                           mutableVars: Map[Symbol, () => LeonExpr] = Map(),
+                          extraConstraints: LeonExpr = BooleanLiteral(true),
                           isExtern: Boolean = false){
 
       def union(that: DefContext) = {
         copy(this.tparams ++ that.tparams,
              this.vars ++ that.vars,
              this.mutableVars ++ that.mutableVars,
+             and(this.extraConstraints, that.extraConstraints),
              this.isExtern || that.isExtern)
       }
 
@@ -128,6 +130,10 @@ trait CodeExtraction extends ASTExtractors {
 
       def withNewVar(nvar: (Symbol, () => LeonExpr)) = {
         copy(vars = vars + nvar)
+      }
+
+      def withConstraint(e: LeonExpr) = {
+        copy(extraConstraints = and(extraConstraints, e))
       }
 
       def withNewMutableVar(nvar: (Symbol, () => LeonExpr)) = {
@@ -1127,6 +1133,16 @@ trait CodeExtraction extends ASTExtractors {
 
         (UnapplyPattern(binder, fd.typed(newTps), sub).setPos(up.pos), ctx.foldLeft(dctx)(_ union _))
 
+      // case `id`
+      case t @ ExParameterLessCall(rec, sym, Nil) =>
+        val call = extractTree(t)
+
+        val newID = FreshIdentifier("b", call.getType).setPos(t.pos)
+
+        val eq = equality(newID.toVariable, call)
+
+        (WildcardPattern(Some(newID)).setPos(t.pos), dctx.withConstraint(eq))
+
       case _ =>
         outOfSubsetError(p, "Unsupported pattern: "+p.getClass)
     }
@@ -1136,16 +1152,22 @@ trait CodeExtraction extends ASTExtractors {
 
       val recBody             = extractTree(cd.body)(ndctx)
 
-      if(cd.guard == EmptyTree) {
-        SimpleCase(recPattern, recBody).setPos(cd.pos)
+      val recGuard = if(cd.guard == EmptyTree) {
+        ndctx.extraConstraints
       } else {
-        val recGuard = extractTree(cd.guard)(ndctx)
+        and(ndctx.extraConstraints, extractTree(cd.guard)(ndctx))
+      }
 
-        if(isXLang(recGuard)) {
-          outOfSubsetError(cd.guard.pos, "Guard expression must be pure")
-        }
+      recGuard match {
+        case BooleanLiteral(true) =>
+          SimpleCase(recPattern, recBody).setPos(cd.pos)
 
-        GuardedCase(recPattern, recGuard, recBody).setPos(cd.pos)
+        case guard =>
+          if(isXLang(guard)) {
+            outOfSubsetError(cd.pos, "Guard expression must be pure")
+          }
+
+          GuardedCase(recPattern, guard, recBody).setPos(cd.pos)
       }
     }
 
