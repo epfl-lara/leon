@@ -106,7 +106,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Require(BooleanLiteral(true), body) =>
         p"|$body"
-        
+
       case Require(pre, body) =>
         p"""|require($pre)
             |$body"""
@@ -168,7 +168,7 @@ class PrettyPrinter(opts: PrinterOptions,
               val lclass = AbstractClassType(opgm.get.library.List.get, cct.tps)
               p"$lclass($elems)"
             }
-              
+
           case None =>
             if (cct.classDef.isCaseObject) {
               p"$cct"
@@ -199,6 +199,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case StringLength(expr)             => p"$expr.length"
       case StringBigLength(expr)          => p"$expr.bigLength"
 
+      case ByteLiteral(v)                 => p"$v"
       case IntLiteral(v)                  => p"$v"
       case InfiniteIntegerLiteral(v)      => p"$v"
       case FractionalLiteral(n, d) =>
@@ -216,18 +217,18 @@ class PrettyPrinter(opts: PrinterOptions,
           p"$dbquote$escaped$dbquote"
         }
 
-      case ArrayForall(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+      case ArrayForall(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 =>
         p"$a.forall($pred)"
-      case ArrayForall(a, from, to, pred) => 
+      case ArrayForall(a, from, to, pred) =>
         p"$a.forall($from, $to, $pred)"
-      case BoundedForall(from, to, pred) => 
+      case BoundedForall(from, to, pred) =>
         p"forall($from, $to, $pred)"
 
-      case ArrayExists(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+      case ArrayExists(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 =>
         p"$a.exists($pred)"
-      case ArrayExists(a, from, to, pred) => 
+      case ArrayExists(a, from, to, pred) =>
         p"$a.exists($from, $to, $pred)"
-      case BoundedExists(from, to, pred) => 
+      case BoundedExists(from, to, pred) =>
         p"exists($from, $to, $pred)"
 
       case GenericValue(tp, id) => p"$tp#$id"
@@ -348,6 +349,10 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVShiftLeft(l, r)        => optP { p"$l << $r" }
       case BVAShiftRight(l, r)      => optP { p"$l >> $r" }
       case BVLShiftRight(l, r)      => optP { p"$l >>> $r" }
+      case BVNarrowingCast(e, Int32Type) => p"$e.toInt"
+      case BVNarrowingCast(e, Int8Type)  => p"$e.toByte"
+      case BVWideningCast(e, Int32Type)  => p"$e.toInt"
+      case BVWideningCast(e, Int8Type)   => p"$e.toByte"
       case RealPlus(l, r)           => optP { p"$l + $r" }
       case RealMinus(l, r)          => optP { p"$l - $r" }
       case RealTimes(l, r)          => optP { p"$l * $r" }
@@ -493,6 +498,7 @@ class PrettyPrinter(opts: PrinterOptions,
       // Types
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
+      case Int8Type              => p"Byte"
       case Int32Type             => p"Int"
       case IntegerType           => p"BigInt"
       case RealType              => p"Real"

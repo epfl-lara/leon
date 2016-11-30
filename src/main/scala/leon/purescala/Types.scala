@@ -32,10 +32,10 @@ object Types {
 
     // Checks whether the subtypes of this type contain Untyped,
     // and if so sets this to Untyped.
-    // Assumes the subtypes are correctly formed, so it does not descend 
+    // Assumes the subtypes are correctly formed, so it does not descend
     // deep into the TypeTree.
     def unveilUntyped: TypeTree = this match {
-      case NAryType(tps, _) => 
+      case NAryType(tps, _) =>
         if (tps contains Untyped) Untyped else this
     }
   }
@@ -48,8 +48,16 @@ object Types {
   case object RealType extends TypeTree
 
   abstract class BitVectorType(val size: Int) extends TypeTree
+  case object Int8Type extends BitVectorType(8)
   case object Int32Type extends BitVectorType(32)
   case object StringType extends TypeTree
+
+  object BVType {
+    def unapply(typ: TypeTree): Option[Int] = typ match {
+      case bv: BitVectorType => Some(bv.size)
+      case _ => None
+    }
+  }
 
   class TypeParameter private (name: String) extends TypeTree {
     val id = FreshIdentifier(name, this)
@@ -80,8 +88,8 @@ object Types {
     def fresh(name: String) = new TypeParameter(name)
   }
 
-  /* 
-   * If you are not sure about the requirement, 
+  /*
+   * If you are not sure about the requirement,
    * you should use tupleTypeWrap in purescala.Constructors
    */
   case class TupleType(bases: Seq[TypeTree]) extends TypeTree {
@@ -173,7 +181,7 @@ object Types {
       case _ => None
     }
   }
-  
+
   def optionToType(tp: Option[TypeTree]) = tp getOrElse Untyped
 
 }

@@ -107,6 +107,10 @@ object TypeOps extends GenTreeOps[TypeTree] {
           }
         }
 
+      case (bv1: BitVectorType, bv2: BitVectorType) =>
+        val largest = if (bv1.size > bv2.size) bv1 else bv2
+        Some((largest, Map.empty))
+
       case Same(t1, t2) =>
         // Only tuples are covariant
         def allowVariance = t1 match {
@@ -191,6 +195,16 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case NAryType(tps, builder) => tps.exists(isParametricType)
   }
 
+  def isBVType(tpe: TypeTree): Boolean = tpe match {
+    case bv: BitVectorType => true
+    case _ => false
+  }
+
+  def areSameBVType(tpe1: TypeTree, tpe2: TypeTree): Boolean = (tpe1, tpe2) match {
+    case (BVType(s1), BVType(s2)) if s1 == s2 => true
+    case _ => false
+  }
+
   // Helpers for instantiateType
   private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
     case (tp: TypeParameter) => map.getOrElse(tp, tp)
@@ -261,7 +275,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
       }.product)
     case act: AbstractClassType =>
       val possibleChildTypes = leon.utils.fixpoint((tpes: Set[TypeTree]) => {
-        tpes.flatMap(tpe => 
+        tpes.flatMap(tpe =>
           Set(tpe) ++ (tpe match {
             case cct: CaseClassType => cct.fieldsTypes
             case act: AbstractClassType => Set(act) ++ act.knownCCDescendants

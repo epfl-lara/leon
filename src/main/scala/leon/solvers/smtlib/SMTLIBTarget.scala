@@ -237,6 +237,7 @@ trait SMTLIBTarget extends Interruptible {
         case BooleanType => Core.BoolSort()
         case IntegerType => Ints.IntSort()
         case RealType    => Reals.RealSort()
+        case Int8Type    => FixedSizeBitVectors.BitVectorSort(8)
         case Int32Type   => FixedSizeBitVectors.BitVectorSort(32)
         case CharType    => FixedSizeBitVectors.BitVectorSort(32)
 
@@ -368,6 +369,7 @@ trait SMTLIBTarget extends Interruptible {
         declareVariable(FreshIdentifier("Unit", UnitType))
 
       case InfiniteIntegerLiteral(i) => if (i >= 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case ByteLiteral(b)            => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromString(toByteHex(b)).get)
       case IntLiteral(i)             => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
       case FractionalLiteral(n, d)   => Reals.Div(Reals.NumeralLit(n), Reals.NumeralLit(d))
       case CharLiteral(c)            => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
@@ -568,6 +570,8 @@ trait SMTLIBTarget extends Interruptible {
       case BVShiftLeft(a, b)         => FixedSizeBitVectors.ShiftLeft(toSMT(a), toSMT(b))
       case BVAShiftRight(a, b)       => FixedSizeBitVectors.AShiftRight(toSMT(a), toSMT(b))
       case BVLShiftRight(a, b)       => FixedSizeBitVectors.LShiftRight(toSMT(a), toSMT(b))
+      case c @ BVWideningCast(e, _)  => FixedSizeBitVectors.SignExtend(c.to - c.from, toSMT(e))
+      case c @ BVNarrowingCast(e, _) => FixedSizeBitVectors.Extract(c.to - 1, 0, toSMT(e))
 
       case RealPlus(a, b)            => Reals.Add(toSMT(a), toSMT(b))
       case RealMinus(a, b)           => Reals.Sub(toSMT(a), toSMT(b))
@@ -624,7 +628,7 @@ trait SMTLIBTarget extends Interruptible {
             rSubstBody
           )
         )
-      
+
 
       case BoundedForall(from, to, pred) =>
         val intType = from.getType
@@ -776,11 +780,17 @@ trait SMTLIBTarget extends Interruptible {
       case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(CharType)) if b == BigInt(32) =>
         CharLiteral(n.toInt.toChar)
 
+      case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(Int8Type)) if b == BigInt(8) =>
+        ByteLiteral(b.toByte)
+
       case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(Int32Type)) if b == BigInt(32) =>
         IntLiteral(n.toInt)
 
       case (SHexadecimal(h), Some(CharType)) =>
         CharLiteral(h.toInt.toChar)
+
+      case (SHexadecimal(hexa), Some(Int8Type)) =>
+        ByteLiteral(hexa.toInt.toByte)
 
       case (SHexadecimal(hexa), Some(Int32Type)) =>
         IntLiteral(hexa.toInt)

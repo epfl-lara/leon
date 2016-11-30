@@ -7,7 +7,7 @@ package object utils {
 
   /** compute the fixpoint of a function.
     *
-    * Apply the input function on an expression as long as until 
+    * Apply the input function on an expression as long as until
     * it stays the same (value equality) or until a set limit.
     *
     * @param f the function for which we search a fixpoint
@@ -26,5 +26,17 @@ package object utils {
     }
     v2
   }
-  
+
+  /** generate a two-digit (0-f) hex string for the given byte. */
+  def toByteHex(b: Byte): String = {
+    val h = Integer.toHexString(b)
+    if (b >= 0) {
+      val missing = 2 - h.length
+      ("0" * missing) + h
+    } else {
+      val extra = h.length - 2
+      h.drop(extra)
+    }
+  }
+
 }

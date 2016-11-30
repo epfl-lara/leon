@@ -190,6 +190,7 @@ trait AbstractZ3Solver extends Z3Solver {
     )
 
     //TODO: mkBitVectorType
+    sorts += Int8Type -> z3.mkBVSort(8)
     sorts += Int32Type -> z3.mkBVSort(32)
     sorts += CharType -> z3.mkBVSort(32)
     sorts += IntegerType -> z3.mkIntSort
@@ -207,7 +208,7 @@ trait AbstractZ3Solver extends Z3Solver {
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | IntegerType | RealType | CharType =>
+    case Int8Type | Int32Type | BooleanType | IntegerType | RealType | CharType =>
       sorts(oldtt)
 
     case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | _: TypeParameter | UnitType) =>
@@ -303,6 +304,7 @@ trait AbstractZ3Solver extends Z3Solver {
       case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
+      case ByteLiteral(v) => z3.mkInt(v, typeToSort(Int8Type))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
       case InfiniteIntegerLiteral(v) => z3.mkNumeral(v.toString, typeToSort(IntegerType))
       case FractionalLiteral(n, d) => z3.mkNumeral(s"$n / $d", typeToSort(RealType))
@@ -349,28 +351,31 @@ trait AbstractZ3Solver extends Z3Solver {
       case LessThan(l, r) => l.getType match {
         case IntegerType => z3.mkLT(rec(l), rec(r))
         case RealType => z3.mkLT(rec(l), rec(r))
-        case Int32Type => z3.mkBVSlt(rec(l), rec(r))
+        case Int8Type | Int32Type => z3.mkBVSlt(rec(l), rec(r))
         case CharType => z3.mkBVSlt(rec(l), rec(r))
       }
       case LessEquals(l, r) => l.getType match {
         case IntegerType => z3.mkLE(rec(l), rec(r))
         case RealType => z3.mkLE(rec(l), rec(r))
-        case Int32Type => z3.mkBVSle(rec(l), rec(r))
+        case Int8Type | Int32Type => z3.mkBVSle(rec(l), rec(r))
         case CharType => z3.mkBVSle(rec(l), rec(r))
         //case _ => throw new IllegalStateException(s"l: $l, Left type: ${l.getType} Expr: $ex")
       }
       case GreaterThan(l, r) => l.getType match {
         case IntegerType => z3.mkGT(rec(l), rec(r))
         case RealType => z3.mkGT(rec(l), rec(r))
-        case Int32Type => z3.mkBVSgt(rec(l), rec(r))
+        case Int8Type | Int32Type => z3.mkBVSgt(rec(l), rec(r))
         case CharType => z3.mkBVSgt(rec(l), rec(r))
       }
       case GreaterEquals(l, r) => l.getType match {
         case IntegerType => z3.mkGE(rec(l), rec(r))
         case RealType => z3.mkGE(rec(l), rec(r))
-        case Int32Type => z3.mkBVSge(rec(l), rec(r))
+        case Int8Type | Int32Type => z3.mkBVSge(rec(l), rec(r))
         case CharType => z3.mkBVSge(rec(l), rec(r))
       }
+
+      case c @ BVWideningCast(e, _)  => z3.mkSignExt(c.to - c.from, rec(e))
+      case c @ BVNarrowingCast(e, _) => z3.mkExtract(c.to - 1, 0, rec(e))
 
       case u : UnitLiteral =>
         val tpe = normalizeType(u.getType)
@@ -539,6 +544,7 @@ trait AbstractZ3Solver extends Z3Solver {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
+                  case Int8Type => ByteLiteral(hexa.toInt.toByte)
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case IntegerType => InfiniteIntegerLiteral(BigInt(hexa.toInt))
@@ -549,12 +555,13 @@ trait AbstractZ3Solver extends Z3Solver {
               }
           } else {
             tpe match {
+              case Int8Type => ByteLiteral(v.toByte)
               case Int32Type => IntLiteral(v)
               case CharType  => CharLiteral(v.toChar)
               case IntegerType => InfiniteIntegerLiteral(BigInt(v))
               case other =>
                 unsupported(other, "Unexpected type for BV value: " + other)
-            } 
+            }
           }
 
         case Z3NumeralIntAST(None) =>
@@ -563,18 +570,21 @@ trait AbstractZ3Solver extends Z3Solver {
           if(ts.length > 4 && ts.substring(0, 2) == "bv" && ts.substring(ts.length - 4) == "[32]") {
             val integer = ts.substring(2, ts.length - 4)
             tpe match {
-              case Int32Type => 
+              case Int8Type =>
+                ByteLiteral(integer.toLong.toByte)
+              case Int32Type =>
                 IntLiteral(integer.toLong.toInt)
               case CharType  => CharLiteral(integer.toInt.toChar)
-              case IntegerType => 
+              case IntegerType =>
                 InfiniteIntegerLiteral(BigInt(integer))
               case _ =>
                 reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
             }
-          } else {  
+          } else {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
+                  case Int8Type => ByteLiteral(hexa.toInt.toByte)
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ => unsound(t, "unexpected target type for BV value: " + tpe.asString)
@@ -721,7 +731,7 @@ trait AbstractZ3Solver extends Z3Solver {
             //      case OpDiv =>     Division(rargs(0), rargs(1))
             //      case OpIDiv =>    Division(rargs(0), rargs(1))
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
-                  case other => unsound(t, 
+                  case other => unsound(t,
                       s"""|Don't know what to do with this declKind: $other
                           |Expected type: ${Option(tpe).map{_.asString}.getOrElse("")}
                           |Tree: $t

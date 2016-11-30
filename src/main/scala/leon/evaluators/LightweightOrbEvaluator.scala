@@ -30,38 +30,38 @@ import leon.purescala.TypeOps
 class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog) {
 
   type Value = Expr
-  
+
   protected implicit val _ = ctx
-  
+
   val name = "LightweightOrbEvaluator"
   val description = "An optimized evaluator used to evaluate simple experssions generated during the invariant inference phase"
-  
+
   def eval(ex: Expr, model: Model) = {
-    try {      
+    try {
       EvaluationResults.Successful(recEval(ex)(model))
     } catch {
       case EvalError(msg) =>
-        EvaluationResults.EvaluatorError(msg)      
+        EvaluationResults.EvaluatorError(msg)
       case so: StackOverflowError =>
         EvaluationResults.RuntimeError("Stack overflow")
       case e @ RuntimeError(msg) =>
-        EvaluationResults.RuntimeError(msg)      
+        EvaluationResults.RuntimeError(msg)
       case jre: java.lang.RuntimeException =>
         EvaluationResults.RuntimeError(jre.getMessage)
     } finally {
     }
   }
-  
-  override def compile(expr: Expr, args: Seq[Identifier]) : Option[Model => EvaluationResult] = 
+
+  override def compile(expr: Expr, args: Seq[Identifier]) : Option[Model => EvaluationResult] =
     throw new IllegalArgumentException("Not supported operation!")
-  
+
   case class EvalError(msg : String) extends Exception {
     override def getMessage = msg + Option(super.getMessage).map("\n" + _).getOrElse("")
   }
   case class RuntimeError(msg : String) extends Exception
-  
+
   def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString} of type ${tree.getType}."
-  
+
   protected[evaluators] def recEval(expr: Expr)(implicit mod: Model): Expr = expr match {
     case Variable(id) =>
       mod.get(id) match {
@@ -76,7 +76,7 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
 
     case TupleSelect(t, i) =>
       val Tuple(rs) = recEval(t)
-      rs(i - 1)               
+      rs(i - 1)
 
     case IfExpr(cond, thenn, elze) =>
       val first = recEval(cond)
@@ -85,7 +85,7 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
         case BooleanLiteral(false) => recEval(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
-      
+
     case And(args) if args.isEmpty => BooleanLiteral(true)
     case And(args) =>
       recEval(args.head) match {
@@ -127,8 +127,8 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
         case _ => BooleanLiteral(lv == rv)
       }
 
-    case CaseClass(cct, args) => CaseClass(cct, args.map(recEval))            
-    
+    case CaseClass(cct, args) => CaseClass(cct, args.map(recEval))
+
     case AsInstanceOf(expr, ct) =>
       val le = recEval(expr)
       if (isSubtypeOf(le.getType, ct)) {
@@ -169,7 +169,7 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
 
     case RealMinus(l,r) =>
       recEval(RealPlus(l, RealUMinus(r)))
-      
+
     case StringConcat(l, r) =>
       (recEval(l), recEval(r)) match {
         case (StringLiteral(i1), StringLiteral(i2)) => StringLiteral(i1 + i2)
@@ -197,7 +197,7 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
       case IntLiteral(i) => StringLiteral(i.toString)
       case res =>  throw EvalError(typeErrorMsg(res, Int32Type))
     }
-    case CharToString(a) => 
+    case CharToString(a) =>
       recEval(a) match {
         case CharLiteral(i) => StringLiteral(i.toString)
         case res =>  throw EvalError(typeErrorMsg(res, CharType))
@@ -213,6 +213,18 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
     case RealToString(a) => recEval(a) match {
         case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
         case res =>  throw EvalError(typeErrorMsg(res, RealType))
+      }
+
+    case BVWideningCast(a, Int32Type) =>
+      recEval(a) match {
+        case ByteLiteral(b) => IntLiteral(b.toInt)
+        case x => throw EvalError(s"Expected an integral type (e.g. Int8Type) but got $x of type ${x.getType}")
+      }
+
+    case BVNarrowingCast(a, Int8Type) =>
+      recEval(a) match {
+        case IntLiteral(i) => ByteLiteral(i.toByte)
+        case x => throw EvalError(s"Expected an integral type (e.g. Int32Type) but got $x of type ${x.getType}")
       }
 
     case BVPlus(l,r) =>
@@ -497,8 +509,8 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
     }
 
     case FiniteBag(els, base) =>
-      FiniteBag(els.map{ case (k, v) => (recEval(k), recEval(v)) }, base)    
-    
+      FiniteBag(els.map{ case (k, v) => (recEval(k), recEval(v)) }, base)
+
     case ArrayLength(a) =>
       val FiniteArray(_, _, IntLiteral(length)) = recEval(a)
       IntLiteral(length)
@@ -552,7 +564,7 @@ class OrbEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog)
     case i @ MapIsDefinedAt(m,k) => (recEval(m), recEval(k)) match {
       case (FiniteMap(ss, _, _), e) => BooleanLiteral(ss.contains(e))
       case (l, r) => throw EvalError(typeErrorMsg(l, m.getType))
-    }    
+    }
     case gl: GenericValue => gl
     case fl : FractionalLiteral => normalizeFraction(fl)
     case l : Literal[_] => l

@@ -55,6 +55,7 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
       eval(e, BVPlus(IntLiteral(3), IntLiteral(5)))  === IntLiteral(8)
       eval(e, BVPlus(IntLiteral(0), IntLiteral(5)))  === IntLiteral(5)
       eval(e, BVTimes(IntLiteral(3), IntLiteral(3))) === IntLiteral(9)
+      eval(e, BVPlus(IntLiteral(1), BVWideningCast(ByteLiteral(1), Int32Type))) === IntLiteral(2)
     }
   }
 
@@ -82,6 +83,12 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
 
       eval(e, BVLShiftRight(IntLiteral(8), IntLiteral(1))) === IntLiteral(4)
       eval(e, BVAShiftRight(IntLiteral(8), IntLiteral(1))) === IntLiteral(4)
+
+      eval(e, BVNarrowingCast(
+                BVAnd(BVWideningCast(ByteLiteral(1), Int32Type),
+                      BVWideningCast(ByteLiteral(2), Int32Type)),
+                Int8Type)
+      ) === ByteLiteral(0)
     }
   }
 
@@ -240,6 +247,9 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
 
       eval(e, ArraySelect(finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))), IntLiteral(1))) ===
                       IntLiteral(4)
+
+      eval(e, ArraySelect(finiteArray(Seq(ByteLiteral(42), ByteLiteral(58))), IntLiteral(0))) ===
+                      ByteLiteral(42)
 
       eqArray(eval(e, ArrayUpdated( finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))), IntLiteral(1), IntLiteral(42))).res,
                       finiteArray(Seq(IntLiteral(2), IntLiteral(42), IntLiteral(7))))

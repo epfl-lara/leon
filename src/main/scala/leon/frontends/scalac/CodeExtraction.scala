@@ -1110,7 +1110,8 @@ trait CodeExtraction extends ASTExtractors {
         val lit = InfiniteIntegerLiteral(BigInt(n.value.stringValue))
         (LiteralPattern(binder, lit), dctx)
 
-      case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
+      case ExByteLiteral(b)    => (LiteralPattern(binder, ByteLiteral(b)),    dctx)
+      case ExIntLiteral(i)     => (LiteralPattern(binder, IntLiteral(i)),     dctx)
       case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
       case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
       case ExStringLiteral(s)  => (LiteralPattern(binder, StringLiteral(s)),  dctx)
@@ -1521,7 +1522,10 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(tr, "Real not build from literals")
           }
 
-        case ExInt32Literal(v) =>
+        case ExByteLiteral(v) =>
+          ByteLiteral(v)
+
+        case ExIntLiteral(v) =>
           IntLiteral(v)
 
         case ExBooleanLiteral(v) =>
@@ -1675,8 +1679,22 @@ trait CodeExtraction extends ASTExtractors {
         case ExNot(e)        => Not(extractTree(e))
         case ExUMinus(e)     => UMinus(extractTree(e))
         case ExRealUMinus(e) => RealUMinus(extractTree(e))
-        case ExBVUMinus(e)   => BVUMinus(extractTree(e))
-        case ExBVNot(e)      => BVNot(extractTree(e))
+
+        case ExBVUMinus(e) =>
+          val re = extractTree(e)
+          re match {
+            case IsTyped(re, Int8Type) => BVUMinus(BVWideningCast(re, Int32Type))
+            case IsTyped(re, Int32Type) => BVUMinus(re)
+            case _ => outOfSubsetError(tr, "Unexpected bit-vector length")
+          }
+
+        case ExBVNot(e) =>
+          val re = extractTree(e)
+          re match {
+            case IsTyped(re, Int8Type) => BVNot(BVWideningCast(re, Int32Type))
+            case IsTyped(re, Int32Type) => BVNot(re)
+            case _ => outOfSubsetError(tr, "Unexpected bit-vector length")
+          }
 
         case ExNotEquals(l, r) =>
           val rl = extractTree(l)
@@ -1916,39 +1934,155 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, RealType), "<=", List(IsTyped(a2, RealType))) =>
               LessEquals(a1, a2)
 
+            // Byte methods
+            case (IsTyped(a1, Int8Type), "+", List(IsTyped(a2, Int8Type))) =>
+              BVPlus(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "+", List(IsTyped(a2, Int32Type))) =>
+              BVPlus(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "-", List(IsTyped(a2, Int8Type))) =>
+              BVMinus(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "-", List(IsTyped(a2, Int32Type))) =>
+              BVMinus(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "*", List(IsTyped(a2, Int8Type))) =>
+              BVTimes(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "*", List(IsTyped(a2, Int32Type))) =>
+              BVTimes(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int8Type))) =>
+              BVRemainder(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "%", List(IsTyped(a2, Int32Type))) =>
+              BVRemainder(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "/", List(IsTyped(a2, Int8Type))) =>
+              BVDivision(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "/", List(IsTyped(a2, Int32Type))) =>
+              BVDivision(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "|", List(IsTyped(a2, Int8Type))) =>
+              BVOr(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "|", List(IsTyped(a2, Int32Type))) =>
+              BVOr(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "&", List(IsTyped(a2, Int8Type))) =>
+              BVAnd(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "&", List(IsTyped(a2, Int32Type))) =>
+              BVAnd(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "^", List(IsTyped(a2, Int8Type))) =>
+              BVXOr(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "^", List(IsTyped(a2, Int32Type))) =>
+              BVXOr(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "<<", List(IsTyped(a2, Int8Type))) =>
+              BVShiftLeft(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "<<", List(IsTyped(a2, Int32Type))) =>
+              BVShiftLeft(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), ">>", List(IsTyped(a2, Int8Type))) =>
+              BVAShiftRight(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), ">>", List(IsTyped(a2, Int32Type))) =>
+              BVAShiftRight(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), ">>>", List(IsTyped(a2, Int8Type))) =>
+              BVLShiftRight(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), ">>>", List(IsTyped(a2, Int32Type))) =>
+              BVLShiftRight(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int8Type))) =>
+              GreaterThan(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), ">", List(IsTyped(a2, Int32Type))) =>
+              GreaterThan(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), ">=", List(IsTyped(a2, Int8Type))) =>
+              GreaterEquals(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), ">=", List(IsTyped(a2, Int32Type))) =>
+              GreaterEquals(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "<", List(IsTyped(a2, Int8Type))) =>
+              LessThan(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "<", List(IsTyped(a2, Int32Type))) =>
+              LessThan(BVWideningCast(a1, Int32Type), a2)
+
+            case (IsTyped(a1, Int8Type), "<=", List(IsTyped(a2, Int8Type))) =>
+              LessEquals(BVWideningCast(a1, Int32Type), BVWideningCast(a2, Int32Type))
+            case (IsTyped(a1, Int8Type), "<=", List(IsTyped(a2, Int32Type))) =>
+              LessEquals(BVWideningCast(a1, Int32Type), a2)
+
             // Int methods
+            case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int8Type))) =>
+              BVPlus(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
               BVPlus(a1, a2)
+            case (IsTyped(a1, Int32Type), "-", List(IsTyped(a2, Int8Type))) =>
+              BVMinus(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "-", List(IsTyped(a2, Int32Type))) =>
               BVMinus(a1, a2)
+            case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int8Type))) =>
+              BVTimes(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int32Type))) =>
               BVTimes(a1, a2)
+            case (IsTyped(a1, Int32Type), "%", List(IsTyped(a2, Int8Type))) =>
+              BVRemainder(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "%", List(IsTyped(a2, Int32Type))) =>
               BVRemainder(a1, a2)
+            case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int8Type))) =>
+              BVDivision(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int32Type))) =>
               BVDivision(a1, a2)
 
+            case (IsTyped(a1, Int32Type), "|", List(IsTyped(a2, Int8Type))) =>
+              BVOr(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "|", List(IsTyped(a2, Int32Type))) =>
               BVOr(a1, a2)
+            case (IsTyped(a1, Int32Type), "&", List(IsTyped(a2, Int8Type))) =>
+              BVAnd(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "&", List(IsTyped(a2, Int32Type))) =>
               BVAnd(a1, a2)
+            case (IsTyped(a1, Int32Type), "^", List(IsTyped(a2, Int8Type))) =>
+              BVXOr(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "^", List(IsTyped(a2, Int32Type))) =>
               BVXOr(a1, a2)
+            case (IsTyped(a1, Int32Type), "<<", List(IsTyped(a2, Int8Type))) =>
+              BVShiftLeft(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "<<", List(IsTyped(a2, Int32Type))) =>
               BVShiftLeft(a1, a2)
+            case (IsTyped(a1, Int32Type), ">>", List(IsTyped(a2, Int8Type))) =>
+              BVAShiftRight(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), ">>", List(IsTyped(a2, Int32Type))) =>
               BVAShiftRight(a1, a2)
+            case (IsTyped(a1, Int32Type), ">>>", List(IsTyped(a2, Int8Type))) =>
+              BVLShiftRight(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), ">>>", List(IsTyped(a2, Int32Type))) =>
               BVLShiftRight(a1, a2)
 
+            case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int8Type))) =>
+              GreaterThan(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int32Type))) =>
               GreaterThan(a1, a2)
+            case (IsTyped(a1, Int32Type), ">=", List(IsTyped(a2, Int8Type))) =>
+              GreaterEquals(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), ">=", List(IsTyped(a2, Int32Type))) =>
               GreaterEquals(a1, a2)
+            case (IsTyped(a1, Int32Type), "<", List(IsTyped(a2, Int8Type))) =>
+              LessThan(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "<", List(IsTyped(a2, Int32Type))) =>
               LessThan(a1, a2)
+            case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int8Type))) =>
+              LessEquals(a1, BVWideningCast(a2, Int32Type))
             case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int32Type))) =>
               LessEquals(a1, a2)
+
+            // Casts
+            case (IsTyped(a, Int8Type), "toByte", List()) =>
+              a
+            case (IsTyped(a, Int8Type), "toInt", List()) =>
+              BVWideningCast(a, Int32Type)
+            case (IsTyped(a, Int32Type), "toByte", List()) =>
+              BVNarrowingCast(a, Int8Type)
+            case (IsTyped(a, Int32Type), "toInt", List()) =>
+              a
 
             // Boolean methods
             case (IsTyped(a1, BooleanType), "&&", List(IsTyped(a2, BooleanType))) =>
@@ -2100,19 +2234,22 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def extractType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = tpt match {
-      case tpe if tpe == CharClass.tpe =>
+      case ByteTpe =>
+        Int8Type
+
+      case CharTpe =>
         CharType
 
-      case tpe if tpe == IntClass.tpe =>
+      case IntTpe =>
         Int32Type
 
-      case tpe if tpe == BooleanClass.tpe =>
+      case BooleanTpe =>
         BooleanType
 
-      case tpe if tpe == UnitClass.tpe =>
+      case UnitTpe =>
         UnitType
 
-      case tpe if tpe == NothingClass.tpe =>
+      case NothingTpe =>
         Untyped
 
       case ct: ConstantType =>
