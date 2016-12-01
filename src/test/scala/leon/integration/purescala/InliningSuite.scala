@@ -45,6 +45,27 @@ class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL
        |
        |  def baz(a: BigInt) = bar(a)
        |
+       |}""".stripMargin,
+
+    """|import leon.lang._
+       |import leon.annotation._
+       |
+       |object InlineSpecs {
+       |
+       |  @inline
+       |  def foo(a: BigInt) = {
+       |    require(a > 42)
+       |    true
+       |  } ensuring (_ => false)
+       |
+       |  @inline
+       |  def bar(a: BigInt) = {
+       |    require(a > 0)
+       |    foo(a)
+       |  } ensuring (_ => true)
+       |
+       |  def baz(a: BigInt) = bar(a)
+       |
        |}""".stripMargin
   )
 
@@ -64,5 +85,16 @@ class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL
   test("Double Inlining") { implicit fix =>
     assert(funDef("InlineGood2.baz").fullBody == BooleanLiteral(true), "Inlined function invocation not inlined in turn?")
   }
+
+  test("Inlining specs") { implicit fix =>
+    import leon.purescala.ExprOps.count
+    val matcher = (e: Expr) => e match {
+      case Assert(_, _, _) => 1
+      case _ => 0
+    }
+    println(funDef("InlineSpecs.baz"))
+    assert(count(matcher)(funDef("InlineSpecs.baz").fullBody) == 4, "Inlining failed on specs")
+  }
+
 
 }

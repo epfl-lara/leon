@@ -29,7 +29,21 @@ object InliningPhase extends TransformationPhase {
     for (fd <- p.definedFunctions) {
       fd.fullBody = preMap ({
         case FunctionInvocation(tfd, args) if doInline(tfd.fd) =>
-          Some(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, tfd.fullBody))
+          val (pre, Some(body), post) = breakDownSpecs(tfd.fullBody)
+          val appliedPost = post.map { post =>
+            val binder = FreshIdentifier("res", body.getType, true)
+            Let(binder, body,
+              Assert(
+                application(post, Seq(Variable(binder))),
+                Some("Postcondition failed!"),
+                Variable(binder)
+              )
+            )
+          }.getOrElse(body)
+          val inlinedExpr = pre.map { pre =>
+            Assert(pre, Some("Precondition failed!"), appliedPost)
+          }.getOrElse(appliedPost)
+          Some(tfd.withParamSubst(args, inlinedExpr))
 
         case CaseClassSelector(cct, cc: CaseClass, id) =>
           Some(caseClassSelector(cct, cc, id))
