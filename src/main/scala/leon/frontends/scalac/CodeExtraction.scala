@@ -1704,6 +1704,18 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(_, ArrayType(_)), IsTyped(_, ArrayType(_))) =>
               outOfSubsetError(tr, "Leon does not support array comparison")
 
+            case (IsTyped(rl, Int8Type), IsTyped(rr, Int8Type)) =>
+              Not(Equals(BVWideningCast(rl, Int32Type), BVWideningCast(rr, Int32Type)))
+
+            case (IsTyped(rl, Int8Type), IsTyped(rr, Int32Type)) =>
+              Not(Equals(BVWideningCast(rl, Int32Type), rr))
+
+            case (IsTyped(rl, Int32Type), IsTyped(rr, Int8Type)) =>
+              Not(Equals(rl, BVWideningCast(rr, Int32Type)))
+
+            case (IsTyped(rl, Int32Type), IsTyped(rr, Int32Type)) =>
+              Not(Equals(rl, rr))
+
             case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Not(Equals(rl, rr))
 
@@ -1724,6 +1736,18 @@ trait CodeExtraction extends ASTExtractors {
           (rl, rr) match {
             case (IsTyped(_, ArrayType(_)), IsTyped(_, ArrayType(_))) =>
               outOfSubsetError(tr, "Leon does not support array comparison")
+
+            case (IsTyped(rl, Int8Type), IsTyped(rr, Int8Type)) =>
+              Equals(BVWideningCast(rl, Int32Type), BVWideningCast(rr, Int32Type))
+
+            case (IsTyped(rl, Int8Type), IsTyped(rr, Int32Type)) =>
+              Equals(BVWideningCast(rl, Int32Type), rr)
+
+            case (IsTyped(rl, Int32Type), IsTyped(rr, Int8Type)) =>
+              Equals(rl, BVWideningCast(rr, Int32Type))
+
+            case (IsTyped(rl, Int32Type), IsTyped(rr, Int32Type)) =>
+              Equals(rl, rr)
 
             case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Equals(rl, rr)

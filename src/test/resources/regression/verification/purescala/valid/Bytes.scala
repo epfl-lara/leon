@@ -3,6 +3,7 @@
 import leon.lang._
 
 object Bytes {
+
   def fun() = {
     val b: Byte = 127
     test(b) == 0
@@ -28,6 +29,10 @@ object Bytes {
   def iun(b: Byte, c: Byte) = {
     b + c
   } ensuring { res => -256 <= res && res <= 254 }
+
+  def tautology(b: Byte, z: Int) = {
+    (b == z) != (b != z)
+  }.holds
 
 }
 
