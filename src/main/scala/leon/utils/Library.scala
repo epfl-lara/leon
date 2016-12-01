@@ -35,6 +35,7 @@ case class Library(pgm: Program) {
   lazy val variable     = lookup("leon.grammar.variable").collectFirst { case fd: FunDef => fd }
   lazy val constructor  = lookup("leon.grammar.constructor").collectFirst { case fd: FunDef => fd }
   lazy val selector     = lookup("leon.grammar.selector").collectFirst { case fd: FunDef => fd }
+  lazy val closure      = lookup("leon.grammar.closure").collectFirst { case fd: FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)

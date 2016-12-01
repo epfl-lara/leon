@@ -11,4 +11,7 @@ package object grammar {
 
   @extern
   def constructor[A]: A = ???
+
+  @extern
+  def closure[A]: A = ???
 }
