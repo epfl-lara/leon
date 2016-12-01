@@ -167,6 +167,21 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
     case ArrayLength(array) => C.FieldAccess(rec(array), C.Id("length"))
 
     case Assign(lhs, rhs) => C.Assign(rec(lhs), rec(rhs))
+
+    /* NOTE For shift operators, we first cast to unsigned, perform the shift operation and
+     *      finally cast it back to signed integer. The rational is that overflow is undefined
+     *      behaviour in C99 on signed integers and shifts of negative integers is also undefined
+     *      behaviour. However, everything is well defined over unsigned integers. The catch is
+     *      that casting back from unsigned to signed integer is implementation defined for
+     *      values that are negative if we read them using a 2's complement notation. Having a
+     *      C compiler that does a normal wrap around is one of the requirement of GenC.
+     */
+    case BinOp(op, lhs0, rhs) if Set[Operator](BLeftShift, BRightShift) contains op =>
+      assert(lhs0.getType == PrimitiveType(Int32Type))
+      val lhs = C.Cast(rec(lhs0), C.Primitive(UInt32Type))
+      val expr = C.BinOp(op, lhs, rec(rhs)) // rhs doesn't need to be casted.
+      C.Cast(expr, C.Primitive(Int32Type))
+
     case BinOp(op, lhs, rhs) => C.BinOp(op, rec(lhs), rec(rhs))
     case UnOp(op, expr) => C.UnOp(op, rec(expr))
 

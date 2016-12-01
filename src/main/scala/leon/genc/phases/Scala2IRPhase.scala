@@ -587,8 +587,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case BVOr(lhs, rhs)           => buildBinOp(lhs, O.BOr, rhs)(e.getPos)
     case BVXOr(lhs, rhs)          => buildBinOp(lhs, O.BXor, rhs)(e.getPos)
     case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, O.BLeftShift, rhs)(e.getPos)
-    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, O.BRightShift, rhs)(e.getPos)
-    case BVLShiftRight(lhs, rhs)  => fatalError("Operator >>> is not supported", e.getPos)
+    case BVAShiftRight(lhs, rhs)  => fatalError("Operator >> is not supported", e.getPos)
+    case BVLShiftRight(lhs, rhs)  => buildBinOp(lhs, O.BRightShift, rhs)(e.getPos)
 
     case BVWideningCast(e, t)  => buildCast(e, t)
     case BVNarrowingCast(e, t) => buildCast(e, t)

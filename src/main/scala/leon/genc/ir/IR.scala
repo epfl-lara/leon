@@ -383,6 +383,7 @@ private[genc] sealed trait IR { ir =>
       case CharType => "char"
       case Int8Type => "int8"
       case Int32Type => "int32"
+      case UInt32Type => "uint32"
       case BoolType => "bool"
       case UnitType => "unit"
       case StringType => "string"

@@ -66,6 +66,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
       case CharType => c"char"
       case Int8Type => c"int8_t"
       case Int32Type => c"int32_t"
+      case UInt32Type => c"uint32_t"
       case BoolType => c"bool"
       case UnitType => c"void"
       case StringType => c"char*"

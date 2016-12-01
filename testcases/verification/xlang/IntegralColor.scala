@@ -8,11 +8,11 @@ object IntegralColor {
   def isValidComponent(x: Int) = x >= 0 && x <= 255
 
   def getRed(rgb: Int): Int = {
-    (rgb & 0x00FF0000) >> 16
+    (rgb & 0x00FF0000) >>> 16
   } ensuring isValidComponent _
 
   def getGreen(rgb: Int): Int = {
-    (rgb & 0x0000FF00) >> 8
+    (rgb & 0x0000FF00) >>> 8
   } ensuring isValidComponent _
 
   def getBlue(rgb: Int): Int = {
