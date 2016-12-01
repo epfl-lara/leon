@@ -21,6 +21,8 @@ trait TreeTransformer {
   def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
     case Variable(id) if bindings contains id => Variable(bindings(id)).copiedFrom(e)
     case Variable(id) => Variable(transform(id)).copiedFrom(e)
+    case Old(id) if bindings contains id => Old(bindings(id)).copiedFrom(e)
+    case Old(id) => Old(transform(id)).copiedFrom(e)
     case FiniteLambda(mappings, default, tpe) =>
       FiniteLambda(mappings.map { case (ks, v) => (ks map transform, transform(v)) },
         transform(default), transform(tpe).asInstanceOf[FunctionType]).copiedFrom(e)
@@ -143,6 +145,7 @@ trait TreeTraverser {
 
   def traverse(e: Expr): Unit = e match {
     case Variable(id) => traverse(id)
+    case Old(id) => traverse(id)
     case FiniteLambda(mappings, default, tpe) =>
       (default +: mappings.toSeq.flatMap(p => p._2 +: p._1)) foreach traverse
       traverse(tpe)
