@@ -132,6 +132,7 @@ abstract class Transformer[From <: IR, To <: IR](final val from: From, final val
     case While(cond, body) => to.While(rec(cond), rec(body)) -> env
     case IsA(expr, ct) => to.IsA(rec(expr), to.ClassType(rec(ct.clazz))) -> env
     case AsA(expr, ct) => to.AsA(rec(expr), to.ClassType(rec(ct.clazz))) -> env
+    case IntegralCast(expr, t) => to.IntegralCast(rec(expr), t) -> env
     case Lit(lit) => to.Lit(lit) -> env
     case Ref(e) => to.Ref(rec(e)) -> env
     case Deref(e) => to.Deref(rec(e)) -> env

@@ -183,6 +183,7 @@ private[genc] sealed trait IR { ir =>
       case While(_, _) => NoType
       case IsA(_, _) => PrimitiveType(BoolType)
       case AsA(_, ct) => ct
+      case IntegralCast(_, newIntegralType) => PrimitiveType(newIntegralType)
       case Lit(lit) => PrimitiveType(lit.getPrimitiveType)
       case Ref(e) => ReferenceType(e.getType)
       case Deref(e) => e.getType.asInstanceOf[ReferenceType].t
@@ -244,6 +245,11 @@ private[genc] sealed trait IR { ir =>
   // Type probindg + casting
   case class IsA(expr: Expr, ct: ClassType) extends Expr
   case class AsA(expr: Expr, ct: ClassType) extends Expr
+
+  // Integer narrowing + widening casts
+  case class IntegralCast(expr: Expr, newType: IntegralPrimitiveType) extends Expr {
+    require(expr.getType.isIntegral)
+  }
 
   // Literals
   case class Lit(lit: Literal) extends Expr
@@ -375,6 +381,7 @@ private[genc] sealed trait IR { ir =>
   def repId(typ: Type): Id = typ match {
     case PrimitiveType(pt) => pt match {
       case CharType => "char"
+      case Int8Type => "int8"
       case Int32Type => "int32"
       case BoolType => "bool"
       case UnitType => "unit"

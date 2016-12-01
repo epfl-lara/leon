@@ -185,6 +185,18 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case _ => internalError("Unexpected ${typ.getClass} instead of TupleType")
   }
 
+  private def buildCast(e0: Expr, newType0: BitVectorType)(implicit env: Env, tm: TypeMapping): CIR.IntegralCast = {
+    val newType = newType0.size match {
+      case 8 => PT.Int8Type
+      case 32 => PT.Int32Type
+      case s => internalError("Unsupported integral cast to $s-bit integer")
+    }
+
+    val e = rec(e0)
+
+    CIR.IntegralCast(e, newType)
+  }
+
   private def castNotSupported(ct: ClassType): Boolean =
     ct.classDef.isAbstract && ct.classDef.hasParent
 
@@ -392,6 +404,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   private def rec(typ: TypeTree)(implicit tm: TypeMapping): CIR.Type = typ match {
     case UnitType => CIR.PrimitiveType(PT.UnitType)
     case BooleanType => CIR.PrimitiveType(PT.BoolType)
+    case Int8Type => CIR.PrimitiveType(PT.Int8Type)
     case Int32Type => CIR.PrimitiveType(PT.Int32Type)
     case CharType => CIR.PrimitiveType(PT.CharType)
     case StringType => CIR.PrimitiveType(PT.StringType)
@@ -454,7 +467,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   private def rec(e: Expr)(implicit env: Env, tm0: TypeMapping): CIR.Expr = e match {
     case UnitLiteral() => CIR.Lit(L.UnitLit)
     case BooleanLiteral(v) => CIR.Lit(L.BoolLit(v))
-    case IntLiteral(v) => CIR.Lit(L.IntLit(v))
+    case ByteLiteral(v) => CIR.Lit(L.Int8Lit(v))
+    case IntLiteral(v) => CIR.Lit(L.Int32Lit(v))
     case CharLiteral(v) => CIR.Lit(L.CharLit(v))
     case StringLiteral(v) => CIR.Lit(L.StringLit(v))
 
@@ -514,7 +528,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       // Convert to VLA or normal array
       val alloc = rec(length0) match {
-        case CIR.Lit(L.IntLit(length)) =>
+        case CIR.Lit(L.Int32Lit(length)) =>
           val values = (0 until length) map { _ => value } // the same expression, != same runtime value
           CIR.ArrayAllocStatic(arrayType, length, values)
 
@@ -575,6 +589,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, O.BLeftShift, rhs)(e.getPos)
     case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, O.BRightShift, rhs)(e.getPos)
     case BVLShiftRight(lhs, rhs)  => fatalError("Operator >>> is not supported", e.getPos)
+
+    case BVWideningCast(e, t)  => buildCast(e, t)
+    case BVNarrowingCast(e, t) => buildCast(e, t)
 
     case MatchExpr(scrutinee, cases) => convertPatMap(scrutinee, cases)
 

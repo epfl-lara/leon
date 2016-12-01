@@ -33,7 +33,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
   private def recCT(typ: ClassType)(implicit env: Env) = rec(typ).asInstanceOf[to.ClassType]
 
   override def recImpl(e: Expr)(implicit env: Env): (to.Expr, Env) = e match {
-    case _: Binding | _: Lit | _: Block | _: Deref  => super.recImpl(e)
+    case _: Binding | _: Lit | _: Block | _: Deref | _: IntegralCast  => super.recImpl(e)
 
     case DeclInit(vd0, ArrayInit(alloc0)) =>
       val vd = rec(vd0)

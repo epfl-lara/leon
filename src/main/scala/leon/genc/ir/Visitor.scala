@@ -107,6 +107,7 @@ abstract class Visitor[S <: IR](final val ir: S) {
       case While(cond, body) => rec(cond); rec(body)
       case IsA(expr, ct) => rec(expr); rec(ct.clazz)
       case AsA(expr, ct) => rec(expr); rec(ct.clazz)
+      case IntegralCast(expr, _) => rec(expr)
       case Lit(lit) => ()
       case Ref(e) => rec(e)
       case Deref(e) => rec(e)

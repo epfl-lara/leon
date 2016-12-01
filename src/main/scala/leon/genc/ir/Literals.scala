@@ -14,7 +14,8 @@ private[genc] object Literals {
   sealed abstract class Literal {
     def getPrimitiveType: PrimitiveType = this match {
       case CharLit(_) => CharType
-      case IntLit(_) => Int32Type
+      case Int8Lit(_) => Int8Type
+      case Int32Lit(_) => Int32Type
       case BoolLit(_) => BoolType
       case UnitLit => UnitType
       case StringLit(_) => StringType
@@ -22,7 +23,8 @@ private[genc] object Literals {
 
     override def toString: String = this match {
       case CharLit(v) => "'" + escape(v) + "'"
-      case IntLit(v) => s"$v"
+      case Int8Lit(v) => s"$v"
+      case Int32Lit(v) => s"$v"
       case BoolLit(v) => s"$v"
       case UnitLit => s"()"
       case StringLit(v) => '"' + escape(v) + '"'
@@ -31,7 +33,9 @@ private[genc] object Literals {
 
   case class CharLit(v: Char) extends Literal
 
-  case class IntLit(v: Int) extends Literal
+  case class Int8Lit(v: Byte) extends Literal
+
+  case class Int32Lit(v: Int) extends Literal
 
   case class BoolLit(v: Boolean) extends Literal
 

@@ -16,13 +16,16 @@ private[genc] object PrimitiveTypes {
     }
 
     def isIntegral: Boolean = this match {
-      case CharType | Int32Type => true
+      case _: IntegralPrimitiveType => true
       case _ => false
     }
   }
 
-  case object CharType extends PrimitiveType
-  case object Int32Type extends PrimitiveType
+  sealed abstract class IntegralPrimitiveType extends PrimitiveType
+
+  case object CharType extends IntegralPrimitiveType
+  case object Int8Type extends IntegralPrimitiveType
+  case object Int32Type extends IntegralPrimitiveType
   case object BoolType extends PrimitiveType
   case object UnitType extends PrimitiveType
   case object StringType extends PrimitiveType

@@ -64,6 +64,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
     case Primitive(pt) => pt match {
       case CharType => c"char"
+      case Int8Type => c"int8_t"
       case Int32Type => c"int32_t"
       case BoolType => c"bool"
       case UnitType => c"void"
@@ -167,6 +168,8 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case Break => c"break"
 
     case Return(value) => c"return $value"
+
+    case Cast(expr, typ) => optP { c"($typ)$expr" }
   }
 
   private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {

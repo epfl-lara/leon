@@ -134,7 +134,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
       val bufferId = C.FreshId("buffer")
       val bufferDecl = C.DeclArrayStatic(bufferId, rec(arrayType.base), length, values map rec)
       val data = C.Binding(bufferId)
-      val len = C.Lit(IntLit(length))
+      val len = C.Lit(Int32Lit(length))
       val array = array2Struct(arrayType)
       val varInit = C.StructInit(array, data :: len :: Nil)
       val varDecl = C.DeclInit(rec(vd.id), array, varInit)
@@ -198,6 +198,11 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
       val fieldId = getUnionFieldFor(ct.clazz)
       val unionAccess = C.FieldAccess(rec(expr), TaggedUnion.value)
       C.FieldAccess(unionAccess, fieldId)
+
+    case IntegralCast(expr0, newType0) =>
+      val expr = rec(expr0)
+      val newType = rec(PrimitiveType(newType0))
+      C.Cast(expr, newType)
 
     case Lit(lit) => C.Lit(lit)
 
@@ -281,7 +286,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
 
     // Check whether an extra byte was added to the structure
     val args =
-      if (markedAsEmpty(cd)) Seq(Lit(IntLit(0)))
+      if (markedAsEmpty(cd)) Seq(Lit(Int8Lit(0)))
       else args0
 
     C.StructInit(struct, args map rec)
@@ -385,7 +390,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
       warning(s"Empty structures are not allowed according to the C99 standard. " +
               s"I'm adding a dummy byte to ${cd.id} structure for compatibility purposes.")
       markAsEmpty(cd)
-      Seq(C.Var(C.Id("extra"), C.Primitive(CharType)))
+      Seq(C.Var(C.Id("extra"), C.Primitive(Int8Type)))
     } else cd.fields map rec
 
     C.Struct(rec(cd.id), fields)

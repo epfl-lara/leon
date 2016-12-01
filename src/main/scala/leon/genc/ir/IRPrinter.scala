@@ -101,6 +101,7 @@ final class IRPrinter[S <: IR](val ir: S) {
       "while (" + rec(cond) + ") {" + ptx.newLine + "  " + rec(body)(ptx + 1) + ptx.newLine + "}"
     case IsA(expr, ct) => "¿" + ct.clazz.id + "?" + rec(expr)
     case AsA(expr, ct) => "(" + ct.clazz.id + ")" + rec(expr)
+    case IntegralCast(expr, newType) => "(" + newType + ")" + rec(expr)
     case Lit(lit) => lit.toString
     case Ref(e) => "&" + rec(e)
     case Deref(e) => "*" + rec(e)

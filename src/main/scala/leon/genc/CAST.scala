@@ -207,6 +207,9 @@ object CAST { // C Abstract Syntax Tree
     require(value.isValue)
   }
 
+  // This can represent any C cast, however unsafe it can be.
+  case class Cast(expr: Expr, typ: Type) extends Expr
+
 
   /* ---------------------------------------------------------- Helpers ----- */
   // Flatten blocks together and remove `()` literals
@@ -234,7 +237,7 @@ object CAST { // C Abstract Syntax Tree
 
       val body = buildBlock(
         if (returnInt) Return(Call(_mainId, Nil)) :: Nil
-        else Call(_mainId, Nil) :: Return(Lit(IntLit(0))) :: Nil
+        else Call(_mainId, Nil) :: Return(Lit(Int32Lit(0))) :: Nil
       )
 
       val main = Fun(id, retType, params, Left(body))
@@ -270,7 +273,7 @@ object CAST { // C Abstract Syntax Tree
     def isValue = e match {
       case _: Binding | _: Lit | _: EnumLiteral | _: StructInit |
            _: UnionInit | _: Call | _: FieldAccess | _: ArrayAccess |
-           _: Ref | _: Deref | _: BinOp | _: UnOp => true
+           _: Ref | _: Deref | _: BinOp | _: UnOp | _: Cast => true
       case _ => false
     }
 
