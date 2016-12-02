@@ -241,22 +241,23 @@ object AntiAliasingPhase extends TransformationPhase {
                   
     def mapApplication(args: Seq[Expr], nfi: Expr, nfiType: TypeTree, fiEffects: Set[Int], rewritings: Map[Identifier, Expr]): Expr = {
       if(fiEffects.nonEmpty) {
-        val modifiedArgs: Seq[(Identifier, Expr, Int)] =
+        val modifiedArgs: Seq[(Set[Identifier], Expr)] =
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
-              .flatMap(arg => {
+              .map(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
-                    findReferencedIds(rArg).map(argId => (argId, rArg, arg._2))
+                    (findReferencedIds(rArg), rArg)
                    })
 
-        val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
+        val allParams: Seq[Identifier] = modifiedArgs.flatMap(_._1)
+        val duplicatedParams = allParams.diff(allParams.distinct).distinct
         if(duplicatedParams.nonEmpty) 
           ctx.reporter.fatalError(nfi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
+        //TODO: we are probably missing a case with multiple same variable within one same argument (f(A(x1,x1,x1)))
 
         val freshRes = FreshIdentifier("res", nfiType)
 
         val extractResults = Block(
-          modifiedArgs.map{ case (id, expr, index) => {
-            println("id: " + id + " at index " + index)
+          modifiedArgs.zipWithIndex.flatMap{ case ((idsForIndex, expr), index) => idsForIndex.map(id => {
             val resSelect = TupleSelect(freshRes.toVariable, index + 2)
             expr match {
               case cs@CaseClassSelector(_, obj, mid) =>
@@ -279,7 +280,7 @@ object AntiAliasingPhase extends TransformationPhase {
               case _ =>
                 Assignment(id, resSelect).setPos(expr)
             }
-          }},
+          })},
           TupleSelect(freshRes.toVariable, 1))
 
 
