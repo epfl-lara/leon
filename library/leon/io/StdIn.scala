@@ -20,12 +20,65 @@ import leon.lang._
  *  - Currently, GenC doesn't support `BigInt` which implies that `readBigInt` is
  *    dropped as well.
  *
+ *  - Using I/O features from stdio.h is forbidden by MISRA C 2012 rule 21.6. The I/O
+ *    operations are provided here for debugging purposes and for illustration of @cCode
+ *    annotations.
+ *
+ *  - The C implementation of readByte and tryReadByte assume CHAR_BITS == 8. This is
+ *    however not checked at runtime.
+ *
  *
  * FIXME Using the `scala.io.StdIn.read*` methods has a major shortcomming:
  *       the data is read from a entire line!
  */
-
 object StdIn {
+
+  /**
+   * Read the next signed byte [-128,127], defaulting to 0 on EOF
+   */
+  @library
+  def readByte()(implicit state: State): Byte = {
+    tryReadByte() getOrElse 0
+  }
+
+  /**
+   * Attempt to read the next signed byte [-128,127]
+   */
+  @library
+  def tryReadByte()(implicit state: State): Option[Byte] = {
+    var valid = true
+
+    // Similar to tryReadInt, but here we have to use %c to read a byte
+    // (which assumes CHAR_BITS == 8) because SCNi8 will read char '0' to '9'
+    // and not the "raw" data.
+    @cCode.function(code = """
+      |int8_t __FUNCTION__(void** unused, bool* valid) {
+      |  int8_t x;
+      |  *valid = scanf("%c", &x) == 1;
+      |  return x;
+      |}
+      """,
+      includes = "inttypes.h"
+    )
+    def impl(): Byte = {
+      state.seed += 1
+      val (check, value) = nativeReadByte(state.seed)
+      valid = check
+      value
+    }
+
+    val res = impl()
+    if (valid) Some(res) else None()
+  }
+
+  @library
+  @extern
+  @cCode.drop
+  private def nativeReadByte(seed: BigInt): (Boolean, Byte) = {
+    val b = Array[Byte](0)
+    val read = System.in.read(b)
+    if (read == 1) (true, b(0)) else (false, 0)
+  }
 
   /**
    * Read the next signed decimal integer, defaulting to 0 on failure
@@ -36,13 +89,13 @@ object StdIn {
   }
 
   /**
-   * Read the next signed decimal integer
+   * Attempt to read the next signed decimal integer
    *
    * TODO to support other integer bases, one has to use SCNi32 in C.
    */
   @library
   def tryReadInt()(implicit state: State): Option[Int] = {
-    var valid = true;
+    var valid = true
 
     // Because this is a nested function, contexts variables are passes by reference.
     @cCode.function(code = """

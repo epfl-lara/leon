@@ -15,7 +15,7 @@ object StdOut {
       |}
       """,
     includes = "stdio.h"
-  )  
+  )
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
@@ -23,7 +23,32 @@ object StdOut {
   @library
   def println(s: String): Unit = {
     print(s)
-    print('\n')
+    println()
+  }
+
+  /**
+   * This is the symmetric function to StdIn.readByte;
+   * i.e. the same restrictions applies for GenC.
+   */
+  @library
+  @extern
+  @cCode.function(
+    code = """
+      |void __FUNCTION__(int8_t x) {
+      |  printf("%c", x);
+      |}
+      """,
+    includes = "inttypes.h:stdio.h"
+  )
+  def print(x: Byte): Unit = {
+    val b = Array[Byte](x)
+    System.out.write(b, 0, 1)
+  }
+
+  @library
+  def println(x: Byte): Unit = {
+    print(x)
+    println()
   }
 
   @library
@@ -35,7 +60,7 @@ object StdOut {
      |}
      """,
     includes = "inttypes.h:stdio.h"
-  )  
+  )
   def print(x: Int): Unit = {
     scala.Predef.print(x)
   }
@@ -43,7 +68,7 @@ object StdOut {
   @library
   def println(x: Int): Unit = {
     print(x)
-    print('\n')
+    println()
   }
 
   @library
@@ -63,7 +88,7 @@ object StdOut {
   @library
   def println(c: Char): Unit = {
     print(c)
-    print('\n')
+    println()
   }
 
   @library
