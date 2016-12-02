@@ -318,8 +318,9 @@ class GenCSuite extends LeonRegressionSuite {
 
   // Evaluate both Scala and C programs, making sure their output matches
   private def evaluate(xCtx: ExtendedContext)(binaries: Seq[String]) = {
-    val cOuts = binaries map { bin => Source.fromFile(evaluateC(xCtx, bin)).getLines }
-    val scala = Source.fromFile(evaluateScala(xCtx)).getLines
+    // Read file contents as bytes to avoid encoding issues
+    val cOuts = binaries map { bin => Files.readAllBytes(evaluateC(xCtx, bin).toPath) }
+    val scala = Files.readAllBytes(evaluateScala(xCtx).toPath)
 
     // Compare outputs
     for { (c, bin) <- cOuts zip binaries } {
