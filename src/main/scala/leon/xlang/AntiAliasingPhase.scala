@@ -241,11 +241,11 @@ object AntiAliasingPhase extends TransformationPhase {
                   
     def mapApplication(args: Seq[Expr], nfi: Expr, nfiType: TypeTree, fiEffects: Set[Int], rewritings: Map[Identifier, Expr]): Expr = {
       if(fiEffects.nonEmpty) {
-        val modifiedArgs: Seq[(Identifier, Expr)] =
+        val modifiedArgs: Seq[(Identifier, Expr, Int)] =
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
               .flatMap(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
-                    findReferencedIds(rArg).map(argId => (argId, rArg))
+                    findReferencedIds(rArg).map(argId => (argId, rArg, arg._2))
                    })
 
         val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
@@ -255,7 +255,8 @@ object AntiAliasingPhase extends TransformationPhase {
         val freshRes = FreshIdentifier("res", nfiType)
 
         val extractResults = Block(
-          modifiedArgs.zipWithIndex.map{ case ((id, expr), index) => {
+          modifiedArgs.map{ case (id, expr, index) => {
+            println("id: " + id + " at index " + index)
             val resSelect = TupleSelect(freshRes.toVariable, index + 2)
             expr match {
               case cs@CaseClassSelector(_, obj, mid) =>
