@@ -5,12 +5,13 @@ package leon.io
 import leon.annotation._
 import leon.lang._
 
-// See NOTEs in StdIn.
-//
-// NOTE Don't attempt to create a FileInputStream directly. Use FileInputStream.open instead.
-//
-// NOTE Don't forget to close the stream.
-
+/**
+ * See NOTEs for GenC in StdIn.
+ *
+ * NOTE Don't attempt to create a FileInputStream directly. Use FileInputStream.open instead.
+ *
+ * NOTE Don't forget to close the stream.
+ */
 @library
 object FileInputStream {
 
@@ -88,6 +89,49 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
   }
 
   /**
+   * Read the next byte of data from the stream.
+   *
+   * NOTE on failure (i.e. EOF), 0 is returned
+   */
+  @library
+  def readByte()(implicit state: State): Byte = {
+    require(isOpen)
+    tryReadByte() getOrElse 0
+  }
+
+  /**
+   * Attempt to read the next byte of data.
+   */
+  @library
+  def tryReadByte()(implicit state: State): Option[Byte] = {
+    require(isOpen)
+
+    var valid = true
+
+    // Similar to tryReadInt, but here we have to use %c to read a byte
+    // (which assumes CHAR_BITS == 8) because SCNi8 will read char '0' to '9'
+    // and not the "raw" data.
+    @cCode.function(code = """
+      |int8_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
+      |  int8_t x;
+      |  *valid = fscanf(*this, "%c", &x) == 1;
+      |  return x;
+      |}
+      """,
+      includes = "inttypes.h"
+    )
+    def impl(): Byte = {
+      state.seed += 1
+      val (check, value) = nativeReadByte(state.seed)
+      valid = check
+      value
+    }
+
+    val res = impl()
+    if (valid) Some(res) else None()
+  }
+
+  /**
    * Read the next signed decimal integer
    *
    * NOTE on failure, 0 is returned
@@ -105,7 +149,7 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
   def tryReadInt()(implicit state: State): Option[Int] = {
     require(isOpen)
 
-    var valid = true;
+    var valid = true
 
     // Because this is a nested function, contexts variables are passes by reference.
     @cCode.function(code = """
@@ -129,6 +173,27 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
   }
 
   // Implementation detail
+  @library
+  @extern
+  @cCode.drop
+  private def nativeReadByte(seed: BigInt): (Boolean, Byte) = {
+    val in = new java.io.FileInputStream(filename.get)
+
+    // Skip what was already consumed by previous reads
+    assert(in.skip(consumed.toLong) == consumed.toLong) // Yes, skip might not skip the requested number of bytes...
+
+    val b = Array[Byte](0)
+    val read = in.read(b)
+
+    in.close()
+
+    if (read != 1) (false, 0)
+    else {
+      consumed += read
+      (true, b(0))
+    }
+  }
+
   @library
   @extern
   @cCode.drop

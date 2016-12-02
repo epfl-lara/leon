@@ -87,6 +87,36 @@ case class FileOutputStream private (var filename: Option[String]) {
   def isOpen(): Boolean = filename.isDefined
 
   /**
+   * Append a byte to the stream and return `true` on success.
+   *
+   * NOTE The stream must be opened first.
+   *
+   * NOTE This is the symmetric function to FileInputStream.readByte;
+   *      i.e. the same restrictions applies to GenC.
+   */
+  @extern
+  @cCode.function(code =
+    """
+    |bool __FUNCTION__(FILE* this, int8_t x) {
+    |  return fprintf(this, "%c", x) >= 0;
+    |}
+    """,
+    includes = "inttypes.h"
+  )
+  def write(x: Byte): Boolean = {
+    require(isOpen)
+    try {
+      val out = new java.io.FileOutputStream(filename.get, true)
+      val b = Array[Byte](x)
+      out.write(b, 0, 1)
+      out.close()
+      true
+    } catch {
+      case _: Throwable => false
+    }
+  }
+
+  /**
    * Append an integer to the stream and return `true` on success.
    *
    * NOTE The stream must be opened first.
