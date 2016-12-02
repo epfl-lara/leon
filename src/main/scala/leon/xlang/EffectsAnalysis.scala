@@ -135,14 +135,13 @@ class EffectsAnalysis {
    * see if a sub-expression mutates something.
    */
   private def isMutationOf(expr: Expr, id: Identifier): Boolean = expr match {
-    case ArrayUpdate(o, _, _) => findReceiverId(o).exists(_ == id)
-    case FieldAssignment(obj, _, _) => findReceiverId(obj).exists(_ == id)
+    case ArrayUpdate(o, _, _) => findReferencedIds(o).exists(_ == id)
+    case FieldAssignment(obj, _, _) => findReferencedIds(obj).exists(_ == id)
     case Application(callee, args) => {
       val ft@FunctionType(_, _) = callee.getType
       val effects = functionTypeEffects(ft)
-      args.map(findReceiverId(_)).zipWithIndex.exists{
-        case (Some(argId), index) => argId == id && effects.contains(index)
-        case _ => false
+      args.map(findReferencedIds(_)).zipWithIndex.exists{
+        case (argIds, index) => argIds.exists(_ == id) && effects.contains(index)
       }
     }
     case Assignment(i, _) => i == id
@@ -184,8 +183,8 @@ class EffectsAnalysis {
     val functionEffects: Set[Identifier] = fdsEffects.get(fi.tfd.fd).getOrElse(Set())
     val res = functionEffects.flatMap(id =>
       findArgumentForParam(fi, id) match {
-        case Some(arg) => findReceiverId(arg)
-        case None => Some(id)
+        case Some(arg) => findReferencedIds(arg)
+        case None => Set(id) //this id is captured from scope and not an actual function parameter
       }
     )
     //println(res)
@@ -194,11 +193,18 @@ class EffectsAnalysis {
 
   //return the set of modified variables arguments to a function invocation,
   //given the effect of the fun def invoked.
-  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Seq[Identifier] = {
-    fi.args.map(arg => findReceiverId(arg)).zipWithIndex.flatMap{
-      case (Some(id), i) if effects.contains(i) => Some(id)
-      case _ => None
-    }
+  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Set[Identifier] = {
+    fi.args.zipWithIndex.filter(p => effects.contains(p._2)).flatMap{ case (arg, _) => {
+      findReferencedIds(arg)
+    }}.toSet
+
+    //.map(arg => findReferencedIds(arg)).zipWithIndex.
+    //
+    //flatMap{ case (ids, i) =>
+    //  if(effects.contains(i)) 
+    //  case (ids, i) if effects.contains(i) => ids
+    //  case _ => Set[Identifier]()
+    //}
   }
 
   /*
@@ -305,12 +311,27 @@ class EffectsAnalysis {
   }
 
 
-  private def findReceiverId(o: Expr): Option[Identifier] = o match {
-    case Variable(id) => Some(id)
-    case CaseClassSelector(_, e, _) => findReceiverId(e)
-    case AsInstanceOf(e, ct) => findReceiverId(e)
-    case ArraySelect(a, _) => findReceiverId(a)
-    case _ => None
+  //compute a set of all ids that are referenced by the expression. The interpretation
+  //of this set is that having a pointer to the expression makes it possible to update
+  //any of the ids. So the arguments to a FunctionInvocation args would not be returned
+  //as referenced id, since they are not extractable from the object (only the return value of the call is)
+  //but a case class constructor or a selector would.
+  private def findReferencedIds(o: Expr): Set[Identifier] = o match {
+    case Variable(id) => Set(id)
+    case CaseClassSelector(_, e, _) => findReferencedIds(e)
+    case CaseClass(_, es) => es.foldLeft(Set[Identifier]())((acc, e) => acc ++ findReferencedIds(e))
+    case AsInstanceOf(e, _) => findReferencedIds(e)
+    case ArraySelect(a, _) => findReferencedIds(a)
+    case _ => Set()
   }
+
+  //I think this is not needed anymore, and we actually need the findReferencedIds
+  //private def findReceiverId(o: Expr): Option[Identifier] = o match {
+  //  case Variable(id) => Some(id)
+  //  case CaseClassSelector(_, e, _) => findReceiverId(e)
+  //  case AsInstanceOf(e, ct) => findReceiverId(e)
+  //  case ArraySelect(a, _) => findReceiverId(a)
+  //  case _ => None
+  //}
 
 }

@@ -245,7 +245,7 @@ object AntiAliasingPhase extends TransformationPhase {
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
               .flatMap(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
-                    findReceiverId(rArg).map(argId => (argId, rArg))
+                    findReferencedIds(rArg).map(argId => (argId, rArg))
                    })
 
         val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
@@ -264,6 +264,17 @@ object AntiAliasingPhase extends TransformationPhase {
               case as@ArraySelect(array, index) =>
                 val (rec, path) = fieldPath(as)
                 Assignment(id, objectUpdateToCopy(rec, path, resSelect)).setPos(as)
+              case cc@CaseClass(cct, es) =>
+                val ccd = cct.classDef
+                val (_, vd) = es.zip(ccd.fields).find{
+                  case (Variable(argId), _) => argId == id
+                  case _ => false
+                }.get
+                Assignment(id, CaseClassSelector(cct, resSelect, vd.id))
+                //TODO: this only checks for a top level modified id,
+                //      must generalize to any number of nested case classes
+                //      must also handle combination of case class and selectors
+                
               case _ =>
                 Assignment(id, resSelect).setPos(expr)
             }
@@ -528,6 +539,14 @@ object AntiAliasingPhase extends TransformationPhase {
           nestedFunDefsOf(bd)) + fd)
 
 
+  private def findReferencedIds(o: Expr): Set[Identifier] = o match {
+    case Variable(id) => Set(id)
+    case CaseClassSelector(_, e, _) => findReferencedIds(e)
+    case CaseClass(_, es) => es.foldLeft(Set[Identifier]())((acc, e) => acc ++ findReferencedIds(e))
+    case AsInstanceOf(e, _) => findReferencedIds(e)
+    case ArraySelect(a, _) => findReferencedIds(a)
+    case _ => Set()
+  }
   private def findReceiverId(o: Expr): Option[Identifier] = o match {
     case Variable(id) => Some(id)
     case CaseClassSelector(_, e, _) => findReceiverId(e)

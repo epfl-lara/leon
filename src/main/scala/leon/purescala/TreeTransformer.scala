@@ -48,12 +48,19 @@ trait TreeTransformer {
       }
       val rBody = transform(body)
       LetDef(rFds, rBody).copiedFrom(e)
+    case Assignment(id, expr) =>
+      Assignment(transform(id), transform(expr)).copiedFrom(e)
     case CaseClass(cct, args) =>
       CaseClass(transform(cct).asInstanceOf[CaseClassType], args map transform).copiedFrom(e)
     case CaseClassSelector(cct, caseClass, selector) =>
       val newCct @ CaseClassType(ccd, _) = transform(cct)
       val newSelector = ccd.fieldsIds(cct.classDef.fieldsIds.indexOf(selector))
       CaseClassSelector(newCct, transform(caseClass), newSelector).copiedFrom(e)
+    case FieldAssignment(caseClass, selector, expr) =>
+      val cct = caseClass.getType.asInstanceOf[CaseClassType]
+      val newCct @ CaseClassType(ccd, _) = transform(cct)
+      val newSelector = ccd.fieldsIds(cct.classDef.fieldsIds.indexOf(selector))
+      FieldAssignment(transform(caseClass), newSelector, transform(expr)).copiedFrom(e)
     case FunctionInvocation(TypedFunDef(fd, tpes), args) =>
       FunctionInvocation(TypedFunDef(transform(fd), tpes map transform), args map transform).copiedFrom(e)
     case MethodInvocation(rec, cd, TypedFunDef(fd, tpes), args) =>
