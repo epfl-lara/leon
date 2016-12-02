@@ -119,6 +119,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
   private[this] var prodsCache = Map[TypeTree, Seq[Prod]]();
 
   def instantiateProductions(tpe: TypeTree): Seq[Prod] = {
+
     val lab = tpeToLabel(tpe)
 
     userProductions.flatMap { case UserProduction(fd, tag, w) =>
@@ -243,6 +244,25 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
                 val size = vars.size.toDouble
                 vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+
+              // Special built-in "closure" case, which tells us how often to
+              // generate closures of a specific type
+              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.closure contains fd =>
+                instantiateType(tp, tmap) match {
+                  case FunctionType(froms, to) =>
+                    val args = froms.zipWithIndex.map { case (tpe, i) =>
+                      ValDef(FreshIdentifier("a"+i, tpe))
+                    }
+
+                    val rlab = tpeToLabel(to).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
+
+                    List(nonTerminal(Seq(rlab), { case Seq(body) =>
+                      Lambda(args, body)
+                    }, classOf[Lambda], tag, cost = 1, w))
+
+                  case _ =>
+                    Nil
+                }
 
               case _ =>
                 if (fd.params.isEmpty) {
