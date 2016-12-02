@@ -2,15 +2,15 @@ package leon
 package synthesis
 package stoch
 
-import PCFGStats.{ExprConstrStats, addStats, exprConstrStatsToString, getExprConstrStats}
+import ContextualPCFGStats._
 
 import scala.util.Random
 
-object PCFGStatsExtractorMain {
+object ContextualPCFGStatsExtractorMain {
 
   def main(args: Array[String]): Unit = {
-    var globalStatsTrain: ExprConstrStats = Map()
-    var globalStatsTest: ExprConstrStats = Map()
+    var globalStatsTrain: AncStats = Map()
+    var globalStatsTest: AncStats = Map()
     val random = new Random()
 
     args.tail.par.foreach(fileName => {
@@ -26,27 +26,30 @@ object PCFGStatsExtractorMain {
       }
     })
 
+    globalStatsTrain = reduceContextDepth(globalStatsTrain, 2)
+    globalStatsTest = reduceContextDepth(globalStatsTest, 2)
+
     println("Printing training data:")
-    println(exprConstrStatsToString(globalStatsTrain))
+    println(ancStatsToString(globalStatsTrain))
     println("Printing test data:")
-    println(exprConstrStatsToString(globalStatsTest))
-    println("Computing score:")
+    println(ancStatsToString(globalStatsTest))
+    /* println("Computing score:")
     val score = dist(globalStatsTrain, globalStatsTest)
-    println(s"Score: $score")
+    println(s"Score: $score") */
   }
 
-  def procFile(fileName: String): ExprConstrStats = {
+  def procFile(fileName: String): AncStats = {
     val args = List(fileName)
     val ctx = Main.processOptions(args)
     pipeline.run(ctx, args)._2
   }
 
-  def pipeline: Pipeline[List[String], ExprConstrStats] = {
+  def pipeline: Pipeline[List[String], AncStats] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getExprConstrStats)
+    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getAncStats)
   }
 
-  def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
+  /* def dist(statsTrain: AncStats, statsTest: AncStats): (Double, Double) = {
     val numTestExprs = statsTest.mapValues(_.values.sum).values.sum
     println(s"numTestExprs: $numTestExprs")
 
@@ -73,6 +76,6 @@ object PCFGStatsExtractorMain {
     val ourScore = numCorrectTestExprs / numTestExprs
     val randomScore = numRandomCorrectTestExprs / numTestExprs
     (ourScore, randomScore)
-  }
+  } */
 
 }

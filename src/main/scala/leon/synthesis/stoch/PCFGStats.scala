@@ -11,7 +11,7 @@ object PCFGStats {
   // All sub-expressions
   def allSubExprs(expr: Expr): Seq[Expr] = ExprOps.collectPreorder{ e => List(e) }(expr)
 
-  def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = {
+  def allSubExprs(p: Program): Seq[Expr] = {
     for {
       unit <- p.units
       f <- unit.definedFunctions
@@ -19,14 +19,10 @@ object PCFGStats {
     } yield e
   }
 
-  def allSubExprsByType(ctx: LeonContext, p: Program): Map[TypeTree, Seq[Expr]] = {
-    val ase = allSubExprs(ctx, p)
+  def allSubExprsByType(p: Program): Map[TypeTree, Seq[Expr]] = {
+    val ase = allSubExprs(p)
     val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
-    val ans = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
-    /* for (typeTree <- ans.keys) {
-      println(s"${typeTree}: ${getTypeParams(typeTree)}")
-    } */
-    ans
+    ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
   }
 
   // Type normalization
@@ -90,18 +86,18 @@ object PCFGStats {
 
   def exprConstrStatsToString(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
-    def total[K](map: Map[K, Int]): Int = map.values.fold(0)(_ + _)
+    def total[K](map: Map[K, Int]): Int = map.values.sum
     for (typeConstrs <- stats.toList.sortBy(typeExpr => -total(typeExpr._2))) {
       val typeTotal = total(typeConstrs._2)
       for (constr <- typeConstrs._2.toList.sortBy(-_._2)) {
-        ans.append(s"${typeConstrs._1}\t${typeTotal}\t${constr._1}\t${constr._2}\n")
+        ans.append(s"${typeConstrs._1}\t$typeTotal\t${constr._1}\t${constr._2}\n")
       }
     }
     ans.toString()
   }
 
   def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
-    val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(ctx, p)
+    val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(p)
     val relevantSubExprs = asebt.mapValues(_.filter(expr => ctx.files.contains(expr.getPos.file)))
                                 .filter { case (tt, se) => se.nonEmpty }
     val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
@@ -111,7 +107,7 @@ object PCFGStats {
 
   // Type statistics
   def getTypeStats(ctx: LeonContext, p: Program): Map[TypeTree, Int] = {
-    allSubExprs(ctx, p).groupBy(_.getType).mapValues(_.size)
+    allSubExprs(p).groupBy(_.getType).mapValues(_.size)
   }
 
   def getTypeStatsPretty(ctx: LeonContext, p: Program): String = {
