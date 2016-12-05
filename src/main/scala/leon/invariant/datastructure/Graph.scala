@@ -2,6 +2,7 @@
 
 package leon
 package invariant.datastructure
+import purescala.Definitions._
 
 /**
  * The trait represents a graph-like data structure supporting the following operations.
@@ -67,7 +68,7 @@ trait Graph[T] {
         BFSReachRecur(head)
       }
     }
-    srcs.foreach{src => BFSReachRecur(src) }
+    srcs.foreach { src => BFSReachRecur(src) }
     visited
   }
 
@@ -80,11 +81,11 @@ trait Graph[T] {
     type Component = List[T]
 
     case class State(count: Int,
-      visited: Set[T],
-      dfNumber: Map[T, Int],
-      lowlinks: Map[T, Int],
-      stack: List[T],
-      components: List[Component])
+                     visited: Set[T],
+                     dfNumber: Map[T, Int],
+                     lowlinks: Map[T, Int],
+                     stack: List[T],
+                     components: List[Component])
 
     def search(vertex: T, state: State): State = {
       val newState = state.copy(visited = state.visited + vertex,
@@ -106,6 +107,7 @@ trait Graph[T] {
         }
       }
       val strslt = successors(vertex).foldLeft(newState)(processNeighbor)
+
       if (strslt.lowlinks(vertex) == strslt.dfNumber(vertex)) {
         val index = strslt.stack.indexOf(vertex)
         val (comp, rest) = strslt.stack.splitAt(index + 1)
@@ -158,7 +160,7 @@ class DirectedGraph[T] extends Graph[T] {
   }
 
   def removeEdge(src: T, dest: T): Unit = {
-    if (adjlist.contains(src) && adjlist(src).contains(dest)){
+    if (adjlist.contains(src) && adjlist(src).contains(dest)) {
       val nset = adjlist(src) - dest
       adjlist.update(src, nset)
       edgeCount -= 1
@@ -179,7 +181,7 @@ class DirectedGraph[T] extends Graph[T] {
    */
   def reverse = {
     val revg = new DirectedGraph[T]()
-    adjlist.foreach{
+    adjlist.foreach {
       case (src, dests) =>
         dests.foreach { revg.addEdge(_, src) }
     }
@@ -235,9 +237,9 @@ class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new Dire
       case (edge, edgeLabels) if (edgeLabels -- remlabels).isEmpty =>
         edgesToRemove += edge
       case (edge, edgeLabels) =>
-        nlg.labels.update(edge, (edgeLabels -- remlabels))        
+        nlg.labels.update(edge, (edgeLabels -- remlabels))
     }
-    edgesToRemove.foreach{ case (src, dest) => nlg.dgraph.removeEdge(src, dest) }
+    edgesToRemove.foreach { case (src, dest) => nlg.dgraph.removeEdge(src, dest) }
     nlg
   }
 
@@ -246,15 +248,15 @@ class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new Dire
     var edgesToRemove = Set[Edge]()
     labels.foreach {
       case (edge, edgeLabels) if !edgeLabels(label) => edgesToRemove += edge
-      case _ =>
+      case _                                        =>
     }
-    edgesToRemove.foreach{ case (src, dest) => ng.removeEdge(src, dest) }
+    edgesToRemove.foreach { case (src, dest) => ng.removeEdge(src, dest) }
     ng
   }
 
   def reverse = {
     val nlg = new DirectedLabeledGraph[T, L](dgraph.reverse)
-    labels.foreach{
+    labels.foreach {
       case ((src, dest), ls) => nlg.labels.update((dest, src), ls)
     }
     nlg
@@ -270,9 +272,9 @@ class DirectedLabeledGraph[T, L](private val dgraph: DirectedGraph[T] = new Dire
   def edgeCount: Int = dgraph.edgeCount
 
   def nodes: Set[T] = dgraph.nodes
-  
+
   def succsWithLabels(src: T): Map[T, Set[L]] = {
-    successors(src).map{ dst => 
+    successors(src).map { dst =>
       dst -> labels.getOrElse((src, dst), Set[L]())
     }.toMap
   }
