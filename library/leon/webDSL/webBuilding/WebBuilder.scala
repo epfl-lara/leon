@@ -45,7 +45,11 @@ object implicits {
     case Cons(e: Element, t) =>
       val abc = extractElements(t)
       if(e.tag != "") {
-        (e::abc._1, abc._2, abc._3)
+        if(e.tag == "#expand") {
+          (e.sons ++ abc._1, e.properties ++ abc._2, e.style ++ abc._3)
+        } else {
+          (e::abc._1, abc._2, abc._3)
+        }
       } else {
         abc
       }
@@ -78,6 +82,28 @@ object implicits {
   implicit def listWebElementToWebTree(l: List[Element]): List[WebTree] = l match {
     case Nil() => Nil()
     case Cons(x, xs) => Cons(x, xs)
+  }
+  
+  def listElementToListWebElement(l: List[Element]): List[WebElement] = l match {
+    case Nil() => Nil()
+    case Cons(x, xs) => Cons(x, listElementToListWebElement(xs))
+  }
+  
+  implicit def listWebTreeToWebTree(l: List[WebTree]): WebTree = {
+    val abc = extractElements(l)
+    Element("#expand", abc._1, abc._2, abc._3)
+  }
+  implicit def listWebElementToWebTree(l: List[WebElement]): WebTree = {
+    Element("#expand", l, Nil(), Nil())
+  }
+  implicit def listElementToWebTree(l: List[Element]): WebTree = {
+    Element("#expand", listElementToListWebElement(l), Nil(), Nil())
+  }
+  implicit def listWebAttributesToWebTree(l: List[WebAttribute]): WebTree = {
+    Element("#expand", Nil(), l, Nil())
+  }
+  implicit def listWebStylesToWebTree(l: List[WebStyle]): WebTree = {
+    Element("#expand", Nil(), Nil(), l)
   }
 }
 

@@ -22,4 +22,12 @@ package object collection {
   def setExists[A](set: Set[A], p: A => Boolean): Boolean =
     setToList(set).exists(p)
 
+  @ignore
+  def varargToList[A](elems: Seq[A]): List[A] = {
+    var l: List[A] = Nil[A]()
+    for (e <- elems) {
+      l = Cons(e, l)
+    }
+    l.reverse
+  }
 }

@@ -37,11 +37,7 @@ case class Element(tag: String, sons: leon.collection.List[WebElement], properti
   }*/
   @ignore
   def apply(elems: WebTree*): Element = {
-    var l: List[WebTree] = Nil[WebTree]()
-    for (e <- elems) {
-      l = Cons(e, l)
-    }
-    apply(l.reverse)
+    apply(varargToList(elems))
   }
 }
 
