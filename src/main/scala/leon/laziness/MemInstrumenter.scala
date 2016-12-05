@@ -24,7 +24,9 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
 
   val serialInst = new SerialInstrumenter(p, instrumenterFactory, Some(exprInstFactory))
 
-  def apply: Program = serialInst.apply
+  def apply: Program = {
+    serialInst.apply
+  }
 
   class MemExprInstrumenter(ictx: InstruContext) extends ExprInstrumenter(ictx: InstruContext) {
 
@@ -61,7 +63,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
             val instId = FreshIdentifier("instd", instExpr.getType, true)
             val instExprs = instrumenters map { m =>
               val hitCost = InfiniteIntegerLiteral(costOfMemoization(m.inst))
-              val missCost = m.missCost() 
+              val missCost = m.missCost()
               IfExpr(ElementOfSet(cc, stExpr), hitCost,
                 Plus(missCost, selectInst(instId.toVariable, m.inst)))
             }
@@ -132,7 +134,7 @@ class MemInstrumenter(p: Program, ctx: LeonContext, clFactory: ClosureFactory, f
     def costOf(e: Expr)(implicit currFun: FunDef): Int = {
       val cost = e match {
         case CaseClass(cct, _) if isMemoClosure(cct.root) => 0
-        case CaseClass(_, _) => 1 
+        case CaseClass(_, _) => 1
         case _ => 0
       }
       cost

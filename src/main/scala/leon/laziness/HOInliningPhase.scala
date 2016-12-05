@@ -42,10 +42,12 @@ object HOInliningPhase extends TransformationPhase {
       case _                                     => false
     }
 
+    var incompleteFunctions = Set[FunDef]()
     def rec(topLevel: Boolean, inlinedFuns: Set[FunDef])(e: Expr): Expr = e match {
       case FunctionInvocation(tfd, args) if doInline(tfd.fd) =>
         if (!topLevel && (!trivialPost(tfd.fd) || tfd.fd.precOrTrue != BooleanLiteral(true))) {
           ctx.reporter.warning("Refusing to inline function with non-trivial contracts inside expressions '" + tfd.id.asString(ctx) + "'!")
+          incompleteFunctions += tfd.fd
           e
         } else {
           val body = if (topLevel) tfd.fullBody else tfd.body.get
@@ -76,7 +78,7 @@ object HOInliningPhase extends TransformationPhase {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
         caseClassSelector(cct, cc, id)
       case Application(caller: Lambda, args) =>
-        application(caller, args)
+        rec(false, inlinedFuns)(application(caller, args))
       case Operator(args, op) =>
         op(args map rec(false, inlinedFuns))
     }
@@ -84,7 +86,7 @@ object HOInliningPhase extends TransformationPhase {
     for (fd <- p.definedFunctions) {
       fd.fullBody = rec(true, Set())(fd.fullBody)
     }
-    filterFunDefs(p, fd => !doInline(fd) || inlineOnce(fd))
+    filterFunDefs(p, fd => !doInline(fd) || incompleteFunctions(fd) || inlineOnce(fd))
   }
 
 }
