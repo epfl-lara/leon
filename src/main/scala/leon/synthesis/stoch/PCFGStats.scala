@@ -13,7 +13,7 @@ object PCFGStats {
 
   def allSubExprs(p: Program): Seq[Expr] = {
     for {
-      unit <- p.units
+      unit <- p.units if unit.isMainUnit
       f <- unit.definedFunctions
       e <- allSubExprs(f.fullBody)
     } yield e
@@ -87,9 +87,9 @@ object PCFGStats {
   def exprConstrStatsToString(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
     def total[K](map: Map[K, Int]): Int = map.values.sum
-    for (typeConstrs <- stats.toList.sortBy(typeExpr => -total(typeExpr._2))) {
+    for (typeConstrs <- stats.toList.sortBy(typeExpr => (-total(typeExpr._2), typeExpr._1.toString))) {
       val typeTotal = total(typeConstrs._2)
-      for (constr <- typeConstrs._2.toList.sortBy(-_._2)) {
+      for (constr <- typeConstrs._2.toList.sortBy(constrFreq => (-constrFreq._2, constrFreq._1.toString))) {
         ans.append(s"${typeConstrs._1}\t$typeTotal\t${constr._1}\t${constr._2}\n")
       }
     }

@@ -9,22 +9,18 @@ import scala.util.Random
 object PCFGStatsExtractorMain {
 
   def main(args: Array[String]): Unit = {
-    var globalStatsTrain: ExprConstrStats = Map()
-    var globalStatsTest: ExprConstrStats = Map()
-    val random = new Random()
+    @volatile var globalStatsTrain: ExprConstrStats = Map()
+    @volatile var globalStatsTest: ExprConstrStats = Map()
+    val random = new Random(0) // Remove this 0 to make non-deterministic
 
-    args.tail.par.foreach(fileName => {
-      val fileStats = procFile(fileName)
+    val fileStats = args.tail.par.map(fileName => fileName -> procFile(fileName)).toMap
+    for (fileName <- args.tail) {
       if (random.nextDouble() <= 0.9) {
-        this.synchronized {
-          globalStatsTrain = addStats(globalStatsTrain, fileStats)
-        }
+        globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
       } else {
-        this.synchronized {
-          globalStatsTest = addStats(globalStatsTest, fileStats)
-        }
+        globalStatsTest = addStats(globalStatsTest, fileStats(fileName))
       }
-    })
+    }
 
     println("Printing training data:")
     println(exprConstrStatsToString(globalStatsTrain))

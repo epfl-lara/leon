@@ -24,13 +24,13 @@ object ContextualPCFGStats {
   }
 
   def allSubExprsWithAncestry(p: Program): Seq[Seq[(Expr, Int)]] = for {
-    unit <- p.units
+    unit <- p.units if unit.isMainUnit
     f <- unit.definedFunctions
     e <- allSubExprsWithAncestry(f.fullBody)
   } yield e
 
   def getAncStats(ctx: LeonContext, p: Program): AncStats = {
-    val ase = allSubExprsWithAncestry(p).filter(es => ctx.files.contains(es.head._1.getPos.file))
+    val ase = allSubExprsWithAncestry(p)
     val allTypeParams = ase.map(_.head._1.getType).flatMap(getTypeParams).distinct
 
     def exprType(es: Seq[(Expr, Int)]): TypeTree = normalizeType(allTypeParams, es.head._1.getType)
@@ -92,13 +92,15 @@ object ContextualPCFGStats {
 
   def ancStatsToString(stats: AncStats): String = {
     val ans = new StringBuilder()
-    val sortedTTs = stats.keys.toList.sortBy(tt => -stats(tt).values.flatMap(_.values).sum)
+    val sortedTTs = stats.keys.toList.sortBy(tt => (-stats(tt).values.flatMap(_.values).sum, tt.toString))
     for (tt <- sortedTTs) {
-      val sortedAncs = stats(tt).keys.toList.sortBy(anc => -stats(tt)(anc).values.sum)
+      val statsTTSum = stats(tt).values.flatMap(_.values).sum
+      val sortedAncs = stats(tt).keys.toList.sortBy(anc => (-stats(tt)(anc).values.sum, anc.toString()))
       for (anc <- sortedAncs) {
-        val sortedConstrs = stats(tt)(anc).keys.toList.sortBy(constr => -stats(tt)(anc)(constr))
+        val statsTTAncSum = stats(tt)(anc).values.sum
+        val sortedConstrs = stats(tt)(anc).keys.toList.sortBy(constr => (-stats(tt)(anc)(constr), constr.toString))
         for (constr <- sortedConstrs) {
-          ans.append(s"$tt, $anc, $constr, ${stats(tt)(anc)(constr)}\n")
+          ans.append(s"$tt, $statsTTSum, $anc, $statsTTAncSum, $constr, ${stats(tt)(anc)(constr)}\n")
         }
       }
     }
