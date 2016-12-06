@@ -190,7 +190,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
     case While(cond, body) => C.While(rec(cond), C.buildBlock(rec(body)))
 
     // Find out if we can actually handle IsInstanceOf.
-    case IsA(_, ClassType(cd)) if cd.parent.isEmpty => C.True // Since it has typecheck, it can only be true.
+    case IsA(_, ClassType(cd)) if cd.parent.isEmpty => C.True // Since it has typechecked, it can only be true.
 
     // Currently, classes are tagged with a unique ID per class hierarchy, but
     // without any kind of ordering. This means we cannot have test for membership
@@ -199,10 +199,13 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
     case IsA(_, ClassType(cd)) if cd.isAbstract =>
       internalError("Cannot handle membership test with abstract types for now")
 
-    case IsA(expr, ct) =>
+    case IsA(expr0, ct) =>
       val tag = getEnumLiteralFor(ct.clazz)
-      val tagAccess = C.FieldAccess(rec(expr), TaggedUnion.tag)
-      C.BinOp(Equals, tagAccess, tag)
+      val expr =
+        if (isEnumeration(ct.clazz)) rec(expr0) // It's an enum, therefor no field to access
+        else C.FieldAccess(rec(expr0), TaggedUnion.tag)
+
+      C.BinOp(Equals, expr, tag)
 
     case AsA(expr, ClassType(cd)) if cd.parent.isEmpty => rec(expr) // no casting, actually
 
@@ -276,17 +279,20 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
   private def constructObject(cd: ClassDef, args: Seq[Expr]): C.Expr = {
     require(!cd.isAbstract)
 
-    val leaves = cd.getHierarchyLeaves // only leaves have fields
-    if (leaves exists { cd => cd.fields.nonEmpty }) {
-      if (cd.parent.isEmpty) simpleConstruction(cd, args)
-      else hierarchyConstruction(cd, args)
-    } else enumerationConstruction(cd, args)
+    // Mind the order of the cases w.r.t. the description above: they don't match.
+    if (isEnumeration(cd))      enumerationConstruction(cd, args) // case n° 3
+    else if (cd.parent.isEmpty) simpleConstruction(cd, args)      // case n° 1
+    else                        hierarchyConstruction(cd, args)   // case n° 2
   }
 
   private def convertClass(cd: ClassDef): C.Type = {
+    if (isEnumeration(cd)) getEnumFor(cd.hierarchyTop)
+    else getStructFor(cd)
+  }
+
+  private def isEnumeration(cd: ClassDef): Boolean = {
     val leaves = cd.getHierarchyLeaves
-    if (leaves exists { cd => cd.fields.nonEmpty }) getStructFor(cd)
-    else getEnumFor(cd.hierarchyTop)
+    leaves forall { cd => cd.fields.isEmpty }
   }
 
   private val markedAsEmpty = MutableSet[ClassDef]()
