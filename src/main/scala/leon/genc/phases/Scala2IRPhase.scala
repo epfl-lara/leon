@@ -241,8 +241,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       case Block(Nil, v: Variable) => (v, None, env)
       case Block(init, v: Variable) => (v, Some(rec(Block(init.init, init.last))), env)
 
-      case fi @ FunctionInvocation(_, _) => withTmp(scrutinee0.getType, fi, env)
-      case cc @ CaseClass(_, _) => withTmp(scrutinee0.getType, cc, env)
+      case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple =>
+        withTmp(scrutinee0.getType, scrutinee0, env)
 
       case e => internalError(s"scrutinee = $e of type ${e.getClass} is not supported")
     }
@@ -308,10 +308,12 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
         CIR.True
 
       case CaseClassPattern(b, ct, subs) =>
-        val cast = AsInstanceOf(scrutinee, ct)
+        val (checkType, cast) =
+          if (scrutinee.getType == ct) CIR.True -> scrutinee // Omit useless type checks & casts
+          else rec(IsInstanceOf(scrutinee, ct)) -> AsInstanceOf(scrutinee, ct)
+
         update(b, cast)
 
-        val checkType = rec(IsInstanceOf(scrutinee, ct))
         // Use the classDef fields to have the original identifiers!
         val checkSubs = (ct.classDef.fields zip subs) map { case (field, sub) =>
           ccRec(sub, CaseClassSelector(ct, cast, field.id))
