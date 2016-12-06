@@ -128,7 +128,7 @@ object HOInferencePhase extends SimpleLeonPhase[Program, MemVerificationReport] 
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    // Note: do not inline before instrument, because inlining might change the performance properties
+    // Note: do not inline before instrument, because inlining might change the performance properties      
     val instrumenter = new MemInstrumenter(typeCorrectProg, ctx, closureFactory, funsManager)
     val instProg = HOInliningPhase(ctx, instrumenter.apply)
     if (dumpInstrumentedProgram) {

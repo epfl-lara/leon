@@ -39,7 +39,11 @@ trait TreeTransformer {
       val newA = transform(a)
       LetVar(newA, transform(expr), transform(body)(bindings + (a -> newA))).copiedFrom(e)
     case LetDef(fds, body) =>
-      val rFds = fds map transform
+      val rFds = fds map { f =>
+        val g = transform(f)
+        g.fullBody = transform(g.fullBody) // use bindings
+        g
+      }
       val rBody = transform(body)
       LetDef(rFds, rBody).copiedFrom(e)
     case CaseClass(cct, args) =>
