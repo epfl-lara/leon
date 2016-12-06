@@ -483,7 +483,17 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case Assignment(id, expr) => CIR.Assign(buildBinding(id), rec(expr))
 
-    case FieldAssignment(obj, fieldId, expr) =>
+    case FieldAssignment(obj, fieldId0, expr) =>
+      // The fieldId might actually not be the correct one;
+      // it's global counter might differ from the one in the class definition.
+      val fieldId = obj.getType match {
+        case ct: ClassType =>
+          val fields = ct.classDef.fields
+          val optFieldId = fields collectFirst { case field if field.id.name == fieldId0.name => field.id }
+          optFieldId getOrElse { internalError(s"No corresponding field for $fieldId0 in class $ct") }
+
+        case typ => internalError(s"Unexpected type $typ. Only class type are expected to update fields")
+      }
       CIR.Assign(CIR.FieldAccess(rec(obj), rec(fieldId)), rec(expr))
 
     case LetDef(_, body) =>
