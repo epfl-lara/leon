@@ -7,7 +7,7 @@ package phases
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.{ ExprOps, TypeOps }
+import purescala.{ ExprOps, TypeOps, TreeTransformer }
 import purescala.Types._
 import xlang.Expressions._
 
@@ -199,6 +199,31 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
   private def castNotSupported(ct: ClassType): Boolean =
     ct.classDef.isAbstract && ct.classDef.hasParent
+
+  // Freshen the identifiers of new variable definitions and keeps free variables as is.
+  private def freshen(e: Expr): Expr = {
+    val freshIds = MutableMap[Identifier, Identifier]()
+
+    val transformer = new TreeTransformer {
+      override def transform(id: Identifier) = freshIds.getOrElse(id, id)
+
+      override def transform(e: Expr)(implicit bindings: Map[Identifier, Identifier]): Expr = e match {
+        case Let(x, v, b) =>
+          val y = x.freshen
+          freshIds += x -> y
+          super.transform(Let(y, v, b))
+
+        case LetVar(x, v, b) =>
+          val y = x.freshen
+          freshIds += x -> y
+          super.transform(LetVar(y, v, b))
+
+        case e => super.transform(e)
+      }
+    }
+
+    transformer.transform(e)(Map.empty)
+  }
 
 
 
@@ -536,12 +561,11 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case array @ NonemptyArray(empty, Some((value0, length0))) if empty.isEmpty =>
       val arrayType = rec(array.getType).asInstanceOf[CIR.ArrayType]
-      val value = rec(value0)
 
       // Convert to VLA or normal array
       val alloc = rec(length0) match {
         case CIR.Lit(L.Int32Lit(length)) =>
-          val values = (0 until length) map { _ => value } // the same expression, != same runtime value
+          val values = (0 until length) map { _ => rec(freshen(value0)) } // the same expression, != same runtime value
           CIR.ArrayAllocStatic(arrayType, length, values)
 
         case length =>
@@ -550,6 +574,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
           warning(s"VLAs should be avoid according to MISRA C rules", array.getPos)
 
+          val value = rec(value0)
           CIR.ArrayAllocVLA(arrayType, length, value)
       }
 
