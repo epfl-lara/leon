@@ -1904,6 +1904,7 @@ trait CodeExtraction extends ASTExtractors {
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) && !isMutator(sym) =>
               null
+            case _ if rec.symbol != null && rec.symbol.isModuleOrModuleClass => null
             case _ =>
               extractTree(rec)
           }
