@@ -241,7 +241,7 @@ object AntiAliasingPhase extends TransformationPhase {
                   
     def mapApplication(args: Seq[Expr], nfi: Expr, nfiType: TypeTree, fiEffects: Set[Int], rewritings: Map[Identifier, Expr]): Expr = {
       if(fiEffects.nonEmpty) {
-        val modifiedArgs: Seq[(Set[Identifier], Expr)] =
+        val modifiedArgs: Seq[(Seq[Identifier], Expr)] =
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
               .map(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
@@ -541,13 +541,14 @@ object AntiAliasingPhase extends TransformationPhase {
           nestedFunDefsOf(bd)) + fd)
 
 
-  private def findReferencedIds(o: Expr): Set[Identifier] = o match {
-    case Variable(id) => Set(id)
+  //returns a list, to check for duplicates if necessary
+  private def findReferencedIds(o: Expr): List[Identifier] = o match {
+    case Variable(id) => List(id)
     case CaseClassSelector(_, e, _) => findReferencedIds(e)
-    case CaseClass(_, es) => es.foldLeft(Set[Identifier]())((acc, e) => acc ++ findReferencedIds(e))
+    case CaseClass(_, es) => es.foldLeft(List[Identifier]())((acc, e) => acc ::: findReferencedIds(e))
     case AsInstanceOf(e, _) => findReferencedIds(e)
     case ArraySelect(a, _) => findReferencedIds(a)
-    case _ => Set()
+    case _ => List()
   }
   private def findReceiverId(o: Expr): Option[Identifier] = o match {
     case Variable(id) => Some(id)
