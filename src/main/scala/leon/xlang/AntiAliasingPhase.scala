@@ -245,7 +245,7 @@ object AntiAliasingPhase extends TransformationPhase {
           args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
               .map(arg => {
                     val rArg = replaceFromIDs(rewritings, arg._1)
-                    (findReferencedIds(rArg), rArg)
+                    (findReferencedIds(rArg).filter(id => effects.isMutableType(id.getType)), rArg)
                    })
 
         val allParams: Seq[Identifier] = modifiedArgs.flatMap(_._1)
