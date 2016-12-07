@@ -482,7 +482,7 @@ trait CodeExtraction extends ASTExtractors {
 
             extractClassDef(sym, args, tmpl)
           } else {
-            outOfSubsetError(pos, "Class "+sym.fullName+" not defined?")
+            outOfSubsetError(pos, "Class "+sym.fullName+" not defined? In " + Thread.currentThread().getStackTrace.take(10).map(_.toString).mkString(","))
           }
       }
     }
@@ -493,6 +493,18 @@ trait CodeExtraction extends ASTExtractors {
       argsByName
     }
 
+    /** Find a similar symbol (List instead of varargs) if available */
+    def getSimilarFunction(sym: Symbol) = {
+      (defsToDefs.find{ case (s, fd) => fd.id.name == sym.nameString &&
+        sym.owner == s.owner && {
+        //println("Found similar function to  " + fd.id.name + " with params length = " + fd.params.length + " of types " + fd.paramIds.map(_.getType))
+        fd.params.length >= 1} && (fd.paramIds(0).getType match {
+          case AbstractClassType(ccd, tps) => ccd.id.name == "List"
+          case _ => false
+        })
+      })
+    }
+    
     /** Returns the function associated to the symbol.
      *  In the case of varargs, if the function is not found
      *  and there are others with the same name in the same scope,
@@ -504,24 +516,58 @@ trait CodeExtraction extends ASTExtractors {
            // Look for other functions accepting lists if they exist.
           val similarFunction =
             if(!allowFreeArgs) None
-            else (defsToDefs.find{ case (s, fd) => fd.id.name == sym.nameString &&
-              sym.owner == s.owner &&
-              fd.params.length == 1 && (fd.paramIds(0).getType match {
-                case AbstractClassType(ccd, tps) => ccd.id.name == "List"
-                case _ => false
-              })
-            })
+            else getSimilarFunction(sym)
           similarFunction match {
             case Some((sym, fd)) =>
               val convertArgs = (tfd: TypedFunDef, elems: Seq[LeonExpr]) => {
-                val allowedType = fd.paramIds.head.getType match {
-                  case AbstractClassType(_, Seq(tpe)) => tfd.translated(tpe)
+                val lelems = elems.toList
+                val foldedArguments = scala.collection.mutable.ListBuffer[LeonExpr]()
+                def allowedTypeInList(e: LeonType): Option[LeonType] = {
+                  e match {
+                    case AbstractClassType(ccd, Seq(tpe)) if ccd.id.name == "List" => Some(tfd.translated(tpe))
+                    case _ => None
+                  }
                 }
-                val cons = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Cons"), Seq(allowedType))
-                val nil  = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Nil"),  Seq(allowedType))
-                List(elems.foldRight(CaseClass(nil, Seq())) {
-                  case (e, ls) => CaseClass(cons, Seq(e, ls))
-                })
+                def cons(tpe: LeonType) = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Cons"), Seq(tpe))
+                def nil(tpe: LeonType) = CaseClassType(libraryCaseClass(sym.pos, "leon.collection.Nil"),  Seq(tpe))
+                // Converts a list of LeonExpr to a leon-list of LeonExpr
+                def toSingleList(tpe: LeonType, elems: List[LeonExpr]): LeonExpr = {
+                  val n = nil(tpe)
+                  val c = cons(tpe)
+                  elems.foldRight(CaseClass(n, Seq())) {
+                    case (e, ls) => CaseClass(c, Seq(e, ls))
+                  }
+                }
+                // Greedy match of the arguments into the varargs of fd.
+                def convert(fdparamsId: List[Identifier], elems: List[LeonExpr], varargs: List[LeonExpr]): List[LeonExpr] = {
+                  (fdparamsId, elems) match {
+                    case (Nil, Nil) => Nil
+                    case (Nil, a::p ) => outOfSubsetError(pos, "Function "+sym.name+" not properly defined: Unexpected argument of type " + a.getType)
+                    case (fdparamId::q, Nil) =>
+                      allowedTypeInList(fdparamId.getType) match {
+                        case Some(allowedType) =>
+                          toSingleList(allowedType, varargs)::convert(q, Nil, Nil)
+                        case None =>
+                          outOfSubsetError(pos, "Function "+sym.name+" not properly invoked: Expected argument of type " + fdparamId.getType)
+                      }
+                    case (fdparamId::q, elem::p) =>
+                      if(TypeOps.isSubtypeOf(elem.getType, fdparamId.getType)) {
+                        elem :: convert(q, p, Nil)
+                      } else {
+                        allowedTypeInList(fdparamId.getType) match {
+                          case Some(allowedType) =>
+                            if(TypeOps.isSubtypeOf(elem.getType, allowedType)) {
+                              convert(fdparamsId, p, varargs :+ elem)
+                            } else { // Need to close varargs
+                              toSingleList(allowedType, varargs)::convert(q, elems, Nil)
+                            }
+                          case None =>
+                            outOfSubsetError(pos, "Function "+sym.name+" not properly invoked: Expected argument of type " + fdparamId.getType + ", got " + elem.getType)
+                        }
+                      }
+                  }
+                }
+                convert(fd.paramIds.toList, elems.toList, Nil)
               }
               (fd, convertArgs)
             case None =>
@@ -1858,6 +1904,7 @@ trait CodeExtraction extends ASTExtractors {
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) && !isMutator(sym) =>
               null
+            case _ if rec.symbol != null && rec.symbol.isModuleOrModuleClass => null
             case _ =>
               extractTree(rec)
           }

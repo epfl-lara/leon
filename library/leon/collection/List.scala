@@ -572,11 +572,7 @@ case class Nil[T]() extends List[T]
 object List {
   @ignore
   def apply[T](elems: T*): List[T] = {
-    var l: List[T] = Nil[T]()
-    for (e <- elems) {
-      l = Cons(e, l)
-    }
-    l.reverse
+    varargToList(elems)
   }
 
   @library

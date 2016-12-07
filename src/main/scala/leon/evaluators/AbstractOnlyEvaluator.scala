@@ -100,8 +100,8 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = Int
         }
         
       case MatchExpr(scrut, cases) =>
-        val escrut = underlying.e(scrut)
         val tscrut = e(scrut)
+        val escrut = underlying.e(tscrut)
         cases.toStream.map(c => matchesCaseAbstractOnly(escrut, tscrut, c)).find(_.nonEmpty) match {
           case Some(Some((c, mappings))) =>
             rctx = rctx.withNewVars3(mappings.map(v => v._1 -> underlying.e(v._2)).toMap, mappings.toMap)
@@ -115,8 +115,8 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = Int
         }
         gctx.stepsLeft -= 1
         
-        val evArgsValues = args map (underlying.e)
         val evArgsOrigin = args map e
+        val evArgsValues = evArgsOrigin map (underlying.e)
         
         // build a mapping for the function...
         //val frame = rctx.withNewVars2((tfd.paramIds zip evArgs).toMap)
@@ -141,16 +141,16 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = Int
         }
   
       case Let(i, ex, b) =>
-        val first = underlying.e(ex)
-        val second = e(ex)
-        rctx = rctx.withNewVar(i, first, second)
+        val treeVal = e(ex)
+        val concreteVal = underlying.e(treeVal)
+        rctx = rctx.withNewVar(i, concreteVal, treeVal)
         b
   
       case Application(caller, args) =>
-        val ecaller = underlying.e(caller)
         val tcaller = e(caller)
+        val ecaller = underlying.e(tcaller)
         val targs = args map e
-        val eargs = args map underlying.e
+        val eargs = targs map underlying.e
         ecaller match {
           case l @ Lambda(params, body) if evaluateApplications =>
             val mapping    = (params map (_.id) zip eargs).toMap
@@ -167,8 +167,8 @@ class AbstractOnlyEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = Int
         return replaceFromIDs(mapping, l).asInstanceOf[Lambda]
   
       case Operator(es, builder) =>
-        val ees = es.map(underlying.e)
         val ts = es.map(e)
+        val ees = ts.map(underlying.e)
         val conc_value = underlying.e(builder(ees))
         val abs_value = builder(ts)
         val final_abs_value = if( evaluateCaseClassSelector) {
