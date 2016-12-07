@@ -252,7 +252,8 @@ object AntiAliasingPhase extends TransformationPhase {
         val duplicatedParams = allParams.diff(allParams.distinct).distinct
         if(duplicatedParams.nonEmpty) 
           ctx.reporter.fatalError(nfi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
-        //TODO: we are probably missing a case with multiple same variable within one same argument (f(A(x1,x1,x1)))
+        //TODO: The case f(A(x1,x1,x1)) could probably be handled by forbidding creation at any program point of
+        //      case class with multiple refs as it is probably not useful
 
         val freshRes = FreshIdentifier("res", nfiType)
 
