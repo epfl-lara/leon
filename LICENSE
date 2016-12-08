@@ -2,7 +2,7 @@ Note: This license applies only to Leon, not to its submodules such as
 * The scala compiler front-end
 * Z3
 * Scala-Z3
-* Isabelle
+* libisabelle
 * bonsai
 * scala-smtlib
 * cafebabe
