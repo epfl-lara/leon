@@ -191,11 +191,14 @@ class DatatypeManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(en
         )
       ))
 
-      val res = And(
-        GreaterEquals(getLength(expr), IntLiteral(0)),
-        FunctionInvocation(fd.typed, Seq(expr))
-      )
-      res
+      val baseType: TypeTree = ct.tps.head
+      
+      val pos = GreaterEquals(getLength(expr), IntLiteral(0))
+      if(requireTypeUnrolling(baseType)) {
+        And(pos, FunctionInvocation(fd.typed, Seq(expr)))
+      } else {
+        pos
+      }
 
 
     case ct: ClassType =>

@@ -11,5 +11,5 @@ import theories._
 
 class CVC4UnrollingSolver(context: SolverContext, program: Program, underlying: CVC4Solver)
   extends UnrollingSolver(context, program, underlying,
-                          theories = new BagEncoder(context.context, program))
+                          theories = new BagEncoder(context.context, program) >> new ArrayEncoder(context.context, program))
      with CVC4Solver
