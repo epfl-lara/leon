@@ -804,7 +804,6 @@ object LZW {
     require(fis.isOpen && fos.isOpen && dictionary.nonEmpty)
 
     var bufferFull = false // TODO handle this as a non-fatal thing.
-    var dictFull = dictionary.isFull // TODO handle this as a non-fatal thing.
     var ioError = false
 
     val buffer = createBuffer()
@@ -814,7 +813,7 @@ object LZW {
 
     // Read from the input file all its content, stop when an error occurs
     // (either output error or full buffer)
-    (while (!bufferFull && !ioError && !dictFull && currentOpt.isDefined) {
+    (while (!bufferFull && !ioError && currentOpt.isDefined) {
       val c = currentOpt.get
 
       assert(buffer.nonFull)
@@ -826,8 +825,10 @@ object LZW {
       val processBuffer = buffer.isFull || code.isEmpty
 
       if (processBuffer) {
-        // Add s (with c) into the dictionary
-        dictionary.insert(buffer)
+        // Add s (with c) into the dictionary, if the dictionary size limitation allows it
+        if (dictionary.nonFull) {
+          dictionary.insert(buffer)
+        }
 
         // Encode s (without c) and print it
         buffer.dropLast()
@@ -849,23 +850,21 @@ object LZW {
       }
 
       bufferFull = buffer.isFull
-      dictFull = dictionary.isFull
 
       currentOpt = tryReadNext(fis)
     }) invariant {
       bufferFull == buffer.isFull &&
-      dictFull == dictionary.isFull &&
-      ((!bufferFull && !ioError && !dictFull) ==> buffer.nonEmpty) // it might always be true...
+      ((!bufferFull && !ioError) ==> buffer.nonEmpty) // it might always be true...
     }
 
     // Process the remaining buffer
-    if (!bufferFull && !ioError && !dictFull) {
+    if (!bufferFull && !ioError) {
       val code = dictionary.encode(buffer)
       assert(code.isDefined) // See (*) above.
       ioError = !writeCodeWord(fos, code.get)
     }
 
-    !bufferFull && !ioError && !dictFull
+    !bufferFull && !ioError
   }
 
   def decode(fis: FIS, fos: FOS)(implicit state: leon.io.State): Boolean = {
@@ -924,7 +923,9 @@ object LZW {
         val tmp = createBuffer()
         tmp.set(buffer)
         tmp.append(entry(0))
-        dictionary.insert(tmp)
+        if (dictionary.nonFull) {
+          dictionary.insert(tmp)
+        }
 
         buffer.set(entry)
       }
