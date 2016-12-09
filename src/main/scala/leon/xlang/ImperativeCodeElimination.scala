@@ -313,7 +313,10 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
 
                 newFd.body = Some(newBody)
                 newFd.precondition = fd.precondition.map(prec => {
-                  replace(modifiedVars.zip(freshNames).map(p => (p._1.toVariable, p._2.toVariable)).toMap, prec)
+                  val fresh = replace(modifiedVars.zip(freshNames).map(p => (p._1.toVariable, p._2.toVariable)).toMap, prec)
+                  //still apply recursively to update all function invocation
+                  val (res, scope, _) = toFunction(fresh)
+                  scope(res)
                 })
                 newFd.postcondition = fd.postcondition.map(post => {
                   val Lambda(Seq(res), postBody) = post
@@ -327,7 +330,10 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
                         (Old(ov), nv.toVariable)}.toMap +
                       (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
                     postBody)
-                  Lambda(Seq(newRes), newBody).setPos(post)
+
+                  val (r, scope, _) = toFunction(newBody)
+
+                  Lambda(Seq(newRes), scope(r)).setPos(post)
                 })
 
                 val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
