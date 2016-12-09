@@ -616,25 +616,11 @@ object LZW {
 
   def tryReadNext(fis: FIS)(implicit state: leon.io.State): Option[Byte] = {
     require(fis.isOpen)
-    val b = fis.tryReadByte()
-    StdOut.print("Reading next byte: ")
-    if (b.isDefined) {
-      val byte = b.get
-      if (0x20 <= byte && byte <= 0x7e) {
-        StdOut.print(byte)
-      } else {
-        StdOut.print("[")
-        StdOut.print(byte.toInt)
-        StdOut.print("]")
-      }
-    } else StdOut.print("EOF")
-    StdOut.println()
-    b
+    fis.tryReadByte()
   }
 
   def writeCodeWord(fos: FOS, cw: CodeWord): Boolean = {
     require(fos.isOpen)
-    StdOut.print("Writing codeword for index "); val index = codeWord2Index(cw); StdOut.println(index)
     fos.write(cw.b1) && fos.write(cw.b2)
   }
 
@@ -664,28 +650,6 @@ object LZW {
     }
 
     success
-  }
-
-  def debugWriteBytes(buffer: Buffer): Unit = {
-    // require(buffer.nonEmpty)
-    var i = 0
-
-    val size = buffer.size
-
-    (while (i < size) {
-      val byte = buffer(i)
-      if (0x20 <= byte && byte <= 0x7e) {
-        StdOut.print(byte)
-      } else {
-        StdOut.print("[")
-        StdOut.print(byte.toInt)
-        StdOut.print("]")
-      }
-      StdOut.print(" ")
-      i += 1
-    }) invariant {
-      0 <= i && i <= size
-    }
   }
 
 
@@ -764,8 +728,6 @@ object LZW {
       assert(nextIndex < DictionarySize)
       assert(nextIndex + 1 <= DictionarySize)
 
-      StdOut.print("Inserting codeword "); debugWriteBytes(b); StdOut.print(" at index "); StdOut.println(nextIndex)
-
       buffers(nextIndex).set(b) // FIXME TIMEOUT (?)
 
       assert(lemmaSize)
@@ -786,7 +748,6 @@ object LZW {
 
       (while (!found && i < nextIndex) {
         if (buffers(i).isEqual(b)) {
-          StdOut.print("Found buffer "); debugWriteBytes(b); StdOut.print(" at index "); StdOut.print(i); StdOut.print(" :: "); debugWriteBytes(buffers(i)); StdOut.println()
           found = true
         } else {
           i += 1
@@ -851,44 +812,20 @@ object LZW {
 
     var currentOpt = tryReadNext(fis)
 
-    /*
-     * def printStatus(): Unit = {
-     *   StdOut.print("Status: ")
-     *   if (bufferFull) StdOut.print("full") else StdOut.print(" ok ")
-     *   if (dictFull) StdOut.print("full") else StdOut.print(" ok ")
-     *   if (ioError) StdOut.print("xxxx") else StdOut.print(" ok ")
-     *   StdOut.print("buffer: "); debugWriteBytes(buffer)
-     *   StdOut.println()
-     * }
-     */
-
-    // printStatus()
-
     // Read from the input file all its content, stop when an error occurs
     // (either output error or full buffer)
     (while (!bufferFull && !ioError && !dictFull && currentOpt.isDefined) {
       val c = currentOpt.get
 
-      StdOut.print("Input = ["); StdOut.print(c.toInt); StdOut.println("]")
-
       assert(buffer.nonFull)
       buffer.append(c)
       assert(buffer.nonEmpty)
 
-      StdOut.print("Current buffer: "); debugWriteBytes(buffer); StdOut.println()
-
       val code = dictionary.encode(buffer)
-
-      if (code.isDefined) {
-        StdOut.print("Code for buffer is known: "); StdOut.println(codeWord2Index(code.get))
-      } else {
-        StdOut.println("Code for buffer is NOT known")
-      }
 
       val processBuffer = buffer.isFull || code.isEmpty
 
       if (processBuffer) {
-        StdOut.println("Processing buffer")
         // Add s (with c) into the dictionary
         dictionary.insert(buffer)
 
@@ -909,18 +846,12 @@ object LZW {
         buffer.clear()
         buffer.append(c)
         assert(buffer.nonEmpty)
-
-        StdOut.print("New buffer: "); debugWriteBytes(buffer); StdOut.println()
-      } else {
-        StdOut.println("Keeping buffer as is")
       }
 
       bufferFull = buffer.isFull
       dictFull = dictionary.isFull
 
       currentOpt = tryReadNext(fis)
-      // printStatus()
-      StdOut.println()
     }) invariant {
       bufferFull == buffer.isFull &&
       dictFull == dictionary.isFull &&
@@ -929,12 +860,9 @@ object LZW {
 
     // Process the remaining buffer
     if (!bufferFull && !ioError && !dictFull) {
-      StdOut.print("Processing last buffer: "); debugWriteBytes(buffer); StdOut.println()
       val code = dictionary.encode(buffer)
       assert(code.isDefined) // See (*) above.
-      StdOut.print("Last code: "); StdOut.println(codeWord2Index(code.get))
       ioError = !writeCodeWord(fos, code.get)
-      // printStatus()
     }
 
     !bufferFull && !ioError && !dictFull
@@ -967,7 +895,6 @@ object LZW {
 
       if (dictionary contains index) {
         bufferFull = !dictionary.appendTo(index, buffer)
-        StdOut.print("Writing buffer for index "); StdOut.print(index); StdOut.print(": "); debugWriteBytes(buffer); StdOut.println()
         ioError = !writeBytes(fos, buffer)
       } else {
         illegalInput = true
@@ -990,7 +917,6 @@ object LZW {
         illegalInput = true
       }
 
-      StdOut.print("Writing buffer: "); debugWriteBytes(entry); StdOut.println()
       ioError = !writeBytes(fos, entry)
       bufferFull = buffer.isFull
 
