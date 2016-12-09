@@ -18,8 +18,7 @@ object LZW {
   // Encoding using fixed size of word;
   // Input alphabet is the ASCII range (0-255);
   // A word is made of 16 bits (instead of the classic 12-bit scenario, for simplicity);
-  // The dictionary is an array of ??? where the index is the key;
-  // TODO s/index/codeword -> better yet: define index2codeword conversion (Int -> (Byte, Byte))
+  // The dictionary is an array of Buffer where the index is the key;
   // TODO 16-bit integers would be useful here!
 
   // We limit the size of the dictionary to 2^10
@@ -166,7 +165,6 @@ object LZW {
     !isRangeEqual(a, b, 0, 0)
   }.holds
 
-
   private def testBufferIsEqual(): Boolean = {
     val a = createBuffer()
     val b = createBuffer()
@@ -181,6 +179,7 @@ object LZW {
 
     !a.isEqual(b)
   }.holds
+
 
   // Helper for range equality checking
   private def isRangeEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
@@ -295,324 +294,13 @@ object LZW {
       assert(isEqual(b))
     } ensuring { _ => b.isValid && isValid && nonEmpty && isEqual(b) /* && b.isEqual(old(b)) */ }
 
-/*
- *     def set(b: Buffer): Unit = {
- *       require(array.length == b.length) // all buffers have the same capacity
- *
- *       var i = 0
- *       (while (i < b.length) {
- *         array(i) = b.array(i)
- *         i = i + 1
- *       }) invariant {
- *         i >= 0 && i <= b.length &&
- *         array.length >= b.length &&
- *         isRangeEqual(array, b.array, 0, i)
- *       }
- *
- *       length = b.length
- *     } ensuring { _ => this.isEqual(b) }
- */
-
   }
-
-  /*
-   * private def isRangeEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
-   *   require(0 <= from && from <= to && to < a.length && a.length == b.length)
-   *   if (from == to) true else {
-   *     // a(from) == b(from) && (from <= to ==> isRangeEqual(a, b, from + 1, to))
-   *   }
-   * }
-   */
 
   @inline // very important because we cannot return arrays
   def createBuffer(): Buffer = {
     Buffer(Array.fill(BufferSize)(0), 0)
   } ensuring { b => b.isEmpty && b.nonFull && b.isValid }
 
-  // Read the given input file `fis`, encode its content, save the encoded
-  // version into `fos`, and return true on success.
-  //
-  // The algorithm is:
-  //  0a. init the dictionary to support the full input alphabet
-  //  0b. set P to empty (P below is our `buffer`)
-  //  1. read the next character C (a.k.a. `current`)
-  //  2. append C to P (i.e. "P = P :: C")
-  //  3. check if the dictionary has an entry for the current buffer P
-  //    4.  if yes, keep the buffer P as is (i.e. with C at the end)
-  //    5a. if not, remove C from the buffer P,
-  //    5b.         output the codeword associated with P
-  //    5c.         insert "P :: C" into the dictionary to create a new codeword
-  //    5d.         set P to the monocharacter string C
-  //  6. goto 1 if more characters available
-  //  7. P is non empty! So find the corresponding codeword and output it
-/*
- *   def encode(fis: FIS, fos: FOS)(implicit state: leon.io.State): Boolean = {
- *     require(fis.isOpen && fos.isOpen)
- *
- *     // 0a. Init dictionary with all basic range
- *     val (dict, idx) = initDictionary()
- *
- *     encodeImpl(fis, fos, dict, idx)
- *   }
- */
-
-/*
- *   def encodeImpl(fis: FIS, fos: FOS, dict: Array[Buffer], idx: Int)(implicit state: leon.io.State): Boolean = {
- *     require(fis.isOpen && fos.isOpen && dict.length == DICTIONARY_SIZE && 0 <= idx && idx <= dict.length && allValidBuffer(dict))
- *
- *     var nextIndex = idx
- *
- *     // 0b. Create an empty buffer
- *     val buffer = createBuffer()
- *
- *     // 1. Read the next input
- *     var current = readByte(fis)
- *
- *     // We cannot use `return` to shortcircuit the function and do an early exit,
- *     // so we keep an abort boolean and use if-statements to wrap actions.
- *     var abort = false
- *
- *     (
- *       while (!abort && current.isDefined) {
- *         // 2. Append input to the buffer
- *         buffer.append(current.get)
- *
- *         // 3. Check if the entry is known
- *         assert(dict.length == DICTIONARY_SIZE)
- *         val index = findIndex(dict, nextIndex, buffer)
- *
- *         if (index.isEmpty) {
- *           // 5a. Restore previous buffer
- *           buffer.dropLast()
- *
- *           // 5b. Output the current codeword
- *           val index2 = findIndex(dict, nextIndex, buffer)
- *           // By construction, the index will be found but this fact is not proven so we have to check for it
- *           if (index2.isEmpty || !outputCodeword(index2.get, fos))
- *             abort = true
- *
- *           // 5c. Insert the extended codeword in the dictionary
- *           buffer.append(current.get)
- *           nextIndex = insertWord(nextIndex, buffer, dict)
- *
- *           // 5d. Prepare buffer for next round
- *           buffer.clear()
- *           buffer.append(current.get)
- *         }
- *         // else: 4. Noop
- *
- *         // Gracefully exit if we cannot encode the next byte
- *         if (buffer.isFull || nextIndex == dict.length)
- *           abort = true
- *
- *         // 6. Read next char for next while loop iteration
- *         current = readByte(fis)
- *       }
- *     ) invariant {
- *       (!abort ==> (buffer.notFull && nextIndex < dict.length)) &&
- *       dict.length == DICTIONARY_SIZE &&
- *       0 <= nextIndex && nextIndex <= dict.length &&
- *       allValidBuffer(dict)
- *     }
- *
- *     // 7. Process the remaining buffer, if any
- *     if (!abort && buffer.nonEmpty) {
- *       assert(dict.length == DICTIONARY_SIZE)
- *       val index = findIndex(dict, nextIndex, buffer)
- *       // Either at step 3 the buffer was:
- *       //  - found in the dictionary and the buffer was not altered (we just read EOF), or
- *       //  - not found in the dictionary and therefore the buffer now contains only one character.
- *       assert(index.isDefined)
- *
- *       if (!outputCodeword(index.get, fos))
- *         abort = true
- *     }
- *
- *     !abort
- *   }
- */
-
-  // Read the given input file `fis`, decode its content, save the decoded
-  // version into `fos`, and return true on success.
-  //
-  // The algorithm is:
-  //  0a. init the dictionary to support the full input alphabet
-  //  0b. create a buffer, w
-  //  1.  read the next codeword c
-  //  2a. if not EOF:
-  //  2b.   append c to w
-  //  2c.   output c
-  //  2d.   read the next codeword c
-  //  3.  if EOF stop
-  //  4a.  if c is in dictionary (i.e. c < |dict|), set entry to the corresponding value
-  //  4b.  else if c == |dict|, set entry to w, then append the first character of w to entry
-  //  4c.  else abort (decoding error)
-  //  5.  output entry
-  //  6a. set tmp to w and then append the first character of entry to tmp
-  //  6b. add tmp at the end of the dictionary
-  //  7.  set w to entry
-  //  8.  goto 4 if more codewords available
-/*
- *   def decode(fis: FIS, fos: FOS)(implicit state: leon.io.State): Boolean = {
- *     require(fis.isOpen && fos.isOpen)
- *
- *     // 0a. Init dictionary with all basic range
- *     val (dict, idx) = initDictionary()
- *     var nextIndex = idx
- *
- *     // 0b. Create an empty buffer
- *     val w = createBuffer()
- *
- *     // 1. Read the next input
- *     // TODO we need to be able to read Byte!
- *     var c = readCodeword(fis)
- *
- *     // We cannot use `return` to shortcircuit the function and do an early exit,
- *     // so we keep an abort boolean and use if-statements to wrap actions.
- *     var abort = false
- *
- *     // 2a-2d: process the first codeword
- *     if (c != EOF) {
- *       w.append(c)
- *       abort = !outputBuffer(w, fos)
- *       c = readCodeword(fis)
- *     }
- *
- *     // Process the remaining codewords
- *     while (!abort && c != EOF) {
- *       // 4a-4c: process current codeword
- *       val entry = createBuffer()
- *       if (c < nextIndex) {
- *         entry.set(dict(c))
- *       } else if (c == nextIndex) {
- *         entry.set(w)
- *         entry.append(w(0))
- *       } else {
- *         abort = true
- *       }
- *
- *       // Make sure we haven't used the full buffer w or we won't be able to append something;
- *       // Gracefully exit if we cannot decode the next codeword;
- *       // 5. output the current entry
- *       abort = abort || w.isFull || nextIndex == dict.length || !outputBuffer(entry, fos)
- *
- *       if (!abort) {
- *         // 6a-6b. augment the dictionary
- *         val tmp = createBuffer()
- *         tmp.set(w)
- *         tmp.append(entry(0))
- *         nextIndex = insertWord(nextIndex, tmp, dict)
- *
- *         // 7. prepare for next codeword
- *         w.set(entry)
- *
- *         // 8. if more codewords available, process them
- *         c = readCodeword(fis)
- *       }
- *     }
- *
- *     // Add EOF marker
- *     abort = abort || !fos.write(EOF)
- *
- *     !abort
- *   }
- */
-
-  /*
-   * def outputCodeword(index: Int, fos: FOS)(implicit state: leon.io.State): Boolean = {
-   *   require(fos.isOpen)
-   *   val b2 = index.toByte
-   *   val b1 = (index >>> 8).toByte
-   *   fos.write(b1) && fos.write(b2)
-   * }
-   */
-
-/*
- *   def outputBuffer(b: Buffer, fos: FOS)(implicit state: leon.io.State): Boolean = {
- *     require(fos.isOpen)
- *
- *     var i = 0
- *     var success = true
- *
- *     while (success && i < b.length) {
- *       success = fos.write(b(i)) && fos.write(" ")
- *       i = i + 1
- *     }
- *
- *     success
- *   }
- */
-
-  // TODO wrap dictionary into a class?
-
-  // Init the dictionary with the range of Byte and return the next free index in the dictionary
-/*
- *   @inline
- *   def initDictionary(): (Array[Buffer], Int) = {
- *     val dict = Array.fill(DICTIONARY_SIZE) { createBuffer() }
- *     assert(dict.length == DICTIONARY_SIZE)
- *     assert(allValidBuffer(dict))
- *     // assert(arrayForall(dict, { buffer: Buffer => buffer.isEmpty && buffer.notFull })) // not supported???
- *
- *     var index = 0
- *     var value: Int = Byte.MinValue // Use an Int to avoid overflow issues
- *
- *     (while (value <= Byte.MaxValue) {
- *       assert(Byte.MinValue <= value && value <= Byte.MaxValue)
- *       assert(dict(index).notFull) // this fails for some reason
- *       dict(index).append(value.toByte) // safe conversion, no loss of information
- *
- *       index += 1
- *       value += 1 // last iteration would overflow on Byte but not on Int
- *     }) invariant {
- *       value >= Byte.MinValue && value <= Byte.MaxValue + 1 &&
- *       index >= 0 && index <= DICTIONARY_SIZE &&
- *       index == value + -Byte.MinValue && // they increment at the same speed
- *       dict.length == DICTIONARY_SIZE &&
- *       allValidBuffer(dict)
- *     }
- *
- *     (dict, index)
- *   } ensuring { res => allValidBuffer(res._1) && res._2 == ALPHABET_SIZE }
- */
-
-  // Attempt to find `buffer` in the given `dict`.
-/*
- *   def findIndex(dict: Array[Buffer], dictSize: Int, buffer: Buffer): Option[Int] = {
- *     require(dict.length == DICTIONARY_SIZE && 0 <= dictSize && dictSize <= dict.length && allValidBuffer(dict))
- *
- *     var idx = 0
- *     var found = false
- *
- *     (while (!found && idx < dictSize) {
- *       found = dict(idx).isEqual(buffer)
- *       // idx = idx + 1 // buggy!!! increement only when not found!, counter example was found!!!
- *       if (!found)
- *         idx += 1
- *     }) ensuring {
- *       idx >= 0 && idx <= dictSize
- *     }
- *
- *     if (found) Some[Int](idx) else None[Int]()
- *   } ensuring { res =>
- *     // (res.isDefined == arrayExists(dict, 0, dictSize - 1, { elem: Buffer => elem.isEqual(buffer) })) && // Not supported???
- *     (res.isDefined ==> dict(res.get).isEqual(buffer)) &&
- *     dict.length == DICTIONARY_SIZE
- *   }
- *
- */
-  // Insert a given word (`buffer`) into `dict` at the given `index` and return the next index
-/*
- *   def insertWord(index: Int, buffer: Buffer, dict: Array[Buffer]): Int = {
- *     require(0 <= index && index < dict.length && dict.length == DICTIONARY_SIZE && allValidBuffer(dict))
- *
- *     dict(index).set(buffer)
- *     index + 1
- *   } ensuring { res =>
- *     0 < res && res <= dict.length &&
- *     dict.length == DICTIONARY_SIZE
- *   }
- */
 
   def tryReadNext(fis: FIS)(implicit state: leon.io.State): Option[Byte] = {
     require(fis.isOpen)
@@ -651,7 +339,6 @@ object LZW {
 
     success
   }
-
 
   case class CodeWord(b1: Byte, b2: Byte) // a 16-bit code word
 
@@ -934,7 +621,6 @@ object LZW {
     }) invariant {
       true
     }
-
 
     !illegalInput && !ioError && !bufferFull
   }
