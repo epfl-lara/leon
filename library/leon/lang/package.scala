@@ -49,7 +49,7 @@ package object lang {
   def error[T](reason: java.lang.String): T = sys.error(reason)
 
   @ignore
-  def old[T](value: T): T = value
+  def old[T](value: T): T = sys.error("Can't execute old annotation")
 
   @ignore
   implicit class Passes[A,B](io : (A,B)) {
