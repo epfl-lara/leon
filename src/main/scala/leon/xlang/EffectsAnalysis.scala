@@ -47,7 +47,7 @@ import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
   * TODO: maybe we could have "conditional effects", effects depending on the effects of the lambda.
   *
   * The EffectsAnalysis also provides functions to analyze the the mutability of a type and expression.
-  * The isMutableType function need to perform a graph traversal (explore all the fields recursively
+  * The isMutableType function needs to perform a graph traversal (explore all the fields recursively
   * to find if one is mutable)
   *
   * Throughout the code, we assume that there is no aliasing. This is the global assumption made
@@ -64,11 +64,15 @@ class EffectsAnalysis {
 
   //for each fundef, the set of modified params (by index)
   //once set, the value is final and won't be modified further
-  private val cachedEffects: MutableMap[FunDef, Set[Int]] = MutableMap.empty
+  private val cachedEffects: MutableMap[FunDef, Set[Identifier]] = MutableMap.empty
 
-  def apply(fd: FunDef): Set[Int] = cachedEffects.getOrElseUpdate(fd, {
-    effectsAnalysis(fd)
-  })
+  //TODO: should return a set of ids (to support local fundef)
+  def apply(fd: FunDef): Set[Int] = {
+    val tmp = cachedEffects.getOrElseUpdate(fd, {
+      effectsAnalysis(fd)
+    })
+    effectsIndices(fd, tmp)
+  }
 
   /** Return all effects of expr
     *
@@ -86,11 +90,11 @@ class EffectsAnalysis {
   def apply(expr: Expr): Set[Identifier] = {
     val fds: Set[FunDef] = dependencies(expr).collect{ case (fd: FunDef) => fd }
     for(fd <- fds) effectsAnalysis(fd)
-    val fdsEffects: Map[FunDef, Set[Identifier]] = cachedEffects.map{ case (fd, idx) => {
-      val ids = idx.map(i => fd.params(i).id)
-      (fd, ids)
-    }}.toMap
-    currentEffects(expr, fdsEffects)
+    //val fdsEffects: Map[FunDef, Set[Identifier]] = cachedEffects.map{ case (fd, idx) => {
+    //  val ids = idx.map(i => fd.params(i).id)
+    //  (fd, ids)
+    //}}.toMap
+    currentEffects(expr, cachedEffects.toMap)
   }
 
 
@@ -172,16 +176,18 @@ class EffectsAnalysis {
     val allCalls: Set[FunctionInvocation] = functionCallsOf(expr)
 
     val secondLevelMutated: Set[Identifier] = 
-      allCalls.foldLeft(Set[Identifier]())((totalEffects, fi) =>
-        totalEffects ++ freeVars.intersect(invocationCurrentEffects(fi, fdsEffects))
-      )
+      allCalls.foldLeft(Set[Identifier]())((totalEffects, fi) => {
+        val fdCurrentEffects: Set[Identifier] = fdsEffects.getOrElse(fi.tfd.fd, Set())
+        val invocEffects = invocationCurrentEffects(fi, fdCurrentEffects)
+        val effectsOnLocalFreeVars = effectsFreeVars(fi.tfd.fd, fdCurrentEffects)
+        totalEffects ++ freeVars.intersect(invocEffects) ++ effectsOnLocalFreeVars
+      })
 
     firstLevelMutated ++ secondLevelMutated
   }
 
-  private def invocationCurrentEffects(fi: FunctionInvocation, fdsEffects: Map[FunDef, Set[Identifier]]): Set[Identifier] = {
-    val functionEffects: Set[Identifier] = fdsEffects.get(fi.tfd.fd).getOrElse(Set())
-    val res = functionEffects.flatMap(id =>
+  private def invocationCurrentEffects(fi: FunctionInvocation, fdCurrentEffects: Set[Identifier]): Set[Identifier] = {
+    val res = fdCurrentEffects.flatMap(id =>
       findArgumentForParam(fi, id) match {
         case Some(arg) => findReferencedIds(arg)
         case None => Set(id) //this id is captured from scope and not an actual function parameter
@@ -193,19 +199,19 @@ class EffectsAnalysis {
 
   //return the set of modified variables arguments to a function invocation,
   //given the effect of the fun def invoked.
-  private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Set[Identifier] = {
-    fi.args.zipWithIndex.filter(p => effects.contains(p._2)).flatMap{ case (arg, _) => {
-      findReferencedIds(arg)
-    }}.toSet
+  //private def functionInvocationEffects(fi: FunctionInvocation, effects: Set[Int]): Set[Identifier] = {
+  //  fi.args.zipWithIndex.filter(p => effects.contains(p._2)).flatMap{ case (arg, _) => {
+  //    findReferencedIds(arg)
+  //  }}.toSet
 
-    //.map(arg => findReferencedIds(arg)).zipWithIndex.
-    //
-    //flatMap{ case (ids, i) =>
-    //  if(effects.contains(i)) 
-    //  case (ids, i) if effects.contains(i) => ids
-    //  case _ => Set[Identifier]()
-    //}
-  }
+  //  //.map(arg => findReferencedIds(arg)).zipWithIndex.
+  //  //
+  //  //flatMap{ case (ids, i) =>
+  //  //  if(effects.contains(i)) 
+  //  //  case (ids, i) if effects.contains(i) => ids
+  //  //  case _ => Set[Identifier]()
+  //  //}
+  //}
 
   /*
    * compute effects for each function that from depends on, including any nested
@@ -213,13 +219,13 @@ class EffectsAnalysis {
    * While computing effects for from, it might have to compute transitive effects
    * of dependencies. It will update the global effects map while doing so.
    */
-  private def effectsAnalysis(from: FunDef): Set[Int] = {
+  private def effectsAnalysis(from: FunDef): Set[Identifier] = {
 
     //all the FunDef to consider to compute the effects of from
     val fds: Set[FunDef] = dependencies(from).collect{ case (fd: FunDef) => fd } + from
 
     //currently computed effects (incremental)
-    var effects: Map[FunDef, Set[Int]] = Map()//cachedEffects.filterKeys(fds.contains)
+    var effects: Map[FunDef, Set[Identifier]] = Map()//cachedEffects.filterKeys(fds.contains)
     //missing dependencies for a function for its effects to be complete
     var missingEffects: Map[FunDef, Set[FunctionInvocation]] = Map()
 
@@ -236,14 +242,17 @@ class EffectsAnalysis {
             case None =>
               effects += (fd -> Set())
             case Some(body) => {
-              val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
-              val localAliases: Map[ValDef, Set[Identifier]] = mutableParams.map(vd => (vd, computeLocalAliases(vd.id, body))).toMap
-              val mutatedParams = mutableParams.filter(vd => exists(expr => localAliases(vd).exists(id => isMutationOf(expr, id)))(body))
-              val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
-                case (vd, i) if mutatedParams.contains(vd) => Some(i)
-                case _ => None
-              }.toSet
-              effects = effects + (fd -> mutatedParamsIndices)
+              //val mutableParams = fd.params.filter(vd => isMutableType(vd.getType))
+              //val localAliases: Map[ValDef, Set[Identifier]] = mutableParams.map(vd => (vd, computeLocalAliases(vd.id, body))).toMap
+              //val mutatedParams = mutableParams.filter(vd => exists(expr => localAliases(vd).exists(id => isMutationOf(expr, id)))(body))
+              //val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
+              //  case (vd, i) if mutatedParams.contains(vd) => Some(i)
+              //  case _ => None
+              //}.toSet
+              //effects = effects + (fd -> mutatedParamsIndices)
+
+              val baseEffects = currentEffects(body, Map())
+              effects = effects + (fd -> baseEffects)
 
               val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
               if(missingCalls.nonEmpty)
@@ -259,12 +268,15 @@ class EffectsAnalysis {
       for{ (fd, calls) <- missingEffects } {
         var newMissingCalls: Set[FunctionInvocation] = calls
         for(fi <- calls) {
-          val mutatedArgs = invocEffects(fi)
-          val mutatedFunParams: Set[Int] = fd.params.zipWithIndex.flatMap{
-            case (vd, i) if mutatedArgs.contains(vd.id) => Some(i)
-            case _ => None
-          }.toSet
-          effects += (fd -> (effects(fd) ++ mutatedFunParams))
+          //val mutatedIds = invocEffects(fi)
+          //val mutatedFunParams: Set[Int] = fd.params.zipWithIndex.flatMap{
+          //  case (vd, i) if mutatedArgs.contains(vd.id) => Some(i)
+          //  case _ => None
+          //}.toSet
+          //effects += (fd -> (effects(fd) ++ mutatedFunParams))
+          //effects += (fd -> (effects(fd) ++ invocationCurrentEffects(fi, effects)))
+
+          effects += (fd -> currentEffects(fd.body.get, effects))
 
           if(effectsFullyComputed(fi.tfd.fd)) {
             newMissingCalls -= fi
@@ -281,12 +293,12 @@ class EffectsAnalysis {
       }
     }
 
-    def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
-      //TODO: the require should be fine once we consider nested functions as well
-      //require(effects.isDefinedAt(fi.tfd.fd)
-      val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
-      functionInvocationEffects(fi, mutatedParams).toSet
-    }
+    //def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
+    //  //TODO: the require should be fine once we consider nested functions as well
+    //  //require(effects.isDefinedAt(fi.tfd.fd)
+    //  val mutatedIds: Set[Identifier] = effects.get(fi.tfd.fd).getOrElse(Set())
+    //  functionInvocationEffects(fi, mutatedIds).toSet
+    //}
 
     rec()
 
@@ -333,5 +345,22 @@ class EffectsAnalysis {
   //  case ArraySelect(a, _) => findReceiverId(a)
   //  case _ => None
   //}
+
+  //TODO: as we are clarifying the notion of effects on functions/expression, we probably
+  //should use a structure such as a pair of Set[Int] and Set[Identifier] to represent
+  //effects
+
+  //returns the set of indices (from its parameters) that the fun def modified, given
+  //the set of identifiers that the fun def modifies. It might lose some information
+  //such as closure mutating a local variable
+  private def effectsIndices(fd: FunDef, ids: Set[Identifier]): Set[Int] = {
+    ids.map(id => fd.params.indexWhere(_.id == id)).filter(_ != -1)
+  }
+
+  //returns the set of identifier that are captured and have side-effects (closure
+  //modifying local vars). This will subtract the set of parameters that have effects
+  private def effectsFreeVars(fd: FunDef, ids: Set[Identifier]): Set[Identifier] = {
+    ids -- fd.params.map(_.id)
+  }
 
 }

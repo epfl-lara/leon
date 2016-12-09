@@ -143,4 +143,22 @@ class EffectsAnalysisSuite extends FunSuite with helpers.ExpressionsDSL {
     val effects = new EffectsAnalysis
     assert(effects(mfd2) === Set(0))
   }
+
+
+  test("Assignment has effect on local variable being assigned") {
+    val effects = new EffectsAnalysis
+    assert(effects(Assignment(x.id, bi(42))) === Set(x.id))
+    assert(effects(Assignment(x.id, y)) === Set(x.id))
+  }
+  test("Assignment has no effect if variable isn't free") {
+    val x = FreshIdentifier("x", IntegerType)
+    val effects = new EffectsAnalysis
+    assert(effects(LetVar(x, bi(10), Assignment(x, bi(42)))) === Set())
+  }
+  test("Block can have multiple effects") {
+    val effects = new EffectsAnalysis
+    assert(effects(Block(Seq(Assignment(x.id, bi(42))), Assignment(y.id, bi(12)))) === Set(x.id, y.id))
+  }
+
+  //TODO: should test that a fun def can have effects on local captured variables
 }

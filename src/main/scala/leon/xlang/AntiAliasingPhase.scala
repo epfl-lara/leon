@@ -165,7 +165,6 @@ object AntiAliasingPhase extends TransformationPhase {
   private def updateBody(fd: FunDef, effects: EffectsAnalysis, updatedFunDefs: Map[FunDef, FunDef], 
                          varsInScope: Map[FunDef, Set[Identifier]])
                         (ctx: LeonContext): Unit = {
-    //println("updating: " + fd)
 
     val ownEffects = effects(fd)
     val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
@@ -381,7 +380,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
         //we need to replace local fundef by the new updated fun defs.
         case l@LetDef(fds, body) => {
-          //this might be traversed several time in case of doubly nested fundef,
+          //this might be traversed several times in case of doubly nested fundef,
           //so we need to ignore the second times by checking if updatedFunDefs 
           //contains a mapping or not
           val nfds = fds.map(fd => updatedFunDefs.get(fd).getOrElse(fd))
