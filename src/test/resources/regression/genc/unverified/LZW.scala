@@ -35,7 +35,7 @@ object LZW {
     DictionarySize >= AlphabetSize &&
     BufferSize > 0 &&
     AlphabetSize > 0 &&
-    DictionarySize <= 1000000
+    DictionarySize <= 65536 // Cannot encode more index using only 16-bit codewords
   }.holds
 
   private def lemmaBufferFull(b: Buffer): Boolean = {
@@ -224,7 +224,9 @@ object LZW {
       else { isEmpty || isRangeEqual(array, b.array, 0, length - 1) }
     } //ensuring { _ => this.isEqual(old(this)) && b.isEqual(old(b)) } // this VC does infinite recursion
 
-    def size = length
+    def size = {
+      length
+    } ensuring { res => 0 <= res && res <= capacity }
 
     def apply(index: Int): Byte = {
       require(index >= 0 && index < length)
@@ -377,7 +379,7 @@ object LZW {
     def lastIndex = {
       require(nonEmpty)
       nextIndex - 1
-    }
+    } ensuring { res => 0 <= res && res < capacity }
 
     def contains(index: Int): Boolean = {
       require(0 <= index)
@@ -389,7 +391,8 @@ object LZW {
 
       val size = buffers(index).size
 
-      if (buffer.size + size <= buffer.capacity) {
+      assert(buffer.capacity == BufferSize)
+      if (buffer.size < buffer.capacity - size) {
         assert(buffer.nonFull)
 
         var i = 0
@@ -619,7 +622,7 @@ object LZW {
 
       currentOpt = tryReadCodeWord(fis)
     }) invariant {
-      true
+      dictionary.nonEmpty
     }
 
     !illegalInput && !ioError && !bufferFull
