@@ -22,7 +22,10 @@ object LZW {
 
   // We limit the size of the dictionary to an arbitrary size, less than or equals to 2^16.
   @inline
-  val DictionarySize = 4096
+  val DictionarySize = 8192 // number of buffers in the dictionary
+
+  @inline
+  val DictionaryMemorySize = 524288 // DictionarySize * BufferSize
 
   // We use fix-sized buffers
   @inline
@@ -200,6 +203,20 @@ object LZW {
     rec(0)
   }
 
+  def allInRange(xs: Array[Int], min: Int, max: Int): Boolean = {
+    require(min <= max)
+
+    def rec(index: Int): Boolean = {
+      require(0 <= index && index <= xs.length)
+      if (xs.length == index) true
+      else {
+        min <= xs(index) && xs(index) <= max && rec(index + 1)
+      }
+    }
+
+    rec(0)
+  }
+
 
   // A buffer representation using a fix-sized array for memory.
   //
@@ -222,6 +239,26 @@ object LZW {
       if (b.length != length) false
       else { isEmpty || areRangesEqual(array, b.array, 0, length - 1) }
     } //ensuring { _ => this.isEqual(old(this)) && b.isEqual(old(b)) } // this VC does infinite recursion
+
+    def isRangeEqual(other: Array[Byte], otherStart: Int, otherSize: Int): Boolean = {
+      require(0 <= otherStart && 0 <= otherSize && otherSize <= other.length && otherStart <= other.length - otherSize)
+      if (size != otherSize) false
+      else if (isEmpty) true
+      else {
+        var i = 0
+        var equal = true
+
+        (while (equal && i < size) {
+          equal = (other(otherStart + i) == array(i))
+          i += 1
+        }) invariant (
+          0 <= i && i <= size &&
+          otherStart + i <= other.length
+        )
+
+        equal
+      }
+    }
 
     def size = {
       length
@@ -260,25 +297,31 @@ object LZW {
 
       length = b.length
 
-      assert(b.isValid)
-      assert(isValid)
-      assert(nonEmpty)
-      assert(length == b.length)
+      /*
+       * assert(b.isValid)
+       * assert(isValid)
+       * assert(nonEmpty)
+       * assert(length == b.length)
+       */
 
       var i = 0
       (while (i < length) {
-        assert(isValid)
-        assert(nonEmpty)
-        assert(length == b.length)
-        assert(i > 0 ==> isRangeEqual(array, b.array, 0, i - 1))
+        /*
+         * assert(isValid)
+         * assert(nonEmpty)
+         * assert(length == b.length)
+         * assert(i > 0 ==> areRangesEqual(array, b.array, 0, i - 1))
+         */
 
         array(i) = b.array(i)
         i += 1
 
-        assert(isValid)
-        assert(nonEmpty)
-        assert(length == b.length)
-        assert(i > 0 ==> isRangeEqual(array, b.array, 0, i - 1))
+        /*
+         * assert(isValid)
+         * assert(nonEmpty)
+         * assert(length == b.length)
+         * assert(i > 0 ==> areRangesEqual(array, b.array, 0, i - 1))
+         */
       }) invariant { // FIXME TIMEOUT
         0 <= i && i <= length &&
         // lengthCheckpoint == b.length && lengthCheckpoint == length && // no mutation of the length
@@ -287,12 +330,14 @@ object LZW {
         (i > 0 ==> areRangesEqual(array, b.array, 0, i - 1)) // avoid OutOfBoundAccess
       }
 
-      assert(b.isValid)
-      assert(isValid)
-      assert(nonEmpty)
-      assert(isRangeEqual(array, b.array, 0, length - 1))
-      assert(length == b.length)
-      assert(isEqual(b))
+      /*
+       * assert(b.isValid)
+       * assert(isValid)
+       * assert(nonEmpty)
+       * assert(areRangesEqual(array, b.array, 0, length - 1))
+       * assert(length == b.length)
+       * assert(isEqual(b))
+       */
     } ensuring { _ => b.isValid && isValid && nonEmpty && isEqual(b) /* && b.isEqual(old(b)) */ }
 
   }
@@ -361,19 +406,49 @@ object LZW {
   } ensuring { res => 0 <= res && res < 65536 }
 
 
-  case class Dictionary(private val buffers: Array[Buffer], private var nextIndex: Int) {
-    val capacity = buffers.length
-    require(isValid)
+  case class Dictionary(private val memory: Array[Byte], private val pteps: Array[Int], private var nextIndex: Int) {
+    // NOTE `pteps` stands for Past The End PointerS. It holds the address in `memory` for the next buffer.
+    //
+    //      By construction, for any index > 0, the begining of the buffer is stored in pteps[index - 1].
+    //
+    //      It therefore holds that the length of the buffer at the given `index` is pteps[index] - pteps[index - 1]
+    //      for index > 0, and pteps[0] for index == 0.
 
-    def isValid = 0 <= nextIndex && nextIndex <= capacity && capacity == DictionarySize && allValidBuffers(buffers)
+    val capacity = pteps.length
+    require(
+      capacity == DictionarySize &&
+      memory.length == DictionaryMemorySize &&
+      allInRange(pteps, 0, DictionaryMemorySize) &&
+      0 <= nextIndex && nextIndex <= capacity
+    )
 
     def isEmpty = nextIndex == 0
 
     def nonEmpty = !isEmpty
 
-    def isFull = nextIndex == capacity
+    def isFull = !nonFull
 
-    def nonFull = nextIndex < capacity
+    def nonFull = {
+      nextIndex < capacity && (nextIndex == 0 || (memory.length - pteps(nextIndex - 1) >= BufferSize))
+    }
+
+    private def getBufferBeginning(index: Int): Int = {
+      require(0 <= index && contains(index))
+      if (index == 0) 0
+      else pteps(index - 1)
+    } ensuring { res => 0 <= res && res < DictionaryMemorySize }
+
+    private def getNextBufferBeginning(): Int = {
+      require(nonFull) // less equirements than getBufferBeginning
+      if (nextIndex == 0) 0
+      else pteps(nextIndex - 1)
+    } ensuring { res => 0 <= res && res < DictionaryMemorySize }
+
+    private def getBufferSize(index: Int): Int = {
+      require(0 <= index && contains(index))
+      if (index == 0) pteps(0)
+      else pteps(index) - pteps(index - 1)
+    } ensuring { res => 0 <= res && res <= BufferSize }
 
     def lastIndex = {
       require(nonEmpty)
@@ -388,7 +463,8 @@ object LZW {
     def appendTo(index: Int, buffer: Buffer): Boolean = {
       require(0 <= index && contains(index))
 
-      val size = buffers(index).size
+      val size  = getBufferSize(index)
+      val start = getBufferBeginning(index)
 
       assert(buffer.capacity == BufferSize)
       if (buffer.size < buffer.capacity - size) {
@@ -396,12 +472,13 @@ object LZW {
 
         var i = 0
         (while (i < size) {
-          buffer.append(buffers(index)(i))
+          buffer.append(memory(start + i))
           i += 1
-        }) invariant {
+        }) invariant (
           0 <= i && i <= size &&
+          0 <= start && start < DictionaryMemorySize &&
           (i < size ==> buffer.nonFull)
-        }
+        )
 
         true
       } else false
@@ -410,51 +487,49 @@ object LZW {
     def insert(b: Buffer): Unit = {
       require(nonFull && b.nonEmpty)
 
-      assert(lemmaSize)
-      assert(isValid)
-      assert(nonFull)
-      assert(nextIndex < capacity)
-      assert(nextIndex < DictionarySize)
-      assert(nextIndex + 1 <= DictionarySize)
+      val start = getNextBufferBeginning()
 
-      buffers(nextIndex).set(b) // FIXME TIMEOUT (?)
+      var i = 0
+      (while (i < b.size) {
+        memory(start + i) = b(i)
+        i += 1
+      }) invariant (
+        0 <= i && i <= b.size &&
+        0 <= start && start < DictionaryMemorySize
+      )
 
-      assert(lemmaSize)
-      assert(isValid) // FIXME TIMEOUT
-      assert(nonFull) // FIXME TIMEOUT
-      assert(nextIndex < capacity) // FIXME TIMEOUT
-      assert(nextIndex < DictionarySize) // FIXME TIMEOUT
-      assert(nextIndex + 1 <= DictionarySize) // FIXME TIMEOUT
+      pteps(nextIndex) = start + i
 
-      nextIndex += 1 // FIXME TIMEOUT
-    } ensuring { _ => isValid } // FIXME TIMEOUT
+      nextIndex += 1
+    }
 
     def encode(b: Buffer): Option[CodeWord] = {
       require(b.nonEmpty)
 
       var found = false
-      var i = 0
+      var index = 0
 
-      (while (!found && i < nextIndex) {
-        if (buffers(i).isEqual(b)) {
+      while (!found && index < nextIndex) {
+        val start = getBufferBeginning(index)
+        val size  = getBufferSize(index)
+
+        if (b.isRangeEqual(memory, start, size)) {
           found = true
         } else {
-          i += 1
+          index += 1
         }
-      }) invariant {
-        0 <= i && i <= nextIndex && i <= capacity &&
-        isValid &&
-        (found ==> (i < nextIndex && buffers(i).isEqual(b)))
       }
 
-      if (found) Some(index2CodeWord(i)) else None()
+      if (found) Some(index2CodeWord(index)) else None()
     }
   }
 
   @inline // in order to "return" the arrays
   def createDictionary() = {
-    Dictionary(Array.fill(DictionarySize){ createBuffer() }, 0)
+    // Dictionary(Array.fill(DictionarySize){ createBuffer() }, 0)
+    Dictionary(Array.fill(DictionaryMemorySize)(0), Array.fill(DictionarySize)(0), 0)
   } ensuring { res => res.isEmpty }
+
 
   def initialise(dict: Dictionary): Unit = {
     require(dict.isEmpty) // initialise only fresh dictionaries
@@ -474,7 +549,7 @@ object LZW {
       buffer.isEmpty &&
       value >= Byte.MinValue && value <= Byte.MaxValue + 1 // last iteration goes "overflow" on Byte
     }
-  } ensuring { _ => dict.isValid && dict.nonEmpty }
+  } ensuring { _ => /*dict.isValid &&*/ dict.nonEmpty }
 
   def encode(fis: FIS, fos: FOS)(implicit state: leon.io.State): Boolean = {
     require(fis.isOpen && fos.isOpen)
@@ -626,6 +701,8 @@ object LZW {
 
     !illegalInput && !ioError && !bufferFull
   }
+
+
   sealed abstract class Status
   case class Success()     extends Status
   case class OpenError()   extends Status
