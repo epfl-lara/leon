@@ -100,7 +100,7 @@ object CAST { // C Abstract Syntax Tree
   case class Decl(id: Id, typ: Type) extends Expr
 
   case class DeclInit(id: Id, typ: Type, value: Expr) extends Expr {
-    require(value.isValue && !value.isReference)
+    require(value.isValue)
   }
 
   case class DeclArrayStatic(id: Id, base: Type, length: Int, values: Seq[Expr]) extends Expr {
