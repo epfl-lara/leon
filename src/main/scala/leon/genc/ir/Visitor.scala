@@ -76,7 +76,10 @@ abstract class Visitor[S <: IR](final val ir: S) {
     (alloc: @unchecked) match {
       case ArrayAllocStatic(arrayType, length, values) =>
         rec(arrayType)
-        values foreach rec
+        values match {
+          case Right(values) => values foreach rec
+          case _ =>
+        }
 
       case ArrayAllocVLA(arrayType, length, valueInit) =>
         rec(arrayType)

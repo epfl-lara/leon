@@ -124,17 +124,26 @@ private[genc] sealed trait IR { ir =>
     val typ: ArrayType
   }
 
-  def check(t: Tree)(valid: Boolean) { if (!valid) sys.error(s"Invalid $t") }
+  // For optimisation of ArrayAllocStatic: avoid processing useless bits in GenC to speed up things for big arrays.
+  case object Zero
 
   // Allocate an array with a compile-time size
-  case class ArrayAllocStatic(typ: ArrayType, length: Int, values: Seq[Expr]) extends ArrayAlloc {
-    check(this)(
-      // The type of the values should match the type of the array elements
-      (values forall { _.getType <= typ.base }) &&
-      // The number of values should match the array size
-      (length == values.length) &&
-      // And empty arrays are forbidden
-      (length > 0)
+  case class ArrayAllocStatic(typ: ArrayType, length: Int, values: Either[Zero.type, Seq[Expr]]) extends ArrayAlloc {
+    require(
+      values match {
+        case Left(z) =>
+          // No empty array
+          (length > 0) &&
+          typ.base.isIntegral
+
+        case Right(values) =>
+          // The type of the values should match the type of the array elements
+          (values forall { _.getType <= typ.base }) &&
+          // The number of values should match the array size
+          (length == values.length) &&
+          // And empty arrays are forbidden
+          (length > 0)
+      }
     )
   }
 

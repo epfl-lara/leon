@@ -39,11 +39,16 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
       val vd = rec(vd0)
 
       val (preAlloc, alloc) = alloc0 match {
-        case ArrayAllocStatic(typ, length, values0) =>
+        case ArrayAllocStatic(typ, length, Right(values0)) =>
           val (preValues, values) = flattenArgs(values0)
-          val alloc = to.ArrayAllocStatic(recAT(typ), length, values)
+          val alloc = to.ArrayAllocStatic(recAT(typ), length, Right(values))
 
           preValues -> alloc
+
+        case ArrayAllocStatic(typ, length, Left(_)) =>
+          val alloc = to.ArrayAllocStatic(recAT(typ), length, Left(to.Zero))
+
+          Seq.empty -> alloc
 
         case ArrayAllocVLA(typ, length0, valueInit0) =>
           // Here it's fine to do two independent normalisations because there will be a

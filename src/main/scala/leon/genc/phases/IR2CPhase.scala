@@ -130,9 +130,20 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
 
     case Decl(vd) => C.Decl(rec(vd.id), rec(vd.getType))
 
-    case DeclInit(vd, ArrayInit(ArrayAllocStatic(arrayType, length, values))) =>
+    case DeclInit(vd, ArrayInit(ArrayAllocStatic(arrayType, length, values0))) =>
       val bufferId = C.FreshId("buffer")
-      val bufferDecl = C.DeclArrayStatic(bufferId, rec(arrayType.base), length, values map rec)
+      val values = values0 match {
+        case Right(values0) => values0 map rec
+        case Left(_) =>
+          // By default, 0-initialisation using only zero value
+          val z = arrayType.base match {
+            case PrimitiveType(Int8Type) => Int8Lit(0)
+            case PrimitiveType(Int32Type) => Int32Lit(0)
+            case _ => internalError(s"Unexpected integral type $arrayType")
+          }
+          Seq(C.Lit(z))
+      }
+      val bufferDecl = C.DeclArrayStatic(bufferId, rec(arrayType.base), length, values)
       val data = C.Binding(bufferId)
       val len = C.Lit(Int32Lit(length))
       val array = array2Struct(arrayType)

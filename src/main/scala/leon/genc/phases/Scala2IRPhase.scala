@@ -565,7 +565,11 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       // Convert to VLA or normal array
       val alloc = rec(length0) match {
         case CIR.Lit(L.Int32Lit(length)) =>
-          val values = (0 until length) map { _ => rec(freshen(value0)) } // the same expression, != same runtime value
+          // Optimisation for zero: don't generate values at all to speed up processing within GenC.
+          val values = value0 match {
+            case IntLiteral(0) | ByteLiteral(0) => Left(CIR.Zero)
+            case value0 => Right((0 until length) map { _ => rec(freshen(value0)) }) // the same expression, != same runtime value
+          }
           CIR.ArrayAllocStatic(arrayType, length, values)
 
         case length =>
@@ -594,7 +598,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       if (values exists { _.getType != arrayType.base })
         fatalError("Heterogenous arrays", array.getPos)
 
-      val alloc = CIR.ArrayAllocStatic(arrayType, values.length, values)
+      val alloc = CIR.ArrayAllocStatic(arrayType, values.length, Right(values))
       CIR.ArrayInit(alloc)
 
     case IfExpr(cond, thenn, NoTree(_)) => CIR.If(rec(cond), rec(thenn))
