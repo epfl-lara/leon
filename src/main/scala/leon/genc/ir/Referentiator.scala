@@ -188,7 +188,7 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
       val lhs1 = rec(lhs0)
       val rhs1 = rec(rhs0)
 
-      // Prevent normalisation variable to code a mutable variable; keep pointers!
+      // Prevent normalisation variable to copy a mutable variable; keep pointers!
       //
       // Example of what we don't want:
       // void foo(bool flag, int* ptr1, int* ptr2) {
