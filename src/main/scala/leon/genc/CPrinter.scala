@@ -227,7 +227,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   private def requiresParentheses(current: Tree, previous: Option[Tree]): Boolean = (current, previous) match {
     case (_, None) => false
     case (_, Some(_: DeclInit | _: Call | _: ArrayAccess | _: If | _: IfElse | _: While | _: Return | _: Assign)) => false
-    case (Operator(precedence1), Some(Operator(precedence2))) if precedence1 <= precedence2 => false
+    case (Operator(precedence1), Some(Operator(precedence2))) if precedence1 < precedence2 => false
     case (_, _) => true
   }
 

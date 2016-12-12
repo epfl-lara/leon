@@ -60,9 +60,11 @@ private[genc] object Operators {
   case object Or extends BinaryOperator("||", 12) with Logical
 
   case object BNot extends UnaryOperator("~", 2) with Integral
-  case object BAnd extends BinaryOperator("&", 8) with Integral
-  case object BXor extends BinaryOperator("^", 9) with Integral
-  case object BOr extends BinaryOperator("|", 10) with Integral
+  case object BAnd extends BinaryOperator("&", 8) with Integral // NOTE to avoid warning from compilers,
+  case object BXor extends BinaryOperator("^", 8) with Integral //      we make sure to add parenthesis
+  case object BOr extends BinaryOperator("|", 8) with Integral  //      for those three operators...
+  // ... even though it's safe no to add parenthesis.
+
   case object BLeftShift extends BinaryOperator("<<", 5) with Integral
   case object BRightShift extends BinaryOperator(">>", 5) with Integral
 
