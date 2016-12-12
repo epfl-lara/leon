@@ -381,10 +381,13 @@ class PrettyPrinter(opts: PrinterOptions,
       case ArraySelect(a, i)        => p"$a($i)"
       case ArrayUpdated(a, i, v)    => p"$a.updated($i, $v)"
       case a @ FiniteArray(es, d, s) => {
-        val ArrayType(underlying) = a.getType
-        val default = d.getOrElse(simplestValue(underlying))
         def ppBigArray(): Unit = {
           if (es.isEmpty) {
+            val simplest = a.getType match {
+              case ArrayType(underlying) => simplestValue(underlying)
+              case _ => NoTree
+            }
+            val default = d.getOrElse(simplest)
             p"Array($default, $default, $default, ..., $default) (of size $s)"
           } else {
             p"Array(_) (of size $s)"

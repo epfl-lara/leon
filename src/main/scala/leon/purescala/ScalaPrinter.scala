@@ -47,8 +47,10 @@ class ScalaPrinter(opts: PrinterOptions,
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
       case a@FiniteArray(elems, oDef, size) =>
         import ExprOps._
-        val ArrayType(underlying) = a.getType
-        val default = oDef.getOrElse(simplestValue(underlying))
+        val default = a.getType match {
+          case ArrayType(underlying) => oDef getOrElse simplestValue(underlying)
+          case _ => NoTree
+        }
         size match {
           case IntLiteral(s) => {
             val explicitArray = Array.fill(s)(default)

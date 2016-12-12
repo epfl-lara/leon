@@ -786,7 +786,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       }
 
     case f @ FiniteArray(elems, default, length) =>
-      val ArrayType(tp) = f.getType
+      val tp = f.getType match {
+        case ArrayType(tp) => tp
+        case typ => throw RuntimeError(s"Unexpected expression of non-array type: $f")
+      }
       finiteArray(
         elems.map(el => (el._1, e(el._2))),
         default.map{ d => (e(d), e(length)) },
