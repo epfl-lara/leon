@@ -9,6 +9,7 @@ import scala.language.implicitConversions
 case class Acceptor[T](tag: String) {
   @library
   def :=(v: String) = WebAttribute(tag, v)
+  @library
   def apply(v: String) = this := v
 }
 
@@ -17,6 +18,7 @@ case class Acceptor[T](tag: String) {
 case class CssAcceptor[T](tag: String) {
   @library
   def :=(v: String) = WebStyle(tag, v)
+  @library
   def apply(v: String) = this := v
 }
 
