@@ -3,6 +3,7 @@ package synthesis
 package stoch
 
 import ContextualPCFGStats._
+import leon.utils.PreprocessingPhase
 
 import scala.util.Random
 
@@ -42,7 +43,10 @@ object ContextualPCFGStatsExtractorMain {
 
   def pipeline: Pipeline[List[String], AncStats] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getAncStats)
+    ClassgenPhase andThen
+      ExtractionPhase andThen
+      new PreprocessingPhase(false) andThen
+      SimpleFunctionApplicatorPhase(getAncStats)
   }
 
   /* def dist(statsTrain: AncStats, statsTest: AncStats): (Double, Double) = {

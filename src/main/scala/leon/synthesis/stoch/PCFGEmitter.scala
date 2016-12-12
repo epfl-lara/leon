@@ -1,0 +1,57 @@
+package leon
+package synthesis
+package stoch
+
+import leon.purescala.Common.FreshIdentifier
+import leon.purescala.Definitions.{Annotation, FunDef, ValDef}
+import leon.purescala.Expressions._
+import leon.purescala.Extractors.Operator
+import leon.purescala.Types._
+import leon.synthesis.stoch.PCFGStats.ExprConstrStats
+
+object PCFGEmitter {
+
+  // type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
+  def emit(allTypes: Set[TypeTree], stats: ExprConstrStats) = {
+    ??? // TODO!
+  }
+
+  def emit(allTypes: Set[TypeTree], tt: TypeTree, constr: Class[_ <: Expr], stats: ExprConstrStats): Seq[FunDef] = {
+    require(stats.contains(tt) && stats(tt).contains(constr))
+
+    // if (constr == classOf[Equals]) ... // TODO! Put special cases here
+    // else { ... }
+
+    val es = stats(tt)(constr)
+    val freq = es.size
+
+    val esOpTypes = es map { case e @ Operator(ops, _) => ops.map(_.getType) }
+    val typeSign = esOpTypes.groupBy(ts => ts).mapValues(_.size).toSeq.sortBy(-_._2).head._1
+    val retType = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
+                          { e => e.getType } get
+    val builder = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
+                          { case Operator(_, b) => b } get
+
+    val funName = FreshIdentifier(constr.toString, retType)
+    val args = typeSign.zipWithIndex.map { case (argType, index) => ValDef(FreshIdentifier(s"arg$index", argType)) }
+    val funDef = new FunDef(funName, Seq(), args, retType)
+    funDef.fullBody = builder(args.map(_.toVariable))
+    funDef.addFlag(Annotation("production", Seq(Some(freq))))
+    Seq(funDef)
+
+    /* if (constr == classOf[And]) {
+      require(tt == BooleanType)
+      val funName = FreshIdentifier("and", BooleanType)
+      val arg1 = ValDef(FreshIdentifier("arg1", BooleanType))
+      val arg2 = ValDef(FreshIdentifier("arg2", BooleanType))
+      val funDef = new FunDef(funName, Seq(), Seq(arg1, arg2), BooleanType)
+      funDef.fullBody = And(arg1.toVariable, arg2.toVariable)
+      funDef.addFlag(Annotation("production", Seq(Some(freq))))
+            .addFlag(Annotation("commutative", Seq()))
+      Seq(funDef)
+    } else {
+      Seq() // ???
+    } */
+  }
+
+}
