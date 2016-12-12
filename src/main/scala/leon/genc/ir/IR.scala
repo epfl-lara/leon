@@ -164,7 +164,13 @@ private[genc] sealed trait IR { ir =>
       case App(fd, _, _) => fd.returnType
       case Construct(cd, _) => ClassType(cd)
       case ArrayInit(alloc) => alloc.typ
-      case FieldAccess(objekt, fieldId) => objekt.getType.asInstanceOf[ClassType].clazz getFieldType fieldId
+      case FieldAccess(objekt, fieldId) =>
+        val ct = objekt.getType match {
+          case ct: ClassType => ct
+          case ReferenceType(ct: ClassType) => ct
+          case _ => ???
+        }
+        ct.clazz getFieldType fieldId
       case ArrayAccess(array, _) => array.getType.asInstanceOf[ArrayType].base
       case ArrayLength(_) => PrimitiveType(Int32Type)
       case Assign(_, _) => NoType
