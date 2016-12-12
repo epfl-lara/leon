@@ -73,74 +73,74 @@ object LZW {
     d.isEmpty ==> d.nonFull
   }.holds
 
-  private def lemmaSelfRangeEqual(a: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaSelfRangesEqual(a: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length)
-    isRangeEqual(a, a, from, to) because {
-      if (from == to) check { lemmaUnitRangeEqual(a, a, from) }
+    areRangesEqual(a, a, from, to) because {
+      if (from == to) check { lemmaUnitRangesEqual(a, a, from) }
       else {
         check { a(from) == a(from) } &&
         check { a(to) == a(to) } &&
-        check { lemmaSelfRangeEqual(a, from, to - 1) } &&
-        check { lemmaSelfRangeEqual(a, from + 1, to) }
+        check { lemmaSelfRangesEqual(a, from, to - 1) } &&
+        check { lemmaSelfRangesEqual(a, from + 1, to) }
       }
     }
   }.holds
 
-  private def lemmaRangeEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaAreRangesEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
 
-    ( isRangeEqual(a, b, from, to) ==> isRangeEqual(b, a, from, to) ) // FIXME timeout
+    ( areRangesEqual(a, b, from, to) ==> areRangesEqual(b, a, from, to) ) // FIXME timeout
   }.holds
 
-  private def lemmaSubRangeEqual1(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaSubRangesEqual1(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
-    isRangeEqual(a, b, from, to) ==> (
+    areRangesEqual(a, b, from, to) ==> (
       check { a(from) == b(from) } &&
-      check { (from + 1 <= to) ==> isRangeEqual(a, b, from + 1, to) }
+      check { (from + 1 <= to) ==> areRangesEqual(a, b, from + 1, to) }
     )
   }.holds
 
-  private def lemmaSubRangeEqual2(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaSubRangesEqual2(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
-    isRangeEqual(a, b, from, to) ==> (
-      check { (a(to) == b(to)) because lemmaRangeEndEqual(a, b, from, to) } &&
-      check { (from <= to - 1) ==> isRangeEqual(a, b, from, to - 1) } // FIXME timeout
+    areRangesEqual(a, b, from, to) ==> (
+      check { (a(to) == b(to)) because lemmaRangesEndEqual(a, b, from, to) } &&
+      check { (from <= to - 1) ==> areRangesEqual(a, b, from, to - 1) } // FIXME timeout
     )
   }.holds // FIXME TIMEOUT
 
-  private def lemmaMiniSubRangeEqual1(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaMiniSubRangesEqual1(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
-    isRangeEqual(a, b, from, to) ==> (
-      isRangeEqual(a, b, from, from) because a(from) == b(from)
+    areRangesEqual(a, b, from, to) ==> (
+      areRangesEqual(a, b, from, from) because a(from) == b(from)
     )
   }.holds
 
-  private def lemmaMiniSubRangeEqual2(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def lemmaMiniSubRangesEqual2(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
-    isRangeEqual(a, b, from, to) ==> (
-      isRangeEqual(a, b, to, to) because {
+    areRangesEqual(a, b, from, to) ==> (
+      areRangesEqual(a, b, to, to) because {
         if (from == to) check { a(to) == b(to) }
         else {
           check { from < to } &&
-          check { lemmaMiniSubRangeEqual2(a, b, from + 1, to) } &&
-          check { lemmaMiniSubRangeEqual2(a, b, from, to - 1) }
+          check { lemmaMiniSubRangesEqual2(a, b, from + 1, to) } &&
+          check { lemmaMiniSubRangesEqual2(a, b, from, to - 1) }
         }
       }
     )
   }.holds
 
-  private def lemmaUnitRangeEqual(a: Array[Byte], b: Array[Byte], pos: Int): Boolean = {
+  private def lemmaUnitRangesEqual(a: Array[Byte], b: Array[Byte], pos: Int): Boolean = {
     require(0 <= pos && pos < a.length && pos < b.length)
-    isRangeEqual(a, b, pos, pos) ==> (a(pos) == b(pos))
+    areRangesEqual(a, b, pos, pos) ==> (a(pos) == b(pos))
   }.holds
 
-  private def lemmaRangeEndEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
-    require(0 <= from && from <= to && to < a.length && to < b.length && isRangeEqual(a, b, from, to))
+  private def lemmaRangesEndEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+    require(0 <= from && from <= to && to < a.length && to < b.length && areRangesEqual(a, b, from, to))
     ( a(to) == b(to) ) because {
       if (from == to) trivial
       else {
         check { from < to } &&
-        check { lemmaRangeEndEqual(a, b, from + 1, to) }
+        check { lemmaRangesEndEqual(a, b, from + 1, to) }
       }
     }
   }.holds
@@ -158,10 +158,10 @@ object LZW {
 
 
 
-  private def testIsRangeEqual(): Boolean = {
+  private def testAreRangesEqual(): Boolean = {
     val a = Array[Byte](1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     val b = Array[Byte](-128, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    !isRangeEqual(a, b, 0, 0)
+    !areRangesEqual(a, b, 0, 0)
   }.holds
 
   private def testBufferIsEqual(): Boolean = {
@@ -181,11 +181,11 @@ object LZW {
 
 
   // Helper for range equality checking
-  private def isRangeEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
+  private def areRangesEqual(a: Array[Byte], b: Array[Byte], from: Int, to: Int): Boolean = {
     require(0 <= from && from <= to && to < a.length && to < b.length)
     a(from) == b(from) && {
       if (from == to) true
-      else isRangeEqual(a, b, from + 1, to)
+      else areRangesEqual(a, b, from + 1, to)
     }
   }
 
@@ -220,7 +220,7 @@ object LZW {
 
     def isEqual(b: Buffer): Boolean = {
       if (b.length != length) false
-      else { isEmpty || isRangeEqual(array, b.array, 0, length - 1) }
+      else { isEmpty || areRangesEqual(array, b.array, 0, length - 1) }
     } //ensuring { _ => this.isEqual(old(this)) && b.isEqual(old(b)) } // this VC does infinite recursion
 
     def size = {
@@ -284,7 +284,7 @@ object LZW {
         // lengthCheckpoint == b.length && lengthCheckpoint == length && // no mutation of the length
         isValid && nonEmpty &&
         length == b.length &&
-        (i > 0 ==> isRangeEqual(array, b.array, 0, i - 1)) // avoid OutOfBoundAccess
+        (i > 0 ==> areRangesEqual(array, b.array, 0, i - 1)) // avoid OutOfBoundAccess
       }
 
       assert(b.isValid)
