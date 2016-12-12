@@ -573,8 +573,8 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case fd: FunDef =>
-        for (an <- fd.annotations) {
-          p"""|@$an
+        for ((k, vs) <- fd.extAnnotations) {
+          p"""|@$k${nary(vs, ",", "(", ")")}
               |"""
         }
 
