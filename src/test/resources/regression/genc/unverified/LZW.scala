@@ -19,15 +19,14 @@ object LZW {
   // Input alphabet is the ASCII range (0-255);
   // A word is made of 16 bits (instead of the classic 12-bit scenario, for simplicity);
   // The dictionary is an array of Buffer where the index is the key;
-  // TODO 16-bit integers would be useful here!
 
-  // We limit the size of the dictionary to 2^10
+  // We limit the size of the dictionary to an arbitrary size, less than or equals to 2^16.
   @inline
-  val DictionarySize = 1024
+  val DictionarySize = 4096
 
   // We use fix-sized buffers
   @inline
-  val BufferSize = 10 // characters
+  val BufferSize = 64 // characters
 
   val AlphabetSize = Byte.MaxValue + -Byte.MinValue
 
