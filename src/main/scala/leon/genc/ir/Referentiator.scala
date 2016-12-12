@@ -157,6 +157,11 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
       val newEnv = env + (vd0 -> vd)
       to.DeclInit(vd, to.Binding(env(rhs0))) -> newEnv
 
+    case DeclInit(vd0, fa @ FieldAccess(_, _)) if fa.getType.isMutable =>
+      val vd = toReference(rec(vd0))
+      val newEnv = env + (vd0 -> vd)
+      to.DeclInit(vd, ref(rec(fa))) -> newEnv
+
     case DeclInit(vd0, value0) =>
       val vd = rec(vd0)
       val value = rec(value0)
