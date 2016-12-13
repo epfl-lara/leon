@@ -985,6 +985,7 @@ object ExprOps extends GenTreeOps[Expr] {
   /** Returns simplest value of a given type */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case StringType                 => StringLiteral("")
+    case Int8Type                   => ByteLiteral(0)
     case Int32Type                  => IntLiteral(0)
     case RealType               	  => FractionalLiteral(0, 1)
     case IntegerType                => InfiniteIntegerLiteral(0)

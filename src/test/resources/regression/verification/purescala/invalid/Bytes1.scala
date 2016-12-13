@@ -2,7 +2,7 @@
 
 import leon.lang._
 
-object Bytes {
+object Bytes1 {
 
   def test(b: Byte) = {
     require(b % 2 != 0)
