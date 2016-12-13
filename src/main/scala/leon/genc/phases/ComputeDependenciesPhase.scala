@@ -112,7 +112,7 @@ private[genc] object ComputeDependenciesPhase extends TimedLeonPhase[(Program, D
     // Keep only the top level functions
     val deps = allDeps filterNot isNestedFun
 
-    deps
+    Dependencies(prog, deps)
   }
 }
 
@@ -124,7 +124,7 @@ private final class ComputeDependenciesImpl(val ctx: LeonContext) extends MiniRe
   private val dependencies = MutableSet[Definition]()
 
   // Compute the dependencies of `entry`, which includes itself.
-  def apply(entry: Definition): Dependencies = {
+  def apply(entry: Definition): Set[Definition] = {
     entry match {
       case e: FunDef => traverse(e)
       case _ => internalError("unexpected type of entry point: ${entry.getClass}")

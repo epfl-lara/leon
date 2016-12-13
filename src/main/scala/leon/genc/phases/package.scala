@@ -4,7 +4,7 @@ package leon
 package genc
 
 import purescala.Common.{ Identifier }
-import purescala.Definitions.{ Definition, FunDef, ValDef }
+import purescala.Definitions.{ Definition, FunDef, ValDef, Program }
 import purescala.Types.{ TypeTree }
 
 /*
@@ -16,7 +16,7 @@ package object phases {
 
   type FunCtxDB = Map[FunDef, Seq[VarInfo]]
 
-  type Dependencies = Set[Definition]
+  case class Dependencies(prog: Program, deps: Set[Definition])
 
 }
 

@@ -73,7 +73,7 @@ private[genc] object ComputeFunCtxPhase extends TimedLeonPhase[Dependencies, Fun
 
     // Process every top level function to register function contextes for their inner functions;
     // Register those top level functions as well
-    val topLevelFuns: Set[FunDef] = deps collect { case fd: FunDef => fd }
+    val topLevelFuns: Set[FunDef] = deps.deps collect { case fd: FunDef => fd }
     val Ø = Seq[VarInfo]()
     topLevelFuns foreach { fd => processFunction(fd, Ø) }
 

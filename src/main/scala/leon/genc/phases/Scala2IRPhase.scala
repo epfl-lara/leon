@@ -40,7 +40,7 @@ private[genc] object Scala2IRPhase extends TimedLeonPhase[(Dependencies, FunCtxD
     import reporter._
 
     val (deps, ctxDB) = input
-    val entryPoint = getEntryPoint(deps)
+    val entryPoint = getEntryPoint(deps.deps)
 
     val impl = new S2IRImpl(ctx, ctxDB, deps)
     val ir = CIR.ProgDef(impl(entryPoint))
@@ -388,6 +388,11 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   // Try first to fetch the function from cache to handle recursive funcitons.
   private def rec(tfd: TypedFunDef)(implicit tm0: TypeMapping): CIR.FunDef = funCache get tfd -> tm0 getOrElse {
     val id = buildId(tfd)
+
+    // Warn user about recusrivity: this is not MISRA complient unless it is very tightly controlled.
+    // NOTE this check is done after VC are removed.
+    if (tfd.fd.isRecursive(deps.prog))
+      warning(s"MISRA rules state that recursive functions should be very tightly controlled; ${tfd.id} is recursive")
 
     // We have to manually specify tm1 from now on to avoid using tm0. We mark tm1 as
     // implicit as well to generate ambiguity at compile time to avoid forgetting a call site.
