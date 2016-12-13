@@ -174,9 +174,12 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   }
 
   private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
-    case FunSign(Fun(id, returnType, Seq(), _)) => c"$returnType $id(void)"
+    case StaticStorage(id) if id.name == "main" => /* Nothing */
+    case StaticStorage(_) => c"static"
 
-    case FunSign(Fun(id, returnType, params, _)) => c"$returnType $id(${nary(params)})"
+    case FunSign(Fun(id, returnType, Seq(), _)) => c"${StaticStorage(id)} $returnType $id(void)"
+
+    case FunSign(Fun(id, returnType, params, _)) => c"${StaticStorage(id)} $returnType $id(${nary(params)})"
 
     case FunDecl(f) => c"${FunSign(f)};"
 
@@ -205,6 +208,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
+  private case class StaticStorage(id: Id) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
   private case class FunDecl(f: Fun) extends WrapperTree
   private case class TypedefDecl(td: Typedef) extends WrapperTree
