@@ -23,6 +23,11 @@ import scala.collection.mutable.{ Map => MutableMap }
 /*
  * This phase takes a set of definitions (the Dependencies) and the fonction context database (FunCtxDB)
  * and produces an equivalent program expressed in the intermediate representation without generic types (CIR).
+ *
+ * NOTE This phase also rejects fragment of Scala that are not supported by GenC, such as returning
+ *      or copying arrays, constructing a case class with mutable fields from function arguments,
+ *      the >> operator, some forms of membership tests, the unapply pattern matching construct,
+ *      and more.
  */
 private[genc] object Scala2IRPhase extends TimedLeonPhase[(Dependencies, FunCtxDB), CIR.ProgDef] {
   val name = "Scala to IR converter"
@@ -362,7 +367,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
         buildBinOp(scrutinee, O.Equals, lit)(pat.getPos)
 
       case UnapplyPattern(bind, unapply, subs) =>
-        fatalError(s"Unapply Pattern, a.k.a. Extractor Objects", pat.getPos)
+        fatalError(s"Unapply Pattern, a.k.a. Extractor Objects, is not supported", pat.getPos)
     }
 
     val cond = ccRec(caze.pattern, initialScrutinee)
@@ -397,6 +402,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     val ctx = ctxDB(tfd.fd) map { c => convertVarInfoToArg(c)(tm1) }
 
     val returnType = rec(tfd.returnType)(tm1)
+    if (returnType.containsArray)
+      fatalError("Returning arrays from function is not supported", tfd.getPos)
 
     // Build a partial function without body in order to support recursive functions
     val fun = CIR.FunDef(id, returnType, ctx, params, null)

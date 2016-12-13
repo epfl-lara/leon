@@ -63,7 +63,7 @@ private[genc] object ComputeFunCtxPhase extends TimedLeonPhase[Dependencies, Fun
         fds foreach { fd => processFunction(fd, ctx) }
         rec(rest, ctx)
 
-      // Because technically a function could be defined a block which is itself an argument,
+      // Because technically a function could be defined in a block which is itself an argument,
       // we recurse on arguments as well!
       // This also includes Terminal-like expression and therefore stop recursion when needed.
       case Operator(args, _) => args foreach { arg => rec(arg, ctx) }
