@@ -24,7 +24,7 @@ object FileOutputStream {
   @extern
   @cCode.function(code =
     """
-    |FILE* __FUNCTION__(char* filename) {
+    |static FILE* __FUNCTION__(char* filename) {
     |  FILE* this = fopen(filename, "w");
     |  // this == NULL on failure
     |  return this;
@@ -58,7 +58,7 @@ case class FileOutputStream private (var filename: Option[String]) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  if (this != NULL)
     |    return fclose(this) == 0;
     |  else
@@ -78,7 +78,7 @@ case class FileOutputStream private (var filename: Option[String]) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  return this != NULL;
     |}
     """
@@ -97,7 +97,7 @@ case class FileOutputStream private (var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, int8_t x) {
+    |static bool __FUNCTION__(FILE* this, int8_t x) {
     |  return fprintf(this, "%c", x) >= 0;
     |}
     """,
@@ -124,7 +124,7 @@ case class FileOutputStream private (var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, int32_t x) {
+    |static bool __FUNCTION__(FILE* this, int32_t x) {
     |  return fprintf(this, "%"PRIi32, x) >= 0;
     |}
     """,
@@ -150,7 +150,7 @@ case class FileOutputStream private (var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, char c) {
+    |static bool __FUNCTION__(FILE* this, char c) {
     |  return fprintf(this, "%c", c) >= 0;
     |}
     """
@@ -175,7 +175,7 @@ case class FileOutputStream private (var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, char* s) {
+    |static bool __FUNCTION__(FILE* this, char* s) {
     |  return fprintf(this, "%s", s) >= 0;
     |}
     """

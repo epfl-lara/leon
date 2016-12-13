@@ -52,7 +52,7 @@ object StdIn {
     // (which assumes CHAR_BITS == 8) because SCNi8 will read char '0' to '9'
     // and not the "raw" data.
     @cCode.function(code = """
-      |int8_t __FUNCTION__(void** unused, bool* valid) {
+      |static int8_t __FUNCTION__(void** unused, bool* valid) {
       |  int8_t x;
       |  *valid = scanf("%c", &x) == 1;
       |  return x;
@@ -99,7 +99,7 @@ object StdIn {
 
     // Because this is a nested function, contexts variables are passes by reference.
     @cCode.function(code = """
-      |int32_t __FUNCTION__(void** unused, bool* valid) {
+      |static int32_t __FUNCTION__(void** unused, bool* valid) {
       |  int32_t x;
       |  *valid = scanf("%"SCNd32, &x) == 1;
       |  return x;

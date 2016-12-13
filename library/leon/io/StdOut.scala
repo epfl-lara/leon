@@ -10,7 +10,7 @@ object StdOut {
   @library
   @cCode.function(
     code = """
-      |void __FUNCTION__(char* s) {
+      |static void __FUNCTION__(char* s) {
       |  printf("%s", s);
       |}
       """,
@@ -34,7 +34,7 @@ object StdOut {
   @extern
   @cCode.function(
     code = """
-      |void __FUNCTION__(int8_t x) {
+      |static void __FUNCTION__(int8_t x) {
       |  printf("%c", x);
       |}
       """,
@@ -55,7 +55,7 @@ object StdOut {
   @extern
   @cCode.function(
     code = """
-     |void __FUNCTION__(int32_t x) {
+     |static void __FUNCTION__(int32_t x) {
      |  printf("%"PRIi32, x);
      |}
      """,
@@ -75,7 +75,7 @@ object StdOut {
   @extern
   @cCode.function(
     code = """
-      |void __FUNCTION__(char c) {
+      |static void __FUNCTION__(char c) {
       |  printf("%c", c);
       |}
       """,

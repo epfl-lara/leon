@@ -21,7 +21,7 @@ object FileInputStream {
   @extern
   @cCode.function(code =
     """
-    |FILE* __FUNCTION__(char* filename, void* unused) {
+    |static FILE* __FUNCTION__(char* filename, void* unused) {
     |  FILE* this = fopen(filename, "r");
     |  // this == NULL on failure
     |  return this;
@@ -56,7 +56,7 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, void* unused) {
+    |static bool __FUNCTION__(FILE* this, void* unused) {
     |  if (this != NULL)
     |    return fclose(this) == 0;
     |  else
@@ -78,7 +78,7 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  return this != NULL;
     |}
     """
@@ -112,7 +112,7 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
     // (which assumes CHAR_BITS == 8) because SCNi8 will read char '0' to '9'
     // and not the "raw" data.
     @cCode.function(code = """
-      |int8_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
+      |static int8_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
       |  int8_t x;
       |  *valid = fscanf(*this, "%c", &x) == 1;
       |  return x;
@@ -153,7 +153,7 @@ case class FileInputStream private (var filename: Option[String], var consumed: 
 
     // Because this is a nested function, contexts variables are passes by reference.
     @cCode.function(code = """
-      |int32_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
+      |static int32_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
       |  int32_t x;
       |  *valid = fscanf(*this, "%"SCNd32, &x) == 1;
       |  return x;
