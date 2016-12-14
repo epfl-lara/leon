@@ -40,6 +40,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   /**
     * Represents an element of the worklist
+    *
     * @param expansion The partial expansion under consideration
     * @param logProb The log probability already accumulated by the expansion
     * @param horizon The minimum cost that this expansion will accumulate before becoming concrete
@@ -72,6 +73,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       t1 + t2
     }
   }
+
+  def isClassRepresentative(expansion: Expansion[NT, R]) = true
 
   def iterator(nt: NT): Iterator[R] = new Iterator[R] {
     val ordering = Ordering.by[WorklistElement, Double](_.priority)
@@ -139,12 +142,15 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     expansion match {
       case NonTerminalInstance(nt) =>
         val prodRules = productions(nt)
-        for (rule <- prodRules) yield {
-          val expansion = ProdRuleInstance(
+        for {
+          rule <- prodRules
+          expansion = ProdRuleInstance(
             nt,
             rule,
             rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
           )
+          if isClassRepresentative(expansion)
+        } yield {
           val logProbPrime = elem.logProb + rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansion, logProbPrime, horizonPrime, elemScore)
@@ -159,12 +165,19 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           case csHd :: csTl if csHd.complete =>
             for ((expansions, logProb) <- expandChildren(csTl)) yield (csHd :: expansions, logProb)
           case csHd :: csTl =>
-            for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore))
-            yield (csHdExp.expansion :: csTl, csHdExp.logProb)
+            for {
+              csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore)
+              if isClassRepresentative(csHdExp.expansion)
+            } yield {
+              (csHdExp.expansion :: csTl, csHdExp.logProb)
+            }
         }
 
-        for ((expansions, logProb) <- expandChildren(children)) yield {
-          val expPrime = ProdRuleInstance(nt, rule, expansions)
+        for {
+          (expansions, logProb) <- expandChildren(children)
+          expPrime = ProdRuleInstance(nt, rule, expansions)
+          if isClassRepresentative(expPrime)
+        } yield {
           val logProbPrime = elem.logProb + logProb
           val horizonPrime = expPrime.horizon(nthor)
           WorklistElement(expPrime, logProbPrime, horizonPrime, elemScore)
