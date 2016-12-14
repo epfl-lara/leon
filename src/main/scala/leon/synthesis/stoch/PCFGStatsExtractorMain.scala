@@ -3,7 +3,7 @@ package synthesis
 package stoch
 
 import PCFGStats.{ExprConstrStats, addStats, exprConstrStatsToString, getExprConstrStats}
-import leon.purescala.Expressions.And
+import leon.purescala.Expressions._
 import leon.purescala.Types.BooleanType
 import leon.utils.PreprocessingPhase
 
@@ -25,7 +25,12 @@ object PCFGStatsExtractorMain {
       }
     }
 
-    // println(PCFGEmitter.emit(Set(), BooleanType, classOf[And], globalStatsTrain))
+    // PCFGEmitter.emit(Set(), globalStatsTrain).foreach(println)
+    /* println(PCFGEmitter.emit(Set(), BooleanType, classOf[And], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Or], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Not], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Equals], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Plus], globalStatsTrain)) */
 
     println("Printing training data:")
     println(exprConstrStatsToString(globalStatsTrain))

@@ -12,8 +12,12 @@ import leon.synthesis.stoch.PCFGStats.ExprConstrStats
 object PCFGEmitter {
 
   // type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
-  def emit(allTypes: Set[TypeTree], stats: ExprConstrStats) = {
-    ??? // TODO!
+  def emit(allTypes: Set[TypeTree], stats: ExprConstrStats): Seq[FunDef] = {
+    for {
+      tt <- stats.keys.toSeq
+      constr <- stats(tt).keys
+      fd <- emit(allTypes, tt, constr, stats)
+    } yield fd
   }
 
   def emit(allTypes: Set[TypeTree], tt: TypeTree, constr: Class[_ <: Expr], stats: ExprConstrStats): Seq[FunDef] = {
@@ -22,22 +26,32 @@ object PCFGEmitter {
     // if (constr == classOf[Equals]) ... // TODO! Put special cases here
     // else { ... }
 
+    // TODO! Variables!
+
     val es = stats(tt)(constr)
     val freq = es.size
 
-    val esOpTypes = es map { case e @ Operator(ops, _) => ops.map(_.getType) }
-    val typeSign = esOpTypes.groupBy(ts => ts).mapValues(_.size).toSeq.sortBy(-_._2).head._1
-    val retType = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
-                          { e => e.getType } get
-    val builder = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
-                          { case Operator(_, b) => b } get
+    if (constr == classOf[Variable]) {
+      val funName = FreshIdentifier("var", tt)
+      val funDef = new FunDef(funName, Seq(), Seq(), tt)
+      // funDef.fullBody = ??? // "variable[tt]" // TODO!
+      funDef.addFlag(Annotation("production", Seq(Some(freq))))
+      Seq(funDef)
+    } else if (constr == classOf[Ensuring]) {
+      Seq() // TODO!
+    } else {
+      val esOpTypes = es map { case e @ Operator(ops, _) => ops.map(_.getType) }
+      val typeSign = esOpTypes.groupBy(ts => ts).mapValues(_.size).toSeq.sortBy(-_._2).head._1
+      val builder = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
+                            { case Operator(_, b) => b } get
 
-    val funName = FreshIdentifier(constr.toString, retType)
-    val args = typeSign.zipWithIndex.map { case (argType, index) => ValDef(FreshIdentifier(s"arg$index", argType)) }
-    val funDef = new FunDef(funName, Seq(), args, retType)
-    funDef.fullBody = builder(args.map(_.toVariable))
-    funDef.addFlag(Annotation("production", Seq(Some(freq))))
-    Seq(funDef)
+      val funName = FreshIdentifier(constr.toString, tt)
+      val args = typeSign.zipWithIndex.map { case (argType, index) => ValDef(FreshIdentifier(s"arg$index", argType)) }
+      val funDef = new FunDef(funName, Seq(), args, tt)
+      funDef.fullBody = builder(args.map(_.toVariable))
+      funDef.addFlag(Annotation("production", Seq(Some(freq))))
+      Seq(funDef)
+    }
 
     /* if (constr == classOf[And]) {
       require(tt == BooleanType)
