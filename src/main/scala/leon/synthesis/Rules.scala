@@ -48,7 +48,7 @@ object Rules {
       Ground,
       CaseSplit,
       IndependentSplit,
-      //HOFDecomp,
+      HOFDecomp,
       //ExampleGuidedTermExploration,
       //BottomUpETE,
       IfSplit,

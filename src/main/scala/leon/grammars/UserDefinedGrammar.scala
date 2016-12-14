@@ -13,7 +13,7 @@ import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
 
-import synthesis.SynthesisContext
+import synthesis.{SynthesisContext, FunctionCallsFinder}
 
 object UserDefinedGrammar {
   import Tags._
@@ -122,168 +122,126 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
     val lab = tpeToLabel(tpe)
 
+    val types = (userProductions.collect {
+      case UserProduction(fd, _, _) if fd.tparams.isEmpty => fd.returnType
+    } ++ inputs.map(_.getType)).toSet
+
+    val fcallFinder = new FunctionCallsFinder(types)
+
+
     userProductions.flatMap { case UserProduction(fd, tag, w) =>
-      instantiation_<:(fd.returnType, tpe) match {
-        case Some(tmap0) =>
 
-          val free = fd.tparams.map(_.tp) diff tmap0.keySet.toSeq;
+      fcallFinder.find(fd, tpe).flatMap { tfd =>
 
-          val tmaps = if (free.nonEmpty) {
-            // Instantiate type parameters not constrained by the return value
-            // of `fd`
-            //
-            // e.g.:
-            // def countFilter[T](x: List[T], y: T => Boolean): BigInt
-            //
-            // We try to find instantiation of T such that arguments have
-            // candidates
-            //
+        val tmap = (tfd.fd.tparams.map(_.tp) zip tfd.tps).toMap
 
-            // Step 1. We identify the type patterns we need to match:
-            // e.g. (List[T], T => Boolean)
-            val pattern0 = fd.params.map(_.getType).distinct
+        val m = fd.params.flatMap { p =>
+          val ptype = instantiateType(p.id.getType, tmap)
 
-            // Step 2. We collect a set of interesting types that we can use to
-            // fill our pattern
-            val types = (userProductions.collect {
-              case UserProduction(fd, _, _) if fd.tparams.isEmpty => fd.returnType
-            } ++ inputs.map(_.getType)).toSet
-
-            def discover(free: TypeParameter, fixed: Set[Map[TypeParameter, TypeTree]]): Set[Map[TypeParameter, TypeTree]] = {
-              for {
-                map0 <- fixed
-                p1 = pattern0.map(instantiateType(_, map0))
-                p <- p1
-                t <- types
-                map1 <- unify(p, t, Seq(free))
-              } yield {
-                map0 ++ map1
-              }
-            }
-
-            var tmaps = Set(tmap0)
-
-            for (f <- free) {
-              tmaps = discover(f, tmaps)
-            }
-
-            tmaps
-          } else {
-            List(tmap0)
+          unwrapType(ptype).map { tpe =>
+            p.id -> FreshIdentifier("p", tpe)
           }
+        }.toMap
 
-          (for (tmap <- tmaps) yield {
-            val m = fd.params.flatMap { p =>
-              val ptype = instantiateType(p.id.getType, tmap)
 
-              unwrapType(ptype).map { tpe =>
-                p.id -> FreshIdentifier("p", tpe)
+        val expr = unwrapLabels(fd.fullBody, m)
+
+        expr match {
+          // Special built-in "constructor" case, which tells us how often to
+          // generate constructors of specific type
+          case FunctionInvocation(TypedFunDef(fd, Seq(tp1, tp2)), Seq(rec)) if program.library.selector contains fd =>
+            val recType    = instantiateType(tp1, tmap)
+            val targetType = instantiateType(tp2, tmap)
+
+            def selectors(rec: Expr, cct: CaseClassType, targetType: TypeTree): Seq[Prod] = {
+              cct.fields.filter(_.getType == targetType).map { f =>
+                val subs  = List(tpeToLabel(instantiateType(rec.getType, tmap)))
+
+                nonTerminal(subs, { case List(rec) =>
+                  val res = CaseClassSelector(cct, rec, f.id)
+                  inlineTrivialities(res)
+                }, classOf[CaseClassSelector], tag, cost = 1, w)
               }
-            }.toMap
+            }
 
+            recType match {
+              case cct: CaseClassType =>
+                selectors(rec, cct, targetType)
 
-            val expr = unwrapLabels(fd.fullBody, m)
-
-            expr match {
-              // Special built-in "constructor" case, which tells us how often to
-              // generate constructors of specific type
-              case FunctionInvocation(TypedFunDef(fd, Seq(tp1, tp2)), Seq(rec)) if program.library.selector contains fd =>
-                val recType    = instantiateType(tp1, tmap)
-                val targetType = instantiateType(tp2, tmap)
-
-                def selectors(rec: Expr, cct: CaseClassType, targetType: TypeTree): Seq[Prod] = {
-                  cct.fields.filter(_.getType == targetType).map { f =>
-                    val subs  = List(tpeToLabel(instantiateType(rec.getType, tmap)))
-
-                    nonTerminal(subs, { case List(rec) =>
-                      val res = CaseClassSelector(cct, rec, f.id)
-                      inlineTrivialities(res)
-                    }, classOf[CaseClassSelector], tag, cost = 1, w)
-                  }
-                }
-
-                recType match {
-                  case cct: CaseClassType =>
-                    selectors(rec, cct, targetType)
-
-                  case act: AbstractClassType =>
-                    act.knownCCDescendants.flatMap{ cct =>
-                      selectors(rec, cct, targetType)
-                    }
-
-                  case _ =>
-                    Nil
-                }
-
-              // Special built-in "constructor" case, which tells us how often to
-              // generate constructors of specific type
-              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.constructor contains fd =>
-
-                instantiateType(tp, tmap) match {
-                  case cct: CaseClassType =>
-                    List(
-                      nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1)
-                    )
-
-                  case act: AbstractClassType =>
-                    val descendents = act.knownCCDescendants;
-
-                    descendents.map { cct =>
-                      nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1/descendents.size)
-                    }
-
-                  case _ =>
-                    Nil
-                }
-
-              // Special built-in "variable" case, which tells us how often to
-              // generate variables of specific type
-              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
-                val targetType = instantiateType(tp, tmap)
-                val vars = inputs.filter (_.getType == targetType)
-
-                val size = vars.size.toDouble
-                vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
-
-              // Special built-in "closure" case, which tells us how often to
-              // generate closures of a specific type
-              case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.closure contains fd =>
-                instantiateType(tp, tmap) match {
-                  case FunctionType(froms, to) =>
-                    val args = froms.zipWithIndex.map { case (tpe, i) =>
-                      ValDef(FreshIdentifier("a"+i, tpe))
-                    }
-
-                    val rlab = tpeToLabel(to).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
-
-                    List(nonTerminal(Seq(rlab), { case Seq(body) =>
-                      Lambda(args, body)
-                    }, classOf[Lambda], tag, cost = 1, w))
-
-                  case _ =>
-                    Nil
+              case act: AbstractClassType =>
+                act.knownCCDescendants.flatMap{ cct =>
+                  selectors(rec, cct, targetType)
                 }
 
               case _ =>
-                if (fd.params.isEmpty) {
-                  List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
-                } else {
-                  val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
-                  val subs  = fd.params.map {
-                    p => tpeToLabel(instantiateType(p.getType, tmap))
-                  }
-
-                  val replacer = variableReplacer(expr, holes)
-
-                  List(nonTerminal(subs, { sexprs => 
-                    instantiateType(replacer(sexprs), tmap, m)
-                  }, classOf[Expr], tag, cost = 1, w))
-                }
+                Nil
             }
-          }).flatten
 
-        case None =>
-          None
+          // Special built-in "constructor" case, which tells us how often to
+          // generate constructors of specific type
+          case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.constructor contains fd =>
+
+            instantiateType(tp, tmap) match {
+              case cct: CaseClassType =>
+                List(
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1)
+                )
+
+              case act: AbstractClassType =>
+                val descendents = act.knownCCDescendants;
+
+                descendents.map { cct =>
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1/descendents.size)
+                }
+
+              case _ =>
+                Nil
+            }
+
+          // Special built-in "variable" case, which tells us how often to
+          // generate variables of specific type
+          case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+            val targetType = instantiateType(tp, tmap)
+            val vars = inputs.filter (_.getType == targetType)
+
+            val size = vars.size.toDouble
+            vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+
+          // Special built-in "closure" case, which tells us how often to
+          // generate closures of a specific type
+          case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.closure contains fd =>
+            instantiateType(tp, tmap) match {
+              case FunctionType(froms, to) =>
+                val args = froms.zipWithIndex.map { case (tpe, i) =>
+                  ValDef(FreshIdentifier("a"+i, tpe))
+                }
+
+                val rlab = tpeToLabel(to).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
+
+                List(nonTerminal(Seq(rlab), { case Seq(body) =>
+                  Lambda(args, body)
+                }, classOf[Lambda], tag, cost = 1, w))
+
+              case _ =>
+                Nil
+            }
+
+          case _ =>
+            if (fd.params.isEmpty) {
+              List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
+            } else {
+              val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
+              val subs  = fd.params.map {
+                p => tpeToLabel(instantiateType(p.getType, tmap))
+              }
+
+              val replacer = variableReplacer(expr, holes)
+
+              List(nonTerminal(subs, { sexprs => 
+                instantiateType(replacer(sexprs), tmap, m)
+              }, classOf[Expr], tag, cost = 1, w))
+            }
+        }
       }
     }
   }
