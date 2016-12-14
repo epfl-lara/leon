@@ -103,7 +103,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     }
 
     def prepareNext(): Unit = {
-      while (worklist.nonEmpty && !worklist.head.expansion.complete) {
+      def elemCompliesTests(elem: WorklistElement) = {
+        val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = false)
+        score.noExs.isEmpty
+      }
+
+      while (worklist.nonEmpty && (!worklist.head.expansion.complete || !elemCompliesTests(worklist.head))) {
         val head = worklist.dequeue
         val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
 
