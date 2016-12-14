@@ -211,19 +211,19 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
     def solutionStream = {
       timers.cegisIter.start()
-      if (!it.hasNext) Stream()
-      else {
-        Stream.continually {
-          val expr = it.next
-          debug(s"Testing $expr")
-          if (examples.exists(testCandidate(expr)(_).contains(false))) {
-            None
-          } else {
-            validateCandidate(expr)
-          }
-        }.takeWhile(_ => timers.next.timed { it.hasNext })
-         .collect { case Some(e) => e.copy(term = innerToOuter.transform(e.term)(Map())) }
+      var sol: Option[Solution] = None
+      while (sol.isEmpty && it.hasNext) {
+        val expr = it.next
+        debug(s"Testing $expr")
+        sol = (if (examples.exists(testCandidate(expr)(_).contains(false))) {
+          None
+        } else {
+          validateCandidate(expr)
+        }).map( sol => sol.copy(term = innerToOuter.transform(sol.term)(Map())) )
       }
+
+      sol.toStream
+
     }
 
   }
