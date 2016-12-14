@@ -3,15 +3,17 @@ package grammars
 package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
-import leon.synthesis.SynthesisPhase
+import leon.synthesis.{Example, SynthesisPhase}
 import purescala.Expressions.Expr
 
 class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
     init: Label,
-    scorer: CandidateScorer[Expr]
+    scorer: CandidateScorer[Expr],
+    eval: (Expr, Example) => Option[Expr],
+    disambiguate: Boolean
   )(implicit ctx: LeonContext)
-  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, disambiguate)
   with GrammarEnumerator
 {
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
@@ -27,7 +29,7 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[R])(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[R], disambiguate: Boolean)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
   implicit val debugSection = leon.utils.DebugSectionSynthesis

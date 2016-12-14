@@ -138,6 +138,16 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       }
     }
 
+    def rawEvalCandidate(expr: Expr, ex: Example) = {
+      setSolution(expr)
+
+      def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
+        case ((id, v), bd) => let(id, v, bd)
+      }
+
+      fullEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
+    }
+
     def partialTestCandidate(expansion: Expansion[_, Expr], ex: Example): MeetsSpec.MeetsSpec = {
       val expr = ExpansionExpr(expansion, Untyped)
       val res = evalCandidate(expr, partialEvaluator)(ex)
@@ -151,6 +161,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     }
 
     val restartable = enum == "eqclasses"
+    val disambiguate = false
 
     def mkEnum = (enum match {
       case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
@@ -158,7 +169,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       case other =>
         if (other != "topdown") warning("Enumerator not recognized, falling back to top-down...")
         val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples, _.falseProduce(nt => ExpansionExpr(nt, Untyped)))
-        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer)
+        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, rawEvalCandidate(_, _).result, disambiguate)
     }).iterator(topLabel).take(maxGen)
     var it = mkEnum
     debug("Grammar:")
@@ -182,11 +193,14 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             // Found counterexample! Exclude this program
             val model = solver.getModel
             val cex = InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
-            debug(s"Found cex $cex for $expr, restarting enum...")
+            debug(s"Found cex $cex for $expr")
             examples +:= cex
             timers.cegisIter.stop()
             timers.cegisIter.start()
-            if (restartable) it = mkEnum
+            if (restartable) {
+              println("Restarting enum...")
+              it = mkEnum
+            }
             None
 
           case Some(false) =>
