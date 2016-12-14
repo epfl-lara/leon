@@ -5,6 +5,7 @@ package enumerators
 import leon.grammars.enumerators.CandidateScorer.Score
 import leon.synthesis.{Example, SynthesisPhase}
 import purescala.Expressions.Expr
+import scala.collection.mutable
 
 class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
@@ -20,6 +21,11 @@ class ProbwiseTopdownEnumerator(
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
+
+  def sig(r: Expr): Option[Seq[Expr]] = {
+    examples mapM (eval(r, _))
+  }
+
 }
 
 object EnumeratorStats {
@@ -33,6 +39,7 @@ object EnumeratorStats {
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[R], disambiguate: Boolean)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
+
   implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
@@ -40,6 +47,26 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   protected def nthor(nt: NT): Double
 
   val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+  protected val sigToNormalExp = mutable.Map[(NT, Sig), Expansion[NT, R]]()
+
+  type Sig = Seq[R]
+
+  def sig(r: R): Option[Sig]
+
+  def isClassRepresentative(e: Expansion[NT, R]): Boolean =
+    !disambiguate || !e.complete || {
+      sig(e.produce).exists { theSig =>
+        sigToNormalExp.get(e.nt, theSig) match {
+          case None =>
+            sigToNormalExp += (e.nt, theSig) -> e
+            true
+          case Some(`e`) =>
+            true
+          case _ =>
+            false
+        }
+      }
+    }
 
   /**
     * Represents an element of the worklist
@@ -77,11 +104,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     }
   }
 
-  def isClassRepresentative(expansion: Expansion[NT, R]) = true
-
   def iterator(nt: NT): Iterator[R] = new Iterator[R] {
     val ordering = Ordering.by[WorklistElement, Double](_.priority)
-    val worklist = new scala.collection.mutable.PriorityQueue[WorklistElement]()(ordering)
+    val worklist = new mutable.PriorityQueue[WorklistElement]()(ordering)
 
     val seedExpansion = NonTerminalInstance[NT, R](nt)
     val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = false)
