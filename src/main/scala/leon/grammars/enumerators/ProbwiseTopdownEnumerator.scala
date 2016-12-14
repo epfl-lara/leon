@@ -157,15 +157,15 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           case Nil =>
             throw new IllegalArgumentException()
           case csHd :: csTl if csHd.complete =>
-            for (csTlExp <- expandChildren(csTl)) yield (csHd :: csTlExp._1, csTlExp._2)
+            for ((expansions, logProb) <- expandChildren(csTl)) yield (csHd :: expansions, logProb)
           case csHd :: csTl =>
             for (csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore))
             yield (csHdExp.expansion :: csTl, csHdExp.logProb)
         }
 
-        for (childExpansion <- expandChildren(children)) yield {
-          val expPrime = ProdRuleInstance(nt, rule, childExpansion._1)
-          val logProbPrime = elem.logProb + childExpansion._2
+        for ((expansions, logProb) <- expandChildren(children)) yield {
+          val expPrime = ProdRuleInstance(nt, rule, expansions)
+          val logProbPrime = elem.logProb + logProb
           val horizonPrime = expPrime.horizon(nthor)
           WorklistElement(expPrime, logProbPrime, horizonPrime, elemScore)
         }
