@@ -13,7 +13,7 @@ object UsingConcreteClasses {
 
     if (child.opt.v == 42) 0
     else 1
-  }
+  } ensuring { _ == 0 }
 
   @extern
   def main(args: Array[String]): Unit = _main()
