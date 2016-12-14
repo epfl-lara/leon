@@ -10,7 +10,7 @@ import scala.collection.mutable
 class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
     init: Label,
-    scorer: CandidateScorer[Expr],
+    scorer: CandidateScorer[Label, Expr],
     examples: Seq[Example],
     eval: (Expr, Example) => Option[Expr],
     disambiguate: Boolean
@@ -36,7 +36,7 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[R], disambiguate: Boolean)(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], disambiguate: Boolean)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
 

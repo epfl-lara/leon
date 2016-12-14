@@ -16,8 +16,8 @@ class PartialExpansionEvaluator(ctx: LeonContext, prog: Program, bank: Evaluatio
   case class PERes(res: Expr, complete: Boolean)
 
   val table: Map[Class[_], (Expr, RC, GC) => PERes] = Map(
-    classOf[ExpansionExpr[_]] -> {
-      (expr, rctx, gctx) => expr.asInstanceOf[ExpansionExpr[_]] match {
+    classOf[ExpansionExpr] -> {
+      (expr, rctx, gctx) => expr.asInstanceOf[ExpansionExpr] match {
         case ExpansionExpr(NonTerminalInstance(_), typeTree) => PERes(expr, complete = false)
         case ExpansionExpr(ProdRuleInstance(nt, rule, children), typeTree) =>
           val childExprs = children.map(child => ExpansionExpr(child, Untyped))

@@ -9,13 +9,13 @@ import synthesis.Example
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks
 
-class CandidateScorer[R](
-  evalCandidate: (Expansion[_, R], Example) => MeetsSpec,
+class CandidateScorer[NT, R](
+  evalCandidate: (Expansion[NT, R], Example) => MeetsSpec,
   getExs: Unit => Seq[Example],
-  val falseProduce: Expansion[_, R] => R
+  val falseProduce: Expansion[NT, R] => R
 )(implicit ctx: LeonContext) {
 
-  def score(expansion: Expansion[_, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
+  def score(expansion: Expansion[NT, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
     ctx.timers.score.start()
     val exs = getExs(())
     val ans = if (eagerReturnOnFalse) {

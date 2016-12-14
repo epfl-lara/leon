@@ -74,9 +74,8 @@ case class ProdRuleInstance[NT, R](
   *
   * @param expansion The expansion being wrapped
   * @param typeTree The type of the produced expression
-  * @tparam NT Type of non-terminal symbols of the grammar
   */
-case class ExpansionExpr[NT](expansion: Expansion[NT, Expr], typeTree: TypeTree)
+case class ExpansionExpr(expansion: Expansion[Label, Expr], typeTree: TypeTree)
   extends Expr with Terminal with PrettyPrintable {
   override def getType: TypeTree = typeTree
 
@@ -84,4 +83,5 @@ case class ExpansionExpr[NT](expansion: Expansion[NT, Expr], typeTree: TypeTree)
     import leon.purescala.PrinterHelpers._
     p"$expansion"
   }
+
 }
