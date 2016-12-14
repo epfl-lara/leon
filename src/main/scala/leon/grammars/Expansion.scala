@@ -73,15 +73,19 @@ case class ProdRuleInstance[NT, R](
   * example, in partial evaluation
   *
   * @param expansion The expansion being wrapped
-  * @param typeTree The type of the produced expression
   */
-case class ExpansionExpr(expansion: Expansion[Label, Expr], typeTree: TypeTree)
+case class ExpansionExpr(expansion: Expansion[Label, Expr])
   extends Expr with Terminal with PrettyPrintable {
-  override def getType: TypeTree = typeTree
+  override def getType: TypeTree = {
+    println(s"${this}:${this.getType}")
+    expansion.nt.getType
+  }
 
   override def printWith(implicit pctx: PrinterContext): Unit = {
     import leon.purescala.PrinterHelpers._
     p"$expansion"
   }
+
+  override def isSimpleExpr = true
 
 }

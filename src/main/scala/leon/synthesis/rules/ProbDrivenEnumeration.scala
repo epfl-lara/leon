@@ -149,7 +149,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     }
 
     def partialTestCandidate(expansion: Expansion[Label, Expr], ex: Example): MeetsSpec.MeetsSpec = {
-      val expr = ExpansionExpr(expansion, Untyped)
+      val expr = ExpansionExpr(expansion)
       val res = evalCandidate(expr, partialEvaluator)(ex)
       res match {
         case EvaluationResults.Successful(BooleanLiteral(true)) => MeetsSpec.YES
@@ -173,7 +173,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             warning(s"Enumerator $enum not recognized, falling back to top-down...")
             false
         }
-        val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples, _.falseProduce(nt => ExpansionExpr(nt, Untyped)))
+        val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples, _.falseProduce(nt => ExpansionExpr(nt)))
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, disambiguate)
     }).iterator(topLabel).take(maxGen)
     var it = mkEnum
