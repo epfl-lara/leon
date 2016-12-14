@@ -244,7 +244,11 @@ object Extractors {
         }))
       case na @ EmptyArray(t) => Some(Seq[Expr](), (_:Seq[Expr]) => na)
       case na @ NonemptyArray(elems, None) =>
-        val ArrayType(tpe) = na.getType
+        val tpe = na.getType match {
+          case ArrayType(tpe) => tpe
+          case Untyped => Untyped
+          case tpe => sys.error(s"Unexpected type $tpe")
+        }
         val (indexes, elsOrdered) = elems.toSeq.unzip
 
         Some((
