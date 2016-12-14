@@ -10,7 +10,7 @@ import leon.io.{
   StdOut
 }
 
-object LZW {
+object LZWb {
 
   // GENERAL NOTES
   // =============
