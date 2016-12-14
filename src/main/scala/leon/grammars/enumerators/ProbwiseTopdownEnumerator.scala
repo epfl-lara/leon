@@ -40,20 +40,21 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   import ctx.reporter._
 
-  implicit val debugSection = leon.utils.DebugSectionSynthesis
+  implicit protected val debugSection = leon.utils.DebugSectionSynthesis
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
   protected def nthor(nt: NT): Double
 
-  val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+  protected val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+
   protected val sigToNormalExp = mutable.Map[(NT, Sig), Expansion[NT, R]]()
 
   type Sig = Seq[R]
 
   def sig(r: R): Option[Sig]
 
-  def isClassRepresentative(e: Expansion[NT, R]): Boolean =
+  protected def isClassRepresentative(e: Expansion[NT, R]): Boolean =
     !disambiguate || !e.complete || {
       sig(e.produce).exists { theSig =>
         sigToNormalExp.get(e.nt, theSig) match {
