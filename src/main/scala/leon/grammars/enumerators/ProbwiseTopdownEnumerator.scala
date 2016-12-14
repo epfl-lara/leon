@@ -10,6 +10,7 @@ class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
     init: Label,
     scorer: CandidateScorer[Expr],
+    examples: Seq[Example],
     eval: (Expr, Example) => Option[Expr],
     disambiguate: Boolean
   )(implicit ctx: LeonContext)

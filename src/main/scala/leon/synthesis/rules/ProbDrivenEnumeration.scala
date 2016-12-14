@@ -160,16 +160,21 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       }
     }
 
-    val restartable = enum == "eqclasses"
-    val disambiguate = false
+    val restartable = enum == "eqclasses" || enum == "topdown-opt"
 
     def mkEnum = (enum match {
       case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
       case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
-      case other =>
-        if (other != "topdown") warning("Enumerator not recognized, falling back to top-down...")
+      case _ =>
+        val disambiguate = enum match {
+          case "topdown" => false
+          case "topdown-opt" => true
+          case _ =>
+            warning(s"Enumerator $enum not recognized, falling back to top-down...")
+            false
+        }
         val scorer = new CandidateScorer[Expr](partialTestCandidate, _ => examples, _.falseProduce(nt => ExpansionExpr(nt, Untyped)))
-        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, rawEvalCandidate(_, _).result, disambiguate)
+        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, disambiguate)
     }).iterator(topLabel).take(maxGen)
     var it = mkEnum
     debug("Grammar:")
