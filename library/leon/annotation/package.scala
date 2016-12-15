@@ -16,6 +16,8 @@ package object annotation {
   @ignore
   class extern     extends StaticAnnotation
   @ignore
+  class decompose  extends StaticAnnotation
+  @ignore
   class inline     extends StaticAnnotation
   @ignore
   class internal   extends StaticAnnotation

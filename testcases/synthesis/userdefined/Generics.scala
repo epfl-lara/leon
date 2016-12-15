@@ -82,7 +82,7 @@ object Test1 {
 
   def size2[B](x: List[B]): BigInt = {
     ???[BigInt]
-  } ensuring { r => r >= 0 }
+  } ensuring { r => r > 0 }
 
   //def find4Times(x: BigInt, y: BigInt): BigInt = {
   //  ???[BigInt]

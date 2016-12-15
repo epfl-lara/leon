@@ -1,5 +1,6 @@
 package leon
-package synthesis.stoch
+package synthesis
+package stoch
 
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
@@ -62,17 +63,17 @@ object PCFGStats {
   }
 
   // Expression constructor statistics
-  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Int]]
+  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
 
   def addStats(stats1: ExprConstrStats, stats2: ExprConstrStats): ExprConstrStats = {
     type HashMap[K, V] = scala.collection.mutable.HashMap[K, V]
-    val ans = new HashMap[TypeTree, HashMap[Class[_ <: Expr], Int]]()
+    val ans = new HashMap[TypeTree, HashMap[Class[_ <: Expr], Seq[Expr]]]()
 
     def addMap(stats: ExprConstrStats) = {
       for (typeTree <- stats.keys) {
         val typeStats = ans.getOrElse(typeTree, new HashMap())
         for (constr <- stats(typeTree).keys) {
-          val freq = typeStats.getOrElse(constr, 0) + stats(typeTree)(constr)
+          val freq = typeStats.getOrElse(constr, Seq()) ++ stats(typeTree)(constr)
           typeStats.put(constr, freq)
         }
         ans.put(typeTree, typeStats)
@@ -86,23 +87,20 @@ object PCFGStats {
 
   def exprConstrStatsToString(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
-    def total[K](map: Map[K, Int]): Int = map.values.sum
-    for (typeConstrs <- stats.toList.sortBy(typeExpr => (-total(typeExpr._2), typeExpr._1.toString))) {
-      val typeTotal = total(typeConstrs._2)
-      for (constr <- typeConstrs._2.toList.sortBy(constrFreq => (-constrFreq._2, constrFreq._1.toString))) {
-        ans.append(s"${typeConstrs._1}\t$typeTotal\t${constr._1}\t${constr._2}\n")
+
+    def total[K, T](map: Map[K, Seq[T]]): Int = map.mapValues(_.size).values.sum
+    for ((tt, ttStats) <- stats.toList.sortBy{ case (tt, ttStats) => (-total(ttStats), tt.toString) }) {
+      val typeTotal = total(ttStats)
+      val ttStatsSorted = ttStats.mapValues(_.size).toSeq.sortBy { case (constr, freq) => (-freq, constr.toString) }
+      for ((constr, freq) <- ttStatsSorted) {
+        ans.append(s"$tt\t$typeTotal\t$constr\t$freq\n")
       }
     }
     ans.toString()
   }
 
   def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
-    val asebt: Map[TypeTree, Seq[Expr]] = allSubExprsByType(p)
-    val relevantSubExprs = asebt.mapValues(_.filter(expr => ctx.files.contains(expr.getPos.file)))
-                                .filter { case (tt, se) => se.nonEmpty }
-    val getExprConstr: Expr => Class[_ <: Expr] = _.getClass
-    val asecbt: Map[TypeTree, Seq[Class[_ <: Expr]]] = relevantSubExprs.mapValues(_.map(getExprConstr))
-    asecbt.mapValues(_.groupBy(identity).mapValues(_.size))
+    allSubExprsByType(p).mapValues(_.groupBy(_.getClass))
   }
 
   // Type statistics

@@ -1,5 +1,6 @@
 package leon
-package synthesis.stoch
+package synthesis
+package stoch
 
 import purescala.Definitions.Program
 import purescala.ExprOps

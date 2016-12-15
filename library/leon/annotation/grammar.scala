@@ -5,7 +5,6 @@ package leon.annotation
 import scala.annotation.StaticAnnotation
 
 object grammar {
-
   @ignore
   class label extends StaticAnnotation
 

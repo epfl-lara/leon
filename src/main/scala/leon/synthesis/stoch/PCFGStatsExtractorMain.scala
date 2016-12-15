@@ -3,6 +3,9 @@ package synthesis
 package stoch
 
 import PCFGStats.{ExprConstrStats, addStats, exprConstrStatsToString, getExprConstrStats}
+import leon.purescala.Expressions._
+import leon.purescala.Types.BooleanType
+import leon.utils.PreprocessingPhase
 
 import scala.util.Random
 
@@ -22,6 +25,13 @@ object PCFGStatsExtractorMain {
       }
     }
 
+    // PCFGEmitter.emit(Set(), globalStatsTrain).foreach(println)
+    /* println(PCFGEmitter.emit(Set(), BooleanType, classOf[And], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Or], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Not], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Equals], globalStatsTrain))
+    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Plus], globalStatsTrain)) */
+
     println("Printing training data:")
     println(exprConstrStatsToString(globalStatsTrain))
     println("Printing test data:")
@@ -39,24 +49,30 @@ object PCFGStatsExtractorMain {
 
   def pipeline: Pipeline[List[String], ExprConstrStats] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    ClassgenPhase andThen ExtractionPhase andThen SimpleFunctionApplicatorPhase(getExprConstrStats)
+    ClassgenPhase andThen
+      ExtractionPhase andThen
+      new PreprocessingPhase(false) andThen
+      SimpleFunctionApplicatorPhase(getExprConstrStats)
   }
 
   def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
-    val numTestExprs = statsTest.mapValues(_.values.sum).values.sum
+    val statsTrainC = statsTrain.mapValues(_.mapValues(_.size))
+    val statsTestC = statsTest.mapValues(_.mapValues(_.size))
+
+    val numTestExprs = statsTestC.mapValues(_.values.sum).values.sum
     println(s"numTestExprs: $numTestExprs")
 
     var numCorrectTestExprs = 0.0
     var numRandomCorrectTestExprs = 0.0
-    for (typeTree <- statsTest.toList.sortBy(-_._2.values.sum).map(_._1)) {
-      val typeFreqTest = statsTest(typeTree).values.sum
-      val numConstrs = statsTest(typeTree).values.size
+    for (typeTree <- statsTestC.toSeq.sortBy(-_._2.values.sum).map(_._1)) {
+      val typeFreqTest = statsTestC(typeTree).values.sum
+      val numConstrs = statsTestC(typeTree).values.size
       println(s"Considering type $typeTree, which occurs $typeFreqTest times in test, and with $numConstrs constructors")
 
-      val predConstrOpt = statsTrain.getOrElse(typeTree, Map()).toList.sortBy(-_._2).headOption
+      val predConstrOpt = statsTrainC.getOrElse(typeTree, Map()).toList.sortBy(-_._2).headOption
       predConstrOpt match {
         case Some((constr, _)) =>
-          val thisTypeCorrect = statsTest(typeTree).getOrElse(constr, 0)
+          val thisTypeCorrect = statsTestC(typeTree).getOrElse(constr, 0)
           println(s"  Train suggests constructor $constr which was used $thisTypeCorrect times in test")
           numCorrectTestExprs = numCorrectTestExprs + thisTypeCorrect
         case None =>
