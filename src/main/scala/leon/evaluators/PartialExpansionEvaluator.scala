@@ -4,7 +4,6 @@ package evaluators
 import leon.grammars.{ExpansionExpr, NonTerminalInstance, ProdRuleInstance}
 import leon.purescala.Definitions.Program
 import leon.purescala.Expressions._
-import leon.purescala.Types.Untyped
 
 // The following code has been grafted together from DefaultEvaluator and RecursiveEvaluator.
 

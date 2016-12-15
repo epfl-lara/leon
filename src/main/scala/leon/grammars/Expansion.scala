@@ -1,6 +1,7 @@
 package leon
 package grammars
 
+import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Expressions.{Expr, Terminal}
 import leon.purescala.{PrettyPrintable, PrinterContext}
 import leon.purescala.Types.TypeTree
@@ -35,6 +36,7 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
   def size: Int
 
   /**
+    *
     * Computes the ``horizon'' of this partial expansion. The horizon is the minimum extra log probability of all
     * completed extensions of this expansion.
     * @param nthor The horizon of each non-terminal
@@ -77,7 +79,6 @@ case class ProdRuleInstance[NT, R](
 case class ExpansionExpr(expansion: Expansion[Label, Expr])
   extends Expr with Terminal with PrettyPrintable {
   override def getType: TypeTree = {
-    println(s"${this}:${this.getType}")
     expansion.nt.getType
   }
 
@@ -87,5 +88,10 @@ case class ExpansionExpr(expansion: Expansion[Label, Expr])
   }
 
   override def isSimpleExpr = true
+
+  override def toString = expansion.falseProduce { nti =>
+    val tp = nti.nt.getType
+    FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
+  }.toString
 
 }
