@@ -20,7 +20,8 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
   def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[DeterministicEvaluator] = {
     List(
       new DefaultEvaluator(ctx, pgm),
-      new AngelicEvaluator(new StreamEvaluator(ctx, pgm))
+      new AngelicEvaluator(new StreamEvaluator(ctx, pgm)),
+      new TableEvaluator(ctx, pgm)
     )
   }
 

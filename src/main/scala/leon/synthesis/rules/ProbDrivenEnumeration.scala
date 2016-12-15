@@ -8,7 +8,6 @@ import evaluators._
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import leon.grammars.{Expansion, ExpansionExpr, Label}
 import leon.grammars.enumerators._
-import purescala.Types.Untyped
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps._
@@ -203,7 +202,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             timers.cegisIter.stop()
             timers.cegisIter.start()
             if (restartable) {
-              println("Restarting enum...")
+              debug("Restarting enum...")
               it = mkEnum
             }
             None

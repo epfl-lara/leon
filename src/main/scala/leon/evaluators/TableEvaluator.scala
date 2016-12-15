@@ -50,6 +50,31 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         expr
     },
 
+    classOf[IntLiteral] -> {
+      (expr, rctx, gctx) =>
+        expr
+    },
+
+    classOf[CharLiteral] -> {
+      (expr, rctx, gctx) =>
+        expr
+    },
+
+    classOf[UnitLiteral] -> {
+      (expr, rctx, gctx) =>
+        expr
+    },
+
+    classOf[FractionalLiteral] -> {
+      (expr, rctx, gctx) =>
+        normalizeFraction(expr.asInstanceOf[FractionalLiteral])
+    },
+
+    classOf[StringLiteral] -> {
+      (expr, rctx, gctx) =>
+        expr
+    },
+
     classOf[GreaterEquals] -> {
       (expr, rctx, gctx) =>
         implicit val r = rctx
@@ -321,14 +346,13 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         } else {
           throw RuntimeError("Cast error: cannot cast "+le.asString+" to "+expr.tpe.asString)
         }
-
     },
     classOf[IsInstanceOf] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
         implicit val g = gctx
         val expr = ex.asInstanceOf[IsInstanceOf]
-        val le = e(expr)
+        val le = e(expr.expr)
         BooleanLiteral(isSubtypeOf(le.getType, expr.classType))
     },
     classOf[CaseClassSelector] -> {
@@ -337,7 +361,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         implicit val g = gctx
         val expr = ex.asInstanceOf[CaseClassSelector]
         import expr._
-        val le = e(expr)
+        val le = e(caseClass)
         le match {
           case CaseClass(ct2, args) if classType == ct2 => args(classType.classDef.selectorID2Index(selector))
           case _ => throw EvalError(typeErrorMsg(le, classType))
@@ -586,10 +610,23 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         val expr = ex.asInstanceOf[BVXOr]
         import expr._
         (e(lhs), e(rhs)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 << i2)
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 ^ i2)
           case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
     },
+
+    classOf[BVShiftLeft] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[BVShiftLeft]
+        import expr._
+        (e(lhs), e(rhs)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 << i2)
+          case (le, re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        }
+    },
+
     classOf[BVAShiftRight] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
@@ -689,17 +726,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           case (le, re) => throw EvalError(typeErrorMsg(le, set.getType))
         }
     },
-    classOf[BVOr] -> {
-      (ex, rctx, gctx) =>
-        implicit val r = rctx
-        implicit val g = gctx
-        val expr = ex.asInstanceOf[BVOr]
-        import expr._
-        (e(lhs), e(rhs)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-    },
+
     classOf[SetIntersection] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
@@ -711,17 +738,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           case (le,re) => throw EvalError(typeErrorMsg(le, set1.getType))
         }
     },
-    classOf[BVOr] -> {
-      (ex, rctx, gctx) =>
-        implicit val r = rctx
-        implicit val g = gctx
-        val expr = ex.asInstanceOf[BVOr]
-        import expr._
-        (e(lhs), e(rhs)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-    },
+
     classOf[SetDifference] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
@@ -733,17 +750,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           case (le,re) => throw EvalError(typeErrorMsg(le, set1.getType))
         }
     },
-    classOf[BVOr] -> {
-      (ex, rctx, gctx) =>
-        implicit val r = rctx
-        implicit val g = gctx
-        val expr = ex.asInstanceOf[BVOr]
-        import expr._
-        (e(lhs), e(rhs)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-    },
+
     classOf[ElementOfSet] -> {
       (ex, rctx, gctx) =>
         implicit val r = rctx
