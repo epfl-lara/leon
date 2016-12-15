@@ -4,7 +4,9 @@ package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
 import leon.synthesis.{Example, SynthesisPhase}
+import leon.utils.{DebugSection, NoPosition}
 import purescala.Expressions.Expr
+
 import scala.collection.mutable
 
 class ProbwiseTopdownEnumerator(
@@ -18,6 +20,10 @@ class ProbwiseTopdownEnumerator(
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, disambiguate)
   with GrammarEnumerator
 {
+  import ctx.reporter._
+  override protected val debugSection = leon.utils.DebugSectionSynthesis
+  debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
+
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
@@ -39,8 +45,15 @@ object EnumeratorStats {
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], disambiguate: Boolean)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
-
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
+  def verboseDebug(msg: => String) = {
+    implicit val debugSection = leon.utils.DebugSectionSynthesisVerbose
+    debug(msg)
+  }
+  def ifVerboseDebug(body: (Any => Unit) => Any) = {
+    implicit val debugSection = leon.utils.DebugSectionSynthesisVerbose
+    ifDebug(NoPosition, body)
+  }
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
@@ -142,17 +155,24 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
       while (worklist.nonEmpty && (!worklist.head.expansion.complete || !elemCompliesTests(worklist.head))) {
         val head = worklist.dequeue
+        verboseDebug(s"Dequeued (${head.priority}): ${scorer.falseProduce(head.expansion)}")
         val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
 
         if (headScore.noExs.isEmpty) {
           val newElems = expandNext(head, headScore)
           worklist ++= newElems
 
+          ifVerboseDebug { printer =>
+            newElems foreach { e =>
+              printer(s"Enqueued (${e.priority}): ${scorer.falseProduce(e.expansion)}")
+            }
+          }
+
           EnumeratorStats.partialEvalAcceptCount += 1
           ifDebug{ printer =>
             if (worklist.size >= 2 * lastPrint) {
               printer(s"Worklist size: ${worklist.size}")
-              //printer(s"Worklist head: ${worklist.head.expansion.falseProduce()}")
+              // printer(s"Worklist head: ${worklist.head.expansion.falseProduce()}")
               printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
                 s"${EnumeratorStats.partialEvalRejectionCount}")
               lastPrint = worklist.size
