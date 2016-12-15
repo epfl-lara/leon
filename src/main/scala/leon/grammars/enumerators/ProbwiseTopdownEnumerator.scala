@@ -21,7 +21,7 @@ class ProbwiseTopdownEnumerator(
   with GrammarEnumerator
 {
   import ctx.reporter._
-  override protected val debugSection = leon.utils.DebugSectionSynthesis
+  override protected implicit val debugSection = leon.utils.DebugSectionSynthesis
   debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
 
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
