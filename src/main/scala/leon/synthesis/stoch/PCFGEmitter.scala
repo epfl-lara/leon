@@ -42,8 +42,7 @@ object PCFGEmitter {
     } else {
       val esOpTypes = es map { case e @ Operator(ops, _) => ops.map(_.getType) }
       val typeSign = esOpTypes.groupBy(ts => ts).mapValues(_.size).toSeq.sortBy(-_._2).head._1
-      val builder = es find { case Operator(ops, _) => typeSign == ops.map(_.getType) } map
-                            { case Operator(_, b) => b } get
+      val builder = es.collectFirst { case Operator(ops, b) if typeSign == ops.map(_.getType) => b }.get
 
       val funName = FreshIdentifier(constr.toString, tt)
       val args = typeSign.zipWithIndex.map { case (argType, index) => ValDef(FreshIdentifier(s"arg$index", argType)) }
