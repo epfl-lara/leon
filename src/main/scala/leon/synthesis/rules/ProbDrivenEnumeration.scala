@@ -208,6 +208,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             None
 
           case Some(false) =>
+            debug("Proven correct!")
             timers.cegisIter.stop()
             Some(Solution(BooleanLiteral(true), Set(), expr, isTrusted = true))
 

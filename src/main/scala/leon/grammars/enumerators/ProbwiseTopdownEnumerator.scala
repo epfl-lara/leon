@@ -149,11 +149,14 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           worklist ++= newElems
 
           EnumeratorStats.partialEvalAcceptCount += 1
-          if (worklist.size >= 1.5 * lastPrint) {
-            debug(s"Worklist size: ${worklist.size}")
-            debug(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-              s"${EnumeratorStats.partialEvalRejectionCount}")
-            lastPrint = worklist.size
+          ifDebug{ printer =>
+            if (worklist.size >= 2 * lastPrint) {
+              printer(s"Worklist size: ${worklist.size}")
+              //printer(s"Worklist head: ${worklist.head.expansion.falseProduce()}")
+              printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+                s"${EnumeratorStats.partialEvalRejectionCount}")
+              lastPrint = worklist.size
+            }
           }
         } else {
           EnumeratorStats.partialEvalRejectionCount += 1
