@@ -3,11 +3,21 @@ package grammars
 package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
+import leon.purescala.Common.FreshIdentifier
 import leon.synthesis.{Example, SynthesisPhase}
 import leon.utils.{DebugSection, NoPosition}
 import purescala.Expressions.Expr
 import scala.annotation.tailrec
 import scala.collection.mutable
+
+
+object ProbwiseTopdownEnumerator {
+  val ntWrap = (e: Expansion[Label, Expr]) => {
+    val tp = e.nt.getType
+    FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
+  }
+}
+
 
 class ProbwiseTopdownEnumerator(
     protected val grammar: ExpressionGrammar,
@@ -17,7 +27,7 @@ class ProbwiseTopdownEnumerator(
     eval: (Expr, Example) => Option[Expr],
     disambiguate: Boolean
   )(implicit ctx: LeonContext)
-  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, disambiguate)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, disambiguate, ProbwiseTopdownEnumerator.ntWrap)
   with GrammarEnumerator
 {
   import ctx.reporter._
@@ -43,7 +53,7 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], disambiguate: Boolean)(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], disambiguate: Boolean, ntWrap: Expansion[NT, R] => R)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
@@ -128,7 +138,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = false)
     val worklistSeed = WorklistElement(seedExpansion, 0.0, nthor(nt), seedScore)
 
-    var prevAns = worklistSeed
     worklist.enqueue(worklistSeed)
 
     var lastPrint: Int = 1
@@ -142,11 +151,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
       assert(worklist.nonEmpty)
-      val ans = worklist.dequeue
-      // assert(ans.logProb - 1.0e-6 <= prevAns.logProb)
-      // assert(ans.horizon >= -1.0e-6)
-      prevAns = ans
-      ans.get
+      worklist.dequeue.get
     }
 
     @tailrec def prepareNext(): Unit = {
@@ -167,7 +172,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         if (!elem.expansion.complete || !compliesTests || !hasFreshSig) {
           // If so, remove it
           worklist.dequeue()
-          verboseDebug(s"Dequeued (${elem.priority}): ${scorer.falseProduce(elem.expansion)}")
+          verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
           // Is it possible that the expansions of elem lead somewhere?
           if (compliesTests && hasFreshSig) {
             // If so, compute them and put them back in the worklist
@@ -176,7 +181,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             // And debug some
             ifVerboseDebug { printer =>
               newElems foreach { e =>
-                printer(s"Enqueued (${e.priority}): ${scorer.falseProduce(e.expansion)}")
+                printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
               }
             }
             ifDebug { printer =>
@@ -187,6 +192,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                 lastPrint = worklist.size
               }
             }
+          } else {
+            verboseDebug(s"Element rejected: complies tests = $compliesTests. hasFreshSig = $hasFreshSig")
           }
           // We dequeued an elemen, so we don't necessarily have an acceptable element
           // on the head of the queue. Call rec again.
