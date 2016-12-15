@@ -6,7 +6,7 @@ import leon.grammars.enumerators.CandidateScorer.Score
 import leon.synthesis.{Example, SynthesisPhase}
 import leon.utils.{DebugSection, NoPosition}
 import purescala.Expressions.Expr
-
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 class ProbwiseTopdownEnumerator(
@@ -22,6 +22,7 @@ class ProbwiseTopdownEnumerator(
 {
   import ctx.reporter._
   override protected implicit val debugSection = leon.utils.DebugSectionSynthesis
+
   debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
 
   val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
@@ -47,12 +48,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   import ctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
   def verboseDebug(msg: => String) = {
-    implicit val debugSection = leon.utils.DebugSectionSynthesisVerbose
-    debug(msg)
+    debug(msg)(leon.utils.DebugSectionSynthesisVerbose)
   }
   def ifVerboseDebug(body: (Any => Unit) => Any) = {
-    implicit val debugSection = leon.utils.DebugSectionSynthesisVerbose
-    ifDebug(NoPosition, body)
+    ifDebug(NoPosition, body)(leon.utils.DebugSectionSynthesisVerbose)
   }
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
@@ -61,24 +60,27 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   protected val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
 
-  protected val sigToNormalExp = mutable.Map[(NT, Sig), Expansion[NT, R]]()
-
   type Sig = Seq[R]
 
-  def sig(r: R): Option[Sig]
+  // Filter out seen expressions
+  protected val redundant = mutable.Set[Expansion[NT, R]]()
+  protected val representatives = mutable.Set[Expansion[NT, R]]()
+  def expRedundant(e: Expansion[NT, R]) = redundant(e)
 
-  protected def isClassRepresentative(e: Expansion[NT, R]): Boolean =
-    !disambiguate || !e.complete || {
+  // Disambiguate expressions by signature
+  protected val seenSigs = mutable.Set[(NT, Sig)]()
+  def sig(r: R): Option[Sig]
+  protected def sigFresh(e: Expansion[NT, R]): Boolean =
+    !disambiguate || !e.complete || representatives(e) || {
       sig(e.produce).exists { theSig =>
-        sigToNormalExp.get(e.nt, theSig) match {
-          case None =>
-            sigToNormalExp += (e.nt, theSig) -> e
-            true
-          case Some(`e`) =>
-            true
-          case _ =>
-            false
+        val notSeenBefore = !seenSigs((e.nt, theSig))
+        if (notSeenBefore) {
+          seenSigs += ((e.nt, theSig))
+          representatives += e
+        } else {
+          redundant += e
         }
+        notSeenBefore
       }
     }
 
@@ -147,42 +149,52 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       ans.get
     }
 
-    def prepareNext(): Unit = {
-      def elemCompliesTests(elem: WorklistElement) = {
-        val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = false)
-        score.noExs.isEmpty
-      }
-
-      while (worklist.nonEmpty && (!worklist.head.expansion.complete || !elemCompliesTests(worklist.head))) {
-        val head = worklist.dequeue
-        verboseDebug(s"Dequeued (${head.priority}): ${scorer.falseProduce(head.expansion)}")
-        val headScore = scorer.score(head.expansion, head.score.yesExs, eagerReturnOnFalse = false)
-
-        if (headScore.noExs.isEmpty) {
-          val newElems = expandNext(head, headScore)
-          worklist ++= newElems
-
-          ifVerboseDebug { printer =>
-            newElems foreach { e =>
-              printer(s"Enqueued (${e.priority}): ${scorer.falseProduce(e.expansion)}")
+    @tailrec def prepareNext(): Unit = {
+      if (worklist.nonEmpty) {
+        val elem = worklist.head
+        lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = false)
+        lazy val compliesTests = {
+          val res = score.noExs.isEmpty
+          if (res) {
+            EnumeratorStats.partialEvalAcceptCount += 1
+          } else {
+            EnumeratorStats.partialEvalRejectionCount += 1
+          }
+          res
+        }
+        lazy val hasFreshSig = !disambiguate || sigFresh(elem.expansion)
+        // Does elem have to be removed from the queue?
+        if (!elem.expansion.complete || !compliesTests || !hasFreshSig) {
+          // If so, remove it
+          worklist.dequeue()
+          verboseDebug(s"Dequeued (${elem.priority}): ${scorer.falseProduce(elem.expansion)}")
+          // Is it possible that the expansions of elem lead somewhere?
+          if (compliesTests && hasFreshSig) {
+            // If so, compute them and put them back in the worklist
+            val newElems = expandNext(elem, score)
+            worklist ++= newElems
+            // And debug some
+            ifVerboseDebug { printer =>
+              newElems foreach { e =>
+                printer(s"Enqueued (${e.priority}): ${scorer.falseProduce(e.expansion)}")
+              }
+            }
+            ifDebug { printer =>
+              if (worklist.size >= 2 * lastPrint) {
+                printer(s"Worklist size: ${worklist.size}")
+                printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+                  s"${EnumeratorStats.partialEvalRejectionCount}")
+                lastPrint = worklist.size
+              }
             }
           }
-
-          EnumeratorStats.partialEvalAcceptCount += 1
-          ifDebug{ printer =>
-            if (worklist.size >= 2 * lastPrint) {
-              printer(s"Worklist size: ${worklist.size}")
-              // printer(s"Worklist head: ${worklist.head.expansion.falseProduce()}")
-              printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                s"${EnumeratorStats.partialEvalRejectionCount}")
-              lastPrint = worklist.size
-            }
-          }
-        } else {
-          EnumeratorStats.partialEvalRejectionCount += 1
+          // We dequeued an elemen, so we don't necessarily have an acceptable element
+          // on the head of the queue. Call rec again.
+          prepareNext()
         }
       }
     }
+
   }
 
   def expandNext(elem: WorklistElement, elemScore: Score): Seq[WorklistElement] = {
@@ -201,7 +213,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             rule,
             rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
           )
-          if isClassRepresentative(expansion)
+          if !expRedundant(expansion)
         } yield {
           val logProbPrime = elem.logProb + rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
@@ -219,7 +231,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           case csHd :: csTl =>
             for {
               csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore)
-              if isClassRepresentative(csHdExp.expansion)
+              if !expRedundant(csHdExp.expansion)
             } yield {
               (csHdExp.expansion :: csTl, csHdExp.logProb)
             }
@@ -228,7 +240,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         for {
           (expansions, logProb) <- expandChildren(children)
           expPrime = ProdRuleInstance(nt, rule, expansions)
-          if isClassRepresentative(expPrime)
+          if !expRedundant(expPrime)
         } yield {
           val logProbPrime = elem.logProb + logProb
           val horizonPrime = expPrime.horizon(nthor)
