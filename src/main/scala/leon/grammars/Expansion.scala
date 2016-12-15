@@ -24,7 +24,7 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
     * @throws `UnsupportedOperationException` if the expansion is not complete
    */
   def produce: R
-
+  def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R
   /**
    * Size of the expansion
    */
@@ -42,6 +42,7 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
 case class NonTerminalInstance[NT, R](override val nt: NT) extends Expansion[NT, R](nt) {
   val complete: Boolean = false
   def produce: R = throw new UnsupportedOperationException(s"Unable to expand non-terminal ${this}")
+  def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = ntWrap(this)
   val size: Int = 1
   def horizon(nthor: NT => Double): Double = nthor(nt)
 }
@@ -55,6 +56,9 @@ case class ProdRuleInstance[NT, R](
   require(children.map(_.nt) == rule.subTrees)
   val complete: Boolean = children.forall(_.complete)
   def produce: R = rule.builder(children.map(_.produce))
+  override def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = {
+    rule.builder(children.map(_.falseProduce(ntWrap)))
+  }
   val size: Int = 1 + children.map(_.size).sum
   def horizon(nthor: NT => Double): Double = children.map(c => c.horizon(nthor)).sum
 }
