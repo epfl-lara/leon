@@ -97,6 +97,25 @@ object Grammar {
     }
   }
 
+  def max3FullEx(b1: BigInt, b2: BigInt, b3: BigInt) = {
+    ???[BigInt]
+  } ensuring {
+    res => (((b1, b2, b3), res) passes {
+      case (BigInt(0), BigInt(1), BigInt(0)) => BigInt(1) // Line 123
+      case (BigInt(1), BigInt(0), BigInt(0)) => BigInt(1) // Line 145
+      case (BigInt(1), BigInt(1), BigInt(1)) => BigInt(1) // Line 309
+      case (BigInt(0), BigInt(1), BigInt(2)) => BigInt(2) // Line 1253
+      case (BigInt(0), BigInt(2), BigInt(1)) => BigInt(2) // Line 4069
+      case (BigInt(2), BigInt(1), BigInt(0)) => BigInt(2) // Line 6858
+      case (BigInt(1), BigInt(0), BigInt(2)) => BigInt(2) // Line 10118
+      case (BigInt(1), BigInt(2), BigInt(0)) => BigInt(2) // Line 14533
+      case (BigInt(2), BigInt(0), BigInt(1)) => BigInt(2) // Line 17627
+      case (BigInt(0), BigInt(-2), BigInt(-1)) => BigInt(0) // Line 24047
+      case (BigInt(-2), BigInt(-1), BigInt(0)) => BigInt(0) // Line 35383
+      case (BigInt(2), BigInt(3), BigInt(3)) => BigInt(3) // Line 58916
+    })
+  }
+
   def max4Ex(b1: BigInt, b2: BigInt, b3: BigInt, b4: BigInt) = {
     ???[BigInt]
   } ensuring {

@@ -105,7 +105,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     expansion: Expansion[NT, R],
     logProb: Double,
     horizon: Double,
-    score: Score
+    score: Score,
+    parent: Option[WorklistElement]
   ) {
     require(logProb <= 0 && horizon <= 0)
     def get = expansion.produce
@@ -128,6 +129,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       val t2 = logProb + horizon
       t1 + t2
     }
+
+    def lineage: Seq[WorklistElement] = this +: parent.map(_.lineage).getOrElse(Nil)
   }
 
   def iterator(nt: NT): Iterator[R] = new Iterator[R] {
@@ -136,7 +139,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     val seedExpansion = NonTerminalInstance[NT, R](nt)
     val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = false)
-    val worklistSeed = WorklistElement(seedExpansion, 0.0, nthor(nt), seedScore)
+    val worklistSeed = WorklistElement(seedExpansion, 0.0, nthor(nt), seedScore, None)
 
     worklist.enqueue(worklistSeed)
 
@@ -151,7 +154,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
       assert(worklist.nonEmpty)
-      worklist.dequeue.get
+      val res = worklist.dequeue
+      ifDebug { printer =>
+        printer("Printing lineage for returned element:")
+        res.lineage.foreach { elem => printer(s"    ${elem.priority}: ${elem.expansion.falseProduce(ntWrap)}") }
+      }
+      res.get
     }
 
     @tailrec def prepareNext(): Unit = {
@@ -193,7 +201,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               }
             }
           } else {
-            verboseDebug(s"Element rejected: complies tests = $compliesTests. hasFreshSig = $hasFreshSig")
+            verboseDebug(s"Element rejected: compliesTests = $compliesTests, hasFreshSig = $hasFreshSig.")
           }
           // We dequeued an elemen, so we don't necessarily have an acceptable element
           // on the head of the queue. Call rec again.
@@ -224,7 +232,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         } yield {
           val logProbPrime = elem.logProb + rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
-          WorklistElement(expansion, logProbPrime, horizonPrime, elemScore)
+          WorklistElement(expansion, logProbPrime, horizonPrime, elemScore, Some(elem))
         }
 
       case ProdRuleInstance(nt, rule, children) =>
@@ -237,7 +245,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             for ((expansions, logProb) <- expandChildren(csTl)) yield (csHd :: expansions, logProb)
           case csHd :: csTl =>
             for {
-              csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore), elemScore)
+              csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore, None), elemScore)
               if !expRedundant(csHdExp.expansion)
             } yield {
               (csHdExp.expansion :: csTl, csHdExp.logProb)
@@ -251,7 +259,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         } yield {
           val logProbPrime = elem.logProb + logProb
           val horizonPrime = expPrime.horizon(nthor)
-          WorklistElement(expPrime, logProbPrime, horizonPrime, elemScore)
+          WorklistElement(expPrime, logProbPrime, horizonPrime, elemScore, Some(elem))
         }
     }
   }

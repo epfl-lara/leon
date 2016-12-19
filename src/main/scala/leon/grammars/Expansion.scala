@@ -55,7 +55,7 @@ case class ProdRuleInstance[NT, R](
 
   require(children.map(_.nt) == rule.subTrees)
   val complete: Boolean = children.forall(_.complete)
-  def produce: R = rule.builder(children.map(_.produce))
+  lazy val produce: R = rule.builder(children.map(_.produce))
   override def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = {
     rule.builder(children.map(_.falseProduce(ntWrap)))
   }
