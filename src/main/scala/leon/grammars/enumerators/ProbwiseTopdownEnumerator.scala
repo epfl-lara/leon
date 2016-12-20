@@ -78,21 +78,56 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   def expRedundant(e: Expansion[NT, R]) = redundant(e)
 
   // Disambiguate expressions by signature
-  protected val seenSigs = mutable.Set[(NT, Sig)]()
+  protected val seenSigs = mutable.Map[(NT, Sig), Expansion[NT, R]]()
   def sig(r: R): Option[Sig]
-  protected def sigFresh(e: Expansion[NT, R]): Boolean =
-    !disambiguate || !e.complete || representatives(e) || {
-      sig(e.produce).exists { theSig =>
-        val notSeenBefore = !seenSigs((e.nt, theSig))
-        if (notSeenBefore) {
-          seenSigs += ((e.nt, theSig))
-          representatives += e
-        } else {
-          redundant += e
+  protected def sigFresh(e: Expansion[NT, R], verbose: Boolean): Boolean = {
+    var reason = ""
+    val res = e match {
+      case NonTerminalInstance(_) =>
+        if (verbose) {
+          reason = "Non-terminal"
         }
-        notSeenBefore
-      }
+        true
+      case ProdRuleInstance(nt, rule, children) =>
+        if (children.exists(child => !sigFresh(child, verbose))) {
+          if (verbose) {
+            reason = "Non-canonical child exists"
+          }
+          false
+        } else if (!e.complete) {
+          if (verbose) {
+            reason = "Incomplete"
+          }
+          true
+        } else {
+          sig(e.produce).exists { theSig =>
+            if (!seenSigs.contains((e.nt, theSig))) {
+              seenSigs += ((e.nt, theSig) -> e)
+              representatives += e
+              if (verbose) {
+                reason = "Signature never seen before"
+              }
+              true
+            } else if (representatives(e)) {
+              if (verbose) {
+                reason = "Representative expansion"
+              }
+              true
+            } else {
+              redundant += e
+              if (verbose) {
+                reason = s"Redundant. seenSigs((e.nt, theSig)) = ${seenSigs((e.nt, theSig)).falseProduce(ntWrap)}"
+              }
+              false
+            }
+          }
+        }
     }
+    if (verbose) {
+      verboseDebug(s"sigFresh(${e.falseProduce(ntWrap)}) = $res. $reason.")
+    }
+    res
+  }
 
   /**
     * Represents an element of the worklist
@@ -175,7 +210,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           }
           res
         }
-        lazy val hasFreshSig = !disambiguate || sigFresh(elem.expansion)
+        lazy val hasFreshSig = !disambiguate || sigFresh(elem.expansion, score.noExs.isEmpty && score.maybeExs.isEmpty)
         // Does elem have to be removed from the queue?
         if (!elem.expansion.complete || !compliesTests || !hasFreshSig) {
           // If so, remove it
@@ -201,7 +236,14 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               }
             }
           } else {
-            verboseDebug(s"Element rejected: compliesTests = $compliesTests, hasFreshSig = $hasFreshSig.")
+            ifVerboseDebug { printer =>
+              val scoreTriple = (score.yesExs.size, score.noExs.size, score.maybeExs.size)
+              if (!compliesTests) {
+                printer(s"Element rejected. compliesTests = $compliesTests, scoreTriple = $scoreTriple.")
+              } else {
+                printer(s"Element rejected. compliesTests = $compliesTests, hasFreshSig = $hasFreshSig, scoreTriple = $scoreTriple.")
+              }
+            }
           }
           // We dequeued an elemen, so we don't necessarily have an acceptable element
           // on the head of the queue. Call rec again.
@@ -228,7 +270,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             rule,
             rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
           )
-          if !expRedundant(expansion)
+          // if !expRedundant(expansion)
         } yield {
           val logProbPrime = elem.logProb + rule.weight
           val horizonPrime = rule.subTrees.map(nthor).sum
@@ -246,7 +288,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           case csHd :: csTl =>
             for {
               csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore, None), elemScore)
-              if !expRedundant(csHdExp.expansion)
+              // if !expRedundant(csHdExp.expansion)
             } yield {
               (csHdExp.expansion :: csTl, csHdExp.logProb)
             }
@@ -255,7 +297,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         for {
           (expansions, logProb) <- expandChildren(children)
           expPrime = ProdRuleInstance(nt, rule, expansions)
-          if !expRedundant(expPrime)
+          // if !expRedundant(expPrime)
         } yield {
           val logProbPrime = elem.logProb + logProb
           val horizonPrime = expPrime.horizon(nthor)
