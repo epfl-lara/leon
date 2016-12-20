@@ -39,3 +39,11 @@ case class NoopPhase[T]() extends LeonPhase[T, T] {
   val description = "no-op"
   override def run(ctx: LeonContext, v: T) = (ctx, v)
 }
+
+case class SimplePrinterPhase[T, V](f: (LeonContext, T) => V) extends UnitPhase[T] {
+  val name = "simple-printer-phase"
+  val description = "simple-printer"
+  override def apply(ctx: LeonContext, p: T) = {
+    println(f(ctx, p))
+  }
+}
