@@ -262,7 +262,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     if (ws.isEmpty) {
       Nil
     } else if (ws.size == 1) {
-      prods.map(_.copy(weight = 1))
+      prods.map(_.copy(weight = -1.0))
     } else {
       val sum = ws.sum
       // log(prob) = log(weight/Σ(weights))

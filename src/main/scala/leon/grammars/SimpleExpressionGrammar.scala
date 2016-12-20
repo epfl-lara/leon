@@ -19,7 +19,7 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       outType: Class[_ <: Expr],
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
-      weight: Double = 1.0) = {
+      weight: Double = -1.0) = {
     ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, outType, tag, cost, weight)
   }
 
@@ -30,7 +30,7 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       outType: Class[_ <: Expr],
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
-      weight: Double = 1.0) = {
+      weight: Double = -1.0) = {
     ProductionRule[TypeTree, Expr](subs, builder, outType, tag, cost, weight)
   }
 
