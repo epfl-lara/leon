@@ -232,7 +232,7 @@ object Main {
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
-        else if (optWebBuilderF) WebBuilderPhase
+        else if (optWebBuilderF) WebBuilderPhase andThen RawFileOutputPhase
         else if (repairF) RepairPhase
         else if (analysisF) Pipeline.both(verification, termination)
         else if (terminationF) termination
