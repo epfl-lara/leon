@@ -89,7 +89,8 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-    val maxGen     = 100000 // Maximum generated # of programs
+    val maxGen     = 5000 // Maximum generated # of programs
+    val maxValidated = 100
     val solverTo   = 3000
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
@@ -173,8 +174,8 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
             false
         }
         val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, disambiguate)
-    }).iterator(topLabel).take(maxGen)
+        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, disambiguate)
+    }).iterator(topLabel)
     var it = mkEnum
     debug("Grammar:")
     grammar.printProductions(debug(_))

@@ -6,16 +6,22 @@ import leon.grammars.enumerators.CandidateScorer.Score
 import leon.purescala.Common.FreshIdentifier
 import leon.synthesis.{Example, SynthesisPhase}
 import leon.utils.{DedupedPriorityQueue, NoPosition}
-import purescala.Expressions.Expr
+import leon.purescala.Expressions.{Variable, Expr}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 
 object ProbwiseTopdownEnumerator {
+  private val idMap = mutable.Map[Expansion[Label, Expr], Variable]()
+
   val ntWrap = (e: Expansion[Label, Expr]) => {
-    val tp = e.nt.getType
-    FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
+    idMap.getOrElse(e, {
+      val tp = e.nt.getType
+      val v = FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
+      idMap += e -> v
+      v
+    })
   }
 }
 
@@ -26,9 +32,11 @@ class ProbwiseTopdownEnumerator(
     scorer: CandidateScorer[Label, Expr],
     examples: Seq[Example],
     eval: (Expr, Example) => Option[Expr],
+    maxGen: Int,
+    maxOutput: Int,
     disambiguate: Boolean
   )(implicit ctx: LeonContext)
-  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, disambiguate, ProbwiseTopdownEnumerator.ntWrap)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, maxGen, maxOutput, disambiguate, ProbwiseTopdownEnumerator.ntWrap)
   with GrammarEnumerator
 {
   import ctx.reporter._
@@ -54,7 +62,7 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], disambiguate: Boolean, ntWrap: Expansion[NT, R] => R)(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], maxGen: Int, maxOutput: Int,disambiguate: Boolean, ntWrap: Expansion[NT, R] => R)(implicit ctx: LeonContext) {
 
   import ctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
@@ -72,6 +80,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   protected val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
 
   type Sig = Seq[R]
+
+  var generated = 0
+  var output = 0
 
   // Filter out seen expressions
   protected val sigToNormalMemo = mutable.Map[(NT, Sig), Expansion[NT, R]]()
@@ -151,11 +162,21 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     var lastPrint: Int = 1
 
     def hasNext: Boolean = {
-      prepareNext()
-      worklist.nonEmpty
+      generated < maxGen && output < maxOutput && {
+        try {
+          prepareNext()
+          worklist.nonEmpty
+        } catch {
+          case _: NoSuchElementException =>
+            false
+        }
+      }
     }
 
     def next: R = {
+      if (!(generated < maxGen && output < maxOutput)) {
+        throw new NoSuchElementException("Enumerator run out of budget")
+      }
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
       assert(worklist.nonEmpty)
@@ -164,10 +185,14 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         printer("Printing lineage for returned element:")
         res.lineage.foreach { elem => printer(s"    ${elem.priority}: ${elem.expansion.falseProduce(ntWrap)}") }
       }
+      output += 1
       res.get
     }
 
     @tailrec def prepareNext(): Unit = {
+      if (generated >= maxGen) {
+        throw new NoSuchElementException("Enumerator run out of budget")
+      }
       if (worklist.nonEmpty) {
         val elem = worklist.head
         lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = false)
@@ -187,6 +212,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         if (!elem.expansion.complete || !compliesTests) {
           // If so, remove it
           worklist.dequeue()
+          generated += 1
+          ifDebug(printer =>
+            if ((generated & (generated-1)) == 0) {
+              printer(s"generated = $generated")
+            }
+          )
           verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
 
           if (compliesTests) {
