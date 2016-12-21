@@ -43,8 +43,7 @@ object WebBuilderPhase extends SimpleLeonPhase[Program, String] {
   val optArguments = LeonStringOptionDef("a", "Top-level val override", "", "var1:value1;var2:value2")
   override val definedOptions: Set[leon.LeonOptionDef[Any]] = Set(optArguments)
   
-  def apply(ctx: LeonContext, pgm: Program): String = {
-    println("Starting to evaluate with webBuilder...")
+  def updateValsInProgram(ctx: LeonContext, pgm: Program): Unit = {
     val valOverride = ctx.findOptionOrDefault(optArguments)
     
     if(valOverride != "") {
@@ -68,6 +67,11 @@ object WebBuilderPhase extends SimpleLeonPhase[Program, String] {
       }
     }
     
+  }
+  
+  def apply(ctx: LeonContext, pgm: Program): String = {
+    println("Starting to evaluate with webBuilder...")
+    updateValsInProgram(ctx, pgm)
     val defaultEvaluator = new AugmentedDefaultEvaluator(ctx, pgm)
     
     def eval(functionName: String, allow_failures: Boolean = false): Expr = {
