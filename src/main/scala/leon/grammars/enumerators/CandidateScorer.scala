@@ -2,50 +2,58 @@ package leon
 package grammars
 package enumerators
 
-import CandidateScorer.{Score, MeetsSpec}
+import CandidateScorer.{MeetsSpec, Score}
 import CandidateScorer.MeetsSpec.MeetsSpec
-import synthesis.Example
+import synthesis.{Example, SynthesisContext}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks
 
-class CandidateScorer[NT, R](
-  evalCandidate: (Expansion[NT, R], Example) => MeetsSpec,
-  getExs: Unit => Seq[Example]
-)(implicit ctx: LeonContext) {
+class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => MeetsSpec,
+                             getExs: Unit => Seq[Example]
+                            )(implicit sctx: SynthesisContext) {
 
   def score(expansion: Expansion[NT, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
-    ctx.timers.score.start()
-    val exs = getExs(())
-    val ans = if (eagerReturnOnFalse) {
-      val yesExs = new ArrayBuffer[Example]()
-      val noExs = new ArrayBuffer[Example]()
-      val maybeExs = new ArrayBuffer[Example]()
+    sctx.timers.score.timed {
+      if (eagerReturnOnFalse) {
+        eagerReturnScore(expansion, skipExs)
+      } else {
+        fullScore(expansion, skipExs)
+      }
+    }
+  }
 
-      yesExs ++= skipExs
-      val scoreBreaks = new Breaks
-      scoreBreaks.breakable {
-        for (ex <- exs if !skipExs.contains(ex)) {
-          evalCandidate(expansion, ex) match {
-            case MeetsSpec.YES => yesExs += ex
-            case MeetsSpec.NO =>
-              noExs += ex
-              scoreBreaks.break
-            case MeetsSpec.NOTYET => maybeExs += ex
-          }
+  private def eagerReturnScore(expansion: Expansion[NT, R], skipExs: Set[Example]): Score = {
+    val exs = getExs(())
+
+    val yesExs = new ArrayBuffer[Example]()
+    val noExs = new ArrayBuffer[Example]()
+    val maybeExs = new ArrayBuffer[Example]()
+
+    yesExs ++= skipExs
+    val scoreBreaks = new Breaks
+    scoreBreaks.breakable {
+      for (ex <- exs if !skipExs.contains(ex)) {
+        evalCandidate(expansion, ex) match {
+          case MeetsSpec.YES => yesExs += ex
+          case MeetsSpec.NO =>
+            noExs += ex
+            scoreBreaks.break
+          case MeetsSpec.NOTYET => maybeExs += ex
         }
       }
-
-      Score(yesExs.toSet, noExs.toSet, maybeExs.toSet)
-    } else {
-      def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
-      val results = exs.par.groupBy(classify).mapValues(_.seq)
-      Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
-        results.getOrElse(MeetsSpec.NO, Seq()).toSet,
-        results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
     }
-    ctx.timers.score.stop()
-    ans
+
+    Score(yesExs.toSet, noExs.toSet, maybeExs.toSet)
+  }
+
+  private def fullScore(expansion: Expansion[NT, R], skipExs: Set[Example]): Score = {
+    val exs = getExs(())
+    def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
+    val results = exs.par.groupBy(classify).mapValues(_.seq)
+    Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
+      results.getOrElse(MeetsSpec.NO, Seq()).toSet,
+      results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
   }
 
 }

@@ -4,13 +4,12 @@ package enumerators
 
 import leon.grammars.enumerators.CandidateScorer.Score
 import leon.purescala.Common.FreshIdentifier
-import leon.synthesis.{Example, SynthesisPhase}
+import leon.synthesis.{Example, SynthesisContext, SynthesisPhase}
 import leon.utils.{DedupedPriorityQueue, NoPosition}
-import leon.purescala.Expressions.{Variable, Expr}
+import leon.purescala.Expressions.{Expr, Variable}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-
 
 object ProbwiseTopdownEnumerator {
   private val idMap = mutable.Map[Expansion[Label, Expr], Variable]()
@@ -25,21 +24,24 @@ object ProbwiseTopdownEnumerator {
   }
 }
 
+class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
+                                init: Label,
+                                scorer: CandidateScorer[Label, Expr],
+                                examples: Seq[Example],
+                                eval: (Expr, Example) => Option[Expr],
+                                maxGen: Int,
+                                maxOutput: Int,
+                                disambiguate: Boolean
+                               )(implicit sctx: SynthesisContext)
+  extends AbstractProbwiseTopdownEnumerator[Label, Expr](
+    scorer,
+    maxGen,
+    maxOutput,
+    disambiguate,
+    ProbwiseTopdownEnumerator.ntWrap
+  ) with GrammarEnumerator {
 
-class ProbwiseTopdownEnumerator(
-    protected val grammar: ExpressionGrammar,
-    init: Label,
-    scorer: CandidateScorer[Label, Expr],
-    examples: Seq[Example],
-    eval: (Expr, Example) => Option[Expr],
-    maxGen: Int,
-    maxOutput: Int,
-    disambiguate: Boolean
-  )(implicit ctx: LeonContext)
-  extends AbstractProbwiseTopdownEnumerator[Label, Expr](scorer, maxGen, maxOutput, disambiguate, ProbwiseTopdownEnumerator.ntWrap)
-  with GrammarEnumerator
-{
-  import ctx.reporter._
+  import sctx.reporter._
   override protected implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
@@ -48,7 +50,7 @@ class ProbwiseTopdownEnumerator(
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
 
-  def sig(r: Expr): Option[Seq[Expr]] = {
+  def sig(r: Expr): Option[Seq[Expr]] = sctx.timers.sig.timed {
     examples mapM (eval(r, _))
   }
 
@@ -62,9 +64,14 @@ object EnumeratorStats {
   var cegisIterCount: Int = 0
 }
 
-abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R], maxGen: Int, maxOutput: Int,disambiguate: Boolean, ntWrap: Expansion[NT, R] => R)(implicit ctx: LeonContext) {
+abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
+                                                        maxGen: Int,
+                                                        maxOutput: Int,
+                                                        disambiguate: Boolean,
+                                                        ntWrap: Expansion[NT, R] => R
+                                                       )(implicit sctx: SynthesisContext) {
 
-  import ctx.reporter._
+  import sctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
   def verboseDebug(msg: => String) = {
     debug(msg)(leon.utils.DebugSectionSynthesisVerbose)
@@ -77,7 +84,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   protected def nthor(nt: NT): Double
 
-  protected val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+  protected val coeff = sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
 
   type Sig = Seq[R]
 
@@ -97,13 +104,14 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       case NonTerminalInstance(_) => e
       case ProdRuleInstance(nt, rule, children) =>
         normalizeMemo.getOrElseUpdate(e, {
-          val normalizedChildren = children.map(normalize)
+          lazy val normalizedChildren = children.map(normalize)
           if (!e.complete) {
             ProdRuleInstance(nt, rule, normalizedChildren)
           } else {
+            lazy val normalE = ProdRuleInstance(nt, rule, normalizedChildren)
             sig(e.produce) match {
-              case Some(theSig) => sigToNormalMemo.getOrElseUpdate((e.nt, theSig), e)
-              case None => e // TODO! Confirm!
+              case Some(theSig) => sigToNormalMemo.getOrElseUpdate((e.nt, theSig), normalE)
+              case None => normalE // TODO! Confirm!
             }
           }
         })
@@ -117,13 +125,11 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     * @param logProb The log probability already accumulated by the expansion
     * @param horizon The minimum cost that this expansion will accumulate before becoming concrete
     */
-  case class WorklistElement(
-    expansion: Expansion[NT, R],
-    logProb: Double,
-    horizon: Double,
-    score: Score,
-    parent: Option[WorklistElement]
-  ) {
+  case class WorklistElement(expansion: Expansion[NT, R],
+                             logProb: Double,
+                             horizon: Double,
+                             score: Score,
+                             parent: Option[WorklistElement]) {
     require(logProb <= 0 && horizon <= 0)
     def get = expansion.produce
     val yesScore = score.nYes
@@ -225,7 +231,11 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             // First normalize it!
             val normalExpansion = normalize(elem.expansion)
             val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
-            verboseDebug(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+            ifVerboseDebug { printer =>
+              if (elem.expansion != normalExpansion) {
+                printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+              }
+            }
 
             // Then compute its immediate descendants and put them back in the worklist
             val newElems = expandNext(normalElem, score)
