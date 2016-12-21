@@ -50,7 +50,7 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
 
-  def sig(r: Expr): Option[Seq[Expr]] = sctx.timers.sig.timed {
+  def sig(r: Expr): Option[Seq[Expr]] = timers.sig.timed {
     examples mapM (eval(r, _))
   }
 
@@ -79,6 +79,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   def ifVerboseDebug(body: (Any => Unit) => Any) = {
     ifDebug(NoPosition, body)(leon.utils.DebugSectionSynthesisVerbose)
   }
+
+  val timers = sctx.timers.synthesis.applications.get("Prob-Enum")
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
@@ -160,7 +162,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     val worklist = new DedupedPriorityQueue[WorklistElement, Expansion[NT, R]](elem => elem.expansion)(ordering)
 
     val seedExpansion = NonTerminalInstance[NT, R](nt)
-    val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = false)
+    val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = true)
     val worklistSeed = WorklistElement(seedExpansion, 0.0, nthor(nt), seedScore, None)
 
     worklist.enqueue(worklistSeed)
@@ -201,7 +203,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       }
       if (worklist.nonEmpty) {
         val elem = worklist.head
-        lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = false)
+        lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = true)
         lazy val compliesTests = {
           val res = score.noExs.isEmpty
           if (res) {

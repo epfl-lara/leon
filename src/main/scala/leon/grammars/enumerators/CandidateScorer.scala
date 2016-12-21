@@ -13,8 +13,10 @@ class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => Meets
                              getExs: Unit => Seq[Example]
                             )(implicit sctx: SynthesisContext) {
 
+  val timers = sctx.timers.synthesis.applications.get("Prob-Enum")
+
   def score(expansion: Expansion[NT, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
-    sctx.timers.score.timed {
+    timers.score.timed {
       if (eagerReturnOnFalse) {
         eagerReturnScore(expansion, skipExs)
       } else {
@@ -50,7 +52,8 @@ class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => Meets
   private def fullScore(expansion: Expansion[NT, R], skipExs: Set[Example]): Score = {
     val exs = getExs(())
     def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
-    val results = exs.par.groupBy(classify).mapValues(_.seq)
+    // val results = exs.par.groupBy(classify).mapValues(_.seq)
+    val results = exs.groupBy(classify)
     Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
       results.getOrElse(MeetsSpec.NO, Seq()).toSet,
       results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
