@@ -28,6 +28,7 @@ object Main {
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
       transformations.RunnableCodePhase,
+      transformations.WebBuilderPhase,
       invariant.engine.InferInvariantsPhase,
       laziness.HOInferencePhase,
       genc.GenerateCPhase,
@@ -53,6 +54,7 @@ object Main {
     val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",     false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                 false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                  false)
+    val optWebBuilder  = LeonFlagOptionDef("webbuilder",  "Evaluate the program using webbuilder to --o file.html",    false)
     val optIsabelle    = LeonFlagOptionDef("isabelle",    "Run Isabelle verification",                                 false)
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",               false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                 false)
@@ -64,7 +66,7 @@ object Main {
     val optGenc        = LeonFlagOptionDef("genc",        "Generate C code",                                           false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optRunnable, optInferInv, optLazyEval, optGenc)
+      Set(optTermination, optRepair, optSynthesis, optWebBuilder, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optRunnable, optInferInv, optLazyEval, optGenc)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -191,11 +193,13 @@ object Main {
     import invariant.engine.InferInvariantsPhase
     import transformations.InstrumentationPhase
     import transformations.RunnableCodePhase
+    import transformations.WebBuilderPhase
     import laziness._
 
     val helpF = ctx.findOptionOrDefault(optHelp)
     val noopF = ctx.findOptionOrDefault(optNoop)
     val synthesisF = ctx.findOptionOrDefault(optSynthesis)
+    val optWebBuilderF = ctx.findOptionOrDefault(optWebBuilder)
     val repairF = ctx.findOptionOrDefault(optRepair)
     val isabelleF = ctx.findOptionOrDefault(optIsabelle)
     val terminationF = ctx.findOptionOrDefault(optTermination)
@@ -228,6 +232,7 @@ object Main {
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
+        else if (optWebBuilderF) WebBuilderPhase andThen RawFileOutputPhase
         else if (repairF) RepairPhase
         else if (analysisF) Pipeline.both(verification, termination)
         else if (terminationF) termination
