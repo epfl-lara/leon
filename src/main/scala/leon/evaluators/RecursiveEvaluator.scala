@@ -189,26 +189,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
     case synthesis.utils.MutableExpr(ex) =>
       ex
 
-    case _ => // After this, everything returned by the match will be returned by the function
-      
-    return expr match {
-    case Variable(id) =>
-      rctx.mappings.get(id) match {
-        case Some(v) =>
-          v
-        case None =>
-          throw EvalError("No value for identifier " + id.asString + " in mapping " + rctx.mappings)
-      }
-    case Tuple(ts) =>
-      val tsRec = ts.map(e)
-      Tuple(tsRec)
-
-    case TupleSelect(t, i) =>
-      val Tuple(rs) = e(t)
-      rs(i-1)
-
     case SpecializedFunctionInvocation(result) =>
-      result
+      return result
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
@@ -233,30 +215,56 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         }
       }
 
-      val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-        scalaEv.call(tfd, evArgs)
-      } else {
-        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-          throw EvalError("Evaluation of function with unknown implementation." + expr)
-        }
-
-        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-        e(body)(frame, gctx)
-      }
-
       //println(s"Gave $callResult")
 
       tfd.postcondition match  {
         case Some(post) =>
+          val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+            scalaEv.call(tfd, evArgs)
+          } else {
+            if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+              throw EvalError("Evaluation of function with unknown implementation." + expr)
+            }
+    
+            val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+            e(body)(frame, gctx)
+          }
           e(application(post, Seq(callResult)))(frame, gctx) match {
             case BooleanLiteral(true) =>
             case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.")
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
+          return callResult
         case None =>
+          if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+            return scalaEv.call(tfd, evArgs)
+          } else {
+            if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+              throw EvalError("Evaluation of function with unknown implementation." + expr)
+            }
+            val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+            rctx = frame
+            body
+          }
       }
+      
+    case _ => // After this, everything returned by the match will be returned by the function
+      
+    return expr match {
+    case Variable(id) =>
+      rctx.mappings.get(id) match {
+        case Some(v) =>
+          v
+        case None =>
+          throw EvalError("No value for identifier " + id.asString + " in mapping " + rctx.mappings)
+      }
+    case Tuple(ts) =>
+      val tsRec = ts.map(e)
+      Tuple(tsRec)
 
-      callResult
+    case TupleSelect(t, i) =>
+      val Tuple(rs) = e(t)
+      rs(i-1)
 
     case Not(arg) =>
       e(arg) match {
