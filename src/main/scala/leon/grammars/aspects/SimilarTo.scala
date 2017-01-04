@@ -22,7 +22,7 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(Simi
   def asString(implicit ctx: LeonContext) = es.mkString("~", "~", "~")
 
   def term(e: Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1, weight: Double = -1.0): ProductionRule[Label, Expr] = {
-    ProductionRule(Nil, { case Seq() => e }, e.getClass, tag, cost, weight)
+    ProductionRule(Nil, { case Seq() => e }, tag, cost, weight)
   }
 
   /**
@@ -76,7 +76,6 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(Simi
               { case Seq(e) =>
                 b(as.updated(i, e))
               },
-              e.getClass,
               Tags.Top,
               1,
               1.0

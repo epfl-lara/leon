@@ -17,63 +17,63 @@ case object BaseGrammar extends SimpleExpressionGrammar {
   protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
     case BooleanType =>
       List(
-        terminal(BooleanLiteral(false), classOf[BooleanLiteral], Tags.BooleanC),
-        terminal(BooleanLiteral(true), classOf[BooleanLiteral],  Tags.BooleanC),
-        nonTerminal(List(BooleanType), { case Seq(a) => not(a) }, classOf[Not], Tags.Not),
-        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => and(a, b) }, classOf[And], Tags.And),
-        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => or(a, b)  }, classOf[Or], Tags.Or ),
-        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessThan(a, b)   }, classOf[LessThan]),
-        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessEquals(a, b) }, classOf[LessEquals]),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b)   }, classOf[LessThan]),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) }, classOf[LessEquals])
+        terminal(BooleanLiteral(false), Tags.BooleanC),
+        terminal(BooleanLiteral(true),  Tags.BooleanC),
+        nonTerminal(List(BooleanType), { case Seq(a) => not(a) }, Tags.Not),
+        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => and(a, b) }, Tags.And),
+        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => or(a, b)  }, Tags.Or ),
+        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessThan(a, b)   }),
+        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessEquals(a, b) }),
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b)   }),
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) })
       )
     case Int32Type =>
       List(
-        terminal(IntLiteral(0), classOf[IntLiteral], Tags.Zero),
-        terminal(IntLiteral(1), classOf[IntLiteral], Tags.One ),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => plus(a, b)  }, classOf[Plus], Tags.Plus ),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => minus(a, b) }, classOf[Minus], Tags.Minus),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => times(a, b) }, classOf[Times], Tags.Times)
+        terminal(IntLiteral(0), Tags.Zero),
+        terminal(IntLiteral(1), Tags.One ),
+        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
+        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
+        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => times(a, b) }, Tags.Times)
       )
 
     case IntegerType =>
       List(
-        terminal(InfiniteIntegerLiteral(0), classOf[InfiniteIntegerLiteral], Tags.Zero),
-        terminal(InfiniteIntegerLiteral(1), classOf[InfiniteIntegerLiteral], Tags.One ),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, classOf[Plus], Tags.Plus ),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, classOf[Minus], Tags.Minus),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, classOf[Times], Tags.Times)//,
-        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, classOf[Modulo], Tags.Mod),
-        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, classOf[Division], Tags.Div)
+        terminal(InfiniteIntegerLiteral(0), Tags.Zero),
+        terminal(InfiniteIntegerLiteral(1), Tags.One ),
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
+        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times)//,
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
+        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
       )
 
     case TupleType(stps) =>
       List(
-        nonTerminal(stps, Tuple, classOf[Tuple], Tags.Constructor(isTerminal = false))
+        nonTerminal(stps, Tuple, Tags.Constructor(isTerminal = false))
       )
 
     case cct: CaseClassType =>
       List(
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct) )
+        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct) )
       )
 
     case act: AbstractClassType =>
       act.knownCCDescendants.map { cct =>
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct) )
+        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct) )
       }
 
     case st @ SetType(base) =>
       List(
-        terminal(FiniteSet(Set(), base), classOf[FiniteSet], Tags.Constant),
-        nonTerminal(List(base),   { case elems     => FiniteSet(elems.toSet, base) }, classOf[FiniteSet], Tags.Constructor(isTerminal = false)),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetUnion(a, b) }, classOf[SetUnion]),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }, classOf[SetIntersection]),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetDifference(a, b) }, classOf[SetDifference])
+        terminal(FiniteSet(Set(), base), Tags.Constant),
+        nonTerminal(List(base),   { case elems     => FiniteSet(elems.toSet, base) }, Tags.Constructor(isTerminal = false)),
+        nonTerminal(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
+        nonTerminal(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
+        nonTerminal(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
       )
 
     case UnitType =>
       List(
-        terminal(UnitLiteral(), classOf[UnitLiteral], Tags.Constant)
+        terminal(UnitLiteral(), Tags.Constant)
       )
 
     case _ =>

@@ -74,13 +74,13 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](Nil, _ => builder, outType, tag, cost, weight)
+  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
+    ProductionRule[Label, Expr](Nil, _ => builder, tag, cost, weight)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](subs, builder, outType, tag, cost, weight)
+  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
+    ProductionRule[Label, Expr](subs, builder, tag, cost, weight)
   }
 
   def unwrapType(tpe: TypeTree): Option[TypeTree] = {
@@ -158,7 +158,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
                 nonTerminal(subs, { case List(rec) =>
                   val res = CaseClassSelector(cct, rec, f.id)
                   inlineTrivialities(res)
-                }, classOf[CaseClassSelector], tag, cost = 1, w)
+                }, tag, cost = 1, w)
               }
             }
 
@@ -182,14 +182,14 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
             instantiateType(tp, tmap) match {
               case cct: CaseClassType =>
                 List(
-                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1)
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), 1, 1)
                 )
 
               case act: AbstractClassType =>
                 val descendents = act.knownCCDescendants
 
                 descendents.map { cct =>
-                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1/descendents.size)
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), 1, 1/descendents.size)
                 }
 
               case _ =>
@@ -203,7 +203,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
             val vars = inputs.filter (_.getType == targetType)
 
             val size = vars.size.toDouble
-            vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+            vars map (v => terminal(v.toVariable, tag, cost = 1, w/size))
 
           // Special built-in "closure" case, which tells us how often to
           // generate closures of a specific type
@@ -218,7 +218,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
                 List(nonTerminal(Seq(rlab), { case Seq(body) =>
                   Lambda(args, body)
-                }, classOf[Lambda], tag, cost = 1, w))
+                }, tag, cost = 1, w))
 
               case _ =>
                 Nil
@@ -226,7 +226,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
           case _ =>
             if (fd.params.isEmpty) {
-              List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
+              List(terminal(instantiateType(expr, tmap, Map()), tag, cost = 1, w))
             } else {
               val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
               val subs  = fd.params.map {
@@ -237,7 +237,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
               List(nonTerminal(subs, { sexprs => 
                 instantiateType(replacer(sexprs), tmap, m)
-              }, classOf[Expr], tag, cost = 1, w))
+              }, tag, cost = 1, w))
             }
         }
       }
