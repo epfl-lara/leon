@@ -6,7 +6,7 @@ package aspects
 
 import purescala.Types._
 
-case class TypeDepthBound(bound: Int) extends PersistentAspect(40) {
+case class TypeDepthBound(bound: Int) extends PersistentAspect(TypeDepthBoundAspectKind) {
   override def asString(implicit ctx: LeonContext): String = "" // This is just debug pollution to print
 
   /** Computes the depth of the ADT type, function types have no cost */

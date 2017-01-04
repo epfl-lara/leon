@@ -6,7 +6,7 @@ package aspects
 
 import purescala.Types._
 
-case class RealTyped(tpe: TypeTree) extends Aspect(1) {
+case class RealTyped(tpe: TypeTree) extends Aspect(RealTypedAspectKind) {
 
   def applyTo(l: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     ps

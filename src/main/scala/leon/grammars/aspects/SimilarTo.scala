@@ -16,7 +16,7 @@ import utils.SeqUtils._
   *
   * @param es The expressions for which similar ones will be generated
   */
-case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(30) {
+case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(SimilarToAspectKind) {
   type Prods = Seq[ProductionRule[Label, Expr]]
 
   def asString(implicit ctx: LeonContext) = es.mkString("~", "~", "~")
