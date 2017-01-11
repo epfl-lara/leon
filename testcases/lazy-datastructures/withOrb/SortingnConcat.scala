@@ -83,5 +83,5 @@ object SortingnConcatBuggy {
           kthMin(c.tail, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => steps <= k + 3)
+  } ensuring (_ => steps <= ? * k + ?)
 }

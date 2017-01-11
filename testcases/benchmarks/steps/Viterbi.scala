@@ -11,7 +11,7 @@ import collection._
 /**
  * A memoized implementation that solves the recurrence relation of the  Viterbi algorithm.
  * Source: https://en.wikipedia.org/wiki/Viterbi_algorithm.
- * There are set of vector inputs to the algorithm each of which is represented as an array with 
+ * There are set of vector inputs to the algorithm each of which is represented as an array with
  * indexed lookup that takes constant time and performs zero allocations.
  * The functions are `O`, `S`, `A`, `B`, `C`.
  * The rest of the algorithm is purely functional and solves the recurrence relation.
@@ -36,9 +36,9 @@ object Viterbi {
   def S(i: BigInt) = {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
-  /** 
+  /**
    * Let K be the size of the state space. Then the transition matrix
-   * A of size K * K such that A_{ij} stores the transition probability 
+   * A of size K * K such that A_{ij} stores the transition probability
    * of transiting from state s_i to state s_j
    */
   @extern
@@ -46,8 +46,8 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
   /**
-   * Let N be the size of the observation space. Emission matrix B of 
-   * size K * N such that B_{ij} stores the probability of observing o_j 
+   * Let N be the size of the observation space. Emission matrix B of
+   * size K * N such that B_{ij} stores the probability of observing o_j
    * from state s_i
    */
   @extern
@@ -55,8 +55,8 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
   /**
-   * An array of initial probabilities C of size K such that C_i stores 
-   * the probability that x_1 == s_i 
+   * An array of initial probabilities C of size K such that C_i stores
+   * the probability that x_1 == s_i
    */
   @extern
   def C(i: BigInt) = {
@@ -70,7 +70,6 @@ object Viterbi {
     xstring(i.toInt)
   } ensuring (_ => steps <= 1)
 
-
 	def deps(j: BigInt, K: BigInt): Boolean = {
 		require(j >= 0 && K >= 0)
 		if(j <= 0) true
@@ -82,7 +81,7 @@ object Viterbi {
 		columnCached(K, j, K) && {
 		if(j <= 0) true
 		else columnsCachedfrom(j - 1, K)
-		} 
+		}
 	}
 
 	def columnCached(i: BigInt, j: BigInt, K: BigInt): Boolean = {
@@ -95,11 +94,10 @@ object Viterbi {
 
 	@traceInduct
   	def columnMono(i: BigInt, j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]) = {
-    	require(i >= 0 && j >= 0 && K >= i)    
+    	require(i >= 0 && j >= 0 && K >= i)
     	(st1.subsetOf(st2) && (columnCached(i, j, K) in st1)) ==> (columnCached(i, j, K) in st2)
   	} holds
 
-  
   @traceInduct
 	def columnLem(j: BigInt, K: BigInt): Boolean = {
    		require(j >= 0 && K >= 0)
@@ -107,17 +105,22 @@ object Viterbi {
    		else (columnsCachedfrom(j - 1, K) && columnCached(K, j, K)) ==> (columnsCachedfrom(j, K))
    	} holds
 
-	def cachedLem(l: BigInt, j: BigInt, K: BigInt): Boolean = {
-	 require(j >= 0 && l >= 0 && K >= l)
-	 (if(l == K) true
-	   else if(l == 0) cachedLem(l + 1, j, K)
-	   else cachedLem(l + 1, j, K) && cachedLem(l - 1, j, K)
-	   ) && (columnCached(K, j, K) ==> columnCached(l, j, K))    
-	} holds
+  def cachedLem(l: BigInt, j: BigInt, K: BigInt): Boolean = {
+    require(j >= 0 && l >= 0 && K >= l)
+    // inner function that implements the induction strategy
+    @invisibleBody
+    def cachedLemInduct(l: BigInt, j: BigInt, varK: BigInt, K: BigInt): Boolean = {
+      require(j >= 0 && l >= 0 && varK >= l && K >= varK)
+      (if (l == varK) true
+      else cachedLemInduct(l, j, varK - 1, K)) &&
+        (columnCached(varK, j, K) ==> columnCached(l, j, K))
+    } holds
 
+    cachedLemInduct(l, j, K, K) && (columnCached(K, j, K) ==> columnCached(l, j, K))
+  }
 
 	def columnsCachedfromMono(j: BigInt, K: BigInt, st1: Set[Fun[BigInt]], st2: Set[Fun[BigInt]]): Boolean = {
-		require(j >= 0 && K >= 0)    
+		require(j >= 0 && K >= 0)
 		(columnMono(K, j, K, st1, st2) && (j <= 0 || columnsCachedfromMono(j - 1, K, st1, st2))) &&
 		((st1.subsetOf(st2) && (columnsCachedfrom(j, K) in st1)) ==> (columnsCachedfrom(j, K) in st2))
 	} holds
@@ -128,7 +131,7 @@ object Viterbi {
     val a1 = viterbi(l, j - 1, K) + A(l, i) + B(i, Y(j))
     if(l == K) a1
     else {
-      val a2 = fillEntry(l + 1, i, j, K) 
+      val a2 = fillEntry(l + 1, i, j, K)
       if(a1 > a2) a1 else a2
     }
   } ensuring(res => steps <= ? * (K - l) + ?)
@@ -150,10 +153,10 @@ object Viterbi {
   } ensuring(res => {
     val in = inSt[BigInt]
     val out = outSt[BigInt]
-    (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) && 
-    (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) && 
+    (j == 0 || columnsCachedfromMono(j - 1, K, in, out)) && columnsCachedfromMono(j, K, in, out) &&
+    (i == 0 || columnMono(i - 1, j, K, in, out)) && columnCached(i, j, K) &&
     steps <= ? * K + ?
-  }) 
+  })
 
   def fillColumn(i: BigInt, j: BigInt, K: BigInt): List[BigInt] = {
     require(i >= 0 && j >= 0 && K >= i && deps(j, K) && (i == 0 || i > 0 && columnCached(i - 1, j, K)))
@@ -167,8 +170,8 @@ object Viterbi {
       Cons(x, tail)
     }
   } ensuring(res => {
-  	columnLem(j, K) && 
-  	deps(j + 1, K) && 
+  	columnLem(j, K) &&
+  	deps(j + 1, K) &&
   	steps <= ? * ((K - i) * K) + ? * K + ?
   })
 
