@@ -231,7 +231,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           if (compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
-            val normalExpansion = normalize(elem.expansion)
+            val normalExpansion = if (disambiguate) normalize(elem.expansion) else elem.expansion
             val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
             ifVerboseDebug { printer =>
               if (elem.expansion != normalExpansion) {
