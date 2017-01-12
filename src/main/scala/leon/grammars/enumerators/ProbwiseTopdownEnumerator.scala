@@ -101,23 +101,24 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   // Disambiguate expressions by signature
   def sig(r: R): Option[Sig]
 
-  protected def normalize(e: Expansion[NT, R]): Expansion[NT, R] = {
-    e match {
+  protected def normalize(e: Expansion[NT, R]): Option[Expansion[NT, R]] = {
+    Some(e match {
       case NonTerminalInstance(_) => e
       case ProdRuleInstance(nt, rule, children) =>
         normalizeMemo.getOrElseUpdate(e, {
-          lazy val normalizedChildren = children.map(normalize)
+          lazy val normalizedChildren = children.map(normalize(_).getOrElse(return None))
           if (!e.complete) {
             ProdRuleInstance(nt, rule, normalizedChildren)
           } else {
             lazy val normalE = ProdRuleInstance(nt, rule, normalizedChildren)
             sig(e.produce) match {
               case Some(theSig) => sigToNormalMemo.getOrElseUpdate((e.nt, theSig), normalE)
-              case None => normalE // TODO! Confirm!
+              case None =>
+                return None//normalE // TODO! Confirm!
             }
           }
         })
-    }
+    })
   }
 
   /**
@@ -231,31 +232,36 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           if (compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
-            val normalExpansion = if (disambiguate) normalize(elem.expansion) else elem.expansion
-            val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
-            ifVerboseDebug { printer =>
-              if (elem.expansion != normalExpansion) {
-                printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+            val normalExpansionOpt = if (disambiguate) normalize(elem.expansion) else Some(elem.expansion)
+            if (normalExpansionOpt.isDefined) {
+              val normalExpansion = normalExpansionOpt.get
+              val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
+              ifVerboseDebug { printer =>
+                if (elem.expansion != normalExpansion) {
+                  printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+                }
               }
-            }
 
-            // Then compute its immediate descendants and put them back in the worklist
-            val newElems = expandNext(normalElem, score)
-            worklist.enqueueAll(newElems)
+              // Then compute its immediate descendants and put them back in the worklist
+              val newElems = expandNext(normalElem, score)
+              worklist.enqueueAll(newElems)
 
-            // And debug some
-            ifVerboseDebug { printer =>
-              newElems foreach { e =>
-                printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+              // And debug some
+              ifVerboseDebug { printer =>
+                newElems foreach { e =>
+                  printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+                }
               }
-            }
-            ifDebug { printer =>
-              if (worklist.size >= 2 * lastPrint) {
-                printer(s"Worklist size: ${worklist.size}")
-                printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                  s"${EnumeratorStats.partialEvalRejectionCount}")
-                lastPrint = worklist.size
+              ifDebug { printer =>
+                if (worklist.size >= 2 * lastPrint) {
+                  printer(s"Worklist size: ${worklist.size}")
+                  printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+                    s"${EnumeratorStats.partialEvalRejectionCount}")
+                  lastPrint = worklist.size
+                }
               }
+            } else {
+              debug(elem.expansion + " failed evaluation")
             }
           } else {
             // The element has failed partial evaluation ...
@@ -264,7 +270,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               printer(s"Element rejected. compliesTests = $compliesTests, scoreTriple = $scoreTriple.")
             }
           }
-
           // We dequeued an elemen, so we don't necessarily have an acceptable element
           // on the head of the queue. Call rec again.
           prepareNext()
