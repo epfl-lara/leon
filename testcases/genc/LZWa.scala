@@ -22,7 +22,7 @@ object LZWa {
 
   // We limit the size of the dictionary to an arbitrary size, less than or equals to 2^16.
   @inline
-  val DictionarySize = 4096
+  val DictionarySize = 8192
 
   // We use fix-sized buffers
   @inline
