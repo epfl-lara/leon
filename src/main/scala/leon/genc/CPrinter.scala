@@ -191,7 +191,11 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |} $id;"""
 
     case TypeDef(t: DataType) =>
-      c"""|typedef struct {
+      val kind = t match {
+        case _: Struct => "struct"
+        case _: Union => "union"
+      }
+      c"""|typedef $kind {
           |  ${nary(t.fields, sep = ";\n", closing = ";")}
           |} ${t.id};"""
 
