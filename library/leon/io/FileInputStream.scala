@@ -23,7 +23,7 @@ object FileInputStream {
     """
     |static FILE* __FUNCTION__(char* filename, void* unused) {
     |  FILE* this = fopen(filename, "r");
-    |  // this == NULL on failure
+    |  /* this == NULL on failure */
     |  return this;
     |}
     """

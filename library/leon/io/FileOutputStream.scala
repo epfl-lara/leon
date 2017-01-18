@@ -26,7 +26,7 @@ object FileOutputStream {
     """
     |static FILE* __FUNCTION__(char* filename) {
     |  FILE* this = fopen(filename, "w");
-    |  // this == NULL on failure
+    |  /* this == NULL on failure */
     |  return this;
     |}
     """
