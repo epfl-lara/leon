@@ -20,5 +20,9 @@ case class Label(tpe: TypeTree, aspectsMap: TreeMap[AspectKind, Aspect] = TreeMa
     Label(tpe, aspectsMap + (a.kind -> a))
   }
 
+  def stripAspects = copy(aspectsMap = TreeMap())
+
+  def aspect(kind: AspectKind): Option[Aspect] = aspectsMap.get(kind)
+
   def aspects: Traversable[Aspect] = aspectsMap.map(_._2)
 }

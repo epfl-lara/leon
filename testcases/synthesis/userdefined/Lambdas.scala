@@ -64,6 +64,12 @@ object Grammar1 {
 
   @production
   def thisdoesntmatter[A]: A = variable[A]
+
+  @production
+  def cl1[A, R] = closure[A => R]
+
+  @production
+  def cl2[A, B, R] = closure[(A, B) => R]
 }
 
 object Test1 {

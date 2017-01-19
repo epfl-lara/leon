@@ -67,14 +67,14 @@ object Grammar1 {
   case class Cons[T](h: T, t: List[T]) extends List[T]
   case class Nil[T]() extends List[T]
 
-  @production
-  def filter[T](t: List[T])(where: T => Boolean): List[T] = SQL.filter(t)(where)
+  //@production
+  //def filter[T](t: List[T])(where: T => Boolean): List[T] = SQL.filter(t)(where)
 
   @production
   def select[T, U](t: List[T])(f: T => U): List[U] = SQL.select(t)(f)
 
-  @production
-  def join[T, U](t1: List[T], t2: List[U])(on: (T, U) => Boolean): List[(T, U)] = SQL.join(t1, t2)(on)
+  //@production
+  //def join[T, U](t1: List[T], t2: List[U])(on: (T, U) => Boolean): List[(T, U)] = SQL.join(t1, t2)(on)
 
   @production
   def gt(i1: Int, i2: Int) = i1 > i2
@@ -96,6 +96,12 @@ object Grammar1 {
 
   @production
   def thisdoesntmatter[A]: A = variable[A]
+
+  @production
+  def cl1[A, R] = closure[A => R]
+
+  @production
+  def cl2[A, B, R] = closure[(A, B) => R]
 }
 
 object SQL {
@@ -162,6 +168,7 @@ object Test1 {
   }
   */
 
+  /*
   def personsOlderThan(age: Int)(implicit ps: List[Person], js: List[Job]) = {
    ???[List[String]]
 
@@ -183,16 +190,16 @@ object Test1 {
         Cons("Ravi", Cons("Nicolas", Cons("Georg", Cons("Mukund", Nil()))))
     }
   }
+  */
 
-  /*
   def personsOfJob(j: String)(implicit ps: List[Person], js: List[Job]) = {
-   //???[List[String]]
+   ???[List[String]]
 
-    select(
-      filter(
-        join(ps, js)((p, j) => p.idJob == j.id)
-      )(pj => pj._2.name == j)
-    )(_._1.name)
+    //select(
+    //  filter(
+    //    join(ps, js)((p, j) => p.idJob == j.id)
+    //  )(pj => pj._2.name == j)
+    //)(_._1.name)
 
   } ensuring { (res: List[String]) =>
     ((j, ps, js), res) passes {
@@ -207,6 +214,4 @@ object Test1 {
 
     }
   }
-  */
-
 }

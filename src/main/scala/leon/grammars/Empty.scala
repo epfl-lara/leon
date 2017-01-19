@@ -5,5 +5,6 @@ package grammars
 
 /** The empty expression grammar */
 case class Empty() extends ExpressionGrammar {
-  protected[grammars] def computeProductions(l: Label)(implicit ctx: LeonContext) = Nil
+  val staticProductions = Map[Label, Seq[Prod]]()
+  val genericProductions = Nil
 }

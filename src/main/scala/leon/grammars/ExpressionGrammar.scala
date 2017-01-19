@@ -4,53 +4,372 @@ package leon
 package grammars
 
 import purescala.Expressions._
+import purescala.Definitions._
+import purescala.ExprOps._
+import purescala.TypeOps._
+import purescala.Types._
 import purescala.Common._
+import Tags._
 
-import scala.collection.mutable.{HashMap => MutableMap}
+case class GenericProd(
+  tparams: Seq[TypeParameterDef],
+  args: Seq[TypeTree],
+  retType: TypeTree,
+  builder: Map[TypeParameter, TypeTree] => ProductionRule[Label, Expr]
+)
 
 /** Represents a context-free grammar of expressions */
 abstract class ExpressionGrammar {
 
-  protected val cache = new MutableMap[Label, Seq[ProductionRule[Label, Expr]]]()
+  type Prod = ProductionRule[Label, Expr]
 
-  /** The list of production rules for this grammar for a given nonterminal.
+  val staticProductions: Map[Label, Seq[Prod]]
+  val genericProductions: Seq[GenericProd]
+
+
+  private[this] var productions:  Map[Label, Seq[Prod]] = Map()
+  private[this] var productionsCache:  Map[Label, Seq[Prod]] = Map()
+
+  /** The (cached) list of production rules for this grammar for a given nonterminal.
     *
     * @param lab The nonterminal for which production rules will be generated
     * @note This is the cached version of [[computeProductions]]. Clients should use this method.
     */
-  final def getProductions(lab: Label)(implicit ctx: LeonContext) = {
-    cache.getOrElse(lab, {
-      val res = applyAspects(lab, computeProductions(lab))
-      cache += lab -> res
-      res
+
+  def getProductions(lab: Label)(implicit ctx: LeonContext) = {
+    productionsCache.getOrElse(lab, {
+      val ps = generateProductions(lab)
+      productionsCache += lab -> ps
+      ps
     })
   }
 
-  /** The list of production rules for this grammar for a given nonterminal.
-    *
-    * @param lab The nonterminal for which production rules will be generated
-    * @note Clients should use the cached version, [[getProductions]] instead
-    */
-  protected[grammars] def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]]
+  var instantiations = Map[GenericProd, Set[Map[TypeParameter, TypeTree]]]().withDefaultValue(Set())
 
-  protected def applyAspects(lab: Label, ps: Seq[ProductionRule[Label, Expr]])(implicit ctx: LeonContext) = {
-    lab.aspects.foldLeft(ps) {
+  def instantiateGenerics(lab: Label, maxSize: Int)(implicit ctx: LeonContext) = {
+
+    val tpe = lab.getType
+    val knownTypes = productions.keySet.map(_.getType)
+
+    println
+    println("%"*80);
+    println(s"Instantiating ${tpe.asString} |$maxSize|");
+    println
+    println
+
+    //println("Pool of types: ");
+    //for (t <- discoveredTypes.toSeq.sortBy(_.asString)) {
+    //  println(" - "+t.asString)
+    //}
+    //println
+
+    for(gp <- genericProductions if (gp.args.size + 1) < maxSize) {
+      println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
+
+      instantiation_<:(gp.retType, tpe) match {
+        case Some(tmap0) =>
+          val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq;
+
+          val tmaps = if (free.nonEmpty) {
+            // Instantiate type parameters not constrained by the return value
+            // of `fd`
+            //
+            // e.g.:
+            // def countFilter[T](x: List[T], y: T => Boolean): BigInt
+            //
+            // We try to find instantiation of T such that arguments have
+            // candidates
+            //
+
+            // Step 1. We identify the type patterns we need to match:
+            // e.g. (List[T], T => Boolean)
+            val pattern0 = gp.args.distinct
+
+            val baseQuota = maxSize - tmap0.values.map(tpe =>
+              minCosts.getOrElse(tpe, maxSizeFor.getOrElse(tpe, 0) + 1)
+            ).sum - 1
+
+            instantiateTypePattern(pattern0, free, baseQuota, tmap0).keySet
+          } else {
+            List(tmap0)
+          }
+
+          // All type params are constrained
+          val tmaps1 = tmaps.filter(_.size == gp.tparams.size)
+
+          val existing = instantiations(gp)
+
+          // We only consider new instantiations
+          val tmaps2 = tmaps1.filter(m => !existing(m))
+
+          if (tmaps2.nonEmpty) {
+            instantiations += gp -> (existing ++ tmaps2)
+          }
+
+          val prods = for (tmap <- tmaps2) yield {
+            val prod = gp.builder(tmap)
+
+            println("    - "+prodAsString(prod))
+
+            prod
+          }
+
+          productions += lab -> (productions.getOrElse(lab, Nil) ++ prods)
+
+        case _ =>
+      }
+    }
+  }
+
+  private[this] var minCosts = Map[TypeTree, Int]()
+  private[this] var newTypes = Set[TypeTree]()
+
+  private[this] def types = minCosts.keySet
+
+  /**
+   * Instantiates a type pattern, under constraints:
+   * pattern: e.g. (T, U, List[T,U])
+   * quota: max of the min-cost to discover
+   * tmap: initial fixed type-map.
+   *
+   * Returns a set of type assignment with associated min-cost:
+   *  e.g. Map(T -> Int, U -> Bool) -> 3
+   */
+  def instantiateTypePattern(
+    pattern: Seq[TypeTree],
+    freeTps: Seq[TypeParameter],
+    quota: Int,
+    tmap: Map[TypeParameter, TypeTree]
+  ): Map[Map[TypeParameter, TypeTree], Int] = {
+
+    val targetSize = freeTps.size + tmap.size
+
+    if (quota <= 0) {
+      return Map();
+    }
+
+    def availableTypes(quota: Int) = {
+
+      val res = minCosts.flatMap { case (t, mc) =>
+        if (quota >= mc) {
+          Some((t, quota - mc))
+        } else {
+          None
+        }
+      }
+
+      res
+    }
+
+    def discover(tp: TypeParameter, tmaps: Map[Map[TypeParameter, TypeTree], Int]): Map[Map[TypeParameter, TypeTree], Int] = {
+      for {
+        (map0, q0) <- tmaps
+        p1 = pattern.map(instantiateType(_, map0))
+        p <- p1
+        (t, q1) <- availableTypes(q0)
+        map1 <- unify(p, t, Seq(tp))
+      } yield {
+        (map0 ++ map1, q1)
+      }
+    }
+
+    var tmaps = Map(tmap -> quota)
+
+    for (f <- freeTps) {
+      tmaps = discover(f, tmaps)
+    }
+
+    var res = Map[Map[TypeParameter, TypeTree], Int]();
+
+    for ((tmap, qLeft) <- tmaps if tmap.size == targetSize) {
+      val mc = quota - qLeft
+
+      if (res contains tmap) {
+        res += tmap -> Math.min(mc, res(tmap))
+      } else {
+        res += tmap -> mc
+      }
+    }
+
+    res
+  }
+
+  def discoverTypes(maxSize: Int)(implicit ctx: LeonContext) = {
+    for(discoverySize <- 1 to maxSize) {
+      println
+      println("#"*80);
+      println(s"Discovering Types |$discoverySize|%%%%%%");
+      println
+      println
+
+      newTypes = Set()
+
+      println("Pool of types: ");
+      for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
+        println(" - |"+mc+"|  "+t.asString)
+      }
+      println
+
+      var res = Set[TypeTree]()
+
+      for(gp <- genericProductions) {
+        println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
+
+        val freeTps = typeParamsOf(gp.retType) intersect gp.tparams.map(_.tp).toSet
+
+        // Step 1. We identify the type patterns we need to match:
+        // e.g. (List[T], T => Boolean)
+        val pattern0 = gp.args.distinct
+
+        val tmaps = instantiateTypePattern(pattern0, freeTps.toSeq, discoverySize-1, Map())
+
+        val retTypes = for ((tmap, minCost) <- tmaps) yield {
+          (instantiateType(gp.retType, tmap), minCost+1)
+        }
+
+        for ((t, mc) <- retTypes) {
+          if (!(minCosts contains t)) {
+            println(" -> "+t.asString)
+
+            minCosts += t -> mc
+            newTypes += t
+          }
+        }
+      }
+
+      println
+      println("New Pool of types: ");
+      for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
+        val isNew = if(newTypes contains t) "*" else " "
+
+        println(" - "+isNew+" |"+mc+"|  "+t.asString)
+      }
+      println
+    }
+  }
+
+  private def applyAspects(lab: Label, prods: Seq[Prod])(implicit ctx: LeonContext): Seq[Prod] = {
+    // Filter/Expand based on aspects of lab
+    lab.aspects.foldLeft(prods) {
       case (ps, a) => a.applyTo(lab, ps)
     }
   }
 
-  /** Returns the union of two generators. */
-  final def ||(that: ExpressionGrammar): ExpressionGrammar = {
-    Union(Seq(this, that))
+  private def filterImpossibleCosts(lab: Label, prods: Seq[Prod]): Seq[Prod] = {
+    labelSize(lab) match {
+      case Some(size) =>
+        prods.filter{ p =>
+          p.subTrees.forall(lab => labelSize(lab).get >= minCosts.getOrElse(lab.getType, 1))
+        }
+
+      case _ =>
+        prods
+    }
   }
 
-  final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
-    def sorter(lp1: (Label, Seq[ProductionRule[Label, Expr]]), lp2: (Label, Seq[ProductionRule[Label, Expr]])): Boolean = {
+  private def normalizeWeights(prods: Seq[Prod]): Seq[Prod] = {
+    val ws = prods map (_.weight)
+
+    if (ws.isEmpty) {
+      Nil
+    } else if (ws.size == 1) {
+      prods.map(_.copy(weight = -1.0))
+    } else {
+      val sum = ws.sum
+      // log(prob) = log(weight/Σ(weights))
+      val logProbs = ws.map(w => Math.log(w/sum))
+      val maxLogProb = logProbs.max
+
+      for ((p, logProb) <- prods zip logProbs) yield {
+        // cost = normalized log prob.
+        val cost = (logProb/maxLogProb).round.toInt
+        p.copy(cost = cost, weight = logProb)
+      }
+    }
+  }
+
+
+  private def labelSize(lab: Label): Option[Int] = {
+    lab.aspect(SizedAspectKind).collect { case aspects.Sized(size, _) => size }
+  }
+
+  private def init() {
+    productions = staticProductions
+
+    // this is an under-approximation, since we assume subtrees have minCost 1.
+    minCosts = for ((l, ps) <- productions) yield {
+      l.getType -> ps.map(p => 1 + p.subTrees.size).min
+    }
+  }
+
+  private[this] var initialized = false;
+
+  private[this] var maxSizeFor = Map[TypeTree, Int]().withDefaultValue(0);
+
+  private def generateProductions(lab: Label)(implicit ctx: LeonContext): Seq[Prod] = {
+    val tpe = lab.getType
+
+    if (!initialized) {
+      init()
+      initialized = true
+    }
+
+    val simpleLab = lab.stripAspects
+
+    labelSize(lab) match {
+      case Some(size) =>
+        if (size > maxSizeFor(tpe)) {
+          instantiateGenerics(simpleLab, size)
+          maxSizeFor += tpe -> size
+        }
+
+      case None =>
+        if (!(maxSizeFor contains tpe)) {
+          instantiateGenerics(simpleLab, 999)
+          maxSizeFor += tpe -> 1
+        }
+    }
+
+    val prods1 = productions.getOrElse(simpleLab, Nil)
+
+    val prods2 = applyAspects(lab, prods1)
+
+    val prods3 = filterImpossibleCosts(lab, prods2)
+
+    val prods4 = normalizeWeights(prods3)
+
+    prods4
+  }
+
+  private def lineize(ss: Traversable[String]): String = {
+    ss.mkString("\n" + " " * 55)
+  }
+
+  def prodAsString(p: Prod)(implicit ctx: LeonContext): String = {
+    val subs = p.subTrees.map { t =>
+      FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
+    }
+
+    f"(${p.cost}%3d, ${p.weight}%2.3f) " + lineize(p.builder(subs).asString.lines.toSeq)
+  }
+
+  def genProdAsString(gp: GenericProd)(implicit ctx: LeonContext): String = {
+    val tmap = gp.tparams.map(tpd => tpd.tp -> tpd.tp).toMap
+
+    val prod = gp.builder(tmap)
+
+    val tps = Console.GREEN+gp.tparams.map(_.asString).mkString("[", ",", "]")+Console.RESET;
+
+    tps+" "+prodAsString(prod)
+  }
+
+  def asString(implicit ctx: LeonContext): String = {
+    def sorter(lp1: (Label, Seq[Prod]), lp2: (Label, Seq[Prod])): Boolean = {
       val l1 = lp1._1
       val l2 = lp2._1
 
-      val os1 = l1.aspects.collectFirst { case aspects.Sized(size, _) => size }
-      val os2 = l2.aspects.collectFirst { case aspects.Sized(size, _) => size }
+      val os1 = labelSize(l1)
+      val os2 = labelSize(l2)
 
       (os1, os2) match {
         case (Some(s1), Some(s2)) =>
@@ -65,22 +384,41 @@ abstract class ExpressionGrammar {
       }
     }
 
-    for ((lab, gs) <- cache.toSeq.sortWith(sorter)) {
-      def lineize(s: String) = s.lines.mkString("\n" + " " * 55)
+    val res = new scala.collection.mutable.StringBuilder();
+
+    res.append("\n --- Productions: ---\n")
+
+    for ((lab, ps) <- productions.toSeq.sortWith(sorter)) {
+
       val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
 
-      if (gs.isEmpty) {
-        printer(s"${lhs}ε")
+      if (ps.isEmpty) {
+        res.append(lhs + "ε\n")
       } else {
-        val rhs = for (g <- gs) yield {
-          val subs = g.subTrees.map { t =>
-            FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
-          }
-          f"(${g.cost}%3d, ${g.weight}%2.3f) " + lineize(g.builder(subs).asString)
-        }
-
-        printer(lhs + rhs.mkString("\n" + " " * 55))
+        res.append(lhs + lineize(ps.map(prodAsString))+"\n")
       }
     }
+
+    for ((tpe, ps) <- genericProductions.groupBy(_.retType)) {
+
+      val lhs = f"${Console.BOLD}${tpe.asString}%50s${Console.RESET} ::= "
+
+      res.append(lhs + lineize(ps.map(genProdAsString))+"\n")
+    }
+
+    res.append("\n --- Computed Productions: ---\n")
+
+    for ((lab, ps) <- productionsCache.toSeq.sortWith(sorter)) {
+
+      val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
+
+      if (ps.isEmpty) {
+        res.append(lhs + "ε\n")
+      } else {
+        res.append(lhs + lineize(ps.map(prodAsString))+"\n")
+      }
+    }
+
+    res.toString
   }
 }
