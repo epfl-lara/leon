@@ -266,17 +266,21 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       (tmp0.toVariable, Some(pre), env + ((tmp0, instantiate(typ, tm)) -> tmp))
     }
 
-    val (scrutinee, preOpt, newEnv) = scrutinee0 match {
+    def scrutRec(scrutinee0: Expr): (Expr, Option[CIR.Expr], Env) = scrutinee0 match {
       case v: Variable => (v, None, env)
       case Block(Nil, v: Variable) => (v, None, env)
       case Block(init, v: Variable) => (v, Some(rec(Block(init.init, init.last))), env)
       case field @ CaseClassSelector(_, _: Variable, _) => (field, None, env)
 
-      case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple =>
+      case Assert(_, _, body) => scrutRec(body)
+
+      case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple | _: IfExpr =>
         withTmp(scrutinee0.getType, scrutinee0, env)
 
       case e => internalError(s"scrutinee = $e of type ${e.getClass} is not supported")
     }
+
+    val (scrutinee, preOpt, newEnv) = scrutRec(scrutinee0)
 
     val cases = cases0 map { caze => convertCase(scrutinee, caze)(newEnv, tm) }
 
