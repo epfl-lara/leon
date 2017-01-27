@@ -270,6 +270,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       case v: Variable => (v, None, env)
       case Block(Nil, v: Variable) => (v, None, env)
       case Block(init, v: Variable) => (v, Some(rec(Block(init.init, init.last))), env)
+      case field @ CaseClassSelector(_, _: Variable, _) => (field, None, env)
 
       case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple =>
         withTmp(scrutinee0.getType, scrutinee0, env)
