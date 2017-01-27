@@ -504,6 +504,11 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   private def rec(e: Expr)(implicit env: Env, tm0: TypeMapping): CIR.Expr = e match {
+    /* Ignore static assertions */
+    case Require(_, body) => rec(body)
+    case Ensuring(body, _) => rec(body)
+    case Assert(_, _, body) => rec(body)
+
     case UnitLiteral() => CIR.Lit(L.UnitLit)
     case BooleanLiteral(v) => CIR.Lit(L.BoolLit(v))
     case ByteLiteral(v) => CIR.Lit(L.Int8Lit(v))

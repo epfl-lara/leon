@@ -4,7 +4,7 @@ package leon
 package genc
 
 import purescala.Definitions.{ Program }
-import utils.{ DebugSectionTrees, RemoveVCPhase }
+import utils.{ DebugSectionTrees }
 
 import phases._
 
@@ -14,7 +14,6 @@ object GenerateCPhase extends LeonPhase[Program, CAST.Prog] {
   val description = "Preprocess and convert Leon's AST to C"
 
   val pipeline =
-    RemoveVCPhase andThen
     Pipeline.both(NoopPhase[Program], ExtractEntryPointPhase) andThen
     ComputeDependenciesPhase andThen
     Pipeline.both(NoopPhase[Dependencies], ComputeFunCtxPhase) andThen
