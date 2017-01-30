@@ -281,7 +281,7 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
     val isRef = typeInfos.head
     if (typeInfos exists { _ != isRef }) {
       fatalError(s"Cannot apply reference because of normalisation inconsistency on types. " +
-                 s"Inciminated variable: ${vd.id}; Use `--debug=trees` option to learn why it failed.")
+                 s"Incriminated variable: ${vd.id}; Use `--debug=trees` option to learn why it failed.")
     }
 
     lookingAhead = false
