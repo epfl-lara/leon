@@ -56,8 +56,10 @@ libraryDependencies ++= Seq(
 )
 
 lazy val scriptName = "leon"
+lazy val customScriptName = "custom"
 
 lazy val scriptFile = file(".") / scriptName
+lazy val customScriptFile = file(".") / customScriptName
 
 clean := {
   clean.value
@@ -82,6 +84,32 @@ lazy val nParallel = {
 
 lazy val script = taskKey[Unit]("Generate the leon Bash script")
 
+def writeScript(
+                 f: java.io.File,
+                 mainClass: String,
+                 s: sbt.Keys.TaskStreams,
+                 cps: sbt.Keys.Classpath,
+                 out: java.io.File,
+                 res: java.io.File,
+                 is64: Boolean
+               ): Unit = {
+  if (f.exists) {
+    s.log.info("Regenerating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
+    f.delete
+  } else {
+    s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
+  }
+
+  val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(System.getProperty("path.separator"))
+  IO.write(f, s"""|#!/bin/bash --posix
+                  |
+                  |SCALACLASSPATH="$paths"
+                  |
+                  |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" $mainClass $$@ 2>&1 | tee -i last.log
+                  |""".stripMargin)
+  f.setExecutable(true)
+}
+
 script := {
   val s = streams.value
   try {
@@ -89,21 +117,8 @@ script := {
     val out = (classDirectory      in Compile).value
     val res = (resourceDirectory   in Compile).value
     val is64 = System.getProperty("sun.arch.data.model") == "64"
-    val f = scriptFile
-    if(f.exists) {
-      s.log.info("Regenerating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
-      f.delete
-    } else {
-      s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
-    }
-    val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(System.getProperty("path.separator"))
-    IO.write(f, s"""|#!/bin/bash --posix
-                    |
-                    |SCALACLASSPATH="$paths"
-                    |
-                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
-                    |""".stripMargin)
-    f.setExecutable(true)
+    writeScript(scriptFile, "leon.Main", s, cps, out, res, is64)
+    writeScript(customScriptFile, "$1", s, cps, out, res, is64)
   } catch {
     case e: Throwable =>
       s.log.error("There was an error while generating the script file: " + e.getLocalizedMessage)

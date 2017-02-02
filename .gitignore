@@ -15,6 +15,7 @@ target
 /leon
 /setupenv
 /leon-bench
+/custom
 /.test-history
 /out-classes
 
@@ -43,6 +44,7 @@ tmp
 Leon.eml
 Leon.iml
 /.idea_modules
+*.iml
 
 #scripts
 out-classes
