@@ -174,8 +174,8 @@ object WebBuilderPhase extends SimpleLeonPhase[Program, String] {
 <link rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/lib/octicons/octicons/octicons.css"></link>
 <link rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/lib/prettify/prettify.css"></link>
 <link rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/leon.css"></link>
-<link id="revealcsslink" rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/css/reveal.css"></link>
-<link id="themewebbuilder" rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/css/theme/simple.css"></link>
+<link id="revealcsslink" rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/reveal.js/css/reveal.css"></link>
+<link id="themewebbuilder" rel="stylesheet" media="screen" href="http://leondev.epfl.ch/assets/reveal.js/css/theme/simple.css"></link>
 <script src="http://leondev.epfl.ch/assets/client-jsdeps.min.js"></script>
 <script>var WBProductionVersion = true</script>
 {css}</head><body>{elems}{javascript}
