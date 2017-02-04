@@ -2,9 +2,7 @@ package leon
 package synthesis
 package stoch
 
-import PCFGStats.{ExprConstrStats, addStats, exprConstrStatsToString, getExprConstrStats}
-import leon.purescala.Expressions._
-import leon.purescala.Types.BooleanType
+import PCFGStats._
 import leon.utils.PreprocessingPhase
 
 import scala.util.Random
@@ -13,32 +11,35 @@ object PCFGStatsExtractorMain {
 
   def main(args: Array[String]): Unit = {
     @volatile var globalStatsTrain: ExprConstrStats = Map()
-    @volatile var globalStatsTest: ExprConstrStats = Map()
-    val random = new Random(0) // Remove this 0 to make non-deterministic
+    // @volatile var globalStatsTest: ExprConstrStats = Map() // Add this back in to check validity
+    // val random = new Random(0) // Remove this 0 to make non-deterministic
 
     val fileStats = args.tail.par.map(fileName => fileName -> procFile(fileName)).toMap
+    println("Here!")
     for (fileName <- args.tail) {
-      if (random.nextDouble() <= 0.9) {
+      globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
+
+      // Add the following back in to check validity!
+      /* if (random.nextDouble() <= 0.9) {
         globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
       } else {
         globalStatsTest = addStats(globalStatsTest, fileStats(fileName))
-      }
+      } */
     }
-
-    // PCFGEmitter.emit(Set(), globalStatsTrain).foreach(println)
-    /* println(PCFGEmitter.emit(Set(), BooleanType, classOf[And], globalStatsTrain))
-    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Or], globalStatsTrain))
-    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Not], globalStatsTrain))
-    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Equals], globalStatsTrain))
-    println(PCFGEmitter.emit(Set(), BooleanType, classOf[Plus], globalStatsTrain)) */
 
     println("Printing training data:")
     println(exprConstrStatsToString(globalStatsTrain))
-    println("Printing test data:")
+
+    // Add the following back in to print validity results!
+    /* println("Printing test data:")
     println(exprConstrStatsToString(globalStatsTest))
     println("Computing score:")
     val score = dist(globalStatsTrain, globalStatsTest)
-    println(s"Score: $score")
+    println(s"Score: $score") */
+
+    println("Printing function invocation stats:")
+    val fiStats = convertExprConstrToFunctionInvocationStats(globalStatsTrain)
+    println(getFunctionInvocationStatsPretty(fiStats))
   }
 
   def procFile(fileName: String): ExprConstrStats = {

@@ -2,8 +2,8 @@ package leon
 package synthesis
 package stoch
 
-import purescala.Definitions.Program
-import purescala.Expressions.Expr
+import purescala.Definitions.{Program, TypedFunDef}
+import purescala.Expressions.{Expr, FunctionInvocation}
 import purescala.{ExprOps, TypeOps}
 import purescala.Types.{TypeParameter, TypeTree}
 
@@ -112,6 +112,30 @@ object PCFGStats {
     val ans = new StringBuilder()
     for (typeFreq <- getTypeStats(ctx, p).toList.sortBy(-_._2)) {
       ans.append(s"${typeFreq._1} -> ${typeFreq._2}\n")
+    }
+    ans.toString()
+  }
+
+  // Expression constructor statistics
+  type FunctionInvocationStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
+
+  def convertExprConstrToFunctionInvocationStats(stats: ExprConstrStats): FunctionInvocationStats = {
+    stats.mapValues(ttStats => {
+      val ttExprs = ttStats.values.flatten
+      ttExprs.filter(_.isInstanceOf[FunctionInvocation])
+             .map(_.asInstanceOf[FunctionInvocation])
+             .toSeq
+             .groupBy(_.tfd)
+    })
+  }
+
+  def getFunctionInvocationStatsPretty(stats: FunctionInvocationStats): String = {
+    val ans = new StringBuilder()
+    for ((tt, ttStats) <- stats) {
+      val ttCount = ttStats.values.map(_.size).sum
+      for ((tfd, tfdStats) <- ttStats) {
+        ans.append(s"$tt $ttCount $tfd ${tfdStats.size}\n")
+      }
     }
     ans.toString()
   }
