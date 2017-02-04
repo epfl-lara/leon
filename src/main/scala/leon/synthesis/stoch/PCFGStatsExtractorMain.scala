@@ -15,7 +15,6 @@ object PCFGStatsExtractorMain {
     // val random = new Random(0) // Remove this 0 to make non-deterministic
 
     val fileStats = args.tail.par.map(fileName => fileName -> procFile(fileName)).toMap
-    println("Here!")
     for (fileName <- args.tail) {
       globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
 
@@ -36,10 +35,6 @@ object PCFGStatsExtractorMain {
     println("Computing score:")
     val score = dist(globalStatsTrain, globalStatsTest)
     println(s"Score: $score") */
-
-    println("Printing function invocation stats:")
-    val fiStats = convertExprConstrToFunctionInvocationStats(globalStatsTrain)
-    println(getFunctionInvocationStatsPretty(fiStats))
   }
 
   def procFile(fileName: String): ExprConstrStats = {
@@ -52,7 +47,7 @@ object PCFGStatsExtractorMain {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen
       ExtractionPhase andThen
-      new PreprocessingPhase(false) andThen
+      // new PreprocessingPhase(false) andThen // TODO! Why is this phase necessary?
       SimpleFunctionApplicatorPhase(getExprConstrStats)
   }
 
