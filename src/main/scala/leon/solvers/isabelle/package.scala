@@ -13,7 +13,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.verification.VC
 
-import info.hupel.isabelle._
+import info.hupel.isabelle.{Program => _, _}
 import info.hupel.isabelle.api.Environment
 import info.hupel.isabelle.pure.{Expr => _, _}
 

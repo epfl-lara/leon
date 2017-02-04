@@ -40,7 +40,12 @@ resolvers ++= Seq(
   "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-val libisabelleVer = "0.4"
+val libisabelleVer = "0.7.0"
+
+enablePlugins(LibisabellePlugin)
+
+isabelleVersions := List("2016")
+isabelleSessions in Compile := List("Leon")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % scalaVer,
