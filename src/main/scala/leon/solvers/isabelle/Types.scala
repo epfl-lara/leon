@@ -11,7 +11,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 
-import info.hupel.isabelle._
+import info.hupel.isabelle.{Program => _, _}
 import info.hupel.isabelle.pure._
 
 case class Constructor(term: Term, disc: Term, sels: Map[ValDef, Term])

@@ -15,7 +15,7 @@ import leon.solvers._
 import leon.utils.Interruptible
 import leon.verification.VC
 
-import info.hupel.isabelle._
+import info.hupel.isabelle.{Program => _, _}
 import info.hupel.isabelle.pure.{Expr => _, _}
 import monix.execution.{Cancelable, CancelableFuture}
 
@@ -23,7 +23,7 @@ class IsabelleSolver(val sctx: SolverContext, program: Program, types: Types, fu
 
   context.interruptManager.registerForInterrupts(this)
 
-  import system.executionContext
+  import system.scheduler
 
   private def timeout = optTimeout.map(_.millis).getOrElse(Duration.Inf)
 
