@@ -144,6 +144,16 @@ object EffectsChecking extends UnitPhase[Program] {
           (None, bindings)
         }
 
+        case FunctionInvocation(tfd, args) if tfd.params.nonEmpty => {
+          tfd.fd.tparams.zip(tfd.tps).foreach{ case (typeParam, instanceType) => {
+            if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
+              println(tfd)
+              ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
+            }
+          }}
+          (None, bindings)
+        }
+
         case _ => (None, bindings)
       })(bd, params)
     })

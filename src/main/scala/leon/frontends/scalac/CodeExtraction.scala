@@ -688,7 +688,7 @@ trait CodeExtraction extends ASTExtractors {
       if(sym.isPrivate)
         cd.addFlag(IsPrivate)
 
-      cd.mutableTParams = mutableTParams
+      //cd.mutableTParams = mutableTParams
       mutableTParams.foreach(_.tp.isMutable = true)
 
       // Register parent
@@ -878,6 +878,17 @@ trait CodeExtraction extends ASTExtractors {
 
         vd
       }
+
+      val mutableTParams = 
+        sym.info.paramss.flatten.filter(_.tpe.toString.startsWith("leon.lang.Mutable")).flatMap{ sym => {
+          val TypeRef(_, _, tps) = sym.tpe
+          val tpSym: String = tps.head.toString
+          tparams.find(_._1.name.toString == tpSym).map(t => TypeParameterDef(t._2))
+        }}
+      mutableTParams.foreach(_.tp.isMutable = true)
+
+      //println("new params: " + newParams)
+      //println("mutable params: " + mutableTParams)
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
 

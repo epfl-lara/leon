@@ -243,7 +243,7 @@ object Definitions {
     def fields: Seq[ValDef]
     val parent: Option[AbstractClassType]
 
-    var mutableTParams: Seq[TypeParameterDef] = Seq()
+    //var mutableTParams: Seq[TypeParameterDef] = Seq()
 
     def hasParent = parent.isDefined
 
