@@ -836,6 +836,14 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
     classOf[synthesis.utils.MutableExpr] -> {
       (ex, rctx, gctx) =>
         e(ex.asInstanceOf[synthesis.utils.MutableExpr].underlying)(rctx, gctx)
+    },
+
+    classOf[grammars.ExpansionExpr] -> {
+      (ex, rctx, gctx) =>
+        implicit val r = rctx
+        implicit val g = gctx
+        val expr = ex.asInstanceOf[grammars.ExpansionExpr]
+        e(expr.expansion.produce)
     }
 
     // TODO: Strings, bags, arrays, maps, forall

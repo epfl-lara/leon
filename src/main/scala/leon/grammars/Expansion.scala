@@ -83,8 +83,8 @@ case class ExpansionExpr(expansion: Expansion[Label, Expr])
 
   override def isSimpleExpr = true
 
-  override def toString = try {
-    expansion.produce.toString
+  override def asString(implicit ctx: LeonContext) = try {
+    "EXP(" + expansion.produce.toString + ")"
   } catch {
     case _: UnsupportedOperationException =>
       val tp = expansion.nt.getType

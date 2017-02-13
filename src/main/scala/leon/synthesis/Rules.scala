@@ -36,21 +36,21 @@ object Rules {
   def all: List[Rule] = all(false, true)
   /** Returns the list of all available rules for synthesis */
   def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
-    val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
+    //val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
     List(
-      StringRender,
-      Unification.DecompTrivialClash,
-      Unification.OccursCheck, // probably useless
-      Disunification.Decomp,
-      ADTDual,
+      //StringRender,
+      //Unification.DecompTrivialClash,
+      //Unification.OccursCheck, // probably useless
+      //Disunification.Decomp,
+      //ADTDual,
       OnePoint,
       Ground,
-      CaseSplit,
-      IndependentSplit,
-      HOFDecomp,
+      //CaseSplit,
+      //IndependentSplit,
+      //HOFDecomp,
       //ExampleGuidedTermExploration,
       //BottomUpETE,
-      IfSplit,
+      //IfSplit,
       InputSplit,
       UnusedInput,
       EquivalentInputs,
@@ -63,8 +63,9 @@ object Rules {
       rules.Assert,
       DetupleInput,
       ADTSplit,
-      InnerCaseSplit
-    ) ++ introduceRecCalls.option(IntroduceRecCalls)
+      //InnerCaseSplit
+      IntroduceRecCalls
+    )// ++ introduceRecCalls.option(IntroduceRecCalls)
   }
 }
 

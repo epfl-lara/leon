@@ -71,10 +71,10 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Path, phi: Expr, xs: List
     copy(ws = andJoin(wsList ++ es))
   }
 
-  def qebFiltered(implicit sctx: SearchContext) = qeb.evalAndDiscardIns.filterIns(pc.fullClause)
+  def qebFiltered(implicit hctx: SynthesisContext) = qeb.evalAndDiscardIns.filterIns(pc.fullClause)
 
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
-  def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)
+  def qeb(implicit sctx: SynthesisContext) = QualifiedExamplesBank(this.as, this.xs, eb)
 
   lazy val hasOutputTests = eb.valids.exists{
     case io: InOutExample => true

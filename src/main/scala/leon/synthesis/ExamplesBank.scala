@@ -165,7 +165,7 @@ object ExamplesBank {
 
 /** Same as an ExamplesBank, but with identifiers corresponding to values. This
   * allows us to evaluate expressions. */
-case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SearchContext) {
+case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SynthesisContext) {
 
   // TODO: This might be slightly conservative. We might want something closer to a partial evaluator,
   //       to conserve things like (e: A).isInstanceOf[A] even when evaluation of e leads to choose

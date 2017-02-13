@@ -8,7 +8,7 @@ import aspects._
 import purescala.Common._
 import purescala.DefOps._
 import purescala.ExprOps._
-import purescala.TypeOps.{instantiateType, instantiation_<:, unify}
+import purescala.TypeOps.instantiateType
 import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
@@ -116,11 +116,9 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }, applyRec = true)(e)
   }
 
-  private[this] var prodsCache = Map[TypeTree, Seq[Prod]]();
+  private[this] var prodsCache = Map[TypeTree, Seq[Prod]]()
 
   def instantiateProductions(tpe: TypeTree): Seq[Prod] = {
-
-    val lab = tpeToLabel(tpe)
 
     val types = (userProductions.collect {
       case UserProduction(fd, _, _) if fd.tparams.isEmpty => fd.returnType
@@ -188,7 +186,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
                 )
 
               case act: AbstractClassType =>
-                val descendents = act.knownCCDescendants;
+                val descendents = act.knownCCDescendants
 
                 descendents.map { cct =>
                   nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), classOf[CaseClass], Tags.tagOf(cct), 1, 1/descendents.size)

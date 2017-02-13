@@ -89,9 +89,9 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-    val maxGen     = 500000 // Maximum generated # of programs
-    val maxValidated = 10000
-    val solverTo   = 3000
+    val maxGen        = 500000 // Maximum generated # of programs
+    val maxValidated  = 10000
+    val solverTo      = 3000
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
@@ -99,10 +99,15 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
     val grammar    = grammars.default(sctx, p)
     var examples   = {
-      val fromProblem = p.eb.examples.filter(_.isInstanceOf[InOutExample])
-      if (fromProblem.nonEmpty) fromProblem
-      else Seq(InExample(p.as.map(_.getType) map simplestValue))
+      val fromProblem = p.qebFiltered.eb.examples
+      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
+      if (inOut.nonEmpty) inOut
+      else if (fromProblem.nonEmpty) fromProblem.take(1)
+      else
+        // FIXME this might produce invalid test
+        Seq(InExample(p.as.map(_.getType) map simplestValue))
     }
+    debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
 
     // Evaluates a candidate against an example in the correct environment
@@ -236,8 +241,10 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         val expr = it.next
         debug(s"Testing $expr")
         sol = (if (examples.exists(testCandidate(expr)(_).contains(false))) {
+          debug(s"Testing for $expr failed!")
           None
         } else {
+          debug(s"Testing for $expr successful!")
           validateCandidate(expr)
         }).map( sol => sol.copy(term = innerToOuter.transform(sol.term)(Map())) )
       }
