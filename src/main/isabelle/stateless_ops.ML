@@ -23,7 +23,7 @@ val serial_nat =
   numeral o rpair @{typ nat} o serial
 
 fun word n =
-  Type (@{type_name word}, [Syntax.read_typ @{context} (Markup.print_int n)])
+  Type (@{type_name word}, [Syntax.read_typ @{context} (Value.print_int n)])
 
 fun map (xs, (fty, tty)) =
   let

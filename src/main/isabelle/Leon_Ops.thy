@@ -1,10 +1,10 @@
 theory Leon_Ops
 imports
+  Complex_Main
   Protocol
   Codec_Class
   "~~/src/HOL/Word/Word"
   "~~/src/HOL/Library/Simps_Case_Conv"
-  Complex_Main
 begin
 
 named_theorems leon_unfold

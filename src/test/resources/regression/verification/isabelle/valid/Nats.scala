@@ -41,7 +41,7 @@ case class Succ(pred: Nat) extends Nat
 
 object Nats {
 
-  @isabelle.function(term = "Groups_List.monoid_add_class.listsum")
+  @isabelle.function(term = "Groups_List.monoid_add_class.sum_list")
   def listSum(xs: List[Nat]): Nat = xs match {
     case Nil() => Zero()
     case Cons(x, xs) => x + listSum(xs)

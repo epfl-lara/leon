@@ -6,7 +6,7 @@ fun print_position pos =
     val print_file = Path.implode o Path.base o Path.explode
   in
     case (Position.file_of pos, Position.line_of pos) of
-      (SOME file, SOME line) => print_file file ^ ":" ^ Markup.print_int line
+      (SOME file, SOME line) => print_file file ^ ":" ^ Value.print_int line
     | (SOME file, NONE) => print_file file
     | _ => "<unknown>"
   end
@@ -53,13 +53,13 @@ fun dupl x = (x, x)
 
 val unvarify_typ =
   let
-    fun aux (TVar ((name, idx), sort)) = TFree (name ^ Markup.print_int idx, sort)
+    fun aux (TVar ((name, idx), sort)) = TFree (name ^ Value.print_int idx, sort)
       | aux t = t
   in map_atyps aux end
 
 val unvarify =
   let
-    fun aux (Var ((name, idx), typ)) = Free (name ^ Markup.print_int idx, typ)
+    fun aux (Var ((name, idx), typ)) = Free (name ^ Value.print_int idx, typ)
       | aux t = t
   in map_aterms aux o map_types unvarify_typ end
 
@@ -151,6 +151,7 @@ fun map_prems f t =
 
 fun mk_induction_schema lthy thms =
   let
+    val (_, lthy') = Local_Theory.open_target lthy
     val props = map (unvarify o Thm.prop_of) thms
 
     val ((heads, argss), rhss) =
@@ -162,7 +163,7 @@ fun mk_induction_schema lthy thms =
     val names =
       map (fst o dest_Const) heads
       |> distinct op =
-      |> Name.invent_names (Variable.names_of (fold Variable.declare_names (flat argss) lthy)) "temp"
+      |> Name.invent_names (Variable.names_of (fold Variable.declare_names (flat argss) lthy')) "temp"
       |> map swap
 
     fun subst (t as Const (name, _)) =
@@ -175,13 +176,16 @@ fun mk_induction_schema lthy thms =
       |> mk_untyped_eq
       |> HOLogic.mk_Trueprop
 
+    fun mk_spec prop =
+      (((Binding.empty, []), prop), [], [])
+
     fun mk_head name = (Binding.name name, NONE, NoSyn)
-    val props = map (pair (Binding.empty, [])) (Syntax.check_terms lthy (@{map 3} mk_prop heads argss rhss))
+    val specs = map mk_spec (Syntax.check_terms lthy' (@{map 3} mk_prop heads argss rhss))
     val heads = map (mk_head o snd) names
 
     val (info, _) =
       (* FIXME funny warning *)
-      Function.add_function heads props Function_Common.default_config pat_completeness_auto_tac lthy
+      Function.add_function heads specs Function_Common.default_config pat_completeness_auto_tac lthy'
 
     val raw_prop = unvarify (Thm.prop_of (hd (#pinducts info)))
     val prop = map_prems (map_generalized strip_first_prem) (strip_first_prem raw_prop)
@@ -193,9 +197,9 @@ fun mk_induction_schema lthy thms =
         Lexicographic_Order.lexicographic_order_tac false ctxt
 
     val thm = Goal.prove lthy frees [] prop (fn {context, ...} => tac context)
-    val lthy' = Local_Theory.restore lthy
+    val lthy'' = Local_Theory.close_target lthy'
   in
-    Morphism.thm (Proof_Context.export_morphism lthy lthy') thm
+    Morphism.thm (Proof_Context.export_morphism lthy' lthy'') thm
   end
 
 (* based on Thy_Info.script_thy *)
@@ -214,7 +218,7 @@ fun try_timeout secs f x =
   let
     val time = Time.fromSeconds secs
   in
-    Exn.capture (TimeLimit.timeLimit time f) x
+    Exn.capture (Timeout.apply time f) x
   end
 
 fun try_case_to_simps ctxt thm =
