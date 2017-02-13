@@ -29,8 +29,8 @@ fun try_timeout' f = try_timeout 5 f (* global timeout for auxiliary operations 
 fun err_timeout msg f x =
   case try_timeout 5 f x of
     Exn.Res r => r
-  | Exn.Exn TimeLimit.TimeOut => raise Timeout msg
-  | Exn.Exn exn => reraise exn
+  | Exn.Exn (Timeout.TIMEOUT _) => raise Timeout msg
+  | Exn.Exn exn => Exn.reraise exn
 
 datatype report =
   Function of {heads: (string * string) list, raws: string list, specs: string list, inducts: (string * string) list} |
@@ -179,7 +179,7 @@ fun gen_lemmas prove props =
       fun process (name, prop) lthy =
         let
           val ([prop'], lthy') = register_terms [prop] lthy
-          val binding = Binding.qualified true "lemma" (Binding.make (name, @{here}))
+          val binding = Binding.qualify true "lemma" (Binding.make (name, @{here}))
         in
           case prove lthy' prop' of
             NONE => ([name], lthy)
@@ -275,7 +275,7 @@ fun gen_equivalences prove eqs =
 
       fun process (name, specs, goal, rule) lthy =
         let
-          val binding = Binding.qualified true "equiv" (Binding.make (name, @{here}))
+          val binding = Binding.qualify true "equiv" (Binding.make (name, @{here}))
         in
           case prove lthy goal rule of
             NONE => (([name], []), lthy)
@@ -326,12 +326,11 @@ fun functions raw_funs =
         |> split_list
         ||> map (Syntax.check_term lthy)
         ||> length raw_funs > 1 ? homogenize_raw_types lthy
-        ||> map (pair (Binding.empty, []))
         |> op ~~
 
       val recursive =
         case specs of
-          [(_, (_, prop))] =>
+          [(_, prop)] =>
             let
               val ((f, _), rhs) = HOLogic.dest_eq (HOLogic.dest_Trueprop prop) |>> strip_comb
             in
@@ -341,8 +340,9 @@ fun functions raw_funs =
 
       fun fun_construction lthy =
         let
+          fun mk_spec prop = (((Binding.empty, []), prop), [], [])
           val (heads, props) = split_list specs
-          val construction = Function.add_function heads props Function_Fun.fun_config pat_completeness_auto_tac
+          val construction = Function.add_function heads (map mk_spec props) Function_Fun.fun_config pat_completeness_auto_tac
           val (_, lthy) = err_timeout "function construction" construction lthy
           val (info, lthy) = err_timeout "termination proof" (Function.prove_termination NONE (termination_tac lthy)) lthy
         in
@@ -352,7 +352,7 @@ fun functions raw_funs =
         end
       fun def_construction lthy =
         let val [(head, prop)] = specs in
-          Specification.definition (SOME head, prop) lthy
+          Specification.definition (SOME head) [] [] ((Binding.empty, []), prop) lthy
           |>> snd |>> snd |>> single
         end
 
@@ -381,7 +381,7 @@ fun functions raw_funs =
             val specs = names ~~ map (`(try_timeout' (mk_induction_schema lthy'') #> Exn.get_res)) simpss
             fun print_induct (_, (NONE, _)) = NONE
               | print_induct (name, (SOME rule, _)) = SOME (name, print_thm lthy'' rule)
-            val binding = Binding.qualified true "spec" (Binding.make (hd names, @{here}))
+            val binding = Binding.qualify true "spec" (Binding.make (hd names, @{here}))
             val report =
               Function
                 {heads = names ~~ typs,
@@ -396,7 +396,7 @@ fun functions raw_funs =
             (NONE, lthy''')
           end
       | Exn.Exn (exn as Impossible _) =>
-          reraise exn
+          Exn.reraise exn
       | Exn.Exn exn =>
           (SOME (print_exn exn), lthy)
     end)
@@ -439,7 +439,7 @@ fun datatypes raw_dts =
           val dt = ((map transform_tp raw_tps, Binding.make (name, @{here})), NoSyn)
           val constrs = map transform_constr raw_constrs
         in
-          (((dt, constrs), (@{binding map}, @{binding rel})), [])
+          (((dt, constrs), (@{binding map}, @{binding rel}, Binding.empty)), [])
         end
 
       fun print lthy dts =
@@ -461,8 +461,10 @@ fun datatypes raw_dts =
         let
           val input = (Ctr_Sugar.default_ctr_options, map transform scc)
           val lthy =
-            BNF_FP_Def_Sugar.co_datatypes BNF_Util.Least_FP BNF_LFP.construct_lfp input lthy
-            |> Local_Theory.restore
+            Local_Theory.open_target lthy
+            |> snd
+            |> BNF_FP_Def_Sugar.co_datatypes BNF_Util.Least_FP BNF_LFP.construct_lfp input
+            |> Local_Theory.close_target
 
           fun get_sugar (name, _, _) =
             qualify lthy name |> Ctr_Sugar.ctr_sugar_of lthy

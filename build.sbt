@@ -44,7 +44,7 @@ val libisabelleVer = "0.7.0"
 
 enablePlugins(LibisabellePlugin)
 
-isabelleVersions := List("2016")
+isabelleVersions := List("2016-1")
 isabelleSessions in Compile := List("Leon")
 
 libraryDependencies ++= Seq(
