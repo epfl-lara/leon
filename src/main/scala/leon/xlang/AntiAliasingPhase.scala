@@ -249,7 +249,7 @@ object AntiAliasingPhase extends TransformationPhase {
 
         {//testing if duplicated mutable params are sent to a function
           val allParams: Seq[Identifier] =
-            args.zipWithIndex.map(arg => {
+            args.zipWithIndex.filter(p => effects.isMutableType(p._1.getType)).map(arg => {
                       val rArg = replaceFromIDs(rewritings, arg._1)
                       (findReferencedIds(rArg).filter(id => effects.isMutableType(id.getType)), rArg)
                      })
