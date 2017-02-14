@@ -47,6 +47,11 @@ Leon.iml
 #scripts
 out-classes
 
+#genc test suite
+*.o
+echo.txt
+test.txt
+
 #z3
 .z3-trace
 

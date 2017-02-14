@@ -3,14 +3,15 @@
 package leon.io
 
 import leon.annotation._
-import leon.lang.Option
+import leon.lang._
 
-// See NOTEs in StdIn.
-//
-// NOTE Don't attempt to create a FileInputStream directly. Use FileInputStream.open instead.
-//
-// NOTE Don't forget to close the stream.
-
+/**
+ * See NOTEs for GenC in StdIn.
+ *
+ * NOTE Don't attempt to create a FileInputStream directly. Use FileInputStream.open instead.
+ *
+ * NOTE Don't forget to close the stream.
+ */
 @library
 object FileInputStream {
 
@@ -20,9 +21,9 @@ object FileInputStream {
   @extern
   @cCode.function(code =
     """
-    |FILE* __FUNCTION__(char* filename, void* unused) {
+    |static FILE* __FUNCTION__(char* filename, void* unused) {
     |  FILE* this = fopen(filename, "r");
-    |  // this == NULL on failure
+    |  /* this == NULL on failure */
     |  return this;
     |}
     """
@@ -30,17 +31,15 @@ object FileInputStream {
   def open(filename: String)(implicit state: State): FileInputStream = {
     state.seed += 1
 
-    // FIXME Importing leon.lang.Option doesn't mean it is imported, why?
     new FileInputStream(
       try {
         // Check whether the stream can be opened or not
         val out = new java.io.FileReader(filename)
         out.close()
-        leon.lang.Some[String](filename)
+        Some[String](filename)
       } catch {
-        case _: Throwable => leon.lang.None[String]
-      },
-      0 // nothing consumed yet
+        case _: Throwable => None[String]
+      }
     )
   }
 
@@ -48,7 +47,7 @@ object FileInputStream {
 
 @library
 @cCode.typedef(alias = "FILE*", include = "stdio.h")
-case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
+case class FileInputStream private (var filename: Option[String], var consumed: BigInt = 0) {
 
   /**
    * Close the stream; return `true` on success.
@@ -57,7 +56,7 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, void* unused) {
+    |static bool __FUNCTION__(FILE* this, void* unused) {
     |  if (this != NULL)
     |    return fclose(this) == 0;
     |  else
@@ -65,10 +64,10 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     |}
     """
   )
-  def close(implicit state: State): Boolean = {
+  def close()(implicit state: State): Boolean = {
     state.seed += 1
 
-    filename = leon.lang.None[String]
+    filename = None[String]
     true // This implementation never fails
   }
 
@@ -79,7 +78,7 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  return this != NULL;
     |}
     """
@@ -89,26 +88,116 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     filename.isDefined
   }
 
+  /**
+   * Read the next byte of data from the stream.
+   *
+   * NOTE on failure (i.e. EOF), 0 is returned
+   */
   @library
-  @cCode.function(code = """
-    |int32_t __FUNCTION__(FILE* this, void* unused) {
-    |  int32_t x;
-    |  fscanf(this, "%"SCNd32, &x);
-    |  return x;
-    |}
-    """
-  )
-  def readInt(implicit state: State): Int = {
+  def readByte()(implicit state: State): Byte = {
     require(isOpen)
-    state.seed += 1
-    nativeReadInt(state.seed)
+    tryReadByte() getOrElse 0
+  }
+
+  /**
+   * Attempt to read the next byte of data.
+   */
+  @library
+  def tryReadByte()(implicit state: State): Option[Byte] = {
+    require(isOpen)
+
+    var valid = true
+
+    // Similar to tryReadInt, but here we have to use %c to read a byte
+    // (which assumes CHAR_BITS == 8) because SCNi8 will read char '0' to '9'
+    // and not the "raw" data.
+    @cCode.function(code = """
+      |static int8_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
+      |  int8_t x;
+      |  *valid = fscanf(*this, "%c", &x) == 1;
+      |  return x;
+      |}
+      """,
+      includes = "inttypes.h"
+    )
+    def impl(): Byte = {
+      state.seed += 1
+      val (check, value) = nativeReadByte(state.seed)
+      valid = check
+      value
+    }
+
+    val res = impl()
+    if (valid) Some(res) else None()
+  }
+
+  /**
+   * Read the next signed decimal integer
+   *
+   * NOTE on failure, 0 is returned
+   */
+  @library
+  def readInt()(implicit state: State): Int = {
+    require(isOpen)
+    tryReadInt() getOrElse 0
+  }
+
+  /**
+   * Attempt to read the next signed decimal integer
+   */
+  @library
+  def tryReadInt()(implicit state: State): Option[Int] = {
+    require(isOpen)
+
+    var valid = true
+
+    // Because this is a nested function, contexts variables are passes by reference.
+    @cCode.function(code = """
+      |static int32_t __FUNCTION__(FILE** this, void** unused, bool* valid) {
+      |  int32_t x;
+      |  *valid = fscanf(*this, "%"SCNd32, &x) == 1;
+      |  return x;
+      |}
+      """,
+      includes = "inttypes.h"
+    )
+    def impl(): Int = {
+      state.seed += 1
+      val (check, value) = nativeReadInt(state.seed)
+      valid = check
+      value
+    }
+
+    val res = impl()
+    if (valid) Some(res) else None()
   }
 
   // Implementation detail
   @library
   @extern
   @cCode.drop
-  private def nativeReadInt(seed: BigInt): Int = {
+  private def nativeReadByte(seed: BigInt): (Boolean, Byte) = {
+    val in = new java.io.FileInputStream(filename.get)
+
+    // Skip what was already consumed by previous reads
+    assert(in.skip(consumed.toLong) == consumed.toLong) // Yes, skip might not skip the requested number of bytes...
+
+    val b = Array[Byte](0)
+    val read = in.read(b)
+
+    in.close()
+
+    if (read != 1) (false, 0)
+    else {
+      consumed += read
+      (true, b(0))
+    }
+  }
+
+  @library
+  @extern
+  @cCode.drop
+  private def nativeReadInt(seed: BigInt): (Boolean, Int) = {
     /* WARNING This code is singificantly a duplicate of leon.io.StdIn.nativeReadInt
      *         because there's no clean way to refactor this in Leon's library.
      *
@@ -149,19 +238,21 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     // Skip what was already consumed by previous reads
     assert(in.skip(consumed.toLong) == consumed.toLong) // Yes, skip might not skip the requested number of bytes...
 
-    // Handle error in parsing and close the stream, return the given error code
-    def fail(e: Int): Int = {
+    // Handle error in parsing and close the stream
+    def fail(): (Boolean, Int) = {
       in.close()
-      e // TODO throw an exception and change `e` for a decent error message
+      (false, 0)
     }
 
     // Handle success (nothing to do actually) and close the stream
-    def success(x: Int): Int = {
+    def success(x: Int): (Boolean, Int) = {
       in.close()
-      x
+      (true, x)
     }
 
-    // Match C99 isspace function: either space (0x20), form feed (0x0c), line feed (0x0a), carriage return (0x0d), horizontal tab (0x09) or vertical tab (0x0b)
+    // Match C99 isspace function:
+    // either space (0x20), form feed (0x0c), line feed (0x0a), carriage return (0x0d),
+    // horizontal tab (0x09) or vertical tab (0x0b)
     def isSpace(c: Int): Boolean = Set(0x20, 0x0c, 0x0a, 0x0d, 0x09, 0x0b) contains c
 
     // Digit base 10
@@ -188,26 +279,25 @@ case class FileInputStream(var filename: Option[String], var consumed: BigInt) {
     // Read as many digit as possible, and after each digit we mark
     // the stream to simulate a "peek" at the next, possibly non-digit,
     // character on the stream.
-    def readDecInt(acc: Int, mark: Boolean): Int = {
+    def readDecInt(acc: Int, mark: Boolean): (Boolean, Int) = {
       if (mark) markStream()
 
       val c = read()
 
       if (isDigit(c)) readDecInt(safeAdd(acc, c), true)
       else if (mark)  success(acc) // at least one digit was processed
-      else            fail(-2) // no digit was processed
+      else            fail() // no digit was processed
     }
 
     val first = skipSpaces()
     first match {
-      case EOF             => fail(-1)
-      case '-'             => - readDecInt(0, false)
-      case '+'             =>   readDecInt(0, false)
-      case c if isDigit(c) =>   readDecInt(c - '0', true)
-      case _               => fail(-3)
+      case EOF             => fail()
+      case '-'             => val (c, x) = readDecInt(0, false); (c, -x)
+      case '+'             => readDecInt(0, false)
+      case c if isDigit(c) => readDecInt(c - '0', true)
+      case _               => fail()
     }
-  } ensuring((x: Int) => true)
-
+  }
 
 }
 

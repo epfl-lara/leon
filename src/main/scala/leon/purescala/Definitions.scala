@@ -572,7 +572,7 @@ object Definitions {
       }
     }
 
-    private lazy val typesMap: Map[TypeParameter, TypeTree] = {
+    lazy val typesMap: Map[TypeParameter, TypeTree] = {
       (fd.typeArgs zip tps).toMap.filter(tt => tt._1 != tt._2)
     }
 

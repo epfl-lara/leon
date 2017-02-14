@@ -5,47 +5,21 @@ package genc
 
 import CAST._
 import CPrinterHelpers._
+import ir.PrimitiveTypes._
+import ir.Literals._
 
 class CPrinter(val sb: StringBuffer = new StringBuffer) {
   override def toString = sb.toString
 
-  def print(tree: Tree) = pp(tree)(PrinterContext(0, this))
-
-  private def escape(c: Char): String = c match {
-    case '\b' => "\\b"
-    case '\t' => "\\t"
-    case '\n' => "\\n"
-    case '\f' => "\\f"
-    case '\r' => "\\r"
-    case '\\' => "\\\\"
-    case '\'' => "\\'"
-    case '\"' => "\\\""
-    case c    => c.toString
-  }
-
-  private def escape(s: String): String = {
-    import org.apache.commons.lang3.StringEscapeUtils
-    StringEscapeUtils.escapeJava(s)
-  }
+  def print(tree: Tree) = pp(tree)(PrinterContext(indent = 0, printer = this, previous = None, current = tree))
 
   private[genc] def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
-    /* ---------------------------------------------------------- Types ----- */
-    case typ: Type => c"${typ.rep}"
+    case Prog(includes, typedefs0, enums0, types, functions0) =>
+      // We need to convert Set to Seq in order to use nary.
+      val typedefs = typedefs0.toSeq
+      val enums = enums0.toSeq
+      val functions = functions0.toSeq
 
-
-    /* ------------------------------------------------------- Literals ----- */
-    case CharLiteral(c)   => c"'${escape(c)}'"
-    case IntLiteral(v)    => c"$v"
-    case BoolLiteral(b)   => c"$b"
-
-    // Mind the fourth and eighth double quotes
-    case StringLiteral(s) => c""""${escape(s)}""""
-
-    case EnumLiteral(id)  => c"$id"
-
-
-    /* --------------------------------------------------- Definitions  ----- */
-    case Prog(includes, typedefs, enums, types, functions) =>
       c"""|/* ------------------------------------ includes ----- */
           |
           |${nary(buildIncludes(includes), sep = "\n")}
@@ -56,11 +30,11 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |
           |/* --------------------------------------- enums ----- */
           |
-          |${nary(enums map EnumDef, sep = "\n")}
+          |${nary(enums map EnumDef, sep = "\n\n")}
           |
           |/* ----------------------- data type definitions ----- */
           |
-          |${nary(types map TypeDef, sep = "\n")}
+          |${nary(types map TypeDef, sep = "\n\n")}
           |
           |/* ----------------------- function declarations ----- */
           |
@@ -68,180 +42,166 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |
           |/* ------------------------ function definitions ----- */
           |
-          |${nary(functions, sep = "\n")}
+          |${nary(functions, sep = "\n\n")}
           |"""
 
     // Manually defined function
-    case Fun(_, _, _, Right(function)) =>
-      c"$function"
+    case Fun(id, _, _, Right(function)) =>
+      val fun = function.replaceAllLiterally("__FUNCTION__", id.name)
+      c"$fun"
 
     // Auto-generated function
-    case f @ Fun(_, _, _, Left(body: Compound)) =>
-      c"""|${FunSign(f)}
-          |{
-          |  $body
-          |}
-          |"""
-
-    // Quick'n'dirty hack to ensure one ';' close the body
-    case Fun(id, retType, params, Left(stmt)) =>
-      c"${Fun(id, retType, params, Left(Compound(Seq(stmt))))}"
+    case fun @ Fun(_, _, _, Left(body)) =>
+      c"""|${FunSign(fun)} {
+          |    $body
+          |}"""
 
     case Id(name) => c"$name"
 
+    case Var(id, typ) => c"$typ $id"
 
-    /* --------------------------------------------------------- Stmts  ----- */
-    case NoStmt => c"/* empty */"
+    case Typedef(orig, _) => c"$orig"
 
-    case Compound(stmts) =>
-      val lastIdx = stmts.length - 1
+    case Primitive(pt) => pt match {
+      case CharType => c"char"
+      case Int8Type => c"int8_t"
+      case Int32Type => c"int32_t"
+      case UInt32Type => c"uint32_t"
+      case BoolType => c"bool"
+      case UnitType => c"void"
+      case StringType => c"char*"
+    }
 
-      for ((stmt, idx) <- stmts.zipWithIndex) {
-        if (stmt.isValue) c"$stmt;"
-        else              c"$stmt"
+    case Pointer(base) => c"$base*"
 
-        if (idx != lastIdx)
-          c"$NewLine"
+    case Struct(id, _) => c"$id"
+
+    case Union(id, _) => c"$id"
+
+    case Enum(id, _) => c"$id"
+
+    case Block(exprs) =>
+      for { (e, i) <- exprs.zipWithIndex } {
+        c"$e"
+        e match {
+          case _: If | _: IfElse | _: While => ()
+          case _ => c";"
+        }
+        if (i < exprs.length - 1) // new line, except for the last expression
+          c"""|
+              |"""
       }
 
-    case Assert(pred, Some(error)) => c"assert($pred); /* $error */"
-    case Assert(pred, None)        => c"assert($pred);"
+    case Lit(lit) => c"$lit"
 
-    case Var(id, _) => c"$id"
-    case DeclVar(Var(id, typ)) => c"$typ $id;"
+    case EnumLiteral(lit) => c"$lit"
 
-    // If the length is a literal we don't need VLA
-    case DeclInitVar(Var(id, typ), ai @ ArrayInit(IntLiteral(length), _, _)) =>
-      val buffer = FreshId("buffer")
-      val values = for (i <- 0 until length) yield ai.defaultValue
-      c"""|${ai.valueType} $buffer[${ai.length}] = { $values };
-          |$typ $id = { .length = ${ai.length}, .data = $buffer };
-          |"""
+    case Decl(id, typ) => c"$typ $id"
 
-    // TODO depending on the type of array (e.g. `char`) or the value (e.g. `0`), we could use `memset`.
-    case DeclInitVar(Var(id, typ), ai: ArrayInit) => // Note that `typ` is a struct here
-      val buffer = FreshId("vla_buffer")
+    case DeclInit(id, typ, value) => c"$typ $id = $value"
+
+    // TODO Visual "optimisation" can be made here if all values are zeros
+    case DeclArrayStatic(id, base, length, values) =>
+      c"$base $id[$length] = { ${nary(values, sep = ", ")} }"
+
+    case DeclArrayVLA(id, base, length, defaultExpr) =>
       val i = FreshId("i")
-      c"""|${ai.valueType} $buffer[${ai.length}];
-          |for (${Int32} $i = 0; $i < ${ai.length}; ++$i) {
-          |  $buffer[$i] = ${ai.defaultValue};
-          |}
-          |$typ $id = { .length = ${ai.length}, .data = $buffer };
-          |"""
+      c"""|$base $id[$length];
+          |${Decl(i, Primitive(Int32Type))};
+          |for ($i = 0; $i < $length; ++$i) {
+          |    $id[$i] = $defaultExpr;
+          |}"""
 
-    case DeclInitVar(Var(id, typ), ai: ArrayInitWithValues) => // Note that `typ` is a struct here
-      val buffer = FreshId("buffer")
-      c"""|${ai.valueType} $buffer[${ai.length}] = { ${ai.values} };
-          |$typ $id = { .length = ${ai.length}, .data = $buffer };
-          |"""
+    case StructInit(struct, values) =>
+      val args = struct.fields zip values
+      c"(${struct.id}) { ${nary(args map { case (Var(id, _), arg) => FieldInit(id, arg) }, sep = ", ")} }"
 
-    case DeclInitVar(Var(id, typ), value) =>
-      c"$typ $id = $value;"
+    case UnionInit(union, fieldId, value) =>
+      c"(${union.id}) { ${FieldInit(fieldId, value)} }"
 
-    case Assign(lhs, rhs) =>
-      c"$lhs = $rhs;"
+    case Call(id, args) => c"$id(${nary(args)})"
 
-    case UnOp(op, rhs) => c"($op$rhs)"
-    case MultiOp(op, stmts) => c"""${nary(stmts, sep = s" ${op.fixMargin} ",
-                                          opening = "(", closing = ")")}"""
-    case SubscriptOp(ptr, idx) => c"$ptr[$idx]"
+    case Binding(id) => c"$id"
 
-    case Break => c"break;"
-    case Return(stmt) => c"return $stmt;"
+    case FieldAccess(Deref(objekt), fieldId) => c"$objekt->$fieldId"
 
-    case IfElse(cond, thn: Compound, elze: Compound) =>
-      c"""|if ($cond)
-          |{
-          |  $thn
-          |}
-          |else
-          |{
-          |  $elze
-          |}
-          |"""
+    case FieldAccess(objekt, fieldId) => c"$objekt.$fieldId"
 
-    case IfElse(cond, thn: Compound, elze) => pp(IfElse(cond, thn, Compound(Seq(elze))))
-    case IfElse(cond, thn, elze: Compound) => pp(IfElse(cond, Compound(Seq(thn)), elze))
-    case IfElse(cond, thn, elze) => pp(IfElse(cond, Compound(Seq(thn)), Compound(Seq(elze))))
+    case ArrayAccess(array, index) => c"$array[$index]"
+
+    case Ref(e) => c"&$e"
+
+    case Deref(e) => optP { c"*$e" }
+
+    case Assign(lhs, rhs) => c"$lhs = $rhs"
+
+    case BinOp(op, lhs, rhs) => optP { c"$lhs $op $rhs" }
+
+    case UnOp(op, expr) => optP { c"$op$expr" }
+
+    case If(cond, thenn) =>
+      c"""|if ($cond) {
+          |    $thenn
+          |}"""
+
+    case IfElse(cond, thenn, Block(Seq(secondIf @ If(_, _)))) =>
+      c"""|if ($cond) {
+          |    $thenn
+          |} else $secondIf"""
+
+    case IfElse(cond, thenn, Block(Seq(secondIf @ IfElse(_, _, _)))) =>
+      c"""|if ($cond) {
+          |    $thenn
+          |} else $secondIf"""
+
+    case IfElse(cond, thenn, elze) =>
+      c"""|if ($cond) {
+          |    $thenn
+          |} else {
+          |    $elze
+          |}"""
 
     case While(cond, body) =>
-      c"""|while ($cond)
-          |{
-          |  $body
-          |}
-          |"""
+      c"""|while ($cond) {
+          |    $body
+          |}"""
 
-    case AccessVar(id)              => c"$id"
-    case AccessRef(id)              => c"(*$id)"
-    case AccessAddr(id)             => c"(&$id)"
-    case AccessField(struct, field) => c"$struct.$field"
-    case Call(id, args)             => c"$id($args)"
+    case Break => c"break"
 
-    case StructInit(args, struct) =>
-      c"(${struct.id}) { "
-      for ((id, stmt) <- args.init) {
-        c".$id = $stmt, "
-      }
-      if (!args.isEmpty) {
-        val (id, stmt) = args.last
-        c".$id = $stmt "
-      }
-      c"}"
+    case Return(value) => c"return $value"
 
-    /* --------------------------------------------------------- Error  ----- */
-    case tree => sys.error(s"CPrinter: <<$tree>> was not handled properly")
+    case Cast(expr, typ) => optP { c"($typ)$expr" }
   }
-
 
   private[genc] def pp(wt: WrapperTree)(implicit ctx: PrinterContext): Unit = wt match {
-    case TypedefDecl(Typedef(Id(orig), Id(alias))) =>
-      c"typedef $alias $orig;"
+    case StaticStorage(id) if id.name == "main" => /* Nothing */
+    case StaticStorage(_) => c"static"
 
-    case FunDecl(f) =>
-      c"${FunSign(f)};$NewLine"
+    case FunSign(Fun(id, returnType, Seq(), _)) => c"${StaticStorage(id)} $returnType $id(void)"
 
-    case FunSign(Fun(id, retType, Nil, _)) =>
-      c"""|$retType
-          |$id($Void)"""
+    case FunSign(Fun(id, returnType, params, _)) => c"${StaticStorage(id)} $returnType $id(${nary(params)})"
 
-    case FunSign(Fun(id, retType, params, _)) =>
-      c"""|$retType
-          |$id(${nary(params map DeclParam)})"""
+    case FunDecl(f) => c"${FunSign(f)};"
 
-    case DeclParam(Var(id, typ)) =>
-      c"$typ $id"
+    case TypedefDecl(Typedef(original, alias)) => c"typedef $alias $original;"
 
-    case EnumDef(Enum(name, values)) =>
-      c"""|typedef enum $name {
-          |  ${nary(values, sep = ",\n")}
-          |} $name;
-          |"""
+    case EnumDef(Enum(id, literals)) =>
+      c"""|typedef enum {
+          |  ${nary(literals, sep = ",\n")}
+          |} $id;"""
 
-    case TypeDef(s: Struct) =>
-      c"${StructDef(s)}"
+    case TypeDef(t: DataType) =>
+      val kind = t match {
+        case _: Struct => "struct"
+        case _: Union => "union"
+      }
+      c"""|typedef $kind {
+          |  ${nary(t.fields, sep = ";\n", closing = ";")}
+          |} ${t.id};"""
 
-    case TypeDef(u: Union) =>
-      c"${UnionDef(u)}"
-
-    case StructDef(Struct(name, fields)) =>
-      c"""|typedef struct {
-          |  ${nary(fields map DeclParam, sep = ";\n", closing = ";")}
-          |} $name;
-          |"""
-
-    case UnionDef(Union(name, fields)) =>
-      c"""|typedef union {
-          |  ${nary(fields map { case (typ, id) => UnionValueDef(typ, id) }, sep = "\n")}
-          |} $name;
-          |"""
-
-    case UnionValueDef(typ, id) =>
-      c"$typ $id;"
-
-    case NewLine =>
-      c"""|
-          |"""
+    case FieldInit(id, value) => c".$id = $value"
   }
+
 
   /** Hardcoded list of required include files from C standard library **/
   private lazy val includes_ = Set("assert.h", "stdbool.h", "stdint.h") map Include
@@ -249,17 +209,42 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   private def buildIncludes(includes: Set[Include]): Seq[String] =
     (includes_ ++ includes).toSeq sortBy { _.file } map { i => s"#include <${i.file}>" }
 
+
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
-  private case class TypedefDecl(td: Typedef) extends WrapperTree
-  private case class FunDecl(f: Fun) extends WrapperTree
+  private case class StaticStorage(id: Id) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
-  private case class DeclParam(x: Var) extends WrapperTree
+  private case class FunDecl(f: Fun) extends WrapperTree
+  private case class TypedefDecl(td: Typedef) extends WrapperTree
   private case class EnumDef(u: Enum) extends WrapperTree
-  private case class TypeDef(t: Type) extends WrapperTree // This is not Typedef!!!
-  private case class StructDef(s: Struct) extends WrapperTree
-  private case class UnionDef(u: Union) extends WrapperTree
-  private case class UnionValueDef(typ: Type, id: Id) extends WrapperTree
-  private case object NewLine extends WrapperTree
+  private case class TypeDef(t: DataType) extends WrapperTree // This is not Typedef!!!
+  private case class FieldInit(id: Id, value: Expr) extends WrapperTree
+
+
+  /** Special helpers for pretty parentheses **/
+  private def optP(body: => Any)(implicit ctx: PrinterContext) = {
+    if (requiresParentheses(ctx.current, ctx.previous)) {
+      sb.append("(")
+      body
+      sb.append(")")
+    } else {
+      body
+    }
+  }
+
+  private def requiresParentheses(current: Tree, previous: Option[Tree]): Boolean = (current, previous) match {
+    case (_, None) => false
+    case (_, Some(_: DeclInit | _: Call | _: ArrayAccess | _: If | _: IfElse | _: While | _: Return | _: Assign)) => false
+    case (Operator(precedence1), Some(Operator(precedence2))) if precedence1 < precedence2 => false
+    case (_, _) => true
+  }
+
+  private object Operator {
+    def unapply(tree: Tree): Option[Int] = tree match {
+      case BinOp(op, _, _) => Some(op.precedence)
+      case UnOp(op, _) => Some(op.precedence)
+      case _ => None
+    }
+  }
 }
 

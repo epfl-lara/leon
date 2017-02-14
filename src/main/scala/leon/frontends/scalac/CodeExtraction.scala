@@ -504,7 +504,7 @@ trait CodeExtraction extends ASTExtractors {
         })
       })
     }
-    
+
     /** Returns the function associated to the symbol.
      *  In the case of varargs, if the function is not found
      *  and there are others with the same name in the same scope,
@@ -2372,6 +2372,15 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, List(t1,t2,t3,t4,t5)) if isTuple5(sym) =>
         TupleType(Seq(extractType(t1),extractType(t2),extractType(t3),extractType(t4),extractType(t5)))
+
+      case TypeRef(_, sym, List(t1,t2,t3,t4,t5,t6)) if isTuple6(sym) =>
+        TupleType(Seq(extractType(t1),extractType(t2),extractType(t3),extractType(t4),extractType(t5),extractType(t6)))
+
+      case TypeRef(_, sym, List(t1,t2,t3,t4,t5,t6,t7)) if isTuple7(sym) =>
+        TupleType(Seq(extractType(t1),extractType(t2),extractType(t3),extractType(t4),extractType(t5),extractType(t6),extractType(t7)))
+
+      case TypeRef(_, sym, List(t1,t2,t3,t4,t5,t6,t7,t8)) if isTuple8(sym) =>
+        TupleType(Seq(extractType(t1),extractType(t2),extractType(t3),extractType(t4),extractType(t5),extractType(t6),extractType(t7),extractType(t8)))
 
       case TypeRef(_, sym, btt :: Nil) if isArrayClassSym(sym) =>
         ArrayType(extractType(btt))
