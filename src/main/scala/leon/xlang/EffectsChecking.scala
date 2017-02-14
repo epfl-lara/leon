@@ -106,7 +106,7 @@ object EffectsChecking extends UnitPhase[Program] {
       getReturnedExpr(body).foreach{
         case expr if effects.isMutableType(expr.getType) => 
           findReferencedIds(expr).foreach(id =>
-            if(bindings.contains(id))
+            if(effects.isMutableType(id.getType) && bindings.contains(id))
               ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
           )
         case _ => ()
