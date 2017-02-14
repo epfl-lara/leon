@@ -118,12 +118,12 @@ object AntiAliasingPhase extends TransformationPhase {
     //  case _ => vd
     //})
 
-
-    fd.body.foreach(body => getReturnedExpr(body).foreach{
-      case v@Variable(id) if aliasedParams.contains(id) =>
-        ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object")
-      case _ => ()
-    })
+    //check is done in EffectsChecking now
+    //fd.body.foreach(body => getReturnedExpr(body).flatMap(e => findReferencedIds(e)).foreach((id: Identifier) => {
+    //  println("returning: " + id)
+    //  if(aliasedParams.contains(id))
+    //    ctx.reporter.fatalError(id.getPos, "Cannot return a shared reference to a mutable object")
+    //}))
 
     if(aliasedParams.isEmpty) fd else {
       val newReturnType: TypeTree = tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
