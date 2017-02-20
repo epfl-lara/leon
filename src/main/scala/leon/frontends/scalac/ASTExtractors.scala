@@ -40,6 +40,9 @@ trait ASTExtractors {
   protected lazy val tuple3Sym          = classFromName("scala.Tuple3")
   protected lazy val tuple4Sym          = classFromName("scala.Tuple4")
   protected lazy val tuple5Sym          = classFromName("scala.Tuple5")
+  protected lazy val tuple6Sym          = classFromName("scala.Tuple6")
+  protected lazy val tuple7Sym          = classFromName("scala.Tuple7")
+  protected lazy val tuple8Sym          = classFromName("scala.Tuple8")
   protected lazy val scalaMapSym        = classFromName("scala.collection.immutable.Map")
   protected lazy val scalaSetSym        = classFromName("scala.collection.immutable.Set")
   protected lazy val setSym             = classFromName("leon.lang.Set")
@@ -61,6 +64,9 @@ trait ASTExtractors {
   def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
   def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
   def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
+  def isTuple6(sym : Symbol) : Boolean = sym == tuple6Sym
+  def isTuple7(sym : Symbol) : Boolean = sym == tuple7Sym
+  def isTuple8(sym : Symbol) : Boolean = sym == tuple8Sym
 
   def isBigIntSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == bigIntSym
 
@@ -950,31 +956,52 @@ trait ASTExtractors {
           Select(New(tupleType), _),
           List(e1, e2)
         ) if tupleType.symbol == tuple2Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
-            case _ => None
-          }
+          case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
+          case _ => None
+        }
 
         case Apply(
           Select(New(tupleType), _),
           List(e1, e2, e3)
         ) if tupleType.symbol == tuple3Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3)) => Some((Seq(t1, t2, t3), Seq(e1, e2, e3)))
-            case _ => None
-          }
+          case TypeRef(_, sym, List(t1, t2, t3)) => Some((Seq(t1, t2, t3), Seq(e1, e2, e3)))
+          case _ => None
+        }
         case Apply(
           Select(New(tupleType), _),
           List(e1, e2, e3, e4)
         ) if tupleType.symbol == tuple4Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3, t4)) => Some((Seq(t1, t2, t3, t4), Seq(e1, e2, e3, e4)))
-            case _ => None
-          }
+          case TypeRef(_, sym, List(t1, t2, t3, t4)) => Some((Seq(t1, t2, t3, t4), Seq(e1, e2, e3, e4)))
+          case _ => None
+        }
         case Apply(
           Select(New(tupleType), _),
           List(e1, e2, e3, e4, e5)
         ) if tupleType.symbol == tuple5Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
-            case _ => None
-          }
+          case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
+          case _ => None
+        }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4, e5, e6)
+        ) if tupleType.symbol == tuple6Sym => tupleType.tpe match {
+          case TypeRef(_, sym, List(t1, t2, t3, t4, t5, t6)) => Some((Seq(t1, t2, t3, t4, t5, t6), Seq(e1, e2, e3, e4, e5, e6)))
+          case _ => None
+        }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4, e5, e6, e7)
+        ) if tupleType.symbol == tuple7Sym => tupleType.tpe match {
+          case TypeRef(_, sym, List(t1, t2, t3, t4, t5, t6 ,t7)) => Some((Seq(t1, t2, t3, t4, t5, t6, t7), Seq(e1, e2, e3, e4, e5, e6, e7)))
+          case _ => None
+        }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4, e5, e6, e7, e8)
+        ) if tupleType.symbol == tuple8Sym => tupleType.tpe match {
+          case TypeRef(_, sym, List(t1, t2, t3, t4, t5, t6, t7, t8)) => Some((Seq(t1, t2, t3, t4, t5, t6, t7, t8), Seq(e1, e2, e3, e4, e5, e6, e7, e8)))
+          case _ => None
+        }
         // Match e1 -> e2
         case Apply(TypeApply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "ArrowAssoc"), List(tpeFrom)), List(from)), ExNamed("$minus$greater")), List(tpeTo)), List(to)) =>
 
