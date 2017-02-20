@@ -14,3 +14,13 @@ To get started, see the documentation chapters, such as
 
 [For change log, see CHANGELOG.md](CHANGELOG.md)
 
+### The Stainless/Inox Stack
+
+Leon verification has recently been split off into
+  * [Inox](https://github.com/epfl-lara/inox) a backend solving layer, and
+  * [Stainless](https://github.com/epfl-lara/stainless) a [Scala](http://scala-lang.org) frontend
+    that supports contract-checking and termination proving.
+
+Leon remains (for now) the main project for synthesis and repair as well as resource
+bounds inference. However, developpment of verification-related features will most
+likely be confined to the Stainless/Inox front.
