@@ -1,0 +1,88 @@
+import leon.annotation._
+import leon.lang._
+import leon.lang.synthesis._
+import leon.grammar._
+import leon.annotation.grammar._
+
+// @mk: This seems wrong
+object Polynomial {
+  
+  @production(10)
+  def v = variable[BigInt]
+  
+  @production(5)
+  def plus(x: BigInt, y: BigInt) = x + y
+
+  @production(5)
+  def minus(x: BigInt, y: BigInt) = x - y
+
+  @production(1)
+  def c0 = BigInt(0)
+
+  @production(1)
+  def c1 = BigInt(10)
+
+  @production(1)
+  def c2 = BigInt(20)
+
+  @production(1)
+  def c3 = BigInt(30)
+
+  @production(1)
+  def c4 = BigInt(40)
+
+  @production(1)
+  def c5 = BigInt(50)
+
+  @production(1)
+  def c6 = BigInt(60)
+
+  @production(1)
+  def c7 = BigInt(70)
+
+  @production(1)
+  def c8 = BigInt(80)
+
+  @production(1)
+  def c9 = BigInt(90)
+ 
+  @production(1)
+  def c10 = BigInt(100)
+
+  @production(5)
+  def ite(c: Boolean, t: BigInt, e: BigInt) = if (c) t else e
+
+  @production(1)
+  def and(x: Boolean, y: Boolean) = x && y
+
+  @production(1)
+  def or(x: Boolean, y: Boolean) = x || y
+
+  @production(1)
+  def not(x: Boolean) = !x
+
+  @production(1)
+  def le(x: BigInt, y: BigInt) = x <= y
+
+  @production(1)
+  def eq(x: BigInt, y: BigInt) = x == y
+
+  @production(1)
+  def ge(x: BigInt, y: BigInt) = x >= y
+
+
+
+  def f(x: BigInt) = ???[BigInt] ensuring { res =>
+    ((x, res) passes {
+      case BigInt(0) => BigInt(0)
+      case BigInt(1) => BigInt(10)
+      case BigInt(2) => BigInt(20)
+      case BigInt(3) => BigInt(30)
+      case BigInt(4) => BigInt(40)
+      case BigInt(5) => BigInt(50)
+    }) &&
+    (x > 5 && res == x) || (x <= 5)
+  }
+
+
+}
