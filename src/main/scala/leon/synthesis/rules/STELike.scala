@@ -547,7 +547,7 @@ abstract class STELike(name: String) extends Rule(name) {
 
         val toFind = p.pc and spec
 
-        println(toFind.asString)
+        //println(toFind.asString)
 
         solver.assertCnstr(toFind)
 

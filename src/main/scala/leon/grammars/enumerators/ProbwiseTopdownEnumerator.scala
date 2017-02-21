@@ -93,6 +93,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   var generated = 0
   var output = 0
 
+  // Less probable element to be generated
+  val probLimit = -2000000
+
   // Filter out seen expressions
   protected val sigToNormalMemo = mutable.Map[(NT, Sig), Expansion[NT, R]]()
   protected val normalizeMemo = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
@@ -184,7 +187,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     def next: R = {
       if (!(generated < maxGen && output < maxOutput)) {
-        throw new NoSuchElementException("Enumerator run out of budget")
+        throw new NoSuchElementException("Enumerator ran out of budget")
       }
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
@@ -200,7 +203,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     @tailrec def prepareNext(): Unit = {
       if (generated >= maxGen) {
-        throw new NoSuchElementException("Enumerator run out of budget")
+        throw new NoSuchElementException("Enumerator ran out of budget")
       }
       if (worklist.nonEmpty) {
         val elem = worklist.head
@@ -218,7 +221,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         // Does elem have to be removed from the queue?
         // It is removed if it is either incomplete (i.e. needs further expansion), or fails some tests (i.e. needs to
         // be dropped).
-        if (!elem.expansion.complete || !compliesTests) {
+        if (elem.logProb < probLimit || !elem.expansion.complete || !compliesTests) {
           // If so, remove it
           worklist.dequeue()
           generated += 1
@@ -229,7 +232,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           )
           verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
 
-          if (compliesTests) {
+          if (elem.logProb >= probLimit && compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
             val normalExpansionOpt = if (disambiguate) normalize(elem.expansion) else Some(elem.expansion)

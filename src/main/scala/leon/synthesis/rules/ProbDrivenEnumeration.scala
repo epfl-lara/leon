@@ -89,8 +89,8 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-    val maxGen        = 500000 // Maximum generated # of programs
-    val maxValidated  = 10000
+    val maxGen        = 100000000 // Maximum generated # of programs
+    val maxValidated  = 1000000
     val solverTo      = 3000
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
@@ -101,11 +101,26 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     var examples   = {
       val fromProblem = p.qebFiltered.eb.examples
       val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
+      // We are forced to take all in-out examples
       if (inOut.nonEmpty) inOut
+      // otherwise we prefer one example
       else if (fromProblem.nonEmpty) fromProblem.take(1)
-      else
-        // FIXME this might produce invalid test
-        Seq(InExample(p.as.map(_.getType) map simplestValue))
+      else {
+        // If we have none, generate one with the solver
+        val solver = solverF.getNewSolver()
+        solver.assertCnstr(p.pc.toClause)
+        solver.check match {
+          case Some(true) =>
+            val model = solver.getModel
+            Seq(InExample(p.as map model))
+          case None =>
+            warning("Could not solve path condition")
+            Seq(InExample(p.as.map(_.getType) map simplestValue))
+          case Some(false) =>
+            warning("PC is not satisfiable.")
+            throw new IllegalArgumentException
+        }
+      }
     }
     debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
@@ -260,8 +275,13 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
     List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
-        val ndProgram = new NonDeterministicProgram(hctx, p, enum)
-        RuleClosed (ndProgram.solutionStream)
+        try {
+          val ndProgram = new NonDeterministicProgram(hctx, p, enum)
+          RuleClosed (ndProgram.solutionStream)
+        } catch {
+          case _ : IllegalArgumentException =>
+            RuleFailed()
+        }
       }
     })
   }

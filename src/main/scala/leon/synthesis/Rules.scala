@@ -36,8 +36,8 @@ object Rules {
   def all: List[Rule] = all(false, true)
   /** Returns the list of all available rules for synthesis */
   def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
-    //val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
-    List(
+    val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
+    /*List(
       //StringRender,
       //Unification.DecompTrivialClash,
       //Unification.OccursCheck, // probably useless
@@ -65,7 +65,8 @@ object Rules {
       ADTSplit,
       //InnerCaseSplit
       IntroduceRecCalls
-    )// ++ introduceRecCalls.option(IntroduceRecCalls)
+    )// ++ introduceRecCalls.option(IntroduceRecCalls)*/
+    List(ProbDrivenEnumeration)
   }
 }
 
