@@ -25,7 +25,13 @@ object FIStatsMain {
     for ((tt, ttStats) <- stats.toList.sortBy { case (_, ttStats) => -ttStats.values.map(_.size).sum }) {
       val ttCount = ttStats.values.map(_.size).sum
       for ((tfd, tfdStats) <- ttStats.toList.sortBy { case (_, tfdStats) => -tfdStats.size }) {
-        ans.append(s"$tt $ttCount ${tfd.signature} ${tfdStats.size}\n")
+        /* if (tt != tfd.returnType) {
+          println(s"Expected type tt = $tt. Found type tfd.returnType = ${tfd.returnType}")
+          assert(false)
+        } */
+        val argTypes = tfd.params.map(_.getType)
+        val signature = s"${argTypes.map(_.toString)} => $tt"
+        ans.append(s"$tt, $ttCount, ${tfd.signature}, $signature, ${tfdStats.size}\n")
       }
     }
     ans.toString()
@@ -49,7 +55,7 @@ object FIStatsMain {
       val ttCount = ttStats.values.map(_.size).sum
       for ((ctfd, ctfdStats) <- ttStats.toList.sortBy { case (_, tfdStats) => -tfdStats.size }) {
         val (cd, tfd) = ctfd
-        ans.append(s"$tt $ttCount $cd ${tfd.signature} ${ctfdStats.size}\n")
+        ans.append(s"$tt $ttCount ${cd.id} ${tfd.signature} ${ctfdStats.size}\n")
       }
     }
     ans.toString()

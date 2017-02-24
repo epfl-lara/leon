@@ -20,6 +20,8 @@ object PCFGStats {
     } yield e
   }
 
+  def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = allSubExprs(p)
+
   def allSubExprsByType(p: Program): Map[TypeTree, Seq[Expr]] = {
     val ase = allSubExprs(p)
     val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct

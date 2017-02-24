@@ -47,7 +47,7 @@ object PCFGStatsExtractorMain {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen
       ExtractionPhase andThen
-      // new PreprocessingPhase(false) andThen // TODO! Why is this phase necessary?
+      new PreprocessingPhase(false) andThen
       SimpleFunctionApplicatorPhase(getExprConstrStats)
   }
 
