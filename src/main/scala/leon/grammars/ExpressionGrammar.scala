@@ -51,11 +51,11 @@ abstract class ExpressionGrammar {
     val tpe = lab.getType
     val knownTypes = productions.keySet.map(_.getType)
 
-    println
-    println("%"*80);
-    println(s"Instantiating ${tpe.asString} |$maxSize|");
-    println
-    println
+    //println
+    //println("%"*80);
+    //println(s"Instantiating ${tpe.asString} |$maxSize|");
+    //println
+    //println
 
     //println("Pool of types: ");
     //for (t <- discoveredTypes.toSeq.sortBy(_.asString)) {
@@ -64,7 +64,7 @@ abstract class ExpressionGrammar {
     //println
 
     for(gp <- genericProductions if (gp.args.size + 1) < maxSize) {
-      println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
+      //println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
 
       instantiation_<:(gp.retType, tpe) match {
         case Some(tmap0) =>
@@ -109,7 +109,7 @@ abstract class ExpressionGrammar {
           val prods = for (tmap <- tmaps2) yield {
             val prod = gp.builder(tmap)
 
-            println("    - "+prodAsString(prod))
+            //println("    - "+prodAsString(prod))
 
             prod
           }
@@ -196,24 +196,24 @@ abstract class ExpressionGrammar {
 
   def discoverTypes(maxSize: Int)(implicit ctx: LeonContext) = {
     for(discoverySize <- 1 to maxSize) {
-      println
-      println("#"*80);
-      println(s"Discovering Types |$discoverySize|%%%%%%");
-      println
-      println
+      //println
+      //println("#"*80);
+      //println(s"Discovering Types |$discoverySize|%%%%%%");
+      //println
+      //println
 
       newTypes = Set()
 
-      println("Pool of types: ");
+      //println("Pool of types: ");
       for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
-        println(" - |"+mc+"|  "+t.asString)
+        //println(" - |"+mc+"|  "+t.asString)
       }
-      println
+      //println
 
       var res = Set[TypeTree]()
 
       for(gp <- genericProductions) {
-        println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
+        //println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
 
         val freeTps = typeParamsOf(gp.retType) intersect gp.tparams.map(_.tp).toSet
 
@@ -229,7 +229,7 @@ abstract class ExpressionGrammar {
 
         for ((t, mc) <- retTypes) {
           if (!(minCosts contains t)) {
-            println(" -> "+t.asString)
+            //println(" -> "+t.asString)
 
             minCosts += t -> mc
             newTypes += t
@@ -237,14 +237,14 @@ abstract class ExpressionGrammar {
         }
       }
 
-      println
-      println("New Pool of types: ");
-      for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
-        val isNew = if(newTypes contains t) "*" else " "
+      //println
+      //println("New Pool of types: ");
+      //for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
+      //  val isNew = if(newTypes contains t) "*" else " "
 
-        println(" - "+isNew+" |"+mc+"|  "+t.asString)
-      }
-      println
+      //  println(" - "+isNew+" |"+mc+"|  "+t.asString)
+      //}
+      //println
     }
   }
 
