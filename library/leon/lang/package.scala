@@ -119,7 +119,9 @@ package object lang {
     f(t._1) + mid + g(t._2)
   }
 
+  @library
   case class Mutable[T]()
+  @library
   implicit def mutable[T] = new Mutable[T]
 
   @ignore

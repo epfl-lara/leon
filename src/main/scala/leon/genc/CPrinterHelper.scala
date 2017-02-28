@@ -9,7 +9,9 @@ import CAST.Tree
 
 case class PrinterContext(
   indent: Int,
-  printer: CPrinter
+  printer: CPrinter,
+  previous: Option[Tree],
+  current: Tree
 )
 
 object CPrinterHelpers {
@@ -20,8 +22,9 @@ object CPrinterHelpers {
   implicit class PrinterHelper(val sc: StringContext) extends AnyVal {
     def c(args: Any*)(implicit ctx: PrinterContext): Unit = {
       val printer = ctx.printer
-      import printer.WrapperTree
       val sb      = printer.sb
+
+      import printer.WrapperTree
 
       val strings     = sc.parts.iterator
       val expressions = args.iterator
@@ -57,7 +60,8 @@ object CPrinterHelpers {
               nary(ts).print(nctx)
 
             case t: Tree =>
-              printer.pp(t)(nctx)
+              val nctx2 = nctx.copy(current = t, previous = Some(nctx.current))
+              printer.pp(t)(nctx2)
 
             case wt: WrapperTree =>
               printer.pp(wt)(nctx)
@@ -74,7 +78,7 @@ object CPrinterHelpers {
   }
 
   def nary(ls: Seq[Any], sep: String = ", ", opening: String = "", closing: String = ""): Printable = {
-    val (o, c) = if(ls.isEmpty) ("", "") else (opening, closing)
+    val (o, c) = if (ls.isEmpty) ("", "") else (opening, closing)
     val strs = o +: List.fill(ls.size-1)(sep) :+ c
 
     implicit pctx: PrinterContext =>

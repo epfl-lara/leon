@@ -21,7 +21,7 @@ object TupleArray {
     val e1 = exists((a, 0))
     val e2 = exists((a, -1))
     if (e1 && !e2) 0
-    else -1
+    else 1
   } ensuring { _ == 0 }
 
   @extern

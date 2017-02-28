@@ -24,9 +24,9 @@ object FileOutputStream {
   @extern
   @cCode.function(code =
     """
-    |FILE* __FUNCTION__(char* filename) {
+    |static FILE* __FUNCTION__(char* filename) {
     |  FILE* this = fopen(filename, "w");
-    |  // this == NULL on failure
+    |  /* this == NULL on failure */
     |  return this;
     |}
     """
@@ -49,7 +49,7 @@ object FileOutputStream {
 
 @library
 @cCode.typedef(alias = "FILE*", include = "stdio.h")
-case class FileOutputStream(var filename: Option[String]) {
+case class FileOutputStream private (var filename: Option[String]) {
 
   /**
    * Close the stream; return `true` on success.
@@ -58,7 +58,7 @@ case class FileOutputStream(var filename: Option[String]) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  if (this != NULL)
     |    return fclose(this) == 0;
     |  else
@@ -78,13 +78,43 @@ case class FileOutputStream(var filename: Option[String]) {
    */
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this) {
+    |static bool __FUNCTION__(FILE* this) {
     |  return this != NULL;
     |}
     """
   )
   // We assume the stream to be opened if and only if the filename is defined.
   def isOpen(): Boolean = filename.isDefined
+
+  /**
+   * Append a byte to the stream and return `true` on success.
+   *
+   * NOTE The stream must be opened first.
+   *
+   * NOTE This is the symmetric function to FileInputStream.readByte;
+   *      i.e. the same restrictions applies to GenC.
+   */
+  @extern
+  @cCode.function(code =
+    """
+    |static bool __FUNCTION__(FILE* this, int8_t x) {
+    |  return fprintf(this, "%c", x) >= 0;
+    |}
+    """,
+    includes = "inttypes.h"
+  )
+  def write(x: Byte): Boolean = {
+    require(isOpen)
+    try {
+      val out = new java.io.FileOutputStream(filename.get, true)
+      val b = Array[Byte](x)
+      out.write(b, 0, 1)
+      out.close()
+      true
+    } catch {
+      case _: Throwable => false
+    }
+  }
 
   /**
    * Append an integer to the stream and return `true` on success.
@@ -94,7 +124,7 @@ case class FileOutputStream(var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, int32_t x) {
+    |static bool __FUNCTION__(FILE* this, int32_t x) {
     |  return fprintf(this, "%"PRIi32, x) >= 0;
     |}
     """,
@@ -120,7 +150,7 @@ case class FileOutputStream(var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, char c) {
+    |static bool __FUNCTION__(FILE* this, char c) {
     |  return fprintf(this, "%c", c) >= 0;
     |}
     """
@@ -145,7 +175,7 @@ case class FileOutputStream(var filename: Option[String]) {
   @extern
   @cCode.function(code =
     """
-    |bool __FUNCTION__(FILE* this, char* s) {
+    |static bool __FUNCTION__(FILE* this, char* s) {
     |  return fprintf(this, "%s", s) >= 0;
     |}
     """

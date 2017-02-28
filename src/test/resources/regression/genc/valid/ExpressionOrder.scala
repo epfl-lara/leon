@@ -43,6 +43,9 @@ object ExpressionOrder {
   }
 
   def _main() = {
+    syntaxCheck(0)
+
+    printOnFailure(
       bool2int(test0(false), 1)  +
       bool2int(test1(42),    2)  +
       bool2int(test2(58),    4)  +
@@ -50,7 +53,11 @@ object ExpressionOrder {
       bool2int(test4(false), 16) +
       bool2int(test6,        32) +
       bool2int(test7,        64) +
-      bool2int(test8,        128)
+      bool2int(test8,        128)+
+      bool2int(test9,        256)+
+      bool2int(test10,       512)+
+      bool2int(test11,      1024)
+    )
   } ensuring { _ == 0 }
 
   def test0(b: Boolean) = {
@@ -153,10 +160,51 @@ object ExpressionOrder {
     bar(2) == 0
   }.holds
 
+  def test9() = {
+    var c = 0
+    val r = { c = c + 3; c } + { c = c + 1; c } * { c = c * 2; c }
+    r == 35 && c == 8
+  }.holds
+
+  def test10() = {
+    var c = 0
+
+    def myfma(x: Int, y: Int, z: Int) = {
+      require(z == 8 && c == 8)
+      x + y * z
+    }
+
+    val r = myfma({ c = c + 3; c }, { c = c + 1; c }, { c = c * 2; c })
+
+    r == 35 && c == 8
+  }.holds
+
+  def test11() = {
+    val a = Array(0, 1, 2, 3)
+    val b = Array(9, 9, 9)
+    var c = 666
+    val i = 9
+    val x = (if (i != 9) b else { c = 0; a })(if (i == 9) { c = c + 1; 0 } else 1)
+
+    x == 0 && c == 1
+  }.holds
+
   def bool2int(b: Boolean, f: Int) = if (b) 0 else f;
+
+  // Because on Unix, exit code should be in [0, 255], we print the exit code on failure
+  // and return 1. On success, we do nothing special.
+  def printOnFailure(exitCode: Int): Int = {
+    if (exitCode == 0) 0
+    else {
+      implicit val state = leon.io.newState
+      leon.io.StdOut.print("Error code: ")
+      leon.io.StdOut.print(exitCode)
+      leon.io.StdOut.println()
+      1
+    }
+  }
 
   @extern
   def main(args: Array[String]): Unit = _main()
 }
-
 

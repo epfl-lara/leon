@@ -1,5 +1,3 @@
-package test.resources.regression.xlang.error
-
 import leon.lang._
 
 object ObjectAliasing7 {

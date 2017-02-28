@@ -88,7 +88,7 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
       case BVRemainder(_, _) | BVShiftLeft(_, _) | BVAShiftRight(_, _) | BVLShiftRight(_, _) =>
         VCKinds.StrictArithmetic
 
-      case BVPlus(_, _) | BVMinus(_, _) | BVUMinus(_) | BVTimes(_, _) =>
+      case BVPlus(_, _) | BVMinus(_, _) | BVUMinus(_) | BVDivision(_, _) | BVTimes(_, _) =>
         VCKinds.ArithmeticOverflow
 
       case _ =>

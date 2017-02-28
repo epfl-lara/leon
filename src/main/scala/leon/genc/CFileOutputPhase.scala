@@ -23,6 +23,8 @@ object CFileOutputPhase extends UnitPhase[CAST.Prog] {
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(optOutputFile)
 
   def apply(ctx: LeonContext, program: CAST.Prog) {
+    val timer = ctx.timers.genc.print.start()
+
     // Get the output file name from command line options, or use default
     val outputFile = new File(ctx.findOptionOrDefault(optOutputFile))
     val parent = outputFile.getParentFile()
@@ -49,6 +51,8 @@ object CFileOutputPhase extends UnitPhase[CAST.Prog] {
     } catch {
       case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)
     }
+
+    timer.stop()
   }
 
 }

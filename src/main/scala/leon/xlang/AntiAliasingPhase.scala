@@ -118,12 +118,12 @@ object AntiAliasingPhase extends TransformationPhase {
     //  case _ => vd
     //})
 
-
-    fd.body.foreach(body => getReturnedExpr(body).foreach{
-      case v@Variable(id) if aliasedParams.contains(id) =>
-        ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object")
-      case _ => ()
-    })
+    //check is done in EffectsChecking now
+    //fd.body.foreach(body => getReturnedExpr(body).flatMap(e => findReferencedIds(e)).foreach((id: Identifier) => {
+    //  println("returning: " + id)
+    //  if(aliasedParams.contains(id))
+    //    ctx.reporter.fatalError(id.getPos, "Cannot return a shared reference to a mutable object")
+    //}))
 
     if(aliasedParams.isEmpty) fd else {
       val newReturnType: TypeTree = tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
@@ -247,12 +247,19 @@ object AntiAliasingPhase extends TransformationPhase {
                     (findReferencedIds(rArg).filter(id => effects.isMutableType(id.getType)), rArg)
                    })
 
-        val allParams: Seq[Identifier] = modifiedArgs.flatMap(_._1)
-        val duplicatedParams = allParams.diff(allParams.distinct).distinct
-        if(duplicatedParams.nonEmpty) 
-          ctx.reporter.fatalError(nfi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
-        //TODO: The case f(A(x1,x1,x1)) could probably be handled by forbidding creation at any program point of
-        //      case class with multiple refs as it is probably not useful
+        {//testing if duplicated mutable params are sent to a function
+          val allParams: Seq[Identifier] =
+            args.zipWithIndex.filter(p => effects.isMutableType(p._1.getType)).map(arg => {
+                      val rArg = replaceFromIDs(rewritings, arg._1)
+                      (findReferencedIds(rArg).filter(id => effects.isMutableType(id.getType)), rArg)
+                     })
+                .flatMap(_._1)
+          val duplicatedParams = allParams.diff(allParams.distinct).distinct
+          if(duplicatedParams.nonEmpty) 
+            ctx.reporter.fatalError(nfi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
+          //TODO: The case f(A(x1,x1,x1)) could probably be handled by forbidding creation at any program point of
+          //      case class with multiple refs as it is probably not useful
+        }
 
         val freshRes = FreshIdentifier("res", nfiType)
 

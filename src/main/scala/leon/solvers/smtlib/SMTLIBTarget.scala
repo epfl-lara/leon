@@ -20,7 +20,7 @@ import _root_.smtlib.printer.{ RecursivePrinter => SMTPrinter }
 import _root_.smtlib.parser.Commands.{
   Constructor => SMTConstructor,
   FunDef => SMTFunDef,
-  Assert => SMTAssert,
+  Assert => _,
   _
 }
 import _root_.smtlib.parser.Terms.{
@@ -32,7 +32,6 @@ import _root_.smtlib.parser.Terms.{
 }
 import _root_.smtlib.parser.CommandsResponses.{ Error => ErrorResponse, _ }
 import _root_.smtlib.theories.{Constructors => SmtLibConstructors, _}
-import _root_.smtlib.theories.experimental._
 import _root_.smtlib.interpreters.ProcessInterpreter
 
 trait SMTLIBTarget extends Interruptible {

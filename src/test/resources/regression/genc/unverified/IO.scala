@@ -3,13 +3,13 @@
 import leon.annotation._
 import leon.io.{ FileOutputStream => FOS, FileInputStream => FIS }
 import leon.io.{ StdIn, StdOut }
+import leon.lang._
 
 object IO {
 
-  def getFileName() = "test.txt"
+  def filename = "test.txt"
 
   def printX(x: Int, c: Char, sep: String): Unit = {
-    val filename = getFileName
     val out = FOS.open(filename)
     if (out.isOpen) {
       out.write(x)
@@ -30,8 +30,10 @@ object IO {
   def echo(): Unit = {
     implicit val state = leon.io.newState
     StdOut.print("ECHOING...")
-    val x = StdIn.readInt
-    StdOut.print(x)
+    StdIn.tryReadInt() match {
+      case Some(x) => StdOut.print(x)
+      case None() => StdOut.print("Nothing to echo")
+    }
     StdOut.print("\n")
   }
 
@@ -43,7 +45,7 @@ object IO {
     val out = FOS.open("echo.txt")
     if (out.isOpen) {
       out.write(message)
-      out.close
+      out.close()
 
       ()
     } else {
@@ -52,10 +54,10 @@ object IO {
 
     val in = FIS.open("echo.txt")
     if (in.isOpen) {
-      val x = in.readInt
-      in.close
+      val x = in.tryReadInt()
+      in.close()
 
-      if (x == message) {
+      if (x.isDefined && x.get == message) {
         StdOut.print("The echo was slow but successful!\n")
       } else
         StdOut.print("The echo was slow and buggy! :-(\n")
