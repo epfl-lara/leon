@@ -31,7 +31,7 @@ object PCFGEmitter {
     val es = stats(tt)(constr)
     val freq = es.size
 
-    if (constr == classOf[Variable]) {
+    /* if (constr == classOf[Variable]) {
       val funName = FreshIdentifier("var", tt)
       val funDef = new FunDef(funName, Seq(), Seq(), tt)
       // funDef.fullBody = ??? // "variable[tt]" // TODO!
@@ -50,7 +50,7 @@ object PCFGEmitter {
       funDef.fullBody = builder(args.map(_.toVariable))
       funDef.addFlag(Annotation("production", Seq(Some(freq))))
       Seq(funDef)
-    }
+    } */
 
     /* if (constr == classOf[And]) {
       require(tt == BooleanType)
@@ -65,6 +65,8 @@ object PCFGEmitter {
     } else {
       Seq() // ???
     } */
+
+    ???
   }
 
 }

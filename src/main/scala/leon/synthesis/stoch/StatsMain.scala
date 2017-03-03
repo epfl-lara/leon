@@ -12,9 +12,14 @@ object StatsMain {
   def main(args: Array[String]): Unit = {
     val ase = args.tail.toSeq.par.flatMap(procFile).seq
 
-    val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
+    val allTypeParams = ase.map(exprConstrFuncType).flatMap(getTypeParams).distinct
     val tase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
-    val ecs: ExprConstrStats = tase.mapValues(_.groupBy(_.getClass))
+    val tcase = tase.mapValues(_.groupBy(_.getClass))
+    val ecs: ExprConstrStats = tcase.mapValues(_.mapValues(_.groupBy(expr => childTypes(expr).map(tt => normalizeType(allTypeParams, tt)))))
+
+    println("Printing coarse expression constructor stats:")
+    println(Stats.ecsToStringCoarse(ecs))
+
     println("Printing expression constructor stats:")
     println(Stats.ecsToString(ecs))
 
