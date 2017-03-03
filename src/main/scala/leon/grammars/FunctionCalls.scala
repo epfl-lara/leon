@@ -17,7 +17,7 @@ import purescala.Expressions._
   * @param exclude An additional set of functions for which no calls will be generated
   */
 case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends SimpleExpressionGrammar {
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = {
+  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = {
 
     def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
       // Prevents recursive calls
@@ -78,7 +78,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[Type
     val funcs = visibleFunDefsFromMain(prog).toSeq.filterNot(filter).sortBy(_.id).flatMap(getCandidates)
 
     funcs.map { tfd =>
-      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), classOf[FunctionInvocation], Tags.tagOf(tfd.fd, isSafe = false))
+      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
     }
   }
 }

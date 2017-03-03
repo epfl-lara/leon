@@ -11,30 +11,31 @@ import purescala.Types.TypeTree
   */
 abstract class SimpleExpressionGrammar extends ExpressionGrammar {
 
-  type Prod = ProductionRule[TypeTree, Expr]
+  type SProd = ProductionRule[TypeTree, Expr]
+
+  val genericProductions = Nil
+  val staticProductions = Map[Label, Seq[Prod]]()
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
   def terminal(
       builder: => Expr,
-      outType: Class[_ <: Expr],
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
       weight: Double = -1.0) = {
-    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, outType, tag, cost, weight)
+    ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
   def nonTerminal(
       subs: Seq[TypeTree],
       builder: (Seq[Expr] => Expr),
-      outType: Class[_ <: Expr],
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
       weight: Double = -1.0) = {
-    ProductionRule[TypeTree, Expr](subs, builder, outType, tag, cost, weight)
+    ProductionRule[TypeTree, Expr](subs, builder, tag, cost, weight)
   }
 
-  def filter(f: Prod => Boolean) = {
+  def filter(f: SProd => Boolean) = {
     new SimpleExpressionGrammar {
       def computeProductions(lab: TypeTree)(implicit ctx: LeonContext) = {
         SimpleExpressionGrammar.this.computeProductions(lab).filter(f)
@@ -43,12 +44,12 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
   }
 
   // Finalize this to depend only on the type of the label
-  final protected[grammars] def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = {
+  final protected[grammars] def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[Prod] = {
     computeProductions(lab.getType).map { p =>
-      ProductionRule(p.subTrees.map(Label(_)), p.builder, p.outType, p.tag, p.cost, p.weight)
+      ProductionRule(p.subTrees.map(Label(_)), p.builder, p.tag, p.cost, p.weight)
     }
   }
 
   /** Version of [[ExpressionGrammar.computeProductions]] which depends only a [[TypeTree]] */
-  protected[grammars] def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[Prod]
+  protected[grammars] def computeProductions(tpe: TypeTree)(implicit ctx: LeonContext): Seq[SProd]
 }

@@ -198,7 +198,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     }).iterator(topLabel)
     var it = mkEnum
     debug("Grammar:")
-    grammar.printProductions(debug(_))
+    debug(grammar.asString)
 
     /**
       * Second phase of STE: verify a given candidate by looking for CEX inputs.

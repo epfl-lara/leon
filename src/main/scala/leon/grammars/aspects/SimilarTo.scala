@@ -16,13 +16,13 @@ import utils.SeqUtils._
   *
   * @param es The expressions for which similar ones will be generated
   */
-case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(30) {
+case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(SimilarToAspectKind) {
   type Prods = Seq[ProductionRule[Label, Expr]]
 
   def asString(implicit ctx: LeonContext) = es.mkString("~", "~", "~")
 
   def term(e: Expr, tag: Tags.Tag = Tags.Top, cost: Int = 1, weight: Double = -1.0): ProductionRule[Label, Expr] = {
-    ProductionRule(Nil, { case Seq() => e }, e.getClass, tag, cost, weight)
+    ProductionRule(Nil, { case Seq() => e }, tag, cost, weight)
   }
 
   /**
@@ -76,7 +76,6 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(30) 
               { case Seq(e) =>
                 b(as.updated(i, e))
               },
-              e.getClass,
               Tags.Top,
               1,
               1.0

@@ -6,7 +6,7 @@ package aspects
 
 import Tags._
 
-case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(1000) {
+case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(TaggedAspectKind) {
   private val cString = isConst match {
     case Some(true) => "↓"
     case Some(false) => "↑"
@@ -61,7 +61,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(1
             lab.withAspect(a)
           }
 
-          ProductionRule(newSubTrees, p.builder, p.outType, p.tag, p.cost, p.weight)
+          ProductionRule(newSubTrees, p.builder, p.tag, p.cost, p.weight)
         }
       } else {
         Nil

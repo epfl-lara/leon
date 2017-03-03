@@ -55,7 +55,7 @@ object Rules {
       UnusedInput,
       EquivalentInputs,
       UnconstrainedOutput,
-      //ste,
+      ste,
       ProbDrivenEnumeration,
       OptimisticGround,
       GenericTypeEqualitySplit,

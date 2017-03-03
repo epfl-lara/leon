@@ -20,8 +20,8 @@ import bonsai.Generator
 case class ProductionRule[T, R](
     override val subTrees: Seq[T],
     override val builder: Seq[R] => R,
-    outType: Class[_ <: R],
     tag: Tags.Tag,
     cost: Int,
     weight: Double)
-extends Generator[T,R](subTrees, builder)
+extends Generator[T,R](subTrees, builder) {
+}

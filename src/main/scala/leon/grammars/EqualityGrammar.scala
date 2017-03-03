@@ -11,10 +11,10 @@ import purescala.Constructors._
   * @param types The set of types for which equalities will be generated
   */
 case class EqualityGrammar(types: Set[TypeTree]) extends SimpleExpressionGrammar {
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
     case BooleanType =>
       types.toList map { tp =>
-        nonTerminal(List(tp, tp), { case Seq(a, b) => equality(a, b) }, classOf[purescala.Expressions.Equals], Tags.Equals)
+        nonTerminal(List(tp, tp), { case Seq(a, b) => equality(a, b) }, Tags.Equals)
       }
 
     case _ => Nil
