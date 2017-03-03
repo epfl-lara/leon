@@ -168,7 +168,7 @@ object Viterbi {
   	columnLem(j, K) &&
   	deps(j + 1, K) &&
   	steps <= ? * ((K - i) * K) + ? * K + ?
-  })
+  }) 
 
   @invisibleBody
   def fillTable(j: BigInt, T: BigInt, K: BigInt): List[List[BigInt]] = {
