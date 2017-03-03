@@ -3,7 +3,7 @@ package synthesis
 package stoch
 
 import leon.purescala.Definitions.TypedFunDef
-import leon.purescala.Expressions.{Expr, FunctionInvocation}
+import leon.purescala.Expressions.{Expr, FunctionInvocation, Literal}
 import leon.purescala.Types.TypeTree
 
 object Stats {
@@ -11,6 +11,7 @@ object Stats {
   type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
   type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
   type TypeStats = Map[TypeTree, Seq[Expr]]
+  type LitStats = Map[TypeTree, Map[Any, Seq[Literal[_]]]]
 
   def ecsToString(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
@@ -44,6 +45,17 @@ object Stats {
     val ans = new StringBuilder()
     for ((tt, ttStats) <- stats.toList.sortBy { case (_, ttStats) => -ttStats.size }) {
       ans.append(s"$tt, ${ttStats.size}\n")
+    }
+    ans.toString()
+  }
+
+  def lsToString(stats: LitStats): String = {
+    val ans = new StringBuilder()
+    for ((tt, ttStats) <- stats.toList.sortBy { case (_, ttStats) => -ttStats.values.map(_.size).sum }) {
+      val ttCount = ttStats.values.map(_.size).sum
+      for ((value, tvStats) <- ttStats.toList.sortBy { case (_, tvStats) => -tvStats.size }) {
+        ans.append(s"$tt, $ttCount, $value, ${tvStats.size}\n")
+      }
     }
     ans.toString()
   }

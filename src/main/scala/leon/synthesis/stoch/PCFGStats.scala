@@ -2,10 +2,11 @@ package leon
 package synthesis
 package stoch
 
+import leon.purescala.Extractors.Operator
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import purescala.{ExprOps, TypeOps}
-import purescala.Types.{TypeParameter, TypeTree}
+import purescala.Types.{FunctionType, TypeParameter, TypeTree}
 
 object PCFGStats {
 
@@ -60,6 +61,11 @@ object PCFGStats {
   def normalizeTypes(seq: Seq[TypeTree]): Seq[TypeTree] = {
     val allParams = seq.flatMap(getTypeParams).distinct
     seq.map(typeTree => normalizeType(allParams, typeTree))
+  }
+
+  def exprConstrFuncType(e: Expr): FunctionType = {
+    val Operator(es, _) = e
+    return FunctionType(es.map(_.getType), e.getType)
   }
 
   // Type statistics
