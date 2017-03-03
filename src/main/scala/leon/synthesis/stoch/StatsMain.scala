@@ -3,52 +3,42 @@ package synthesis
 package stoch
 
 import PCFGStats._
+import leon.purescala.Expressions.{Expr, FunctionInvocation}
+import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats}
 import leon.utils.PreprocessingPhase
 
-import scala.util.Random
-
-object PCFGStatsExtractorMain {
+object StatsMain {
 
   def main(args: Array[String]): Unit = {
-    @volatile var globalStatsTrain: ExprConstrStats = Map()
-    // @volatile var globalStatsTest: ExprConstrStats = Map() // Add this back in to check validity
-    // val random = new Random(0) // Remove this 0 to make non-deterministic
+    val ase = args.tail.toSeq.par.map(procFile).flatten.seq
 
-    val fileStats = args.tail.par.map(fileName => fileName -> procFile(fileName)).toMap
-    for (fileName <- args.tail) {
-      globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
+    val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
+    val tase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
+    val ecs: ExprConstrStats = tase.mapValues(_.groupBy(_.getClass))
+    println("Printing expression constructor stats:")
+    println(Stats.ecsToString(ecs))
 
-      // Add the following back in to check validity!
-      /* if (random.nextDouble() <= 0.9) {
-        globalStatsTrain = addStats(globalStatsTrain, fileStats(fileName))
-      } else {
-        globalStatsTest = addStats(globalStatsTest, fileStats(fileName))
-      } */
-    }
-
-    println("Printing training data:")
-    println(exprConstrStatsToString(globalStatsTrain))
-
-    // Add the following back in to print validity results!
-    /* println("Printing test data:")
-    println(exprConstrStatsToString(globalStatsTest))
-    println("Computing score:")
-    val score = dist(globalStatsTrain, globalStatsTest)
-    println(s"Score: $score") */
+    val allFuncInvokes = ase.filter(_.isInstanceOf[FunctionInvocation])
+                            .map(_.asInstanceOf[FunctionInvocation])
+    val tafi = allFuncInvokes.groupBy(fi => normalizeType(allTypeParams, fi.getType))
+    val fcs: FunctionCallStats = tafi.mapValues(_.groupBy(_.tfd))
+    println("Printing function call stats:")
+    println(Stats.fcsToString(fcs))
   }
 
-  def procFile(fileName: String): ExprConstrStats = {
+  def procFile(fileName: String): Seq[Expr] = {
     val args = List(fileName)
     val ctx = Main.processOptions(args)
     pipeline.run(ctx, args)._2
   }
 
-  def pipeline: Pipeline[List[String], ExprConstrStats] = {
+  // def pipeline: Pipeline[List[String], ExprConstrStats] = {
+  def pipeline: Pipeline[List[String], Seq[Expr]] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen
       ExtractionPhase andThen
       new PreprocessingPhase(false) andThen
-      SimpleFunctionApplicatorPhase(getExprConstrStats)
+      SimpleFunctionApplicatorPhase(allSubExprs)
   }
 
   def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
