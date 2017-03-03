@@ -2,8 +2,8 @@ package leon
 package synthesis
 package stoch
 
-import purescala.Definitions.{Program, TypedFunDef}
-import purescala.Expressions.{Expr, FunctionInvocation}
+import purescala.Definitions.Program
+import purescala.Expressions.Expr
 import purescala.{ExprOps, TypeOps}
 import purescala.Types.{TypeParameter, TypeTree}
 
@@ -40,11 +40,9 @@ object PCFGStats {
   // 4. "U -> BigInt" ~~> "T -> BigInt"
 
   def getTypeParams(typeTree: TypeTree): Seq[TypeParameter] = {
-    def isTypeParameter: TypeTree => Boolean = _.isInstanceOf[TypeParameter]
-    def asTypeParameter: TypeTree => TypeParameter = _.asInstanceOf[TypeParameter]
     TypeOps.collectPreorder{ tt => List(tt) }(typeTree)
-           .filter(isTypeParameter)
-           .map(asTypeParameter)
+           .filter(_.isInstanceOf[TypeParameter])
+           .map(_.asInstanceOf[TypeParameter])
            .distinct
   }
 
@@ -62,47 +60,6 @@ object PCFGStats {
   def normalizeTypes(seq: Seq[TypeTree]): Seq[TypeTree] = {
     val allParams = seq.flatMap(getTypeParams).distinct
     seq.map(typeTree => normalizeType(allParams, typeTree))
-  }
-
-  // Expression constructor statistics
-  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
-
-  def addStats(stats1: ExprConstrStats, stats2: ExprConstrStats): ExprConstrStats = {
-    type HashMap[K, V] = scala.collection.mutable.HashMap[K, V]
-    val ans = new HashMap[TypeTree, HashMap[Class[_ <: Expr], Seq[Expr]]]()
-
-    def addMap(stats: ExprConstrStats) = {
-      for (typeTree <- stats.keys) {
-        val typeStats = ans.getOrElse(typeTree, new HashMap())
-        for (constr <- stats(typeTree).keys) {
-          val freq = typeStats.getOrElse(constr, Seq()) ++ stats(typeTree)(constr)
-          typeStats.put(constr, freq)
-        }
-        ans.put(typeTree, typeStats)
-      }
-    }
-
-    addMap(stats1)
-    addMap(stats2)
-    ans.mapValues(_.toMap).toMap
-  }
-
-  def exprConstrStatsToString(stats: ExprConstrStats): String = {
-    val ans = new StringBuilder()
-
-    def total[K, T](map: Map[K, Seq[T]]): Int = map.mapValues(_.size).values.sum
-    for ((tt, ttStats) <- stats.toList.sortBy{ case (tt, ttStats) => (-total(ttStats), tt.toString) }) {
-      val typeTotal = total(ttStats)
-      val ttStatsSorted = ttStats.mapValues(_.size).toSeq.sortBy { case (constr, freq) => (-freq, constr.toString) }
-      for ((constr, freq) <- ttStatsSorted) {
-        ans.append(s"$tt\t$typeTotal\t$constr\t$freq\n")
-      }
-    }
-    ans.toString()
-  }
-
-  def getExprConstrStats(ctx: LeonContext, p: Program): ExprConstrStats = {
-    allSubExprsByType(p).mapValues(_.groupBy(_.getClass))
   }
 
   // Type statistics

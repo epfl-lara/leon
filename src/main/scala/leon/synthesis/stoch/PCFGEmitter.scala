@@ -7,7 +7,7 @@ import leon.purescala.Definitions.{Annotation, FunDef, ValDef}
 import leon.purescala.Expressions._
 import leon.purescala.Extractors.Operator
 import leon.purescala.Types._
-import leon.synthesis.stoch.PCFGStats.ExprConstrStats
+import leon.synthesis.stoch.Stats.ExprConstrStats
 
 object PCFGEmitter {
 
