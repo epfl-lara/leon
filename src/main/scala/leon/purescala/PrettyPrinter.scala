@@ -343,7 +343,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVDivision(l, r)         => optP { p"$l / $r" }
       case BVRemainder(l, r)        => optP { p"$l % $r" }
       case BVAnd(l, r)              => optP { p"$l & $r" }
-      case BVOr(l, r)               => optP { p"$l | $r" }
+      case BVOr(l, r)               => optP { p"$l| | $r" }
       case BVXOr(l, r)              => optP { p"$l ^ $r" }
       case BVShiftLeft(l, r)        => optP { p"$l << $r" }
       case BVAShiftRight(l, r)      => optP { p"$l >> $r" }
