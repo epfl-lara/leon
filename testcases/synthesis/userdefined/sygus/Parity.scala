@@ -10,9 +10,11 @@ object Commutative {
   def v = variable[BigInt]
   
   @production(1)
+  @tag("not")
   def not(x: Boolean) = !x
   
   @production(1)
+  @tag("and")
   def and(x: Boolean, y: Boolean) = x && y
 
   // @inline def xor(a: Boolean, b: Boolean) = a != b
