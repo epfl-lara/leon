@@ -21,7 +21,7 @@ package object grammars {
     } else {
       val exclude = sctx.settings.functionsToIgnore
       val recCalls = {
-        if (sctx.findOptionOrDefault(SynthesisPhase.optIntroduceRecCalls)) Empty()
+        if (sctx.findOptionOrDefault(SynthesisPhase.optIntroRecCalls)) Empty()
         else SafeRecursiveCalls(sctx.program, p.ws, p.pc)
       }
 

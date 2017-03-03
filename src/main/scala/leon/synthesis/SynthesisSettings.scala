@@ -9,7 +9,7 @@ case class SynthesisSettings(
   timeoutMs: Option[Long]             = None,
   generateDerivationTrees: Boolean    = false,
   costModel: CostModel                = CostModels.default,
-  rules: Seq[Rule]                    = Rules.all,
+  rules: Seq[Rule]                    = Rules.default,
   manualSearch: Option[String]        = None,
   searchBound: Option[Int]            = None,
   functions: Option[Set[String]]      = None,

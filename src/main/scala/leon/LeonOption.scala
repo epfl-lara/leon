@@ -59,6 +59,9 @@ case class LeonLongOptionDef(name: String, description: String, default: Long, u
   val parser = longParser
 }
 
+case class LeonEnumOptionDef[A](name: String, description: String, map: Map[String, A], default: A, usageRhs: String) extends LeonOptionDef[A] {
+  val parser = map.get _
+}
 
 class LeonOption[+A] private (val optionDef: LeonOptionDef[A], val value: A) {
   override def toString = s"--${optionDef.name}=$value"

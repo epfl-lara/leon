@@ -21,7 +21,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
   class NonDeterministicProgram(
     outerCtx: SearchContext,
     outerP: Problem,
-    enum: String
+    optimize: Boolean
   ) {
 
     import outerCtx.reporter._
@@ -88,7 +88,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
 
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
-    val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
+    val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optUntrusted)
     val maxGen        = 100000000 // Maximum generated # of programs
     val maxValidated  = 1000000
     val solverTo      = 3000
@@ -182,11 +182,15 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       }
     }
 
-    val restartable = enum == "eqclasses" || enum == "topdown-opt"
+    /*val restartable = enum == "eqclasses" || enum == "topdown-opt"
 
     def mkEnum = (enum match {
-      case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
-      case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
+      case "eqclasses" =>
+        ??? // This is disabled currently
+        new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
+      case "bottomup"  =>
+        ??? // This is disabled currently
+        new ProbwiseBottomupEnumerator(grammar, topLabel)
       case _ =>
         val disambiguate = enum match {
           case "topdown" => false
@@ -197,7 +201,17 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         }
         val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, disambiguate)
-    }).iterator(topLabel)
+    }).iterator(topLabel)*/
+
+
+    val restartable = optimize
+
+    def mkEnum = {
+      val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
+      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, optimize)
+    }.iterator(topLabel)
+
+
     var it = mkEnum
     debug("Grammar:")
     grammar.printProductions(debug(_))
@@ -273,7 +287,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val enum = hctx.findOptionOrDefault(SynthesisPhase.optEnum)
+    val enum = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
 
     List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
