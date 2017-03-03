@@ -8,22 +8,46 @@ import leon.purescala.Types.TypeTree
 
 object Stats {
 
-  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
+  type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
   type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
   type TypeStats = Map[TypeTree, Seq[Expr]]
   type LitStats = Map[TypeTree, Map[Any, Seq[Literal[_]]]]
 
+  def ecsToStringCoarse(stats: ExprConstrStats): String = {
+    val ans = new StringBuilder()
+
+    def total1[K1, T](map: Map[K1, Seq[T]]) = map.values.flatten.size
+    def total2[K1, K2, T](map: Map[K1, Map[K2, Seq[T]]]): Int = map.values.map(total1).sum
+
+    for ((tt, ttStats) <- stats.toList.sortBy { case (tt, ttStats) => (-total2(ttStats), tt.toString) }) {
+      val typeTotal = total2(ttStats)
+      val ttStatsSorted = ttStats.toList.sortBy { case (constr, ttConstrStats) => (-total1(ttConstrStats), constr.toString)}
+      for ((constr, ttConstrStats) <- ttStatsSorted) {
+        val ttConstrStatsSize = ttConstrStats.values.flatten.size
+        ans.append(s"$tt, $typeTotal, $constr, $ttConstrStatsSize\n")
+      }
+    }
+
+    ans.toString()
+  }
+
   def ecsToString(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
 
-    def total[K, T](map: Map[K, Seq[T]]): Int = map.mapValues(_.size).values.sum
-    for ((tt, ttStats) <- stats.toList.sortBy{ case (tt, ttStats) => (-total(ttStats), tt.toString) }) {
-      val typeTotal = total(ttStats)
-      val ttStatsSorted = ttStats.mapValues(_.size).toSeq.sortBy { case (constr, freq) => (-freq, constr.toString) }
-      for ((constr, freq) <- ttStatsSorted) {
-        ans.append(s"$tt, $typeTotal, $constr, $freq\n")
+    def total1[K1, T](map: Map[K1, Seq[T]]) = map.values.flatten.size
+    def total2[K1, K2, T](map: Map[K1, Map[K2, Seq[T]]]): Int = map.values.map(total1).sum
+
+    for ((tt, ttStats) <- stats.toList.sortBy { case (tt, ttStats) => (-total2(ttStats), tt.toString) }) {
+      val typeTotal = total2(ttStats)
+      val ttStatsSorted = ttStats.toList.sortBy { case (constr, ttConstrStats) => (-total1(ttConstrStats), constr.toString)}
+      for ((constr, ttConstrStats) <- ttStatsSorted) {
+        for ((argTypes, es) <- ttConstrStats.toSeq.sortBy { case (argTypes, es) => (-es.size, argTypes.toString())}) {
+          val argTypesStr = argTypes.mkString("(", ", ", ")")
+          ans.append(s"$tt, $typeTotal, $constr, $argTypesStr, ${es.size}\n")
+        }
       }
     }
+
     ans.toString()
   }
 

@@ -63,9 +63,11 @@ object PCFGStats {
     seq.map(typeTree => normalizeType(allParams, typeTree))
   }
 
-  def exprConstrFuncType(e: Expr): FunctionType = {
+  def exprConstrFuncType(e: Expr): FunctionType = FunctionType(childTypes(e), e.getType)
+
+  def childTypes(e: Expr): Seq[TypeTree] = {
     val Operator(es, _) = e
-    return FunctionType(es.map(_.getType), e.getType)
+    es.map(_.getType)
   }
 
   // Type statistics
