@@ -418,18 +418,19 @@ trait GenTreeOps[SubTree <: Tree]  {
   /** Given a tree `toSearch` present in `treeToLookInto`, if `treeToLookInto` has the same shape as `treeToExtract`,
    *  returns the matching expression in `treeToExtract``.*/
   def lookup[T](checker: SubTree => Boolean, toExtract: SubTree => T)(treeToLookInto: SubTree, treeToExtract: SubTree): Option[T] = {
-    if(checker(treeToLookInto)) return Some(toExtract(treeToExtract))
-    
-    val Deconstructor(childrenToLookInto, _) = treeToLookInto
-    val Deconstructor(childrenToReturn, _) = treeToExtract
-    if(childrenToLookInto.size != childrenToReturn.size) return None
-    for((l, r) <- childrenToLookInto.zip(childrenToReturn)) {
-      lookup(checker, toExtract)(l, r) match {
-        case s@Some(n) => return s
-        case _ =>
+    if(checker(treeToLookInto)) {
+      Some(toExtract(treeToExtract))
+    } else {
+      val Deconstructor(childrenToLookInto, _) = treeToLookInto
+      val Deconstructor(childrenToReturn, _) = treeToExtract
+      if (childrenToLookInto.size != childrenToReturn.size) None
+      else {
+        childrenToLookInto.zip(childrenToReturn).view.map {
+          case (l,r) =>
+            lookup(checker, toExtract)(l, r)
+        }.find(_.isDefined).flatten
       }
     }
-    return None
   }
 
   object Same {

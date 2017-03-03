@@ -13,7 +13,7 @@ import leon.purescala.ExprOps
 import leon.purescala.Types._
 import leon.utils._
 
-import info.hupel.isabelle._
+import info.hupel.isabelle.{Program => _, _}
 import info.hupel.isabelle.pure.{Expr => _, _}
 
 final class Translator(context: LeonContext, program: Program, types: Types, system: System)(implicit ec: ExecutionContext) {

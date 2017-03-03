@@ -6,7 +6,7 @@ package evaluators
 import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.TypeOps.{leastUpperBound, isSubtypeOf}
+import purescala.TypeOps.isSubtypeOf
 import purescala.Types._
 import purescala.Common.Identifier
 import purescala.Definitions.{TypedFunDef, Program}
@@ -28,6 +28,10 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
   val name = "ND-evaluator"
   val description = "Non-deterministic interpreter for Leon programs that returns a Stream of solutions"
+
+  private def eqTypes(t1: TypeTree, t2: TypeTree, e: Expr, t: TypeTree) = {
+    if (t1 == t2) t1 else throw EvalError(typeErrorMsg(e, t))
+  }
 
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Stream[Expr] = expr match {
     case Variable(id) =>
@@ -561,7 +565,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     )) =>
       FiniteSet(
         els1 + elem,
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(sa, tpe)))
+        eqTypes(tpe1, tpe2, sa, tpe)
       )
 
     case (IsTyped(su @ SetUnion(s1, s2), tpe), Seq(
@@ -570,7 +574,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     )) =>
       FiniteSet(
         els1 ++ els2,
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(su, tpe)))
+        eqTypes(tpe1, tpe2, su, tpe)
       )
 
     case (IsTyped(su @ SetIntersection(s1, s2), tpe), Seq(
@@ -579,7 +583,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     )) =>
       FiniteSet(
         els1 & els2,
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(su, tpe)))
+        eqTypes(tpe1, tpe2, su, tpe)
       )
 
     case (IsTyped(su @ SetDifference(s1, s2), tpe), Seq(
@@ -588,7 +592,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
     )) =>
       FiniteSet(
         els1 -- els2,
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(su, tpe)))
+        eqTypes(tpe1, tpe2, su, tpe)
       )
 
     case (ElementOfSet(_, _), Seq(e, FiniteSet(els, _))) =>
@@ -612,7 +616,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(i + 1)
           case il => throw EvalError(typeErrorMsg(il, IntegerType))
         })),
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(ba, tpe)))
+        eqTypes(tpe1, tpe2, ba, tpe)
       )
 
     case (IsTyped(bu @ BagUnion(b1, b2), tpe), Seq(
@@ -626,7 +630,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
             case (l, r) => throw EvalError(typeErrorMsg(l, IntegerType))
           }
         }).toMap,
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bu, tpe)))
+        eqTypes(tpe1, tpe2, bu, tpe)
       )
 
     case (IsTyped(bi @ BagIntersection(s1, s2), tpe), Seq(
@@ -641,7 +645,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           }
           if (res <= 0) None else Some(k -> InfiniteIntegerLiteral(res))
         },
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bi, tpe)))
+        eqTypes(tpe1, tpe2, bi, tpe)
       )
 
     case (IsTyped(bd @ BagDifference(s1, s2), tpe), Seq(
@@ -656,7 +660,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           }
           if (res <= 0) None else Some(k -> InfiniteIntegerLiteral(res))
         },
-        leastUpperBound(tpe1, tpe2).getOrElse(throw EvalError(typeErrorMsg(bd, tpe)))
+        eqTypes(tpe1, tpe2 ,bd, tpe)
       )
 
     case (MultiplicityInBag(_, _), Seq(e, FiniteBag(els, _))) =>

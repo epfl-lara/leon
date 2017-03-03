@@ -40,7 +40,12 @@ resolvers ++= Seq(
   "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-val libisabelleVer = "0.4"
+val libisabelleVer = "0.7.0"
+
+enablePlugins(LibisabellePlugin)
+
+isabelleVersions := List("2016-1")
+isabelleSessions in Compile := List("Leon")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % scalaVer,
@@ -186,7 +191,7 @@ parallelExecution in GenCTest := false
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
 lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10eaaee4ea0ff6567f4f866922cb871bae2da0ac")
-lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "88835c02ca2528e888b06bc48e4e93e52dc5f4b5")
+lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "3ee3ff99ac0377548af6da04c22cbe73f1987569")
 lazy val cafebabe    = ghProject("git://github.com/psuter/cafebabe.git",   "49dce3c83450f5fa0b5e6151a537cc4b9f6a79a6")
 
 lazy val root = (project in file(".")).

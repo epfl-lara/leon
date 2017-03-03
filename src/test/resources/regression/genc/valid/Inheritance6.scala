@@ -21,7 +21,7 @@ object Inheritance6 {
   def baz(unused: Base) = 0
 
   def _main() = {
-    0
+    baz(foo) + baz(bar)
   } ensuring { _ == 0 }
 
   @extern

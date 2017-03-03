@@ -10,12 +10,12 @@ object StdOut {
   @library
   @cCode.function(
     code = """
-      |void __FUNCTION__(char* s) {
+      |static void __FUNCTION__(char* s) {
       |  printf("%s", s);
       |}
       """,
     includes = "stdio.h"
-  )  
+  )
   def print(x: String): Unit = {
     scala.Predef.print(x)
   }
@@ -23,19 +23,44 @@ object StdOut {
   @library
   def println(s: String): Unit = {
     print(s)
-    print('\n')
+    println()
+  }
+
+  /**
+   * This is the symmetric function to StdIn.readByte;
+   * i.e. the same restrictions applies for GenC.
+   */
+  @library
+  @extern
+  @cCode.function(
+    code = """
+      |static void __FUNCTION__(int8_t x) {
+      |  printf("%c", x);
+      |}
+      """,
+    includes = "inttypes.h:stdio.h"
+  )
+  def print(x: Byte): Unit = {
+    val b = Array[Byte](x)
+    System.out.write(b, 0, 1)
+  }
+
+  @library
+  def println(x: Byte): Unit = {
+    print(x)
+    println()
   }
 
   @library
   @extern
   @cCode.function(
     code = """
-     |void __FUNCTION__(int32_t x) {
+     |static void __FUNCTION__(int32_t x) {
      |  printf("%"PRIi32, x);
      |}
      """,
     includes = "inttypes.h:stdio.h"
-  )  
+  )
   def print(x: Int): Unit = {
     scala.Predef.print(x)
   }
@@ -43,14 +68,14 @@ object StdOut {
   @library
   def println(x: Int): Unit = {
     print(x)
-    print('\n')
+    println()
   }
 
   @library
   @extern
   @cCode.function(
     code = """
-      |void __FUNCTION__(char c) {
+      |static void __FUNCTION__(char c) {
       |  printf("%c", c);
       |}
       """,
@@ -63,7 +88,7 @@ object StdOut {
   @library
   def println(c: Char): Unit = {
     print(c)
-    print('\n')
+    println()
   }
 
   @library

@@ -170,13 +170,23 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
       s.assertVC(vc)
 
-      val satResult = s.check
+      var supported = true
+      val satResult = try {
+        s.check
+      } catch {
+        case SolverUnsupportedError(_, _, _) =>
+          supported = false
+          None
+      }
 
       val dt = System.currentTimeMillis - tStart
 
       val res = satResult match {
         case _ if interruptManager.isInterrupted =>
           VCResult(VCStatus.Cancelled, Some(s), Some(dt))
+
+        case None if !supported =>
+          VCResult(VCStatus.Unsupported, Some(s), Some(dt))
 
         case None =>
           val status = s match {

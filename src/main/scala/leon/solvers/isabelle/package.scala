@@ -13,7 +13,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.verification.VC
 
-import info.hupel.isabelle._
+import info.hupel.isabelle.{Program => _, _}
 import info.hupel.isabelle.api.Environment
 import info.hupel.isabelle.pure.{Expr => _, _}
 
@@ -22,7 +22,7 @@ import shapeless.tag
 object `package` {
 
   val theory = "Leon_Runtime"
-  val isabelleVersion = "2016"
+  val isabelleVersion = "2016-1"
 
 
   implicit class FutureResultOps[A](val future: Future[ProverResult[A]]) extends AnyVal {

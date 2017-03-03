@@ -283,7 +283,7 @@ object Expressions {
 
   /** $encodingof `if(...) ... else ...` */
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
-    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(thenn.getType, elze.getType)
   }
 
   /** $encodingof `... match { ... }`
@@ -296,7 +296,7 @@ object Expressions {
     */
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
-    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(cases.map(_.rhs.getType))
   }
 
   /** $encodingof `case pattern [if optGuard] => rhs`
@@ -438,10 +438,9 @@ object Expressions {
   case class Passes(in: Expr, out: Expr, cases: Seq[MatchCase]) extends Expr {
     //require(cases.nonEmpty)
 
-    val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
-      case None => Untyped
-      case Some(_) => BooleanType
-    }
+    val getType =
+      if (leastUpperBound(cases.map(_.rhs.getType)) == Untyped) Untyped
+      else BooleanType
 
     /** Transforms the set of I/O examples to a constraint equality. */
     def asConstraint = {
@@ -947,15 +946,15 @@ object Expressions {
   }
   /** $encodingof `set & set2` */
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType))
   }
   /** $encodingof `set ++ set2` */
   case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType))
   }
   /** $encodingof `set -- set2` */
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType))
   }
 
   /* Bag operations */
@@ -982,15 +981,15 @@ object Expressions {
   }
   /** $encodingof `bag1 & bag2` */
   case class BagIntersection(bag1: Expr, bag2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType))
   }
   /** $encodingof `bag1 ++ bag2` */
   case class BagUnion(bag1: Expr, bag2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType))
   }
   /** $encodingof `bag1 -- bag2` */
   case class BagDifference(bag1: Expr, bag2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(bag1, bag2).map(_.getType))
   }
 
 
@@ -1011,7 +1010,7 @@ object Expressions {
   }
   /** $encodingof `map ++ map2` */
   case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(map1, map2).map(_.getType))
   }
   /** $encodingof `map -- map2` */
   case class MapDifference(map: Expr, keys: Expr) extends Expr {
@@ -1038,7 +1037,7 @@ object Expressions {
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
     val getType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(Untyped).unveilUntyped
+        ArrayType(leastUpperBound(base, newValue.getType)).unveilUntyped
       case _ =>
         Untyped
     }
@@ -1058,7 +1057,7 @@ object Expressions {
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
     require(elems.nonEmpty || (defaultLength.nonEmpty && defaultLength.get._2 != IntLiteral(0)))
     private val elements = elems.values.toList ++ defaultLength.map(_._1)
-    val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType }))).unveilUntyped
+    val getType = ArrayType(leastUpperBound(elements map { _.getType })).unveilUntyped
   }
 
   /** $encodingof `Array[tpe]()` */

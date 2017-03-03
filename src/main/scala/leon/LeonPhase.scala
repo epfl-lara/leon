@@ -14,6 +14,21 @@ trait SimpleLeonPhase[-F, +T] extends LeonPhase[F, T] {
   def run(ctx: LeonContext, v: F): (LeonContext, T) = (ctx, apply(ctx, v))
 }
 
+trait TimedLeonPhase[-F, +T] extends SimpleLeonPhase[F, T] {
+  protected def getTimer(ctx: LeonContext): utils.TimerStorage
+
+  override def run(ctx: LeonContext, v: F): (LeonContext, T) = {
+    val timer = getTimer(ctx)
+    timer.start
+
+    val res = (ctx, apply(ctx, v))
+
+    timer.stop
+
+    res
+  }
+}
+
 abstract class TransformationPhase extends LeonPhase[Program, Program] {
   def apply(ctx: LeonContext, p: Program): Program
 

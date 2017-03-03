@@ -105,8 +105,8 @@ object EffectsChecking extends UnitPhase[Program] {
     def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
       getReturnedExpr(body).foreach{
         case expr if effects.isMutableType(expr.getType) => 
-          findReceiverId(expr).foreach(id =>
-            if(bindings.contains(id))
+          findReferencedIds(expr).foreach(id =>
+            if(effects.isMutableType(id.getType) && bindings.contains(id))
               ctx.reporter.fatalError(expr.getPos, "Cannot return a shared reference to a mutable object: " + expr)
           )
         case _ => ()
@@ -138,6 +138,16 @@ object EffectsChecking extends UnitPhase[Program] {
         case CaseClass(ct, args) => {
           ct.classDef.tparams.zip(ct.tps).foreach{ case (typeParam, instanceType) => {
             if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
+              ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
+            }
+          }}
+          (None, bindings)
+        }
+
+        case FunctionInvocation(tfd, args) if tfd.params.nonEmpty => {
+          tfd.fd.tparams.zip(tfd.tps).foreach{ case (typeParam, instanceType) => {
+            if(effects.isMutableType(instanceType) && !typeParam.tp.isMutable) {
+              println(tfd)
               ctx.reporter.fatalError(expr.getPos, "Cannot instantiate a non-mutable type parameter with a mutable type")
             }
           }}
@@ -204,6 +214,16 @@ object EffectsChecking extends UnitPhase[Program] {
   }
 
 
+  //returns a list, to check for duplicates if necessary
+  private def findReferencedIds(o: Expr): List[Identifier] = o match {
+    case Variable(id) => List(id)
+    case CaseClassSelector(_, e, _) => findReferencedIds(e)
+    case CaseClass(_, es) => es.foldLeft(List[Identifier]())((acc, e) => acc ::: findReferencedIds(e))
+    case FiniteArray(elements, default, _) => default.toList.flatMap(e => findReferencedIds(e)) ::: elements.foldLeft(List[Identifier]())((acc, p) => acc ::: findReferencedIds(p._2))
+    case AsInstanceOf(e, _) => findReferencedIds(e)
+    case ArraySelect(a, _) => findReferencedIds(a)
+    case _ => List()
+  }
   private def findReceiverId(o: Expr): Option[Identifier] = o match {
     case Variable(id) => Some(id)
     case CaseClassSelector(_, e, _) => findReceiverId(e)

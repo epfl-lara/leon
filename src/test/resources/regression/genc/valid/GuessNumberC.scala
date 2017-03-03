@@ -56,7 +56,9 @@ object GuessNumberC {
     StdOut.print(guess)
     StdOut.print(" [0 == false, 1 == true]: ")
 
-    val input = StdIn.readInt
+    // Here we are not at a beauty contest; if the input is invalid or EOF is reached,
+    // we simply pick "0", whatever its actual meaning.
+    val input = StdIn.tryReadInt getOrElse 0
 
     StdOut.println()
 

@@ -25,7 +25,7 @@ object Helpers {
    */
   def functionsReturning(fds: Set[FunDef], tpe: TypeTree): Set[TypedFunDef] = {
     fds.flatMap { fd =>
-      canBeSubtypeOf(fd.returnType, tpe) match {
+      instantiation_<:(fd.returnType, tpe) match {
         case Some(tpsMap) =>
           Some(fd.typed(fd.typeArgs.map(tp => tpsMap.getOrElse(tp, tp))))
         case None =>
@@ -56,7 +56,7 @@ object Helpers {
 
     def subExprsOf(expr: Expr, v: Variable): Option[(Variable, Expr)] = expr match {
       case CaseClassSelector(cct, r, _) => subExprsOf(r, v)
-      case (r: Variable) if leastUpperBound(r.getType, v.getType).isDefined => Some(r -> v)
+      case (r: Variable) if typesCompatible(r.getType, v.getType) => Some(r -> v)
       case _ => None
     }
 

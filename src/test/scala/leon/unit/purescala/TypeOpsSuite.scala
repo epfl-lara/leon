@@ -52,8 +52,8 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert(!typesCompatible(IntegerType, Int32Type),    "Different types should be incompatible")
 
     // Type parameters
-    assert(unify(tp, tp2, Seq(tp) ).isDefined, "T <: A with T free")
-    assert(unify(tp, tp2, Seq(tp2)).isDefined, "T <: A with A free")
+    assert(unify(tp, tp2, Seq(tp) ).isDefined, "T and A unify with T free")
+    assert(unify(tp, tp2, Seq(tp2)).isDefined, "T and A unify with A free")
 
     assert(unify(listT, listD.typed(Seq(tp2)), Seq(tp) ).isDefined, "List[T] <: List[A] with T free")
     assert(unify(listT, listD.typed(Seq(tp2)), Seq(tp2)).isDefined, "List[T] <: List[A] with A free")
@@ -61,28 +61,83 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert(unify(listT, nilT,                  Seq(tp) ).isEmpty,   "Subtypes not unifiable")
 
     assert(
-      unify(MapType(IntegerType, tp), MapType(tp2, IntegerType), Seq(tp, tp2)).contains(Map(tp -> IntegerType, tp2 -> IntegerType)),
+      {
+        val s = unify(MapType(IntegerType, tp), MapType(tp2, IntegerType), Seq(tp, tp2)).getOrElse(Nil)
+        s.contains(tp -> IntegerType) && s.contains(tp2 -> IntegerType)
+      },
       "MapType unifiable"
     )
 
     assert(
-      canBeSupertypeOf(listD.typed(Seq(tp2)), consD.typed(Seq(tp))) contains Map(tp2 -> tp),
+      instantiation_>:(listD.typed(Seq(tp2)), consD.typed(Seq(tp))) contains Map(tp2 -> tp),
       "List[A] >: Cons[T] under A -> T"
     )
 
     assert(
-      canBeSubtypeOf(consD.typed(Seq(tp)), listD.typed(Seq(tp2))) contains Map(tp -> tp2),
+      instantiation_>:(listD.typed(Seq(tp2)), consD.typed(Seq(IntegerType))) contains Map(tp2 -> IntegerType),
+      "List[A] >: Cons[BigInt] under A -> BigInt"
+    )
+
+    assert(
+      instantiation_<:(consD.typed(Seq(tp)), listD.typed(Seq(tp2))) contains Map(tp -> tp2),
       "Cons[T] <: List[A] under T -> A"
     )
 
     assert(
-      canBeSubtypeOf(consD.typed(Seq(IntegerType)), listD.typed(Seq(tp2))).isEmpty,
+      instantiation_<:(consD.typed(Seq(IntegerType)), listD.typed(Seq(tp2))).isEmpty,
       "Cons[BigInt] cannot be instantiated so that it is <: List[A]"
     )
 
     assert(
-      canBeSupertypeOf(listD.typed(Seq(tp2)), consD.typed(Seq(IntegerType))) contains Map(tp2 -> IntegerType),
-      "List[A] >: Cons[BigInt] under A -> BigInt"
+      instantiation_<:(
+        TupleType(Seq(nilT, consT)),
+        TupleType(Seq(listD.typed(Seq(tp2)), listD.typed(Seq(tp2))))
+      ).contains(Map(tp -> tp2)),
+      "Covariant tuples"
+    )
+
+    assert(
+      instantiation_<:(TupleType(Seq(IntegerType, Int32Type)), TupleType(Seq(IntegerType, Int32Type, IntegerType))).isEmpty,
+      "Incompatible tuples"
+    )
+
+    assert(
+      instantiation_<:(
+        MapType(consT, IntegerType),
+        MapType(listT, IntegerType)
+      ).isEmpty,
+      "Invariant maps"
+    )
+
+    assert(
+      instantiation_<:(
+        MapType(tp, IntegerType),
+        MapType(tp2, IntegerType)
+      ).contains(Map(tp -> tp2)),
+      "Instantiation within map type"
+    )
+
+    assert(
+      instantiation_<:(
+        FunctionType(Seq(listT, listT), nilT),
+        FunctionType(Seq(consD.typed(Seq(tp2)), nilD.typed(Seq(tp2))), nilD.typed(Seq(tp2)))
+      ).contains(Map(tp -> tp2)),
+      "Covariant/ Contravariant function types"
+    )
+
+
+    // (List[A], A, List[A]) >: (List[List[BigInt]], Cons[BigInt], Nil[List[BigInt]])))
+    // for A -> List[BigInt]
+    assert(
+      instantiation_>:(
+        TupleType(Seq(listT, tp, listT)),
+        TupleType(Seq(
+          listD.typed(Seq(listD.typed(Seq(IntegerType)))),
+          consD.typed(Seq(IntegerType)),
+          nilD.typed(Seq(listD.typed(Seq(IntegerType))))
+        ))
+      ).contains(Map(tp -> listD.typed(Seq(IntegerType)))),
+      "Complex example"
     )
 
   }
