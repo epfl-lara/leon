@@ -96,7 +96,9 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
     val outType    = tupleTypeWrap(p.xs map (_.getType))
-    val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
+    import leon.grammars.Tags
+    import leon.grammars.aspects.Tagged
+    val topLabel   = Label(outType, List(Tagged(Tags.Top, 0, None)))
     val grammar    = grammars.default(sctx, p)
     var examples   = {
       val fromProblem = p.qebFiltered.eb.examples

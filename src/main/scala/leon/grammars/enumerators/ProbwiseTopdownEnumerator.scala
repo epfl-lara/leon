@@ -2,23 +2,24 @@ package leon
 package grammars
 package enumerators
 
-import leon.grammars.enumerators.CandidateScorer.Score
-import leon.purescala.Common.FreshIdentifier
-import leon.synthesis.{Example, SynthesisContext, SynthesisPhase}
-import leon.utils.{DedupedPriorityQueue, NoPosition}
-import leon.purescala.Expressions.{Expr, Variable}
+import CandidateScorer.Score
+import purescala.Expressions.{Expr, Variable}
+import purescala.Common.FreshIdentifier
+import purescala.Types.TypeTree
+import synthesis.{Example, SynthesisContext, SynthesisPhase}
+import utils.{DedupedPriorityQueue, NoPosition}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 object ProbwiseTopdownEnumerator {
-  private val idMap = mutable.Map[Expansion[Label, Expr], Variable]()
+  private val idMap = mutable.Map[TypeTree, Variable]()
 
-  val ntWrap = (e: Expansion[Label, Expr]) => {
-    idMap.getOrElse(e, {
+  val ntWrap = (e: NonTerminalInstance[Label, Expr]) => {
+    idMap.getOrElse(e.nt.getType, {
       val tp = e.nt.getType
       val v = FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
-      idMap += e -> v
+      idMap += e.nt.getType -> v
       v
     })
   }
@@ -68,7 +69,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                                                         maxGen: Int,
                                                         maxOutput: Int,
                                                         disambiguate: Boolean,
-                                                        ntWrap: Expansion[NT, R] => R
+                                                        ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit sctx: SynthesisContext) {
 
   import sctx.reporter._
