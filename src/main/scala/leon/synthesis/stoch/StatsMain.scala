@@ -3,14 +3,14 @@ package synthesis
 package stoch
 
 import PCFGStats._
-import leon.purescala.Expressions.{Expr, FunctionInvocation}
-import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats}
+import leon.purescala.Expressions.{Expr, FunctionInvocation, Literal}
+import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
 import leon.utils.PreprocessingPhase
 
 object StatsMain {
 
   def main(args: Array[String]): Unit = {
-    val ase = args.tail.toSeq.par.map(procFile).flatten.seq
+    val ase = args.tail.toSeq.par.flatMap(procFile).seq
 
     val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
     val tase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
@@ -24,6 +24,12 @@ object StatsMain {
     val fcs: FunctionCallStats = tafi.mapValues(_.groupBy(_.tfd))
     println("Printing function call stats:")
     println(Stats.fcsToString(fcs))
+
+    val ls: LitStats = tase.mapValues(_.filter(_.isInstanceOf[Literal[_]])
+                                       .map(_.asInstanceOf[Literal[_]])
+                                       .groupBy(_.value))
+    println("Printing literal occurrence statistics:")
+    println(Stats.lsToString(ls))
   }
 
   def procFile(fileName: String): Seq[Expr] = {
