@@ -20,6 +20,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
   def rootLabel(p: Problem, sctx: SynthesisContext): Label
 
+  private case object UnsatPCException extends Exception("Unsat. PC")
+
   class NonDeterministicProgram(
     outerCtx: SearchContext,
     outerP: Problem,
@@ -125,7 +127,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
             Seq(InExample(p.as.map(_.getType) map simplestValue))
           case Some(false) =>
             warning("PC is not satisfiable.")
-            throw new IllegalArgumentException
+            throw UnsatPCException
         }
       }
     }
@@ -300,7 +302,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
           val ndProgram = new NonDeterministicProgram(hctx, p, enum)
           RuleClosed (ndProgram.solutionStream)
         } catch {
-          case _ : IllegalArgumentException =>
+          case UnsatPCException =>
             RuleFailed()
         }
       }
