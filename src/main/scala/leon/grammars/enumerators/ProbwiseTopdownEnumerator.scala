@@ -240,6 +240,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
               // Then compute its immediate descendants and put them back in the worklist
               val newElems = expandNext(normalElem, score)
+              verboseDebug(s"Expanded ${newElems.size} more elems")
               worklist.enqueueAll(newElems)
 
               // And debug some
