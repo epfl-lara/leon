@@ -89,8 +89,14 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optUntrusted)
-    val maxGen        = 100000000 // Maximum generated # of programs
-    val maxValidated  = 1000000
+    // Limit number of programs
+    val (maxGen, maxValidated) = {
+      import SynthesisPhase._
+      if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
+        (100000000, 1000000) // Run forever in probwise-only mode
+      else
+        (10000, 100)
+    }
     val solverTo      = 3000
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
