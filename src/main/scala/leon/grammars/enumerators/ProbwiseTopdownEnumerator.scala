@@ -3,9 +3,8 @@ package grammars
 package enumerators
 
 import CandidateScorer.Score
-import purescala.Expressions.{Expr, Variable}
+import purescala.Expressions.Expr
 import purescala.Common.FreshIdentifier
-import purescala.Types.TypeTree
 import synthesis.{Example, SynthesisContext, SynthesisPhase}
 import utils.{DedupedPriorityQueue, NoPosition}
 

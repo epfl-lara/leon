@@ -16,25 +16,6 @@ import purescala.Common.Identifier
 import utils.MutableExpr
 import solvers._
 
-object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
-  import leon.grammars.Tags
-  import leon.grammars.aspects.Tagged
-  def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    Label(p.outType, List(Tagged(Tags.Top, 0, None)))
-  }
-}
-
-object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob. driven similar term enum.") {
-  import purescala.Extractors.TopLevelAnds
-  import leon.grammars.aspects._
-  import Witnesses.Guide
-  def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    val TopLevelAnds(clauses) = p.ws
-    val guides = clauses.collect { case Guide(e) => e }
-    Label(p.outType).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext))
-  }
-}
-
 abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
   def rootLabel(p: Problem, sctx: SynthesisContext): Label
@@ -313,7 +294,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val enum = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
 
-    List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
+    List(new RuleInstantiation(s"$name (opt = $enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
         try {
           val ndProgram = new NonDeterministicProgram(hctx, p, enum)
@@ -324,5 +305,24 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         }
       }
     })
+  }
+}
+
+object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
+  import leon.grammars.Tags
+  import leon.grammars.aspects.Tagged
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    Label(p.outType, List(Tagged(Tags.Top, 0, None)))
+  }
+}
+
+object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob. driven similar term enum.") {
+  import purescala.Extractors.TopLevelAnds
+  import leon.grammars.aspects._
+  import Witnesses.Guide
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    val TopLevelAnds(clauses) = p.ws
+    val guides = clauses.collect { case Guide(e) => e }
+    Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext))
   }
 }

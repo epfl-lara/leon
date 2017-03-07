@@ -16,6 +16,6 @@ case class MutableExpr(var underlying: Expr) extends Expr with Extractable with 
 
   override def printWith(implicit pctx: PrinterContext): Unit = {
     import PrinterHelpers._
-    p"$underlying"
+    p"Box($underlying)"
   }
 }
