@@ -16,7 +16,28 @@ import purescala.Common.Identifier
 import utils.MutableExpr
 import solvers._
 
-object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
+object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
+  import leon.grammars.Tags
+  import leon.grammars.aspects.Tagged
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    Label(p.outType, List(Tagged(Tags.Top, 0, None)))
+  }
+}
+
+object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob. driven similar term enum.") {
+  import purescala.Extractors.TopLevelAnds
+  import leon.grammars.aspects._
+  import Witnesses.Guide
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    val TopLevelAnds(clauses) = p.ws
+    val guides = clauses.collect { case Guide(e) => e }
+    Label(p.outType).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext))
+  }
+}
+
+abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
+
+  def rootLabel(p: Problem, sctx: SynthesisContext): Label
 
   class NonDeterministicProgram(
     outerCtx: SearchContext,
@@ -101,10 +122,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
-    val outType    = tupleTypeWrap(p.xs map (_.getType))
-    import leon.grammars.Tags
-    import leon.grammars.aspects.Tagged
-    val topLabel   = Label(outType, List(Tagged(Tags.Top, 0, None)))
+    val topLabel   = rootLabel(p, sctx)
     val grammar    = grammars.default(sctx, p)
     var examples   = {
       val fromProblem = p.qebFiltered.eb.examples

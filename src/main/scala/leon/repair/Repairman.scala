@@ -192,9 +192,14 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
     // Return synthesizer for this choose
     val so0 = SynthesisPhase.processOptions(ctx)
 
+    val similarExpl = if (ctx.findOptionOrDefault(SynthesisPhase.optProbwise))
+      ProbDrivenSimilarTermEnumeration
+    else
+      SimilarTermExploration
+
     val soptions = so0.copy(
       functionsToIgnore = so0.functionsToIgnore + fd,
-      rules = Seq(Focus, SimilarTermExploration) ++ so0.rules
+      rules = Seq(Focus, similarExpl) ++ so0.rules
     )
 
     new Synthesizer(ctx, program, ci, soptions)
