@@ -25,13 +25,10 @@ object SynthesisPhase extends UnitPhase[Program] {
 
   // Pick mode for synthesis
   object Modes extends Enumeration {
-    type Mode = Value
     val Default, Probwise, Manual = Value
-
-    val fromName = values.map(v => v.toString.toLowerCase -> v).toMap
   }
-  val optMode = LeonEnumOptionDef[Modes.Mode](
-    "mode", "Mode for synthesis (available: framework, probwise, manual)", Modes.fromName, Modes.Default, "[m]"
+  val optMode = LeonEnumOptionDef[Modes.type](
+    "mode", "Mode for synthesis", Modes, Modes.Default, "[m]"
   )
 
   // Manual mode options
