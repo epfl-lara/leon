@@ -13,15 +13,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object ProbwiseTopdownEnumerator {
-  private val idMap = mutable.Map[TypeTree, Variable]()
-
   val ntWrap = (e: NonTerminalInstance[Label, Expr]) => {
-    idMap.getOrElse(e.nt.getType, {
-      val tp = e.nt.getType
-      val v = FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
-      idMap += e.nt.getType -> v
-      v
-    })
+    FreshIdentifier.forceId(Console.BOLD + e.nt.asString(LeonContext.empty) + Console.RESET, 0, e.nt.tpe).toVariable
   }
 }
 
