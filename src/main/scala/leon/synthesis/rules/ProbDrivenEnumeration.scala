@@ -275,7 +275,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     def solutionStream = {
       timers.cegisIter.start()
       var sol: Option[Solution] = None
-      while (sol.isEmpty && it.hasNext) {
+      while (!sctx.interruptManager.isInterrupted && sol.isEmpty && it.hasNext) {
         val expr = it.next
         debug(s"Testing $expr")
         sol = (if (examples.exists(testCandidate(expr)(_).contains(false))) {
