@@ -79,7 +79,7 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(30) 
               e.getClass,
               Tags.Top,
               1,
-              1.0
+              -1.0
             )
           }
         case _ =>
