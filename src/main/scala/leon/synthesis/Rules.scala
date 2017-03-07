@@ -148,7 +148,7 @@ case class SolutionBuilderCloser(osol: Option[Solution] = None, extraCost: Cost 
 sealed abstract class RuleApplication
 /** Result of applying rule instantiation, finished, resulting in a stream of solutions */
 case class RuleClosed(solutions: Stream[Solution]) extends RuleApplication
-/** Result of applying rule instantiation, resulting is a nnew list of problems */
+/** Result of applying rule instantiation, resulting is a new list of problems */
 case class RuleExpanded(sub: List[Problem])        extends RuleApplication
 
 object RuleClosed {
