@@ -35,7 +35,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   val optManualScript = LeonStringOptionDef("manual:script", "Give a script to manual search", default = "", "[cmd]")
 
   // Default mode options
-  val optProbwise = LeonFlagOptionDef("probwise", "Use new probwise enumeration instead of STE", false)
+  val optProbwise = LeonFlagOptionDef("use-probwise", "Use new probwise enumeration instead of STE", false)
 
   // STE-related options
   val optSTEVanuatoo = LeonFlagOptionDef("ste:vanuatoo", "Generate inputs using new korat-style generator", false)
@@ -86,12 +86,14 @@ object SynthesisPhase extends UnitPhase[Program] {
       }
     }
 
+    val script = if (mode == Modes.Manual) Some(ctx.findOptionOrDefault(optManualScript)) else None
+
     SynthesisSettings(
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
       rules = rules,
-      manualSearch = ctx.findOption(optManualScript),
+      manualSearch = script,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
       steUseOptTimeout = ctx.findOptionOrDefault(optUntrusted),
       steUseVanuatoo = ctx.findOptionOrDefault(optSTEVanuatoo),
