@@ -117,17 +117,21 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       else {
         // If we have none, generate one with the solver
         val solver = solverF.getNewSolver()
-        solver.assertCnstr(p.pc.toClause)
-        solver.check match {
-          case Some(true) =>
-            val model = solver.getModel
-            Seq(InExample(p.as map model))
-          case None =>
-            warning("Could not solve path condition")
-            Seq(InExample(p.as.map(_.getType) map simplestValue))
-          case Some(false) =>
-            warning("PC is not satisfiable.")
-            throw UnsatPCException
+        try {
+          solver.assertCnstr(p.pc.toClause)
+          solver.check match {
+            case Some(true) =>
+              val model = solver.getModel
+              Seq(InExample(p.as map (id => model.getOrElse(id, simplestValue(id.getType)))))
+            case None =>
+              warning("Could not solve path condition")
+              Seq(InExample(p.as.map(_.getType) map simplestValue))
+            case Some(false) =>
+              warning("PC is not satisfiable.")
+              throw UnsatPCException
+          }
+        } finally {
+          solverF.reclaim(solver)
         }
       }
     }
