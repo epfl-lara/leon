@@ -329,6 +329,6 @@ object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob.
   def rootLabel(p: Problem, sctx: SynthesisContext) = {
     val TopLevelAnds(clauses) = p.ws
     val guides = clauses.collect { case Guide(e) => e }
-    Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext))
+    Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext)).withAspect(DepthBound(2))
   }
 }
