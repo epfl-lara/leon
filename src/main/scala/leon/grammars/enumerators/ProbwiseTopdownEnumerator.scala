@@ -1,3 +1,5 @@
+/* Copyright 2009-2017 EPFL, Lausanne */
+
 package leon
 package grammars
 package enumerators
@@ -90,31 +92,47 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   val probLimit = -2000000
 
   // Filter out seen expressions
+
+  // A map from a signature of running on examples to an expansion that matches.
+  // We consider expansions with equal signature identical
   protected val sigToNormalMemo = mutable.Map[(NT, Sig), Expansion[NT, R]]()
+  // A map from an expansion to a representative that was found to be identical
   protected val normalizeMemo = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
   def expRedundant(e: Expansion[NT, R]) = normalizeMemo(e)
 
   // Disambiguate expressions by signature
   def sig(r: R): Option[Sig]
 
+  // Returns normalized version of e, or None if it fails
   protected def normalize(e: Expansion[NT, R]): Option[Expansion[NT, R]] = {
-    Some(e match {
-      case NonTerminalInstance(_) => e
+    import leon.utils.CollectionUtils.MutableMapUtils
+    e match {
+      case NonTerminalInstance(_) =>
+        // non-terminal instances are incomplete, thus not normalizable
+        Some(e)
       case ProdRuleInstance(nt, rule, children) =>
-        normalizeMemo.getOrElseUpdate(e, {
-          lazy val normalizedChildren = children.map(normalize(_).getOrElse(return None))
+        // If we have representative for this expression, return it
+        normalizeMemo.orElseUpdate(e, {
+          // Otherwise...
+          // Lazily make a normalized version of this based on the normalized versions of its children
+          lazy val fromNormalizedChildren = children.mapM(normalize).map(ProdRuleInstance(nt, rule, _))
           if (!e.complete) {
-            ProdRuleInstance(nt, rule, normalizedChildren)
+            // If e is not complete, we cannot compute signature,
+            // so reconstructing from the normalized children is best we can do.
+            fromNormalizedChildren
           } else {
-            lazy val normalE = ProdRuleInstance(nt, rule, normalizedChildren)
-            sig(e.produce) match {
-              case Some(theSig) => sigToNormalMemo.getOrElseUpdate((e.nt, theSig), normalE)
-              case None =>
-                return None//normalE // TODO! Confirm!
+            // If e is complete expression...
+
+            // Calculate its signature (this may fail)
+            sig(e.produce).flatMap { theSig =>
+              // Look up in the signature map for an expansion with the same signature
+              // If not found, fromNormalizedChildren will be the representative for this class.
+              // Add it to the map and return it
+              sigToNormalMemo.orElseUpdate( (e.nt, theSig), fromNormalizedChildren)
             }
           }
         })
-    })
+    }
   }
 
   /**
