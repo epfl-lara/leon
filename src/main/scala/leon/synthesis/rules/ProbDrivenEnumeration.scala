@@ -30,6 +30,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     import outerCtx.reporter._
 
+    val solverTo = 3000
+
     // Create a fresh solution function with the best solution around the
     // current STE as body
     val fd = {
@@ -48,6 +50,36 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }(fd.fullBody)
 
       fd
+    }
+
+    val outerExamples = {
+      val fromProblem = outerP.qebFiltered(outerCtx).eb.examples
+      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
+      // We are forced to take all in-out examples
+      if (inOut.nonEmpty) inOut
+      // otherwise we prefer one example
+      else if (fromProblem.nonEmpty) fromProblem.take(1)
+      else {
+        // If we have none, generate one with the solver
+        val solverF = SolverFactory.getFromSettings(outerCtx, outerCtx.program).withTimeout(solverTo)
+        val solver  = solverF.getNewSolver()
+        try {
+          solver.assertCnstr(outerP.pc.toClause)
+          solver.check match {
+            case Some(true) =>
+              val model = solver.getModel
+              Seq(InExample(outerP.as map (id => model.getOrElse(id, simplestValue(id.getType)))))
+            case None =>
+              warning("Could not solve path condition")
+              Seq(InExample(outerP.as.map(_.getType) map simplestValue))
+            case Some(false) =>
+              warning("PC is not satisfiable.")
+              throw UnsatPCException
+          }
+        } finally {
+          solverF.reclaim(solver)
+        }
+      }
     }
 
     // Create a program replacing the synthesis source by the fresh solution
@@ -86,9 +118,11 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         pc = outerP.pc.map(outerToInner.transform),
         phi = outerToInner.transform(outerP.phi),
         xs = outerP.xs.map(outerToInner.transform),
-        eb = outerP.eb.flatMap{ ex => List(ex.map(outerToInner.transform(_)(Map.empty))) }
+        eb = ExamplesBank(outerExamples map (_.map(outerToInner.transform(_)(Map.empty))), Seq())
       )
     }
+
+    var examples = p.eb.examples
 
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
@@ -101,40 +135,13 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       else
         (10000, 100)
     }
-    val solverTo      = 3000
+
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
     val topLabel   = rootLabel(p, sctx)
     val grammar    = grammars.default(sctx, p)
-    var examples   = {
-      val fromProblem = p.qebFiltered.eb.examples
-      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
-      // We are forced to take all in-out examples
-      if (inOut.nonEmpty) inOut
-      // otherwise we prefer one example
-      else if (fromProblem.nonEmpty) fromProblem.take(1)
-      else {
-        // If we have none, generate one with the solver
-        val solver = solverF.getNewSolver()
-        try {
-          solver.assertCnstr(p.pc.toClause)
-          solver.check match {
-            case Some(true) =>
-              val model = solver.getModel
-              Seq(InExample(p.as map (id => model.getOrElse(id, simplestValue(id.getType)))))
-            case None =>
-              warning("Could not solve path condition")
-              Seq(InExample(p.as.map(_.getType) map simplestValue))
-            case Some(false) =>
-              warning("PC is not satisfiable.")
-              throw UnsatPCException
-          }
-        } finally {
-          solverF.reclaim(solver)
-        }
-      }
-    }
+
     debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
 
