@@ -22,14 +22,14 @@ object Commutative {
   ) = (t1, t2, t3, t4, t5, t6, t7, t8)
 
   def funcs(x: BigInt, y: BigInt): (BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt) = 
-    choose {(t: (BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt) ) =>
-    val ( f1, f2, f3, f4, f5, g1, g2, g3) = t
-    f2 == f1 + f1 &&
-    f3 == f1 + f2 - y &&
-    f2 == f2 + f2 &&
-    f5 == f4 + f1 &&
-    g1 == f1 - y &&
-    g2 == g1 + 1 &&
-    g3 == g2 + 1
-  }
+    choose { (t: (BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt, BigInt) ) =>
+      val ( f1, f2, f3, f4, f5, g1, g2, g3) = t
+      f2 == f1 + f1 &&
+      f3 == f1 + f2 - y &&
+      f2 == f2 + f2 &&
+      f5 == f4 + f1 &&
+      g1 == f1 - y &&
+      g2 == g1 + 1 &&
+      g3 == g2 + 1
+    }
 }
