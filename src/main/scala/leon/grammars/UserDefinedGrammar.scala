@@ -187,14 +187,14 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
             instantiateType(tp, tmap) match {
               case cct: CaseClassType =>
                 List(
-                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), 1, 1)
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), cost, 1)
                 )
 
               case act: AbstractClassType =>
                 val descendents = act.knownCCDescendants
 
                 descendents.map { cct =>
-                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), 1, 1/descendents.size)
+                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), Math.max(cost/descendents.size, 1), -1.0)
                 }
 
               case _ =>
