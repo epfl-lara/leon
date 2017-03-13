@@ -4,8 +4,6 @@ package leon
 package grammars
 
 import purescala.Expressions.Expr
-import utils.SeqUtils._
-import Tags._
 
 /**
  * An Aspect applies to a label, and attaches information to it.

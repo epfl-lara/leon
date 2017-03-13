@@ -26,7 +26,7 @@ case class ExtraTerminals(s: Set[Expr]) extends PersistentAspect(20) {
             { (es: Seq[Expr]) => e },
             Tags.Top,
             formulaSize(e),
-            1.0 / formulaSize(e)
+            -1.0
         )
       }
     }
