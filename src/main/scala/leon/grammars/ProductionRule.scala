@@ -3,7 +3,6 @@
 package leon
 package grammars
 
-import scala.language.existentials
 import bonsai.Generator
 
 /** Represents a production rule of a non-terminal symbol of an [[ExpressionGrammar]].
@@ -21,7 +20,6 @@ import bonsai.Generator
 case class ProductionRule[T, R](
     override val subTrees: Seq[T],
     override val builder: Seq[R] => R,
-    outType: Class[_ <: R],
     tag: Tags.Tag,
     cost: Int,
     logProb: Double)

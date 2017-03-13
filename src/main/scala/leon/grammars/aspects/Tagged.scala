@@ -61,7 +61,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(1
             lab.withAspect(a)
           }
 
-          ProductionRule(newSubTrees, p.builder, p.outType, p.tag, p.cost, p.logProb)
+          ProductionRule(newSubTrees, p.builder, p.tag, p.cost, p.logProb)
         }
       } else {
         Nil
