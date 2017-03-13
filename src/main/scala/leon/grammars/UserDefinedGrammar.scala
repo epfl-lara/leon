@@ -41,24 +41,24 @@ object UserDefinedGrammar {
 case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
   import Tags._
   import UserDefinedGrammar._
-  type Prod = ProductionRule[Label, Expr]
+  private type Prod = ProductionRule[Label, Expr]
 
-  val visibleDefs = visibleFrom match {
+  private val visibleDefs = visibleFrom match {
     case Some(d) =>
       visibleFunDefsFrom(d)(program)
     case None =>
       visibleFunDefsFromMain(program)
   }
 
-  case class UserProduction(fd: FunDef, tag: Tag, weight: Int)
+  private case class UserProduction(fd: FunDef, tag: Tag, cost: Int)
 
-  val userProductions = visibleDefs.toSeq.sortBy(_.id).flatMap { fd =>
+  private val userProductions = visibleDefs.toSeq.sortBy(_.id).flatMap { fd =>
     val as = fd.extAnnotations
 
     val isProduction = as.contains("grammar.production")
 
     if (isProduction) {
-      val weight = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
+      val cost = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
       val tag = (for {
         t <- as.get("grammar.tag")
         t2 <- t.headOption
@@ -66,7 +66,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
         t4 <- tags.get(t3.asInstanceOf[String])
       } yield t4).getOrElse(Top)
 
-      Some(UserProduction(fd, tag, weight))
+      Some(UserProduction(fd, tag, cost))
     } else {
       None
     }
@@ -74,16 +74,16 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
 
   /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](Nil, _ => builder, outType, tag, cost, weight)
+  private def terminal(builder: => Expr, outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, logProb: Double) = {
+    ProductionRule[Label, Expr](Nil, _ => builder, outType, tag, cost, logProb)
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](subs, builder, outType, tag, cost, weight)
+  private def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), outType: Class[_ <: Expr], tag: Tags.Tag = Tags.Top, cost: Int, logProb: Double) = {
+    ProductionRule[Label, Expr](subs, builder, outType, tag, cost, logProb)
   }
 
-  def unwrapType(tpe: TypeTree): Option[TypeTree] = {
+  private def unwrapType(tpe: TypeTree): Option[TypeTree] = {
     tpe match {
       case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
         Some(ct.fieldsTypes.head)
@@ -93,7 +93,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }
   }
 
-  def tpeToLabel(tpe: TypeTree): Label = {
+  private def tpeToLabel(tpe: TypeTree): Label = {
     tpe match {
       case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
         Label(unwrapType(tpe).get).withAspect(RealTyped(ct))
@@ -103,7 +103,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     }
   }
 
-  def unwrapLabels(e: Expr, m: Map[Identifier, Identifier]): Expr = {
+  private def unwrapLabels(e: Expr, m: Map[Identifier, Identifier]): Expr = {
     preMap ({
       case CaseClass(cct, Seq(arg)) if cct.classDef.annotations("grammar.label") =>
         Some(arg)
@@ -118,7 +118,12 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
   private[this] var prodsCache = Map[TypeTree, Seq[Prod]]()
 
-  def instantiateProductions(tpe: TypeTree): Seq[Prod] = {
+  private def instantiateProductions(tpe: TypeTree): Seq[Prod] = {
+
+    /*
+     * This function temporarily saves raw frequency rates as given by the programmer
+     * in the 'cost' field of ProductionRule's.
+     */
 
     val types = (userProductions.collect {
       case UserProduction(fd, _, _) if fd.tparams.isEmpty => fd.returnType
@@ -127,7 +132,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
     val fcallFinder = new FunctionCallsFinder(types)
 
 
-    userProductions.flatMap { case UserProduction(fd, tag, w) =>
+    userProductions.flatMap { case UserProduction(fd, tag, cost) =>
 
       fcallFinder.find(fd, tpe).flatMap { tfd =>
 
@@ -158,7 +163,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
                 nonTerminal(subs, { case List(rec) =>
                   val res = CaseClassSelector(cct, rec, f.id)
                   inlineTrivialities(res)
-                }, classOf[CaseClassSelector], tag, cost = 1, w)
+                }, classOf[CaseClassSelector], tag, cost, logProb = -1.0)
               }
             }
 
@@ -202,8 +207,8 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
             val targetType = instantiateType(tp, tmap)
             val vars = inputs.filter (_.getType == targetType)
 
-            val size = vars.size.toDouble
-            vars map (v => terminal(v.toVariable, classOf[Variable], tag, cost = 1, w/size))
+            val size = vars.size
+            vars map (v => terminal(v.toVariable, classOf[Variable], tag, Math.max(cost/size, 1), logProb = -1.0))
 
           // Special built-in "closure" case, which tells us how often to
           // generate closures of a specific type
@@ -218,7 +223,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
                 List(nonTerminal(Seq(rlab), { case Seq(body) =>
                   Lambda(args, body)
-                }, classOf[Lambda], tag, cost = 1, w))
+                }, classOf[Lambda], tag, cost, logProb = 1.0))
 
               case _ =>
                 Nil
@@ -226,7 +231,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
           case _ =>
             if (fd.params.isEmpty) {
-              List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost = 1, w))
+              List(terminal(instantiateType(expr, tmap, Map()), classOf[Expr], tag, cost, logProb = -1.0))
             } else {
               val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
               val subs  = fd.params.map {
@@ -235,9 +240,9 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
               val replacer = variableReplacer(expr, holes)
 
-              List(nonTerminal(subs, { sexprs => 
+              List(nonTerminal(subs, { sexprs =>
                 instantiateType(replacer(sexprs), tmap, m)
-              }, classOf[Expr], tag, cost = 1, w))
+              }, classOf[Expr], tag, cost, logProb = -1.0))
             }
         }
       }
@@ -255,22 +260,21 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
       res
     })
 
-    val ws = prods map (_.weight)
-
-    if (ws.isEmpty) {
+    if (prods.isEmpty) {
       Nil
-    } else if (ws.size == 1) {
-      prods.map(_.copy(weight = -1.0))
+    } else if (prods.size == 1) {
+      prods.map(_.copy(cost = 1))
     } else {
-      val sum = ws.sum
-      // log(prob) = log(weight/Σ(weights))
-      val logProbs = ws.map(w => Math.log(w/sum))
+      val costs = prods map (_.cost)
+      val totalCost = costs.sum
+      // log(prob) = log(cost/Σ(costs))
+      val logProbs = costs.map(cost => Math.log(cost.toDouble/totalCost.toDouble))
       val maxLogProb = logProbs.max
 
       for ((p, logProb) <- prods zip logProbs) yield {
         // cost = normalized log prob.
         val cost = (logProb/maxLogProb).round.toInt
-        p.copy(cost = cost, weight = logProb)
+        p.copy(cost = cost, logProb = logProb)
       }
     }
   }

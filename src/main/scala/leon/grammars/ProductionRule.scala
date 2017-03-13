@@ -12,8 +12,9 @@ import bonsai.Generator
  *                 (and will generate deeper syntax trees).
  * @param builder A function that builds the syntax tree that this [[ProductionRule]] represents from nested trees.
  * @param tag Gives information about the nature of this production rule.
- * @param cost The cost of applying this rule
- * @param weight The absolute (unnormalized) weight of this rule (based on a corpus)
+ * @param cost The cost of applying this rule (positive integer).
+ * @param logProb Logarithmic probability of this rule being instantiated for a given nonterminal (based on a corpus)
+  *               (will be a negative number).
  * @tparam T The type of nonterminal symbols of the grammar
  * @tparam R The type of syntax trees of the grammar
  */
@@ -23,8 +24,8 @@ case class ProductionRule[T, R](
     outType: Class[_ <: R],
     tag: Tags.Tag,
     cost: Int,
-    weight: Double)
+    logProb: Double)
   extends Generator[T,R](subTrees, builder) {
 
-  require(weight < 0 && cost > 0)
+  require(logProb < 0.0 && cost > 0)
 }

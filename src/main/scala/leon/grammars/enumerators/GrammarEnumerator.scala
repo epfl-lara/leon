@@ -41,7 +41,7 @@ object GrammarEnumerator {
 
       var newProb = map(ntPrime)
       for (rule <- grammar(ntPrime)) {
-        var ruleLogProb = rule.weight
+        var ruleLogProb = rule.logProb
         for (childNT <- rule.subTrees) {
           ruleLogProb = ruleLogProb + map(childNT)._2
         }

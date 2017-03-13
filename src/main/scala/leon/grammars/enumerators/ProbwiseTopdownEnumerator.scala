@@ -313,7 +313,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           expansionPreNormal = normalizeMemo.getOrElse(expansion, expansion)
           // expansionPreNormal = expansion
         } yield {
-          val logProbPrime = elem.logProb + rule.weight
+          val logProbPrime = elem.logProb + rule.logProb
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansionPreNormal, logProbPrime, horizonPrime, elemScore, Some(elem))
         }

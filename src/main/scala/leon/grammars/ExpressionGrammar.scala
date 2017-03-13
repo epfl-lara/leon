@@ -76,7 +76,7 @@ abstract class ExpressionGrammar {
           val subs = g.subTrees.map { t =>
             FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
           }
-          f"(${g.cost}%3d, ${g.weight}%2.3f) " + lineize(g.builder(subs).asString)
+          f"(${g.cost}%3d, ${g.logProb}%2.3f) " + lineize(g.builder(subs).asString)
         }
 
         printer(lhs + rhs.mkString("\n" + " " * 55))
