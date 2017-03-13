@@ -7,7 +7,7 @@ function run {
     $cmd;
 }
 
-echo "==================================================================================================================" >> synt2016-report.txt
+echo "==================================================================================================================" >> synthesis-report.txt
 # List
 run testcases/synt2016/synthesis/List/Insert.scala
 run testcases/synt2016/synthesis/List/Delete.scala
