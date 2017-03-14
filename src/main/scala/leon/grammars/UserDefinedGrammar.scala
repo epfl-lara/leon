@@ -194,7 +194,13 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
                 val descendents = act.knownCCDescendants
 
                 descendents.map { cct =>
-                  nonTerminal(cct.fields.map(f => tpeToLabel(f.getType)), CaseClass(cct, _), Tags.tagOf(cct), Math.max(cost/descendents.size, 1), -1.0)
+                  nonTerminal(
+                    cct.fields.map(f => tpeToLabel(f.getType)),
+                    CaseClass(cct, _),
+                    Tags.tagOf(cct),
+                    Math.max(cost/descendents.size, 1), // FIXME is that what we mean here? Not cost/descendent?
+                    -1.0
+                  )
                 }
 
               case _ =>
@@ -221,9 +227,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
                 val rlab = tpeToLabel(to).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
-                List(nonTerminal(Seq(rlab), { case Seq(body) =>
-                  Lambda(args, body)
-                }, tag, cost, logProb = 1.0))
+                List(nonTerminal(Seq(rlab), { case Seq(body) => Lambda(args, body) }, tag, cost, logProb = 1.0))
 
               case _ =>
                 Nil

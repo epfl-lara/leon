@@ -218,6 +218,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       }
       if (worklist.nonEmpty) {
         val elem = worklist.head
+        // @mk: DIRTY HACK! This will set the solution for us for the purpose of recursive calls
+        //      to be later used by normalization
         lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = true)
         lazy val compliesTests = {
           val res = score.noExs.isEmpty
@@ -246,37 +248,38 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           if (elem.logProb >= probLimit && compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
+            // @mk: Dirty hack: This relies on the previous call to scorer.score for recursive calls
             val normalExpansionOpt = if (disambiguate) normalize(elem.expansion) else Some(elem.expansion)
-            if (normalExpansionOpt.isDefined) {
-              val normalExpansion = normalExpansionOpt.get
-              val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
-              ifVerboseDebug { printer =>
-                if (elem.expansion != normalExpansion) {
-                  printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+            normalExpansionOpt match {
+              case Some(normalExpansion) =>
+                val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
+                ifVerboseDebug { printer =>
+                  if (elem.expansion != normalExpansion) {
+                    printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+                  }
                 }
-              }
 
-              // Then compute its immediate descendants and put them back in the worklist
-              val newElems = expandNext(normalElem, score)
-              verboseDebug(s"Expanded ${newElems.size} more elems")
-              worklist.enqueueAll(newElems)
+                // Then compute its immediate descendants and put them back in the worklist
+                val newElems = expandNext(normalElem, score)
+                verboseDebug(s"Expanded ${newElems.size} more elems")
+                worklist.enqueueAll(newElems)
 
-              // And debug some
-              ifVerboseDebug { printer =>
-                newElems foreach { e =>
-                  printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+                // And debug some
+                ifVerboseDebug { printer =>
+                  newElems foreach { e =>
+                    printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+                  }
                 }
-              }
-              ifDebug { printer =>
-                if (worklist.size >= 2 * lastPrint) {
-                  printer(s"Worklist size: ${worklist.size}")
-                  printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                    s"${EnumeratorStats.partialEvalRejectionCount}")
-                  lastPrint = worklist.size
+                ifDebug { printer =>
+                  if (worklist.size >= 2 * lastPrint) {
+                    printer(s"Worklist size: ${worklist.size}")
+                    printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+                      s"${EnumeratorStats.partialEvalRejectionCount}")
+                    lastPrint = worklist.size
+                  }
                 }
-              }
-            } else {
-              debug(elem.expansion + " failed evaluation")
+              case None =>
+                debug(elem.expansion + " failed evaluation")
             }
           } else {
             // The element has failed partial evaluation ...
