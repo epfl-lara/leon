@@ -324,7 +324,7 @@ object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enu
   import leon.grammars.Tags
   import leon.grammars.aspects.Tagged
   def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    Label(p.outType).withAspect(Tagged(Tags.Top, 0, None))
+    Label(p.outType)//.withAspect(Tagged(Tags.Top, 0, None))
   }
 }
 
