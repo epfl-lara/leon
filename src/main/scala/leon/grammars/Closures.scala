@@ -6,25 +6,34 @@ package grammars
 import purescala.Types._
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.TypeOps.instantiateType
 import purescala.Common._
 
 case object Closures extends ExpressionGrammar {
-  val genericProductions = ???
-  val staticProductions = ???
+  val genericProductions = {
+    for (nTps <- 1 to 5) yield {
+      val tps = for (i <- 1 to nTps) yield TypeParameterDef(TypeParameter.fresh("T"+i))
 
-  def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {
-    case FunctionType(argsTpes, ret) =>
-      val args = argsTpes.zipWithIndex.map { case (tpe, i) =>
-        ValDef(FreshIdentifier("a"+i, tpe))
+      val to    = tps.head.tp
+      val froms = tps.tail.map(_.tp)
+
+
+      val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
+
+        val args = froms.zipWithIndex.map { case (tpe, i) =>
+          ValDef(FreshIdentifier("a"+i, instantiateType(tpe, tmap)))
+        }
+
+        val rlab = Label(instantiateType(to, tmap)).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
+
+        ProductionRule[Label, Expr](Seq(rlab), { case Seq(body) =>
+          Lambda(args, body)
+        }, Tags.Top, cost = 1, 1)
       }
 
-      val rlab = Label(ret).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
-
-      List(
-        ProductionRule[Label, Expr](List(rlab), { case Seq(body) => Lambda(args, body) }, Tags.Top, 1, 1.0)
-      )
-
-    case _ =>
-      Nil
+      GenericProd(tps, Seq(to), FunctionType(froms, to), prodBuilder)
+    }
   }
+
+  val staticProductions = Map[Label, Seq[Prod]]()
 }
