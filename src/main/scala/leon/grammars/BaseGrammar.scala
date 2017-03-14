@@ -14,7 +14,7 @@ import purescala.Constructors._
   */
 case object BaseGrammar extends SimpleExpressionGrammar {
 
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
     case BooleanType =>
       List(
         terminal(BooleanLiteral(false), Tags.BooleanC),

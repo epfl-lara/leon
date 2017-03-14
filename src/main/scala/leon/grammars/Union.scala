@@ -5,12 +5,14 @@ package grammars
 
 import purescala.Expressions.Expr
 
+import utils.MapUtils
+
 case class Union(gs: Seq[ExpressionGrammar]) extends ExpressionGrammar {
   val subGrammars: Seq[ExpressionGrammar] = gs.flatMap {
     case u: Union => u.subGrammars
     case g => Seq(g)
   }
 
-  protected[grammars] def computeProductions(label: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] =
-    subGrammars.flatMap(_.computeProductions(label))
+  val staticProductions  = subGrammars.map(_.staticProductions).reduceLeft(MapUtils.union)
+  val genericProductions = subGrammars.map(_.genericProductions).reduceLeft(_ ++ _)
 }

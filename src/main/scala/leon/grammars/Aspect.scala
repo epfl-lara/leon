@@ -23,9 +23,24 @@ import purescala.Expressions.Expr
  */
 
 
-abstract class Aspect(val order: Int) extends Printable {
+abstract class Aspect(val kind: AspectKind) extends Printable {
 
   final type Production = ProductionRule[Label, Expr]
 
   def applyTo(l: Label, ps: Seq[Production])(implicit ctx: LeonContext): Seq[Production]
 }
+
+sealed abstract class AspectKind(val order: Int) extends Ordered[AspectKind] {
+  def compare(that: AspectKind) = this.order-that.order
+}
+
+// Order determines the order of application of aspects
+case object RealTypedAspectKind         extends AspectKind(10)
+case object NamedAspectKind             extends AspectKind(20)
+case object DepthBoundAspectKind        extends AspectKind(30)
+case object ExtraTerminalsAspectKind    extends AspectKind(40)
+case object SimilarToAspectKind         extends AspectKind(50)
+case object TypeDepthBoundAspectKind    extends AspectKind(60)
+case object SizedAspectKind             extends AspectKind(70)
+case object TaggedAspectKind            extends AspectKind(80)
+

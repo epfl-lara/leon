@@ -5,7 +5,9 @@ package grammars
 
 import purescala.Types._
 
-case class Label(tpe: TypeTree, aspects: List[Aspect] = Nil) extends Typed {
+import scala.collection.immutable.TreeMap
+
+case class Label(tpe: TypeTree, aspectsMap: TreeMap[AspectKind, Aspect] = TreeMap()) extends Typed {
   val getType = tpe
 
   def asString(implicit ctx: LeonContext): String = {
@@ -15,6 +17,12 @@ case class Label(tpe: TypeTree, aspects: List[Aspect] = Nil) extends Typed {
   }
 
   def withAspect(a: Aspect) = {
-    Label(tpe, (a :: aspects).sortBy(_.order))
+    Label(tpe, aspectsMap + (a.kind -> a))
   }
+
+  def stripAspects = copy(aspectsMap = TreeMap())
+
+  def aspect(kind: AspectKind): Option[Aspect] = aspectsMap.get(kind)
+
+  def aspects: Traversable[Aspect] = aspectsMap.map(_._2)
 }

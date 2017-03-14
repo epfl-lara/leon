@@ -231,7 +231,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     var it = mkEnum
     debug("Grammar:")
-    grammar.printProductions(debug(_))
+    debug(grammar.asString)
 
     /**
       * Second phase of STE: verify a given candidate by looking for CEX inputs.
@@ -324,7 +324,7 @@ object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enu
   import leon.grammars.Tags
   import leon.grammars.aspects.Tagged
   def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    Label(p.outType, List(Tagged(Tags.Top, 0, None)))
+    Label(p.outType).withAspect(Tagged(Tags.Top, 0, None))
   }
 }
 

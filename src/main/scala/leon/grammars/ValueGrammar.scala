@@ -12,7 +12,8 @@ case object ValueGrammar extends ValueGrammar
 
 /** A grammar of values (ground terms) */
 abstract class ValueGrammar extends SimpleExpressionGrammar {
-  def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+
+  def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
     case BooleanType =>
       List(
         terminal(BooleanLiteral(true), Tags.One),
@@ -20,9 +21,9 @@ abstract class ValueGrammar extends SimpleExpressionGrammar {
       )
     case Int32Type =>
       List(
-        terminal(IntLiteral(0), Tags.Zero),
-        terminal(IntLiteral(1), Tags.One),
-        terminal(IntLiteral(5), Tags.Constant),
+        terminal(IntLiteral(0),  Tags.Zero),
+        terminal(IntLiteral(1),  Tags.One),
+        terminal(IntLiteral(5),  Tags.Constant),
         terminal(IntLiteral(-1), Tags.Constant, 3),
         terminal(IntLiteral(2),  Tags.Constant, 3),
         terminal(IntLiteral(3),  Tags.Constant, 3),
@@ -32,9 +33,9 @@ abstract class ValueGrammar extends SimpleExpressionGrammar {
       )
     case IntegerType =>
       List(
-        terminal(InfiniteIntegerLiteral(0), Tags.Zero),
-        terminal(InfiniteIntegerLiteral(1), Tags.One),
-        terminal(InfiniteIntegerLiteral(5), Tags.Constant),
+        terminal(InfiniteIntegerLiteral(0),  Tags.Zero),
+        terminal(InfiniteIntegerLiteral(1),  Tags.One),
+        terminal(InfiniteIntegerLiteral(5),  Tags.Constant),
         terminal(InfiniteIntegerLiteral(-1), Tags.Constant, 3),
         terminal(InfiniteIntegerLiteral(2),  Tags.Constant, 3),
         terminal(InfiniteIntegerLiteral(3),  Tags.Constant, 3),

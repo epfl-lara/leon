@@ -9,6 +9,9 @@ import purescala.Expressions._
 import purescala.Common._
 
 case object Closures extends ExpressionGrammar {
+  val genericProductions = ???
+  val staticProductions = ???
+
   def computeProductions(lab: Label)(implicit ctx: LeonContext): Seq[ProductionRule[Label, Expr]] = lab.getType match {
     case FunctionType(argsTpes, ret) =>
       val args = argsTpes.zipWithIndex.map { case (tpe, i) =>

@@ -34,7 +34,7 @@ object QuestionBuilder {
     }
   }
   // Add more if needed.
-  
+
   /** Sort methods for question's answers. You can (and should) build your own. */
   abstract class AlternativeSortingType[T <: Expr] extends Ordering[T] { self =>
     /** Prioritizes this comparison operator against the second one. */
@@ -72,7 +72,7 @@ object QuestionBuilder {
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
   object SpecialStringValueGrammar extends ValueGrammar {
-    override def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+    override def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
       case StringType =>
         List(
           terminal(StringLiteral("")),

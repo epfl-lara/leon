@@ -32,6 +32,7 @@ abstract class STELike(name: String) extends Rule(name) {
     outerCtx: SearchContext,
     outerP: Problem,
     initSize: Int,
+    maxSize: Int,
     outerExamples: Seq[Example]
   ) {
     type Candidate = Set[Identifier]
@@ -127,6 +128,8 @@ abstract class STELike(name: String) extends Rule(name) {
     def termSize = termSize_
 
     private val grammar = params.grammar
+
+    grammar.discoverTypes(maxSize)
 
     def rootLabel = {
       val targetType = tupleTypeWrap(p.xs.map(_.getType))
@@ -269,8 +272,9 @@ abstract class STELike(name: String) extends Rule(name) {
       }
 
       ifDebug { printer =>
+        printer("Root Label: "+rootLabel.asString)
         printer("Grammar so far:")
-        grammar.printProductions(printer)
+        printer(grammar.asString)
         printer("")
       }
 
@@ -860,6 +864,7 @@ abstract class STELike(name: String) extends Rule(name) {
             outerCtx = hctx,
             outerP   = p,
             initSize = sizeFrom - 1,
+            maxSize  = sizeTo,
             outerExamples = baseExampleInputs
           )
 
