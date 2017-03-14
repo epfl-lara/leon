@@ -227,7 +227,7 @@ case class UserDefinedGrammar(sctx: SynthesisContext, program: Program, visibleF
 
                 val rlab = tpeToLabel(to).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
-                List(nonTerminal(Seq(rlab), { case Seq(body) => Lambda(args, body) }, tag, cost, logProb = 1.0))
+                List(nonTerminal(Seq(rlab), { case Seq(body) => Lambda(args, body) }, tag, cost, logProb = -1.0))
 
               case _ =>
                 Nil
