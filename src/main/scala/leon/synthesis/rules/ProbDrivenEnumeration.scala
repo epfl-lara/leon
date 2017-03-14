@@ -178,9 +178,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
+    // Do not set the solution to expr
     def rawEvalCandidate(expr: Expr, ex: Example) = {
-      setSolution(expr)
-
       def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
         case ((id, v), bd) => let(id, v, bd)
       }
