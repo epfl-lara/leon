@@ -14,69 +14,29 @@ import purescala.Constructors._
   */
 case object BaseGrammar extends SimpleExpressionGrammar {
 
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
-    case BooleanType =>
-      List(
-        terminal(BooleanLiteral(false), Tags.BooleanC),
-        terminal(BooleanLiteral(true), Tags.BooleanC),
-        nonTerminal(List(BooleanType), { case Seq(a) => not(a) }, Tags.Not),
-        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => and(a, b) }, Tags.And),
-        nonTerminal(List(BooleanType, BooleanType), { case Seq(a, b) => or(a, b)  }, Tags.Or ),
-        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessThan(a, b)   }),
-        nonTerminal(List(Int32Type,   Int32Type),   { case Seq(a, b) => LessEquals(a, b) }),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b)   }),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) })
-      )
-    case Int32Type =>
-      List(
-        terminal(IntLiteral(0), Tags.Zero),
-        terminal(IntLiteral(1), Tags.One ),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
-        nonTerminal(List(Int32Type, Int32Type), { case Seq(a,b) => times(a, b) }, Tags.Times)
-      )
+  def generateSimpleProductions(implicit ctx: LeonContext) = {
+    List(
+      sTerminal(BooleanType, BooleanLiteral(false), Tags.BooleanC),
+      sTerminal(BooleanType, BooleanLiteral(true),  Tags.BooleanC),
+      sNonTerminal(BooleanType, List(BooleanType), { case Seq(a) => not(a) }, Tags.Not),
+      sNonTerminal(BooleanType, List(BooleanType, BooleanType), { case Seq(a, b) => and(a, b) }, Tags.And),
+      sNonTerminal(BooleanType, List(BooleanType, BooleanType), { case Seq(a, b) => or(a, b)  }, Tags.Or ),
+      sNonTerminal(BooleanType, List(Int32Type,   Int32Type),   { case Seq(a, b) => LessThan(a, b)   }),
+      sNonTerminal(BooleanType, List(Int32Type,   Int32Type),   { case Seq(a, b) => LessEquals(a, b) }),
+      sNonTerminal(BooleanType, List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b)   }),
+      sNonTerminal(BooleanType, List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) }),
 
-    case IntegerType =>
-      List(
-        terminal(InfiniteIntegerLiteral(0), Tags.Zero),
-        terminal(InfiniteIntegerLiteral(1), Tags.One ),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
-        nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times)//,
-        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Modulo(a, b)   }, Tags.Mod),
-        //nonTerminal(List(IntegerType, IntegerType), { case Seq(a,b) => Division(a, b) }, Tags.Div)
-      )
+      sTerminal(Int32Type, IntLiteral(0), Tags.Zero),
+      sTerminal(Int32Type, IntLiteral(1), Tags.One ),
+      sNonTerminal(Int32Type, List(Int32Type, Int32Type), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
+      sNonTerminal(Int32Type, List(Int32Type, Int32Type), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
+      sNonTerminal(Int32Type, List(Int32Type, Int32Type), { case Seq(a,b) => times(a, b) }, Tags.Times),
 
-    case TupleType(stps) =>
-      List(
-        nonTerminal(stps, Tuple, Tags.Constructor(isTerminal = false))
-      )
-
-    case cct: CaseClassType =>
-      List(
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct) )
-      )
-
-    case act: AbstractClassType =>
-      act.knownCCDescendants.map { cct =>
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct) )
-      }
-
-    case st @ SetType(base) =>
-      List(
-        terminal(FiniteSet(Set(), base), Tags.Constant),
-        nonTerminal(List(base),   { case elems     => FiniteSet(elems.toSet, base) }, Tags.Constructor(isTerminal = false)),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
-        nonTerminal(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
-      )
-
-    case UnitType =>
-      List(
-        terminal(UnitLiteral(), Tags.Constant)
-      )
-
-    case _ =>
-      Nil
+      sTerminal(IntegerType, InfiniteIntegerLiteral(0), Tags.Zero),
+      sTerminal(IntegerType, InfiniteIntegerLiteral(1), Tags.One ),
+      sNonTerminal(IntegerType, List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b)  }, Tags.Plus ),
+      sNonTerminal(IntegerType, List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }, Tags.Minus),
+      sNonTerminal(IntegerType, List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) }, Tags.Times)
+    )
   }
 }

@@ -40,11 +40,11 @@ object GenericUDGrammar {
 }
 
 /** Represents a user-defined context-free grammar of expressions */
-case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
+case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
   import Tags._
   import GenericUDGrammar._
 
-  def discoverProductions() = {
+  def generateProductions(implicit ctx: LeonContext) = {
     val visibleDefs = visibleFrom match {
       case Some(d) =>
         visibleFunDefsFrom(d)(program)
@@ -73,8 +73,7 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
       }
     }
 
-    val normalProds = new ArrayBuffer[(Label, Prod)]()
-    val genericProds = new ArrayBuffer[GenericProd]()
+    val productions = new ArrayBuffer[GenericProd]()
 
     for ((fd, tag, cost) <- fdInfos) {
       val expr = fd.fullBody
@@ -94,7 +93,7 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
                 val size = inputs.size
 
                 for (i <- inputs) {
-                  normalProds += (tpeToLabel(tpe) -> terminal(i.toVariable, tag, Math.max(1, cost/size), -1.0))
+                  productions += terminal(tpeToLabel(tpe), i.toVariable, tag, Math.max(1, cost/size), -1.0)
                 }
 
               case _ =>
@@ -106,6 +105,7 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
         case FunctionInvocation(TypedFunDef(fdc, Seq(ft @ FunctionType(froms, to))), Seq()) if program.library.closure contains fdc =>
 
           val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
+            val lab = tpeToLabel(instantiateType(ft, tmap))
 
             val args = froms.zipWithIndex.map { case (tpe, i) =>
               ValDef(FreshIdentifier("a"+i, instantiateType(tpe, tmap)))
@@ -113,10 +113,12 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
 
             val rlab = tpeToLabel(instantiateType(to, tmap)).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
-            nonTerminal(Seq(rlab), { case Seq(body) => Lambda(args, body) }, tag, cost, -1.0)
+            ProductionRule[Label, Expr](Seq(rlab), { case Seq(body) =>
+              Lambda(args, body)
+            }, tag, cost, -1.0)
           }
 
-          genericProds += GenericProd(fd.tparams, Seq(to), ft, prodBuilder)
+          productions += GenericProd(fd.tparams, tpeToLabel(ft), Seq(to), prodBuilder)
 
         case _ =>
           if (freeTps.isEmpty) {
@@ -126,9 +128,9 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
               p => tpeToLabel(p.getType)
             }
 
-            normalProds += tpeToLabel(fd.returnType) -> nonTerminal(
-              subs, { sexprs => replacer(sexprs) }, tag, cost, -1.0
-            )
+            productions += nonTerminal(tpeToLabel(fd.returnType), subs, { sexprs => 
+              replacer(sexprs)
+            }, tag, cost, -1.0)
           } else {
             val retType = fd.fullBody.getType
 
@@ -155,28 +157,12 @@ case class GenericUDGrammar(sctx: SynthesisContext, program: Program, visibleFro
               ProductionRule[Label, Expr](subs, { sexprs => instantiateType(replacer(sexprs), tmap, m) }, tag, cost, -1.0)
             }
 
-            genericProds += GenericProd(fd.tparams, fd.params.map(_.getType), retType, prodBuilder)
+            productions += GenericProd(fd.tparams, tpeToLabel(retType), fd.params.map(_.getType), prodBuilder)
           }
       }
     }
 
-    def toMapSeq[A, B](values: Traversable[(A, B)]): Map[A, Seq[B]] = {
-      values.groupBy(_._1).mapValues(_.map(_._2).toSeq)
-    }
-
-    (toMapSeq(normalProds), genericProds)
-  }
-
-  lazy val (staticProductions, genericProductions) = discoverProductions()
-
-  /** Generates a [[ProductionRule]] without nonterminal symbols */
-  def terminal(builder: => Expr, tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](Nil, _ => builder, tag, cost, weight)
-  }
-
-  /** Generates a [[ProductionRule]] with nonterminal symbols */
-  def nonTerminal(subs: Seq[Label], builder: (Seq[Expr] => Expr), tag: Tags.Tag = Tags.Top, cost: Int, weight: Double) = {
-    ProductionRule[Label, Expr](subs, builder, tag, cost, weight)
+    productions
   }
 
   def unwrapType(tpe: TypeTree): Option[TypeTree] = {

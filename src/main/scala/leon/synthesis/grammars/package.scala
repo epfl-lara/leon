@@ -17,7 +17,7 @@ package object grammars {
     val hints = ws.collect { case Hint(e) if formulaSize(e) >= 4 => e }
     val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
     if (sctx.settings.steUserDefinedGrammar) {
-      GenericUDGrammar(sctx, sctx.program, Some(sctx.functionContext), p.allAs)
+      GenericUDGrammar(sctx.program, Some(sctx.functionContext), p.allAs)
     } else {
       val exclude = sctx.settings.functionsToIgnore
       val recCalls = {
@@ -27,11 +27,14 @@ package object grammars {
 
       Union(Seq(
         BaseGrammar,
-        Closures,
-        EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ inputs.map { _.getType }),
+        Closures(3),
+        Equalities,
+        CaseClasses(sctx.program),
+        Tuples(5),
+        Sets(2),
         OneOf(inputs),
         Constants(sctx.functionContext.fullBody),
-        FunctionCalls(sctx.program, sctx.functionContext, inputs.map(_.getType), exclude),
+        FunctionCalls(sctx.program, sctx.functionContext, exclude),
         recCalls
       ))
     }
