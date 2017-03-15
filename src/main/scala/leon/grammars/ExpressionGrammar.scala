@@ -359,7 +359,7 @@ abstract class ExpressionGrammar {
 
     val prod = gp.builder(tmap)
 
-    val tps = Console.GREEN+gp.tparams.map(_.asString).mkString("[", ",", "]")+Console.RESET;
+    val tps = Console.GREEN+gp.tparams.map(_.asString).mkString("[", ",", "]")+Console.RESET
 
     tps+" "+prodAsString(prod)
   }
