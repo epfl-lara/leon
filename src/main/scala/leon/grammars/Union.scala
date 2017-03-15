@@ -13,6 +13,7 @@ case class Union(gs: Seq[ExpressionGrammar]) extends ExpressionGrammar {
     case g => Seq(g)
   }
 
-  val staticProductions  = subGrammars.map(_.staticProductions).reduceLeft(MapUtils.union)
-  val genericProductions = subGrammars.map(_.genericProductions).reduceLeft(_ ++ _)
+  def generateProductions(implicit ctx: LeonContext) = {
+    subGrammars.flatMap(_.generateProductions)
+  }
 }

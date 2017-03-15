@@ -16,14 +16,15 @@ import synthesis.utils.Helpers._
   * @param pc The path condition for the generated [[Expr]] by this grammar
   */
 case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path) extends SimpleExpressionGrammar {
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = {
-    val calls = terminatingCalls(prog,ws, pc, Some(t), true)
+  def generateSimpleProductions(implicit ctx: LeonContext) = {
+    val calls = terminatingCalls(prog, ws, pc, None, true)
 
     calls.map { c => (c: @unchecked) match {
       case (fi, Some(free)) =>
         val freeSeq = free.toSeq
 
-        nonTerminal(
+        sNonTerminal(
+          fi.getType,
           freeSeq.map(_.getType),
           sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi),
           Tags.tagOf(fi.tfd.fd, isSafe = true),

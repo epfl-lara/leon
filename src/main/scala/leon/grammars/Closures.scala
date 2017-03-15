@@ -9,9 +9,9 @@ import purescala.Expressions._
 import purescala.TypeOps.instantiateType
 import purescala.Common._
 
-case object Closures extends ExpressionGrammar {
-  val genericProductions = {
-    for (nTps <- 1 to 5) yield {
+case class Closures(maxArgs: Int = 4) extends ExpressionGrammar {
+  def generateProductions(implicit ctx: LeonContext) = {
+    for (nTps <- 1 to maxArgs+1) yield {
       val tps = for (i <- 1 to nTps) yield TypeParameterDef(TypeParameter.fresh("T"+i))
 
       val to    = tps.head.tp
@@ -31,9 +31,7 @@ case object Closures extends ExpressionGrammar {
         }, Tags.Top, cost = 1, 1)
       }
 
-      GenericProd(tps, Seq(to), FunctionType(froms, to), prodBuilder)
+      GenericProd(tps, Label(FunctionType(froms, to)), Seq(to),  prodBuilder)
     }
   }
-
-  val staticProductions = Map[Label, Seq[Prod]]()
 }

@@ -9,12 +9,13 @@ import purescala.ExprOps._
 import purescala.TypeOps._
 import purescala.Types._
 import purescala.Common._
+import utils.MapUtils
 import Tags._
 
 case class GenericProd(
   tparams: Seq[TypeParameterDef],
+  label: Label,
   args: Seq[TypeTree],
-  retType: TypeTree,
   builder: Map[TypeParameter, TypeTree] => ProductionRule[Label, Expr]
 )
 
@@ -23,9 +24,9 @@ abstract class ExpressionGrammar {
 
   type Prod = ProductionRule[Label, Expr]
 
-  val staticProductions: Map[Label, Seq[Prod]]
-  val genericProductions: Seq[GenericProd]
+  def generateProductions(implicit ctx: LeonContext): Seq[GenericProd]
 
+  private[this] var genericProductions: Seq[GenericProd] = Nil
 
   private[this] var productions:  Map[Label, Seq[Prod]] = Map()
   private[this] var productionsCache:  Map[Label, Seq[Prod]] = Map()
@@ -42,6 +43,22 @@ abstract class ExpressionGrammar {
       productionsCache += lab -> ps
       ps
     })
+  }
+
+  private def init()(implicit ctx: LeonContext) {
+    val allProds = generateProductions
+
+    val (static0, generic) = allProds.partition(_.tparams.isEmpty)
+
+    val static = static0.map { gp => gp.label -> gp.builder(Map()) }
+
+    productions = MapUtils.seqToMap(static)
+    genericProductions = generic
+
+    // this is an under-approximation, since we assume subtrees have minCost 1.
+    minCosts = for ((l, ps) <- productions) yield {
+      l.getType -> ps.map(p => 1 + p.subTrees.size).min
+    }
   }
 
   var instantiations = Map[GenericProd, Set[Map[TypeParameter, TypeTree]]]().withDefaultValue(Set())
@@ -66,7 +83,7 @@ abstract class ExpressionGrammar {
     for(gp <- genericProductions if (gp.args.size + 1) < maxSize) {
       //println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
 
-      instantiation_<:(gp.retType, tpe) match {
+      instantiation_<:(gp.label.tpe, tpe) match {
         case Some(tmap0) =>
           val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq;
 
@@ -215,7 +232,7 @@ abstract class ExpressionGrammar {
       for(gp <- genericProductions) {
         //println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
 
-        val freeTps = typeParamsOf(gp.retType) intersect gp.tparams.map(_.tp).toSet
+        val freeTps = typeParamsOf(gp.label.tpe) intersect gp.tparams.map(_.tp).toSet
 
         // Step 1. We identify the type patterns we need to match:
         // e.g. (List[T], T => Boolean)
@@ -224,7 +241,7 @@ abstract class ExpressionGrammar {
         val tmaps = instantiateTypePattern(pattern0, freeTps.toSeq, discoverySize-1, Map())
 
         val retTypes = for ((tmap, minCost) <- tmaps) yield {
-          (instantiateType(gp.retType, tmap), minCost+1)
+          (instantiateType(gp.label.tpe, tmap), minCost+1)
         }
 
         for ((t, mc) <- retTypes) {
@@ -293,14 +310,6 @@ abstract class ExpressionGrammar {
     lab.aspect(SizedAspectKind).collect { case aspects.Sized(size, _) => size }
   }
 
-  private def init() {
-    productions = staticProductions
-
-    // this is an under-approximation, since we assume subtrees have minCost 1.
-    minCosts = for ((l, ps) <- productions) yield {
-      l.getType -> ps.map(p => 1 + p.subTrees.size).min
-    }
-  }
 
   private[this] var initialized = false;
 
@@ -399,7 +408,7 @@ abstract class ExpressionGrammar {
       }
     }
 
-    for ((tpe, ps) <- genericProductions.groupBy(_.retType)) {
+    for ((tpe, ps) <- genericProductions.groupBy(_.label.tpe)) {
 
       val lhs = f"${Console.BOLD}${tpe.asString}%50s${Console.RESET} ::= "
 
@@ -420,5 +429,28 @@ abstract class ExpressionGrammar {
     }
 
     res.toString
+  }
+
+  /** Generates a [[ProductionRule]] without nonterminal symbols */
+  def terminal(
+      label: Label,
+      builder: => Expr,
+      tag: Tags.Tag = Tags.Top,
+      cost: Int = 1,
+      weight: Double = -1.0) = {
+
+      GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight))
+  }
+
+  /** Generates a [[ProductionRule]] with nonterminal symbols */
+  def nonTerminal(
+      label: Label,
+      subs: Seq[Label],
+      builder: (Seq[Expr] => Expr),
+      tag: Tags.Tag = Tags.Top,
+      cost: Int = 1,
+      weight: Double = -1.0) = {
+
+      GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](subs, builder, tag, cost, weight))
   }
 }

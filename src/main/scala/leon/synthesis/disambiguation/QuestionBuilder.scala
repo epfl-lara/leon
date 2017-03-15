@@ -72,6 +72,7 @@ object QuestionBuilder {
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
   object SpecialStringValueGrammar extends ValueGrammar {
+    /*
     override def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
       case StringType =>
         List(
@@ -82,6 +83,7 @@ object QuestionBuilder {
         )
       case _ => super.computeProductions(t)
     }
+    */
   }
   
   /** Make all generic values uniquely identifiable among the final string (no value is a substring of another if possible)

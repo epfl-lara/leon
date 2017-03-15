@@ -16,69 +16,36 @@ import purescala.Expressions._
   * @param types The candidate real type parameters for [[currentFunction]]
   * @param exclude An additional set of functions for which no calls will be generated
   */
-case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends SimpleExpressionGrammar {
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = {
+case class FunctionCalls(prog: Program, currentFunction: FunDef, exclude: Set[FunDef]) extends SimpleExpressionGrammar {
+  def generateSimpleProductions(implicit ctx: LeonContext) = {
+    val cfd = currentFunction
 
-    def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
-      // Prevents recursive calls
-      val cfd = currentFunction
+    def isRecursiveCall(fd: FunDef) = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
-      val isRecursiveCall = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
+    def isDet(fd: FunDef) = fd.body.exists(isDeterministic)
 
-      val isDet = fd.body.exists(isDeterministic)
-
-      if (!isRecursiveCall && isDet) {
-        instantiation_<:(fd.returnType, t) match {
-          case Some(tpsMap) =>
-            val free = fd.tparams.map(_.tp)
-            val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
-
-            if (tpsMap.size < free.size) {
-              /* Some type params remain free, we want to assign them:
-               *
-               * List[T] => Int, for instance, will be found when
-               * requesting Int, but we need to assign T to viable
-               * types. For that we use list of input types as heuristic,
-               * and look for instantiations of T such that input <?:
-               * List[T].
-               */
-              types.distinct.flatMap { (atpe: TypeTree) =>
-                var finalFree = free.toSet -- tpsMap.keySet
-                var finalMap = tpsMap
-
-                for (ptpe <- tfd.params.map(_.getType).distinct) {
-                  unify(atpe, ptpe, finalFree.toSeq) match { // FIXME!!!! this may allow weird things if lub!=ptpe
-                    case Some(ntpsMap) =>
-                      finalFree --= ntpsMap.map(_._1)
-                      finalMap  ++= ntpsMap
-                    case _ =>
-                  }
-                }
-
-                if (finalFree.isEmpty) {
-                  List(fd.typed(free.map(tp => finalMap.getOrElse(tp, tp))))
-                } else {
-                  Nil
-                }
-              }
-            } else {
-              // All type parameters that used to be free are assigned
-              List(tfd)
-            }
-          case None =>
-            Nil
-        }
-      } else {
-        Nil
-      }
+    val filter = { (fd: FunDef) => 
+      !fd.isSynthetic && 
+      !fd.isInner && 
+      !(exclude contains fd) &&
+      !isRecursiveCall(fd) &&
+      isDet(fd)
     }
 
-    val filter = (fd: FunDef) => fd.isSynthetic || fd.isInner || (exclude contains fd)
+    for (fd <- visibleFunDefsFromMain(prog).toSeq.filter(filter).sortBy(_.id)) yield {
+      val tpds = fd.tparams
 
-    val funcs = visibleFunDefsFromMain(prog).toSeq.filterNot(filter).sortBy(_.id).flatMap(getCandidates)
+      val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
+        val tfd = fd.typed(tpds.map(tpd => tmap(tpd.tp)))
 
-    funcs.map { tfd =>
-      nonTerminal(tfd.params.map(_.getType), FunctionInvocation(tfd, _), Tags.tagOf(tfd.fd, isSafe = false))
+        val subs = fd.params.map(_.getType).map(instantiateType(_, tmap))
+
+        val tag = Tags.tagOf(tfd.fd, isSafe = false)
+
+        ProductionRule[TypeTree, Expr](subs, FunctionInvocation(tfd, _), tag, 1, -1.0)
+      }
+
+      SGenericProd(tpds, fd.returnType, fd.params.map(_.getType), prodBuilder)
     }
   }
 }
