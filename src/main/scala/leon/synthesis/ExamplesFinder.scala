@@ -146,7 +146,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     //println(program.definedClasses)
 
     val evaluator = new CodeGenEvaluator(ctx, program)
-    val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
+    val datagen   = new GrammarDataGen(evaluator, grammars.values(program))
     val solverF   = SolverFactory.getFromSettings(ctx, program)
     val solverDataGen = new SolverDataGen(ctx, program, solverF)
 
@@ -267,7 +267,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           val guard2    = doSubstitute(assignments, cs.optGuard.getOrElse(BooleanLiteral(true)))
           val out2      = doSubstitute(ieMap ++ assignments, cs.rhs)
 
-          val dataGen = new GrammarDataGen(evaluator)
+          val dataGen = new GrammarDataGen(evaluator, grammars.values(program))
           val exs = dataGen.generateFor(freeVars2, guard2, examplesPerCase, 1000)
 
           exs.toSeq map { vals =>

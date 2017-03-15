@@ -17,7 +17,6 @@ import purescala.Extractors._
 import purescala.Types._
 import purescala.TypeOps
 import leon.datagen.GrammarDataGen
-import leon.grammars.ValueGrammar
 import leon.purescala.TypeOps
 import leon.evaluators.AbstractEvaluator
 import leon.purescala.TypeOps
@@ -264,7 +263,7 @@ class InputRecCoverage(fd: FunDef, fds: Set[FunDef])(implicit ctx: LeonContext, 
   /** Returns all instance of the given type */
   private def all(t: TypeTree): Stream[Expr] = {
     val i = FreshIdentifier("i", t)
-    val datagen = new GrammarDataGen(new DefaultEvaluator(ctx, program), ValueGrammar)
+    val datagen = new GrammarDataGen(new DefaultEvaluator(ctx, program), synthesis.grammars.values(program))
     val enumerated_inputs = datagen.generateMapping(Seq(i), BooleanLiteral(true), 10, 10).toStream
     enumerated_inputs.toStream.map(_.head._2)
   }

@@ -71,19 +71,21 @@ object QuestionBuilder {
   }
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
-  object SpecialStringValueGrammar extends ValueGrammar {
-    /*
-    override def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = t match {
-      case StringType =>
-        List(
-          terminal(StringLiteral("")),
-          terminal(StringLiteral("a")),
-          terminal(StringLiteral("\"'\n\t")),
-          terminal(StringLiteral("Lara 2007"))
-        )
-      case _ => super.computeProductions(t)
+  case class SpecialStringValueGrammar(program: Program) extends ExpressionGrammar {
+    override def generateProductions(implicit ctx: LeonContext): Seq[GenericProd] = {
+      val valueGrammar = synthesis.grammars.values(program);
+
+      val prods = valueGrammar.generateProductions.filterNot(_.label.getType == StringType)
+
+      val lab = Label(StringType)
+
+      prods ++ List(
+        terminal(lab, StringLiteral("")),
+        terminal(lab, StringLiteral("a")),
+        terminal(lab, StringLiteral("\"'\n\t")),
+        terminal(lab, StringLiteral("Lara 2007"))
+      )
     }
-    */
   }
   
   /** Make all generic values uniquely identifiable among the final string (no value is a substring of another if possible)
@@ -158,7 +160,7 @@ class QuestionBuilder[T <: Expr](
   private var solutionsToTake = 15
   private var expressionsToTake = 15 // TODO: At least cover the program !
   private var keepEmptyAlternativeQuestions: T => Boolean = Set()
-  private var value_enumerator: ExpressionGrammar = ValueGrammar
+  private var value_enumerator: ExpressionGrammar = Literals
   private var expressionsToTestFirst: Option[Stream[Seq[Expr]]] = None
 
   /** Sets the way to sort questions during enumeration. Not used at this moment. See [[QuestionSortingType]] */

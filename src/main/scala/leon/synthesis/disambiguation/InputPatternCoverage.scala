@@ -8,7 +8,6 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Definitions.{Program, TypedFunDef, ValDef}
 import leon.evaluators.DefaultEvaluator
-import leon.grammars.ValueGrammar
 import leon.datagen.GrammarDataGen
 
 import scala.language.implicitConversions
@@ -211,7 +210,7 @@ class InputPatternCoverage(fd: TypedFunDef)(implicit c: LeonContext, p: Program)
   /** Returns all instance of the given type */
   private def all(t: TypeTree): Stream[Expr] = {
     val i = FreshIdentifier("i", t)
-    val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), ValueGrammar)
+    val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), synthesis.grammars.values(p))
     val enumerated_inputs = datagen.generateMapping(Seq(i), BooleanLiteral(true), 10, 10).toStream
     enumerated_inputs.toStream.map(_.head._2)
   }
