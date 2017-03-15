@@ -181,6 +181,12 @@ div.document h1 {
   line-height: 120%;
 }
 
+div.document ul ul { /* nested list */
+  margin-top: 0em;
+  margin-bottom: 0em;
+  list-style-type: circle;
+}
+
 div.document ul {
   margin: 1.5em;
   list-style-type: square;
