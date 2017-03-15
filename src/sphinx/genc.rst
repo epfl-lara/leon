@@ -16,6 +16,30 @@ of Leon.
   is done using ``malloc`` function family.
 
 
+Requirements
+------------
+
+The following is required from the Scala program fed to GenC:
+
+ - Any functions reachable from the ``main`` function, and the types they use,
+   should be exclusively use the set of features described below, with the
+   exceptions of the code used for verification conditions;
+
+ - The program should be successfully verified with the ``--strict-arithmetic``
+   flag to ensure that arithmetic operations, array accesses, function
+   preconditions and so on, are safely converted into C code.
+
+
+The generated C code should be compiled with a C99-compliant compiler that
+satisfy these extra conditions:
+
+ - ``CHAR_BITS`` is defined to be 8;
+
+ - The ``int8_t``, ``int32_t`` and ``uint32_t`` types are available;
+
+ - And casting from unsigned to signed integer, and vice-versa, is carried out
+   as a regular reintepretation of the binary representation of the integer.
+
 Supported Features
 ------------------
 
@@ -41,19 +65,22 @@ The following raw types and their corresponding literals are supported:
     - ``void``
   * - ``Boolean``
     - ``bool``
-  * - ``Int`` (32-bit Integer)
+  * - ``Byte`` (8-bit integer)
+    - ``int8_t``
+  * - ``Int`` (32-bit integer)
     - ``int32_t``
 
-Additionally, GenC has a partial support for character and string literals made of ASCII characters
-only but it has no API to manipulate strings at the moment: `Char` is map to `char` and `String` is
-map to `char*`.
+Additionally, GenC has a partial support for character and string literals made
+of ASCII characters only but it has no API to manipulate strings at the moment:
+``Char`` is map to ``char`` and ``String`` is mapped to ``char*``.
 
 Tuples
 ^^^^^^
 
-Using ``TupleN[T1, ..., TN]`` results in the creation of a C structure with the same
-fields and types for every combination of any supported type ``T1, ..., TN``. The name of the
-generated structure will be unique and reflect the sequence of types.
+Using ``TupleN[T1, ..., TN]`` results in the creation of a C structure with the
+same fields and matching types for every combination of any supported type
+``T1, ..., TN``. The name of the generated structure will be unique and reflect
+the sequence of types.
 
 
 Arrays
@@ -67,7 +94,8 @@ memory.
 .. NOTE::
 
   Arrays live on the stack and therefore cannot be returned by functions. This limitation is
-  extended to other types having an array as field.
+  extended to other types having an array as field. In some cases, it is acceptable to use the
+  ``@inline`` annotation from Leon's library to workaround this limitation.
 
 
 Arrays can be created using the companion object, e.g. ``Array(1, 2, 3)``, or using the
@@ -77,15 +105,54 @@ Arrays can be created using the companion object, e.g. ``Array(1, 2, 3)``, or us
 Case Classes
 ^^^^^^^^^^^^
 
-The support for classes is restricted to non-recursive case classes for which fields are immutable.
-Instances of such data-types live on the stack.
+The support for classes is restricted to non-recursive ones so that instances
+of such data-types live on the stack. The following language features are available:
+
+  - ``case class`` with mutable ``var`` fields;
+
+  - generics:
+
+    + similarly to ``Array[T]`` or tuples, each combination of type parameters
+      is mapped to a specific C structure;
+
+  - inheritance:
+
+    + when all leaf classes have no fields, the class hierarchy is mapped to a
+      C enumeration,
+
+    + otherwise, a tagged-union is used to represent the class hierarchy in C;
+
+  - external types:
+
+    + see ``@cCode.typedef`` below.
 
 
 Functions
 *********
 
-Functions and nested functions are supported, with access to the variables in their respective
-scopes. However, higher order functions are as of this moment not supported.
+Functions with access to the variables in their respective scopes. However,
+higher order functions are not supported. In some cases, it is possible to
+inline functions to workaround this limitation. The following language features
+are available:
+
+  - top level, nested or member functions:
+
+    + both ``val`` and ``var`` are supported for local variable with the limitations imposed by
+      the :ref:`XLang <xlang>` extensions;
+
+  - generics:
+
+    + each combination of type parameters generates a different, specialised C function;
+
+  - overloading:
+
+    + the Scala compiler is responsible for identifying the correct function at each call site;
+
+  - external functions:
+
+    + see ``@cCode.function`` below;
+
+  - most methods of ``leon.lang.Option`` working with higher-order functions are supported.
 
 Since strings of characters are currently not (fully) available, in order to generate an executable
 program, one has to define a main function without any argument, that can optionally return an
@@ -98,11 +165,6 @@ following form is required in order to preserve the executability of the Scala p
     def main(args: Array[String]): Unit = _main()
 
 
-
-Both ``val`` and ``var`` are supported with the limitations imposed by the :ref:`XLang <xlang>`
-extensions.
-
-
 Constructs
 **********
 
@@ -110,6 +172,9 @@ The idiomatic ``if`` statements such as ``val b = if (x >= 0) true else false`` 
 a sequence of equivalent statements.
 
 Imperative ``while`` loops are also supported.
+
+*Pattern matching* is supported, with the exception of the *Unapply
+Patterns*, as long as it is exempt of side effect.
 
 Assertions, invariant, pre- and post-conditions are not translated into C99 and are simply ignored.
 
@@ -131,7 +196,7 @@ The following operators are supported:
   * - Arithmetic operators over integers
     - ``+``, ``-`` (unary & binary), ``*``, ``/``, ``%``
   * - Bitwise operators over integers
-    - ``&``, ``|``, ``^``, ``~``, ``<<``, ``>>``
+    - ``&``, ``|``, ``^``, ``~``, ``<<``, ``>>>``
 
 
 Custom Conversion
@@ -220,80 +285,13 @@ Similarly to Scala's ``scala.io.StdIn`` and ``scala.io.StdOut``, Leon provides `
 ``leon.io.StdOut``. These two APIs are provided with equivalent C code for easy translation with
 GenC, but are also shaped to allow users to write proofs in a non-deterministic environment.
 
-.. NOTE::
 
-    Because these APIs are expected to evolve in the near future they are not reported here. Please
-    refer to ``libary/leon/io/Std{In,Out}.scala`` more for details.
-
-
-Furthermore, Leon provides ``leon.io.FileOutputStream`` to write data to a file with a C99
-compatible API:
-
-.. code-block:: scala
-
-
-    object FileOutputStream {
-
-      /**
-       * Open a new stream to write into `filename`, erasing any previous
-       * content of the file or creating a new one if needed.
-       **/
-      def open(filename: String): FileOutputStream
-
-    }
-
-    case class FileOutputStream(/** implementation details **/) {
-
-      /**
-       * Close the stream; return `true` on success.
-       *
-       * NOTE The stream must not be used afterward, even on failure.
-       **/
-      def close(): Boolean
-
-      /**
-       * Test whether the stream is opened or not.
-       *
-       * NOTE This is a requirement for all write operations.
-       **/
-      def isOpen(): Boolean
-
-      /**
-       * Append an integer to the stream and return `true` on success.
-       *
-       * NOTE The stream must be opened first.
-       **/
-      def write(x: Int): Boolean
-
-      /**
-       * Append a character to the stream and return `true` on success.
-       *
-       * NOTE The stream must be opened first.
-       **/
-      def write(c: Char): Boolean
-
-      /**
-       * Append a string to the stream and return `true` on success.
-       *
-       * NOTE The stream must be opened first.
-       **/
-      def write(s: String): Boolean
-
-    }
-
+Furthermore, Leon provides ``leon.io.FileInputStream`` to read data and
+``leon.io.FileOutputStream`` to write data to a file with a C99 compatible API.
 
 .. NOTE::
 
-    It is important that you close the stream after it was created or your C application might leak
-    resources.
+    It is important that you close the stream after it was created or your C
+    application might leak resources.
 
-
-Similarly, Leon provides ``leon.io.FileInputStream`` to read data from a file with a C99
-compatible API.
-
-
-.. NOTE::
-
-    Because this API is expected to evolve in the near future it is not reported here. Please
-    refer to ``libary/leon/io/FileInputStream.scala`` for more details.
 
