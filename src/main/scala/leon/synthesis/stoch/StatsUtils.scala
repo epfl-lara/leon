@@ -7,7 +7,7 @@ import leon.synthesis.stoch.Stats.ExprConstrStats
 import purescala.Definitions.Program
 import purescala.Expressions.{Expr, Variable}
 import purescala.{ExprOps, TypeOps}
-import purescala.Types.{FunctionType, TypeParameter, TypeTree}
+import purescala.Types.{ClassType, FunctionType, TypeParameter, TypeTree}
 
 object StatsUtils {
 
@@ -142,8 +142,20 @@ object StatsUtils {
                            canaryInsts: Seq[Variable],
                            expr: Expr
                          ): FunctionType = {
-    val constrType = normalizeType(allTypeParams, exprConstrFuncType(expr)).asInstanceOf[FunctionType]
-    ??? // TODO!
+    var constrType = normalizeType(allTypeParams, exprConstrFuncType(expr)).asInstanceOf[FunctionType]
+    val classTypes = TypeOps.collectPreorder(tt => Seq(tt))(constrType)
+                            .filter(_.isInstanceOf[ClassType])
+                            .map(_.asInstanceOf[ClassType])
+    for (ct <- classTypes) {
+      val ctCanaryInst = canaryInsts.find(v => {
+        v.getType.isInstanceOf[ClassType] && v.getType.asInstanceOf[ClassType].classDef == ct.classDef
+      }).get
+      val ctCanary = canaryTypes(ctCanaryInst.id.name).asInstanceOf[ClassType]
+      val map: Map[TypeTree, TypeTree] = ctCanary.tps.zip(ct.tps).toMap
+      val map2: Map[TypeTree, TypeTree] = Map(ct -> TypeOps.replace(map, ctCanary))
+      constrType = TypeOps.replace(map2, constrType).asInstanceOf[FunctionType]
+    }
+    constrType
   }
 
 }

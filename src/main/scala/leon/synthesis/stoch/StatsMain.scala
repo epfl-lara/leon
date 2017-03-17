@@ -23,12 +23,12 @@ object StatsMain {
                    .map(fname => fname -> canaryTypeFilter(procFiles(fname, canaryFileName)))
                    .toMap.seq
 
-    for ((fname, exprs) <- fase) {
+    /* for ((fname, exprs) <- fase) {
       println(s"Printing interesting expressions from ${fname}")
       for (expr <- exprs) {
         println(s"$fname, ${expr.getType}, ${expr.getType.getClass}, ${expr.getClass}")
       }
-    }
+    } */
 
     val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
     // val ase = fase.values.flatten.toSeq
