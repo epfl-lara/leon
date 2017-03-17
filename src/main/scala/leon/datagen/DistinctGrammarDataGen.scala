@@ -19,7 +19,7 @@ import utils.StreamUtils.cartesianProduct
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-class VaryingGrammarDataGen(eval: Evaluator, grammar: ExpressionGrammar = ValueGrammar) extends GrammarDataGen(eval, grammar) {
+class VaryingGrammarDataGen(eval: Evaluator, grammar: ExpressionGrammar) extends GrammarDataGen(eval, grammar) {
 
   def generateN(tpe: TypeTree, n: Int): Iterator[Seq[Expr]] = {
     if (n == 1) {

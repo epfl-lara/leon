@@ -162,7 +162,7 @@ abstract class STELike(name: String) extends Rule(name) {
         if (useVanuatoo) {
           new VanuatooDataGen(sctx, program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
         } else {
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
+          new GrammarDataGen(evaluator, grammars.values(program)).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
         }
       }
     }

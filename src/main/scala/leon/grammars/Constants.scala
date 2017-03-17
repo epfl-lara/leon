@@ -22,12 +22,14 @@ case class Constants(e: Expr) extends SimpleExpressionGrammar {
     BooleanLiteral(false)
   )
 
-  protected[grammars] def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[SProd] = {
+  def generateSimpleProductions(implicit ctx: LeonContext) = {
     val literals = collect[Expr]{
-      case IsTyped(l:Literal[_], `t`) => Set(l)
+      case l:Literal[_] => Set(l)
       case _ => Set()
     }(e)
 
-    (literals -- excluded map (e => terminal(e, Tags.Constant))).toSeq
+    for (l <- (literals -- excluded).toSeq) yield {
+      sTerminal(l.getType, l, Tags.Constant)
+    }
   }
 }

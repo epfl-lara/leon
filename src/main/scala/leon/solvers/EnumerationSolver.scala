@@ -56,7 +56,7 @@ class EnumerationSolver(val sctx: SolverContext, val program: Program) extends S
     val res = try {
       val evaluator = new DefaultEvaluator(context, program);
       //datagen = Some(new VanuatooDataGen(context, program, sctx.bank))
-      datagen = Some(new GrammarDataGen(evaluator, ValueGrammar))
+      datagen = Some(new GrammarDataGen(evaluator, synthesis.grammars.values(program)))
       if (interrupted) {
         None
       } else {

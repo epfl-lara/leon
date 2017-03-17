@@ -239,7 +239,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
       }
     }
 
-    val dataGen = new GrammarDataGen(evaluator)
+    val dataGen = new GrammarDataGen(evaluator, synthesis.grammars.values(program))
 
     val generatedTests = dataGen
       .generateFor(fd.paramIds, fd.precOrTrue, maxValid, maxEnumerated)

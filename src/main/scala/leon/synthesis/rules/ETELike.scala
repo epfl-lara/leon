@@ -58,7 +58,7 @@ abstract class ETELike(name: String) extends Rule(name) {
           new VanuatooDataGen(hctx, hctx.program).generateFor(p.as, p.pc.toClause, nTests, 3000).map(InExample)
         } else {
           val evaluator = new DualEvaluator(hctx, hctx.program)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
+          new GrammarDataGen(evaluator, grammars.values(hctx.program)).generateFor(p.as, p.pc.toClause, nTests, 1000).map(InExample)
         }
 
         val gi = new GrowableIterable[Example](baseExamples, exampleGenerator)

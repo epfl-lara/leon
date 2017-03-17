@@ -81,6 +81,12 @@ object DefOps {
     }
   }
 
+  def visibleClassDefsFrom(df: Definition)(implicit pgm: Program): Set[ClassDef] = {
+    visibleDefsFrom(df).collect {
+      case cd: ClassDef => cd
+    }
+  }
+
   def funDefsFromMain(implicit pgm: Program): Set[FunDef] = {
     pgm.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
       u.definedFunctions
@@ -90,6 +96,12 @@ object DefOps {
   def visibleFunDefsFromMain(implicit p: Program): Set[FunDef] = {
     p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
       visibleFunDefsFrom(u) ++ u.definedFunctions
+    }
+  }
+
+  def visibleClassDefsFromMain(implicit p: Program): Set[ClassDef] = {
+    p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
+      visibleClassDefsFrom(u) ++ u.definedClasses
     }
   }
 
