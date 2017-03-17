@@ -75,10 +75,10 @@ object Test1 {
   //  ???[List[B]]
   //} ensuring { r => r.size > 0 }
 
-  //def size1[B](x: List[B]): BigInt = {
-  //  require(x.size > 1)
-  //  ???[BigInt]
-  //} ensuring { r => r > 0 }
+  def size1[B](x: List[B]): BigInt = {
+    require(x.size > 1)
+    ???[BigInt]
+  } ensuring { r => r > 0 }
 
   def size2[B](x: List[B]): BigInt = {
     ???[BigInt]

@@ -54,9 +54,11 @@ class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => Meets
     def classify(ex: Example) = if (skipExs.contains(ex)) MeetsSpec.YES else evalCandidate(expansion, ex)
     // val results = exs.par.groupBy(classify).mapValues(_.seq)
     val results = exs.groupBy(classify)
-    Score(results.getOrElse(MeetsSpec.YES, Seq()).toSet,
-      results.getOrElse(MeetsSpec.NO, Seq()).toSet,
-      results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet)
+    Score(
+      results.getOrElse(MeetsSpec.YES,    Seq()).toSet,
+      results.getOrElse(MeetsSpec.NO,     Seq()).toSet,
+      results.getOrElse(MeetsSpec.NOTYET, Seq()).toSet
+    )
   }
 
 }

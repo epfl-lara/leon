@@ -9,6 +9,7 @@ function run {
 
 echo "==================================================================================================================" >> synthesis-report.txt
 # List
+: '
 run testcases/synt2016/synthesis/List/Insert.scala
 run testcases/synt2016/synthesis/List/Delete.scala
 run testcases/synt2016/synthesis/List/Union.scala
@@ -20,6 +21,7 @@ run testcases/synt2016/synthesis/List/ListOfSize.scala
 run testcases/synt2016/synthesis/SortedList/Insert.scala
 run testcases/synt2016/synthesis/SortedList/InsertAlways.scala
 run testcases/synt2016/synthesis/SortedList/Delete.scala
+'
 run testcases/synt2016/synthesis/SortedList/Union.scala
 run testcases/synt2016/synthesis/SortedList/Diff.scala
 run testcases/synt2016/synthesis/SortedList/InsertionSort.scala

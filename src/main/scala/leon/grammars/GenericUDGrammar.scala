@@ -13,8 +13,6 @@ import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
 
-import synthesis.{SynthesisContext, FunctionCallsFinder}
-
 import scala.collection.mutable.ArrayBuffer
 
 object GenericUDGrammar {
@@ -105,8 +103,6 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
         case FunctionInvocation(TypedFunDef(fdc, Seq(ft @ FunctionType(froms, to))), Seq()) if program.library.closure contains fdc =>
 
           val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
-            val lab = tpeToLabel(instantiateType(ft, tmap))
-
             val args = froms.zipWithIndex.map { case (tpe, i) =>
               ValDef(FreshIdentifier("a"+i, instantiateType(tpe, tmap)))
             }

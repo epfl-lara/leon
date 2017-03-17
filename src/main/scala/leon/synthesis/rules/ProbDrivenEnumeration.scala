@@ -169,10 +169,13 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         case EvaluationResults.Successful(value) =>
           Some(value == BooleanLiteral(true))
         case EvaluationResults.RuntimeError(err) =>
-          debug(s"RE testing CE: $err. Example: $ex. Rejecting $expr")
+          debug(s"RE testing CE: $err")
+          debug(s"  Failing example: $ex")
+          debug(s"  Rejecting $expr")
           Some(false)
         case EvaluationResults.EvaluatorError(err) =>
-          debug(s"Error testing CE: $err. Removing $ex")
+          debug(s"Error testing CE: $err")
+          debug(s"  Removing $ex")
           examples = examples diff Seq(ex)
           None
       }

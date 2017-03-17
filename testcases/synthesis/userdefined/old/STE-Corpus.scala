@@ -90,4 +90,22 @@ object Grammar {
   @production(25)
   def cons(b: BigInt, l: List[BigInt]): List[BigInt] = Cons(b, l)
 
+  /** List **/
+
+  @production(209)
+  def vLP[A] = variable[List[A]]
+
+  @production(25)
+  def nP[A]: List[A] = Nil[A]()
+
+  @production(25)
+  def cons[A](h: A, t: List[A]): List[A] = Cons(h, t)
+
+  /** Polymorphic  */
+
+  @production(1)
+  def vp[A] = variable[A]
+  @production(1)
+  @tag("equality")
+  def eqP[A](a: A, b: A) = a == b
 }
