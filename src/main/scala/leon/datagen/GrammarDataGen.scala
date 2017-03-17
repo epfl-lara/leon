@@ -19,7 +19,7 @@ import utils.SeqUtils.cartesianProduct
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar = ValueGrammar) extends DataGenerator {
+class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar) extends DataGenerator {
   implicit val ctx = evaluator.context
 
   // Assume e contains generic values with index 0.

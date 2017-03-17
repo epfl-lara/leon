@@ -6,7 +6,7 @@ import purescala.Definitions.Program
 import purescala.ExprOps
 import purescala.Expressions.Expr
 import purescala.Types.TypeTree
-import PCFGStats._
+import StatsUtils._
 
 object ContextualPCFGStats {
 

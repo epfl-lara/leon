@@ -5,6 +5,7 @@ package synthesis
 
 import leon.grammars._
 import purescala.ExprOps._
+import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import purescala.Extractors.TopLevelAnds
 import purescala.Types.{BooleanType, Int32Type, IntegerType}
@@ -38,5 +39,15 @@ package object grammars {
         recCalls
       ))
     }
+  }
+
+  def values(prog: Program): ExpressionGrammar = {
+    Union(Seq(
+      Literals,
+      Closures(3),
+      CaseClasses(prog),
+      Tuples(5),
+      Sets(2)
+    ))
   }
 }

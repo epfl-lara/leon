@@ -2,20 +2,45 @@ package leon
 package synthesis
 package stoch
 
-import PCFGStats._
-import leon.purescala.Expressions.{Expr, FunctionInvocation, Literal}
-import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
+import StatsUtils._
+import leon.purescala.Expressions.{Expr, Variable}
+import leon.synthesis.stoch.Stats.{ExprConstrStats, ecsAdd}
 import leon.utils.PreprocessingPhase
 
 object StatsMain {
 
   def main(args: Array[String]): Unit = {
-    val ase = args.tail.toSeq.par.flatMap(procFile).seq
+    val canaryFileName = args(1)
+    val canaryExprs = procFiles(canaryFileName)
+    val canaryTypes = canaryExprs.filter(_.isInstanceOf[Variable])
+                                 .map(_.asInstanceOf[Variable])
+                                 .filter(_.id.name.contains("f82c414"))
+                                 .map(v => v.id.name -> v.getType).toMap
+    println("Printing canary types:")
+    canaryTypes.foreach(println)
 
-    val allTypeParams = ase.map(exprConstrFuncType).flatMap(getTypeParams).distinct
-    val tase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
+    val fase = args.drop(2).toSeq.par
+                   .map(fname => fname -> canaryTypeFilter(procFiles(fname, canaryFileName)))
+                   .toMap.seq
+
+    /* for ((fname, exprs) <- fase) {
+      println(s"Printing interesting expressions from ${fname}")
+      for (expr <- exprs) {
+        println(s"$fname, ${expr.getType}, ${expr.getType.getClass}, ${expr.getClass}")
+      }
+    } */
+
+    val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
+    // val ase = fase.values.flatten.toSeq
+
+    /* val preTase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
+    val tase = preTase // if (canaryTypes.isEmpty) preTase else preTase.filterKeys(canaryTypes)
     val tcase = tase.mapValues(_.groupBy(_.getClass))
-    val ecs: ExprConstrStats = tcase.mapValues(_.mapValues(_.groupBy(expr => childTypes(expr).map(tt => normalizeType(allTypeParams, tt)))))
+    val ecs: ExprConstrStats = tcase.mapValues(_.mapValues(_.groupBy(expr => childTypes(expr).map(tt => normalizeType(allTypeParams, tt))))) */
+
+    val ecs: ExprConstrStats = fase.values.map(exprs => groupExprs(allTypeParams, canaryTypes, exprs))
+                                          .fold(Map())(ecsAdd)
+                                          .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
 
     println("Printing coarse expression constructor stats:")
     println(Stats.ecsToStringCoarse(ecs))
@@ -23,7 +48,7 @@ object StatsMain {
     println("Printing expression constructor stats:")
     println(Stats.ecsToString(ecs))
 
-    val allFuncInvokes = ase.filter(_.isInstanceOf[FunctionInvocation])
+    /* val allFuncInvokes = ase.filter(_.isInstanceOf[FunctionInvocation])
                             .map(_.asInstanceOf[FunctionInvocation])
     val tafi = allFuncInvokes.groupBy(fi => normalizeType(allTypeParams, fi.getType))
     val fcs: FunctionCallStats = tafi.mapValues(_.groupBy(_.tfd))
@@ -34,16 +59,14 @@ object StatsMain {
                                        .map(_.asInstanceOf[Literal[_]])
                                        .groupBy(_.value))
     println("Printing literal occurrence statistics:")
-    println(Stats.lsToString(ls))
+    println(Stats.lsToString(ls)) */
   }
 
-  def procFile(fileName: String): Seq[Expr] = {
-    val args = List(fileName)
-    val ctx = Main.processOptions(args)
-    pipeline.run(ctx, args)._2
+  def procFiles(fileNames: String*): Seq[Expr] = {
+    val ctx = Main.processOptions(fileNames.toSeq)
+    pipeline.run(ctx, fileNames.toList)._2
   }
 
-  // def pipeline: Pipeline[List[String], ExprConstrStats] = {
   def pipeline: Pipeline[List[String], Seq[Expr]] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen

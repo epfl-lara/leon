@@ -9,10 +9,8 @@ import purescala.Types._
 import purescala.Definitions._
 import purescala.Expressions._
 
-case object ValueGrammar extends ValueGrammar
-
 /** A grammar of values (ground terms) */
-abstract class ValueGrammar extends SimpleExpressionGrammar {
+case object Literals extends SimpleExpressionGrammar {
 
   def generateSimpleProductions(implicit ctx: LeonContext) = {
     List(
@@ -59,17 +57,4 @@ abstract class ValueGrammar extends SimpleExpressionGrammar {
       sTerminal(UnitType, UnitLiteral(), Tags.Constant)
     )
   }
-
-    /*
-    case cct: CaseClassType =>
-      List(
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct))
-      )
-
-    case act: AbstractClassType =>
-      act.knownCCDescendants.map { cct =>
-        nonTerminal(cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct))
-      }
-    */
-
 }
