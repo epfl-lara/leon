@@ -33,41 +33,60 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 /** Contains the list of all available rules for synthesis */
 object Rules {
 
-  def all: List[Rule] = all(false, true)
-  /** Returns the list of all available rules for synthesis */
-  def all(naiveGrammar: Boolean, introduceRecCalls: Boolean): List[Rule] = {
-    val ste = if(naiveGrammar) UnoptimizedTermExploration else SymbolicTermExploration
-    /*List(
-      //StringRender,
-      //Unification.DecompTrivialClash,
-      //Unification.OccursCheck, // probably useless
-      //Disunification.Decomp,
-      //ADTDual,
+  val probwiseOnly = List(
+    ProbDrivenEnumeration
+  )
+
+  val manual = List(
+    OnePoint,
+    Ground,
+    UnusedInput,
+    EquivalentInputs,
+    UnconstrainedOutput,
+    IntroduceRecCalls,
+    rules.Assert,
+    DetupleInput,
+
+    OptimisticGround,
+    //HOFDecomp,
+
+    SymbolicTermExploration,
+    ProbDrivenEnumeration,
+    //ExampleGuidedTermExploration,
+
+    InputSplit,
+    GenericTypeEqualitySplit,
+    InequalitySplit,
+    ADTSplit
+  )
+
+  def default(introduceRecCalls: Boolean, probwise: Boolean): List[Rule] = {
+    val enumeration = if (probwise) ProbDrivenEnumeration else SymbolicTermExploration
+    val recCalls = if (introduceRecCalls) List(IntroduceRecCalls) else Nil
+    List(
       OnePoint,
       Ground,
-      //CaseSplit,
-      //IndependentSplit,
-      //HOFDecomp,
-      //ExampleGuidedTermExploration,
-      //BottomUpETE,
-      //IfSplit,
-      InputSplit,
       UnusedInput,
       EquivalentInputs,
       UnconstrainedOutput,
-      ste,
-      ProbDrivenEnumeration,
-      OptimisticGround,
-      GenericTypeEqualitySplit,
-      InequalitySplit,
+      IntroduceRecCalls,
       rules.Assert,
       DetupleInput,
-      ADTSplit,
-      //InnerCaseSplit
-      IntroduceRecCalls
-    )// ++ introduceRecCalls.option(IntroduceRecCalls)*/
-    List(ProbDrivenEnumeration)
+
+      OptimisticGround,
+      //HOFDecomp,
+
+      enumeration,
+
+      InputSplit,
+      GenericTypeEqualitySplit,
+      InequalitySplit,
+      ADTSplit
+    ) ++ recCalls
   }
+
+  def default: List[Rule] = default(true, false)
+
 }
 
 /** When applying this to a [SearchContext] it returns a wrapped stream of solutions or a new list of problems. */
@@ -129,7 +148,7 @@ case class SolutionBuilderCloser(osol: Option[Solution] = None, extraCost: Cost 
 sealed abstract class RuleApplication
 /** Result of applying rule instantiation, finished, resulting in a stream of solutions */
 case class RuleClosed(solutions: Stream[Solution]) extends RuleApplication
-/** Result of applying rule instantiation, resulting is a nnew list of problems */
+/** Result of applying rule instantiation, resulting is a new list of problems */
 case class RuleExpanded(sub: List[Problem])        extends RuleApplication
 
 object RuleClosed {

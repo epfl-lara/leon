@@ -26,9 +26,9 @@ case class Closures(maxArgs: Int = 4) extends ExpressionGrammar {
 
         val rlab = Label(instantiateType(to, tmap)).withAspect(aspects.ExtraTerminals(args.map(_.toVariable).toSet))
 
-        ProductionRule[Label, Expr](Seq(rlab), { case Seq(body) =>
-          Lambda(args, body)
-        }, Tags.Top, cost = 1, 1)
+        ProductionRule[Label, Expr](
+          Seq(rlab), { case Seq(body) => Lambda(args, body) }, Tags.Top, cost = 1, logProb = -1.0
+        )
       }
 
       GenericProd(tps, Label(FunctionType(froms, to)), Seq(to),  prodBuilder)

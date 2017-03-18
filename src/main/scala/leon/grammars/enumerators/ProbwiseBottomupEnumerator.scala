@@ -32,7 +32,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
 
   protected case class StreamElem(rule: Rule, subs: Seq[StreamElem]){
     val r: R = rule.builder(subs map (_.r))
-    val logProb: Double = subs.map(_.logProb).sum + rule.weight
+    val logProb: Double = subs.map(_.logProb).sum + rule.logProb
     lazy val sig = mkSig(this)
   }
 

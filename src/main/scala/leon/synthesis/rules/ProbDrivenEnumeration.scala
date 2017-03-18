@@ -16,15 +16,21 @@ import purescala.Common.Identifier
 import utils.MutableExpr
 import solvers._
 
-object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
+abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
+
+  def rootLabel(p: Problem, sctx: SynthesisContext): Label
+
+  private case object UnsatPCException extends Exception("Unsat. PC")
 
   class NonDeterministicProgram(
     outerCtx: SearchContext,
     outerP: Problem,
-    enum: String
+    optimize: Boolean
   ) {
 
     import outerCtx.reporter._
+
+    val solverTo = 3000
 
     // Create a fresh solution function with the best solution around the
     // current STE as body
@@ -44,6 +50,36 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       }(fd.fullBody)
 
       fd
+    }
+
+    val outerExamples = {
+      val fromProblem = outerP.qebFiltered(outerCtx).eb.examples
+      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
+      // We are forced to take all in-out examples
+      if (inOut.nonEmpty) inOut
+      // otherwise we prefer one example
+      else if (fromProblem.nonEmpty) fromProblem.take(1)
+      else {
+        // If we have none, generate one with the solver
+        val solverF = SolverFactory.getFromSettings(outerCtx, outerCtx.program).withTimeout(solverTo)
+        val solver  = solverF.getNewSolver()
+        try {
+          solver.assertCnstr(outerP.pc.toClause)
+          solver.check match {
+            case Some(true) =>
+              val model = solver.getModel
+              Seq(InExample(outerP.as map (id => model.getOrElse(id, simplestValue(id.getType)))))
+            case None =>
+              warning("Could not solve path condition")
+              Seq(InExample(outerP.as.map(_.getType) map simplestValue))
+            case Some(false) =>
+              warning("PC is not satisfiable.")
+              throw UnsatPCException
+          }
+        } finally {
+          solverF.reclaim(solver)
+        }
+      }
     }
 
     // Create a program replacing the synthesis source by the fresh solution
@@ -82,46 +118,30 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         pc = outerP.pc.map(outerToInner.transform),
         phi = outerToInner.transform(outerP.phi),
         xs = outerP.xs.map(outerToInner.transform),
-        eb = outerP.eb.flatMap{ ex => List(ex.map(outerToInner.transform(_)(Map.empty))) }
+        eb = ExamplesBank(outerExamples map (_.map(outerToInner.transform(_)(Map.empty))), Seq())
       )
     }
 
+    var examples = p.eb.examples
+
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
-    val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optSTEOptTimeout)
-    val maxGen        = 100000000 // Maximum generated # of programs
-    val maxValidated  = 1000000
-    val solverTo      = 3000
+    val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optUntrusted)
+    // Limit number of programs
+    val (maxGen, maxValidated) = {
+      import SynthesisPhase._
+      if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
+        (100000000, 1000000) // Run forever in probwise-only mode
+      else
+        (10000, 100)
+    }
+
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
-    val outType    = tupleTypeWrap(p.xs map (_.getType))
-    val topLabel   = Label(outType)//, List(Tagged(Tags.Top, 0, None)))
+    val topLabel   = rootLabel(p, sctx)
     val grammar    = grammars.default(sctx, p)
-    var examples   = {
-      val fromProblem = p.qebFiltered.eb.examples
-      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
-      // We are forced to take all in-out examples
-      if (inOut.nonEmpty) inOut
-      // otherwise we prefer one example
-      else if (fromProblem.nonEmpty) fromProblem.take(1)
-      else {
-        // If we have none, generate one with the solver
-        val solver = solverF.getNewSolver()
-        solver.assertCnstr(p.pc.toClause)
-        solver.check match {
-          case Some(true) =>
-            val model = solver.getModel
-            Seq(InExample(p.as map model))
-          case None =>
-            warning("Could not solve path condition")
-            Seq(InExample(p.as.map(_.getType) map simplestValue))
-          case Some(false) =>
-            warning("PC is not satisfiable.")
-            throw new IllegalArgumentException
-        }
-      }
-    }
+
     debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
 
@@ -149,18 +169,20 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         case EvaluationResults.Successful(value) =>
           Some(value == BooleanLiteral(true))
         case EvaluationResults.RuntimeError(err) =>
-          debug(s"RE testing CE: $err. Example: $ex. Rejecting $expr")
+          debug(s"RE testing CE: $err")
+          debug(s"  Failing example: $ex")
+          debug(s"  Rejecting $expr")
           Some(false)
         case EvaluationResults.EvaluatorError(err) =>
-          debug(s"Error testing CE: $err. Removing $ex")
+          debug(s"Error testing CE: $err")
+          debug(s"  Removing $ex")
           examples = examples diff Seq(ex)
           None
       }
     }
 
+    // Do not set the solution to expr
     def rawEvalCandidate(expr: Expr, ex: Example) = {
-      setSolution(expr)
-
       def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
         case ((id, v), bd) => let(id, v, bd)
       }
@@ -180,11 +202,15 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
       }
     }
 
-    val restartable = enum == "eqclasses" || enum == "topdown-opt"
+    /*val restartable = enum == "eqclasses" || enum == "topdown-opt"
 
     def mkEnum = (enum match {
-      case "eqclasses" => new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
-      case "bottomup"  => new ProbwiseBottomupEnumerator(grammar, topLabel)
+      case "eqclasses" =>
+        ??? // This is disabled currently
+        new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
+      case "bottomup"  =>
+        ??? // This is disabled currently
+        new ProbwiseBottomupEnumerator(grammar, topLabel)
       case _ =>
         val disambiguate = enum match {
           case "topdown" => false
@@ -195,7 +221,17 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
         }
         val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, disambiguate)
-    }).iterator(topLabel)
+    }).iterator(topLabel)*/
+
+
+    val restartable = optimize
+
+    def mkEnum = {
+      val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
+      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, optimize)
+    }.iterator(topLabel)
+
+
     var it = mkEnum
     debug("Grammar:")
     debug(grammar.asString)
@@ -252,7 +288,7 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
     def solutionStream = {
       timers.cegisIter.start()
       var sol: Option[Solution] = None
-      while (sol.isEmpty && it.hasNext) {
+      while (!sctx.interruptManager.isInterrupted && sol.isEmpty && it.hasNext) {
         val expr = it.next
         debug(s"Testing $expr")
         sol = (if (examples.exists(testCandidate(expr)(_).contains(false))) {
@@ -271,18 +307,37 @@ object ProbDrivenEnumeration extends Rule("Prob. driven enumeration"){
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val enum = hctx.findOptionOrDefault(SynthesisPhase.optEnum)
+    val enum = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
 
-    List(new RuleInstantiation(s"Prob. driven enum. ($enum)") {
+    List(new RuleInstantiation(s"$name (opt = $enum)") {
       def apply(hctx: SearchContext): RuleApplication = {
         try {
           val ndProgram = new NonDeterministicProgram(hctx, p, enum)
           RuleClosed (ndProgram.solutionStream)
         } catch {
-          case _ : IllegalArgumentException =>
+          case UnsatPCException =>
             RuleFailed()
         }
       }
     })
+  }
+}
+
+object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
+  import leon.grammars.Tags
+  import leon.grammars.aspects.Tagged
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    Label(p.outType)//.withAspect(Tagged(Tags.Top, 0, None))
+  }
+}
+
+object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob. driven similar term enum.") {
+  import purescala.Extractors.TopLevelAnds
+  import leon.grammars.aspects._
+  import Witnesses.Guide
+  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+    val TopLevelAnds(clauses) = p.ws
+    val guides = clauses.collect { case Guide(e) => e }
+    Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext)).withAspect(DepthBound(2))
   }
 }

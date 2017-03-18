@@ -59,6 +59,25 @@ case class LeonLongOptionDef(name: String, description: String, default: Long, u
   val parser = longParser
 }
 
+case class LeonEnumOptionDef[E <: Enumeration](name: String, desc: String, enum: E, default: E#Value, usageRhs: String) extends LeonOptionDef[E#Value] {
+  private val namesMap = enum.values.map(v => v.toString.toLowerCase -> v).toMap
+  val description = desc + s". Available: ${namesMap.keys.mkString(", ")}"
+  val parser = namesMap.get _
+}
+
+/* Maybe like this is better?
+object LeonEnumOptionDef {
+  def fromEnum[E <: Enumeration](enum: E)(nm: String, desc: String, dft: enum.Value, use: String): LeonOptionDef[enum.Value] =
+    new LeonOptionDef[enum.Value] {
+      private val namesMap = enum.values.map(v => v.toString.toLowerCase -> v).toMap
+      val parser: OptionParser[enum.Value] = namesMap.get(_)
+      val usageRhs: String = use
+      val default: enum.Value = dft
+      val description: String = desc + s". Available: ${namesMap.keys.mkString(", ")}"
+      val name: String = nm
+    }
+}
+*/
 
 class LeonOption[+A] private (val optionDef: LeonOptionDef[A], val value: A) {
   override def toString = s"--${optionDef.name}=$value"

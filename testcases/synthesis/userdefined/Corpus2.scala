@@ -168,7 +168,7 @@ object Grammar {
   // BigInt(5283)
   
   @production(2445)
-  def vrBigInt = Variable[BigInt]
+  def vrBigInt = variable[BigInt]
 
   @production(479)
   def zeroigInt = BigInt(0)
@@ -205,7 +205,7 @@ object Grammar {
   @production(287)
   def setUnionInt(s1: Set[Int], s2: Set[Int]) = s1 ++ s2
   @production(44)
-  def vrSetInt: Variable[Set[Int]]
+  def vrSetInt = variable[Set[Int]]
   @production(1)
   def setIfInt(cond: Boolean, s1: Set[Int], s2: Set[Int]) = if (cond) s1 else s2
   @production(1)
@@ -221,7 +221,7 @@ object Grammar {
   @production(28)
   def setUnionBigInt(s1: Set[BigInt], s2: Set[BigInt]) = s1 ++ s2
   @production(16)
-  def vrSetBigInt = Variable[Set[BigInt]]
+  def vrSetBigInt = variable[Set[BigInt]]
   @production(2)
   def setAddBigInt(s1: Set[BigInt], v: BigInt) = s1 + v
   @production(1)
@@ -234,13 +234,13 @@ object Grammar {
   // TODO! Recompute these numbers! They are the same as those for List[BigInt]!
 
   @production(50)
-  def vrListInt = Variable[List[Int]]
+  def vrListInt = variable[List[Int]]
   // TODO! Function invocation
   @production(1)
   def ifListInt(cond: Boolean, l1: List[Int], l2: List[Int]) = if (cond) l1 else l2
   @production(1)
-  def matchListInt(l1: List[Int], l2: List[Int], f: Int => List[Int] => List[Int]) = l1 match {
-    case Nil => l2
+  def matchListInt(l1: List[Int], l2: List[Int], f: (Int, List[Int]) => List[Int]) = l1 match {
+    case Nil() => l2
     case Cons(hd, tl) => f(hd, tl)
   }
 
@@ -248,13 +248,13 @@ object Grammar {
   // List[BigInt](73)
 
   @production(50)
-  def vrListBigInt = Variable[List[BigInt]]
+  def vrListBigInt = variable[List[BigInt]]
   // TODO! Function invocation
   @production(1)
   def ifListBigInt(cond: Boolean, l1: List[BigInt], l2: List[BigInt]) = if (cond) l1 else l2
   @production(1)
-  def matchListBigInt(l1: List[BigInt], l2: List[BigInt], f: BigInt => List[BigInt] => List[BigInt]) = l1 match {
-    case Nil => l2
+  def matchListBigInt(l1: List[BigInt], l2: List[BigInt], f: (BigInt, List[BigInt]) => List[BigInt]) = l1 match {
+    case Nil() => l2
     case Cons(hd, tl) => f(hd, tl)
   }
 

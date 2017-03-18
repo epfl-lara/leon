@@ -4,6 +4,8 @@ import leon.lang.synthesis._
 import leon.grammar._
 import leon.annotation.grammar._
 
+// @mk: We cannot solve this, while the 5 case is easy.
+// I understand about scaling issues but this seems weird.
 object Polynomial {
   
   @production(7)

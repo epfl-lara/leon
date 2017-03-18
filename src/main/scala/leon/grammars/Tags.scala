@@ -66,7 +66,6 @@ object Tags {
   def tagOf(cct: CaseClassType) = Constructor(cct.fields.isEmpty)
   def tagOf(fd: FunDef, isSafe: Boolean) = FunCall(fd.methodOwner.isDefined, isSafe)
 
-  import Tags._
   // Tags to avoid depending on parent aspect
   val excludedTags = Map[(Tag, Int), Set[Tag]](
     (And,   0) -> Set(And, BooleanC),

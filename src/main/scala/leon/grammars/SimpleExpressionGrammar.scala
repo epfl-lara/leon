@@ -25,7 +25,7 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
   def tpeToLabel(tpe: TypeTree): Label = Label(tpe)
 
   def convertProd(p: SProd): Prod = {
-    ProductionRule[Label, Expr](p.subTrees.map(tpeToLabel), p.builder, p.tag, p.cost, p.weight)
+    ProductionRule[Label, Expr](p.subTrees.map(tpeToLabel), p.builder, p.tag, p.cost, p.logProb)
   }
 
   final def generateProductions(implicit ctx: LeonContext) = {
@@ -43,9 +43,9 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       builder: => Expr,
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
-      weight: Double = -1.0) = {
+      logProb: Double = -1.0) = {
 
-      SGenericProd(Nil, label, Nil, tmap => ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight))
+    SGenericProd(Nil, label, Nil, tmap => ProductionRule[TypeTree, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, logProb))
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
@@ -55,9 +55,9 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       builder: (Seq[Expr] => Expr),
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
-      weight: Double = -1.0) = {
+      logProb: Double = -1.0) = {
 
-      SGenericProd(Nil, label, Nil, tmap => ProductionRule[TypeTree, Expr](subs, builder, tag, cost, weight))
+    SGenericProd(Nil, label, Nil, tmap => ProductionRule[TypeTree, Expr](subs, builder, tag, cost, logProb))
   }
 
   def sGeneric(
@@ -69,10 +69,11 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       cost: Int = 1,
       weight: Double = -1.0) = {
 
-      val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
-        ProductionRule[TypeTree, Expr](subs.map(instantiateType(_, tmap)), builder, tag, cost, weight)
-      }
+    val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
+      ProductionRule[TypeTree, Expr](subs.map(instantiateType(_, tmap)), builder, tag, cost, weight)
+    }
 
-      SGenericProd(tps, label, subs, prodBuilder)
+    SGenericProd(tps, label, subs, prodBuilder)
   }
+
 }

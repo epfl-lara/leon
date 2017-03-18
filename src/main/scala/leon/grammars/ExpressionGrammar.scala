@@ -5,12 +5,10 @@ package grammars
 
 import purescala.Expressions._
 import purescala.Definitions._
-import purescala.ExprOps._
 import purescala.TypeOps._
 import purescala.Types._
 import purescala.Common._
 import utils.MapUtils
-import Tags._
 
 case class GenericProd(
   tparams: Seq[TypeParameterDef],
@@ -28,13 +26,13 @@ abstract class ExpressionGrammar {
 
   private[this] var genericProductions: Seq[GenericProd] = Nil
 
-  private[this] var productions:  Map[Label, Seq[Prod]] = Map()
-  private[this] var productionsCache:  Map[Label, Seq[Prod]] = Map()
+  private[this] var productions:      Map[Label, Seq[Prod]] = Map()
+  private[this] var productionsCache: Map[Label, Seq[Prod]] = Map()
 
   /** The (cached) list of production rules for this grammar for a given nonterminal.
     *
     * @param lab The nonterminal for which production rules will be generated
-    * @note This is the cached version of [[computeProductions]]. Clients should use this method.
+    * @note This is the cached version of [[generateProductions]]. Clients should use this method.
     */
 
   def getProductions(lab: Label)(implicit ctx: LeonContext) = {
@@ -66,7 +64,6 @@ abstract class ExpressionGrammar {
   def instantiateGenerics(lab: Label, maxSize: Int)(implicit ctx: LeonContext) = {
 
     val tpe = lab.getType
-    val knownTypes = productions.keySet.map(_.getType)
 
     //println
     //println("%"*80);
@@ -85,7 +82,7 @@ abstract class ExpressionGrammar {
 
       instantiation_<:(gp.label.tpe, tpe) match {
         case Some(tmap0) =>
-          val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq;
+          val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq
 
           val tmaps = if (free.nonEmpty) {
             // Instantiate type parameters not constrained by the return value
@@ -141,8 +138,6 @@ abstract class ExpressionGrammar {
   private[this] var minCosts = Map[TypeTree, Int]()
   private[this] var newTypes = Set[TypeTree]()
 
-  private[this] def types = minCosts.keySet
-
   /**
    * Instantiates a type pattern, under constraints:
    * pattern: e.g. (T, U, List[T,U])
@@ -162,7 +157,7 @@ abstract class ExpressionGrammar {
     val targetSize = freeTps.size + tmap.size
 
     if (quota <= 0) {
-      return Map();
+      return Map()
     }
 
     def availableTypes(quota: Int) = {
@@ -196,7 +191,7 @@ abstract class ExpressionGrammar {
       tmaps = discover(f, tmaps)
     }
 
-    var res = Map[Map[TypeParameter, TypeTree], Int]();
+    var res = Map[Map[TypeParameter, TypeTree], Int]()
 
     for ((tmap, qLeft) <- tmaps if tmap.size == targetSize) {
       val mc = quota - qLeft
@@ -226,8 +221,6 @@ abstract class ExpressionGrammar {
         //println(" - |"+mc+"|  "+t.asString)
       }
       //println
-
-      var res = Set[TypeTree]()
 
       for(gp <- genericProductions) {
         //println("Looking at "+Console.BOLD+gp.retType.asString+Console.RESET+" ::= "+genProdAsString(gp))
@@ -284,23 +277,22 @@ abstract class ExpressionGrammar {
     }
   }
 
-  private def normalizeWeights(prods: Seq[Prod]): Seq[Prod] = {
-    val ws = prods map (_.weight)
-
-    if (ws.isEmpty) {
+  private def computeCostsAndLogProbs(prods: Seq[Prod]): Seq[Prod] = {
+    if (prods.isEmpty) {
       Nil
-    } else if (ws.size == 1) {
-      prods.map(_.copy(weight = -1.0))
+    } else if (prods.size == 1) {
+      prods.map(_.copy(cost = 1))
     } else {
-      val sum = ws.sum
-      // log(prob) = log(weight/Σ(weights))
-      val logProbs = ws.map(w => Math.log(w/sum))
+      val costs = prods map (_.cost)
+      val totalCost = costs.sum
+      // log(prob) = log(cost/Σ(costs))
+      val logProbs = costs.map(cost => Math.log(cost.toDouble/totalCost.toDouble))
       val maxLogProb = logProbs.max
 
       for ((p, logProb) <- prods zip logProbs) yield {
         // cost = normalized log prob.
         val cost = (logProb/maxLogProb).round.toInt
-        p.copy(cost = cost, weight = logProb)
+        p.copy(cost = cost, logProb = logProb)
       }
     }
   }
@@ -311,9 +303,9 @@ abstract class ExpressionGrammar {
   }
 
 
-  private[this] var initialized = false;
+  private[this] var initialized = false
 
-  private[this] var maxSizeFor = Map[TypeTree, Int]().withDefaultValue(0);
+  private[this] var maxSizeFor = Map[TypeTree, Int]().withDefaultValue(0)
 
   private def generateProductions(lab: Label)(implicit ctx: LeonContext): Seq[Prod] = {
     val tpe = lab.getType
@@ -345,7 +337,7 @@ abstract class ExpressionGrammar {
 
     val prods3 = filterImpossibleCosts(lab, prods2)
 
-    val prods4 = normalizeWeights(prods3)
+    val prods4 = computeCostsAndLogProbs(prods3)
 
     prods4
   }
@@ -359,7 +351,7 @@ abstract class ExpressionGrammar {
       FreshIdentifier(Console.BOLD + t.asString + Console.RESET, t.getType).toVariable
     }
 
-    f"(${p.cost}%3d, ${p.weight}%2.3f) " + lineize(p.builder(subs).asString.lines.toSeq)
+    f"(${p.cost}%3d, ${p.logProb}%2.3f) " + lineize(p.builder(subs).asString.lines.toSeq)
   }
 
   def genProdAsString(gp: GenericProd)(implicit ctx: LeonContext): String = {
@@ -367,7 +359,7 @@ abstract class ExpressionGrammar {
 
     val prod = gp.builder(tmap)
 
-    val tps = Console.GREEN+gp.tparams.map(_.asString).mkString("[", ",", "]")+Console.RESET;
+    val tps = Console.GREEN+gp.tparams.map(_.asString).mkString("[", ",", "]")+Console.RESET
 
     tps+" "+prodAsString(prod)
   }
@@ -393,7 +385,7 @@ abstract class ExpressionGrammar {
       }
     }
 
-    val res = new scala.collection.mutable.StringBuilder();
+    val res = new scala.collection.mutable.StringBuilder()
 
     res.append("\n --- Productions: ---\n")
 
@@ -409,9 +401,7 @@ abstract class ExpressionGrammar {
     }
 
     for ((tpe, ps) <- genericProductions.groupBy(_.label.tpe)) {
-
       val lhs = f"${Console.BOLD}${tpe.asString}%50s${Console.RESET} ::= "
-
       res.append(lhs + lineize(ps.map(genProdAsString))+"\n")
     }
 
@@ -439,7 +429,7 @@ abstract class ExpressionGrammar {
       cost: Int = 1,
       weight: Double = -1.0) = {
 
-      GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight))
+    GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](Nil, { (subs: Seq[Expr]) => builder }, tag, cost, weight))
   }
 
   /** Generates a [[ProductionRule]] with nonterminal symbols */
@@ -451,6 +441,6 @@ abstract class ExpressionGrammar {
       cost: Int = 1,
       weight: Double = -1.0) = {
 
-      GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](subs, builder, tag, cost, weight))
+    GenericProd(Nil, label, Nil, tmap => ProductionRule[Label, Expr](subs, builder, tag, cost, weight))
   }
 }

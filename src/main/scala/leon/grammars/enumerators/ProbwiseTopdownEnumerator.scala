@@ -1,26 +1,21 @@
+/* Copyright 2009-2017 EPFL, Lausanne */
+
 package leon
 package grammars
 package enumerators
 
-import leon.grammars.enumerators.CandidateScorer.Score
-import leon.purescala.Common.FreshIdentifier
-import leon.synthesis.{Example, SynthesisContext, SynthesisPhase}
-import leon.utils.{DedupedPriorityQueue, NoPosition}
-import leon.purescala.Expressions.{Expr, Variable}
+import CandidateScorer.Score
+import purescala.Expressions.Expr
+import purescala.Common.FreshIdentifier
+import synthesis.{Example, SynthesisContext, SynthesisPhase}
+import utils.{DedupedPriorityQueue, NoPosition}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 object ProbwiseTopdownEnumerator {
-  private val idMap = mutable.Map[Expansion[Label, Expr], Variable]()
-
-  val ntWrap = (e: Expansion[Label, Expr]) => {
-    idMap.getOrElse(e, {
-      val tp = e.nt.getType
-      val v = FreshIdentifier(Console.BOLD + tp.toString + Console.RESET, tp).toVariable
-      idMap += e -> v
-      v
-    })
+  val ntWrap = (e: NonTerminalInstance[Label, Expr]) => {
+    FreshIdentifier.forceId(Console.BOLD + e.nt.asString(LeonContext.empty) + Console.RESET, 0, e.nt.tpe).toVariable
   }
 }
 
@@ -68,7 +63,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                                                         maxGen: Int,
                                                         maxOutput: Int,
                                                         disambiguate: Boolean,
-                                                        ntWrap: Expansion[NT, R] => R
+                                                        ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit sctx: SynthesisContext) {
 
   import sctx.reporter._
@@ -97,31 +92,47 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   val probLimit = -2000000
 
   // Filter out seen expressions
+
+  // A map from a signature of running on examples to an expansion that matches.
+  // We consider expansions with equal signature identical
   protected val sigToNormalMemo = mutable.Map[(NT, Sig), Expansion[NT, R]]()
+  // A map from an expansion to a representative that was found to be identical
   protected val normalizeMemo = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
   def expRedundant(e: Expansion[NT, R]) = normalizeMemo(e)
 
   // Disambiguate expressions by signature
   def sig(r: R): Option[Sig]
 
+  // Returns normalized version of e, or None if it fails
   protected def normalize(e: Expansion[NT, R]): Option[Expansion[NT, R]] = {
-    Some(e match {
-      case NonTerminalInstance(_) => e
+    import leon.utils.CollectionUtils.MutableMapUtils
+    e match {
+      case NonTerminalInstance(_) =>
+        // non-terminal instances are incomplete, thus not normalizable
+        Some(e)
       case ProdRuleInstance(nt, rule, children) =>
-        normalizeMemo.getOrElseUpdate(e, {
-          lazy val normalizedChildren = children.map(normalize(_).getOrElse(return None))
+        // If we have representative for this expression, return it
+        normalizeMemo.orElseUpdate(e, {
+          // Otherwise...
+          // Lazily make a normalized version of this based on the normalized versions of its children
+          lazy val fromNormalizedChildren = children.mapM(normalize).map(ProdRuleInstance(nt, rule, _))
           if (!e.complete) {
-            ProdRuleInstance(nt, rule, normalizedChildren)
+            // If e is not complete, we cannot compute signature,
+            // so reconstructing from the normalized children is best we can do.
+            fromNormalizedChildren
           } else {
-            lazy val normalE = ProdRuleInstance(nt, rule, normalizedChildren)
-            sig(e.produce) match {
-              case Some(theSig) => sigToNormalMemo.getOrElseUpdate((e.nt, theSig), normalE)
-              case None =>
-                return None//normalE // TODO! Confirm!
+            // If e is complete expression...
+
+            // Calculate its signature (this may fail)
+            sig(e.produce).flatMap { theSig =>
+              // Look up in the signature map for an expansion with the same signature
+              // If not found, fromNormalizedChildren will be the representative for this class.
+              // Add it to the map and return it
+              sigToNormalMemo.orElseUpdate( (e.nt, theSig), fromNormalizedChildren)
             }
           }
         })
-    })
+    }
   }
 
   /**
@@ -207,6 +218,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       }
       if (worklist.nonEmpty) {
         val elem = worklist.head
+        // @mk: DIRTY HACK! This will set the solution for us for the purpose of recursive calls
+        //      to be later used by normalization
         lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = true)
         lazy val compliesTests = {
           val res = score.noExs.isEmpty
@@ -235,36 +248,38 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           if (elem.logProb >= probLimit && compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
+            // @mk: Dirty hack: This relies on the previous call to scorer.score for recursive calls
             val normalExpansionOpt = if (disambiguate) normalize(elem.expansion) else Some(elem.expansion)
-            if (normalExpansionOpt.isDefined) {
-              val normalExpansion = normalExpansionOpt.get
-              val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
-              ifVerboseDebug { printer =>
-                if (elem.expansion != normalExpansion) {
-                  printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+            normalExpansionOpt match {
+              case Some(normalExpansion) =>
+                val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
+                ifVerboseDebug { printer =>
+                  if (elem.expansion != normalExpansion) {
+                    printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+                  }
                 }
-              }
 
-              // Then compute its immediate descendants and put them back in the worklist
-              val newElems = expandNext(normalElem, score)
-              worklist.enqueueAll(newElems)
+                // Then compute its immediate descendants and put them back in the worklist
+                val newElems = expandNext(normalElem, score)
+                verboseDebug(s"Expanded ${newElems.size} more elems")
+                worklist.enqueueAll(newElems)
 
-              // And debug some
-              ifVerboseDebug { printer =>
-                newElems foreach { e =>
-                  printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+                // And debug some
+                ifVerboseDebug { printer =>
+                  newElems foreach { e =>
+                    printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
+                  }
                 }
-              }
-              ifDebug { printer =>
-                if (worklist.size >= 2 * lastPrint) {
-                  printer(s"Worklist size: ${worklist.size}")
-                  printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                    s"${EnumeratorStats.partialEvalRejectionCount}")
-                  lastPrint = worklist.size
+                ifDebug { printer =>
+                  if (worklist.size >= 2 * lastPrint) {
+                    printer(s"Worklist size: ${worklist.size}")
+                    printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
+                      s"${EnumeratorStats.partialEvalRejectionCount}")
+                    lastPrint = worklist.size
+                  }
                 }
-              }
-            } else {
-              debug(elem.expansion + " failed evaluation")
+              case None =>
+                debug(elem.expansion + " failed evaluation")
             }
           } else {
             // The element has failed partial evaluation ...
@@ -301,7 +316,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           expansionPreNormal = normalizeMemo.getOrElse(expansion, expansion)
           // expansionPreNormal = expansion
         } yield {
-          val logProbPrime = elem.logProb + rule.weight
+          val logProbPrime = elem.logProb + rule.logProb
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansionPreNormal, logProbPrime, horizonPrime, elemScore, Some(elem))
         }

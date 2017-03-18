@@ -145,7 +145,7 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
 
       if (!exprs.contains(exp)) {
         info("Productions: ")
-        g.printProductions(info(_))
+        g.asString
 
         fail(s"Unable to find ${exp.asString} in SimilarTo(${from.asString})")
       }

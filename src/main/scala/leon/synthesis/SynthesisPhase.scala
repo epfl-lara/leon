@@ -8,39 +8,67 @@ import purescala.ScalaPrinter
 import purescala.Definitions.{FunDef, Program}
 import leon.utils._
 import graph._
-import leon.grammars.enumerators.EnumeratorStats
 
 object SynthesisPhase extends UnitPhase[Program] {
   val name        = "Synthesis"
   val description = "Partial synthesis of \"choose\" constructs. Also used by repair during the synthesis stage."
 
-  val optManual       = LeonStringOptionDef("manual", "Manual search", default = "", "[cmd]")
+  // General options
   val optCostModel    = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
   val optDerivTrees   = LeonFlagOptionDef("derivtrees", "Generate derivation trees", false)
   val optAllowPartial = LeonFlagOptionDef("partial", "Allow partial solutions", true)
-  val optIntroduceRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of STE", true)
-  val optEnum         = LeonStringOptionDef("enum", "Pick enumerator for synthesis (available: topdown, bottomup, eqclasses)", "topdown", "[name]")
+  val optUserDefined  = LeonFlagOptionDef("userdefined", "Use user-defined grammars", false)
+  val optUntrusted    = LeonFlagOptionDef("untrusted", "Accept a time-out of CE-search during term exploration as untrusted solution", true )
+
+  // Pick search rules (all modes)
+  val optIntroRecCalls = LeonFlagOptionDef("introreccalls", "Use a rule to introduce rec. calls outside of term exploration", true)
+
+  // Pick mode for synthesis
+  object Modes extends Enumeration {
+    val Default, Probwise, Manual = Value
+  }
+  val optMode = LeonEnumOptionDef[Modes.type](
+    "mode", "Mode for synthesis", Modes, Modes.Default, "[m]"
+  )
+
+  // Manual mode options
+  val optManualScript = LeonStringOptionDef("manual:script", "Give a script to manual search", default = "", "[cmd]")
+
+  // Default mode options
+  val optProbwise = LeonFlagOptionDef("use-probwise", "Use new probwise enumeration instead of STE", false)
 
   // STE-related options
-  val optSTEOptTimeout   = LeonFlagOptionDef("ste:opttimeout", "Consider a time-out of CE-search as untrusted solution", true )
-  val optSTEVanuatoo     = LeonFlagOptionDef("ste:vanuatoo",   "Generate inputs using new korat-style generator",        false)
-  val optSTENaiveGrammar = LeonFlagOptionDef("ste:naive",      "Use the old naive grammar for STE",                      false)
-  val optSTEMaxSize      = LeonLongOptionDef("ste:maxsize",    "Maximum size of expressions synthesized by STE", 7L, "N")
-  val optSTEUserDefined  = LeonFlagOptionDef("ste:userdefined","Use user-defined grammars", false)
+  val optSTEVanuatoo = LeonFlagOptionDef("ste:vanuatoo", "Generate inputs using new korat-style generator", false)
+  val optSTEMaxSize  = LeonLongOptionDef("ste:maxsize",  "Maximum size of expressions synthesized by STE", 7L, "N")
 
-  val optProbwiseTopdownCoeff = LeonLongOptionDef("probwiseTopdownCoeff", "Priority coefficient for ProbwiseTopdownEnumerator (default: 24)", 24, "[value]")
+  // Probwise-enum related options
+  val optProbwiseTopdownOpt   = LeonFlagOptionDef("probwise:opt"  , "Use optimized topdown enumerator", true)
+  val optProbwiseTopdownCoeff = LeonLongOptionDef("probwise:coeff", "Priority coefficient for ProbwiseTopdownEnumerator (default: 24)", 24, "[value]")
 
-  override val definedOptions : Set[LeonOptionDef[Any]] = Set(
-    optManual, optCostModel, optDerivTrees, optAllowPartial, optIntroduceRecCalls, optEnum,
-    optSTEOptTimeout, optSTEVanuatoo, optSTENaiveGrammar, optSTEMaxSize, optSTEUserDefined,
-    optProbwiseTopdownCoeff
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(
+    optCostModel, optDerivTrees, optAllowPartial, optUserDefined, optUntrusted,
+    optIntroRecCalls,
+    optMode,
+    optManualScript,
+    optProbwise,
+    optSTEVanuatoo, optSTEMaxSize,
+    optProbwiseTopdownOpt, optProbwiseTopdownCoeff
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
-    val ms = ctx.findOption(optManual)
     val timeout = ctx.findOption(GlobalOptions.optTimeout)
-    if (ms.isDefined && timeout.isDefined) {
+    val mode = ctx.findOptionOrDefault(optMode)
+
+    if (mode == Modes.Manual && timeout.isDefined) {
       ctx.reporter.warning("Defining timeout with manual search")
+    }
+    val rules = mode match {
+      case Modes.Manual => Rules.manual
+      case Modes.Probwise => Rules.probwiseOnly
+      case Modes.Default => Rules.default(
+        ctx.findOptionOrDefault(optIntroRecCalls),
+        ctx.findOptionOrDefault(optProbwise)
+      )
     }
     val costModel = {
       ctx.findOption(optCostModel) match {
@@ -58,20 +86,19 @@ object SynthesisPhase extends UnitPhase[Program] {
       }
     }
 
+    val script = if (mode == Modes.Manual) Some(ctx.findOptionOrDefault(optManualScript)) else None
+
     SynthesisSettings(
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all(
-        ctx.findOptionOrDefault(optSTENaiveGrammar),
-        ctx.findOptionOrDefault(optIntroduceRecCalls)
-      ),
-      manualSearch = ms,
+      rules = rules,
+      manualSearch = script,
       functions = ctx.findOption(GlobalOptions.optFunctions) map { _.toSet },
-      steUseOptTimeout = ctx.findOptionOrDefault(optSTEOptTimeout),
+      steUseOptTimeout = ctx.findOptionOrDefault(optUntrusted),
       steUseVanuatoo = ctx.findOptionOrDefault(optSTEVanuatoo),
       steMaxSize = ctx.findOptionOrDefault(optSTEMaxSize).toInt,
-      steUserDefinedGrammar = ctx.findOptionOrDefault(optSTEUserDefined)
+      steUserDefinedGrammar = ctx.findOptionOrDefault(optUserDefined)
     )
   }
 

@@ -8,6 +8,7 @@ import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.datagen._
+import leon.grammars._
 
 import leon.evaluators._
 
@@ -47,7 +48,7 @@ class DataGenSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
     val pgm = fix._2
 
     val eval      = new DefaultEvaluator(ctx, pgm)
-    val generator = new GrammarDataGen(eval)
+    val generator = new GrammarDataGen(eval, Literals)
 
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4

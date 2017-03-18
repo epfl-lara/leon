@@ -29,7 +29,6 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(T
       pwr(t, Set(Set.empty[A]))
     }
 
-
     ps.flatMap { p =>
       val tagsValid = !(excludedTags(tag, pos) contains p.tag)
 
@@ -61,7 +60,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(T
             lab.withAspect(a)
           }
 
-          ProductionRule(newSubTrees, p.builder, p.tag, p.cost, p.weight)
+          p.copy(subTrees = newSubTrees)
         }
       } else {
         Nil

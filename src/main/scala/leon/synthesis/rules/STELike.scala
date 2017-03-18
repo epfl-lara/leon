@@ -38,7 +38,6 @@ abstract class STELike(name: String) extends Rule(name) {
     type Candidate = Set[Identifier]
 
     import outerCtx.reporter._
-
     import outerCtx.interruptManager
 
     // Track non-deterministic candidates up to 100'000 expressions, or give up

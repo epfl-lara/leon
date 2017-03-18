@@ -13,8 +13,6 @@ import purescala.Definitions._
 import purescala.Types._
 import purescala.Expressions._
 
-import synthesis.{SynthesisContext, FunctionCallsFinder}
-
 import scala.collection.mutable.ArrayBuffer
 
 object GenericUDGrammar {
@@ -59,7 +57,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
       val isProduction = as.contains("grammar.production")
 
       if (isProduction) {
-        val weight = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
+        val cost = as("grammar.production").head.getOrElse(1).asInstanceOf[Int]
         val tag = (for {
           t <- as.get("grammar.tag")
           t2 <- t.headOption
@@ -67,7 +65,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
           t4 <- tags.get(t3.asInstanceOf[String])
         } yield t4).getOrElse(Top)
 
-        List((fd, tag, weight))
+        List((fd, tag, cost))
       } else {
         Nil
       }
@@ -75,7 +73,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
     val productions = new ArrayBuffer[GenericProd]()
 
-    for ((fd, tag, weight) <- fdInfos) {
+    for ((fd, tag, cost) <- fdInfos) {
       val expr = fd.fullBody
       val exprType = expr.getType
 
@@ -93,7 +91,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
                 val size = inputs.size
 
                 for (i <- inputs) {
-                  productions += terminal(tpeToLabel(tpe), i.toVariable, tag, cost = 1, weight/size)
+                  productions += terminal(tpeToLabel(tpe), i.toVariable, tag, Math.max(1, cost/size), -1.0)
                 }
 
               case _ =>
@@ -105,8 +103,6 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
         case FunctionInvocation(TypedFunDef(fdc, Seq(ft @ FunctionType(froms, to))), Seq()) if program.library.closure contains fdc =>
 
           val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
-            val lab = tpeToLabel(instantiateType(ft, tmap))
-
             val args = froms.zipWithIndex.map { case (tpe, i) =>
               ValDef(FreshIdentifier("a"+i, instantiateType(tpe, tmap)))
             }
@@ -115,7 +111,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
             ProductionRule[Label, Expr](Seq(rlab), { case Seq(body) =>
               Lambda(args, body)
-            }, tag, cost = 1, weight = weight)
+            }, tag, cost, -1.0)
           }
 
           productions += GenericProd(fd.tparams, tpeToLabel(ft), Seq(to), prodBuilder)
@@ -130,7 +126,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
             productions += nonTerminal(tpeToLabel(fd.returnType), subs, { sexprs => 
               replacer(sexprs)
-            }, tag, cost = 1, weight)
+            }, tag, cost, -1.0)
           } else {
             val retType = fd.fullBody.getType
 
@@ -154,7 +150,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
               val replacer = variableReplacer(expr, holes)
 
-              ProductionRule[Label, Expr](subs, { sexprs => instantiateType(replacer(sexprs), tmap, m) }, tag, 1, weight)
+              ProductionRule[Label, Expr](subs, { sexprs => instantiateType(replacer(sexprs), tmap, m) }, tag, cost, -1.0)
             }
 
             productions += GenericProd(fd.tparams, tpeToLabel(retType), fd.params.map(_.getType), prodBuilder)
