@@ -3,9 +3,9 @@ package synthesis
 package stoch
 
 import leon.purescala.Extractors.Operator
-import leon.synthesis.stoch.Stats.ExprConstrStats
-import purescala.Definitions.Program
-import purescala.Expressions.{Expr, Variable}
+import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
+import purescala.Definitions.{Program, TypedFunDef}
+import purescala.Expressions.{Expr, FunctionInvocation, Literal, Variable}
 import purescala.{ExprOps, TypeOps}
 import purescala.Types.{ClassType, FunctionType, TypeParameter, TypeTree}
 
@@ -158,4 +158,25 @@ object StatsUtils {
     constrType
   }
 
+  def getFunctionCallStats(ecs: ExprConstrStats): FunctionCallStats = {
+    def ttStatsToFCS(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[TypedFunDef, Seq[FunctionInvocation]] = {
+      ttStats.values.flatMap(_.values).flatten
+             .filter(_.isInstanceOf[FunctionInvocation])
+             .map(_.asInstanceOf[FunctionInvocation])
+             .groupBy(_.tfd)
+             .mapValues(_.toSeq)
+    }
+    ecs.mapValues(ttStatsToFCS)
+  }
+
+  def getLitStats(ecs: ExprConstrStats): LitStats = {
+    def ttStatsToLitStats(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Any, Seq[Literal[_]]] = {
+      ttStats.values.flatMap(_.values).flatten
+                    .filter(_.isInstanceOf[Literal[_]])
+                    .map(_.asInstanceOf[Literal[_]])
+                    .groupBy(_.value)
+                    .mapValues(_.toSeq)
+    }
+    ecs.mapValues(ttStatsToLitStats)
+  }
 }

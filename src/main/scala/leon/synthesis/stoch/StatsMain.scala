@@ -4,7 +4,7 @@ package stoch
 
 import StatsUtils._
 import leon.purescala.Expressions.{Expr, Variable}
-import leon.synthesis.stoch.Stats.{ExprConstrStats, ecsAdd}
+import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, ecsAdd}
 import leon.utils.PreprocessingPhase
 
 object StatsMain {
@@ -37,7 +37,7 @@ object StatsMain {
     val tase = preTase // if (canaryTypes.isEmpty) preTase else preTase.filterKeys(canaryTypes)
     val tcase = tase.mapValues(_.groupBy(_.getClass))
     val ecs: ExprConstrStats = tcase.mapValues(_.mapValues(_.groupBy(expr => childTypes(expr).map(tt => normalizeType(allTypeParams, tt))))) */
-
+    
     val ecs: ExprConstrStats = fase.values.map(exprs => groupExprs(allTypeParams, canaryTypes, exprs))
                                           .fold(Map())(ecsAdd)
                                           .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
@@ -48,18 +48,13 @@ object StatsMain {
     println("Printing expression constructor stats:")
     println(Stats.ecsToString(ecs))
 
-    /* val allFuncInvokes = ase.filter(_.isInstanceOf[FunctionInvocation])
-                            .map(_.asInstanceOf[FunctionInvocation])
-    val tafi = allFuncInvokes.groupBy(fi => normalizeType(allTypeParams, fi.getType))
-    val fcs: FunctionCallStats = tafi.mapValues(_.groupBy(_.tfd))
+    val fcs: FunctionCallStats = getFunctionCallStats(ecs)
     println("Printing function call stats:")
     println(Stats.fcsToString(fcs))
 
-    val ls: LitStats = tase.mapValues(_.filter(_.isInstanceOf[Literal[_]])
-                                       .map(_.asInstanceOf[Literal[_]])
-                                       .groupBy(_.value))
+    val ls: LitStats = getLitStats(ecs)
     println("Printing literal occurrence statistics:")
-    println(Stats.lsToString(ls)) */
+    println(Stats.lsToString(ls))
   }
 
   def procFiles(fileNames: String*): Seq[Expr] = {
