@@ -74,8 +74,12 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     val productions = new ArrayBuffer[GenericProd]()
 
     for ((fd, tag, cost) <- fdInfos) {
-      val expr = fd.fullBody
-      val exprType = expr.getType
+      val expr = postMap {
+        case Assert(t, m, b) => Some(b)
+        case other => None
+      }(fd.fullBody)
+
+      val exprType = fd.returnType
 
       val freeTps = fd.tparams.map(_.tp)
 
@@ -128,7 +132,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
               replacer(sexprs)
             }, tag, cost, -1.0)
           } else {
-            val retType = fd.fullBody.getType
+            val retType = fd.returnType
 
             val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
 
