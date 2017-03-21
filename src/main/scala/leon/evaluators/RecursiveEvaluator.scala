@@ -728,7 +728,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
                   }
                 }
 
-                val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.map(_._2).flatten)
+                val domainMap = quantifierDomains.groupBy(_._1).mapValues(_.flatMap(_._2))
                 andJoin(domainMap.toSeq.map { case (id, dom) =>
                   orJoin(dom.toSeq.map { case (path, value) =>
                     // @nv: Equality with variable is ok, see [[leon.codegen.runtime.Monitor]]
@@ -880,7 +880,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
         case _ =>
-          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
+          throw RuntimeError("MatchError: "+rscrut.toString+" did not match any of the cases:\n"+cases)
       }
 
     case grammars.ExpansionExpr(inner) =>

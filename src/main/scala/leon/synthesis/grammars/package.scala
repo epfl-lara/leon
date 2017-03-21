@@ -8,7 +8,6 @@ import purescala.ExprOps._
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import purescala.Extractors.TopLevelAnds
-import purescala.Types.{BooleanType, Int32Type, IntegerType}
 import Witnesses.Hint
 
 package object grammars {

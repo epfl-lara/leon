@@ -71,7 +71,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
       }
     }
 
-    val productions = new ArrayBuffer[GenericProd]()
+    val productions = new ArrayBuffer[GenericProdSeed]()
 
     for ((fd, tag, cost) <- fdInfos) {
       val expr = postMap {
@@ -118,7 +118,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
             }, tag, cost, -1.0)
           }
 
-          productions += GenericProd(fd.tparams, tpeToLabel(ft), Seq(to), prodBuilder)
+          productions += GenericProdSeed(fd.tparams, tpeToLabel(ft), Seq(to), prodBuilder)
 
         case _ =>
           if (freeTps.isEmpty) {
@@ -157,7 +157,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
               ProductionRule[Label, Expr](subs, { sexprs => instantiateType(replacer(sexprs), tmap, m) }, tag, cost, -1.0)
             }
 
-            productions += GenericProd(fd.tparams, tpeToLabel(retType), fd.params.map(_.getType), prodBuilder)
+            productions += GenericProdSeed(fd.tparams, tpeToLabel(retType), fd.params.map(_.getType), prodBuilder)
           }
       }
     }

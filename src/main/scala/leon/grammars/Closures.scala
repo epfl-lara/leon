@@ -31,7 +31,7 @@ case class Closures(maxArgs: Int = 4) extends ExpressionGrammar {
         )
       }
 
-      GenericProd(tps, Label(FunctionType(froms, to)), Seq(to),  prodBuilder)
+      GenericProdSeed(tps, Label(FunctionType(froms, to)), Seq(to),  prodBuilder)
     }
   }
 }

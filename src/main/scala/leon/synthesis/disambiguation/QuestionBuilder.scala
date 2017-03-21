@@ -72,7 +72,7 @@ object QuestionBuilder {
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
   case class SpecialStringValueGrammar(program: Program) extends ExpressionGrammar {
-    override def generateProductions(implicit ctx: LeonContext): Seq[GenericProd] = {
+    override def generateProductions(implicit ctx: LeonContext): Seq[GenericProdSeed] = {
       val valueGrammar = synthesis.grammars.values(program);
 
       val prods = valueGrammar.generateProductions.filterNot(_.label.getType == StringType)

@@ -3,7 +3,6 @@
 package leon
 package grammars
 
-import purescala.Types._
 import purescala.Definitions._
 import purescala.DefOps.visibleClassDefsFromMain
 import purescala.Expressions._

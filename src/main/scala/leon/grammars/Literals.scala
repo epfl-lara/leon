@@ -3,10 +3,7 @@
 package leon
 package grammars
 
-import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Definitions.ValDef
 import purescala.Types._
-import purescala.Definitions._
 import purescala.Expressions._
 
 /** A grammar of values (ground terms) */

@@ -30,7 +30,7 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
 
   final def generateProductions(implicit ctx: LeonContext) = {
     generateSimpleProductions.map { gp =>
-      GenericProd(gp.tparams, tpeToLabel(gp.label), gp.args, { tmap => convertProd(gp.builder(tmap)) })
+      GenericProdSeed(gp.tparams, tpeToLabel(gp.label), gp.args, { tmap => convertProd(gp.builder(tmap)) })
     }
   }
 
