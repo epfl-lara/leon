@@ -55,7 +55,7 @@ object DefOps {
    *  Definitions that are shadowed by others are not returned.
    */
   def visibleDefsFrom(df: Definition)(implicit pgm: Program): Set[Definition] = {
-    var toRet = Map[String,Definition]()
+    var toRet = Map[Identifier,Definition]()
     val asList = {
       val inPath = (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ List(pgm)
       val inUnits = unitsInPackage(pgm, packageOf(df)) flatMap { _.subDefinitions }
@@ -68,7 +68,7 @@ object DefOps {
     }
     for (
       df <- asList;
-      name = df.id.toString
+      name = df.id
     ) {
       if (!(toRet contains name)) toRet += name -> df
     }
