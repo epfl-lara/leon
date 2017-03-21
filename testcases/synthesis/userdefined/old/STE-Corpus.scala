@@ -79,7 +79,7 @@ object Grammar {
   @production(121)
   def or(b1: Boolean, b2: Boolean) = b1 || b2
 
-  /** List **/
+  /** List [ BigInt ] **/
 
   @production(209)
   def variableList = variable[List[BigInt]]
@@ -90,22 +90,22 @@ object Grammar {
   @production(25)
   def cons(b: BigInt, l: List[BigInt]): List[BigInt] = Cons(b, l)
 
-  /** List **/
+  /** List ~ polymorphic **/
 
   @production(209)
-  def vLP[A] = variable[List[A]]
+  def vLP[Poly] = variable[List[Poly]]
 
   @production(25)
-  def nP[A]: List[A] = Nil[A]()
+  def nP[Poly]: List[Poly] = Nil[Poly]()
 
   @production(25)
-  def cons[A](h: A, t: List[A]): List[A] = Cons(h, t)
+  def consP[Poly](h: Poly, t: List[Poly]): List[Poly] = Cons[Poly](h, t)
 
   /** Polymorphic  */
 
   @production(1)
-  def vp[A] = variable[A]
+  def vp[Poly] = variable[Poly]
   @production(1)
   @tag("equality")
-  def eqP[A](a: A, b: A) = a == b
+  def eqP[Poly](a: Poly, b: Poly) = a == b
 }
