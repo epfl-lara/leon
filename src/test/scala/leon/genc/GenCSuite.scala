@@ -37,7 +37,7 @@ class GenCSuite extends LeonRegressionSuite {
     progName: String, // name of the source file, without extension
     sourceDir: String, // directory in which the source lives
     inputFileOpt: Option[String], // optional path to an file to be used as stdin at runtime
-    disabledCompilers: Seq[String] // List of compiler (title) that should not be used for this test
+    disabledOptions: Seq[String] // List of compiler (title) and "output" that should not be used for this test
   )
 
   private case class Compiler(title: String, name: String, options: String*) {
@@ -88,7 +88,7 @@ class GenCSuite extends LeonRegressionSuite {
 
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }
-        user map ( u => Program(u :: lib) )
+        user map { u => Program(u :: lib) }
       }
 
       for { prog <- programs } {
@@ -102,13 +102,13 @@ class GenCSuite extends LeonRegressionSuite {
         val inputName  = filePrefix + ".input"
         val inputOpt   = if (Files.isReadable(Paths.get(inputName))) Some(inputName) else None
 
-        val disabledCompilersName = filePrefix + ".disabled"
-        val disabledCompilers =
-          if (Files.isReadable(Paths.get(disabledCompilersName))) Source.fromFile(disabledCompilersName).getLines.toSeq
+        val disabledOptionsName = filePrefix + ".disabled"
+        val disabledOptions =
+          if (Files.isReadable(Paths.get(disabledOptionsName))) Source.fromFile(disabledOptionsName).getLines.toSeq
           else Nil
 
         val ctx  = createLeonContext(s"--o=$tmpDir/$name.c")
-        val xCtx = ExtendedContext(ctx, name, sourceDir, inputOpt, disabledCompilers)
+        val xCtx = ExtendedContext(ctx, name, sourceDir, inputOpt, disabledOptions)
 
         val displayName = s"$cat/$name.scala"
         val index       = counter.nextGlobal
@@ -233,7 +233,7 @@ class GenCSuite extends LeonRegressionSuite {
 
   // Check whether a regression test is disabled for a given compiler.
   // NOTE this is useful to disable error when using VLA with compcert (which doesn't all them).
-  private def enabled(xCtx: ExtendedContext, cc: Compiler): Boolean = !(xCtx.disabledCompilers contains cc.title)
+  private def enabled(xCtx: ExtendedContext, cc: Compiler): Boolean = !(xCtx.disabledOptions contains cc.title)
 
   // Return the list of compiled programs
   private def compile(xCtx: ExtendedContext, compilers: Seq[Compiler])(unused: Unit): Seq[String] = for { cc <- compilers if enabled(xCtx, cc) } yield {
@@ -322,10 +322,14 @@ class GenCSuite extends LeonRegressionSuite {
     val cOuts = binaries map { bin => Files.readAllBytes(evaluateC(xCtx, bin).toPath) }
     val scala = Files.readAllBytes(evaluateScala(xCtx).toPath)
 
-    // Compare outputs
-    for { (c, bin) <- cOuts zip binaries } {
-      info(s"Checking the result of ${bin split '/' last}")
-      assert((c zip scala) forall { case (c, s) => c == s }, s"Output mismatch for $bin")
+    // Compare outputs, unless asked not to
+    if (xCtx.disabledOptions contains "output") {
+      info(s"Skipping output comparision")
+    } else {
+      for { (c, bin) <- cOuts zip binaries } {
+        info(s"Checking the result of ${bin split '/' last}")
+        assert((c zip scala) forall { case (c, s) => c == s }, s"Output mismatch for $bin")
+      }
     }
   }
 
