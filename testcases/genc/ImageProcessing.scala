@@ -8,6 +8,7 @@ import leon.io.{
   FileOutputStream => FOS,
   StdOut
 }
+import leon.util.{ TimePoint }
 
 import scala.annotation.tailrec
 
@@ -727,8 +728,18 @@ object ImageProcessing {
 
 
     def processImage(src: Image): Status = {
+      // Compute the processing time, without I/Os
+      val t1 = TimePoint.now()
+
       val dest = createImage(src.w, src.h)
       kernel.apply(src, dest)
+
+      val t2 = TimePoint.now()
+      val ms = TimePoint.elapsedMillis(t1, t2)
+      StdOut.print("Computation time: ")
+      StdOut.print(ms)
+      StdOut.println("ms.")
+
       saveImage(fos, dest)
     }
 
