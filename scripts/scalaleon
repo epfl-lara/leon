@@ -5,7 +5,7 @@ OUT_CLASSES_DIR="../out-classes" # assume we run from scripts directory
 SCALA_RUN="scala"
 if [[ -d ${OUT_CLASSES_DIR} ]] 
 then
-    ${SCALA_RUN} -cp ${OUT_CLASSES_DIR} $*
+    ${SCALA_RUN} -cp ${OUT_CLASSES_DIR} "$@"
 else
     echo Script is designed to run after scalacleon
 fi

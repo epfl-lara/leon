@@ -9,8 +9,8 @@ OUT_CLASSES_DIR="${PATH_TO_LEON}/out-classes"
 SCALA_COMPILER="fsc"
 mkdir -p ${OUT_CLASSES_DIR}
 echo ========= Now invoking: ====================================
-echo ${SCALA_COMPILER} $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) $* -d ${OUT_CLASSES_DIR}
+echo ${SCALA_COMPILER} $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) "$@" -d ${OUT_CLASSES_DIR}
 echo ============================================================
-${SCALA_COMPILER} -deprecation $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) $* -d ${OUT_CLASSES_DIR}
+${SCALA_COMPILER} -deprecation $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) "$@" -d ${OUT_CLASSES_DIR}
 echo ========= Done. ============================================
 echo Class files generated in directory: ${OUT_CLASSES_DIR}
