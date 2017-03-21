@@ -34,7 +34,7 @@ class GenCSuite extends LeonRegressionSuite {
 
   private case class ExtendedContext(
     leon: LeonContext,
-    progName: String, // name of the source file, without extention
+    progName: String, // name of the source file, without extension
     sourceDir: String, // directory in which the source lives
     inputFileOpt: Option[String], // optional path to an file to be used as stdin at runtime
     disabledCompilers: Seq[String] // List of compiler (title) that should not be used for this test
@@ -127,7 +127,7 @@ class GenCSuite extends LeonRegressionSuite {
 
   // Run a process with a timeout and return the status code
   private def runProcess(pb: ProcessBuilder): Int = {
-    val logger = ProcessLogger(stdout => info(s"[from process] $stdout"), stderr => () /* screem silently */)
+    val logger = ProcessLogger(stdout => info(s"[from process] $stdout"), stderr => () /* scream silently */)
     runProcessImpl(pb.run(logger))
   }
 
@@ -278,7 +278,7 @@ class GenCSuite extends LeonRegressionSuite {
     outputFile
   }
 
-  // Compile and evalue the Scala program
+  // Compile and evaluate the Scala program
   private def evaluateScala(xCtx: ExtendedContext): File = {
     // NOTE Those command are based on code found in `scripts/`
     val source       = s"${xCtx.sourceDir}/${xCtx.progName}.scala"
