@@ -33,5 +33,15 @@ object Split {
   def split(list : List) : (List,List) = {
     choose { (res : (List,List)) => splitSpec(list, res) }
   }
-
+  /*
+  def split(list : List) : (List,List) = {
+    list match {
+      case Nil => (Nil, Nil)
+      case Cons(h, t) =>
+        val (r1, r2) = split(t)
+        (r2, Cons(h, r1))
+    }
+  } ensuring { (res : (List,List)) =>
+    splitSpec(list, res)
+  }*/
 }

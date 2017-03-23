@@ -103,9 +103,9 @@ object Grammar {
 
   /** Polymorphic  */
 
-  @production(1)
+  @production(100)
   def vp[Poly] = variable[Poly]
-  @production(1)
+  @production(100)
   @tag("equality")
   def eqP[Poly](a: Poly, b: Poly) = a == b
 }
