@@ -14,13 +14,17 @@ case class CaseClasses(prog: Program) extends SimpleExpressionGrammar {
         val act = acd.typed
 
         act.knownCCDescendants.map { cct =>
-          sGeneric(act.classDef.tparams, act, Seq(cct), _.head, Tags.tagOf(cct))
+          sGeneric(act.classDef.tparams, act, cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct))
+          //sGeneric(act.classDef.tparams, act, Seq(cct), _.head, Tags.tagOf(cct))
         }
 
-      case ccd: CaseClassDef =>
+      case ccd: CaseClassDef if ccd.parent.isEmpty =>
         val cct = ccd.typed
 
         Seq(sGeneric(cct.classDef.tparams, cct, cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct)))
+
+      case _ =>
+        Nil
     }
   }
 }
