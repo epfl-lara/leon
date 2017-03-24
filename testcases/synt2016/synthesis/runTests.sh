@@ -8,6 +8,7 @@ function run {
 }
 
 echo "==================================================================================================================" >> synthesis-report.txt
+: '
 # List
 run testcases/synt2016/synthesis/List/Insert.scala
 run testcases/synt2016/synthesis/List/Delete.scala
@@ -42,6 +43,7 @@ run testcases/synt2016/synthesis/BatchedQueue/Dequeue.scala
 run testcases/synt2016/synthesis/AddressBook/Make.scala
 run testcases/synt2016/synthesis/AddressBook/Merge.scala
 
+'
 # RunLength
 run testcases/synt2016/synthesis/RunLength/RunLength.scala
 

@@ -62,22 +62,22 @@ abstract class ExpressionGrammar extends Printable {
 
     val tpe = lab.getType
 
-    //println
-    //println("%"*80);
-    //println(s"Instantiating ${tpe.asString} |$maxSize|");
-    //println
-    //println
+    println
+    println("%"*80);
+    println(s"Instantiating ${tpe.asString} |$maxSize|");
+    println
+    println
 
-    //println("Pool of types: ");
-    //for (t <- discoveredTypes.toSeq.sortBy(_.asString)) {
-    //  println(" - "+t.asString)
-    //}
-    //println
+    println("Pool of types: ");
+    for (t <- minCosts.keys.toSeq.sortBy(_.asString)) {
+      println(" - "+t.asString)
+    }
+    println
 
-    val res = for(gp <- genericSeeds if (gp.args.size + 1) < maxSize) yield {
+    val res = for(gp <- genericSeeds if (gp.args.size ) < maxSize) yield {
       instantiation_<:(gp.label.tpe, tpe) match {
         case Some(tmap0) =>
-          // println("Looking at "+Console.BOLD+lab.asString+Console.RESET+" ::= "+genProdAsString(gp))
+          println("Looking at "+Console.BOLD+lab.asString+Console.RESET+" ::= "+genProdAsString(gp))
           val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq
 
           val tmaps = if (free.nonEmpty) {
@@ -110,7 +110,7 @@ abstract class ExpressionGrammar extends Printable {
           val existing = instantiations(gp)
 
           // We only consider new instantiations
-          val tmaps2 = tmaps1.filter(m => !existing(m))
+          val tmaps2 = tmaps1 filterNot existing
 
           if (tmaps2.nonEmpty) {
             instantiations += gp -> (existing ++ tmaps2)
@@ -118,9 +118,7 @@ abstract class ExpressionGrammar extends Printable {
 
           val prods = for (tmap <- tmaps2) yield {
             val prod = gp.builder(tmap)
-
-            // println("    - "+prodAsString(prod))
-
+            println("    - "+prodAsString(prod))
             prod
           }
 
@@ -217,9 +215,9 @@ abstract class ExpressionGrammar extends Printable {
       newTypes = Set()
 
       //println("Pool of types: ");
-      for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
+      //for ((t, mc) <- minCosts.toSeq.sortBy { case (t, mc) => (mc, t.asString) }) {
         //println(" - |"+mc+"|  "+t.asString)
-      }
+      //}
       //println
 
       for(gp <- genericSeeds) {

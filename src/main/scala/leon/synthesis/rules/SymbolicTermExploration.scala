@@ -34,11 +34,11 @@ case object SymbolicTermExploration extends STELike("Symbolic Term Expl.") {
     val sizes = List((1, maxSize, 0))
 
 
-    val rootLabel = if (sctx.settings.steUserDefinedGrammar) {
+    val rootLabel = //if (sctx.settings.steUserDefinedGrammar) {
       { (tpe: TypeTree) => Label(tpe) }
-    } else {
-      { (tpe: TypeTree) => Label(tpe).withAspect(Tagged(Tags.Top, 0, None)) }
-    }
+    //} else {
+    //  { (tpe: TypeTree) => Label(tpe).withAspect(Tagged(Tags.Top, 0, None)) }
+    //}
 
     STEParams(
       grammar = grammars.default(sctx, p),
