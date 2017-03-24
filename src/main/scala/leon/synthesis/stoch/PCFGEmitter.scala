@@ -2,22 +2,68 @@ package leon
 package synthesis
 package stoch
 
-import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Definitions.{Annotation, FunDef, ValDef}
+import leon.purescala.Common.{FreshIdentifier, Identifier}
+import leon.purescala.Definitions.{Annotation, FunDef, TypeParameterDef, ValDef}
 import leon.purescala.Expressions._
-import leon.purescala.Extractors.Operator
 import leon.purescala.Types._
-import leon.synthesis.stoch.Stats.ExprConstrStats
+import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, TypeStats}
 
 object PCFGEmitter {
 
-  // type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Seq[Expr]]]
-  def emit(allTypes: Set[TypeTree], stats: ExprConstrStats): Seq[FunDef] = {
+  def emit(
+            canaryExprs: Seq[Expr],
+            canaryTypes: Map[String, TypeTree],
+            ecs: ExprConstrStats,
+            fcs: FunctionCallStats,
+            ls: LitStats
+          ): Seq[FunDef] = {
+
+    def total1[K1, T](map: Map[K1, Seq[T]]) = map.values.flatten.size
+    def total2[K1, K2, T](map: Map[K1, Map[K2, Seq[T]]]): Int = map.values.map(total1).sum
+
     for {
-      tt <- stats.keys.toSeq
-      constr <- stats(tt).keys
-      fd <- emit(allTypes, tt, constr, stats)
-    } yield fd
+      (tt, ttMap) <- ecs.toList.sortBy { case (tt, ttMap) => (-total2(ttMap), tt.toString) }
+      typeTotal = total2(ttMap)
+      (constr, ttConstrMap) <- ttMap.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString)}
+      (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
+      production <- emit(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
+    } yield production
+
+  }
+
+  def emit(
+            canaryExprs: Seq[Expr],
+            canaryTypes: Map[String, TypeTree],
+            tt: TypeTree,
+            constr: Class[_ <: Expr],
+            argTypes: Seq[TypeTree],
+            exprs: Seq[Expr],
+            ecs: ExprConstrStats,
+            fcs: FunctionCallStats,
+            ls: LitStats
+          ): Seq[FunDef] = {
+    /*
+    type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
+    type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
+    type TypeStats = Map[TypeTree, Seq[Expr]]
+    type LitStats = Map[TypeTree, Map[Any, Seq[Literal[_]]]]
+    */
+
+    val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
+    val productionName: String = s"p$tt$constrName"
+    val id: Identifier = FreshIdentifier(productionName, tt)
+
+    val tparams: Seq[TypeParameterDef] = Seq() // TODO!
+    val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (tt, idx) => ValDef(FreshIdentifier(s"v$idx", tt)) }
+    val fullBody: Expr = null // TODO!
+
+    val production: FunDef = new FunDef(id, tparams, params, tt)
+    production.fullBody = fullBody
+
+    val frequency: Int = exprs.size
+    production.addFlag(new Annotation("production", Seq(Some(frequency))))
+
+    Seq(production)
   }
 
   def emit(allTypes: Set[TypeTree], tt: TypeTree, constr: Class[_ <: Expr], stats: ExprConstrStats): Seq[FunDef] = {

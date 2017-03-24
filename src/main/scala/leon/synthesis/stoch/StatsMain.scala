@@ -3,7 +3,9 @@ package synthesis
 package stoch
 
 import StatsUtils._
+import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions.{Expr, Variable}
+import leon.purescala.Types.TypeTree
 import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, ecsAdd}
 import leon.utils.PreprocessingPhase
 
@@ -31,13 +33,6 @@ object StatsMain {
     } */
 
     val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
-    // val ase = fase.values.flatten.toSeq
-
-    /* val preTase = ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
-    val tase = preTase // if (canaryTypes.isEmpty) preTase else preTase.filterKeys(canaryTypes)
-    val tcase = tase.mapValues(_.groupBy(_.getClass))
-    val ecs: ExprConstrStats = tcase.mapValues(_.mapValues(_.groupBy(expr => childTypes(expr).map(tt => normalizeType(allTypeParams, tt))))) */
-    
     val ecs: ExprConstrStats = fase.values.map(exprs => groupExprs(allTypeParams, canaryTypes, exprs))
                                           .fold(Map())(ecsAdd)
                                           .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
@@ -55,6 +50,10 @@ object StatsMain {
     val ls: LitStats = getLitStats(ecs)
     println("Printing literal occurrence statistics:")
     println(Stats.lsToString(ls))
+
+    val productions: Seq[FunDef] = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
+    println("Printing production rules:")
+    productions.foreach(println)
   }
 
   def procFiles(fileNames: String*): Seq[Expr] = {

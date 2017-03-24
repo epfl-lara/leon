@@ -7,7 +7,7 @@ import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
 import purescala.Definitions.{Program, TypedFunDef}
 import purescala.Expressions.{Expr, FunctionInvocation, Literal, Variable}
 import purescala.{ExprOps, TypeOps}
-import purescala.Types.{ClassType, FunctionType, TypeParameter, TypeTree}
+import purescala.Types._
 
 object StatsUtils {
 
@@ -115,6 +115,7 @@ object StatsUtils {
   def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
     tt match {
       case FunctionType(from, to) => (from :+ to).forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
+      case TupleType(bases) => bases.forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
       case _ => canaryTypes.contains(normalizeType(allTypeParams, tt))
     }
   }
@@ -179,4 +180,5 @@ object StatsUtils {
     }
     ecs.mapValues(ttStatsToLitStats)
   }
+
 }
