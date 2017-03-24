@@ -291,13 +291,17 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case BooleanType => Some(2)
     case UnitType => Some(1)
     case TupleType(tps) =>
-      Some(tps.map(typeCardinality).map(_.getOrElse(return None)).product)
+      tps.mapM(typeCardinality).map(_.product)
     case SetType(base) =>
       typeCardinality(base).map(b => Math.pow(2, b).toInt)
     case FunctionType(from, to) =>
-      val t = typeCardinality(to).getOrElse(return None)
-      val f = from.map(typeCardinality).map(_.getOrElse(return None)).product
-      Some(Math.pow(t, f).toInt)
+      for {
+        t  <- typeCardinality(to)
+        fs <- from.mapM(typeCardinality)
+        f  <- fs.product
+      } yield {
+        Math.pow(t, f).toInt
+      }
     case MapType(from, to) =>
       for {
         t <- typeCardinality(to)
@@ -306,9 +310,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
         Math.pow(t + 1, f).toInt
       }
     case cct: CaseClassType =>
-      Some(cct.fieldsTypes.map { tpe =>
-        typeCardinality(tpe).getOrElse(return None)
-      }.product)
+      cct.fieldsTypes.mapM(typeCardinality).map(_.product)
     case act: AbstractClassType =>
       val possibleChildTypes = leon.utils.fixpoint((tpes: Set[TypeTree]) => {
         tpes.flatMap(tpe => 
@@ -319,9 +321,11 @@ object TypeOps extends GenTreeOps[TypeTree] {
           })
         )
       })(act.knownCCDescendants.toSet)
-      if(possibleChildTypes(act)) return None
-      Some(act.knownCCDescendants.map(typeCardinality).map(_.getOrElse(return None)).sum)
+      if(possibleChildTypes(act)) None
+      else act.knownCCDescendants.mapM(typeCardinality).map(_.sum)
     case _ => None
   }
+
+
 
 }
