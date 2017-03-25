@@ -3,6 +3,7 @@
 package leon.lang
 
 import leon.annotation._
+import scala.Predef.String
 
 /**
  * @author Mikael
@@ -13,11 +14,11 @@ object StrOps {
     a + b
   }
   @ignore
-  def bigLength(s: String): BigInt = {
-    BigInt(s.length)
+  def bigLength(s: String): scala.math.BigInt = {
+    scala.math.BigInt(s.length)
   }
   @ignore
-  def bigSubstring(s: String, start: BigInt, end: BigInt): String = {
+  def bigSubstring(s: String, start: scala.math.BigInt, end: scala.math.BigInt): String = {
     s.substring(start.toInt, end.toInt)
   }
   @internal @library

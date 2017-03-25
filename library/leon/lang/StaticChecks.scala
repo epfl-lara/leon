@@ -2,6 +2,7 @@ package leon.lang
 
 import leon.annotation._
 import scala.language.implicitConversions
+import scala.{Boolean,Unit}
 
 object StaticChecks {
 

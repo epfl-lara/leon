@@ -3,8 +3,8 @@
 package leon
 
 import leon.annotation._
-import leon.lang._
-import scala.language.implicitConversions
+import scala.Boolean
+import scala.math.BigInt
 
 package object invariant {
   @library

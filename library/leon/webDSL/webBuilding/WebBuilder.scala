@@ -3,6 +3,8 @@ import leon.webDSL.webDescription._
 import leon.collection._
 import leon.annotation._
 import scala.language.implicitConversions
+import scala.Boolean
+import scala.Predef.String
 
 @isabelle.typ(name = "Leon_Types.acceptor")
 @isabelle.constructor(name = "Leon_Types.acceptor.Acceptor")

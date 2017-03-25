@@ -2,7 +2,10 @@
 
 package leon.io
 
+import java.lang.System
 import leon.annotation._
+import scala.{Array,Byte,Char,Int,Unit}
+import scala.Predef.String
 
 object StdOut {
 

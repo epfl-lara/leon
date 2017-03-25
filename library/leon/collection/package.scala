@@ -3,9 +3,12 @@
 package leon
 
 import leon.annotation._
-import leon.collection.List
 import leon.lang._
 import leon.lang.synthesis.choose
+
+import scala.collection.Seq
+import scala.collection.immutable.Set
+import scala.Boolean
 
 package object collection {
 

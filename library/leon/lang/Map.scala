@@ -2,6 +2,8 @@
 
 package leon.lang
 import leon.annotation._
+import scala.Boolean
+import scala.Predef.String
 
 object Map {
   @library

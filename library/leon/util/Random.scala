@@ -3,7 +3,9 @@
 package leon.util
 
 import leon.annotation._
-import leon.lang.xlang._
+import scala.{Boolean,Int}
+import scala.math.BigInt
+import scala.Predef.{require,Ensuring}
 
 object Random {
 

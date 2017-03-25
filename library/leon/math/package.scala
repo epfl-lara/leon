@@ -2,6 +2,7 @@
 
 package leon
 import leon.annotation._
+import scala.{BigInt,Int}
 
 package object math {
 

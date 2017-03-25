@@ -3,7 +3,6 @@
 package leon.lang.synthesis
 
 import leon.annotation._
-import leon.lang._
 
 import scala.annotation._
 

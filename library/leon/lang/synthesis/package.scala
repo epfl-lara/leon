@@ -2,10 +2,9 @@
 
 package leon.lang
 
+import java.lang.RuntimeException
 import leon.annotation._
-
-import scala.language.implicitConversions
-import scala.annotation.implicitNotFound
+import scala.{Any,Boolean}
 
 package object synthesis {
   @ignore

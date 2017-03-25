@@ -2,7 +2,7 @@ package leon.webDSL.webDescription
 
 import leon.annotation._
 import leon.collection._
-import leon.lang._
+import scala.Predef.String
 
 @isabelle.typ(name = "Leon_Types.style_rule")
 @isabelle.constructor(name = "Leon_Types.style_rule.Style_Rule")

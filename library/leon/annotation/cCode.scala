@@ -3,6 +3,7 @@
 package leon.annotation
 
 import scala.annotation.StaticAnnotation
+import scala.Predef.String
 
 object cCode {
 

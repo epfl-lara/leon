@@ -4,9 +4,11 @@ package leon
 
 import leon.annotation._
 import scala.language.implicitConversions
+import scala.{sys,Array,Boolean,Int,MatchError,Unit}
+import scala.math.BigInt
+import scala.Predef.{???,Ensuring,String}
 
 package object lang {
-  import leon.proof._
 
   @isabelle.typ(name = "Leon_Types.boolean_decorations")
   @isabelle.constructor(name = "Leon_Types.boolean_decorations.Boolean_Decorations")
@@ -100,27 +102,11 @@ package object lang {
     def bigSubstring(start: BigInt, end: BigInt): String = underlying.substring(start.toInt, end.toInt)
   }
 
-  @ignore
-  object BigInt {
-    def apply(b: Int): scala.math.BigInt = scala.math.BigInt(b)
-    def apply(b: String): scala.math.BigInt = scala.math.BigInt(b)
-
-    def unapply(b: scala.math.BigInt): scala.Option[Int] = {
-      if(b >= Integer.MIN_VALUE && b <= Integer.MAX_VALUE) {
-        scala.Some(b.intValue())
-      } else {
-        scala.None
-      }
-    }
-  }
-
   @library
   def tupleToString[A, B](t: (A, B), mid: String, f: A => String, g: B => String) = {
     f(t._1) + mid + g(t._2)
   }
 
-  @library
-  case class Mutable[T]()
   @library
   implicit def mutable[T] = new Mutable[T]
 

@@ -2,7 +2,9 @@
 
 package leon.lang
 
+import java.lang.RuntimeException
 import leon.annotation._
+import scala.Boolean
 
 package object xlang {
   @ignore

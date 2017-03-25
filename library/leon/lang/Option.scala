@@ -4,6 +4,8 @@ package leon.lang
 
 import leon.annotation._
 import leon.collection._
+import scala.Boolean
+import scala.Predef.{require,Ensuring}
 
 @library
 @isabelle.typ(name = "Option.option")
