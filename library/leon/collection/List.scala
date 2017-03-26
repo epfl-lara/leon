@@ -8,6 +8,7 @@ import leon.proof._
 
 import scala.{unchecked,Boolean}
 import scala.math.BigInt
+import scala.collection.immutable.Set
 import scala.Predef.{require,ArrowAssoc,Ensuring,String}
 
 @library

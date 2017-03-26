@@ -63,7 +63,7 @@ package object mem {
    * methods for running instrumented code using memoization
    */
   @ignore
-  var memoTable = Map[List[Any], Any]()
+  var memoTable: Map[List[Any],Any] = Map[List[Any], Any]()
   @ignore
   def update[T](args: List[Any], res: T): T = {
     memoTable += (args -> res)
