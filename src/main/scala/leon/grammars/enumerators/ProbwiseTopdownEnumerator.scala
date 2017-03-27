@@ -41,7 +41,7 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
 
   debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
 
-  val hors = GrammarEnumerator.horizonMap(init, productions).mapValues(_._2)
+  val hors = GrammarEnumerator.horizonMap(init, productions).map{ case (k,v) => k -> v._2 }
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
 

@@ -298,7 +298,7 @@ object TypeOps extends GenTreeOps[TypeTree] {
       for {
         t  <- typeCardinality(to)
         fs <- from.mapM(typeCardinality)
-        f  <- fs.product
+        f  = fs.product
       } yield {
         Math.pow(t, f).toInt
       }
@@ -326,6 +326,10 @@ object TypeOps extends GenTreeOps[TypeTree] {
     case _ => None
   }
 
-
+  def normalizeType(t: TypeTree): TypeTree = t match {
+    case ct: ClassType => ct.root
+    case tt: TupleType => TupleType(tt.bases.map(normalizeType))
+    case _             => t
+  }
 
 }

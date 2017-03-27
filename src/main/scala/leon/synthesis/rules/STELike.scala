@@ -47,7 +47,7 @@ abstract class STELike(name: String) extends Rule(name) {
     val testReductionRatio = 10
 
     // Timeout to find a candidate program
-    val exSolverTo  = 500L
+    val exSolverTo  = 1500L
 
     // Timeout to find a counter example to a candidate program
     val cexSolverTo = 3000L

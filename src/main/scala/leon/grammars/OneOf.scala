@@ -4,14 +4,13 @@ package leon
 package grammars
 
 import purescala.Expressions.Expr
-import purescala.TypeOps._
-import purescala.Types.TypeTree
+import purescala.TypeOps.normalizeType
 
 /** Generates one production rule for each expression in a sequence that has compatible type */
 case class OneOf(exprs: Seq[Expr]) extends SimpleExpressionGrammar {
   def generateSimpleProductions(implicit ctx: LeonContext) = {
-    exprs.map { e => 
-      sTerminal(e.getType, e)
+    exprs.map { e =>
+      sTerminal(normalizeType(e.getType), e)
     }
   }
 }
