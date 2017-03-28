@@ -71,6 +71,10 @@ object BatchedQueue {
 
     def enqueue(v: T): Queue[T] = {
       require(invariant)
+      //f match {
+      //  case Cons(_, _) => Queue(f, Cons(v, r))
+      //  case Nil() => Queue(Cons(v, Nil()), r)
+      //}
 
       ???[Queue[T]]
     } ensuring { (res: Queue[T]) =>

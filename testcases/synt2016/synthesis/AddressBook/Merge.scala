@@ -59,11 +59,12 @@ object AddressBookMerge {
 
   def merge[A](a1: AddressBook[A], a2: AddressBook[A]): AddressBook[A] = {
     require(a1.invariant && a2.invariant)
-
-    choose( (res: AddressBook[A]) =>
+    // AddressBook(a1.business ++ a2.business, a1.personal ++ a2.personal)
+    ???[AddressBook[A]]
+  } ensuring {
+    (res: AddressBook[A]) =>
       res.personal.content == (a1.personal.content ++ a2.personal.content) &&
       res.business.content == (a1.business.content ++ a2.business.content) &&
       res.invariant
-    )
   }
 }
