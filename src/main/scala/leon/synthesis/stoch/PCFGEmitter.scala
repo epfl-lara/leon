@@ -2,11 +2,14 @@ package leon
 package synthesis
 package stoch
 
-import leon.purescala.Common.{FreshIdentifier, Identifier}
-import leon.purescala.Definitions.{Annotation, FunDef, TypeParameterDef, ValDef}
-import leon.purescala.Expressions._
-import leon.purescala.Types._
-import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, TypeStats}
+import purescala.Common.{FreshIdentifier, Identifier}
+import purescala.Constructors.tupleTypeWrap
+import purescala.Definitions.{Annotation, FunDef, TypeParameterDef, ValDef}
+import purescala.Expressions._
+import purescala.Extractors.Operator
+import purescala.Types._
+import Stats.{ExprConstrStats, FunctionCallStats, LitStats}
+import StatsUtils.getTypeParams
 
 object PCFGEmitter {
 
@@ -42,6 +45,26 @@ object PCFGEmitter {
             fcs: FunctionCallStats,
             ls: LitStats
           ): Seq[FunDef] = {
+    if (constr == classOf[Ensuring]) Seq()
+    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
+    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
+      val exprsPrime = ecs(tt)(constr).values.flatten.toSeq
+      emitGeneral(canaryExprs, canaryTypes, tt, constr, argTypes, exprsPrime, ecs, fcs, ls)
+    }
+    else emitGeneral(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
+  }
+
+  def emitGeneral(
+            canaryExprs: Seq[Expr],
+            canaryTypes: Map[String, TypeTree],
+            tt: TypeTree,
+            constr: Class[_ <: Expr],
+            argTypes: Seq[TypeTree],
+            exprs: Seq[Expr],
+            ecs: ExprConstrStats,
+            fcs: FunctionCallStats,
+            ls: LitStats
+          ): Seq[FunDef] = {
     /*
     type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
     type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
@@ -50,20 +73,30 @@ object PCFGEmitter {
     */
 
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
-    val productionName: String = s"p$tt$constrName"
+    val productionName: String = s"p${typeTreeName(tt)}$constrName"
     val id: Identifier = FreshIdentifier(productionName, tt)
 
-    val tparams: Seq[TypeParameterDef] = Seq() // TODO!
-    val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (tt, idx) => ValDef(FreshIdentifier(s"v$idx", tt)) }
-    val fullBody: Expr = null // TODO!
+    val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
+    val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) => ValDef(FreshIdentifier(s"v$idx", ptt)) }
+    val Operator(_, op) = exprs.head
+    val fullBody: Expr = op(params.map(_.toVariable))
 
     val production: FunDef = new FunDef(id, tparams, params, tt)
     production.fullBody = fullBody
 
     val frequency: Int = exprs.size
-    production.addFlag(new Annotation("production", Seq(Some(frequency))))
+    production.addFlag(Annotation("production", Seq(Some(frequency))))
 
     Seq(production)
+  }
+
+  def typeTreeName(tt: TypeTree): String = tt match {
+    case FunctionType(from, to) => s"${typeTreeName(tupleTypeWrap(from))}_${typeTreeName(to)}_Arrow"
+    case TupleType(bases) => bases.map(typeTreeName).mkString("", "_", s"_Tuple${bases.size}")
+    case SetType(base) => s"${typeTreeName(base)}_Set"
+    case classTT: ClassType =>
+      if (classTT.tps.isEmpty) classTT.toString else classTT.tps.mkString("", "_", "_" + classTT.classDef.id.name)
+    case _ => tt.toString
   }
 
   def emit(allTypes: Set[TypeTree], tt: TypeTree, constr: Class[_ <: Expr], stats: ExprConstrStats): Seq[FunDef] = {
