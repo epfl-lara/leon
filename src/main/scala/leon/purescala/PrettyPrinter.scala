@@ -574,7 +574,8 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case fd: FunDef =>
         for ((k, vs) <- fd.extAnnotations) {
-          p"""|@$k${nary(vs, ",", "(", ")")}
+          val vsStrs = vs.map(_.map(v => s"$v").getOrElse("None"))
+          p"""|@$k${nary(vsStrs, ",", "(", ")")}
               |"""
         }
 
