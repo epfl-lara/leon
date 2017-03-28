@@ -120,7 +120,8 @@ abstract class STELike(name: String) extends Rule(name) {
 
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
-    val evaluator = new DefaultEvaluator(sctx, program)
+    val evaluator = new TableEvaluator(sctx, program)
+                    // new DefaultEvaluator(sctx, program)
 
     // Current synthesized term size
     private var termSize_ = 0
