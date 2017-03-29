@@ -127,13 +127,13 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     private val spec = letTuple(p.xs, solutionBox, p.phi)
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optUntrusted)
-    // Limit number of programs
-    val (maxGen, maxValidated) = {
+    // Limit prob. programs
+    val minLogProb = {
       import SynthesisPhase._
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
-        (100000000, 1000000) // Run forever in probwise-only mode
+        -1000000.0 // Run forever in probwise-only mode
       else
-        (10000, 100)
+        -100.0
     }
 
     val fullEvaluator = new TableEvaluator(sctx, program)
@@ -228,7 +228,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     def mkEnum = {
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, optimize)
+      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, minLogProb, optimize)
     }.iterator(topLabel)
 
 

@@ -24,14 +24,12 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 scorer: CandidateScorer[Label, Expr],
                                 examples: Seq[Example],
                                 eval: (Expr, Example) => Option[Expr],
-                                maxGen: Int,
-                                maxOutput: Int,
+                                minLogProb: Double,
                                 disambiguate: Boolean
                                )(implicit sctx: SynthesisContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](
     scorer,
-    maxGen,
-    maxOutput,
+    minLogProb,
     disambiguate,
     ProbwiseTopdownEnumerator.ntWrap
   ) with GrammarEnumerator {
@@ -60,11 +58,12 @@ object EnumeratorStats {
 }
 
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
-                                                        maxGen: Int,
-                                                        maxOutput: Int,
+                                                        minLogProb: Double,
                                                         disambiguate: Boolean,
                                                         ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit sctx: SynthesisContext) {
+
+  require(minLogProb < 0.0)
 
   import sctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
@@ -86,10 +85,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   type Sig = Seq[R]
 
   var generated = 0
-  var output = 0
-
-  // Less probable element to be generated
-  val probLimit = -2000000
+  //var output = 0
 
   // Filter out seen expressions
 
@@ -185,21 +181,16 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     var lastPrint: Int = 1
 
     def hasNext: Boolean = {
-      generated < maxGen && output < maxOutput && {
-        try {
-          prepareNext()
-          worklist.nonEmpty
-        } catch {
-          case _: NoSuchElementException =>
-            false
-        }
+      try {
+        prepareNext()
+        worklist.nonEmpty
+      } catch {
+        case _: NoSuchElementException =>
+          false
       }
     }
 
     def next: R = {
-      if (!(generated < maxGen && output < maxOutput)) {
-        throw new NoSuchElementException("Enumerator ran out of budget")
-      }
       EnumeratorStats.iteratorNextCallCount += 1
       prepareNext()
       assert(worklist.nonEmpty)
@@ -208,14 +199,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         printer("Printing lineage for returned element:")
         res.lineage.foreach { elem => printer(s"    ${elem.priority}: ${elem.expansion.falseProduce(ntWrap)}") }
       }
-      output += 1
       res.get
     }
 
     @tailrec def prepareNext(): Unit = {
-      if (generated >= maxGen) {
-        throw new NoSuchElementException("Enumerator ran out of budget")
-      }
       if (worklist.nonEmpty) {
         val elem = worklist.head
         // @mk: DIRTY HACK! This will set the solution for us for the purpose of recursive calls
@@ -234,7 +221,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         // Does elem have to be removed from the queue?
         // It is removed if it is either incomplete (i.e. needs further expansion), or fails some tests (i.e. needs to
         // be dropped).
-        if (elem.logProb < probLimit || !elem.expansion.complete || !compliesTests) {
+        if (elem.logProb < minLogProb || !elem.expansion.complete || !compliesTests) {
           // If so, remove it
           worklist.dequeue()
           generated += 1
@@ -245,7 +232,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           )
           verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
 
-          if (elem.logProb >= probLimit && compliesTests) {
+          if (elem.logProb >= minLogProb && compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
             // @mk: Dirty hack: This relies on the previous call to scorer.score for recursive calls
