@@ -25,4 +25,9 @@ class DedupedPriorityQueue[A, K](key: A => K)(implicit val ordering: Ordering[A]
   def dequeue(): A = queue.dequeue()
   def head: A = queue.head
 
+  def clear() = {
+    queue.clear()
+    dedupingSet.clear()
+  }
+
 }

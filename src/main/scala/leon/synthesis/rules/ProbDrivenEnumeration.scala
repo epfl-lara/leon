@@ -128,12 +128,12 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     val useOptTimeout = sctx.findOptionOrDefault(SynthesisPhase.optUntrusted)
     // Limit prob. programs
-    val minLogProb = {
+    val (minLogProb, maxEnumerated) = {
       import SynthesisPhase._
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
-        -1000000.0 // Run forever in probwise-only mode
+        (-1000000000.0, 10000000) // Run forever in probwise-only mode
       else
-        -100.0
+        (-50.0, 10000)
     }
 
     val fullEvaluator = new TableEvaluator(sctx, program)
@@ -187,7 +187,16 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         case ((id, v), bd) => let(id, v, bd)
       }
 
-      fullEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
+      val res = fullEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
+      res match {
+        case EvaluationResults.Successful(value) =>
+        case EvaluationResults.RuntimeError(err) =>
+          debug(s"RE testing CE: $err")
+          debug(s"  Failing example: $ex")
+        case EvaluationResults.EvaluatorError(err) =>
+          debug(s"Error testing CE: $err")
+      }
+      res
     }
 
     def partialTestCandidate(expansion: Expansion[Label, Expr], ex: Example): MeetsSpec.MeetsSpec = {
@@ -228,7 +237,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     def mkEnum = {
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, minLogProb, optimize)
+      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, minLogProb, maxEnumerated, optimize)
     }.iterator(topLabel)
 
 
@@ -271,7 +280,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
           case None =>
             if (useOptTimeout) {
-              info("STE could not prove the validity of the resulting expression")
+              info("Leon could not prove the validity of the resulting expression")
               // Interpret timeout in CE search as "the candidate is valid"
               Some(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false))
             } else {

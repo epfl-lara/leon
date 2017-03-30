@@ -41,7 +41,7 @@ sealed abstract class Expansion[NT, R](val nt: NT) {
 
 case class NonTerminalInstance[NT, R](override val nt: NT) extends Expansion[NT, R](nt) {
   val complete: Boolean = false
-  def produce: R = throw new UnsupportedOperationException(s"Unable to expand non-terminal ${this}")
+  def produce: R = throw new UnsupportedOperationException(s"Unable to expand non-terminal $nt")
   def falseProduce(ntWrap: NonTerminalInstance[NT, R] => R): R = ntWrap(this)
   val size: Int = 1
   def horizon(nthor: NT => Double): Double = nthor(nt)

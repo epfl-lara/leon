@@ -25,11 +25,13 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 examples: Seq[Example],
                                 eval: (Expr, Example) => Option[Expr],
                                 minLogProb: Double,
+                                maxEnumerated: Int,
                                 disambiguate: Boolean
                                )(implicit sctx: SynthesisContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](
     scorer,
     minLogProb,
+    maxEnumerated,
     disambiguate,
     ProbwiseTopdownEnumerator.ntWrap
   ) with GrammarEnumerator {
@@ -59,6 +61,7 @@ object EnumeratorStats {
 
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
                                                         minLogProb: Double,
+                                                        maxEnumerated: Double,
                                                         disambiguate: Boolean,
                                                         ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit sctx: SynthesisContext) {
@@ -181,18 +184,13 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     var lastPrint: Int = 1
 
     def hasNext: Boolean = {
-      try {
-        prepareNext()
-        worklist.nonEmpty
-      } catch {
-        case _: NoSuchElementException =>
-          false
-      }
+      prepareNext()
+      worklist.nonEmpty
     }
 
     def next: R = {
       EnumeratorStats.iteratorNextCallCount += 1
-      prepareNext()
+      //prepareNext()
       assert(worklist.nonEmpty)
       val res = worklist.dequeue()
       ifDebug { printer =>
@@ -218,11 +216,18 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           res
         }
 
-        // Does elem have to be removed from the queue?
-        // It is removed if it is either incomplete (i.e. needs further expansion), or fails some tests (i.e. needs to
-        // be dropped).
-        if (elem.logProb < minLogProb || !elem.expansion.complete || !compliesTests) {
-          // If so, remove it
+        if (elem.priority < minLogProb || generated > maxEnumerated) {
+          // We exhausted our limit of log. prob. or enumerated programs. Clear all and fail.
+          val reason = if (elem.priority < minLogProb) "low probability" else "number of programs"
+          debug(s"Enumerator exhausted resource ($reason)")
+          worklist.clear()
+        } else if (!elem.expansion.complete || !compliesTests) {
+          // The element has to be removed from the queue,
+          // because one of two conditions holds:
+          // 1) it is incomplete (i.e. needs further expansion),
+          // 2) it fails some tests (i.e. needs to be dropped).
+
+          // So, remove it!
           worklist.dequeue()
           generated += 1
           ifDebug(printer =>
@@ -232,7 +237,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           )
           verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
 
-          if (elem.logProb >= minLogProb && compliesTests) {
+          if (compliesTests) {
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
             // @mk: Dirty hack: This relies on the previous call to scorer.score for recursive calls
@@ -266,7 +271,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                   }
                 }
               case None =>
-                debug(elem.expansion + " failed evaluation")
+                debug(elem.expansion.falseProduce(ntWrap) + " failed evaluation")
             }
           } else {
             // The element has failed partial evaluation ...
