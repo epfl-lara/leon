@@ -26,7 +26,7 @@ object TimePoint {
     |}
     """
   )
-  def now(): TimePoint = new TimePoint(System.currentTimeMillis().toInt)
+  def now(): TimePoint = new TimePoint((System.nanoTime() / 1E06).toInt)
 
   /*
    * Compute the difference between two points in time, expressed in milliseconds.
