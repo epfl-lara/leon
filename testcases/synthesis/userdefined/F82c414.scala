@@ -1,5 +1,6 @@
 import leon.annotation._
 import leon.collection._
+import leon.grammar._
 import leon.lang._
 import leon.proof._
 
@@ -8,6 +9,8 @@ import leon.proof._
 object F82c414 {
 
   def canary[T1, T2](t1: T1, t2: T2): T1 = {
+    variable[T1]
+
     val f82c414_Unit: Unit = ()
     val canary0 = f82c414_Unit
 
