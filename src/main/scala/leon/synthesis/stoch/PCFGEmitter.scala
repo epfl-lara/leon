@@ -10,6 +10,7 @@ import purescala.Extractors.Operator
 import purescala.Types._
 import Stats.{ExprConstrStats, FunctionCallStats, LitStats}
 import StatsUtils.getTypeParams
+import leon.utils.Position
 
 object PCFGEmitter {
 
@@ -42,8 +43,8 @@ object PCFGEmitter {
 
     val l2: Seq[FunDef] = for {
       (tt, ttMap) <- fcs.toSeq.sortBy { case (tt, ttMap) => (-total1(ttMap), tt.toString) }
-      (tfd, fis) <- ttMap.toSeq.sortBy { case (tfd, fis) => (-fis.size, tfd.id.toString) }
-      prodRule <- emitFunctionCalls(canaryExprs, canaryTypes, tt, tfd, fis, ecs, fcs, ls)
+      (pos, fis) <- ttMap.toSeq.sortBy { case (pos, fis) => (-fis.size, pos) }
+      prodRule <- emitFunctionCalls(canaryExprs, canaryTypes, tt, pos, fis, ecs, fcs, ls)
     } yield prodRule
 
     l1 ++ l2
@@ -62,7 +63,7 @@ object PCFGEmitter {
           ): Seq[FunDef] = {
 
     val suppressedConstrs: Set[Class[_ <: Expr]] = Set(classOf[Ensuring], classOf[Require], classOf[Let],
-      classOf[Error], classOf[NoTree])
+      classOf[Error], classOf[NoTree], classOf[Assert], classOf[Forall])
 
     if (suppressedConstrs.contains(constr)) Seq()
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
@@ -155,13 +156,14 @@ object PCFGEmitter {
                    canaryExprs: Seq[Expr],
                    canaryTypes: Map[String, TypeTree],
                    tt: TypeTree,
-                   tfd: TypedFunDef,
+                   pos: Position,
                    fis: Seq[FunctionInvocation],
                    ecs: ExprConstrStats,
                    fcs: FunctionCallStats,
                    ls: LitStats
                  ): Seq[FunDef] = {
-    if (tfd.getPos.file.toString.contains("/leon/library/leon/")) {
+    if (pos.file.toString.contains("/leon/library/leon/")) {
+      val tfd = fis.head.tfd
       val productionName: String = s"p${typeTreeName(tt)}FunctionInvocation${tfd.id.name}"
       val id: Identifier = FreshIdentifier(productionName, tt)
 

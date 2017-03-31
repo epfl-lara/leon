@@ -4,7 +4,8 @@ package stoch
 
 import leon.purescala.Extractors.Operator
 import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
-import purescala.Definitions.{Program, TypedFunDef}
+import leon.utils.Position
+import purescala.Definitions.Program
 import purescala.Expressions.{Expr, FunctionInvocation, Literal, Variable}
 import purescala.{ExprOps, TypeOps}
 import purescala.Types._
@@ -160,11 +161,11 @@ object StatsUtils {
   }
 
   def getFunctionCallStats(ecs: ExprConstrStats): FunctionCallStats = {
-    def ttStatsToFCS(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[TypedFunDef, Seq[FunctionInvocation]] = {
+    def ttStatsToFCS(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Position, Seq[FunctionInvocation]] = {
       ttStats.values.flatMap(_.values).flatten
              .filter(_.isInstanceOf[FunctionInvocation])
              .map(_.asInstanceOf[FunctionInvocation])
-             .groupBy(_.tfd)
+             .groupBy(_.tfd.getPos)
              .mapValues(_.toSeq)
     }
     ecs.mapValues(ttStatsToFCS)

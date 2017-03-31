@@ -51,9 +51,12 @@ object StatsMain {
     println("Printing literal occurrence statistics:")
     println(Stats.lsToString(ls))
 
-    val productions: Seq[FunDef] = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
+    val prodRules: Seq[FunDef] = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
     println("Printing production rules:")
-    productions.foreach(println)
+    for (rule <- prodRules) {
+      println(rule)
+      println()
+    }
   }
 
   def procFiles(fileNames: String*): Seq[Expr] = {

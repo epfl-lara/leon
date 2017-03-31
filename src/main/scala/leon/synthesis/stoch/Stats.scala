@@ -2,17 +2,21 @@ package leon
 package synthesis
 package stoch
 
-import leon.purescala.Definitions.TypedFunDef
 import leon.purescala.Expressions.{Expr, FunctionInvocation, Literal}
 import leon.purescala.Types.TypeTree
+import leon.utils.Position
 
 import scala.collection.mutable
 
 object Stats {
 
+  // Normalized expression type -> Constructor -> ArgType* -> Expr*
   type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
-  type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
+  // Normalized expression type -> Position of function definition -> Expression*
+  type FunctionCallStats = Map[TypeTree, Map[Position, Seq[FunctionInvocation]]]
+  // Normalized expression type -> Expr*
   type TypeStats = Map[TypeTree, Seq[Expr]]
+  // Normalized expression type -> Value -> (Literal[_] <: Expr)*
   type LitStats = Map[TypeTree, Map[Any, Seq[Literal[_]]]]
 
   def ecsAdd(ecs1: ExprConstrStats, ecs2: ExprConstrStats): ExprConstrStats = {
@@ -79,7 +83,8 @@ object Stats {
     val ans = new StringBuilder()
     for ((tt, ttStats) <- stats.toList.sortBy { case (_, ttStats) => -ttStats.values.map(_.size).sum }) {
       val ttCount = ttStats.values.map(_.size).sum
-      for ((tfd, tfdStats) <- ttStats.toList.sortBy { case (_, tfdStats) => -tfdStats.size }) {
+      for ((pos, tfdStats) <- ttStats.toList.sortBy { case (_, tfdStats) => -tfdStats.size }) {
+        val tfd = tfdStats.head.tfd
         val argTypes = tfd.params.map(_.getType)
         val argTypeSign = if (argTypes.size != 1) argTypes.mkString("(", ", ", ")") else argTypes.head.toString
         val signature = s"$argTypeSign => ${tfd.returnType}"
