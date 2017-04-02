@@ -8,7 +8,8 @@ import leon.proof._
 
 object F82c414 {
 
-  def canary[T1, T2](t1: T1, t2: T2): T1 = {
+  // Full grammar
+  /* def canary[T1, T2](t1: T1, t2: T2): T1 = {
     variable[T1]
 
     val f82c414_Unit: Unit = ()
@@ -45,6 +46,21 @@ object F82c414 {
     val f82c414_Boolean_Option: Option[Boolean] = Some(f82c414_Boolean)
     val f82c414_Real_Option: Option[Real] = Some(f82c414_Real)
     val canary4 = (f82c414_T1_Option, f82c414_Char_Option, f82c414_Int_Option, f82c414_BigInt_Option, f82c414_Boolean_Option, f82c414_Real_Option)
+
+    t1
+  } */
+
+  // BigInt, Int, Boolean, Unit
+  def canary[T1, T2](t1: T1, t2: T2): T1 = {
+    variable[T1]
+
+    val f82c414_Unit: Unit = ()
+    val canary0 = f82c414_Unit
+
+    val f82c414_Int: Int = 0
+    val f82c414_BigInt: BigInt = BigInt(0)
+    val f82c414_Boolean: Boolean = true
+    val canary1 = (f82c414_Int, f82c414_BigInt, f82c414_Boolean)
 
     t1
   }

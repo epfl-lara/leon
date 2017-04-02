@@ -114,11 +114,21 @@ object StatsUtils {
   }
 
   def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
-    tt match {
+    canaryTypes.contains(normalizeType(allTypeParams, tt)) || (tt match {
       case FunctionType(from, to) => (from :+ to).forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
       case TupleType(bases) => bases.forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
-      case _ => canaryTypes.contains(normalizeType(allTypeParams, tt))
-    }
+      case _ => false
+    })
+  }
+
+  def isSelectableTypeStrict(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
+    canaryTypes.contains(normalizeType(allTypeParams, tt)) || (tt match {
+      case FunctionType(from, to) if StatsMain.SELECT_FUNCTION_TYPES =>
+        (from :+ to).forall(tt => isSelectableTypeStrict(tt, canaryTypes, allTypeParams))
+      case TupleType(bases) if StatsMain.SELECT_TUPLE_TYPES =>
+        bases.forall(tt => isSelectableTypeStrict(tt, canaryTypes, allTypeParams))
+      case _ => false
+    })
   }
 
   def groupExprs(
