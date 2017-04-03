@@ -13,7 +13,6 @@ import purescala.Expressions._
 /** Generates non-recursive function calls
   *
   * @param currentFunction The currend function for which no calls will be generated
-  * @param types The candidate real type parameters for [[currentFunction]]
   * @param exclude An additional set of functions for which no calls will be generated
   */
 case class FunctionCalls(prog: Program, currentFunction: FunDef, exclude: Set[FunDef]) extends SimpleExpressionGrammar {
@@ -32,7 +31,7 @@ case class FunctionCalls(prog: Program, currentFunction: FunDef, exclude: Set[Fu
       isDet(fd)
     }
 
-    for (fd <- visibleFunDefsFromMain(prog).toSeq.filter(filter).sortBy(_.id)) yield {
+    for (fd <- visibleFunDefsFromMain(prog).toSeq.filter(filter).sortBy(_.id) diff prog.library.setToList.toSeq) yield {
       val tpds = fd.tparams
 
       val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
