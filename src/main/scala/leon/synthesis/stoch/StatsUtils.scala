@@ -3,7 +3,7 @@ package synthesis
 package stoch
 
 import leon.purescala.Extractors.Operator
-import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats}
+import leon.synthesis.stoch.Stats._
 import leon.utils.Position
 import purescala.Definitions.Program
 import purescala.Expressions.{Expr, FunctionInvocation, Literal, Variable}
@@ -25,11 +25,20 @@ object StatsUtils {
 
   def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = allSubExprs(p)
 
-  def allSubExprsByType(p: Program): Map[TypeTree, Seq[Expr]] = {
-    val ase = allSubExprs(p)
-    val allTypeParams = ase.map(_.getType).flatMap(getTypeParams).distinct
-    ase.groupBy(expr => normalizeType(allTypeParams, expr.getType))
+  def allSubExprs2(expr: Expr): Seq[(Expr, Option[(Int, Expr)])] = ExprOps.collectPreorder { (e: Expr) =>
+    val Operator(es, op) = e
+    es.zipWithIndex.map { case (esi, i) => (esi, Some(i, e)) }
+  }(expr) :+ (expr, None)
+
+  def allSubExprs2(p: Program): Seq[(Expr, Option[(Int, Expr)])] = {
+    for {
+      unit <- p.units if unit.isMainUnit
+      f <- unit.definedFunctions
+      e <- allSubExprs2(f.fullBody)
+    } yield e
   }
+
+  def allSubExprs2(ctx: LeonContext, p: Program): Seq[(Expr, Option[(Int, Expr)])] = allSubExprs2(p)
 
   // Type normalization
   // We assume that all type parameters are ordered: T, U, V, ...
@@ -148,6 +157,33 @@ object StatsUtils {
          .mapValues(_.mapValues(_.mapValues(_.map(_._1))))
   }
 
+  /* // Normalized expression type -> Relation to parent -> Constructor -> ArgType* -> Expr*
+  type ECS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]]
+  // Normalized expression type -> Relation to parent -> Position of function definition -> Expression*
+  type FCS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Position, Seq[FunctionInvocation]]]]
+  // Normalized expression type -> Relation to parent -> Value -> (Literal[_] <: Expr)*
+  type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
+
+  def groupExprs2(
+                   allTypeParams: Seq[TypeParameter],
+                   canaryTypes: Map[String, TypeTree],
+                   exprs: Seq[(Expr, Option[(Int, Expr)])]
+                 ): ECS2 = {
+    val canaryInsts = exprs.filter(_._1.isInstanceOf[Variable])
+                           .map { case (e, par) => e.asInstanceOf[Variable] }
+                           .filter(v => canaryTypes.contains(v.id.name))
+    require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
+
+    def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)
+
+    exprs.map { case(e, par) => (e, par, normalizeConstrType(allTypeParams, canaryTypes, canaryInsts, e)) }
+         .groupBy(_._3.to)
+         .mapValues(_.groupBy(_._2.map(parGroup)))
+         .mapValues(_.mapValues(_.groupBy(_._1.getClass)))
+         .mapValues(_.mapValues(_.mapValues(_.groupBy(_._3.from))))
+         .mapValues(_.mapValues(_.mapValues(_.mapValues(_.map(_._1)))))
+  }
+
   def normalizeConstrType(
                            allTypeParams: Seq[TypeParameter],
                            canaryTypes: Map[String, TypeTree],
@@ -170,26 +206,43 @@ object StatsUtils {
     constrType
   }
 
+  def ttStatsToFCS(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Position, Seq[FunctionInvocation]] = {
+    ttStats.values.flatMap(_.values).flatten
+      .filter(_.isInstanceOf[FunctionInvocation])
+      .map(_.asInstanceOf[FunctionInvocation])
+      .groupBy(_.tfd.getPos)
+      .mapValues(_.toSeq)
+  }
+
   def getFunctionCallStats(ecs: ExprConstrStats): FunctionCallStats = {
-    def ttStatsToFCS(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Position, Seq[FunctionInvocation]] = {
-      ttStats.values.flatMap(_.values).flatten
-             .filter(_.isInstanceOf[FunctionInvocation])
-             .map(_.asInstanceOf[FunctionInvocation])
-             .groupBy(_.tfd.getPos)
-             .mapValues(_.toSeq)
-    }
     ecs.mapValues(ttStatsToFCS)
   }
 
+  /* // Normalized expression type -> Relation to parent -> Constructor -> ArgType* -> Expr*
+  type ECS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]]
+  // Normalized expression type -> Relation to parent -> Position of function definition -> Expression*
+  type FCS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Position, Seq[FunctionInvocation]]]]
+  // Normalized expression type -> Relation to parent -> Value -> (Literal[_] <: Expr)*
+  type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
+
+  def getFCS2(ecs2: ECS2): FCS2 = {
+    ecs2.mapValues(_.mapValues(ttStatsToFCS))
+  }
+
+  def ttStatsToLitStats(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Any, Seq[Literal[_]]] = {
+    ttStats.values.flatMap(_.values).flatten
+      .filter(_.isInstanceOf[Literal[_]])
+      .map(_.asInstanceOf[Literal[_]])
+      .groupBy(_.value)
+      .mapValues(_.toSeq)
+  }
+
   def getLitStats(ecs: ExprConstrStats): LitStats = {
-    def ttStatsToLitStats(ttStats: Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]): Map[Any, Seq[Literal[_]]] = {
-      ttStats.values.flatMap(_.values).flatten
-                    .filter(_.isInstanceOf[Literal[_]])
-                    .map(_.asInstanceOf[Literal[_]])
-                    .groupBy(_.value)
-                    .mapValues(_.toSeq)
-    }
     ecs.mapValues(ttStatsToLitStats)
+  }
+
+  def getLS2(ecs2: ECS2): LS2 = {
+    ecs2.mapValues(_.mapValues(ttStatsToLitStats))
   }
 
 }
