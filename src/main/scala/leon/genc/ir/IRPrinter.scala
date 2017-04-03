@@ -85,6 +85,7 @@ final class IRPrinter[S <: IR](val ir: S) {
 
   private def rec(e: Expr)(implicit ptx: Context): String = (e: @unchecked) match {
     case Binding(vd) => "[[ " + vd.id + ": " + rec(vd.getType) + " ]]"
+    case fun: Callable => "@" + fun.id
     case Block(exprs) => "{{ " + (exprs map rec mkString ptx.newLine) + " }}"
     case Decl(vd) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " // no value"
     case DeclInit(vd, value) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " = " + rec(value)
@@ -117,6 +118,8 @@ final class IRPrinter[S <: IR](val ir: S) {
 
   private def rec(typ: Type)(implicit ptx: Context): String = (typ: @unchecked) match {
     case PrimitiveType(pt) => pt.toString
+    case FunType(ctx, params, ret) =>
+      "Function[" + (ctx map rec mkString ", ") + "][" + (params map rec mkString ", ") + "]: " + rec(ret)
     case ClassType(clazz) => clazz.id
     case ArrayType(base) => "Array[" + rec(base) + "]"
     case ReferenceType(t) => "Ref[" + rec(t) + "]"

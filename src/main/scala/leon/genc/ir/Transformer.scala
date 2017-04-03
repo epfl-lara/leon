@@ -105,9 +105,14 @@ abstract class Transformer[From <: IR, To <: IR](final val from: From, final val
 
   protected final def rec(e: Expr)(implicit env: Env): to.Expr = recImpl(e)._1
 
+  protected final def recCallable(fun: Callable)(implicit env: Env): to.Callable = rec(fun).asInstanceOf[to.Callable]
+
   // We need to propagate the enviornement accross the whole blocks, not simply by recusring
   protected def recImpl(e: Expr)(implicit env: Env): (to.Expr, Env) = (e: @unchecked) match {
     case Binding(vd) => to.Binding(rec(vd)) -> env
+
+    case FunVal(fd) => to.FunVal(rec(fd)) -> env
+    case FunRef(Binding(vd)) => to.FunRef(to.Binding(rec(vd))) -> env
 
     // Consider blocks as a sequence of let statements
     case Block(exprs0) =>
@@ -121,7 +126,7 @@ abstract class Transformer[From <: IR, To <: IR](final val from: From, final val
 
     case Decl(vd) => to.Decl(rec(vd)) -> env
     case DeclInit(vd, value) => to.DeclInit(rec(vd), rec(value)) -> env
-    case App(fd, extra, args) => to.App(rec(fd), extra map rec, args map rec) -> env
+    case App(fun, extra, args) => to.App(recCallable(fun), extra map rec, args map rec) -> env
     case Construct(cd, args) => to.Construct(rec(cd), args map rec) -> env
     case ArrayInit(alloc) => to.ArrayInit(rec(alloc)) -> env
     case FieldAccess(objekt, fieldId) => to.FieldAccess(rec(objekt), fieldId) -> env
@@ -145,6 +150,7 @@ abstract class Transformer[From <: IR, To <: IR](final val from: From, final val
 
   protected def rec(typ: Type)(implicit env: Env): to.Type = (typ: @unchecked) match {
     case PrimitiveType(pt) => to.PrimitiveType(pt)
+    case FunType(ctx, params, ret) => to.FunType(ctx map rec, params map rec, rec(ret))
     case ClassType(clazz) => to.ClassType(rec(clazz))
     case ArrayType(base) => to.ArrayType(rec(base))
     case ReferenceType(t) => to.ReferenceType(rec(t))

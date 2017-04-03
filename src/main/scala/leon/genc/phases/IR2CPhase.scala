@@ -106,6 +106,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
 
   private def rec(typ: Type): C.Type = typ match {
     case PrimitiveType(pt) => C.Primitive(pt)
+    case FunType(ctx, params, ret) => C.FunType(params = (ctx ++ params) map rec, ret = rec(ret))
     case ClassType(clazz) => convertClass(clazz) // can be a struct or an enum
     case array @ ArrayType(_) => array2Struct(array)
     case ReferenceType(t) => C.Pointer(rec(t))
@@ -125,6 +126,9 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
   // on function definitions, hence no problem with recursive functions.
   private def rec(e: Expr): C.Expr = e match {
     case Binding(vd) => C.Binding(rec(vd.id))
+
+    case FunVal(fd) => C.Binding(rec(fd.id))
+    case FunRef(b) => rec(b)
 
     case Block(exprs) => C.buildBlock(exprs map rec)
 

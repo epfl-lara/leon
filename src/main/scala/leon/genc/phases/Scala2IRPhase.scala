@@ -469,7 +469,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case TupleType(_) => CIR.ClassType(tuple2Class(typ))
 
-    case FunctionType(from, to) => internalError(s"what shoud I do with $from -> $to")
+    case FunctionType(from, to) => CIR.FunType(ctx = Nil, params = from map rec, ret = rec(to))
 
     case tp: TypeParameter => rec(instantiate(tp, tm))
 
@@ -553,7 +553,34 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       val extra = ctxDB(tfd.fd) map { c => convertVarInfoToParam(c)(tm1) }
       val args = args0 map { a0 => rec(a0)(env, tm1) }
 
-      CIR.App(fun, extra, args)
+      CIR.App(fun.toVal, extra, args)
+
+    case Application(fun0, args0) =>
+      // Contrary to FunctionInvocation, Application of function-like object do not have to extend their
+      // context as no environment variables are allowed to be captured.
+      val fun = rec(fun0) match {
+        case b: CIR.Binding if b.getType.isInstanceOf[CIR.FunType] => CIR.FunRef(b)
+        case t => fatalError(s"Expected but got $t of type ${t.getClass}.", fun0.getPos)
+      }
+      val args = args0 map rec
+
+      CIR.App(fun, Nil, args)
+
+    // Lambda are okay for GenC iff they do not capture variables
+    case Lambda(argsA, FunctionInvocation(tfd, argsB)) if (argsA map { _.toVariable }) == argsB =>
+      val fun = rec(tfd)
+      fun.toVal
+
+    case Lambda(argsA, FunctionInvocation(tfd, argsB)) =>
+      val strA = argsA.mkString("[", ", ", "]")
+      val strB = argsB.mkString("[", ", ", "]")
+      debug(s"This is a capturing lambda because: $strA != $strB")
+      fatalError(s"Capturing lambda are not supported", e.getPos)
+
+    case Lambda(args0, body0) =>
+      debug(s"This is an unamed function; support is currently missing")
+      debug(s"args = $args0, body = $body0 (${body0.getClass})")
+      fatalError(s"Lambda are not (yet) supported", e.getPos)
 
     case CaseClass(cct, args0) =>
       val clazz = rec(cct)
@@ -668,7 +695,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case AsInstanceOf(expr, ct) => CIR.AsA(rec(expr), CIR.ClassType(rec(ct)))
 
-    case e => internalError(s"expression `$e` of type ${e.getClass} not handled")
+    case e =>
+      warning(s"Unhandled expression", e.getPos)
+      internalError(s"expression `$e` of type ${e.getClass} not handled")
   }
 
 }
