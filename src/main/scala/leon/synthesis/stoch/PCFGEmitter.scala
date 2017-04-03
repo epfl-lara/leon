@@ -63,7 +63,7 @@ object PCFGEmitter {
           ): Seq[FunDef] = {
 
     val suppressedConstrs: Set[Class[_ <: Expr]] = Set(classOf[Ensuring], classOf[Require], classOf[Let],
-      classOf[Error], classOf[NoTree], classOf[Assert], classOf[Forall])
+      classOf[Error], classOf[NoTree], classOf[Assert], classOf[Forall], classOf[Passes], classOf[Choose])
 
     if (suppressedConstrs.contains(constr)) Seq()
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()

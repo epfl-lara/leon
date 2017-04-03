@@ -5,7 +5,6 @@ package stoch
 import StatsUtils._
 import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions.{Expr, Variable}
-import leon.purescala.Types.TypeTree
 import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, ecsAdd}
 import leon.utils.PreprocessingPhase
 
@@ -26,6 +25,7 @@ object StatsMain {
 
     val fase = args.drop(2).toSeq.par
                    .map(fname => fname -> canaryTypeFilter(procFiles(fname, canaryFileName)))
+                   .filter(_._2.nonEmpty)
                    .toMap.seq
 
     /* for ((fname, exprs) <- fase) {
@@ -66,7 +66,13 @@ object StatsMain {
 
   def procFiles(fileNames: String*): Seq[Expr] = {
     val ctx = Main.processOptions(fileNames.toSeq)
-    pipeline.run(ctx, fileNames.toList)._2
+    try {
+      pipeline.run(ctx, fileNames.toList)._2
+    } catch {
+      case ex: Exception =>
+        println(s"procFiles(${fileNames}): Encountered exception ${ex}")
+        Seq()
+    }
   }
 
   def pipeline: Pipeline[List[String], Seq[Expr]] = {
