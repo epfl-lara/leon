@@ -31,7 +31,7 @@ package object grammars {
         Equalities,
         CaseClasses(sctx.program),
         Tuples(5),
-        Sets(2),
+        Sets(1),
         OneOf(inputs),
         Constants(sctx.functionContext.fullBody),
         FunctionCalls(sctx.program, sctx.functionContext, exclude),
