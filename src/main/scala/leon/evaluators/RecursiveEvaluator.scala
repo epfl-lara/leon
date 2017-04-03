@@ -884,7 +884,12 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
       }
 
     case grammars.ExpansionExpr(inner) =>
-      e(inner.produce)
+      try {
+        e(inner.produce)
+      } catch {
+        case ue: UnsupportedOperationException =>
+          throw EvalError(s"Partial expansion $inner")
+      }
 
     case synthesis.utils.MutableExpr(ex) =>
       e(ex)

@@ -13,6 +13,7 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Common.Identifier
+import purescala.Definitions.Program
 import utils.MutableExpr
 import solvers._
 
@@ -133,7 +134,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
         (-1000000000.0, 10000000) // Run forever in probwise-only mode
       else
-        (-50.0, 10000)
+        (-80.0, 10000)
     }
 
     val fullEvaluator = new TableEvaluator(sctx, program)
@@ -181,13 +182,23 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
+    private class NoRecEvaluator(sctx: SynthesisContext, pgm: Program) extends TableEvaluator(sctx, pgm) {
+      override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+        case MutableExpr(_) =>
+          throw new EvalError("Trying to normalize based on rec. call body")
+        case other => super.e(other)
+      }
+    }
+
+    private val noRecEvaluator = new NoRecEvaluator(sctx, program)
+
     // Do not set the solution to expr
-    def rawEvalCandidate(expr: Expr, ex: Example) = {
+    def rawEvalCandidate(expr: Expr, ex: Example): EvaluationResults.Result[Expr] = {
       def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
         case ((id, v), bd) => let(id, v, bd)
       }
 
-      val res = fullEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
+      val res = noRecEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
       res match {
         case EvaluationResults.Successful(value) =>
         case EvaluationResults.RuntimeError(err) =>

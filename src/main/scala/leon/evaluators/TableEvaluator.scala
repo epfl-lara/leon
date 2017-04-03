@@ -843,7 +843,12 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
         implicit val r = rctx
         implicit val g = gctx
         val expr = ex.asInstanceOf[grammars.ExpansionExpr]
-        e(expr.expansion.produce)
+        try {
+          e(expr.expansion.produce)
+        } catch {
+          case _ : UnsupportedOperationException =>
+            throw new EvalError(s"Partial expansion ${expr.expansion}")
+        }
     }
 
     // TODO: Strings, bags, arrays, maps, forall
