@@ -3,8 +3,6 @@
 package leon
 package grammars
 
-import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Definitions.ValDef
 import purescala.Types._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -21,7 +19,7 @@ case class Sets(maxSize: Int) extends SimpleExpressionGrammar {
         Tags.Constructor(isTerminal = false)
       }
 
-      sGeneric(Seq(tpd), SetType(tpd.tp), Seq(tpd.tp), { subs => FiniteSet(subs.toSet, tpd.tp) }, tag)
+      sGeneric(Seq(tpd), SetType(tpd.tp), Seq.fill(setSize)(tpd.tp), { subs => FiniteSet(subs.toSet, tpd.tp) }, tag)
     }
   }
 }
