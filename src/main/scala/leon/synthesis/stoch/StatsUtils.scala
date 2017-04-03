@@ -113,6 +113,16 @@ object StatsUtils {
     exprs.filter(expr => isSelectableExpr(expr, canaryExprs, canaryTypes, allTypeParams))
   }
 
+  def canaryTypeFilter2(exprs: Seq[(Expr, Option[(Int, Expr)])]): Seq[(Expr, Option[(Int, Expr)])] = {
+    val canaryExprs = getCanaryExprs(exprs.map(_._1))
+    val allTypeParams = exprs.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).distinct
+    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(allTypeParams, tt))
+    exprs.filter(epar =>
+      isSelectableExpr(epar._1, canaryExprs, canaryTypes, allTypeParams) &&
+      epar._2.forall { case (idx, par) => isSelectableExpr(par, canaryExprs, canaryTypes, allTypeParams) }
+    )
+  }
+
   def isSelectableExpr(
                         expr: Expr,
                         canaryExprs: Seq[Expr],

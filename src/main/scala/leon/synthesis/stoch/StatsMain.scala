@@ -70,7 +70,7 @@ object StatsMain {
       pipeline.run(ctx, fileNames.toList)._2
     } catch {
       case ex: Exception =>
-        println(s"procFiles(${fileNames}): Encountered exception ${ex}")
+        println(s"procFiles($fileNames): Encountered exception $ex")
         Seq()
     }
   }
