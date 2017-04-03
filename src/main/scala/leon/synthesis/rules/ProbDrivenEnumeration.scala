@@ -5,6 +5,7 @@ package synthesis
 package rules
 
 import evaluators._
+import leon.grammars.aspects.TypeDepthBound
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import leon.grammars.{Expansion, ExpansionExpr, Label}
 import leon.grammars.enumerators._
@@ -347,7 +348,7 @@ object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enu
   import leon.grammars.Tags
   import leon.grammars.aspects.Tagged
   def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    Label(p.outType)//.withAspect(Tagged(Tags.Top, 0, None))
+    Label(p.outType).withAspect(TypeDepthBound(3))//.withAspect(Tagged(Tags.Top, 0, None))
   }
 }
 
