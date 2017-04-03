@@ -59,6 +59,8 @@ private[genc] sealed trait IR { ir =>
     }
 
     override def hashCode: Int = id.hashCode
+
+    def toVal = FunVal(this)
   }
 
   case class ClassDef(id: Id, parent: Option[ClassDef], fields: Seq[ValDef], isAbstract: Boolean) extends Def {
@@ -167,10 +169,11 @@ private[genc] sealed trait IR { ir =>
     // Get the type of the expressions
     final def getType: Type = this match {
       case Binding(vd) => vd.getType
+      case c: Callable => c.typ
       case Block(exprs) => exprs.last.getType
       case Decl(_) => NoType
       case DeclInit(_, _) => NoType
-      case App(fd, _, _) => fd.returnType
+      case App(fun, _, _) => fun.typ.ret
       case Construct(cd, _) => ClassType(cd)
       case ArrayInit(alloc) => alloc.typ
       case FieldAccess(objekt, fieldId) =>
@@ -210,6 +213,26 @@ private[genc] sealed trait IR { ir =>
   // Access a variable
   case class Binding(vd: ValDef) extends Expr
 
+  // Represents either a function definition or a function reference
+  sealed abstract class Callable extends Expr {
+    val id: Id
+    val typ: FunType
+  }
+
+  // References a FunDef directly
+  case class FunVal(fd: FunDef) extends Callable {
+    val id = fd.id
+    val typ = FunType(fd.ctx map { _.getType }, fd.params map { _.getType }, fd.returnType)
+  }
+
+  // Reference any function through a variable of function type
+  case class FunRef(binding: Binding) extends Callable {
+    require(binding.getType.isInstanceOf[FunType])
+
+    val id = binding.vd.id
+    val typ = binding.getType.asInstanceOf[FunType]
+  }
+
   // A non-empty sequence of expressions
   //
   // NOTE Nested Decl & DeclInit expressions have their ValDef available to following expressions in the block.
@@ -228,7 +251,7 @@ private[genc] sealed trait IR { ir =>
   case class DeclInit(vd: ValDef, value: Expr) extends Expr
 
   // Invoke a function with context & regular arguments
-  case class App(fd: FunDef, extra: Seq[Expr], args: Seq[Expr]) extends Expr
+  case class App(fun: Callable, extra: Seq[Expr], args: Seq[Expr]) extends Expr
 
   // Construct an object with the given field values
   case class Construct(cd: ClassDef, args: Seq[Expr]) extends Expr
@@ -316,6 +339,9 @@ private[genc] sealed trait IR { ir =>
     def containsArray: Boolean = this match {
       case PrimitiveType(_) => false
 
+      // Functions currently do not capture anything
+      case FunType(_, _, _) => false
+
       // We do *NOT* answer this question for the whole class hierarchy!
       case ClassType(clazz) => clazz.fields exists { _.getType.containsArray }
 
@@ -332,6 +358,8 @@ private[genc] sealed trait IR { ir =>
 
     def isMutable: Boolean = this match {
       case PrimitiveType(_) => false
+
+      case FunType(_, _, _) => false
 
       // We do answer this question for the whole class hierarchy!
       case ClassType(clazz) => clazz.isHierarchyMutable
@@ -369,6 +397,9 @@ private[genc] sealed trait IR { ir =>
   // Type representing Int32, Boolean, ...
   case class PrimitiveType(primitive: PT) extends Type
 
+  // Type representing a function
+  case class FunType(ctx: Seq[Type], params: Seq[Type], ret: Type) extends Type
+
   // Type representing an abstract or case class, as well as tuples
   case class ClassType(clazz: ClassDef) extends Type
 
@@ -403,6 +434,10 @@ private[genc] sealed trait IR { ir =>
       case UnitType => "unit"
       case StringType => "string"
     }
+    case FunType(ctx, params, ret) =>
+      val ctxRep = ctx map repId mkString "_"
+      val paramsRep = params map repId mkString "_"
+      "function_" + ctx + "_" + params + "_" + repId(ret)
     case ClassType(clazz) => clazz.id
     case ArrayType(base) => "array_" + repId(base)
     case ReferenceType(t) => "ref_" + repId(t)

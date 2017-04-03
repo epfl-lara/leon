@@ -58,7 +58,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
     case Id(name) => c"$name"
 
-    case Var(id, typ) => c"$typ $id"
+    case Var(id, typ) => c"${TypeId(typ, id)}"
 
     case Typedef(orig, _) => c"$orig"
 
@@ -71,6 +71,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
       case UnitType => c"void"
       case StringType => c"char*"
     }
+
+    case FunType(ret, params) => ??? /* This is probably not what you want! */
+    // The issue is that c"$ret (*)($params)" would be wrong in most contexts.
+    // Instead, one has to add a variable name right after the `*`.
 
     case Pointer(base) => c"$base*"
 
@@ -96,9 +100,9 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
 
     case EnumLiteral(lit) => c"$lit"
 
-    case Decl(id, typ) => c"$typ $id"
+    case Decl(id, typ) => c"${TypeId(typ, id)}"
 
-    case DeclInit(id, typ, value) => c"$typ $id = $value"
+    case DeclInit(id, typ, value) => c"${TypeId(typ, id)} = $value"
 
     // TODO Visual "optimisation" can be made here if all values are zeros
     case DeclArrayStatic(id, base, length, values) =>
@@ -177,6 +181,9 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case StaticStorage(id) if id.name == "main" => /* Nothing */
     case StaticStorage(_) => c"static"
 
+    case TypeId(FunType(ret, params), id) => c"$ret (*$id)($params)"
+    case TypeId(typ, id) => c"$typ $id"
+
     case FunSign(Fun(id, returnType, Seq(), _)) => c"${StaticStorage(id)} $returnType $id(void)"
 
     case FunSign(Fun(id, returnType, params, _)) => c"${StaticStorage(id)} $returnType $id(${nary(params)})"
@@ -213,6 +220,7 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   /** Wrappers to distinguish how the data should be printed **/
   private[genc] sealed abstract class WrapperTree
   private case class StaticStorage(id: Id) extends WrapperTree
+  private case class TypeId(typ: Type, id: Id) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
   private case class FunDecl(f: Fun) extends WrapperTree
   private case class TypedefDecl(td: Typedef) extends WrapperTree

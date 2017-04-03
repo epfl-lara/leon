@@ -75,6 +75,8 @@ object CAST { // C Abstract Syntax Tree
   case class Primitive(pt: PrimitiveType) extends Type
   case class Pointer(base: Type) extends Type
 
+  case class FunType(ret: Type, params: Seq[Type]) extends Type
+
   case class Struct(id: Id, fields: Seq[Var]) extends DataType {
     require(fields.nonEmpty)
   }
