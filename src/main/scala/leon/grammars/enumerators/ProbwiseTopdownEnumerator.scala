@@ -9,6 +9,7 @@ import purescala.Expressions.Expr
 import purescala.Common.FreshIdentifier
 import synthesis.{Example, SynthesisContext, SynthesisPhase}
 import utils.{DedupedPriorityQueue, NoPosition}
+import evaluators.EvaluationResults._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -23,7 +24,7 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 init: Label,
                                 scorer: CandidateScorer[Label, Expr],
                                 examples: Seq[Example],
-                                eval: (Expr, Example) => Option[Expr],
+                                eval: (Expr, Example) => Result[Expr],
                                 minLogProb: Double,
                                 maxEnumerated: Int,
                                 disambiguate: Boolean
@@ -45,8 +46,14 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
 
-  def sig(r: Expr): Option[Seq[Expr]] = timers.sig.timed {
-    examples mapM (eval(r, _))
+  private def worstResult(results: Seq[Result[Expr]]): Result[Seq[Expr]] = {
+    results.collectFirst{ case e@RuntimeError(_) => e }
+      .orElse(results.collectFirst{case e@EvaluatorError(_) => e})
+      .getOrElse(Successful(results.map(_.result.get)))
+  }
+
+  def sig(r: Expr): Result[Seq[Expr]] = timers.sig.timed {
+    worstResult(examples map (eval(r, _)))
   }
 
 }
@@ -100,7 +107,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   def expRedundant(e: Expansion[NT, R]) = normalizeMemo(e)
 
   // Disambiguate expressions by signature
-  def sig(r: R): Option[Sig]
+  def sig(r: R): Result[Sig]
 
   // Returns normalized version of e, or None if it fails
   protected def normalize(e: Expansion[NT, R]): Option[Expansion[NT, R]] = {
@@ -122,12 +129,21 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           } else {
             // If e is complete expression...
 
-            // Calculate its signature (this may fail)
-            sig(e.produce).flatMap { theSig =>
-              // Look up in the signature map for an expansion with the same signature
-              // If not found, fromNormalizedChildren will be the representative for this class.
-              // Add it to the map and return it
-              sigToNormalMemo.orElseUpdate( (e.nt, theSig), fromNormalizedChildren)
+            // Calculate its signature
+            sig(e.produce) match {
+              case Successful(theSig) =>
+                // Look up in the signature map for an expansion with the same signature
+                // If not found, fromNormalizedChildren will be the representative for this class.
+                // Add it to the map and return it
+                sigToNormalMemo.orElseUpdate( (e.nt, theSig), fromNormalizedChildren )
+              case RuntimeError(_) =>
+                // Program fails due to runtime error, i.e. it is wrong
+                None
+              case EvaluatorError(_) =>
+                // We could not complete evaluation due to partial expression.
+                // Return original expression
+                Some(e)
+
             }
           }
         })

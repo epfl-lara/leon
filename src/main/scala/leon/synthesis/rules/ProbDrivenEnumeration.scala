@@ -237,7 +237,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     def mkEnum = {
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, minLogProb, maxEnumerated, optimize)
+      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate, minLogProb, maxEnumerated, optimize)
     }.iterator(topLabel)
 
 
