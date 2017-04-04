@@ -475,7 +475,6 @@ abstract class STELike(name: String) extends Rule(name) {
     def validateAllCandidates(): Option[Stream[Solution]] = {
 
       var untrusted: List[Solution] = Nil
-
       while(viableCandidates.nonEmpty) {
         val bs = viableCandidates.head
 
@@ -640,7 +639,7 @@ abstract class STELike(name: String) extends Rule(name) {
             innerExamples += cex
             failedExamplesStats(cex) += 1
 
-            debug(f" Program: ${getExpr(bs).asString}%-80s failed on: ${cex.asString}")
+            debug(f" Program: ${getExpr(bs).asString}%-80s proven incorrect. New cex: ${cex.asString}")
 
             discardCandidate(bs, false)
 
@@ -667,11 +666,12 @@ abstract class STELike(name: String) extends Rule(name) {
             None
 
           case Some(false) =>
+            debug(f"Program: ${getExpr(bs).asString}%-80s proven correct!")
             Some(Solution(BooleanLiteral(true), Set(), getOuterExpr(bs), true))
 
           case None =>
             if (useOptTimeout) {
-              info("STE could not prove the validity of the resulting expression")
+              debug(f"Program: ${getExpr(bs).asString}%-80s: Validation failed")
               // Interpret timeout in CE search as "the candidate is valid"
               Some(Solution(BooleanLiteral(true), Set(), getOuterExpr(bs), false))
 
