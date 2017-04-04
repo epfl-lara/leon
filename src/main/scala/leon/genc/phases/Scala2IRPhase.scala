@@ -566,16 +566,24 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       CIR.App(fun, Nil, args)
 
-    // Lambda are okay for GenC iff they do not capture variables
-    case Lambda(argsA, FunctionInvocation(tfd, argsB)) if (argsA map { _.toVariable }) == argsB =>
-      val fun = rec(tfd)
-      fun.toVal
+    case Lambda(argsA, FunctionInvocation(tfd, argsB))  =>
+      // Lambda are okay for GenC iff they do not capture variables and call a function directly.
+      // Additionally, the called function should not capture any environment variable.
+      if ((argsA map { _.toVariable }) != argsB) {
+        val strA = argsA.mkString("[", ", ", "]")
+        val strB = argsB.mkString("[", ", ", "]")
+        debug(s"This is a capturing lambda because: $strA != $strB")
+        fatalError(s"Capturing lambda are not supported", e.getPos)
+      }
 
-    case Lambda(argsA, FunctionInvocation(tfd, argsB)) =>
-      val strA = argsA.mkString("[", ", ", "]")
-      val strB = argsB.mkString("[", ", ", "]")
-      debug(s"This is a capturing lambda because: $strA != $strB")
-      fatalError(s"Capturing lambda are not supported", e.getPos)
+      val fun = rec(tfd)
+
+      if (fun.ctx.nonEmpty) {
+        debug(s"${fun.id} is capturing some variables: ${fun.ctx mkString ", "}")
+        fatalError(s"Function capturing their environment cannot be used as value", e.getPos)
+      }
+
+      fun.toVal
 
     case Lambda(args0, body0) =>
       debug(s"This is an unamed function; support is currently missing")
