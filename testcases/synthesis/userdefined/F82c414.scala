@@ -13,14 +13,12 @@ object F82c414 {
     variable[T1]
 
     val f82c414_Unit: Unit = ()
-    val canary0 = f82c414_Unit
-
     val f82c414_Char: Char = 'a'
     val f82c414_Int: Int = 0
     val f82c414_BigInt: BigInt = BigInt(0)
     val f82c414_Boolean: Boolean = true
     val f82c414_Real: Real = Real(0)
-    val canary1 = (f82c414_Char, f82c414_Int, f82c414_BigInt, f82c414_Boolean, f82c414_Real)
+    val canary1 = (f82c414_Unit, f82c414_Char, f82c414_Int, f82c414_BigInt, f82c414_Boolean, f82c414_Real)
 
     def cons[T](t: T, l: List[T]): List[T] = Cons(t, l)
     val f82c414_T1_List: List[T1] = cons(t1, Nil())
@@ -55,12 +53,10 @@ object F82c414 {
     variable[T1]
 
     val f82c414_Unit: Unit = ()
-    val canary0 = f82c414_Unit
-
     val f82c414_Int: Int = 0
     val f82c414_BigInt: BigInt = BigInt(0)
     val f82c414_Boolean: Boolean = true
-    val canary1 = (f82c414_Int, f82c414_BigInt, f82c414_Boolean)
+    val canary1 = (f82c414_Unit, f82c414_Int, f82c414_BigInt, f82c414_Boolean)
 
     t1
   }
