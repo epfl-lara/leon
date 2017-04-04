@@ -2,18 +2,21 @@ package leon
 package synthesis
 package stoch
 
+import java.time.LocalDateTime
+
 import StatsUtils._
-import leon.purescala.Definitions.FunDef
+import leon.purescala.Definitions.{ClassDef, FunDef}
 import leon.purescala.Expressions.{Expr, Variable}
 import leon.synthesis.stoch.Stats._
 import leon.utils.PreprocessingPhase
 
 object Stats2Main {
 
-  val SELECT_FUNCTION_TYPES: Boolean = false
-  val SELECT_TUPLE_TYPES: Boolean = false
-
   def main(args: Array[String]): Unit = {
+    println(LocalDateTime.now())
+    println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
+    println(s"SELECT_TUPLE_TYPES: ${StatsMain.SELECT_TUPLE_TYPES}")
+
     val canaryFileName = args(1)
     val canaryExprs = StatsMain.procFiles(canaryFileName)
     val canaryTypes = canaryExprs.filter(_.isInstanceOf[Variable])
@@ -23,45 +26,61 @@ object Stats2Main {
     println("Printing canary types:")
     canaryTypes.foreach(println)
 
-    val fase = args.drop(2).toSeq.par
+    val fase2 = args.drop(2).toSeq.par
                    .map(fname => fname -> canaryTypeFilter2(procFiles2(fname, canaryFileName)))
                    .filter(_._2.nonEmpty)
                    .toMap.seq
+    val fase1 = fase2.mapValues(_.map(_._1))
 
-    /* for ((fname, exprs) <- fase) {
-      println(s"Printing interesting expressions from ${fname}")
-      for (expr <- exprs) {
-        println(s"$fname, ${expr.getType}, ${expr.getType.getClass}, ${expr.getClass}")
+    /* for ((fname, epar) <- fase2) {
+      println(s"Printing interesting expressions from $fname")
+      for ((expr, par) <- epar) {
+        println(s"$fname, $expr, ${expr.getType}, ${expr.getType.getClass}, ${expr.getClass}")
       }
     } */
 
-    val allTypeParams = fase.values.flatten.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
-    val ecs: ECS2 = fase.values.map(exprs => groupExprs2(allTypeParams, canaryTypes, exprs))
-                               .fold(Map())(ecs2Add)
-                               .mapValues(_.mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr)))))
-                               .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))))))
-                               .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+    val allTypeParams = fase2.values.flatten.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
+    val ecs2: ECS2 =
+      fase2.map { case (fileName, exprs) => groupExprs2(fileName, allTypeParams, canaryTypes, exprs) }
+           .fold(Map())(ecs2Add)
+           .mapValues(_.mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr)))))
+           .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))))))
+           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+    val ecs1: ExprConstrStats =
+      fase1.map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
+           .fold(Map())(ecsAdd)
+           .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
+           .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
+           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
 
     println("Printing coarse ECS2:")
-    println(Stats.ecs2ToStringCoarse(ecs))
+    println(Stats.ecs2ToStringCoarse(ecs2))
 
     println("Printing ECS2:")
-    println(Stats.ecs2ToString(ecs))
+    println(Stats.ecs2ToString(ecs2))
 
-    val fcs: FCS2 = getFCS2(ecs)
+    val fcs2: FCS2 = getFCS2(ecs2)
     println("Printing FCS2:")
-    println(Stats.fcs2ToString(fcs))
+    println(Stats.fcs2ToString(fcs2))
+    val fcs1: FunctionCallStats = getFunctionCallStats(ecs1)
 
-    val ls: LS2 = getLS2(ecs)
+    val ls2: LS2 = getLS2(ecs2)
     println("Printing LS2:")
-    println(Stats.ls2ToString(ls))
+    println(Stats.ls2ToString(ls2))
+    val ls1: LitStats = getLitStats(ecs1)
 
-    /* val prodRules: Seq[FunDef] = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
+    val (implicits, prodRules): (Seq[ClassDef], Seq[FunDef]) =
+      PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
+    println("Printing labels:")
+    for (label <- implicits) {
+      println(label)
+      println()
+    }
     println("Printing production rules:")
     for (rule <- prodRules) {
       println(rule)
       println()
-    } */
+    }
   }
 
   def procFiles2(fileNames: String*): Seq[(Expr, Option[(Int, Expr)])] = {

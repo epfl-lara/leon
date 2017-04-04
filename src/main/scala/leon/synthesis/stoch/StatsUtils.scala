@@ -151,6 +151,7 @@ object StatsUtils {
   }
 
   def groupExprs(
+                  fileName: String,
                   allTypeParams: Seq[TypeParameter],
                   canaryTypes: Map[String, TypeTree],
                   exprs: Seq[Expr]
@@ -175,6 +176,7 @@ object StatsUtils {
   type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
 
   def groupExprs2(
+                   fileName: String,
                    allTypeParams: Seq[TypeParameter],
                    canaryTypes: Map[String, TypeTree],
                    exprs: Seq[(Expr, Option[(Int, Expr)])]
@@ -182,6 +184,12 @@ object StatsUtils {
     val canaryInsts = exprs.filter(_._1.isInstanceOf[Variable])
                            .map { case (e, par) => e.asInstanceOf[Variable] }
                            .filter(v => canaryTypes.contains(v.id.name))
+    for (id <- canaryTypes.keys) {
+      if (!canaryInsts.exists(_.id.name == id)) {
+        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq, allTypeParams)
+        println(s"Unidentified canary instance in file $fileName! id: $id selectableType: $selectableType")
+      }
+    }
     require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
     def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)

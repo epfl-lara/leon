@@ -2,6 +2,8 @@ package leon
 package synthesis
 package stoch
 
+import java.time.LocalDateTime
+
 import StatsUtils._
 import leon.purescala.Definitions.FunDef
 import leon.purescala.Expressions.{Expr, Variable}
@@ -14,6 +16,10 @@ object StatsMain {
   val SELECT_TUPLE_TYPES: Boolean = false
 
   def main(args: Array[String]): Unit = {
+    println(LocalDateTime.now())
+    println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
+    println(s"SELECT_TUPLE_TYPES: ${StatsMain.SELECT_TUPLE_TYPES}")
+
     val canaryFileName = args(1)
     val canaryExprs = procFiles(canaryFileName)
     val canaryTypes = canaryExprs.filter(_.isInstanceOf[Variable])
@@ -36,11 +42,11 @@ object StatsMain {
     } */
 
     val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
-    val ecs: ExprConstrStats = fase.values.map(exprs => groupExprs(allTypeParams, canaryTypes, exprs))
-                                          .fold(Map())(ecsAdd)
-                                          .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-                                          .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
-                                          .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+    val ecs: ExprConstrStats = fase.map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
+                                   .fold(Map())(ecsAdd)
+                                   .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
+                                   .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
+                                   .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
 
     println("Printing coarse expression constructor stats:")
     println(Stats.ecsToStringCoarse(ecs))
