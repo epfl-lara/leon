@@ -48,7 +48,7 @@ class DataGenSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
     val pgm = fix._2
 
     val eval      = new DefaultEvaluator(ctx, pgm)
-    val generator = new GrammarDataGen(eval, Literals)
+    val generator = new GrammarDataGen(eval, leon.synthesis.grammars.values(pgm))
 
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
