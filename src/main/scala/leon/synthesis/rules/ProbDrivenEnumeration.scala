@@ -5,7 +5,6 @@ package synthesis
 package rules
 
 import evaluators._
-import leon.grammars.aspects.TypeDepthBound
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import leon.grammars.{Expansion, ExpansionExpr, Label}
 import leon.grammars.enumerators._
@@ -32,7 +31,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     import outerCtx.reporter._
 
-    val solverTo = 3000
+    val solverTo = 8000
 
     // Create a fresh solution function with the best solution around the
     // current STE as body
@@ -292,7 +291,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
           case None =>
             if (useOptTimeout) {
-              info("Leon could not prove the validity of the resulting expression")
+              debug("Leon could not prove the validity of the resulting expression")
               // Interpret timeout in CE search as "the candidate is valid"
               Some(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false))
             } else {
@@ -306,22 +305,25 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    def solutionStream = {
+    def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
-      var sol: Option[Solution] = None
-      while (!sctx.interruptManager.isInterrupted && sol.isEmpty && it.hasNext) {
+      var untrusted: Seq[Solution] = Seq()
+      while (!sctx.interruptManager.isInterrupted && it.hasNext) {
         val expr = it.next
         debug(s"Testing $expr")
-        sol = (if (examples.exists(testCandidate(expr)(_).contains(false))) {
+        if (examples.exists(testCandidate(expr)(_).contains(false))) {
           debug(s"Testing for $expr failed!")
-          None
         } else {
           debug(s"Testing for $expr successful!")
-          validateCandidate(expr)
-        }).map( sol => sol.copy(term = innerToOuter.transform(sol.term)(Map())) )
+          validateCandidate(expr) foreach { sol =>
+            val outerSol = sol.copy(term = innerToOuter.transform(sol.term)(Map()))
+            if (sol.isTrusted) return Stream(outerSol) // Found verifiable solution, return immediately
+            else untrusted :+= outerSol // Solution was not verifiable, remember it anyway.
+          }
+        }
       }
 
-      sol.toStream
+      untrusted.toStream // Best we could do is find unverifiable solutions
 
     }
 
@@ -346,7 +348,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
 object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
   import leon.grammars.Tags
-  import leon.grammars.aspects.Tagged
+  import leon.grammars.aspects._
   def rootLabel(p: Problem, sctx: SynthesisContext) = {
     Label(p.outType).withAspect(TypeDepthBound(3))//.withAspect(Tagged(Tags.Top, 0, None))
   }
