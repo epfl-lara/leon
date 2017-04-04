@@ -4,6 +4,8 @@ package leon
 package grammars
 package enumerators
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import CandidateScorer.Score
 import purescala.Expressions.Expr
 import purescala.Common.FreshIdentifier
@@ -28,7 +30,7 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 minLogProb: Double,
                                 maxEnumerated: Int,
                                 disambiguate: Boolean
-                               )(implicit sctx: SynthesisContext)
+                               )(implicit ctx: LeonContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](
     scorer,
     minLogProb,
@@ -37,10 +39,12 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
     ProbwiseTopdownEnumerator.ntWrap
   ) with GrammarEnumerator {
 
-  import sctx.reporter._
+  import ctx.reporter._
   override protected implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
+  debug("Available examples:")
+  examples foreach (ex => debug("  -" + ex))
 
   val hors = GrammarEnumerator.horizonMap(init, productions).map{ case (k,v) => k -> v._2 }
   protected def productions(nt: Label) = grammar.getProductions(nt)
@@ -71,11 +75,21 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                                                         maxEnumerated: Double,
                                                         disambiguate: Boolean,
                                                         ntWrap: NonTerminalInstance[NT, R] => R
-                                                       )(implicit sctx: SynthesisContext) {
+                                                       )(implicit ctx: LeonContext) {
 
   require(minLogProb < 0.0)
 
-  import sctx.reporter._
+  protected val interrupted: AtomicBoolean = new AtomicBoolean(false)
+
+  def interrupt(): Unit = {
+    interrupted.set(true)
+  }
+
+  def recoverInterrupt(): Unit = {
+    interrupted.set(false)
+  }
+
+  import ctx.reporter._
   implicit protected val debugSection = leon.utils.DebugSectionSynthesis
   def verboseDebug(msg: => String) = {
     debug(msg)(leon.utils.DebugSectionSynthesisVerbose)
@@ -84,13 +98,13 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     ifDebug(NoPosition, body)(leon.utils.DebugSectionSynthesisVerbose)
   }
 
-  val timers = sctx.timers.synthesis.applications.get("Prob-Enum")
+  val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 
   protected def nthor(nt: NT): Double
 
-  protected val coeff = sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
+  protected val coeff = ctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownCoeff)
 
   type Sig = Seq[R]
 
@@ -125,6 +139,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           if (!e.complete) {
             // If e is not complete, we cannot compute signature,
             // so reconstructing from the normalized children is best we can do.
+            //println(s"Incomplete. ${e.falseProduce(ntWrap)} -> ${fromNormalizedChildren.map(_.falseProduce(ntWrap))}")
             fromNormalizedChildren
           } else {
             // If e is complete expression...
@@ -135,7 +150,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                 // Look up in the signature map for an expansion with the same signature
                 // If not found, fromNormalizedChildren will be the representative for this class.
                 // Add it to the map and return it
-                sigToNormalMemo.orElseUpdate( (e.nt, theSig), fromNormalizedChildren )
+                sigToNormalMemo.orElseUpdate( (e.nt, theSig), {
+                  //println(s"Update: ${(e.nt.asInstanceOf[Label].tpe, theSig)} -> ${fromNormalizedChildren.map(_.falseProduce(ntWrap))}")
+                  fromNormalizedChildren
+                })
               case RuntimeError(_) =>
                 // Program fails due to runtime error, i.e. it is wrong
                 None
@@ -199,7 +217,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     var lastPrint: Int = 1
 
-    def hasNext: Boolean = {
+    def hasNext: Boolean = !interrupted.get() && {
       prepareNext()
       worklist.nonEmpty
     }
@@ -324,6 +342,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           expansionPreNormal = normalizeMemo.getOrElse(expansion, expansion)
           // expansionPreNormal = expansion
         } yield {
+          //println(s"NORMAL ${expansion.falseProduce(ntWrap)} -> ${expansionPreNormal.falseProduce(ntWrap)}")
           val logProbPrime = elem.logProb + rule.logProb
           val horizonPrime = rule.subTrees.map(nthor).sum
           WorklistElement(expansionPreNormal, logProbPrime, horizonPrime, elemScore, Some(elem))
@@ -343,6 +362,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               csHdExpPreNormal = normalizeMemo.getOrElse(csHdExp.expansion, csHdExp.expansion)
               // csHdExpPreNormal = csHdExp.expansion
             } yield {
+              //println(s"NORMAL ${csHdExp.expansion.falseProduce(ntWrap)} -> ${csHdExpPreNormal.falseProduce(ntWrap)}")
               (csHdExpPreNormal :: csTl, csHdExp.logProb)
             }
         }

@@ -4,6 +4,8 @@ package leon
 package grammars
 package enumerators
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import purescala.Common.Identifier
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
@@ -20,6 +22,16 @@ import scala.collection.{mutable => mut}
   * @tparam R The type of enumerated elements.
   */
 abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (ProductionRule[NT, R], Seq[ProductionRule[NT, R]])]){
+
+  protected val interrupted: AtomicBoolean = new AtomicBoolean(false)
+
+  def interrupt(): Unit = {
+    interrupted.set(true)
+  }
+
+  def recoverInterrupt(): Unit = {
+    interrupted.set(false)
+  }
 
   protected val ctx: LeonContext
   protected type Rule = ProductionRule[NT, R]

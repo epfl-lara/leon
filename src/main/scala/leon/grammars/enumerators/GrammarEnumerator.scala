@@ -3,10 +3,11 @@ package grammars
 package enumerators
 
 import purescala.Expressions.Expr
+import utils.Interruptible
 
 import scala.collection.mutable.{HashMap, HashSet, Queue => MutableQueue}
 
-trait GrammarEnumerator {
+trait GrammarEnumerator extends Interruptible {
   protected val grammar: ExpressionGrammar
 
   /** Returns the iterator of elements corresponding to a specific nonterminal */

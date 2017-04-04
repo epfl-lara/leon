@@ -11,9 +11,9 @@ import scala.util.control.Breaks
 
 class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => MeetsSpec,
                              getExs: Unit => Seq[Example]
-                            )(implicit sctx: SynthesisContext) {
+                            )(implicit ctx: LeonContext) {
 
-  val timers = sctx.timers.synthesis.applications.get("Prob-Enum")
+  val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
 
   def score(expansion: Expansion[NT, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
     timers.score.timed {
