@@ -6,20 +6,15 @@ package datagen
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
-import purescala.Constructors._
-import purescala.Extractors._
-import purescala.ExprOps._
 import evaluators._
-import bonsai.enumerators._
 
 import grammars._
-import utils.UniqueCounter
 import utils.StreamUtils.cartesianProduct
 
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-class VaryingGrammarDataGen(eval: Evaluator, grammar: ExpressionGrammar) extends GrammarDataGen(eval, grammar) {
+class DistinctGrammarDataGen(eval: Evaluator, grammar: ExpressionGrammar) extends GrammarDataGen(eval, grammar) {
 
   def generateN(tpe: TypeTree, n: Int): Iterator[Seq[Expr]] = {
     if (n == 1) {
@@ -43,7 +38,7 @@ class VaryingGrammarDataGen(eval: Evaluator, grammar: ExpressionGrammar) extends
       val indices = groups.flatten.zipWithIndex.toMap
 
       // Generate distinct values for each group
-      var streams = groups map { g =>
+      val streams = groups map { g =>
         generateN(g.head.getType, g.size).toStream
       }
 
