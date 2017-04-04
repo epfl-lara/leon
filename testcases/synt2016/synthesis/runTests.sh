@@ -1,14 +1,13 @@
 #!/bin/bash
 
 function run {
-    cmd="./leon --debug=report --timeout=60 --synthesis --use-probwise --partial=off $1"
+    cmd="./leon --debug=report --timeout=60 --synthesis --partial=off $1"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
 }
 
 echo "==================================================================================================================" >> synthesis-report.txt
-: '
 # List
 run testcases/synt2016/synthesis/List/Insert.scala
 run testcases/synt2016/synthesis/List/Delete.scala
@@ -36,13 +35,13 @@ run testcases/synt2016/synthesis/UnaryNumerals/Distinct.scala
 run testcases/synt2016/synthesis/UnaryNumerals/Mult.scala
 
 # BatchedQueue
-# run testcases/synt2016/synthesis/BatchedQueue/Enqueue.scala
+run testcases/synt2016/synthesis/BatchedQueue/Enqueue.scala
 run testcases/synt2016/synthesis/BatchedQueue/Dequeue.scala
 
 # AddressBook
 run testcases/synt2016/synthesis/AddressBook/Make.scala
 run testcases/synt2016/synthesis/AddressBook/Merge.scala
-'
+
 # RunLength
 run testcases/synt2016/synthesis/RunLength/RunLength.scala
 
