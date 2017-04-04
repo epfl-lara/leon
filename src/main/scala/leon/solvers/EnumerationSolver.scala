@@ -7,7 +7,6 @@ import utils._
 import purescala.Common._
 import purescala.Definitions._
 import evaluators._
-import grammars._
 import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._

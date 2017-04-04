@@ -10,9 +10,10 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.ExprOps._
 import evaluators._
-import bonsai.enumerators._
 
 import grammars._
+import enumerators._
+import CandidateScorer.MeetsSpec
 import utils.UniqueCounter
 import utils.SeqUtils.cartesianProduct
 
@@ -54,7 +55,8 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar) extends D
   }
 
   def generate(tpe: TypeTree): Iterator[Expr] = {
-    val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
+    val scorer = new CandidateScorer[Label, Expr]( (_, _) => MeetsSpec.YES, _ => Seq())(ctx)
+    val enum = new ProbwiseTopdownEnumerator(grammar, Label(tpe), scorer, Seq(), (_, _) => null, -1000000, 100000, false)(ctx)
     enum.iterator(Label(tpe)).flatMap(expandGenerics).takeWhile(_ => !interrupted.get)
   }
 

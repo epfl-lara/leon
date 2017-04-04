@@ -3,6 +3,8 @@
 package leon.integration.grammars
 
 import leon._
+import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, CandidateScorer}
+import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import leon.test._
 import leon.test.helpers._
 import leon.purescala.Common.FreshIdentifier
@@ -10,7 +12,6 @@ import leon.purescala.Definitions._
 import leon.purescala.Constructors._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-import bonsai.enumerators._
 import leon.grammars._
 import leon.grammars.aspects.SimilarTo
 
@@ -138,8 +139,10 @@ class SimilarToSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
 
       val fd = ofd.getOrElse(new FunDef(FreshIdentifier("bogus"), Nil, Nil, Untyped))
       val g = OneOf(vs)
-      val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](g.getProductions)
-      val exprs = enum.iterator(Label(exp.getType).withAspect(SimilarTo(Seq(from), fd)))
+      val label = Label(exp.getType).withAspect(SimilarTo(Seq(from), fd))
+      val scorer = new CandidateScorer[Label, Expr]( (_, _) => MeetsSpec.YES, _ => Seq())(fix._1)
+      val enum = new ProbwiseTopdownEnumerator(g, label, scorer, Seq(), (_, _) => null, -1000000, 100000, false)(fix._1)
+      val exprs = enum.iterator(label)
 
       //println(s"SimilarTo(${from.asString}):")
 

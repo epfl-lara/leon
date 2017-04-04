@@ -3,8 +3,6 @@
 package leon
 package grammars
 
-import bonsai.Generator
-
 /** Represents a production rule of a non-terminal symbol of an [[ExpressionGrammar]].
  *
  * @param subTrees The nonterminals that are used in the right-hand side of this [[ProductionRule]]
@@ -18,12 +16,16 @@ import bonsai.Generator
  * @tparam R The type of syntax trees of the grammar
  */
 case class ProductionRule[T, R](
-    override val subTrees: Seq[T],
-    override val builder: Seq[R] => R,
+    subTrees: Seq[T],
+    builder: Seq[R] => R,
     tag: Tags.Tag,
     cost: Int,
     logProb: Double)
-  extends Generator[T,R](subTrees, builder) {
-
+{
   require(logProb < 0.0 && cost > 0)
+
+  val arity = subTrees.size
+
+  val isTerminal    = arity == 0
+  val isNonTerminal = arity > 0
 }

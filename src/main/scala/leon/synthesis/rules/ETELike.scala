@@ -4,6 +4,8 @@ package leon
 package synthesis
 package rules
 
+import leon.grammars.enumerators.{ProbwiseTopdownEnumerator, CandidateScorer}
+import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Constructors._
@@ -17,9 +19,8 @@ import leon.utils.GrowableIterable
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-import bonsai.enumerators._
 
-/** A common trait for all classes that implemen Example-guided Term Exploration
+/** A common trait for all classes that implement Example-guided Term Exploration
   *
   */
 abstract class ETELike(name: String) extends Rule(name) {
@@ -79,9 +80,10 @@ abstract class ETELike(name: String) extends Rule(name) {
           val evalParams = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
           val evaluator  = new DualEvaluator(hctx, hctx.program, params = evalParams)
 
-          val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
-
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
+          val scorer = new CandidateScorer[Label, Expr]( (_, _) => MeetsSpec.YES, _ => Seq())(hctx)
+          val enum = new ProbwiseTopdownEnumerator(grammar, params.rootLabel(targetType), scorer, Seq(), (_, _) => null, -1000000, 100000, false)(hctx)
+          //val enum = new MemoizedEnumerator[Label, Expr, ProductionRule[Label, Expr]](grammar.getProductions)
 
           val timers = hctx.timers.synthesis.rules.ete
 
