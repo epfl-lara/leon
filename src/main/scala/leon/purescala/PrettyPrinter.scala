@@ -549,6 +549,15 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case ccd: CaseClassDef =>
+        for ((k, vs) <- ccd.extAnnotations) {
+          // r-mukund: The old pretty printer wasn't printing annotations correctly:
+          // @precondition(3) would be printed as @precondition(Some(3))
+          // The following hack fixed the immediate issue, but I am unsure whether it completely solves the problem.
+          val vsStrs = vs.map(_.map(v => s"$v").getOrElse("None"))
+          p"""|@$k${nary(vsStrs, ",", "(", ")")}
+              |"""
+        }
+
         if (ccd.isCaseObject) {
           p"case object ${ccd.id}"
         } else {
@@ -574,6 +583,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case fd: FunDef =>
         for ((k, vs) <- fd.extAnnotations) {
+          // FIXME: This is wrong, but when is the result actually None?
           val vsStrs = vs.map(_.map(v => s"$v").getOrElse("None"))
           p"""|@$k${nary(vsStrs, ",", "(", ")")}
               |"""
