@@ -200,13 +200,11 @@ parallelExecution in GenCTest := false
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
-lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "10eaaee4ea0ff6567f4f866922cb871bae2da0ac")
 lazy val scalaSmtlib = ghProject("git://github.com/regb/scala-smtlib.git", "f0fe457e405dfa6d7f002585a1cb021f246a1a89")
 lazy val cafebabe    = ghProject("git://github.com/psuter/cafebabe.git",   "49dce3c83450f5fa0b5e6151a537cc4b9f6a79a6")
 
 lazy val root = (project in file(".")).
   configs(RegressionTest, NativeZ3RegressionTest, IsabelleTest, GenCTest, IntegrTest).
-  dependsOn(bonsai).
   dependsOn(scalaSmtlib).
   dependsOn(cafebabe).
   settings(inConfig(NativeZ3RegressionTest)(Defaults.testTasks ++ testSettings): _*).
