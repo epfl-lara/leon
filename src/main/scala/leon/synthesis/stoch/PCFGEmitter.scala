@@ -20,7 +20,7 @@ object PCFGEmitter {
             ecs: ExprConstrStats,
             fcs: FunctionCallStats,
             ls: LitStats
-          ): Seq[FunDef] = {
+          ): UnitDef = {
 
     /*
     type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
@@ -47,7 +47,15 @@ object PCFGEmitter {
       prodRule <- emitFunctionCalls(canaryExprs, canaryTypes, tt, pos, fis, ecs, fcs, ls)
     } yield prodRule
 
-    l1 ++ l2
+    val moduleDef = new ModuleDef(FreshIdentifier("grammar"), l1 ++ l2, isPackageObject = false)
+    val packageRef = List("leon", "grammar")
+    val imports = List(
+                        Import(List("leon", "lang"), isWild = true),
+                        Import(List("leon", "lang", "synthesis"), isWild = true),
+                        Import(List("leon", "collection"), isWild = true),
+                        Import(List("leon", "annotation"), isWild = true)
+                      )
+    new UnitDef(FreshIdentifier("grammar"), packageRef, imports, Seq(moduleDef), isMainUnit = true)
   }
 
   def emit(
