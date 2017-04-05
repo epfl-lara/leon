@@ -6,7 +6,7 @@ package purescala
 import utils._
 import Expressions.Variable
 import Types._
-import Definitions.Program
+import Definitions.{CaseClassDef, Program}
 
 object Common {
 
@@ -75,6 +75,20 @@ object Common {
         (that.name, that.id, that.globalId)
       )
     }
+  }
+
+  // r-mukund: Added as a hack to get pretty printable grammars from statistics files.
+  class Id2(id: Identifier, tt: TypeTree, label: CaseClassDef, private val alwaysShowUniqueID: Boolean = false)
+    extends Identifier(id.name, id.globalId, 0, tt, alwaysShowUniqueID) {
+
+    override def toString: String = {
+      s"${id.name}.${label.fields.head.id.uniqueName}"
+    }
+
+    override def uniqueNameDelimited(delim: String) = toString
+
+    override def uniqueName: String = toString
+
   }
 
   object FreshIdentifier {

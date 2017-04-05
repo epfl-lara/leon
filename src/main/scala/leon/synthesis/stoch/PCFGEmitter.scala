@@ -34,8 +34,7 @@ object PCFGEmitter {
 
     val l1 = for {
       (tt, ttMap) <- ecs.toSeq.sortBy { case (tt, ttMap) => (-total2(ttMap), tt.toString) }
-      typeTotal = total2(ttMap)
-      (constr, ttConstrMap) <- ttMap.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString)}
+      (constr, ttConstrMap) <- ttMap.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString) }
       if constr != classOf[FunctionInvocation]
       (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
       production <- emit(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
