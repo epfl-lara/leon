@@ -8,6 +8,6 @@ object MapUtils {
   }
 
   def seqToMap[A, B](a: Seq[(A, B)]): Map[A, Seq[B]] = {
-    a.groupBy(_._1).mapValues(_.map(_._2))
+    a.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
   }
 }
