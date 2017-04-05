@@ -31,7 +31,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     import outerCtx.reporter._
 
-    val solverTo = 8000
+    val solverTo = 10000
 
     // Create a fresh solution function with the best solution around the
     // current STE as body
@@ -199,14 +199,15 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
 
       val res = noRecEvaluator.eval(withBindings(expr), p.as.zip(ex.ins).toMap)
-      res match {
-        case EvaluationResults.Successful(value) =>
-        case EvaluationResults.RuntimeError(err) =>
-          debug(s"RE testing CE: $err")
-          debug(s"  Failing example: $ex")
-        case EvaluationResults.EvaluatorError(err) =>
-          debug(s"Error testing CE: $err")
-      }
+      // res match {
+      //   case EvaluationResults.Successful(value) =>
+      //   case EvaluationResults.RuntimeError(err) =>
+      //     debug(s"RE testing CE: $err")
+      //     debug(s"  Failing example: $ex")
+      //   case EvaluationResults.EvaluatorError(err) =>
+      //     debug(s"Error testing CE: $err")
+      // }
+
       res
     }
 
@@ -264,7 +265,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       timers.validate.start()
       debug(s"Validating $expr")
       val solver = solverF.getNewSolver()
-      EnumeratorStats.cegisIterCount += 1
 
       try {
         setSolution(expr)
@@ -310,11 +310,11 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       var untrusted: Seq[Solution] = Seq()
       while (!sctx.interruptManager.isInterrupted && it.hasNext) {
         val expr = it.next
-        debug(s"Testing $expr")
+        debug(s"Testing: $expr")
         if (examples.exists(testCandidate(expr)(_).contains(false))) {
-          debug(s"Testing for $expr failed!")
+          debug(s"Failed testing!")
         } else {
-          debug(s"Testing for $expr successful!")
+          debug(s"Passed testing!")
           validateCandidate(expr) foreach { sol =>
             val outerSol = sol.copy(term = innerToOuter.transform(sol.term)(Map()))
             if (sol.isTrusted) return Stream(outerSol) // Found verifiable solution, return immediately
@@ -330,12 +330,12 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val enum = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
+    val opt = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
 
-    List(new RuleInstantiation(s"$name (opt = $enum)") {
+    List(new RuleInstantiation(s"$name (opt = $opt)") {
       def apply(hctx: SearchContext): RuleApplication = {
         try {
-          val ndProgram = new NonDeterministicProgram(hctx, p, enum)
+          val ndProgram = new NonDeterministicProgram(hctx, p, opt)
           RuleClosed (ndProgram.solutionStream)
         } catch {
           case UnsatPCException =>

@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import CandidateScorer.Score
 import purescala.Expressions.Expr
 import purescala.Common.FreshIdentifier
-import synthesis.{Example, SynthesisContext, SynthesisPhase}
+import synthesis.{Example, SynthesisPhase}
 import utils.{DedupedPriorityQueue, NoPosition}
 import evaluators.EvaluationResults._
 
@@ -60,14 +60,6 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
     worstResult(examples map (eval(r, _)))
   }
 
-}
-
-object EnumeratorStats {
-  var partialEvalAcceptCount: Int = 0
-  var partialEvalRejectionCount: Int = 0
-  var expandNextCallCount: Int = 0
-  var iteratorNextCallCount: Int = 0
-  var cegisIterCount: Int = 0
 }
 
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
@@ -217,15 +209,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     worklist.enqueue(worklistSeed)
 
-    var lastPrint: Int = 1
-
     def hasNext: Boolean = !interrupted.get() && {
       prepareNext()
       worklist.nonEmpty
     }
 
     def next: R = {
-      EnumeratorStats.iteratorNextCallCount += 1
       //prepareNext()
       assert(worklist.nonEmpty)
       val res = worklist.dequeue()
@@ -244,13 +233,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         //      to be later used by normalization
         lazy val score = scorer.score(elem.expansion, elem.score.yesExs, eagerReturnOnFalse = true)
         lazy val compliesTests = {
-          val res = score.noExs.isEmpty
-          if (res) {
-            EnumeratorStats.partialEvalAcceptCount += 1
-          } else {
-            EnumeratorStats.partialEvalRejectionCount += 1
-          }
-          res
+          score.noExs.isEmpty
         }
 
         if (elem.priority < minLogProb || generated > maxEnumerated) {
@@ -270,6 +253,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           ifDebug(printer =>
             if ((generated & (generated-1)) == 0) {
               printer(s"generated = $generated")
+              printer(s"Worklist size = ${worklist.size}")
             }
           )
           verboseDebug(s"Dequeued (${elem.priority}): ${elem.expansion.falseProduce(ntWrap)}")
@@ -299,16 +283,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                     printer(s"Enqueued (${e.priority}): ${e.expansion.falseProduce(ntWrap)}")
                   }
                 }
-                ifDebug { printer =>
-                  if (worklist.size >= 2 * lastPrint) {
-                    printer(s"Worklist size: ${worklist.size}")
-                    printer(s"Accept / reject ratio: ${EnumeratorStats.partialEvalAcceptCount} /" +
-                      s"${EnumeratorStats.partialEvalRejectionCount}")
-                    lastPrint = worklist.size
-                  }
-                }
+
               case None =>
-                debug(elem.expansion.falseProduce(ntWrap) + " failed evaluation")
+                verboseDebug(elem.expansion.falseProduce(ntWrap) + " failed evaluation")
             }
           } else {
             // The element has failed partial evaluation ...
@@ -317,7 +294,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               printer(s"Element rejected. compliesTests = $compliesTests, scoreTriple = $scoreTriple.")
             }
           }
-          // We dequeued an elemen, so we don't necessarily have an acceptable element
+          // We dequeued an element, so we don't necessarily have an acceptable element
           // on the head of the queue. Call rec again.
           prepareNext()
         }
@@ -327,7 +304,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   }
 
   def expandNext(elem: WorklistElement, elemScore: Score): Seq[WorklistElement] = {
-    EnumeratorStats.expandNextCallCount += 1
     val expansion = elem.expansion
 
     require(!expansion.complete)
