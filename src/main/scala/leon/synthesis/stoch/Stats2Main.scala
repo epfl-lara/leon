@@ -5,7 +5,7 @@ package stoch
 import java.time.LocalDateTime
 
 import StatsUtils._
-import leon.purescala.Definitions.{ClassDef, FunDef}
+import leon.purescala.Definitions.{ClassDef, FunDef, UnitDef}
 import leon.purescala.Expressions.{Expr, Variable}
 import leon.synthesis.stoch.Stats._
 import leon.utils.PreprocessingPhase
@@ -69,18 +69,14 @@ object Stats2Main {
     println(Stats.ls2ToString(ls2))
     val ls1: LitStats = getLitStats(ecs1)
 
-    val (implicits, prodRules): (Seq[ClassDef], Seq[FunDef]) =
-      PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
-    println("Printing labels:")
-    for (label <- implicits) {
-      println(label)
-      println()
-    }
+    val prodRules: UnitDef = PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
+    val prodRulesStr = prodRules.toString
+                                .replaceAll("variable\\$\\d*\\[", "variable[")
+                                .replaceAll("List\\$\\d*\\[", "List[")
+                                .replaceAll("Option\\$\\d*\\[", "Option[")
+                                .replaceAll("case class", "implicit class")
     println("Printing production rules:")
-    for (rule <- prodRules) {
-      println(rule)
-      println()
-    }
+    println(prodRulesStr)
   }
 
   def procFiles2(fileNames: String*): Seq[(Expr, Option[(Int, Expr)])] = {

@@ -5,7 +5,7 @@ package stoch
 import java.time.LocalDateTime
 
 import StatsUtils._
-import leon.purescala.Definitions.FunDef
+import leon.purescala.Definitions.UnitDef
 import leon.purescala.Expressions.{Expr, Variable}
 import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, ecsAdd}
 import leon.utils.PreprocessingPhase
@@ -62,12 +62,13 @@ object StatsMain {
     println("Printing literal occurrence statistics:")
     println(Stats.lsToString(ls))
 
-    val prodRules: Seq[FunDef] = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
+    val prodRules: UnitDef = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
+    val prodRulesStr = prodRules.toString
+                                .replaceAll("variable\\$\\d*\\[", "variable[")
+                                .replaceAll("List\\$\\d*\\[", "List[")
+                                .replaceAll("Option\\$\\d*\\[", "Option[")
     println("Printing production rules:")
-    for (rule <- prodRules) {
-      println(rule)
-      println()
-    }
+    println(prodRulesStr)
   }
 
   def procFiles(fileNames: String*): Seq[Expr] = {
