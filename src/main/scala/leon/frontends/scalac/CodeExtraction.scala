@@ -168,6 +168,8 @@ trait CodeExtraction extends ASTExtractors {
       try {
         val scalaUnits = units.map { u => u.body match {
           // package object
+          // FIXME: turns out that nested packages also fall here but they are not handled properly
+          //        (example package leon; package grammars)
           case PackageDef(refTree, List(PackageDef(inner, body))) =>
             val name = extractPackageRef(inner).mkString("$")
             val pack = extractPackageRef(refTree) ++ extractPackageRef(inner)
