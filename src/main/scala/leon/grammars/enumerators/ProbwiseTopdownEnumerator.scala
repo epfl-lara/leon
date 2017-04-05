@@ -29,20 +29,20 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 eval: (Expr, Example) => Result[Expr],
                                 minLogProb: Double,
                                 maxEnumerated: Int,
-                                disambiguate: Boolean
+                                indistinguish: Boolean
                                )(implicit ctx: LeonContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](
     scorer,
     minLogProb,
     maxEnumerated,
-    disambiguate,
+    indistinguish,
     ProbwiseTopdownEnumerator.ntWrap
   ) with GrammarEnumerator {
 
   import ctx.reporter._
   override protected implicit val debugSection = leon.utils.DebugSectionSynthesis
 
-  debug(s"Creating ProbwiseTopdownEnumerator with disambiguate = $disambiguate")
+  debug(s"Creating ProbwiseTopdownEnumerator with indistinguish = $indistinguish")
   debug("Available examples:")
   examples foreach (ex => debug("  -" + ex))
 
@@ -73,7 +73,7 @@ object EnumeratorStats {
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
                                                         minLogProb: Double,
                                                         maxEnumerated: Double,
-                                                        disambiguate: Boolean,
+                                                        indistinguish: Boolean,
                                                         ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit ctx: LeonContext) {
 
@@ -120,7 +120,9 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   protected val normalizeMemo = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
   def expRedundant(e: Expansion[NT, R]) = normalizeMemo(e)
 
-  // Disambiguate expressions by signature
+  /** Use indistinguishability heuristic on expressions by signature */
+
+  // Return the signature of an expressionq
   def sig(r: R): Result[Sig]
 
   // Returns normalized version of e, or None if it fails
@@ -227,7 +229,8 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       //prepareNext()
       assert(worklist.nonEmpty)
       val res = worklist.dequeue()
-      ifDebug { printer =>
+      debug(s"Returned element: ${res.get}")
+      ifVerboseDebug { printer =>
         printer("Printing lineage for returned element:")
         res.lineage.foreach { elem => printer(s"    ${elem.priority}: ${elem.expansion.falseProduce(ntWrap)}") }
       }
@@ -275,7 +278,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             // If it is possible that the expansions of elem lead somewhere ...
             // First normalize it!
             // @mk: Dirty hack: This relies on the previous call to scorer.score for recursive calls
-            val normalExpansionOpt = if (disambiguate) normalize(elem.expansion) else Some(elem.expansion)
+            val normalExpansionOpt = if (indistinguish) normalize(elem.expansion) else Some(elem.expansion)
             normalExpansionOpt match {
               case Some(normalExpansion) =>
                 val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
