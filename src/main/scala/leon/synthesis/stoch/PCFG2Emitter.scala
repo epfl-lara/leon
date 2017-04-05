@@ -77,7 +77,7 @@ object PCFG2Emitter {
     val pr2 = for {
       (tt, ttS2) <- fcs2.toSeq.sortBy { case (tt, ttS2) => (-total2(ttS2), tt.toString) }
       (idxPar, ttParS2) <- ttS2.toSeq.sortBy { case (idxPar, ttParS2) => (-total1(ttParS2), idxPar.toString) }
-      (pos, fis) <- ttParS2.toSeq.sortBy { case (pos, fis) => (-fis.size, pos) }
+      (pos, fis) <- ttParS2.toSeq.sortBy { case (pos, fis) => (-fis.size, pos.toString) }
       prodRule <- emitFunctionCalls2(canaryExprs, canaryTypes, tt, idxPar, pos, fis, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     } yield prodRule
 
