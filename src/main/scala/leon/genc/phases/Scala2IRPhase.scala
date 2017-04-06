@@ -274,7 +274,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
       case Assert(_, _, body) => scrutRec(body)
 
-      case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple | _: IfExpr =>
+      case _: ArraySelect | _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple | _: IfExpr =>
         withTmp(scrutinee0.getType, scrutinee0, env)
 
       case e => internalError(s"scrutinee = $e of type ${e.getClass} is not supported")
