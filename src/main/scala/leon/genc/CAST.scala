@@ -134,7 +134,7 @@ object CAST { // C Abstract Syntax Tree
     )
   }
 
-  case class Call(id: Id, args: Seq[Expr]) extends Expr {
+  case class Call(callable: Expr, args: Seq[Expr]) extends Expr {
     require(args forall { _.isValue })
   }
 
@@ -235,7 +235,7 @@ object CAST { // C Abstract Syntax Tree
       val argv = Var(Id("argv"), Pointer(Pointer(Primitive(CharType))))
       val params = argc :: argv :: Nil
 
-      val _mainId = Id("_main")
+      val _mainId = Binding(Id("_main"))
 
       val body = buildBlock(
         if (returnInt) Return(Call(_mainId, Nil)) :: Nil

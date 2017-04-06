@@ -94,7 +94,7 @@ abstract class Visitor[S <: IR](final val ir: S) {
     (e: @unchecked) match {
       case Binding(vd) => rec(vd)
       case FunVal(fd) => rec(fd)
-      case FunRef(b) => rec(b)
+      case FunRef(e) => rec(e)
       case Block(exprs) => exprs foreach rec
       case Decl(vd) => rec(vd)
       case DeclInit(vd, value) => rec(vd); rec(value)

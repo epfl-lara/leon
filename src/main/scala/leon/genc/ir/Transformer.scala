@@ -112,7 +112,7 @@ abstract class Transformer[From <: IR, To <: IR](final val from: From, final val
     case Binding(vd) => to.Binding(rec(vd)) -> env
 
     case FunVal(fd) => to.FunVal(rec(fd)) -> env
-    case FunRef(Binding(vd)) => to.FunRef(to.Binding(rec(vd))) -> env
+    case FunRef(e) => to.FunRef(rec(e)) -> env
 
     // Consider blocks as a sequence of let statements
     case Block(exprs0) =>
