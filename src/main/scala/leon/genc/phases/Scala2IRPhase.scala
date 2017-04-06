@@ -559,8 +559,8 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       // Contrary to FunctionInvocation, Application of function-like object do not have to extend their
       // context as no environment variables are allowed to be captured.
       val fun = rec(fun0) match {
-        case b: CIR.Binding if b.getType.isInstanceOf[CIR.FunType] => CIR.FunRef(b)
-        case t => fatalError(s"Expected but got $t of type ${t.getClass}.", fun0.getPos)
+        case e if e.getType.isInstanceOf[CIR.FunType] => CIR.FunRef(e)
+        case e => fatalError(s"Expected a binding but got $e of type ${e.getClass}.", fun0.getPos)
       }
       val args = args0 map rec
 

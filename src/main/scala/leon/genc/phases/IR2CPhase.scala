@@ -128,7 +128,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
     case Binding(vd) => C.Binding(rec(vd.id))
 
     case FunVal(fd) => C.Binding(rec(fd.id))
-    case FunRef(b) => rec(b)
+    case FunRef(e) => rec(e)
 
     case Block(exprs) => C.buildBlock(exprs map rec)
 
@@ -171,7 +171,7 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
 
     case DeclInit(vd, value) => C.DeclInit(rec(vd.id), rec(vd.getType), rec(value))
 
-    case App(fd, extra, args) => C.Call(rec(fd.id), (extra ++ args) map rec)
+    case App(callable, extra, args) => C.Call(rec(callable), (extra ++ args) map rec)
 
     case Construct(cd, args) => constructObject(cd, args) // can be a StructInit or an EnumLiteral
 

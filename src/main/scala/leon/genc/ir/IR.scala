@@ -215,22 +215,18 @@ private[genc] sealed trait IR { ir =>
 
   // Represents either a function definition or a function reference
   sealed abstract class Callable extends Expr {
-    val id: Id
     val typ: FunType
   }
 
   // References a FunDef directly
   case class FunVal(fd: FunDef) extends Callable {
-    val id = fd.id
     val typ = FunType(fd.ctx map { _.getType }, fd.params map { _.getType }, fd.returnType)
   }
 
-  // Reference any function through a variable of function type
-  case class FunRef(binding: Binding) extends Callable {
-    require(binding.getType.isInstanceOf[FunType])
-
-    val id = binding.vd.id
-    val typ = binding.getType.asInstanceOf[FunType]
+  // Reference any function through an expression of function type
+  case class FunRef(e: Expr) extends Callable {
+    require(e.getType.isInstanceOf[FunType])
+    val typ = e.getType.asInstanceOf[FunType]
   }
 
   // A non-empty sequence of expressions
