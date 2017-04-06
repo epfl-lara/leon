@@ -184,9 +184,14 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case TypeId(FunType(ret, params), id) => c"$ret (*$id)($params)"
     case TypeId(typ, id) => c"$typ $id"
 
-    case FunSign(Fun(id, returnType, Seq(), _)) => c"${StaticStorage(id)} $returnType $id(void)"
+    case FunSign(Fun(id, FunType(retret, retparamTypes), params, _)) =>
+      c"${StaticStorage(id)} $retret (*$id(${FunSignParams(params)}))(${FunSignParams(retparamTypes)})"
 
-    case FunSign(Fun(id, returnType, params, _)) => c"${StaticStorage(id)} $returnType $id(${nary(params)})"
+    case FunSign(Fun(id, returnType, params, _)) =>
+      c"${StaticStorage(id)} $returnType $id(${FunSignParams(params)})"
+
+    case FunSignParams(Seq()) => c"void"
+    case FunSignParams(params) => c"${nary(params)}"
 
     case FunDecl(f) => c"${FunSign(f)};"
 
@@ -222,6 +227,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
   private case class StaticStorage(id: Id) extends WrapperTree
   private case class TypeId(typ: Type, id: Id) extends WrapperTree
   private case class FunSign(f: Fun) extends WrapperTree
+
+  // Here, params is expected to be of Type or Var.
+  private case class FunSignParams(params: Seq[Tree]) extends WrapperTree
+
   private case class FunDecl(f: Fun) extends WrapperTree
   private case class TypedefDecl(td: Typedef) extends WrapperTree
   private case class EnumDef(u: Enum) extends WrapperTree
