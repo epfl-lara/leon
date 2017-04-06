@@ -102,8 +102,24 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   private def convertVarInfoToParam(vi: VarInfo)(implicit tm: TypeMapping) = CIR.Binding(convertVarInfoToArg(vi))
 
   // Extract the ValDef from the known one
-  private def buildBinding(id: Identifier)(implicit env: Env, tm: TypeMapping) =
-    CIR.Binding(env(id -> instantiate(id.getType, tm)))
+  private def buildBinding(id: Identifier)(implicit env: Env, tm: TypeMapping) = {
+    val typ = instantiate(id.getType, tm)
+    val optVd = env.get(id -> typ)
+    val vd = optVd match {
+      case Some(vd) => vd
+      case None =>
+        // Identifiers in Leon are known to be tricky when it comes to unique id.
+        // It sometimes happen that the unique id are not in sync, especially with
+        // generics. Here we try to find the best match based on the name only.
+        warning(s"Working around issue with identifiers on $id...")
+        env collectFirst {
+          case ((eid, etype), evd) if eid.name == id.name && etype == typ => evd
+        } getOrElse {
+          internalError(s"Couldn't find a ValDef for $id in the environment: $env")
+        }
+    }
+    CIR.Binding(vd)
+  }
 
   private def buildLet(x: Identifier, e: Expr, body: Expr, isVar: Boolean)
                       (implicit env: Env, tm: TypeMapping): CIR.Expr = {
