@@ -1084,16 +1084,6 @@ trait ASTExtractors {
       }
     }
 
-    object ExSomeConstruction {
-      def unapply(tree: Apply) : Option[(Type,Tree)] = tree match {
-        case Apply(s @ Select(New(tpt), n), arg) if arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some" => tpt.tpe match {
-          case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg.head))
-          case _ => None
-        }
-        case _ => None
-      }
-    }
-
     object ExCaseClassConstruction {
       def unapply(tree: Apply): Option[(Tree,Seq[Tree])] = tree match {
         case Apply(s @ Select(New(tpt), n), args) if n == nme.CONSTRUCTOR => {
