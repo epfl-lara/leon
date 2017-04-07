@@ -87,7 +87,8 @@ object StatsMain {
     ClassgenPhase andThen
       ExtractionPhase andThen
       new PreprocessingPhase(false) andThen
-      SimpleFunctionApplicatorPhase(allSubExprs)
+      SimpleFunctionApplicatorPhase(allSubExprs) andThen
+      SimpleFunctionApplicatorPhase(normalizeExprs)
   }
 
   def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {

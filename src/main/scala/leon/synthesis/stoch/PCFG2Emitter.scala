@@ -88,11 +88,12 @@ object PCFG2Emitter {
     val moduleDef = new ModuleDef(FreshIdentifier("grammar"), defns, isPackageObject = false)
     val packageRef = List("leon", "grammar")
     val imports = List(
-      Import(List("leon", "lang"), isWild = true),
-      Import(List("leon", "lang", "synthesis"), isWild = true),
-      Import(List("leon", "collection"), isWild = true),
-      Import(List("leon", "annotation"), isWild = true)
-    )
+                        Import(List("leon", "collection"), isWild = true),
+                        Import(List("leon", "lang"), isWild = true),
+                        Import(List("leon", "lang", "synthesis"), isWild = true),
+                        Import(List("leon", "math"), isWild = true),
+                        Import(List("annotation", "grammar"), isWild = true)
+                      )
     new UnitDef(FreshIdentifier("grammar"), packageRef, imports, Seq(moduleDef), isMainUnit = true)
 
   }
