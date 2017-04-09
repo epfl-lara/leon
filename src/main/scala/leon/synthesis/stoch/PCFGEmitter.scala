@@ -46,7 +46,7 @@ object PCFGEmitter {
       prodRule <- emitFunctionCalls(canaryExprs, canaryTypes, tt, pos, fis, ecs, fcs, ls)
     } yield prodRule
 
-    val moduleDef = new ModuleDef(FreshIdentifier("grammar"), l1 ++ l2, isPackageObject = false)
+    val moduleDef = ModuleDef(FreshIdentifier("grammar"), l1 ++ l2, isPackageObject = false)
     val packageRef = List("leon", "grammar")
     val imports = List(
                         Import(List("leon", "collection"), isWild = true),

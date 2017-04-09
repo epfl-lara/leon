@@ -11,7 +11,7 @@ import leon.utils.Position
 
 object PCFG2Emitter {
 
-  def total1[K1, T](map: Map[K1, Seq[T]]) = map.values.flatten.size
+  def total1[K1, T](map: Map[K1, Seq[T]]): Int = map.values.flatten.size
   def total2[K1, K2, T](map: Map[K1, Map[K2, Seq[T]]]): Int = map.values.map(total1).sum
   def total3[K1, K2, K3, T](map: Map[K1, Map[K2, Map[K3, Seq[T]]]]): Int = map.values.map(total2).sum
 
@@ -81,11 +81,14 @@ object PCFG2Emitter {
       prodRule <- emitFunctionCalls2(canaryExprs, canaryTypes, tt, idxPar, pos, fis, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     } yield prodRule
 
-    val pr3 = Seq() // TODO! ??? // Convert basic types to labels Int ::= Int,None
+    val pr3 = for {
+      tt <- canaryTypes.values.toSeq
+      prodRule <- emitStartProds2(canaryExprs, canaryTypes, tt, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+    } yield prodRule
 
     val labels = implicits.values.flatMap(_.values).toSeq
     val defns: Seq[Definition] = labels ++ pr1 ++ pr2 ++ pr3
-    val moduleDef = new ModuleDef(FreshIdentifier("grammar"), defns, isPackageObject = false)
+    val moduleDef = ModuleDef(FreshIdentifier("grammar"), defns, isPackageObject = false)
     val packageRef = List("leon", "grammar")
     val imports = List(
                         Import(List("leon", "collection"), isWild = true),
@@ -160,7 +163,7 @@ object PCFG2Emitter {
     }
     val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
       val pid = params(idx)
-      val id = new Id2(pid.id, ptt, implicits(ptt)(Some(idx, constr)))
+      val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, constr)))
       ValDef(id)
     }
     val Operator(_, op) = exprs.head
@@ -256,7 +259,7 @@ object PCFG2Emitter {
       }
       val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
         val pid = params(idx)
-        val id = new Id2(pid.id, ptt, implicits(ptt)(Some(idx, classOf[FunctionInvocation])))
+        val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, classOf[FunctionInvocation])))
         ValDef(id)
       }
       val fullBody: Expr = FunctionInvocation(tfd, rawParams.map(_.toVariable))
@@ -264,7 +267,7 @@ object PCFG2Emitter {
       val production: FunDef = new FunDef(id, tparams, params, outputLabel)
       production.fullBody = fullBody
 
-      val frequency: Int = fis.size
+      val frequency: Int = fis.size // TODO! Fix this!
       production.addFlag(Annotation("production", Seq(Some(frequency))))
 
       Seq(production)
@@ -272,6 +275,44 @@ object PCFG2Emitter {
       // Ignore calls to non-library functions
       Seq()
     }
+  }
+
+  def emitStartProds2(
+                       canaryExprs: Seq[Expr],
+                       canaryTypes: Map[String, TypeTree],
+                       tt: TypeTree,
+                       ecs1: ExprConstrStats,
+                       fcs1: FunctionCallStats,
+                       ls1: LitStats,
+                       ecs2: ECS2,
+                       fcs2: FCS2,
+                       ls2: LS2,
+                       implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
+                     ): Seq[FunDef] ={
+    val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}Start"
+    val outputLabel = tt
+    val id = FreshIdentifier(productionName, tt)
+
+    val argTypes = Seq(CaseClassType(implicits(tt)(None), getTypeParams(tt)))
+    val tparams: Seq[TypeParameterDef] = getTypeParams(tt).map(TypeParameterDef)
+    val params: Seq[ValDef] = Seq {
+      val inputLabel = CaseClassType(implicits(tt)(None), getTypeParams(tt))
+      ValDef(FreshIdentifier(s"v0", inputLabel))
+    }
+    val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
+      val pid = params(idx)
+      val id = new Id2(pid, tt, implicits(tt)(None))
+      ValDef(id)
+    }
+    val fullBody: Expr = rawParams.head.toVariable
+
+    val production: FunDef = new FunDef(id, tparams, params, outputLabel)
+    production.fullBody = fullBody
+
+    val frequency: Int = 1
+    production.addFlag(Annotation("production", Seq(Some(frequency))))
+
+    Seq(production)
   }
 
 }
