@@ -284,13 +284,26 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     def scrutRec(scrutinee0: Expr): (Expr, Option[CIR.Expr], Env) = scrutinee0 match {
       case v: Variable => (v, None, env)
+
       case Block(Nil, v: Variable) => (v, None, env)
       case Block(init, v: Variable) => (v, Some(rec(Block(init.init, init.last))), env)
+
       case field @ CaseClassSelector(_, _: Variable, _) => (field, None, env)
+
+      case select @ ArraySelect(_: Variable, _: Variable | _: IntLiteral) => (select, None, env)
+      case select @ ArraySelect(array: Variable, index) =>
+        // Save idx into a temporary variable, but apply patmat on array access.
+        // This way, the index is computed once only.
+        val (newIndex, preOpt, newEnv) = withTmp(Int32Type, index, env)
+        val newSelect = ArraySelect(array, newIndex)
+        (newSelect, preOpt, newEnv)
+
+      case select @ ArraySelect(a, i) =>
+        internalError(s"array select $a[$i] is not supported; ${a.getClass} - ${i.getClass}")
 
       case Assert(_, _, body) => scrutRec(body)
 
-      case _: ArraySelect | _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple | _: IfExpr =>
+      case _: FunctionInvocation | _: CaseClass | _: LetVar | _: Let | _: Tuple | _: IfExpr =>
         withTmp(scrutinee0.getType, scrutinee0, env)
 
       case e => internalError(s"scrutinee = $e of type ${e.getClass} is not supported")
