@@ -123,10 +123,12 @@ object StatsUtils {
     val canaryExprs = getCanaryExprs(exprs.map(_._1))
     val allTypeParams = exprs.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).distinct
     val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(allTypeParams, tt))
-    exprs.filter(epar =>
-      isSelectableExpr(epar._1, canaryExprs, canaryTypes, allTypeParams) &&
-      epar._2.forall { case (idx, par) => isSelectableExpr(par, canaryExprs, canaryTypes, allTypeParams) }
-    )
+    exprs.filter(epar => isSelectableExpr(epar._1, canaryExprs, canaryTypes, allTypeParams))
+         .map {
+           case epar @ (expr, Some((idx, par))) =>
+             if (isSelectableExpr(par, canaryExprs, canaryTypes, allTypeParams)) epar else (expr, None)
+           case epar @ (expr, None) => epar
+         }
   }
 
   def isSelectableExpr(

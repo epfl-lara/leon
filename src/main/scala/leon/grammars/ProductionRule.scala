@@ -25,5 +25,5 @@ case class ProductionRule[T, R](
     logProb: Double)
   extends Generator[T,R](subTrees, builder) {
 
-  require(logProb < 0.0 && cost > 0)
+  require(logProb <= 0.0 && cost >= 0)
 }

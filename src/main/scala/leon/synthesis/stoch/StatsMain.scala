@@ -12,8 +12,8 @@ import leon.utils.PreprocessingPhase
 
 object StatsMain {
 
-  val SELECT_FUNCTION_TYPES: Boolean = false
-  val SELECT_TUPLE_TYPES: Boolean = false
+  val SELECT_FUNCTION_TYPES: Boolean = true
+  val SELECT_TUPLE_TYPES: Boolean = true
 
   def main(args: Array[String]): Unit = {
     println(LocalDateTime.now())

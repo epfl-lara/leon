@@ -151,6 +151,21 @@ object PCFG2Emitter {
                     implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                   ): Seq[FunDef] = {
 
+    if (!implicits.contains(tt) || !implicits(tt).contains(idxPar)) {
+      println(s"Suppressing production rule for type $tt, $idxPar, $constr, $argTypes: Non-terminal symbol not found")
+      // println(s"Head expression: ${exprs.head}")
+      return Seq()
+    } else if (argTypes.zipWithIndex.exists { case (ptt, idx) =>
+                  !implicits.contains(ptt) || !implicits(ptt).contains(Some(idx, constr))
+               } ) {
+      val (ptt, idx) = argTypes.zipWithIndex.find { case (ptt2, idx2) =>
+        !implicits.contains(ptt2) || !implicits(ptt2).contains(Some(idx2, constr))
+      }.get
+      println(s"Suppressing production rule for type $tt, $idxPar, $constr, $argTypes: Mysterious argument $ptt, $idx")
+      // println(s"Head expression: ${exprs.head}")
+      return Seq()
+    }
+
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
     val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}$constrName"
     val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
@@ -250,8 +265,23 @@ object PCFG2Emitter {
       val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}FunctionInvocation${tfd.id.name}"
       val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
       val id: Identifier = FreshIdentifier(productionName, tt)
-
       val argTypes = tfd.params.map(_.getType)
+
+      if (!implicits.contains(tt) || !implicits(tt).contains(idxPar)) {
+        println(s"Suppressing production rule for type $tt, $idxPar, ${tfd.id}: Non-terminal symbol not found")
+        // println(s"Head function invocation: ${fis.head}")
+        return Seq()
+      } else if (argTypes.zipWithIndex.exists { case (ptt, idx) =>
+        !implicits.contains(ptt) || !implicits(ptt).contains(Some(idx, classOf[FunctionInvocation]))
+      } ) {
+        val (ptt, idx) = argTypes.zipWithIndex.find { case (ptt2, idx2) =>
+          !implicits.contains(ptt2) || !implicits(ptt2).contains(Some(idx2, classOf[FunctionInvocation]))
+        }.get
+        println(s"Suppressing production rule for type $tt, $idxPar, ${tfd.id}: Mysterious argument $ptt, $idx")
+        // println(s"Head function invocation: ${fis.head}")
+        return Seq()
+      }
+
       val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
       val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
         val inputLabel = CaseClassType(implicits(ptt)(Some(idx, classOf[FunctionInvocation])), getTypeParams(ptt))
@@ -289,6 +319,14 @@ object PCFG2Emitter {
                        ls2: LS2,
                        implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                      ): Seq[FunDef] ={
+    if (!implicits.contains(tt) || !implicits(tt).contains(None)) {
+      println(s"Suppressing starting rule for type $tt: Non-terminal symbol not found")
+      if (implicits.contains(tt)) {
+        println(implicits(tt).keys)
+      }
+      return Seq()
+    }
+
     val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}Start"
     val outputLabel = tt
     val id = FreshIdentifier(productionName, tt)
