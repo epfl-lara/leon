@@ -515,9 +515,12 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case UnitDef(id, pack, imports, defs, _) =>
         if (pack.nonEmpty && (!(opts.printRunnableCode))) {
-          p"""|package ${pack mkString "."}
-              |"""
+          pack foreach { p =>
+            p"""|package $p
+                |"""
+          }
         }
+
         p"""|${nary(imports, "\n")}
             |
             |${nary(defs, "\n\n")}
