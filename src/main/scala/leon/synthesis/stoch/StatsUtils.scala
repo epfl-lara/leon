@@ -6,7 +6,7 @@ import leon.purescala.Extractors.Operator
 import leon.synthesis.stoch.Stats._
 import leon.utils.Position
 import purescala.Definitions.Program
-import purescala.Expressions.{Expr, FunctionInvocation, Literal, Variable}
+import purescala.Expressions._
 import purescala.{ExprOps, TypeOps}
 import purescala.Types._
 
@@ -24,6 +24,12 @@ object StatsUtils {
   }
 
   def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = allSubExprs(p)
+
+  def normalizeExprs(ctx: LeonContext, exprs: Seq[Expr]): Seq[Expr] = exprs.map {
+    case GreaterThan(e1, e2) => LessThan(e2, e1)
+    case GreaterEquals(e1, e2) => LessEquals(e2, e2)
+    case e => e
+  }
 
   def allSubExprs2(expr: Expr): Seq[(Expr, Option[(Int, Expr)])] = ExprOps.collectPreorder { (e: Expr) =>
     val Operator(es, op) = e
@@ -117,10 +123,12 @@ object StatsUtils {
     val canaryExprs = getCanaryExprs(exprs.map(_._1))
     val allTypeParams = exprs.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).distinct
     val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(allTypeParams, tt))
-    exprs.filter(epar =>
-      isSelectableExpr(epar._1, canaryExprs, canaryTypes, allTypeParams) &&
-      epar._2.forall { case (idx, par) => isSelectableExpr(par, canaryExprs, canaryTypes, allTypeParams) }
-    )
+    exprs.filter(epar => isSelectableExpr(epar._1, canaryExprs, canaryTypes, allTypeParams))
+         .map {
+           case epar @ (expr, Some((idx, par))) =>
+             if (isSelectableExpr(par, canaryExprs, canaryTypes, allTypeParams)) epar else (expr, None)
+           case epar @ (expr, None) => epar
+         }
   }
 
   def isSelectableExpr(
