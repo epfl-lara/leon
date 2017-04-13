@@ -5,7 +5,7 @@ package stoch
 import java.time.LocalDateTime
 
 import StatsUtils._
-import leon.purescala.Definitions.{ClassDef, FunDef, UnitDef}
+import leon.purescala.Definitions.UnitDef
 import leon.purescala.Expressions.{Expr, Variable}
 import leon.synthesis.stoch.Stats._
 import leon.utils.PreprocessingPhase
@@ -74,7 +74,7 @@ object Stats2Main {
                                 .replaceAll("variable\\$\\d*\\[", "variable[")
                                 .replaceAll("List\\$\\d*\\[", "List[")
                                 .replaceAll("Option\\$\\d*\\[", "Option[")
-                                .replaceAll("case class", "implicit class")
+                                .replaceAll("case class (.*)\\(", "implicit class $1(val ")
     println("Printing production rules:")
     println(prodRulesStr)
   }

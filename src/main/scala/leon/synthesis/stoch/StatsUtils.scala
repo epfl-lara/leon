@@ -27,7 +27,7 @@ object StatsUtils {
 
   def normalizeExprs(ctx: LeonContext, exprs: Seq[Expr]): Seq[Expr] = exprs.map {
     case GreaterThan(e1, e2) => LessThan(e2, e1)
-    case GreaterEquals(e1, e2) => LessEquals(e2, e2)
+    case GreaterEquals(e1, e2) => LessEquals(e2, e1)
     case e => e
   }
 
