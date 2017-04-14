@@ -74,9 +74,10 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     val productions = new ArrayBuffer[GenericProdSeed]()
 
     for ((fd, tag, cost) <- fdInfos) {
+      // Remove asserts that come from divisions
       val expr = postMap {
-        case Assert(t, m, b) => Some(b)
-        case other => None
+        case Assert(_, _, b) => Some(b)
+        case _ => None
       }(fd.fullBody)
 
       val exprType = fd.returnType
@@ -86,25 +87,23 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
       expr match {
         // Special built-in "variable" case, which tells us how often to
         // generate variables of specific type
-        case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq()) if program.library.variable contains fd =>
+        case FunctionInvocation(TypedFunDef(fd, Seq(_)), Seq()) if program.library.variable contains fd =>
           val inputGroups = inputs.groupBy(_.getType).toSeq
 
           for ((tpe, inputs) <- inputGroups) {
-            instantiation_>:(exprType, tpe) match {
-              case Some(tmap0) =>
-                val size = inputs.size
+            if (instantiation_>:(exprType, tpe).isDefined) {
+              val size = inputs.size
 
-                for (i <- inputs) {
-                  productions += terminal(tpeToLabel(tpe), i.toVariable, tag, Math.max(1, cost/size), -1.0)
-                }
-
-              case _ =>
+              for (i <- inputs) {
+                productions += terminal(tpeToLabel(tpe), i.toVariable, tag, Math.max(1, cost / size), -1.0)
+              }
             }
           }
 
         // Special built-in "closure" case, which tells us how often to
         // generate closures of a specific type
-        case FunctionInvocation(TypedFunDef(fdc, Seq(ft @ FunctionType(froms, to))), Seq()) if program.library.closure contains fdc =>
+        case FunctionInvocation(TypedFunDef(fdc, Seq(ft @ FunctionType(froms, to))), Seq())
+            if program.library.closure contains fdc =>
 
           val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
             val args = froms.zipWithIndex.map { case (tpe, i) =>
@@ -122,15 +121,20 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
         case _ =>
           if (freeTps.isEmpty) {
-            val replacer = variableReplacer(expr, fd.params.map(_.id))
+            val unwrappedIds = fd.paramIds.map( id =>
+              id -> (unwrapType(id.getType) match {
+                case Some(tp) => FreshIdentifier(id.name, tp, true)
+                case None => id
+              })
+            ).toMap
+            val unwrapped = unwrapLabels(expr, unwrappedIds)
+            println(s"Original: $expr")
+            println(s"Unwrapped: $unwrapped")
+            val replacer = variableReplacer(unwrapped, fd.paramIds.map(unwrappedIds))
 
-            val subs  = fd.params.map {
-              p => tpeToLabel(p.getType)
-            }
+            val subs  = fd.params.map { p => tpeToLabel(p.getType) }
 
-            productions += nonTerminal(tpeToLabel(fd.returnType), subs, { sexprs => 
-              replacer(sexprs)
-            }, tag, cost, -1.0)
+            productions += nonTerminal(tpeToLabel(fd.returnType), subs, replacer, tag, cost, -1.0)
           } else {
             val retType = fd.returnType
 
@@ -144,7 +148,9 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
                 }
               }.toMap
 
-              val expr = unwrapLabels(fd.fullBody, m)
+              val unwrapped = unwrapLabels(fd.fullBody, m)
+              println(s"Original: ${fd.fullBody}")
+              println(s"Unwrapped: $unwrapped")
 
               val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
 
@@ -152,7 +158,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
                 p => tpeToLabel(instantiateType(p.getType, tmap))
               }
 
-              val replacer = variableReplacer(expr, holes)
+              val replacer = variableReplacer(unwrapped, holes)
 
               ProductionRule[Label, Expr](subs, { sexprs => instantiateType(replacer(sexprs), tmap, m) }, tag, cost, -1.0)
             }
