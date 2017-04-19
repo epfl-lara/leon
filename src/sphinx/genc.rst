@@ -130,10 +130,8 @@ of such data-types live on the stack. The following language features are availa
 Functions
 *********
 
-Functions with access to the variables in their respective scopes. However,
-higher order functions are not supported. In some cases, it is possible to
-inline functions to workaround this limitation. The following language features
-are available:
+Functions with access to the variables in their respective scopes.  The
+following language features are available:
 
   - top level, nested or member functions:
 
@@ -148,11 +146,13 @@ are available:
 
     + the Scala compiler is responsible for identifying the correct function at each call site;
 
+  - higher-order functions:
+
+    + named functions that do not caputre their environment can be used as value;
+
   - external functions:
 
     + see ``@cCode.function`` below;
-
-  - most methods of ``leon.lang.Option`` working with higher-order functions are supported.
 
 Since strings of characters are currently not (fully) available, in order to generate an executable
 program, one has to define a main function without any argument, that can optionally return an
