@@ -322,8 +322,16 @@ object AntiAliasingPhase extends TransformationPhase {
           (None, (bindings + id, rewritings, toIgnore, insideEnsuring))
         }
 
-        case m@MatchExpr(scrut, cses) if effects.isMutableType(scrut.getType) => {
+        case m @ MatchExpr(scrut @ ArraySelect(array, index), cases) if effects.isMutableType(scrut.getType) && !index.isInstanceOf[Variable] => {
+          // Bind the index to a new value when it's not already a variable.
+          // The effect of this is to prevent recomputation of the index in the cases.
+          // The actual work is defered to the next `case`
+          val indexId = FreshIdentifier("index", index.getType)
+          val newTree = Let(indexId, index, MatchExpr(ArraySelect(array, indexId.toVariable), cases))
+          (Some(newTree), context)
+        }
 
+        case m@MatchExpr(scrut, cses) if effects.isMutableType(scrut.getType) => {
           val tmp: Map[Identifier, Expr] = cses.flatMap{ case MatchCase(pattern, guard, rhs) => {
             mapForPattern(scrut, pattern)
             //val binder = pattern.binder.get

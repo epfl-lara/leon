@@ -23,6 +23,7 @@ object XLangDesugaringPhase extends LeonPhase[Program, Program] {
       AntiAliasingPhase andThen
       debugTrees("Program after anti-aliasing") andThen
       EpsilonElimination andThen
+      debugTrees("Program after epsilon elimination") andThen
       ImperativeCodeElimination
 
     phases.run(ctx, pgm)
