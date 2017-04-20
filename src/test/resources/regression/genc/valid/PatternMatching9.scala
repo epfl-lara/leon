@@ -3,9 +3,7 @@
 import leon.annotation._
 import leon.lang._
 
-// This test is "unverified" because side-effect in pat-mat expression
-// is not well supported by the verification system.
-object PatternMatching1 {
+object PatternMatching9 {
 
   case class Wrapper(var x: Int)
 
