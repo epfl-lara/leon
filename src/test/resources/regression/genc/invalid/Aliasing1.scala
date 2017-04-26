@@ -2,7 +2,7 @@
 
 import leon.annotation.extern
 
-object Aliasing {
+object Aliasing1 {
 
   case class MutableInteger(var x: Int)
 
