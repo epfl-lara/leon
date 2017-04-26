@@ -160,6 +160,24 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     }
   }
 
+  // Prevent some form of aliasing that verification supports but our memory model doesn't.
+  // See Chapter 4: Memory, Aliasing & Mutability Models For GenC
+  //     of Extending Safe C Support In Leon.
+  private def checkConstructArgs(args: Seq[(CIR.Expr, Position)]): Unit = {
+    // Reject arguments that have mutable type (but allow var, and arrays)
+    def isRefToMutableVar(arg: (CIR.Expr, Position)): Boolean = arg._1 match {
+      case CIR.Binding(vd) => vd.getType.isMutable && !vd.getType.isArray
+      case _ => false
+    }
+
+    args find isRefToMutableVar match {
+      case Some((_, pos)) =>
+        fatalError(s"Invalid reference: cannot construct an object from a mutable variable.", pos)
+
+      case _ =>
+    }
+  }
+
   private def buildBinOp(lhs0: Expr, op: O.BinaryOperator, rhs0: Expr)
                         (pos: Position)
                         (implicit env: Env, tm: TypeMapping) = {
@@ -622,6 +640,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case CaseClass(cct, args0) =>
       val clazz = rec(cct)
       val args = args0 map rec
+      val poss = args0 map { _.getPos }
+
+      checkConstructArgs(args zip poss)
 
       CIR.Construct(clazz, args)
 
@@ -630,6 +651,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case tuple @ Tuple(args0) =>
       val clazz = tuple2Class(tuple.getType)
       val args = args0 map rec
+      val poss = args0 map { _.getPos }
+
+      checkConstructArgs(args zip poss)
 
       CIR.Construct(clazz, args)
 
