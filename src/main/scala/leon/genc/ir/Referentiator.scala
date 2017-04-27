@@ -211,6 +211,24 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
     case e => super.recImpl(e)
   }
 
+  // Add references to mutable type in argument position in function types only:
+  // the other types are handles according to the context around the usage of types.
+  override def rec(typ: Type)(implicit env: Env): to.Type = typ match {
+    case FunType(Seq(), params0, ret0) =>
+      // This is very similar to how function parameter (ValDef) are processed above.
+      val params = params0 map { rec(_) match {
+        case t if !t.isArray && t.isMutable => to.ReferenceType(t)
+        case t => t
+      }}
+
+      to.FunType(Seq(), params, rec(ret0))
+
+    case FunType(ctx0, _, _) =>
+      internalError(s"Don't known yet how to handle ctx ($ctx0) in FunType!")
+
+    case _ => super.rec(typ)
+  }
+
   // Adapt the expressions to match w.r.t. references the given parameter types, for argument-like expressions.
   private def refMatch(params: Seq[to.ValDef])(args: Seq[to.Expr])(implicit d: DummyImplicit): Seq[to.Expr] =
     refMatch(params map { _.getType })(args)
