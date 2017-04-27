@@ -147,13 +147,21 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   // Check validity of the operator
-  private def checkOp(op: O.Operator, isLogical: Boolean, isIntegral: Boolean, pos: Position): Unit = {
+  //
+  // NOTE the creation of equals functions for `==` is deferred to a later phase.
+  private def checkOp(op: O.Operator, ops: Seq[CIR.Type], pos: Position): Unit = {
+    assert(ops.nonEmpty)
+
     def check(b: Boolean) = if (!b) {
       fatalError(s"Invalid use of operator $op with the given operands", pos)
     }
 
+    def isLogical: Boolean = ops forall { _.isLogical }
+    def isIntegral: Boolean = ops forall { _.isIntegral }
+    def isPairOfT: Boolean = (ops.size == 2) && (ops forall { _ == ops(0) }) // or use <=???
+
     op match {
-      case _: O.FromLogical with O.FromIntegral => check(isLogical || isIntegral)
+      case _: O.FromPairOfT => check(isPairOfT)
       case _: O.FromLogical => check(isLogical)
       case _: O.FromIntegral => check(isIntegral)
       case _ => internalError(s"Unhandled check of operator $op")
@@ -184,9 +192,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     val lhs = rec(lhs0)
     val rhs = rec(rhs0)
 
-    val logical = lhs.getType.isLogical && rhs.getType.isLogical
-    val integral = lhs.getType.isIntegral && rhs.getType.isIntegral
-    checkOp(op, logical, integral, pos)
+    checkOp(op, Seq(lhs.getType, lhs.getType), pos)
 
     CIR.BinOp(op, lhs, rhs)
   }
@@ -196,9 +202,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
                        (implicit env: Env, tm: TypeMapping) = {
     val expr = rec(expr0)
 
-    val logical = expr.getType.isLogical
-    val integral = expr.getType.isIntegral
-    checkOp(op, logical, integral, pos)
+    checkOp(op, Seq(expr.getType), pos)
 
     CIR.UnOp(op, expr)
   }

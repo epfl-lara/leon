@@ -11,7 +11,7 @@ import PrimitiveTypes._
  */
 private[genc] object Operators {
 
-  // NOTE It is possible to have more than one "From", but not several "To".
+  // NOTE It is possible to have more than one "From" or several "To", but this is not expected!
   //      (It will compile but ungracefully do not what is expected...)
   //
   // NOTE It is also expected that ToIntegral is combined with FromIntegral.
@@ -29,6 +29,7 @@ private[genc] object Operators {
   sealed trait From
   trait FromIntegral extends From
   trait FromLogical extends From
+  trait FromPairOfT extends From // twice the same argument type, includes both FromIntegral and FromLogical
 
   sealed trait To
   trait ToIntegral extends To
@@ -36,7 +37,7 @@ private[genc] object Operators {
 
   trait Integral extends FromIntegral with ToIntegral
   trait Logical extends FromLogical with ToLogical
-  trait Comparative extends FromIntegral with ToLogical
+  trait Ordered extends FromIntegral with ToLogical
 
   abstract class UnaryOperator(val symbol: String, val precedence: Int) extends Operator { this: From with To => }
   abstract class BinaryOperator(val symbol: String, val precedence: Int) extends Operator { this: From with To => }
@@ -48,12 +49,12 @@ private[genc] object Operators {
   case object Div extends BinaryOperator("/", 3) with Integral
   case object Modulo extends BinaryOperator("%", 3) with Integral
 
-  case object LessThan extends BinaryOperator("<", 6) with Comparative
-  case object LessEquals extends BinaryOperator("<=", 6) with Comparative
-  case object GreaterEquals extends BinaryOperator(">=", 6) with Comparative
-  case object GreaterThan extends BinaryOperator(">", 6) with Comparative
-  case object Equals extends BinaryOperator("==", 7) with FromIntegral with FromLogical with ToLogical
-  case object NotEquals extends BinaryOperator("!=", 7) with FromIntegral with FromLogical with ToLogical
+  case object LessThan extends BinaryOperator("<", 6) with Ordered
+  case object LessEquals extends BinaryOperator("<=", 6) with Ordered
+  case object GreaterEquals extends BinaryOperator(">=", 6) with Ordered
+  case object GreaterThan extends BinaryOperator(">", 6) with Ordered
+  case object Equals extends BinaryOperator("==", 7) with FromPairOfT with ToLogical
+  case object NotEquals extends BinaryOperator("!=", 7) with FromPairOfT with ToLogical
 
   case object Not extends UnaryOperator("!", 2) with Logical
   case object And extends BinaryOperator("&&", 11) with Logical

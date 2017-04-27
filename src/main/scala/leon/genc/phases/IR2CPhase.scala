@@ -127,8 +127,12 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
   private def rec(e: Expr): C.Expr = e match {
     case Binding(vd) => C.Binding(rec(vd.id))
 
-    case FunVal(fd) => C.Binding(rec(fd.id))
     case FunRef(e) => rec(e)
+    case FunVal(fd) =>
+      // We don't recurse on fd here to avoid infinite recursion on recursive functions.
+      // Function definition are traversed once from the set of dependencies, or when created
+      // artificially (e.g. CmpFactory).
+      C.Binding(rec(fd.id))
 
     case Block(exprs) => C.buildBlock(exprs map rec)
 
@@ -191,11 +195,21 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
      *      values that are negative if we read them using a 2's complement notation. Having a
      *      C compiler that does a normal wrap around is one of the requirement of GenC.
      */
-    case BinOp(op, lhs0, rhs) if Set[Operator](BLeftShift, BRightShift) contains op =>
+    case BinOp(op, lhs0, rhs0) if Set[Operator](BLeftShift, BRightShift) contains op =>
       assert(lhs0.getType == PrimitiveType(Int32Type))
       val lhs = C.Cast(rec(lhs0), C.Primitive(UInt32Type))
-      val expr = C.BinOp(op, lhs, rec(rhs)) // rhs doesn't need to be casted.
+      val expr = C.BinOp(op, lhs, rec(rhs0)) // rhs doesn't need to be casted.
       C.Cast(expr, C.Primitive(Int32Type))
+
+    /* NOTE For == and != on objects, we create a dedicated equal function.
+     *      See comment in CmpFactory.
+     */
+    case BinOp(op @ (Equals | NotEquals), lhs, rhs) if !(lhs.getType.isLogical || lhs.getType.isIntegral) =>
+      assert(lhs.getType == rhs.getType)
+      val cmp = CmpFactory(lhs.getType)
+      val equals = App(cmp, Seq(), Seq(lhs, rhs))
+      val test = if (op == Equals) equals else UnOp(Not, equals)
+      rec(test)
 
     case BinOp(op, lhs, rhs) => C.BinOp(op, rec(lhs), rec(rhs))
     case UnOp(op, expr) => C.UnOp(op, rec(expr))
@@ -455,6 +469,115 @@ private class IR2CImpl(val ctx: LeonContext) extends MiniReporter {
   private object Array {
     val length = C.Id("length")
     val data = C.Id("data")
+  }
+
+  // Helpers for == and != operators; create a CIR function if needed.
+  // Such functions can use the == and != operators because the function
+  // will need to be converted to C AST, recursively.
+  //
+  // TODO maybe it's more clever to move this earlier in the pipeline
+  //      and benefit from other transformation...
+  //
+  // TODO currently, mutable object are taken by copy. This works
+  //      because there is no side effect involved but this is not
+  //      consistent with the rest. Is this an issue?
+  //
+  // NOTE In Leon, Any doesn't exists -> cannot override `equals`!
+  // TODO When `equals` overriding is possible, add support for it.
+  //
+  // NOTE Leon doesn't support == on arrays.
+  // TODO Such support should be added here as well one day.
+  private object CmpFactory {
+    private val cache = MutableMap[Type, FunDef]()
+
+    import ir.PrimitiveTypes.{ StringType, BoolType }
+
+    // Entry point of the factory
+    def apply(typ: Type): FunVal = {
+      cache.getOrElseUpdate(typ, {
+        val fd = build(typ)
+
+        // We need to register/traverse this function once. We do it here
+        // because it's safe (not a recursive function). See comment in the
+        // general rec(Expr) about FunVal.
+        rec(fd)
+
+        fd
+      }).toVal
+    }
+
+    private def build(typ: Type): FunDef = {
+      val id = "equals_" + repId(typ)
+      val retTyp = PrimitiveType(BoolType)
+
+      val lhsVd = ValDef("lhs", typ, isVar = false)
+      val rhsVd = ValDef("rhs", typ, isVar = false)
+      val params = Seq(lhsVd, rhsVd)
+
+      val lhs = Binding(lhsVd)
+      val rhs = Binding(rhsVd)
+
+      val body = typ match {
+        case PrimitiveType(StringType) => buildStringCmpBody()
+        case ClassType(cd) => buildClassCmpBody(cd, lhs, rhs)
+        case typ => internalError(s"Unexpected type $typ in CmpFactory!")
+      }
+
+      FunDef(id, retTyp, Seq(), params, body)
+    }
+
+    private def buildStringCmpBody() = FunBodyManual(
+      includes = Seq("string.h"),
+      body =
+        """|bool __FUNCTION__(char* lhs, char* rhs) {
+           |  return strcmp(lhs, rhs) == 0;
+           |}
+           |""".stripMargin
+    )
+
+    // Compare one after the other each class member, if they have the same runtime type.
+    private def buildClassCmpBody(cd: ClassDef, lhs: Binding, rhs: Binding): FunBodyAST = {
+      val result =
+        if (cd.getFullHierarchy.size == 1) buildLeafClassCmpBody(cd, lhs, rhs)
+        else {
+          val subs = cd.getHierarchyLeaves map { leaf =>
+            val ct = ClassType(leaf)
+            val typeTest = foldAnd(IsA(lhs, ct) :: IsA(rhs, ct) :: Nil)
+            val lhs2 = AsA(lhs, ct)
+            val rhs2 = AsA(rhs, ct)
+            val fieldsTest = buildLeafClassCmpBody(leaf, lhs2, rhs2)
+            foldAnd(typeTest :: fieldsTest :: Nil)
+          }
+
+          foldOr(subs.toList) // needs to be equal to one sub test
+        }
+
+      FunBodyAST(Return(result))
+    }
+
+    private def fold(op: BinaryOperator)(exprs: List[Expr]): Expr = exprs match {
+      case Nil => internalError(s"Unexpected empty sequence of expressions.")
+      case expr :: Nil => expr
+      case first :: second :: Nil => BinOp(op, first, second)
+      case head :: tail => BinOp(op, head, foldAnd(tail))
+    }
+
+    private def foldAnd = fold(And) _
+    private def foldOr = fold(Or) _
+
+    private def buildLeafClassCmpBody(cd: ClassDef, lhs: Expr, rhs: Expr): Expr = {
+      assert(lhs.getType == rhs.getType && ClassType(cd) == lhs.getType && cd.getDirectChildren.isEmpty)
+
+      // Checks that all fields are equals
+      val subs = cd.fields map { case ValDef(field, typ, _) =>
+        assert(!typ.isReference)
+        val accessL = FieldAccess(lhs, field)
+        val accessR = FieldAccess(rhs, field)
+        BinOp(Equals, accessL, accessR)
+      }
+
+      foldAnd(subs.toList)
+    }
   }
 
 }
