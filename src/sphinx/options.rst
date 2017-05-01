@@ -50,8 +50,7 @@ These options are mutually exclusive (except when noted). By default, ``--verify
 
 * ``--genc``
 
-  Translate a Scala program into C99 equivalent code (see :ref:`genc` section); requires
-  ``--xlang``.
+  Translate a Scala program into C99 equivalent code (see :ref:`genc` section).
 
 * ``--noop``
 
@@ -341,20 +340,20 @@ These options are to be used in conjunction with ``--inferInv``.
 
   Minimize the inferred coefficients based on the rate of growth of the corresponding term in the bound.
   Coefficients of faster growing terms have higher priority than coefficients of smaller growing terms.
-  ``lowerlimit`` is a (possibly negative or zero) integer that specifies a lower limit up to which the minimization can 
-  proceed. A lower limit is mandatory. 
+  ``lowerlimit`` is a (possibly negative or zero) integer that specifies a lower limit up to which the minimization can
+  proceed. A lower limit is mandatory.
 
 * ``--timeout=s``
 
   A overall timeout in seconds for the inference phase. The tool will exit after ``s`` seconds
 
-* ``--solvers=sol`` 
+* ``--solvers=sol``
 
   Use the SMT solver ``sol`` for checking verification conditions.
-  ``sol`` could be either ``orb-smt-z3`` or ``orb-smt-cvc4``.   
+  ``sol`` could be either ``orb-smt-z3`` or ``orb-smt-cvc4``.
   ``orb-smt-z3`` is generally faster than ``orb-smt-cvc4``.
   But, ``orb-smt-cvc4`` works better for theory of sets, and datatypes .
-  
+
 
 * ``--benchmark``
 

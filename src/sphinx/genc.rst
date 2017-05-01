@@ -102,8 +102,8 @@ Arrays can be created using the companion object, e.g. ``Array(1, 2, 3)``, or us
 ``Array.fill`` method, e.g. ``Array.fill(size)(value)``.
 
 
-Case Classes
-^^^^^^^^^^^^
+Classes
+^^^^^^^
 
 The support for classes is restricted to non-recursive ones so that instances
 of such data-types live on the stack. The following language features are available:
@@ -193,6 +193,8 @@ The following operators are supported:
     - ``&&``, ``||``, ``!``, ``!=``, ``==``
   * - Comparision operators over integers
     - ``<``, ``<=``, ``==``, ``!=``, ``>=``, ``>``
+  * - Comparision operators over instances of classes
+    - ``==``, ``!=``
   * - Arithmetic operators over integers
     - ``+``, ``-`` (unary & binary), ``*``, ``/``, ``%``
   * - Bitwise operators over integers
