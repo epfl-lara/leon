@@ -6,13 +6,17 @@ Safe C Code
 Leon can generate from Scala code an equivalent and safe C99 code. Using the verification, repair and
 synthesis features of Leon this conversion can be made safely. Additionally, the produced code can be
 compiled with any standard-compliant C99 compiler to target the desired hardware architecture
-without extra dependencies.
+without extra dependencies. The motivation, detailed supported features, design decisions and performance
+benchmarks can be found in `Extending Safe C Support In Leon
+<https://infoscience.epfl.ch/record/227942/files/Extending%20Safe%20C%20Support%20In%20Leon.pdf>`_.
+Furthermore, this Master Thesis Report explains how to achieve compliance under the `MISRA C
+<https://en.wikipedia.org/wiki/MISRA_C>`_ guidelines.
 
 To convert a Scala program, one can use the ``--genc`` and ``--o=<output.c>`` command line options
 of Leon.
 
 .. NOTE::
-  Currently the memory model is limited to stack-allocated memory. Hence, no dynamic allocation
+  Currently the memory model is limited to stack allocations. Hence, no dynamic allocation
   is done using ``malloc`` function family.
 
 
