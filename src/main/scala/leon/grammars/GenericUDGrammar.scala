@@ -84,18 +84,25 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
       val freeTps = fd.tparams.map(_.tp)
 
-      expr match {
+      val unwrappedParams = fd.paramIds.map( id =>
+        id -> (unwrapType(id.getType) match {
+          case Some(tp) => FreshIdentifier(id.name, tp, true)
+          case None => id
+        })
+      ).toMap
+
+      unwrapLabels(expr, unwrappedParams) match {
         // Special built-in "variable" case, which tells us how often to
         // generate variables of specific type
         case FunctionInvocation(TypedFunDef(fd, Seq(_)), Seq()) if program.library.variable contains fd =>
           val inputGroups = inputs.groupBy(_.getType).toSeq
 
           for ((tpe, inputs) <- inputGroups) {
-            if (instantiation_>:(exprType, tpe).isDefined) {
+            if (instantiation_>:(unwrapOrReturnType(exprType), tpe).isDefined) {
               val size = inputs.size
 
               for (i <- inputs) {
-                productions += terminal(tpeToLabel(tpe), i.toVariable, tag, Math.max(1, cost / size), -1.0)
+                productions += terminal(tpeToLabel(exprType), i.toVariable, tag, Math.max(1, cost / size), -1.0)
               }
             }
           }
@@ -121,16 +128,8 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
         case _ =>
           if (freeTps.isEmpty) {
-            val unwrappedIds = fd.paramIds.map( id =>
-              id -> (unwrapType(id.getType) match {
-                case Some(tp) => FreshIdentifier(id.name, tp, true)
-                case None => id
-              })
-            ).toMap
-            val unwrapped = unwrapLabels(expr, unwrappedIds)
-            println(s"Original: $expr")
-            println(s"Unwrapped: $unwrapped")
-            val replacer = variableReplacer(unwrapped, fd.paramIds.map(unwrappedIds))
+            val unwrapped = unwrapLabels(expr, unwrappedParams)
+            val replacer = variableReplacer(unwrapped, fd.paramIds.map(unwrappedParams))
 
             val subs  = fd.params.map { p => tpeToLabel(p.getType) }
 
@@ -171,6 +170,11 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     productions
   }
 
+  def unwrapOrReturnType(tpe: TypeTree): TypeTree = {
+    unwrapType(tpe).getOrElse(tpe)
+  }
+
+  // Removes labels from a type to make it a normal Leon type
   def unwrapType(tpe: TypeTree): Option[TypeTree] = {
     tpe match {
       case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
@@ -191,12 +195,15 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     }
   }
 
+  // Unwraps labelled subexpressions which indicate predicated types to the normal Leon values.
+  // E.g. BigInt_0_Minus(x) becomes x.
+  // m is a map from variables of labeled types to variables of normal types
   def unwrapLabels(e: Expr, m: Map[Identifier, Identifier]): Expr = {
     preMap ({
       case CaseClass(cct, Seq(arg)) if cct.classDef.annotations("grammar.label") =>
         Some(arg)
 
-      case CaseClassSelector(cct, v: Variable, id) if cct.classDef.annotations("grammar.label") =>
+      case CaseClassSelector(cct, v: Variable, _) if cct.classDef.annotations("grammar.label") =>
         m.get(v.id).map(_.toVariable)
 
       case _ =>

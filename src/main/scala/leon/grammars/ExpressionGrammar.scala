@@ -267,7 +267,7 @@ abstract class ExpressionGrammar extends Printable {
     labelSize(lab) match {
       case Some(size) =>
         prods.filter{ p =>
-          p.subTrees.forall(lab => labelSize(lab).get >= minCosts.getOrElse(lab.getType, 1))
+          p.subTrees.forall(lab => size >= minCosts.getOrElse(lab.getType, 1))
         }
 
       case _ =>

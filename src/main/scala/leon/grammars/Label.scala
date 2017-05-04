@@ -20,7 +20,16 @@ case class Label(tpe: TypeTree, aspectsMap: TreeMap[AspectKind, Aspect] = TreeMa
     Label(tpe, aspectsMap + (a.kind -> a))
   }
 
-  def stripAspects = copy(aspectsMap = TreeMap())
+  // Strip aspects except RealTyped
+  def stripAspects = {
+    val map: TreeMap[AspectKind, Aspect] = aspectsMap.get(RealTypedAspectKind) match {
+      case Some(tp) =>
+        TreeMap(RealTypedAspectKind -> tp)
+      case None =>
+        TreeMap()
+    }
+    copy(aspectsMap = map)
+  }
 
   def aspect(kind: AspectKind): Option[Aspect] = aspectsMap.get(kind)
 

@@ -22,7 +22,7 @@ case class ProductionRule[T, R](
     cost: Int,
     logProb: Double)
 {
-  require(logProb < 0.0 && cost > 0)
+  require(logProb <= 0.0 && cost > 0)
 
   val arity = subTrees.size
 
