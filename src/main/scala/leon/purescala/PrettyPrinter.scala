@@ -204,7 +204,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case FractionalLiteral(n, d) =>
         if (d == 1) p"$n"
         else p"$n/$d"
-      case CharLiteral(v)    => p"$v"
+      case CharLiteral(v)    => p"'$v'"
       case BooleanLiteral(v) => p"$v"
       case UnitLiteral()     => p"()"
       case StringLiteral(v) =>
