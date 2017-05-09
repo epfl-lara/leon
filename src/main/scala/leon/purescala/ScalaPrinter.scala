@@ -24,6 +24,9 @@ class ScalaPrinter(opts: PrinterOptions,
           case f: FunDef if f.isSynthetic => false
           case _ => true
         }))
+  
+      case FractionalLiteral(n, d)   => if (d == 1) p"Real($n)" else p"Real($n, $d)"
+
       case Not(Equals(l, r))         => optP { p"$l != $r" }
 
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
