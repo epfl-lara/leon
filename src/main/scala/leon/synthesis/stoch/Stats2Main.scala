@@ -71,10 +71,14 @@ object Stats2Main {
 
     val prodRules: UnitDef = PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
     val prodRulesStr = prodRules.toString
-                                .replaceAll("variable\\$\\d*\\[", "variable[")
-                                .replaceAll("List\\$\\d*\\[", "List[")
-                                .replaceAll("Option\\$\\d*\\[", "Option[")
-                                .replaceAll("case class (.*)\\(", "implicit class $1(val ")
+                                .replaceAll("variable\\$\\d*", "variable")
+                                .replaceAll("List\\$\\d*", "List")
+                                .replaceAll("Cons\\$\\d*", "Cons")
+                                .replaceAll("Nil\\$\\d*", "Nil")
+                                .replaceAll("Option\\$\\d*", "Option")
+                                .replaceAll("Some\\$\\d*", "Some")
+                                .replaceAll("None\\$\\d*", "None")
+                                .replaceAll("case class (.*?)\\(", "implicit class $1(val ")
     println("Printing production rules:")
     println(prodRulesStr)
   }
