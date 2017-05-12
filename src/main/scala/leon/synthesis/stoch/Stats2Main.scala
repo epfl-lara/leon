@@ -5,9 +5,9 @@ package stoch
 import java.time.LocalDateTime
 
 import StatsUtils._
-import leon.purescala.Definitions.UnitDef
-import leon.purescala.Expressions.{Expr, Variable}
-import leon.synthesis.stoch.Stats._
+import Stats._
+import purescala.Definitions.UnitDef
+import purescala.Expressions.{Expr, Variable}
 import leon.utils.PreprocessingPhase
 
 object Stats2Main {
@@ -70,15 +70,9 @@ object Stats2Main {
     val ls1: LitStats = getLitStats(ecs1)
 
     val prodRules: UnitDef = PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
-    val prodRulesStr = prodRules.toString
-                                .replaceAll("variable\\$\\d*", "variable")
-                                .replaceAll("List\\$\\d*", "List")
-                                .replaceAll("Cons\\$\\d*", "Cons")
-                                .replaceAll("Nil\\$\\d*", "Nil")
-                                .replaceAll("Option\\$\\d*", "Option")
-                                .replaceAll("Some\\$\\d*", "Some")
-                                .replaceAll("None\\$\\d*", "None")
-                                .replaceAll("case class (.*?)\\(", "implicit class $1(val ")
+
+    val prodRulesStr = replaceKnownNames(prodRules.toString)
+
     println("Printing production rules:")
     println(prodRulesStr)
   }

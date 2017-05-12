@@ -5,14 +5,14 @@ package stoch
 import java.time.LocalDateTime
 
 import StatsUtils._
-import leon.purescala.Definitions.UnitDef
-import leon.purescala.Expressions.{Expr, Variable}
-import leon.synthesis.stoch.Stats.{ExprConstrStats, FunctionCallStats, LitStats, ecsAdd}
+import Stats._
+import purescala.Definitions.UnitDef
+import purescala.Expressions.{Expr, Variable}
 import leon.utils.PreprocessingPhase
 
 object StatsMain {
 
-  val SELECT_FUNCTION_TYPES: Boolean = true
+  val SELECT_FUNCTION_TYPES: Boolean = false
   val SELECT_TUPLE_TYPES: Boolean = true
 
   def main(args: Array[String]): Unit = {
@@ -22,8 +22,7 @@ object StatsMain {
 
     val canaryFileName = args(1)
     val canaryExprs = procFiles(canaryFileName)
-    val canaryTypes = canaryExprs.filter(_.isInstanceOf[Variable])
-                                 .map(_.asInstanceOf[Variable])
+    val canaryTypes = canaryExprs.collect { case v: Variable => v } 
                                  .filter(_.id.name.contains("f82c414"))
                                  .map(v => v.id.name -> v.getType).toMap
     println("Printing canary types:")
@@ -42,11 +41,14 @@ object StatsMain {
     } */
 
     val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
-    val ecs: ExprConstrStats = fase.map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
-                                   .fold(Map())(ecsAdd)
-                                   .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-                                   .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
-                                   .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+    val ecs: ExprConstrStats = {
+      fase
+        .map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
+        .fold(Map())(ecsAdd)
+        .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
+        .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
+        .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+    }
 
     println("Printing coarse expression constructor stats:")
     println(Stats.ecsToStringCoarse(ecs))
@@ -63,10 +65,7 @@ object StatsMain {
     println(Stats.lsToString(ls))
 
     val prodRules: UnitDef = PCFGEmitter.emit(canaryExprs, canaryTypes, ecs, fcs, ls)
-    val prodRulesStr = prodRules.toString
-                                .replaceAll("variable\\$\\d*\\[", "variable[")
-                                .replaceAll("List\\$\\d*\\[", "List[")
-                                .replaceAll("Option\\$\\d*\\[", "Option[")
+    val prodRulesStr = replaceKnownNames(prodRules.toString)
     println("Printing production rules:")
     println(prodRulesStr)
   }
