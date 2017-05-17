@@ -217,7 +217,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         e(tfd.precondition.get)(frame, gctx) match {
           case BooleanLiteral(true) =>
           case BooleanLiteral(false) =>
-            throw RuntimeError("Precondition violation for " + tfd.id.asString + " reached in evaluation.: " + tfd.precondition.get.asString)
+            throw RuntimeError("Precondition violation for '" + tfd.id.asString + "' reached in evaluation.: " + tfd.precondition.get.asString)
           case other =>
             throw RuntimeError(typeErrorMsg(other, BooleanType))
         }
@@ -240,7 +240,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, val bank: Eva
         case Some(post) =>
           e(application(post, Seq(callResult)))(frame, gctx) match {
             case BooleanLiteral(true) =>
-            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.")
+            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for '" + tfd.id.asString + "' reached in evaluation.")
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         case None =>

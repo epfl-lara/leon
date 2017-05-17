@@ -237,7 +237,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           e(tfd.precondition.get)(frame, gctx) match {
             case BooleanLiteral(true) =>
             case BooleanLiteral(false) =>
-              throw RuntimeError("Precondition violation for " + tfd.id.asString + " reached in evaluation.: " + tfd.precondition.get.asString)
+              throw RuntimeError("Precondition violation for '" + tfd.id.asString + "' reached in evaluation.: " + tfd.precondition.get.asString)
             case other =>
               throw RuntimeError(typeErrorMsg(other, BooleanType))
           }
@@ -260,7 +260,7 @@ class TableEvaluator(ctx: LeonContext, prog: Program, bank: EvaluationBank = new
           case Some(post) =>
             e(application(post, Seq(callResult)))(frame, gctx) match {
               case BooleanLiteral(true) =>
-              case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.")
+              case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for '" + tfd.id.asString + "' reached in evaluation.")
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
             }
           case None =>
