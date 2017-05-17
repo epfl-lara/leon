@@ -69,7 +69,6 @@ object Rules {
       UnusedInput,
       EquivalentInputs,
       UnconstrainedOutput,
-      IntroduceRecCalls,
       rules.Assert,
       DetupleInput,
 
