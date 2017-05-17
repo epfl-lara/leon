@@ -8,7 +8,7 @@ package aspects
 case class DepthBound(depth: Int) extends Aspect(DepthBoundAspectKind) {
   require(depth >= 0)
 
-  def asString(implicit ctx: LeonContext): String = s"D$depth"
+  def asString(implicit ctx: LeonContext): String = s".D$depth."
 
   def applyTo(l: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
     if (depth == 0) Nil
