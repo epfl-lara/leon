@@ -28,7 +28,6 @@ import scala.collection.mutable.{HashMap => MutableMap}
 abstract class STELike(name: String) extends Rule(name) {
 
   class NonDeterministicProgram(
-    params: STEParams,
     outerCtx: SearchContext,
     outerP: Problem,
     initSize: Int,
@@ -127,6 +126,8 @@ abstract class STELike(name: String) extends Rule(name) {
     private var termSize_ = 0
 
     def termSize = termSize_
+
+    private val params = getParams(sctx, p)
 
     private val grammar = params.grammar
 
@@ -401,11 +402,11 @@ abstract class STELike(name: String) extends Rule(name) {
 
       setSolution(cExpr)
 
-      ifDebug { printer =>
-        printer("-- "*30)
-        printer(program.asString)
-        printer(".. "*30)
-      }
+      //ifDebug { printer =>
+      //  printer("-- "*30)
+      //  printer(program.asString)
+      //  printer(".. "*30)
+      //}
     }
 
     // Tests a candidate solution against an example in the correct environment
@@ -418,6 +419,11 @@ abstract class STELike(name: String) extends Rule(name) {
       }
 
       setSolution(expr)
+
+      //println(s"EXPR: $expr, EXAMPLE: $ex")
+      //println("-- "*30)
+      //println(program.asString(LeonContext.printNames))
+      //println(".. "*30)
 
       timers.testCandidate.start()
 
@@ -432,6 +438,8 @@ abstract class STELike(name: String) extends Rule(name) {
       val res = evaluator.eval(withBindings(testExpr), p.as.zip(ex.ins).toMap)
 
       timers.testCandidate.stop()
+
+      // println(s"$ex gave $res")
 
       res match {
         case EvaluationResults.Successful(res) =>
@@ -803,9 +811,7 @@ abstract class STELike(name: String) extends Rule(name) {
       return Nil
     }
 
-    val params = getParams(hctx, p)
-
-    val sizes = params.sizes
+    val sizes = getParams(hctx, p).sizes
 
     sizes.collect { case (sizeFrom, sizeTo, cost) if sizeFrom <= sizeTo =>
       val solBuilder = SolutionBuilderCloser(extraCost = Cost(cost))
@@ -861,7 +867,6 @@ abstract class STELike(name: String) extends Rule(name) {
 
           // Represents a non-deterministic program
           val ndProgram = new NonDeterministicProgram(
-            params = params,
             outerCtx = hctx,
             outerP   = p,
             initSize = sizeFrom - 1,
