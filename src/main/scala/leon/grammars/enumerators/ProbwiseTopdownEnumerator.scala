@@ -114,7 +114,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   /** Use indistinguishability heuristic on expressions by signature */
 
-  // Return the signature of an expressionq
+  // Return the signature of an expression
   def sig(r: R): Result[Sig]
 
   // Returns normalized version of e, or None if it fails
