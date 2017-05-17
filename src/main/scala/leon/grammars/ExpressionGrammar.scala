@@ -284,7 +284,10 @@ abstract class ExpressionGrammar extends Printable {
       val costs = prods map (_.cost)
       val totalCost = costs.sum
       // log(prob) = log(cost/Σ(costs))
-      val logProbs = costs.map(cost => Math.log(cost.toDouble/totalCost.toDouble))
+      val logProbs = costs.map { cost =>
+        val c = Math.log(cost.toDouble / totalCost.toDouble)
+        c //- c * c
+      }
       val maxLogProb = logProbs.max
 
       for ((p, logProb) <- prods zip logProbs) yield {
@@ -313,7 +316,9 @@ abstract class ExpressionGrammar extends Printable {
       initialized = true
     }
 
-    val simpleLab = lab.stripAspects
+    val simpleLab = lab
+      .stripAspects
+      .withAspects(lab.aspectsMap.get(RealTypedAspectKind).toSeq)
 
     val fromGenerics = labelSize(lab) match {
       case Some(size) =>
