@@ -37,8 +37,8 @@ sealed abstract class AspectKind(val order: Int) extends Ordered[AspectKind] {
 // Order determines the order of application of aspects
 case object RealTypedAspectKind         extends AspectKind(10)
 case object NamedAspectKind             extends AspectKind(20)
-case object DepthBoundAspectKind        extends AspectKind(30)
-case object ExtraTerminalsAspectKind    extends AspectKind(40)
+case object ExtraTerminalsAspectKind    extends AspectKind(30)
+case object DepthBoundAspectKind        extends AspectKind(40)
 case object SimilarToAspectKind         extends AspectKind(50)
 case object TypeDepthBoundAspectKind    extends AspectKind(60)
 case object SizedAspectKind             extends AspectKind(70)
