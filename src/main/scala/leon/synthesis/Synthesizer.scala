@@ -66,17 +66,16 @@ class Synthesizer(val context : LeonContext,
 
     reporter.info("Finished in "+diff+"ms")
 
-
     (s, sols)
   }
 
-  def validate(results: (Search, Stream[Solution]), allowPartial: Boolean): (Search, Stream[(Solution, Boolean)]) = {
+  def validate(results: (Search, Stream[Solution]), allowPartial: Boolean, forceValidate: Boolean = false): (Search, Stream[(Solution, Boolean)]) = {
     val (s, sols) = results
 
-    val result = sols.map {
-      case sol if sol.isTrusted =>
+    val result = sols.map { sol =>
+      if (sol.isTrusted && !forceValidate)
         (sol, Some(true))
-      case sol =>
+      else
         validateSolution(s, sol, 5.seconds)
     }
 

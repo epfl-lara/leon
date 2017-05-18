@@ -76,7 +76,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
           val timeSynth = timer.stop
           timer.start
 
-          val (search, solutions) = synth.validate((search0, sols0), allowPartial = false)
+          val (search, solutions) = synth.validate((search0, sols0), allowPartial = false, forceValidate = true)
 
           val timeVerify = timer.stop
 
@@ -160,7 +160,6 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
           if (solutions.isEmpty) {
             reporter.error(ASCIIHelpers.title("Failed to repair!"))
           } else {
-
             reporter.info(ASCIIHelpers.title("Repair successful:"))
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
@@ -238,9 +237,9 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeoutMs: 
     val inputsToExample: Seq[Expr] => Example = { ins =>
       evaluator.eval(functionInvocation(fd, ins)) match {
         case EvaluationResults.Successful(res) =>
-          new InOutExample(ins, List(res))
+          InOutExample(ins, List(res))
         case _ =>
-          new InExample(ins)
+          InExample(ins)
       }
     }
 
