@@ -3,6 +3,8 @@ log=repairs.last
 summaryLog=repairs.log
 fullLog=fullLog.log
 
+rm $fullLog
+
 echo -n "" > $log;
 echo -n "" > "repairs.table";
 
