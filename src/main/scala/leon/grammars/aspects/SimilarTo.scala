@@ -72,7 +72,7 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(Simi
         case Operator(as, b) if as.nonEmpty =>
           for ((a, i) <- as.zipWithIndex) yield {
             ProductionRule[Label, Expr](
-              List(Label(a.getType).withAspect(SimilarTo(Seq(a), functionContext))),
+              List(Label(bestRealType(a.getType)).withAspect(SimilarTo(Seq(a), functionContext))),
               { case Seq(e) =>
                 b(as.updated(i, e))
               },
@@ -133,11 +133,17 @@ case class SimilarTo(es: Seq[Expr], functionContext: FunDef) extends Aspect(Simi
           Nil
       }
 
-      //val self = Seq(term(e))
-
-      swaps ++ subs ++ typeVariations ++ ccVariations //++ self
+      swaps ++ subs ++ typeVariations ++ ccVariations
     }
 
-    ps ++ similarProds
+    val depthBoundGeneralProductions = Seq(ProductionRule[Label, Expr](
+      Seq(lab.removeAspect(SimilarToAspectKind).withAspect(DepthBound(2))),
+      { case Seq(e) => e },
+      Tags.Top,
+      1,
+      -1.0
+    ))
+
+    similarProds ++ depthBoundGeneralProductions
   }
 }

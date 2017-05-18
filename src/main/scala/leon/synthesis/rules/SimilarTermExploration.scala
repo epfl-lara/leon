@@ -30,7 +30,7 @@ case object SimilarTermExploration extends STELike("Similar Term Expl.") {
 
     STEParams(
       grammar = grammars.default(sctx, p, guides),
-      rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(DepthBound(2)).withAspect(SimilarTo(guides, sctx.functionContext)),
+      rootLabel = (tpe: TypeTree) => Label(tpe).withAspect(SimilarTo(guides, sctx.functionContext)),
       optimizations = true,
       sizes = List((1, maxSize, 0))
     )
