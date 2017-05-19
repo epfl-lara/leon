@@ -3,25 +3,26 @@
 package leon
 package grammars
 
+import leon.purescala.Types.CaseClassType
 import purescala.Definitions._
 import purescala.DefOps.visibleClassDefsFromMain
-import purescala.Expressions._
+import purescala.Expressions.CaseClass
 
 case class CaseClasses(prog: Program) extends SimpleExpressionGrammar {
   def generateSimpleProductions(implicit ctx: LeonContext) = {
+    def mkRule(root: ClassDef, cct: CaseClassType) = {
+      sGeneric(
+        root.tparams, root.typed, cct.fields.map(_.getType), CaseClass(cct, _),
+        Tags.tagOf(cct), cost = Math.max(1, cct.fields.size)
+      )
+    }
+
     visibleClassDefsFromMain(prog).toSeq.flatMap {
       case acd: AbstractClassDef =>
-        val act = acd.typed
-
-        act.knownCCDescendants.map { cct =>
-          sGeneric(act.classDef.tparams, act, cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct))
-          //sGeneric(act.classDef.tparams, act, Seq(cct), _.head, Tags.tagOf(cct))
-        }
+        acd.typed.knownCCDescendants map (mkRule(acd, _))
 
       case ccd: CaseClassDef if ccd.parent.isEmpty =>
-        val cct = ccd.typed
-
-        Seq(sGeneric(cct.classDef.tparams, cct, cct.fields.map(_.getType), CaseClass(cct, _), Tags.tagOf(cct)))
+        Seq(mkRule(ccd, ccd.typed))
 
       case _ =>
         Nil
