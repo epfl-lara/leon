@@ -67,10 +67,10 @@ abstract class SimpleExpressionGrammar extends ExpressionGrammar {
       builder: (Seq[Expr] => Expr),
       tag: Tags.Tag = Tags.Top,
       cost: Int = 1,
-      weight: Double = -1.0) = {
+      logProb: Double = -1.0) = {
 
     val prodBuilder = { (tmap: Map[TypeParameter, TypeTree]) =>
-      ProductionRule[TypeTree, Expr](subs.map(instantiateType(_, tmap)), es => instantiateType(builder(es), tmap, Map()), tag, cost, weight)
+      ProductionRule[TypeTree, Expr](subs.map(instantiateType(_, tmap)), es => instantiateType(builder(es), tmap, Map()), tag, cost, logProb)
     }
 
     SGenericProd(tps, label, subs, prodBuilder)
