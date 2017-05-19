@@ -17,25 +17,25 @@ case object Literals extends SimpleExpressionGrammar {
       sTerminal(Int32Type, IntLiteral(0),  Tags.Zero),
       sTerminal(Int32Type, IntLiteral(1),  Tags.One),
       sTerminal(Int32Type, IntLiteral(5),  Tags.Constant),
-      sTerminal(Int32Type, IntLiteral(-1), Tags.Constant, 3),
-      sTerminal(Int32Type, IntLiteral(2),  Tags.Constant, 3),
+      sTerminal(Int32Type, IntLiteral(-1), Tags.Constant),
+      /*sTerminal(Int32Type, IntLiteral(2),  Tags.Constant, 3),
       sTerminal(Int32Type, IntLiteral(3),  Tags.Constant, 3),
       sTerminal(Int32Type, IntLiteral(-2), Tags.Constant, 5),
       sTerminal(Int32Type, IntLiteral(4),  Tags.Constant, 5),
-      sTerminal(Int32Type, IntLiteral(10), Tags.Constant, 5),
+      sTerminal(Int32Type, IntLiteral(10), Tags.Constant, 5),*/
 
       sTerminal(IntegerType, InfiniteIntegerLiteral(0),  Tags.Zero),
       sTerminal(IntegerType, InfiniteIntegerLiteral(1),  Tags.One),
       sTerminal(IntegerType, InfiniteIntegerLiteral(5),  Tags.Constant),
-      sTerminal(IntegerType, InfiniteIntegerLiteral(-1), Tags.Constant, 3),
-      sTerminal(IntegerType, InfiniteIntegerLiteral(2),  Tags.Constant, 3),
+      sTerminal(IntegerType, InfiniteIntegerLiteral(-1), Tags.Constant),
+      /*sTerminal(IntegerType, InfiniteIntegerLiteral(2),  Tags.Constant, 3),
       sTerminal(IntegerType, InfiniteIntegerLiteral(3),  Tags.Constant, 3),
       sTerminal(IntegerType, InfiniteIntegerLiteral(-2), Tags.Constant, 5),
       sTerminal(IntegerType, InfiniteIntegerLiteral(4),  Tags.Constant, 5),
-      sTerminal(IntegerType, InfiniteIntegerLiteral(10), Tags.Constant, 5),
+      sTerminal(IntegerType, InfiniteIntegerLiteral(10), Tags.Constant, 5),*/
 
       sTerminal(CharType, CharLiteral('a'), Tags.Constant),
-      sTerminal(CharType, CharLiteral('b'), Tags.Constant),
+      sTerminal(CharType, CharLiteral(' '), Tags.Constant),
       sTerminal(CharType, CharLiteral('0'), Tags.Constant),
 
       sTerminal(RealType, FractionalLiteral(0, 1), Tags.Zero),
