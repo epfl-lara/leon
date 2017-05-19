@@ -131,8 +131,7 @@ case object Focus extends PreprocessingRule("Focus") {
     def ws(g: Expr) = andJoin(Guide(g) +: wss)
 
     guides.flatMap {
-      case g @ IfExpr(c, thn, els) =>
-        timers.If.timed{
+      case g @ IfExpr(c, thn, els) => timers.If.timed {
 
         val spec = letTuple(p.xs, IfExpr(Not(c), thn, els), p.phi)
         // Try to focus on condition:
@@ -175,7 +174,7 @@ case object Focus extends PreprocessingRule("Focus") {
                 Some(decomp(List(sub1, sub2), onSuccess, s"Focus on both branches of '${c.asString}'"))
             }
         }
-        }
+      }
 
       case MatchExpr(scrut, cases) =>
         var pcSoFar = Path.empty
@@ -191,27 +190,36 @@ case object Focus extends PreprocessingRule("Focus") {
           pcSoFar = pcSoFar merge thisCond.negate
 
           val subP = if (existsFailing(cond.toClause, map, evaluator, false)) {
+            // Substitutions and constraint for entering subproblem.
+            // This is not very general. It will only substitute the scrutinee
+            // if it is an input parameter or a tuple of input parameters,
+            // otherwise it will introduce a constraint between scrutinee and pattern binders
+            def intoCase(scrut: Expr, pat: Pattern): (Seq[(Identifier, Expr)], Expr) = {
+              val toE = patternToExpression(pat, scrut.getType)._1
+              (scrut, pat) match {
+                case (_, WildcardPattern(None)) =>
+                  (Seq(), BooleanLiteral(true))
+                case (Variable(i), _) if p.as.contains(i) =>
+                  (Seq(i -> toE), BooleanLiteral(true))
+                case (Tuple(es), TuplePattern(None, tos)) => // FIXME extra binder??
+                  val (substs, constrs) = es.zip(tos).map((intoCase _).tupled).unzip
+                  (substs.flatten, andJoin(constrs))
+                case _ =>
+                  (Seq(), Equals(scrut, toE))
+              }
+            }
+
+            val (s, constr) = intoCase(scrut, c.pattern)
+            val substAs = s.toMap
 
             val vars = map.keys.toSeq
-
-            val (p2e, _) = patternToExpression(c.pattern, scrut.getType)
-
-            val substAs = ((scrut, p2e) match {
-              case (Variable(i), _) if p.as.contains(i) => Seq(i -> p2e)
-              case (Tuple(as), Tuple(tos)) =>
-                val res = as.zip(tos) collect {
-                  case (Variable(i), to) if p.as.contains(i) => i -> to
-                }
-                if (res.size == as.size) res else Nil
-              case _ => Nil
-            }).toMap
 
             if (substAs.nonEmpty) {
               timers.Match.filterIns.start()
               val subst = replaceFromIDs(substAs, _: Expr)
               // FIXME intermediate binders??
               val newAs = (p.as diff substAs.keys.toSeq) ++ vars
-              val newPc = (p.pc merge prevPCSoFar) map subst
+              val newPc = (p.pc merge prevPCSoFar merge Path(constr)) map subst
               val newWs = subst(ws(c.rhs))
               val newPhi = subst(p.phi)
               val eb2 = qeb.filterIns(cond.toClause)
