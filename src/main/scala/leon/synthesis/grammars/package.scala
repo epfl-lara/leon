@@ -8,6 +8,7 @@ import purescala.ExprOps._
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import purescala.Extractors.TopLevelAnds
+import purescala.Types.TypeParameter
 import Witnesses.Hint
 
 package object grammars {
@@ -45,6 +46,7 @@ package object grammars {
       Literals,
       Closures(3),
       CaseClasses(prog),
+      Generics(prog),
       Tuples(5),
       Sets(2)
     ))
