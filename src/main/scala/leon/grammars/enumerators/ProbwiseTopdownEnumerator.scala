@@ -191,7 +191,12 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     }
 
     val priority = {
-      val t1 = coeff * Math.log((score.nYes + 1.0) / (score.nExs + 1.0))
+      val t1 = {
+        if (score.nExs == 0)
+          0
+        else
+          - coeff * ( 1 - score.nYes / score.nExs)
+      }
       val t2 = logProb + horizon
       t1 + t2
     }
