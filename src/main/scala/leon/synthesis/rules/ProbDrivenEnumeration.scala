@@ -5,9 +5,9 @@ package synthesis
 package rules
 
 import evaluators._
-import leon.grammars.enumerators.CandidateScorer.MeetsSpec
-import leon.grammars.{Expansion, ExpansionExpr, Label}
+import leon.grammars._
 import leon.grammars.enumerators._
+import leon.grammars.enumerators.CandidateScorer.MeetsSpec
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps._
@@ -18,20 +18,19 @@ import utils.MutableExpr
 import solvers._
 
 abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
-
-  def rootLabel(p: Problem, sctx: SynthesisContext): Label
+  case class Params(lab: Label, grammar: ExpressionGrammar, indistinguish: Boolean)
+  def getParams(sctx: SynthesisContext, p: Problem): Params
 
   private case object UnsatPCException extends Exception("Unsat. PC")
 
   class NonDeterministicProgram(
     outerCtx: SearchContext,
-    outerP: Problem,
-    optimize: Boolean
+    outerP: Problem
   ) {
 
     import outerCtx.reporter._
 
-    val solverTo = 10000
+    val solverTo = 5000
 
     // Create a fresh solution function with the best solution around the
     // current STE as body
@@ -54,12 +53,14 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     }
 
     val outerExamples = {
+      val Params(_, _, indistinguish) = getParams(outerCtx, outerP)
+      val howMany = if (indistinguish) 3 else 5000
       val fromProblem = outerP.qebFiltered(outerCtx).eb.examples
-      val inOut = fromProblem.filter(_.isInstanceOf[InOutExample])
+      val (in, inOut) = fromProblem.partition(_.isInstanceOf[InExample])
       // We are forced to take all in-out examples
-      if (inOut.nonEmpty) inOut
-      // otherwise we prefer one example
-      else if (fromProblem.nonEmpty) fromProblem.take(1)
+      if (inOut.nonEmpty) inOut ++ in.take(howMany - inOut.size)
+      // otherwise we take a few in-examples
+      else if (in.nonEmpty) in.take(howMany)
       else {
         // If we have none, generate one with the solver
         val solverF = SolverFactory.getFromSettings(outerCtx, outerCtx.program).withTimeout(solverTo)
@@ -139,9 +140,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
-    val solverF    = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
-    val topLabel   = rootLabel(p, sctx)
-    val grammar    = grammars.default(sctx, p)
+    val solverF = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
+    val Params(topLabel, grammar, indistinguish) = getParams(sctx, p)
 
     debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
     val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
@@ -185,7 +185,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     private class NoRecEvaluator(sctx: SynthesisContext, pgm: Program) extends TableEvaluator(sctx, pgm) {
       override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
         case MutableExpr(_) =>
-          throw new EvalError("Trying to normalize based on rec. call body")
+          throw EvalError("Trying to normalize based on rec. call body")
         case other => super.e(other)
       }
     }
@@ -218,8 +218,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         case EvaluationResults.Successful(BooleanLiteral(true)) => MeetsSpec.YES
         case EvaluationResults.Successful(BooleanLiteral(false)) => MeetsSpec.NO
         case EvaluationResults.Successful(_) => MeetsSpec.NOTYET
-        case EvaluationResults.RuntimeError(err) => MeetsSpec.NO
-        case EvaluationResults.EvaluatorError(err) => MeetsSpec.NOTYET
+        case EvaluationResults.RuntimeError(_) => MeetsSpec.NO
+        case EvaluationResults.EvaluatorError(_) => MeetsSpec.NOTYET
       }
     }
 
@@ -244,12 +244,12 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, disambiguate)
     }).iterator(topLabel)*/
 
-
-    val restartable = optimize
-
     def mkEnum = {
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-      new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate, minLogProb, maxEnumerated, optimize)
+      new ProbwiseTopdownEnumerator(
+        grammar, topLabel, scorer, examples, rawEvalCandidate,
+        minLogProb, maxEnumerated, indistinguish
+      )
     }.iterator(topLabel)
 
 
@@ -278,7 +278,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
             examples +:= cex
             timers.cegisIter.stop()
             timers.cegisIter.start()
-            if (restartable) {
+            if (indistinguish) {
               debug("Restarting enum...")
               it = mkEnum
             }
@@ -330,12 +330,10 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
   }
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val opt = hctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
-
-    List(new RuleInstantiation(s"$name (opt = $opt)") {
+    List(new RuleInstantiation(s"$name") {
       def apply(hctx: SearchContext): RuleApplication = {
         try {
-          val ndProgram = new NonDeterministicProgram(hctx, p, opt)
+          val ndProgram = new NonDeterministicProgram(hctx, p)
           RuleClosed (ndProgram.solutionStream)
         } catch {
           case UnsatPCException =>
@@ -349,8 +347,12 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enum") {
   import leon.grammars.Tags
   import leon.grammars.aspects._
-  def rootLabel(p: Problem, sctx: SynthesisContext) = {
-    Label(p.outType).withAspect(TypeDepthBound(3))//.withAspect(Tagged(Tags.Top, 0, None))
+  def getParams(sctx: SynthesisContext, p: Problem) = {
+    Params(
+      Label(p.outType).withAspect(TypeDepthBound(3)),//.withAspect(Tagged(Tags.Top, 0, None))
+      grammars.default(sctx, p),
+      sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
+    )
   }
 }
 
@@ -358,9 +360,13 @@ object ProbDrivenSimilarTermEnumeration extends ProbDrivenEnumerationLike("Prob.
   import purescala.Extractors.TopLevelAnds
   import leon.grammars.aspects._
   import Witnesses.Guide
-  def rootLabel(p: Problem, sctx: SynthesisContext) = {
+  def getParams(sctx: SynthesisContext, p: Problem) = {
     val TopLevelAnds(clauses) = p.ws
     val guides = clauses.collect { case Guide(e) => e }
-    Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext)).withAspect(DepthBound(2))
+    Params(
+      Label(p.outType).withAspect(SimilarTo(guides, sctx.functionContext)),
+      grammars.default(sctx, p, guides),
+      indistinguish = false
+    )
   }
 }
