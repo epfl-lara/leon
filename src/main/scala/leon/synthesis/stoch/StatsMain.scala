@@ -42,10 +42,7 @@ object StatsMain {
     } */
 
     val ecs: ExprConstrStats = {
-      groupExprs(canaryTypes, fase)
-        .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-        .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
-        .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
+      groupAndFilterExprs(canaryTypes, fase)
     }
 
     println("Printing coarse expression constructor stats:")

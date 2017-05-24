@@ -32,17 +32,8 @@ object Stats2Main {
                    .seq.flatten
     val fase1 = fase2.map(_._1)
 
-    val ecs2: ECS2 =
-      groupExprs2(canaryTypes, fase2)
-           .mapValues(_.mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr)))))
-           .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))))))
-           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
-    val ecs1: ExprConstrStats =
-      groupExprs(canaryTypes, fase1)
-           .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-           .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
-           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
-
+    val ecs2: ECS2 = groupAndFilterExprs2(canaryTypes, fase2)
+    val ecs1: ExprConstrStats = groupAndFilterExprs(canaryTypes, fase1)
     println("Printing coarse ECS2:")
     println(Stats.ecs2ToStringCoarse(ecs2))
 

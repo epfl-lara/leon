@@ -143,28 +143,20 @@ object StatsUtils {
     expr: Expr,
     canaryTypes: Seq[TypeTree]
   ): Boolean = {
-    isSelectableType(exprConstrFuncType(expr), canaryTypes) && !isExcludedExpr(expr)
+    isSelectableType(exprConstrFuncType(expr), canaryTypes, false) && !isExcludedExpr(expr)
   }
 
-  def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree]): Boolean = {
+  def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree], strict: Boolean): Boolean = {
     canaryTypes.contains(normalizeType(tt)) || (tt match {
-      case FunctionType(from, to) => (from :+ to).forall(tt => isSelectableType(tt, canaryTypes))
-      case TupleType(bases) => bases.forall(tt => isSelectableType(tt, canaryTypes))
+      case FunctionType(from, to) if !strict || StatsMain.SELECT_FUNCTION_TYPES =>
+        (from :+ to).forall(tt => isSelectableType(tt, canaryTypes, strict))
+      case TupleType(bases) if !strict || StatsMain.SELECT_TUPLE_TYPES =>
+        bases.forall(tt => isSelectableType(tt, canaryTypes, strict))
       case _ => false
     })
   }
 
-  def isSelectableTypeStrict(tt: TypeTree, canaryTypes: Seq[TypeTree]): Boolean = {
-    canaryTypes.contains(normalizeType(tt)) || (tt match {
-      case FunctionType(from, to) if StatsMain.SELECT_FUNCTION_TYPES =>
-        (from :+ to).forall(tt => isSelectableTypeStrict(tt, canaryTypes))
-      case TupleType(bases) if StatsMain.SELECT_TUPLE_TYPES =>
-        bases.forall(tt => isSelectableTypeStrict(tt, canaryTypes))
-      case _ => false
-    })
-  }
-
-  def groupExprs(
+  def groupAndFilterExprs(
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[Expr]
   ): ExprConstrStats = {
@@ -176,11 +168,18 @@ object StatsUtils {
       (resType, (expr.getClass, (argTypes, expr)))
     }
 
+    val strictType = {
+      val cts = canaryTypes.values.toSeq
+      (t: TypeTree) => isSelectableType(t, cts, true)
+    }
+
     seqToMap(tuples).mapValues( perResType =>
       seqToMap(perResType).mapValues( perClass =>
         seqToMap(perClass)
+          .mapValues(_.filterNot(isCanaryExpr))
+          .filterKeys(_.forall(strictType))
       )
-    )
+    ).filterKeys(strictType)
   }
 
   /* // Normalized expression type -> Relation to parent -> Constructor -> ArgType* -> Expr*
@@ -190,7 +189,7 @@ object StatsUtils {
   // Normalized expression type -> Relation to parent -> Value -> (Literal[_] <: Expr)*
   type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
 
-  def groupExprs2(
+  def groupAndFilterExprs2(
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[(Expr, Option[(Int, Expr)])]
   ): ECS2 = {
@@ -199,7 +198,7 @@ object StatsUtils {
     }
     for (id <- canaryTypes.keys) {
       if (!canaryInsts.exists(_.id.name == id)) {
-        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq)
+        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq, false)
         println(s"Unidentified canary instance! id: $id selectableType: $selectableType")
       }
     }
@@ -212,10 +211,20 @@ object StatsUtils {
         (resType, (par map parGroup, (e.getClass, (argTypes, e))))
       }
 
+    val strictType = {
+      val cts = canaryTypes.values.toSeq
+      (t: TypeTree) => isSelectableType(t, cts, true)
+    }
     seqToMap(tuples).mapValues( perResType =>
       seqToMap(perResType).mapValues( perParent =>
         seqToMap(perParent).mapValues( perClass =>
-          seqToMap(perClass))))
+          seqToMap(perClass)
+            .mapValues(_.filterNot(isCanaryExpr))
+            .filterKeys(_.forall(strictType))
+        )
+      )
+    ).filterKeys(strictType)
+
   }
 
   def normalizeConstrType(
