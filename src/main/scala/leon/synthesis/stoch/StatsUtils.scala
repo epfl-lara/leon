@@ -10,6 +10,7 @@ import purescala.{ExprOps, TypeOps}
 import purescala.TypeOps.bestRealType
 import Stats._
 import leon.utils.Position
+import leon.utils.MapUtils.seqToMap
 
 object StatsUtils {
 
@@ -171,11 +172,16 @@ object StatsUtils {
     val canaryInsts = exprs.collect{ case v: Variable if canaryTypes.contains(v.id.name) => v }
     require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
-    exprs.map(expr => (expr, normalizeConstrType(canaryTypes, canaryInsts, expr)))
-         .groupBy(_._2.to)
-         .mapValues(_.groupBy(_._1.getClass))
-         .mapValues(_.mapValues(_.groupBy(_._2.from)))
-         .mapValues(_.mapValues(_.mapValues(_.map(_._1))))
+    val tuples: Seq[(TypeTree, (Class[_ <: Expr], (Seq[TypeTree], Expr)))] = exprs map { expr =>
+      val FunctionType(argTypes, resType) = normalizeConstrType(canaryTypes, canaryInsts, expr)
+      (resType, (expr.getClass, (argTypes, expr)))
+    }
+
+    seqToMap(tuples).mapValues( perResType =>
+      seqToMap(perResType).mapValues( perClass =>
+        seqToMap(perClass)
+      )
+    )
   }
 
   /* // Normalized expression type -> Relation to parent -> Constructor -> ArgType* -> Expr*
@@ -202,13 +208,16 @@ object StatsUtils {
     require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
     def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)
+    val tuples: Seq[(TypeTree, (Option[(Priority, Class[_ <: Expr])], (Class[_ <: Expr], (Seq[TypeTree], Expr))))] =
+      exprs.map { case (e, par) =>
+        val FunctionType(argTypes, resType) = normalizeConstrType(canaryTypes, canaryInsts, e)
+        (resType, (par map parGroup, (e.getClass, (argTypes, e))))
+      }
 
-    exprs.map { case (e, par) => (e, par, normalizeConstrType(canaryTypes, canaryInsts, e)) }
-         .groupBy(_._3.to)
-         .mapValues(_.groupBy(_._2.map(parGroup)))
-         .mapValues(_.mapValues(_.groupBy(_._1.getClass)))
-         .mapValues(_.mapValues(_.mapValues(_.groupBy(_._3.from))))
-         .mapValues(_.mapValues(_.mapValues(_.mapValues(_.map(_._1)))))
+    seqToMap(tuples).mapValues( perResType =>
+      seqToMap(perResType).mapValues( perParent =>
+        seqToMap(perParent).mapValues( perClass =>
+          seqToMap(perClass))))
   }
 
   def normalizeConstrType(
