@@ -13,8 +13,6 @@ import leon.utils.Position
 
 object StatsUtils {
 
-  val freshTypeParams = Stream.continually(TypeParameter.fresh("T", true))
-
   // All sub-expressions of an expression
   def allSubExprs(expr: Expr): Seq[Expr] = ExprOps.collectPreorder{ List(_) }(expr)
 
@@ -68,10 +66,10 @@ object StatsUtils {
            .distinct
   }
 
-  def normalizeType(allParams: Seq[TypeParameter], typeTree: TypeTree): TypeTree = {
+  private val freshTypeParams = Stream.continually(TypeParameter.fresh("T", true))
+  def normalizeType(typeTree: TypeTree): TypeTree = {
     val thisParams = getTypeParams(typeTree).distinct
-    require(thisParams.toSet.subsetOf(allParams.toSet))
-    val renaming = thisParams.zip(allParams)
+    val renaming = thisParams.zip(freshTypeParams)
                              .map { case (x, y) => (x.asInstanceOf[TypeTree], y.asInstanceOf[TypeTree]) }
                              .toMap
     val ans = TypeOps.replace(renaming, typeTree)
@@ -80,8 +78,7 @@ object StatsUtils {
   }
 
   def normalizeTypes(seq: Seq[TypeTree]): Seq[TypeTree] = {
-    val allParams = seq.flatMap(getTypeParams).distinct
-    seq.map(typeTree => normalizeType(allParams, typeTree))
+    seq.map(typeTree => normalizeType(typeTree))
   }
 
   // (operand types) => expr. type
@@ -123,20 +120,18 @@ object StatsUtils {
 
   def canaryTypeFilter(exprs: Seq[Expr]): Seq[Expr] = {
     val canaryExprs = getCanaryExprs(exprs)
-    val allTypeParams = exprs.map(exprConstrFuncType).flatMap(getTypeParams).distinct
-    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(allTypeParams, tt))
-    exprs.filter(expr => isSelectableExpr(expr, canaryTypes, allTypeParams))
+    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(tt))
+    exprs.filter(expr => isSelectableExpr(expr, canaryTypes))
   }
 
   def canaryTypeFilter2(exprs: Seq[(Expr, Option[(Int, Expr)])]): Seq[(Expr, Option[(Int, Expr)])] = {
     val canaryExprs = getCanaryExprs(exprs.map(_._1))
-    val allTypeParams = exprs.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).distinct
-    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(allTypeParams, tt))
+    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(tt))
 
     exprs.flatMap {
-      case (expr, _) if !isSelectableExpr(expr, canaryTypes, allTypeParams) =>
+      case (expr, _) if !isSelectableExpr(expr, canaryTypes) =>
         None
-      case (expr, Some((_, par))) if !isSelectableExpr(par, canaryTypes, allTypeParams) =>
+      case (expr, Some((_, par))) if !isSelectableExpr(par, canaryTypes) =>
         Some((expr, None))
       case other =>
         Some(other)
@@ -145,40 +140,38 @@ object StatsUtils {
 
   def isSelectableExpr(
     expr: Expr,
-    canaryTypes: Seq[TypeTree],
-    allTypeParams: Seq[TypeParameter]
+    canaryTypes: Seq[TypeTree]
   ): Boolean = {
-    isSelectableType(exprConstrFuncType(expr), canaryTypes, allTypeParams) && !isExcludedExpr(expr)
+    isSelectableType(exprConstrFuncType(expr), canaryTypes) && !isExcludedExpr(expr)
   }
 
-  def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
-    canaryTypes.contains(normalizeType(allTypeParams, tt)) || (tt match {
-      case FunctionType(from, to) => (from :+ to).forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
-      case TupleType(bases) => bases.forall(tt => isSelectableType(tt, canaryTypes, allTypeParams))
+  def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree]): Boolean = {
+    canaryTypes.contains(normalizeType(tt)) || (tt match {
+      case FunctionType(from, to) => (from :+ to).forall(tt => isSelectableType(tt, canaryTypes))
+      case TupleType(bases) => bases.forall(tt => isSelectableType(tt, canaryTypes))
       case _ => false
     })
   }
 
-  def isSelectableTypeStrict(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
-    canaryTypes.contains(normalizeType(allTypeParams, tt)) || (tt match {
+  def isSelectableTypeStrict(tt: TypeTree, canaryTypes: Seq[TypeTree]): Boolean = {
+    canaryTypes.contains(normalizeType(tt)) || (tt match {
       case FunctionType(from, to) if StatsMain.SELECT_FUNCTION_TYPES =>
-        (from :+ to).forall(tt => isSelectableTypeStrict(tt, canaryTypes, allTypeParams))
+        (from :+ to).forall(tt => isSelectableTypeStrict(tt, canaryTypes))
       case TupleType(bases) if StatsMain.SELECT_TUPLE_TYPES =>
-        bases.forall(tt => isSelectableTypeStrict(tt, canaryTypes, allTypeParams))
+        bases.forall(tt => isSelectableTypeStrict(tt, canaryTypes))
       case _ => false
     })
   }
 
   def groupExprs(
     fileName: String,
-    allTypeParams: Seq[TypeParameter],
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[Expr]
   ): ExprConstrStats = {
     val canaryInsts = exprs.collect{ case v: Variable if canaryTypes.contains(v.id.name) => v }
     require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
-    exprs.map(expr => (expr, normalizeConstrType(allTypeParams, canaryTypes, canaryInsts, expr)))
+    exprs.map(expr => (expr, normalizeConstrType(canaryTypes, canaryInsts, expr)))
          .groupBy(_._2.to)
          .mapValues(_.groupBy(_._1.getClass))
          .mapValues(_.mapValues(_.groupBy(_._2.from)))
@@ -194,7 +187,6 @@ object StatsUtils {
 
   def groupExprs2(
     fileName: String,
-    allTypeParams: Seq[TypeParameter],
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[(Expr, Option[(Int, Expr)])]
   ): ECS2 = {
@@ -203,7 +195,7 @@ object StatsUtils {
     }
     for (id <- canaryTypes.keys) {
       if (!canaryInsts.exists(_.id.name == id)) {
-        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq, allTypeParams)
+        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq)
         println(s"Unidentified canary instance in file $fileName! id: $id selectableType: $selectableType")
       }
     }
@@ -211,7 +203,7 @@ object StatsUtils {
 
     def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)
 
-    exprs.map { case (e, par) => (e, par, normalizeConstrType(allTypeParams, canaryTypes, canaryInsts, e)) }
+    exprs.map { case (e, par) => (e, par, normalizeConstrType(canaryTypes, canaryInsts, e)) }
          .groupBy(_._3.to)
          .mapValues(_.groupBy(_._2.map(parGroup)))
          .mapValues(_.mapValues(_.groupBy(_._1.getClass)))
@@ -220,12 +212,11 @@ object StatsUtils {
   }
 
   def normalizeConstrType(
-                           allTypeParams: Seq[TypeParameter],
-                           canaryTypes: Map[String, TypeTree],
-                           canaryInsts: Seq[Variable],
-                           expr: Expr
-                         ): FunctionType = {
-    var constrType = normalizeType(allTypeParams, exprConstrFuncType(expr)).asInstanceOf[FunctionType]
+    canaryTypes: Map[String, TypeTree],
+    canaryInsts: Seq[Variable],
+    expr: Expr
+  ): FunctionType = {
+    var constrType = normalizeType(exprConstrFuncType(expr)).asInstanceOf[FunctionType]
     val classTypes = TypeOps.collectPreorder(tt => Seq(tt))(constrType)
                             .collect{ case ct: ClassType => ct }
     for (ct <- classTypes) {

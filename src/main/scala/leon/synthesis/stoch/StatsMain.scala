@@ -41,14 +41,13 @@ object StatsMain {
       }
     } */
 
-    val allTypeParams = fase.values.flatten.map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
     val ecs: ExprConstrStats = {
       fase
-        .map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
+        .map { case (fileName, exprs) => groupExprs(fileName, canaryTypes, exprs) }
         .fold(Map())(ecsAdd)
         .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-        .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
-        .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+        .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
+        .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
     }
 
     println("Printing coarse expression constructor stats:")

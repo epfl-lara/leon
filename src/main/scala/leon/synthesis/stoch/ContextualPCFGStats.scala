@@ -32,9 +32,8 @@ object ContextualPCFGStats {
 
   def getAncStats(ctx: LeonContext, p: Program): AncStats = {
     val ase = allSubExprsWithAncestry(p)
-    val allTypeParams = ase.map(_.head._1.getType).flatMap(getTypeParams).distinct
 
-    def exprType(es: Seq[(Expr, Int)]): TypeTree = normalizeType(allTypeParams, es.head._1.getType)
+    def exprType(es: Seq[(Expr, Int)]): TypeTree = normalizeType(es.head._1.getType)
     def exprConstr(es: Seq[(Expr, Int)]): Class[_ <: Expr] = es.head._1.getClass
     def constrAnc(es: Seq[(Expr, Int)]): ConstrAnc = es.tail.map{ case (e, idx) => (e.getClass, idx) }
 

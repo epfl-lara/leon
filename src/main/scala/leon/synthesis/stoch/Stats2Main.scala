@@ -32,26 +32,18 @@ object Stats2Main {
                    .toMap.seq
     val fase1 = fase2.mapValues(_.map(_._1))
 
-    /* for ((fname, epar) <- fase2) {
-      println(s"Printing interesting expressions from $fname")
-      for ((expr, par) <- epar) {
-        println(s"$fname, $expr, ${expr.getType}, ${expr.getType.getClass}, ${expr.getClass}")
-      }
-    } */
-
-    val allTypeParams = fase2.values.flatten.map(_._1).map(exprConstrFuncType).flatMap(getTypeParams).toSeq.distinct
     val ecs2: ECS2 =
-      fase2.map { case (fileName, exprs) => groupExprs2(fileName, allTypeParams, canaryTypes, exprs) }
+      fase2.map { case (fileName, exprs) => groupExprs2(fileName, canaryTypes, exprs) }
            .fold(Map())(ecs2Add)
            .mapValues(_.mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr)))))
-           .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))))))
-           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+           .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))))))
+           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
     val ecs1: ExprConstrStats =
-      fase1.map { case (fileName, exprs) => groupExprs(fileName, allTypeParams, canaryTypes, exprs) }
+      fase1.map { case (fileName, exprs) => groupExprs(fileName, canaryTypes, exprs) }
            .fold(Map())(ecsAdd)
            .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
-           .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams)))))
-           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq, allTypeParams))
+           .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
+           .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
 
     println("Printing coarse ECS2:")
     println(Stats.ecs2ToStringCoarse(ecs2))
