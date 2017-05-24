@@ -26,56 +26,6 @@ object Stats {
   // Normalized expression type -> Relation to parent -> Value -> (Literal[_] <: Expr)*
   type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]]
 
-  def ecsAdd(ecs1: ExprConstrStats, ecs2: ExprConstrStats): ExprConstrStats = {
-    val ans = new mutable.HashMap[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]()
-    for (tt <- ecs1.keySet ++ ecs2.keySet) {
-      val ansTT = new mutable.HashMap[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]()
-      val ecs1TT = ecs1.getOrElse(tt, Map())
-      val ecs2TT = ecs2.getOrElse(tt, Map())
-      for (constr <- ecs1TT.keySet ++ ecs2TT.keySet) {
-        val ansTTConstr = new mutable.HashMap[Seq[TypeTree], Seq[Expr]]()
-        val ecs1TTConstr = ecs1TT.getOrElse(constr, Map())
-        val ecs2TTConstr = ecs2TT.getOrElse(constr, Map())
-        for (stt <- ecs1TTConstr.keySet ++ ecs2TTConstr.keySet) {
-          val ecs1TTConstrSTT = ecs1TTConstr.getOrElse(stt, Seq())
-          val ecs2TTConstrSTT = ecs2TTConstr.getOrElse(stt, Seq())
-          ansTTConstr += stt -> (ecs1TTConstrSTT ++ ecs2TTConstrSTT)
-        }
-        ansTT += constr -> ansTTConstr.toMap
-      }
-      ans += tt -> ansTT.toMap
-    }
-    ans.toMap
-  }
-
-  def ecs2Add(ecs1: ECS2, ecs2: ECS2): ECS2 = {
-    val ans = new mutable.HashMap[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]]()
-    for (tt <- ecs1.keySet ++ ecs2.keySet) {
-      val ansTT = new mutable.HashMap[Option[(Int, Class[_ <: Expr])], Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]()
-      val ecs1TT = ecs1.getOrElse(tt, Map())
-      val ecs2TT = ecs2.getOrElse(tt, Map())
-      for (parent <- ecs1TT.keySet ++ ecs2TT.keySet) {
-        val ansTTPar = new mutable.HashMap[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]()
-        val ecs1TTPar = ecs1TT.getOrElse(parent, Map())
-        val ecs2TTPar = ecs2TT.getOrElse(parent, Map())
-        for (constr <- ecs1TTPar.keySet ++ ecs2TTPar.keySet) {
-          val ansTTParConstr = new mutable.HashMap[Seq[TypeTree], Seq[Expr]]()
-          val ecs1TTParConstr = ecs1TTPar.getOrElse(constr, Map())
-          val ecs2TTParConstr = ecs2TTPar.getOrElse(constr, Map())
-          for (stt <- ecs1TTParConstr.keySet ++ ecs2TTParConstr.keySet) {
-            val ecs1TTParConstrSTT = ecs1TTParConstr.getOrElse(stt, Seq())
-            val ecs2TTParConstrSTT = ecs2TTParConstr.getOrElse(stt, Seq())
-            ansTTParConstr += stt -> (ecs1TTParConstrSTT ++ ecs2TTParConstrSTT)
-          }
-          ansTTPar += constr -> ansTTParConstr.toMap
-        }
-        ansTT += parent -> ansTTPar.toMap
-      }
-      ans += tt -> ansTT.toMap
-    }
-    ans.toMap
-  }
-
   def ecsToStringCoarse(stats: ExprConstrStats): String = {
     val ans = new StringBuilder()
 

@@ -30,9 +30,9 @@ object StatsMain {
     canaryTypes.foreach(println)
 
     val fase = args.drop(2).toSeq.par
-                   .map(fname => fname -> canaryTypeFilter(procFiles(fname, canaryFileName)))
-                   .filter(_._2.nonEmpty)
-                   .toMap.seq
+                   .map(fname => canaryTypeFilter(procFiles(fname, canaryFileName)))
+                   .filter(_.nonEmpty)
+                   .seq.flatten
 
     /* for ((fname, exprs) <- fase) {
       println(s"Printing interesting expressions from ${fname}")
@@ -42,9 +42,7 @@ object StatsMain {
     } */
 
     val ecs: ExprConstrStats = {
-      fase
-        .map { case (fileName, exprs) => groupExprs(fileName, canaryTypes, exprs) }
-        .fold(Map())(ecsAdd)
+      groupExprs(canaryTypes, fase)
         .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
         .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
         .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))

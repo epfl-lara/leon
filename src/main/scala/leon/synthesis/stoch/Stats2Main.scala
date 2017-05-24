@@ -27,20 +27,18 @@ object Stats2Main {
     canaryTypes.foreach(println)
 
     val fase2 = args.drop(2).toSeq.par
-                   .map(fname => fname -> canaryTypeFilter2(procFiles2(fname, canaryFileName)))
-                   .filter(_._2.nonEmpty)
-                   .toMap.seq
-    val fase1 = fase2.mapValues(_.map(_._1))
+                   .map(f => canaryTypeFilter2(procFiles2(f, canaryFileName)))
+                   .filter(_.nonEmpty)
+                   .seq.flatten
+    val fase1 = fase2.map(_._1)
 
     val ecs2: ECS2 =
-      fase2.map { case (fileName, exprs) => groupExprs2(fileName, canaryTypes, exprs) }
-           .fold(Map())(ecs2Add)
+      groupExprs2(canaryTypes, fase2)
            .mapValues(_.mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr)))))
            .mapValues(_.mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))))))
            .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))
     val ecs1: ExprConstrStats =
-      fase1.map { case (fileName, exprs) => groupExprs(fileName, canaryTypes, exprs) }
-           .fold(Map())(ecsAdd)
+      groupExprs(canaryTypes, fase1)
            .mapValues(_.mapValues(_.mapValues(_.filterNot(isCanaryExpr))))
            .mapValues(_.mapValues(_.filterKeys(_.forall(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq)))))
            .filterKeys(tt => isSelectableTypeStrict(tt, canaryTypes.values.toSeq))

@@ -165,7 +165,6 @@ object StatsUtils {
   }
 
   def groupExprs(
-    fileName: String,
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[Expr]
   ): ExprConstrStats = {
@@ -192,7 +191,6 @@ object StatsUtils {
   type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
 
   def groupExprs2(
-    fileName: String,
     canaryTypes: Map[String, TypeTree],
     exprs: Seq[(Expr, Option[(Int, Expr)])]
   ): ECS2 = {
@@ -202,7 +200,7 @@ object StatsUtils {
     for (id <- canaryTypes.keys) {
       if (!canaryInsts.exists(_.id.name == id)) {
         val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq)
-        println(s"Unidentified canary instance in file $fileName! id: $id selectableType: $selectableType")
+        println(s"Unidentified canary instance! id: $id selectableType: $selectableType")
       }
     }
     require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
