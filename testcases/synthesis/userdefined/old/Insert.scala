@@ -17,10 +17,9 @@ object StrictSortedListInsert {
   }
 
   def isSorted(list: List[BigInt]): Boolean = list match {
-    case Nil() => true
-    case Cons(_, Nil()) => true
-    case Cons(x1, Cons(x2, _)) if(x1 >= x2) => false
-    case Cons(_, xs) => isSorted(xs)
+    case Cons(x1, t@Cons(x2, _)) =>
+      x1 < x2 && isSorted(t)
+    case _ => true
   }
 
   def insert(in1: List[BigInt], v: BigInt): List[BigInt] = {

@@ -12,8 +12,9 @@ sealed abstract class List[T] {
     case Nil() => BigInt(0)
     case Cons(h, t) => BigInt(3) + t.size //FIXME
   }) ensuring { (this, _) passes {
-    case Cons(_, Nil()) => 1
     case Nil() => 0
+    case Cons(_, Nil()) => 1
+    case Cons(_, Cons(_, Nil())) => 2
   }}
 
   def content: Set[T] = this match {

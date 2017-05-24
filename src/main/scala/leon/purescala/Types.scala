@@ -51,15 +51,15 @@ object Types {
   case object Int32Type extends BitVectorType(32)
   case object StringType extends TypeTree
 
-  class TypeParameter private (name: String) extends TypeTree {
-    val id = FreshIdentifier(name, this)
+  class TypeParameter private (name: String, alwaysShowUniqueID: Boolean) extends TypeTree {
+    val id = FreshIdentifier(name, this, alwaysShowUniqueID)
 
     //TODO: really not sure about what I'm doing there, but
     //      I really need the information of whether the TypeParameter
     //      was mutable or not, so I copy it around with the freshen
     //      @samarion please excuse me for using vars
     def freshen = {
-      val ntp = new TypeParameter(name)
+      val ntp = new TypeParameter(name, alwaysShowUniqueID)
       ntp.isMutable = isMutable
       ntp
     }
@@ -77,7 +77,8 @@ object Types {
 
   object TypeParameter {
     def unapply(tp: TypeParameter): Option[Identifier] = Some(tp.id)
-    def fresh(name: String) = new TypeParameter(name)
+    def fresh(name: String, alwaysShowUniqueID: Boolean = false) =
+      new TypeParameter(name, alwaysShowUniqueID)
   }
 
   /* 

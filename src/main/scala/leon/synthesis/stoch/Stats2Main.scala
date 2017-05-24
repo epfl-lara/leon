@@ -19,10 +19,10 @@ object Stats2Main {
 
     val canaryFileName = args(1)
     val canaryExprs = StatsMain.procFiles(canaryFileName)
-    val canaryTypes = canaryExprs.filter(_.isInstanceOf[Variable])
-                                 .map(_.asInstanceOf[Variable])
-                                 .filter(_.id.name.contains("f82c414"))
-                                 .map(v => v.id.name -> v.getType).toMap
+    val canaryTypes = canaryExprs.collect {
+      case v: Variable if v.id.name.contains("f82c414") =>
+        v.id.name -> v.getType
+    }.toMap
     println("Printing canary types:")
     canaryTypes.foreach(println)
 

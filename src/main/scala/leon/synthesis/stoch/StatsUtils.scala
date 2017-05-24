@@ -13,6 +13,8 @@ import leon.utils.Position
 
 object StatsUtils {
 
+  val freshTypeParams = Stream.continually(TypeParameter.fresh("T", true))
+
   // All sub-expressions of an expression
   def allSubExprs(expr: Expr): Seq[Expr] = ExprOps.collectPreorder{ List(_) }(expr)
 
@@ -114,7 +116,10 @@ object StatsUtils {
     exprs.collect { case v: Variable if v.id.name.contains("f82c414") => v }
   }
 
-
+  def isExcludedExpr(e: Expr) = ExprOps.exists {
+    case _: MatchExpr => true
+    case _ => false
+  }(e)
 
   def canaryTypeFilter(exprs: Seq[Expr]): Seq[Expr] = {
     val canaryExprs = getCanaryExprs(exprs)
@@ -143,7 +148,7 @@ object StatsUtils {
     canaryTypes: Seq[TypeTree],
     allTypeParams: Seq[TypeParameter]
   ): Boolean = {
-    isSelectableType(exprConstrFuncType(expr), canaryTypes, allTypeParams)
+    isSelectableType(exprConstrFuncType(expr), canaryTypes, allTypeParams) && !isExcludedExpr(expr)
   }
 
   def isSelectableType(tt: TypeTree, canaryTypes: Seq[TypeTree], allTypeParams: Seq[TypeParameter]): Boolean = {
@@ -206,7 +211,7 @@ object StatsUtils {
 
     def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)
 
-    exprs.map { case(e, par) => (e, par, normalizeConstrType(allTypeParams, canaryTypes, canaryInsts, e)) }
+    exprs.map { case (e, par) => (e, par, normalizeConstrType(allTypeParams, canaryTypes, canaryInsts, e)) }
          .groupBy(_._3.to)
          .mapValues(_.groupBy(_._2.map(parGroup)))
          .mapValues(_.mapValues(_.groupBy(_._1.getClass)))

@@ -19,7 +19,7 @@ echo "#           Category,                 File,             function, p.S, fuS
 #All benchmarks:
 
 function run {
-  cmd="./leon --debug=report --timeout=60 --repair --introreccalls=off --solvers=fairz3,enum --functions=$1 $2"
+  cmd="./leon --debug=report --timeout=60 --repair --introreccalls=off --solvers=fairz3,enum --use-probwise --functions=$1 $2"
   echo "Running " $cmd
   echo "------------------------------------------------------------------------------------------------------------------"
   $cmd | tee -a $fullLog
@@ -36,7 +36,7 @@ run simplify testcases/synt2016/repair/Compiler/Compiler6.scala
 
 run merge    testcases/synt2016/repair/Heap/Heap3.scala           
 run merge    testcases/synt2016/repair/Heap/Heap4.scala           
-run merge    testcases/synt2016/repair/Heap/Heap5.scala           
+run merge    testcases/synt2016/repair/Heap/Heap5.scala
 run merge    testcases/synt2016/repair/Heap/Heap6.scala           
 run merge    testcases/synt2016/repair/Heap/Heap7.scala           
 run merge    testcases/synt2016/repair/Heap/Heap10.scala          

@@ -53,13 +53,14 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     }
 
     val outerExamples = {
+      // Get from the params of the outer program if we are applying ind. heuristic
       val Params(_, _, indistinguish) = getParams(outerCtx, outerP)
+      // If we do, we have to limit # of examples for performance
       val howMany = if (indistinguish) 3 else 5000
       val fromProblem = outerP.qebFiltered(outerCtx).eb.examples
       val (in, inOut) = fromProblem.partition(_.isInstanceOf[InExample])
       // We are forced to take all in-out examples
       if (inOut.nonEmpty) inOut ++ in.take(howMany - inOut.size)
-      // otherwise we take a few in-examples
       else if (in.nonEmpty) in.take(howMany)
       else {
         // If we have none, generate one with the solver

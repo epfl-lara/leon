@@ -13,7 +13,7 @@ import leon.utils.PreprocessingPhase
 object StatsMain {
 
   val SELECT_FUNCTION_TYPES: Boolean = false
-  val SELECT_TUPLE_TYPES: Boolean = true
+  val SELECT_TUPLE_TYPES: Boolean = false
 
   def main(args: Array[String]): Unit = {
     println(LocalDateTime.now())
@@ -22,9 +22,10 @@ object StatsMain {
 
     val canaryFileName = args(1)
     val canaryExprs = procFiles(canaryFileName)
-    val canaryTypes = canaryExprs.collect { case v: Variable => v } 
-                                 .filter(_.id.name.contains("f82c414"))
-                                 .map(v => v.id.name -> v.getType).toMap
+    val canaryTypes = canaryExprs.collect {
+      case v: Variable if v.id.name.contains("f82c414") =>
+        v.id.name -> v.getType
+    }.toMap
     println("Printing canary types:")
     canaryTypes.foreach(println)
 
