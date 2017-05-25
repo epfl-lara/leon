@@ -117,7 +117,7 @@ object Constructors {
     */
   def functionInvocation(fd : FunDef, args : Seq[Expr]) = {
 
-    require(fd.params.length == args.length, "Invoking function with incorrect number of arguments")
+    require(fd.params.length == args.length, s"Invoking function ${fd.id.name} with incorrect number of arguments. Expected ${fd.params.length}, got $args.")
 
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
@@ -125,7 +125,7 @@ object Constructors {
     instantiation_>:(formalType, actualType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
-      case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!")
+      case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!. Indeed " + ExprOps.explainTyping(tupleWrap(args)))
     }
   }
 

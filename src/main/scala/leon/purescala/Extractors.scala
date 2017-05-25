@@ -336,6 +336,7 @@ object Extractors {
   object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Let(i, e, TopLevelAnds(bs)) => Some(bs map (let(i,e,_)))
+      case LetTuple(is, e, TopLevelAnds(bs)) => Some(bs map (letTuple(is, e, _)))
       case And(exprs) =>
         Some(exprs.flatMap(unapply).flatten)
       case e =>

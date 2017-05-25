@@ -272,8 +272,11 @@ class PrettyPrinter(opts: PrinterOptions,
         optP { p"$a $op $b" }
 
       case FcallMethodInvocation(rec, fd, id, tps, args) if (fd.annotations.contains("library") || !(opts.printRunnableCode)) =>
-
-        p"$rec.$id${nary(tps, ", ", "[", "]")}"
+        p"$rec"
+        if(id.name != "apply") {
+          p".$id"
+        }
+        p"${nary(tps, ", ", "[", "]")}"
 
         if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
