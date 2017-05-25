@@ -2,6 +2,8 @@ package leon.webDSL.webDescription
 import leon.collection._
 import leon.lang._
 import leon.annotation._
+import scala.Int
+import scala.Predef.String
 
 /**
   * Created by dupriez on 3/11/16.

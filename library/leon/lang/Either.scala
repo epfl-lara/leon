@@ -3,6 +3,7 @@
 package leon.lang
 
 import leon.annotation._
+import scala.Boolean
 
 /**
  * @author Viktor

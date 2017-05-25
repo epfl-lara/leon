@@ -2,6 +2,9 @@
 
 package leon.theories
 import leon.annotation._
+import scala.{Boolean,Char,Int}
+import scala.math.BigInt
+import scala.Predef.Ensuring
 
 @library
 sealed abstract class String {

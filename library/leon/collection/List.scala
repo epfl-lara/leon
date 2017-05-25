@@ -2,11 +2,14 @@
 
 package leon.collection
 
-import leon._
 import leon.lang._
 import leon.annotation._
-import leon.math._
 import leon.proof._
+
+import scala.{unchecked,Boolean}
+import scala.math.BigInt
+import scala.collection.immutable.Set
+import scala.Predef.{require,ArrowAssoc,Ensuring,String}
 
 @library
 @isabelle.typ(name = "List.list")

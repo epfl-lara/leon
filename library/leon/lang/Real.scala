@@ -2,6 +2,8 @@
 
 package leon.lang
 import leon.annotation._
+import scala.Boolean
+import scala.Predef.???
 
 @ignore
 class Real {
@@ -22,6 +24,6 @@ class Real {
 
 @ignore
 object Real {
-  def apply(n: BigInt, d: BigInt): Real = ???
-  def apply(n: BigInt): Real = ???
+  def apply(n: scala.math.BigInt, d: scala.math.BigInt): Real = ???
+  def apply(n: scala.math.BigInt): Real = ???
 }

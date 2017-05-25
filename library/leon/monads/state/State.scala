@@ -5,7 +5,7 @@ package leon.monads.state
 import leon.collection._
 import leon.lang._
 import leon.annotation._
-import State._
+import scala.{Boolean,Unit}
 
 
 @library
@@ -155,6 +155,9 @@ object State {
 
 @library
 object MonadStateLaws {
+
+  import State._
+
   /* Monadic laws:
    *
    * return a >>= k  =  k a

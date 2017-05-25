@@ -2,9 +2,9 @@
 
 package leon
 
+import java.lang.System
 import leon.annotation._
-import java.lang.management._
-import scala.collection.JavaConversions._
+import scala.{Long,Unit}
 
 /**
  * A collection of methods that can be used to collect run-time statistics about Leon programs.

@@ -3,8 +3,7 @@
 package leon
 
 import leon.annotation._
-import leon.lang._
-import scala.language.implicitConversions
+import scala.math.BigInt
 
 package object instrumentation {
   @library

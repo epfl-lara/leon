@@ -2,7 +2,9 @@
 
 package leon.util
 
+import java.lang.System
 import leon.annotation._
+import scala.Int
 
 /*
  * Represent a point in time, from an arbitrary epoch that is consistent for the

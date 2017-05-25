@@ -2,8 +2,12 @@
 
 package leon.io
 
+import java.lang.System
 import leon.annotation._
 import leon.lang._
+import scala.{Array,Boolean,Byte,Int}
+import scala.math.BigInt
+import scala.Predef.{assert,require,Ensuring}
 
 /*
  * NOTEs for GenC:

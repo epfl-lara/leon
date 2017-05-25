@@ -3,13 +3,14 @@
 package leon.lang
 
 import leon.annotation._
-
 import scala.language.implicitConversions
+import scala.Boolean
+import scala.Predef.require
 
 @library
 @isabelle.typ(name = "Leon_Types.rational")
 @isabelle.constructor(name = "Leon_Types.rational.Rational")
-case class Rational(numerator: BigInt, denominator: BigInt) {
+case class Rational(numerator: scala.math.BigInt, denominator: scala.math.BigInt) {
 
   require(this.isRational)
 
@@ -68,7 +69,7 @@ case class Rational(numerator: BigInt, denominator: BigInt) {
 
   private def isRational: Boolean = denominator > 0
 
-  private def normalize(num: BigInt, den: BigInt): Rational = {
+  private def normalize(num: scala.math.BigInt, den: scala.math.BigInt): Rational = {
     require(den != 0)
     if(den < 0)
       Rational(-num, -den)
@@ -80,8 +81,8 @@ case class Rational(numerator: BigInt, denominator: BigInt) {
 @library
 object Rational {
 
-  implicit def bigIntToRat(n: BigInt): Rational = Rational(n, 1)
+  implicit def bigIntToRat(n: scala.math.BigInt): Rational = Rational(n, 1)
 
-  def apply(n: BigInt): Rational = Rational(n, 1)
+  def apply(n: scala.math.BigInt): Rational = Rational(n, 1)
 
 }

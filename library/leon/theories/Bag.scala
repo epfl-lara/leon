@@ -3,6 +3,8 @@
 package leon.theories
 import leon.lang.forall
 import leon.annotation._
+import scala.Boolean
+import scala.math.BigInt
 
 @library
 sealed case class Bag[T](f: T => BigInt) {

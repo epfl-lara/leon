@@ -2,8 +2,11 @@
 
 package leon.io
 
+import java.lang.Throwable
 import leon.annotation._
 import leon.lang.Option
+import scala.{Array,Boolean,Byte,Char,Int}
+import scala.Predef.{require,String}
 
 // NOTE I couldn't use java.io.FileOutputStream as a field of FileOutputStream... Leon doesn't
 //      accept it. Instead, the stream is opened and closed everytime an operation is

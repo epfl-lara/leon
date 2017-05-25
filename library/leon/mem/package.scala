@@ -6,18 +6,10 @@ import annotation._
 import lang._
 import collection._
 import scala.language.implicitConversions
-import scala.annotation.StaticAnnotation
+import scala.{sys,Any,Boolean}
+import scala.Predef.ArrowAssoc
 
 package object mem {
-
-  /**
-   * A class representing named function calls. These are entities that are memoized.
-   * This should be applied only over a function invocation or lambda application.
-   */
-  @library
-  @isabelle.typ(name = "Leon_Types.fun")
-  @isabelle.constructor(name = "Leon_Types.fun.Fun")
-  case class Fun[T](v: T)
 
   @library
   @extern
@@ -39,22 +31,11 @@ package object mem {
    */
   @library
   @extern
-  def inSt[Any]: Set[Fun[Any]] = sys.error("inSt method is not executable!")
+  def inSt[TAny]: Set[Fun[TAny]] = sys.error("inSt method is not executable!")
 
   @library
   @extern
-  def outSt[Any]: Set[Fun[Any]] = sys.error("outSt method is not executable")
-
-  /**
-   * Helper class for invoking with a given state instead of the implicit state
-   */
-  @library
-  @isabelle.typ(name = "Leon_Types.mem_with_state")
-  @isabelle.constructor(name = "Leon_Types.mem_with_state.Mem_With_State")
-  case class memWithState[T](v: T) {
-    @extern
-    def in[U](u: Set[Fun[U]]): T = sys.error("in method is not executable!")
-  }
+  def outSt[TAny]: Set[Fun[TAny]] = sys.error("outSt method is not executable")
 
   @library
   @inline
@@ -68,12 +49,6 @@ package object mem {
   @inline
   implicit def toStar[T](f: T) = new Star(f)
 
-  @library
-  @isabelle.typ(name = "Leon_Types.star")
-  @isabelle.constructor(name = "Leon_Types.star.Star")
-  case class Star[T](f: T) {
-    def * = f
-  }
 
   /**
    * A predicate that returns true if the input (direct or indirect) argument preserves state.
@@ -88,7 +63,7 @@ package object mem {
    * methods for running instrumented code using memoization
    */
   @ignore
-  var memoTable = Map[List[Any], Any]()
+  var memoTable: Map[List[Any],Any] = Map[List[Any], Any]()
   @ignore
   def update[T](args: List[Any], res: T): T = {
     memoTable += (args -> res)

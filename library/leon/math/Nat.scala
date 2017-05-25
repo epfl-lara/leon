@@ -3,8 +3,7 @@
 package leon.math
 
 import leon.annotation._
-import leon.collection._
-import leon.lang._
+import scala.{BigInt,Boolean}
 
 @library
 @isabelle.typ(name = "Nat.nat")
