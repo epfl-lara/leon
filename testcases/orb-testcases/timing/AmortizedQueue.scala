@@ -6,10 +6,10 @@ import instrumentation._
 
 object AmortizedQueue {
   sealed abstract class List {
-    val size: BigInt = this match {
-      case Nil()       => 0
+    val size: BigInt = (this match {
+      case Nil()       => BigInt(0)
       case Cons(_, xs) => 1 + xs.size
-    }
+    }) ensuring(_ >= 0)
   }
   case class Cons(head: BigInt, tail: List) extends List
   case class Nil() extends List
