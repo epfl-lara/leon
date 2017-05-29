@@ -1084,24 +1084,21 @@ trait ASTExtractors {
       }
     }
 
-    object ExSomeConstruction {
-      def unapply(tree: Apply) : Option[(Type,Tree)] = tree match {
-        case Apply(s @ Select(New(tpt), n), arg) if arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some" => tpt.tpe match {
-          case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg.head))
-          case _ => None
-        }
-        case _ => None
-      }
-    }
-
     object ExCaseClassConstruction {
       def unapply(tree: Apply): Option[(Tree,Seq[Tree])] = tree match {
         case Apply(s @ Select(New(tpt), n), args) if n == nme.CONSTRUCTOR => {
           Some((tpt, args))
         }
         //essentially this ignores implicit evidence for mutable types annotations
-        case Apply(Apply(s @ Select(New(tpt), n), args), List(TypeApply(ExSelected("leon", "lang", "package", "mutable"), tps))) if n == nme.CONSTRUCTOR => {
-          //println("stuff tps: " + tps)
+        case Apply(Apply(Select(New(tpt), n), args),
+                   List(TypeApply(ExSelected("leon", "lang", "package", "mutable"), _)))
+             if n == nme.CONSTRUCTOR => {
+          Some((tpt, args))
+        }
+        case Apply(Apply(Select(New(tpt), n), args),
+                   List(s @ Select(qualifier, symbol)))
+             if n == nme.CONSTRUCTOR && s.tpe.typeSymbol.fullName == "leon.lang.Mutable" => {
+          // s.tpe === TypeRef( SingleType( SingleType( SingleType( ThisType(<root>),  leon),  lang),  package),  Mutable,  [ TypeRef( NoPrefix(),  V,  [ ])])
           Some((tpt, args))
         }
         case _ => None

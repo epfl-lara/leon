@@ -132,7 +132,7 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"""|var $binder = $value
+      p"""|var $binder : ${binder.getType} = $value
           |$body"""
     }
 

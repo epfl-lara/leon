@@ -95,7 +95,7 @@ class PrettyPrinter(opts: PrinterOptions,
         p"$expr.bigSubstring($start)"
 
       case Let(b, d, e) =>
-        p"""|val $b = $d
+        p"""|val $b: ${b.getType} = $d
             |$e"""
 
       case LetDef(a +: q, body) =>

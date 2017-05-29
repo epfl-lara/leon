@@ -102,8 +102,24 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   private def convertVarInfoToParam(vi: VarInfo)(implicit tm: TypeMapping) = CIR.Binding(convertVarInfoToArg(vi))
 
   // Extract the ValDef from the known one
-  private def buildBinding(id: Identifier)(implicit env: Env, tm: TypeMapping) =
-    CIR.Binding(env(id -> instantiate(id.getType, tm)))
+  private def buildBinding(id: Identifier)(implicit env: Env, tm: TypeMapping) = {
+    val typ = instantiate(id.getType, tm)
+    val optVd = env.get(id -> typ)
+    val vd = optVd match {
+      case Some(vd) => vd
+      case None =>
+        // Identifiers in Leon are known to be tricky when it comes to unique id.
+        // It sometimes happen that the unique id are not in sync, especially with
+        // generics. Here we try to find the best match based on the name only.
+        warning(s"Working around issue with identifiers on $id...")
+        env collectFirst {
+          case ((eid, etype), evd) if eid.name == id.name && etype == typ => evd
+        } getOrElse {
+          internalError(s"Couldn't find a ValDef for $id in the environment: $env")
+        }
+    }
+    CIR.Binding(vd)
+  }
 
   private def buildLet(x: Identifier, e: Expr, body: Expr, isVar: Boolean)
                       (implicit env: Env, tm: TypeMapping): CIR.Expr = {
@@ -131,16 +147,42 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
   }
 
   // Check validity of the operator
-  private def checkOp(op: O.Operator, isLogical: Boolean, isIntegral: Boolean, pos: Position): Unit = {
+  //
+  // NOTE the creation of equals functions for `==` is deferred to a later phase.
+  private def checkOp(op: O.Operator, ops: Seq[CIR.Type], pos: Position): Unit = {
+    assert(ops.nonEmpty)
+
     def check(b: Boolean) = if (!b) {
       fatalError(s"Invalid use of operator $op with the given operands", pos)
     }
 
+    def isLogical: Boolean = ops forall { _.isLogical }
+    def isIntegral: Boolean = ops forall { _.isIntegral }
+    def isPairOfT: Boolean = (ops.size == 2) && (ops forall { _ == ops(0) }) // or use <=???
+
     op match {
-      case _: O.FromLogical with O.FromIntegral => check(isLogical || isIntegral)
+      case _: O.FromPairOfT => check(isPairOfT)
       case _: O.FromLogical => check(isLogical)
       case _: O.FromIntegral => check(isIntegral)
       case _ => internalError(s"Unhandled check of operator $op")
+    }
+  }
+
+  // Prevent some form of aliasing that verification supports but our memory model doesn't.
+  // See Chapter 4: Memory, Aliasing & Mutability Models For GenC
+  //     of Extending Safe C Support In Leon.
+  private def checkConstructArgs(args: Seq[(CIR.Expr, Position)]): Unit = {
+    // Reject arguments that have mutable type (but allow var, and arrays)
+    def isRefToMutableVar(arg: (CIR.Expr, Position)): Boolean = arg._1 match {
+      case CIR.Binding(vd) => vd.getType.isMutable && !vd.getType.isArray
+      case _ => false
+    }
+
+    args find isRefToMutableVar match {
+      case Some((_, pos)) =>
+        fatalError(s"Invalid reference: cannot construct an object from a mutable variable.", pos)
+
+      case _ =>
     }
   }
 
@@ -150,9 +192,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     val lhs = rec(lhs0)
     val rhs = rec(rhs0)
 
-    val logical = lhs.getType.isLogical && rhs.getType.isLogical
-    val integral = lhs.getType.isIntegral && rhs.getType.isIntegral
-    checkOp(op, logical, integral, pos)
+    checkOp(op, Seq(lhs.getType, lhs.getType), pos)
 
     CIR.BinOp(op, lhs, rhs)
   }
@@ -162,9 +202,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
                        (implicit env: Env, tm: TypeMapping) = {
     val expr = rec(expr0)
 
-    val logical = expr.getType.isLogical
-    val integral = expr.getType.isIntegral
-    checkOp(op, logical, integral, pos)
+    checkOp(op, Seq(expr.getType), pos)
 
     CIR.UnOp(op, expr)
   }
@@ -268,9 +306,22 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     def scrutRec(scrutinee0: Expr): (Expr, Option[CIR.Expr], Env) = scrutinee0 match {
       case v: Variable => (v, None, env)
+
       case Block(Nil, v: Variable) => (v, None, env)
       case Block(init, v: Variable) => (v, Some(rec(Block(init.init, init.last))), env)
+
       case field @ CaseClassSelector(_, _: Variable, _) => (field, None, env)
+
+      case select @ ArraySelect(_: Variable, _: Variable | _: IntLiteral) => (select, None, env)
+      case select @ ArraySelect(array: Variable, index) =>
+        // Save idx into a temporary variable, but apply patmat on array access.
+        // This way, the index is computed once only.
+        val (newIndex, preOpt, newEnv) = withTmp(Int32Type, index, env)
+        val newSelect = ArraySelect(array, newIndex)
+        (newSelect, preOpt, newEnv)
+
+      case select @ ArraySelect(a, i) =>
+        internalError(s"array select $a[$i] is not supported; ${a.getClass} - ${i.getClass}")
 
       case Assert(_, _, body) => scrutRec(body)
 
@@ -469,7 +520,7 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case TupleType(_) => CIR.ClassType(tuple2Class(typ))
 
-    case FunctionType(from, to) => internalError(s"what shoud I do with $from -> $to")
+    case FunctionType(from, to) => CIR.FunType(ctx = Nil, params = from map rec, ret = rec(to))
 
     case tp: TypeParameter => rec(instantiate(tp, tm))
 
@@ -553,11 +604,49 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
       val extra = ctxDB(tfd.fd) map { c => convertVarInfoToParam(c)(tm1) }
       val args = args0 map { a0 => rec(a0)(env, tm1) }
 
-      CIR.App(fun, extra, args)
+      CIR.App(fun.toVal, extra, args)
+
+    case Application(fun0, args0) =>
+      // Contrary to FunctionInvocation, Application of function-like object do not have to extend their
+      // context as no environment variables are allowed to be captured.
+      val fun = rec(fun0) match {
+        case e if e.getType.isInstanceOf[CIR.FunType] => CIR.FunRef(e)
+        case e => fatalError(s"Expected a binding but got $e of type ${e.getClass}.", fun0.getPos)
+      }
+      val args = args0 map rec
+
+      CIR.App(fun, Nil, args)
+
+    case Lambda(argsA, FunctionInvocation(tfd, argsB))  =>
+      // Lambda are okay for GenC iff they do not capture variables and call a function directly.
+      // Additionally, the called function should not capture any environment variable.
+      if ((argsA map { _.toVariable }) != argsB) {
+        val strA = argsA.mkString("[", ", ", "]")
+        val strB = argsB.mkString("[", ", ", "]")
+        debug(s"This is a capturing lambda because: $strA != $strB")
+        fatalError(s"Capturing lambda are not supported", e.getPos)
+      }
+
+      val fun = rec(tfd)
+
+      if (fun.ctx.nonEmpty) {
+        debug(s"${fun.id} is capturing some variables: ${fun.ctx mkString ", "}")
+        fatalError(s"Function capturing their environment cannot be used as value", e.getPos)
+      }
+
+      fun.toVal
+
+    case Lambda(args0, body0) =>
+      debug(s"This is an unamed function; support is currently missing")
+      debug(s"args = $args0, body = $body0 (${body0.getClass})")
+      fatalError(s"Lambda are not (yet) supported", e.getPos)
 
     case CaseClass(cct, args0) =>
       val clazz = rec(cct)
       val args = args0 map rec
+      val poss = args0 map { _.getPos }
+
+      checkConstructArgs(args zip poss)
 
       CIR.Construct(clazz, args)
 
@@ -566,6 +655,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
     case tuple @ Tuple(args0) =>
       val clazz = tuple2Class(tuple.getType)
       val args = args0 map rec
+      val poss = args0 map { _.getPos }
+
+      checkConstructArgs(args zip poss)
 
       CIR.Construct(clazz, args)
 
@@ -668,7 +760,9 @@ private class S2IRImpl(val ctx: LeonContext, val ctxDB: FunCtxDB, val deps: Depe
 
     case AsInstanceOf(expr, ct) => CIR.AsA(rec(expr), CIR.ClassType(rec(ct)))
 
-    case e => internalError(s"expression `$e` of type ${e.getClass} not handled")
+    case e =>
+      warning(s"Unhandled expression", e.getPos)
+      internalError(s"expression `$e` of type ${e.getClass} not handled")
   }
 
 }

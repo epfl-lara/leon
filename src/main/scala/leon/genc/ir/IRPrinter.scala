@@ -85,11 +85,13 @@ final class IRPrinter[S <: IR](val ir: S) {
 
   private def rec(e: Expr)(implicit ptx: Context): String = (e: @unchecked) match {
     case Binding(vd) => "[[ " + vd.id + ": " + rec(vd.getType) + " ]]"
+    case FunVal(fd) => "@" + fd.id
+    case FunRef(e) => "@{" + rec(e) + "}"
     case Block(exprs) => "{{ " + (exprs map rec mkString ptx.newLine) + " }}"
     case Decl(vd) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " // no value"
     case DeclInit(vd, value) => (if (vd.isVar) "var" else "val") + " " + rec(vd) + " = " + rec(value)
-    case App(fd, extra, args) =>
-      fd.id + "(<" + (extra map rec mkString ", ") + ">" + (args map rec).mkString(start = ", ", sep = ", ", end = "") + ")"
+    case App(callable, extra, args) =>
+      rec(callable) + "(<" + (extra map rec mkString ", ") + ">" + (args map rec).mkString(start = ", ", sep = ", ", end = "") + ")"
     case Construct(cd, args) => cd.id + "(" + (args map rec mkString ", ") + ")"
     case ArrayInit(alloc) => rec(alloc)
     case FieldAccess(objekt, fieldId) => rec(objekt) + "." + fieldId
@@ -117,6 +119,8 @@ final class IRPrinter[S <: IR](val ir: S) {
 
   private def rec(typ: Type)(implicit ptx: Context): String = (typ: @unchecked) match {
     case PrimitiveType(pt) => pt.toString
+    case FunType(ctx, params, ret) =>
+      "Function[" + (ctx map rec mkString ", ") + "][" + (params map rec mkString ", ") + "]: " + rec(ret)
     case ClassType(clazz) => clazz.id
     case ArrayType(base) => "Array[" + rec(base) + "]"
     case ReferenceType(t) => "Ref[" + rec(t) + "]"

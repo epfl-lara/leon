@@ -93,10 +93,12 @@ abstract class Visitor[S <: IR](final val ir: S) {
   private def rec(e: Expr): Unit = {
     (e: @unchecked) match {
       case Binding(vd) => rec(vd)
+      case FunVal(fd) => rec(fd)
+      case FunRef(e) => rec(e)
       case Block(exprs) => exprs foreach rec
       case Decl(vd) => rec(vd)
       case DeclInit(vd, value) => rec(vd); rec(value)
-      case App(fd, extra, args) => rec(fd); extra foreach rec; args foreach rec
+      case App(fun, extra, args) => rec(fun); extra foreach rec; args foreach rec
       case Construct(cd, args) => rec(cd); args foreach rec
       case ArrayInit(alloc) => rec(alloc)
       case FieldAccess(objekt, fieldId) => rec(objekt)
@@ -123,6 +125,7 @@ abstract class Visitor[S <: IR](final val ir: S) {
   private def rec(typ: Type): Unit = {
     (typ: @unchecked) match {
       case PrimitiveType(pt) => ()
+      case FunType(ctx, params, ret) => ((ret +: ctx) ++ params) map rec
       case ClassType(clazz) => rec(clazz)
       case ArrayType(base) => rec(base)
       case ReferenceType(t) => rec(t)

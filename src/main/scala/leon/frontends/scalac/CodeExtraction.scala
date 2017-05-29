@@ -215,7 +215,11 @@ trait CodeExtraction extends ASTExtractors {
         case ctor @ExConstructorDef() => ctor
       }.get.asInstanceOf[DefDef]
 
-      val valDefs = constructor.vparamss.flatten
+      // Ignore synthetic evidence for mutable type parameter annotation
+      val allValDefs = constructor.vparamss.flatten
+      val valDefs = allValDefs filterNot { vd =>
+        vd.tpt.tpe.typeSymbol.fullName == "leon.lang.Mutable"
+      }
       if (valDefs.nonEmpty)
         outOfSubsetError(tmpl.pos, "Abstract class with fields are not supported")
 

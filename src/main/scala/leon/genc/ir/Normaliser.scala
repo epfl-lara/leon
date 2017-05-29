@@ -33,7 +33,7 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
   private def recCT(typ: ClassType)(implicit env: Env) = rec(typ).asInstanceOf[to.ClassType]
 
   override def recImpl(e: Expr)(implicit env: Env): (to.Expr, Env) = e match {
-    case _: Binding | _: Lit | _: Block | _: Deref | _: IntegralCast  => super.recImpl(e)
+    case _: Binding | _: FunVal | _: FunRef | _: Lit | _: Block | _: Deref | _: IntegralCast  => super.recImpl(e)
 
     case DeclInit(vd0, ArrayInit(alloc0)) =>
       val vd = rec(vd0)
@@ -78,11 +78,11 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
       combine(pre :+ declinit) -> env
 
-    case App(fd0, extra0, args0) =>
-      val fd = rec(fd0)
+    case App(fun0, extra0, args0) =>
+      val fun = recCallable(fun0)
       val extra = extra0 map rec // context argument are trivial enough to not require special handling
       val (preArgs, args) = flattenArgs(args0)
-      val app = to.App(fd, extra, args)
+      val app = to.App(fun, extra, args)
 
       combine(preArgs :+ app) -> env
 
@@ -275,9 +275,9 @@ final class Normaliser(val ctx: LeonContext) extends Transformer(CIR, NIR) with 
 
       (pre :+ decl :+ fi, binding)
 
-    case app @ to.App(fd, _, _) if !allowTopLevelApp =>
+    case app @ to.App(fun, _, _) if !allowTopLevelApp =>
       // Add explicit execution point by saving the result in a temporary variable
-      val norm = freshNormVal(fd.returnType, isVar = false)
+      val norm = freshNormVal(fun.typ.ret, isVar = false)
       val declinit = to.DeclInit(norm, app)
       val binding = to.Binding(norm)
 

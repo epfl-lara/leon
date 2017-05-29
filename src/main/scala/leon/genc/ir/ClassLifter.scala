@@ -97,15 +97,15 @@ final class ClassLifter(val ctx: LeonContext) extends Transformer(NIR, LIR) with
     case FieldAccess(Castable(asa), fieldId) =>
       to.FieldAccess(asa, fieldId) -> env
 
-    case App(fd0, ctx0, args0) =>
-      val fd = rec(fd0)
+    case App(fun0, ctx0, args0) =>
+      val fun = recCallable(fun0)
 
       // Don't pass a casted object but the object itself
       // (this can happen with pattern matching translation).
       val ctx = ctx0 map removeTopCast
       val args = args0 map removeTopCast
 
-      to.App(fd, ctx, args) -> env
+      to.App(fun, ctx, args) -> env
 
     case _ => super.recImpl(e)
   }

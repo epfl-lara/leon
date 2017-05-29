@@ -170,13 +170,13 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
 
     case Ref(_) | Deref(_) => internalError("Ref & Deref expression should not yet be present")
 
-    case App(fd0, extra0, args0) =>
+    case App(fun0, extra0, args0) =>
       // Add Ref/Deref to extra/args when appropriate
-      val fd = rec(fd0)
-      val extra = refMatch(fd.ctx)(extra0 map rec)
-      val args = refMatch(fd.params)(args0 map rec)
+      val fun = recCallable(fun0)
+      val extra = refMatch(fun.typ.ctx)(extra0 map rec)
+      val args = refMatch(fun.typ.params)(args0 map rec)
 
-      to.App(fd, extra, args) -> env
+      to.App(fun, extra, args) -> env
 
     case Construct(cd0, args0) =>
       val cd = rec(cd0)
@@ -211,8 +211,29 @@ final class Referentiator(val ctx: LeonContext) extends Transformer(LIR, RIR) wi
     case e => super.recImpl(e)
   }
 
+  // Add references to mutable type in argument position in function types only:
+  // the other types are handles according to the context around the usage of types.
+  override def rec(typ: Type)(implicit env: Env): to.Type = typ match {
+    case FunType(Seq(), params0, ret0) =>
+      // This is very similar to how function parameter (ValDef) are processed above.
+      val params = params0 map { rec(_) match {
+        case t if !t.isArray && t.isMutable => to.ReferenceType(t)
+        case t => t
+      }}
+
+      to.FunType(Seq(), params, rec(ret0))
+
+    case FunType(ctx0, _, _) =>
+      internalError(s"Don't known yet how to handle ctx ($ctx0) in FunType!")
+
+    case _ => super.rec(typ)
+  }
+
   // Adapt the expressions to match w.r.t. references the given parameter types, for argument-like expressions.
-  private def refMatch(params: Seq[to.ValDef])(args: Seq[to.Expr]): Seq[to.Expr] = {
+  private def refMatch(params: Seq[to.ValDef])(args: Seq[to.Expr])(implicit d: DummyImplicit): Seq[to.Expr] =
+    refMatch(params map { _.getType })(args)
+
+  private def refMatch(params: Seq[to.Type])(args: Seq[to.Expr]): Seq[to.Expr] = {
     (params zip args) map { case (param, arg) =>
       val pr = param.isReference
       val ar = arg.getType.isReference

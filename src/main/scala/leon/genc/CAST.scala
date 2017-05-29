@@ -75,6 +75,8 @@ object CAST { // C Abstract Syntax Tree
   case class Primitive(pt: PrimitiveType) extends Type
   case class Pointer(base: Type) extends Type
 
+  case class FunType(ret: Type, params: Seq[Type]) extends Type
+
   case class Struct(id: Id, fields: Seq[Var]) extends DataType {
     require(fields.nonEmpty)
   }
@@ -132,7 +134,7 @@ object CAST { // C Abstract Syntax Tree
     )
   }
 
-  case class Call(id: Id, args: Seq[Expr]) extends Expr {
+  case class Call(callable: Expr, args: Seq[Expr]) extends Expr {
     require(args forall { _.isValue })
   }
 
@@ -233,7 +235,7 @@ object CAST { // C Abstract Syntax Tree
       val argv = Var(Id("argv"), Pointer(Pointer(Primitive(CharType))))
       val params = argc :: argv :: Nil
 
-      val _mainId = Id("_main")
+      val _mainId = Binding(Id("_main"))
 
       val body = buildBlock(
         if (returnInt) Return(Call(_mainId, Nil)) :: Nil
