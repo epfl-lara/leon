@@ -107,10 +107,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   // A map from a signature of running on examples to an expansion that matches.
   // We consider expansions with equal signature identical
-  protected val sigToNormalMemo = mutable.Map[(NT, Sig), Expansion[NT, R]]()
+  protected val sigToClassRep = mutable.Map[(NT, Sig), Expansion[NT, R]]()
   // A map from an expansion to a representative that was found to be identical
-  protected val normalizeMemo = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
-  def expRedundant(e: Expansion[NT, R]) = normalizeMemo(e)
+  protected val expToNormalForm = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
+  def expRedundant(e: Expansion[NT, R]) = expToNormalForm(e)
 
   /** Use indistinguishability heuristic on expressions by signature */
 
@@ -126,7 +126,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         Some(e)
       case ProdRuleInstance(nt, rule, children) =>
         // If we have representative for this expression, return it
-        normalizeMemo.orElseUpdate(e, {
+        expToNormalForm.orElseUpdate(e, {
           // Otherwise...
           // Lazily make a normalized version of this based on the normalized versions of its children
           lazy val fromNormalizedChildren = children.mapM(normalize).map(ProdRuleInstance(nt, rule, _))
@@ -144,7 +144,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                 // Look up in the signature map for an expansion with the same signature
                 // If not found, fromNormalizedChildren will be the representative for this class.
                 // Add it to the map and return it
-                sigToNormalMemo.orElseUpdate( (e.nt, theSig), {
+                sigToClassRep.orElseUpdate( (e.nt, theSig), {
                   //println(s"Update: ${(e.nt.asInstanceOf[Label].tpe, theSig)} -> ${fromNormalizedChildren.map(_.falseProduce(ntWrap))}")
                   fromNormalizedChildren
                 })
@@ -323,7 +323,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             rule,
             rule.subTrees.map(ntChild => NonTerminalInstance[NT, R](ntChild)).toList
           )
-          expansionPreNormal = normalizeMemo.getOrElse(expansion, expansion)
+          expansionPreNormal = expToNormalForm.getOrElse(expansion, expansion)
           // expansionPreNormal = expansion
         } yield {
           //println(s"NORMAL ${expansion.falseProduce(ntWrap)} -> ${expansionPreNormal.falseProduce(ntWrap)}")
@@ -343,7 +343,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           case csHd :: csTl =>
             for {
               csHdExp <- expandNext(WorklistElement(csHd, 0.0, 0.0, elemScore, None), elemScore)
-              csHdExpPreNormal = normalizeMemo.getOrElse(csHdExp.expansion, csHdExp.expansion)
+              csHdExpPreNormal = expToNormalForm.getOrElse(csHdExp.expansion, csHdExp.expansion)
               // csHdExpPreNormal = csHdExp.expansion
             } yield {
               //println(s"NORMAL ${csHdExp.expansion.falseProduce(ntWrap)} -> ${csHdExpPreNormal.falseProduce(ntWrap)}")
@@ -354,7 +354,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
         for {
           (expansions, logProb) <- expandChildren(children)
           expPrime = ProdRuleInstance(nt, rule, expansions)
-          expPrimePreNormal = normalizeMemo.getOrElse(expPrime, expPrime)
+          expPrimePreNormal = expToNormalForm.getOrElse(expPrime, expPrime)
           // expPrimePreNormal = expPrime
         } yield {
           val logProbPrime = elem.logProb + logProb
