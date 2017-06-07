@@ -107,7 +107,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   // A map from a signature of running on examples to an expansion that matches.
   // We consider expansions with equal signature identical
-  protected val sigToClassRep = mutable.Map[(NT, Sig), Expansion[NT, R]]()
+  protected val sigToClassRep = mutable.Map[Sig, R]()
   // A map from an expansion to a representative that was found to be identical
   protected val expToNormalForm = mutable.Map[Expansion[NT, R], Expansion[NT, R]]()
   def expRedundant(e: Expansion[NT, R]) = expToNormalForm(e)
@@ -124,17 +124,17 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       case NonTerminalInstance(_) =>
         // non-terminal instances are incomplete, thus not normalizable
         Some(e)
-      case ProdRuleInstance(nt, rule, children) =>
+      case pri@ProdRuleInstance(nt, rule, children) =>
         // If we have representative for this expression, return it
         expToNormalForm.orElseUpdate(e, {
           // Otherwise...
           // Lazily make a normalized version of this based on the normalized versions of its children
-          lazy val fromNormalizedChildren = children.mapM(normalize).map(ProdRuleInstance(nt, rule, _))
+          lazy val fromNormalizedChildren = children.mapM(normalize)
           if (!e.complete) {
             // If e is not complete, we cannot compute signature,
             // so reconstructing from the normalized children is best we can do.
             //println(s"Incomplete. ${e.falseProduce(ntWrap)} -> ${fromNormalizedChildren.map(_.falseProduce(ntWrap))}")
-            fromNormalizedChildren
+            fromNormalizedChildren.map(ProdRuleInstance(nt, rule, _))
           } else {
             // If e is complete expression...
 
@@ -144,10 +144,14 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                 // Look up in the signature map for an expansion with the same signature
                 // If not found, fromNormalizedChildren will be the representative for this class.
                 // Add it to the map and return it
-                sigToClassRep.orElseUpdate( (e.nt, theSig), {
+                sigToClassRep.orElseUpdate( theSig, {
                   //println(s"Update: ${(e.nt.asInstanceOf[Label].tpe, theSig)} -> ${fromNormalizedChildren.map(_.falseProduce(ntWrap))}")
-                  fromNormalizedChildren
-                })
+                  fromNormalizedChildren.map { ch =>
+                    rule.builder(ch.map(_.produce))
+                  }
+                }).map { r =>
+                  ProdRuleInstance(nt, ProductionRule(Nil, _ => r, rule.tag, 1, pri.logProb), Nil) // cost = 1 is wrong but we don't use it
+                }
               case RuntimeError(_) =>
                 // Program fails due to runtime error, i.e. it is wrong
                 None

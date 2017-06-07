@@ -61,6 +61,10 @@ case class ProdRuleInstance[NT, R](
   }
   val size: Int = 1 + children.map(_.size).sum
   def horizon(nthor: NT => Double): Double = children.map(c => c.horizon(nthor)).sum
+  def logProb: Double = {
+    require(complete)
+    rule.logProb + children.map(_.asInstanceOf[ProdRuleInstance[NT, R]].logProb).sum
+  }
 }
 
 /**
