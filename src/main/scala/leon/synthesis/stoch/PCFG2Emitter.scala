@@ -331,14 +331,12 @@ object PCFG2Emitter {
     val outputLabel = tt
     val id = FreshIdentifier(productionName, tt)
 
-    val argTypes = Seq(CaseClassType(implicits(tt)(None), getTypeParams(tt)))
     val tparams: Seq[TypeParameterDef] = getTypeParams(tt).map(TypeParameterDef)
     val params: Seq[ValDef] = Seq {
       val inputLabel = CaseClassType(implicits(tt)(None), getTypeParams(tt))
       ValDef(FreshIdentifier(s"v0", inputLabel))
     }
-    val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
-      val pid = params(idx)
+    val rawParams: Seq[ValDef] = params.map { pid =>
       val id = new Id2(pid, tt, implicits(tt)(None))
       ValDef(id)
     }

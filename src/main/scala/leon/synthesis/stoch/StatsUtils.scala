@@ -28,10 +28,20 @@ object StatsUtils {
 
   def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = allSubExprs(p)
 
-  def normalizeExprs(ctx: LeonContext, exprs: Seq[Expr]): Seq[Expr] = exprs.map {
-    case GreaterThan(e1, e2) => LessThan(e2, e1)
-    case GreaterEquals(e1, e2) => LessEquals(e2, e1)
-    case e => e
+  def normalizeExprs(ctx: LeonContext, exprs: Seq[Expr]): Seq[Expr] = {
+    def commutative(e: Expr) = e match {
+      case _: Plus | _ : Times | _ : BVPlus | _ : BVTimes => true
+      case _ => false
+    }
+    exprs.map {
+      case GreaterThan(e1, e2) => LessThan(e2, e1)
+      case GreaterEquals(e1, e2) => LessEquals(e2, e1)
+      //case e@Operator(Seq(e1, e2), builder)
+      //    if commutative(e) && e1.hashCode() < e2.hashCode() =>
+      //  // normalize commutative operators by putting operand with larger hashCode first
+      //  builder(Seq(e2, e1))
+      case other => other
+    }
   }
 
   // All subexressions of a program with (parent, position in parent)
@@ -40,15 +50,13 @@ object StatsUtils {
     es.zipWithIndex.map { case (esi, i) => (esi, Some(i, e)) }
   }(expr) :+ (expr, None)
 
-  def allSubExprs2(p: Program): Seq[(Expr, Option[(Int, Expr)])] = {
+  def allSubExprs2(library: Boolean)(ctx: LeonContext, p: Program): Seq[(Expr, Option[(Int, Expr)])] = {
     for {
-      unit <- p.units if unit.isMainUnit
+      unit <- p.units if unit.isMainUnit != library
       f <- unit.definedFunctions
       e <- allSubExprs2(f.fullBody)
     } yield e
   }
-
-  def allSubExprs2(ctx: LeonContext, p: Program): Seq[(Expr, Option[(Int, Expr)])] = allSubExprs2(p)
 
   // Type normalization
   // We assume that all type parameters are ordered: T, U, V, ...
@@ -67,7 +75,7 @@ object StatsUtils {
            .distinct
   }
 
-  private val freshTypeParams = Stream.continually(TypeParameter.fresh("T", true))
+  private val freshTypeParams = Stream.continually(TypeParameter.fresh("TP", true))
   def normalizeType(typeTree: TypeTree): TypeTree = {
     val thisParams = getTypeParams(typeTree).distinct
     val renaming = thisParams.zip(freshTypeParams)
@@ -110,9 +118,15 @@ object StatsUtils {
     case _ => false
   }
 
-  def getCanaryExprs(exprs: Seq[Expr]): Seq[Variable] = {
-    exprs.collect { case v: Variable if v.id.name.contains("f82c414") => v }
+  def getCanaryTypes(exprs: Seq[Expr]) = exprs.collect {
+    case v: Variable if v.id.name.contains("f82c414") =>
+      normalizeType(v.getType)
   }
+
+  def getCanaryMap(exprs: Seq[Expr]) = exprs.collect {
+    case v: Variable if v.id.name.contains("f82c414") =>
+      v.id.name -> normalizeType(v.getType)
+  }.toMap
 
   def isExcludedExpr(e: Expr) = ExprOps.exists {
     case _: MatchExpr => true
@@ -120,16 +134,15 @@ object StatsUtils {
   }(e)
 
   def canaryTypeFilter(exprs: Seq[Expr]): Seq[Expr] = {
-    val canaryExprs = getCanaryExprs(exprs)
-    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(tt))
+    val canaryTypes = getCanaryTypes(exprs)
     exprs.filter(expr => isSelectableExpr(expr, canaryTypes))
   }
 
   def canaryTypeFilter2(exprs: Seq[(Expr, Option[(Int, Expr)])]): Seq[(Expr, Option[(Int, Expr)])] = {
-    val canaryExprs = getCanaryExprs(exprs.map(_._1))
-    val canaryTypes = canaryExprs.map(_.getType).map(tt => normalizeType(tt))
-
-    exprs.flatMap {
+    val canaryTypes = getCanaryTypes(exprs.map(_._1))
+    //println("CANARY TYPES")
+    //println(canaryTypes)
+    val res = exprs.flatMap {
       case (expr, _) if !isSelectableExpr(expr, canaryTypes) =>
         None
       case (expr, Some((_, par))) if !isSelectableExpr(par, canaryTypes) =>
@@ -137,6 +150,10 @@ object StatsUtils {
       case other =>
         Some(other)
     }
+    //println("RES")
+    //println(res)
+    res
+
   }
 
   def isSelectableExpr(

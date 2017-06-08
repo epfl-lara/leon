@@ -26,6 +26,7 @@ object StatsMain {
       case v: Variable if v.id.name.contains("f82c414") =>
         v.id.name -> v.getType
     }.toMap
+
     println("Printing canary types:")
     canaryTypes.foreach(println)
 

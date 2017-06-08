@@ -139,7 +139,7 @@ object PCFGEmitter {
                    fcs: FunctionCallStats,
                    ls: LitStats
                  ): Seq[FunDef] = {
-    for ((value, literals) <- ls(tt).toSeq.sortBy(-_._2.size)) yield {
+    for ((_, literals) <- ls(tt).toSeq.sortBy(-_._2.size)) yield {
       val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
       val productionName: String = s"p${typeTreeName(tt)}$constrName"
       val id: Identifier = FreshIdentifier(productionName, tt)

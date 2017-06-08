@@ -19,17 +19,15 @@ object Stats2Main {
 
     val canaryFileName = args(1)
     val canaryExprs = StatsMain.procFiles(canaryFileName)
-    val canaryTypes = canaryExprs.collect {
-      case v: Variable if v.id.name.contains("f82c414") =>
-        v.id.name -> v.getType
-    }.toMap
+    val canaryTypes = getCanaryMap(canaryExprs)
     println("Printing canary types:")
     canaryTypes.foreach(println)
 
     val fase2 = args.drop(2).toSeq.par
-                   .map(f => canaryTypeFilter2(procFiles2(f, canaryFileName)))
-                   .filter(_.nonEmpty)
-                   .seq.flatten
+                    .map(f => canaryTypeFilter2(procFiles2(library = false)(f, canaryFileName)))
+                    .+:(canaryTypeFilter2(procFiles2(library = true)(canaryFileName)))
+                    .filter(_.nonEmpty)
+                    .seq.flatten
     val fase1 = fase2.map(_._1)
 
     val ecs2: ECS2 = groupAndFilterExprs2(canaryTypes, fase2)
@@ -58,10 +56,10 @@ object Stats2Main {
     println(prodRulesStr)
   }
 
-  def procFiles2(fileNames: String*): Seq[(Expr, Option[(Int, Expr)])] = {
+  def procFiles2(library: Boolean)(fileNames: String*): Seq[(Expr, Option[(Int, Expr)])] = {
     val ctx = Main.processOptions(fileNames.toSeq)
     try {
-      pipeline2.run(ctx, fileNames.toList)._2
+      pipeline2(library).run(ctx, fileNames.toList)._2
     } catch {
       case ex: Exception =>
         println(s"procFiles($fileNames): Encountered exception $ex")
@@ -69,12 +67,12 @@ object Stats2Main {
     }
   }
 
-  def pipeline2: Pipeline[List[String], Seq[(Expr, Option[(Int, Expr)])]] = {
+  def pipeline2(library: Boolean): Pipeline[List[String], Seq[(Expr, Option[(Int, Expr)])]] = {
     import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
     ClassgenPhase andThen
       ExtractionPhase andThen
       new PreprocessingPhase(false) andThen
-      SimpleFunctionApplicatorPhase(allSubExprs2)
+      SimpleFunctionApplicatorPhase(allSubExprs2(library))
   }
 
 }
