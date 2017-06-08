@@ -110,7 +110,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     // Usually it will either be cExpr or a concrete solution.
     private def setSolution(e: Expr) = solutionBox.underlying = e
 
-    implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program)
+    implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program) // FIXME settings might need changing
 
     val p = {
       implicit val bindings = Map[Identifier, Identifier]()
@@ -306,6 +306,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
+    val untrustedAllowed = 2
+
     def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
       var untrusted: Seq[Solution] = Seq()
@@ -319,7 +321,11 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
           validateCandidate(expr) foreach { sol =>
             val outerSol = sol.copy(term = innerToOuter.transform(sol.term)(Map()))
             if (sol.isTrusted) return Stream(outerSol) // Found verifiable solution, return immediately
-            else untrusted :+= outerSol // Solution was not verifiable, remember it anyway.
+            else {
+              // Solution was not verifiable, remember it anyway. Allow up to 2
+              untrusted :+= outerSol
+              if (untrusted.size >= untrustedAllowed) return untrusted.toStream
+            }
           }
         }
       }
