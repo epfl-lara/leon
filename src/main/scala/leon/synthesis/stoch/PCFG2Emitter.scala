@@ -16,8 +16,8 @@ object PCFG2Emitter {
   def total3[K1, K2, K3, T](map: Map[K1, Map[K2, Map[K3, Seq[T]]]]): Int = map.values.map(total2).sum
 
   def emit2(
-            canaryExprs: Seq[Expr],
-            canaryTypes: Map[String, TypeTree],
+            modelProgram: Program,
+            canaryTypes: Seq[TypeTree],
             ecs1: ExprConstrStats,
             fcs1: FunctionCallStats,
             ls1: LitStats,
@@ -57,8 +57,7 @@ object PCFG2Emitter {
       if constr != classOf[FunctionInvocation]
       (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
       production <- emit2(
-                           canaryExprs,
-                           canaryTypes,
+                           modelProgram,
                            tt,
                            idxPar,
                            constr,
@@ -78,12 +77,12 @@ object PCFG2Emitter {
       (tt, ttS2) <- fcs2.toSeq.sortBy { case (tt, ttS2) => (-total2(ttS2), tt.toString) }
       (idxPar, ttParS2) <- ttS2.toSeq.sortBy { case (idxPar, ttParS2) => (-total1(ttParS2), idxPar.toString) }
       (pos, fis) <- ttParS2.toSeq.sortBy { case (pos, fis) => (-fis.size, pos.toString) }
-      prodRule <- emitFunctionCalls2(canaryExprs, canaryTypes, tt, idxPar, pos, fis, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      prodRule <- emitFunctionCalls2(tt, idxPar, pos, fis, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     } yield prodRule
 
     val pr3 = for {
-      tt <- canaryTypes.values.toSeq
-      prodRule <- emitStartProds2(canaryExprs, canaryTypes, tt, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      tt <- canaryTypes
+      prodRule <- emitStartProds2(tt, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     } yield prodRule
 
     val labels = implicits.values.flatMap(_.values).toSeq
@@ -102,8 +101,7 @@ object PCFG2Emitter {
   }
 
   def emit2(
-             canaryExprs: Seq[Expr],
-             canaryTypes: Map[String, TypeTree],
+             modelProgram: Program,
              tt: TypeTree,
              idxPar: Option[(Int, Class[_ <: Expr])],
              constr: Class[_ <: Expr],
@@ -125,18 +123,17 @@ object PCFG2Emitter {
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
       val exprsPrime = ecs2(tt)(idxPar)(constr).values.flatten.toSeq
-      emitGeneral2(canaryExprs, canaryTypes, tt, idxPar, constr, argTypes, exprsPrime, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprsPrime, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     }
     else if (exprs.head.isInstanceOf[Literal[_]]) {
-      emitLiterals2(canaryExprs, canaryTypes, tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      emitLiterals2(tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
     }
-    else emitGeneral2(canaryExprs, canaryTypes, tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+    else emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
 
   }
 
   def emitGeneral2(
-                    canaryExprs: Seq[Expr],
-                    canaryTypes: Map[String, TypeTree],
+                    modelProgram: Program,
                     tt: TypeTree,
                     idxPar: Option[(Int, Class[_ <: Expr])],
                     constr: Class[_ <: Expr],
@@ -184,14 +181,8 @@ object PCFG2Emitter {
     val Operator(_, op) = exprs.head
     val fullBody: Expr = {
       if (constr == classOf[Variable]) {
-        val FunctionInvocation(TypedFunDef(varfd, _), _) = canaryExprs.filter(_.isInstanceOf[FunctionInvocation])
-          .map(_.asInstanceOf[FunctionInvocation])
-          .filter(_.tfd.id.name.contains("variable"))
-          .filter(_.tfd.tps.length == 1)
-          .filter(_.args.isEmpty)
-          .head
-        val tfd = TypedFunDef(varfd, Seq(tt))
-        FunctionInvocation(tfd, Seq())
+        val fd = modelProgram.library.variable.get
+        FunctionInvocation(TypedFunDef(fd, Seq(tt)), Seq())
       } else {
         op(rawParams.map(_.toVariable))
       }
@@ -208,8 +199,6 @@ object PCFG2Emitter {
   }
 
   def emitLiterals2(
-                     canaryExprs: Seq[Expr],
-                     canaryTypes: Map[String, TypeTree],
                      tt: TypeTree,
                      idxPar: Option[(Int, Class[_ <: Expr])],
                      constr: Class[_ <: Expr],
@@ -246,8 +235,6 @@ object PCFG2Emitter {
   }
 
   def emitFunctionCalls2(
-                         canaryExprs: Seq[Expr],
-                         canaryTypes: Map[String, TypeTree],
                          tt: TypeTree,
                          idxPar: Option[(Int, Class[_ <: Expr])],
                          pos: Position,
@@ -308,8 +295,6 @@ object PCFG2Emitter {
   }
 
   def emitStartProds2(
-                       canaryExprs: Seq[Expr],
-                       canaryTypes: Map[String, TypeTree],
                        tt: TypeTree,
                        ecs1: ExprConstrStats,
                        fcs1: FunctionCallStats,

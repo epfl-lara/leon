@@ -6,9 +6,11 @@ import java.time.LocalDateTime
 
 import StatsUtils._
 import Stats._
-import purescala.Definitions.UnitDef
-import purescala.Expressions.{Expr, Variable}
+import purescala.Definitions._
+import purescala.Expressions.Expr
 import leon.utils.PreprocessingPhase
+import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
+import leon.purescala.DefOps._
 
 object Stats2Main {
 
@@ -17,17 +19,66 @@ object Stats2Main {
     println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
     println(s"SELECT_TUPLE_TYPES: ${StatsMain.SELECT_TUPLE_TYPES}")
 
-    val canaryFileName = args(1)
-    val canaryExprs = StatsMain.procFiles(canaryFileName)
-    val canaryTypes = getCanaryMap(canaryExprs)
+    val frontend = ClassgenPhase andThen
+      ExtractionPhase andThen
+      new PreprocessingPhase(false)
+
+    val canaryFileName = args(0)
+    val ctx = Main.processOptions(List(canaryFileName))
+    val (_, modelProgram) = frontend.run(ctx, List(canaryFileName))
+
+    val canaryModule = modelProgram.units.find(_.isMainUnit).get.modules.head
+
+    val canaryTypes = getCanaryTypes(canaryModule)
+
+    val modelClasses = modelProgram.definedClasses  .map(cl => fullName(cl)(modelProgram) -> cl).toMap
+    val modelFuns    = modelProgram.definedFunctions.map(fd => fullName(fd)(modelProgram) -> fd).toMap
+
+    val collectiveProgram = {
+
+      val mainUnits = args.toSeq.tail.par.map { fileName =>
+        val (_, program) = frontend.run(Main.processOptions(List(fileName)), List(fileName))
+
+        val classMap = {
+          program.definedClasses.map(cl => cl -> modelClasses.get(fullName(cl)(program))).toMap
+        }
+
+        val funMap = {
+          program.definedFunctions.map(fd => fd -> modelFuns.get(fullName(fd)(program))).toMap
+        }
+
+        val strippedProgram = Program(program.units.filter(_.isMainUnit))
+
+        val programNormalizer = definitionReplacer(funMap, classMap)
+
+        val normalProgram = transformProgram(programNormalizer, strippedProgram)
+
+        normalProgram.units
+      }.seq.flatten
+
+      val libUnits = modelProgram.units.filterNot(_.isMainUnit)
+
+      //Program(libUnits ++ mainUnits)
+      Program(mainUnits.toList)
+    }
+
+    //println("====== collective =======")
+    //println(collectiveProgram)
+    //println("====== \\collective =======")
+
+    val allEs = allSubExprs2(collectiveProgram)
+    //println("====== allSubExprs2 =======")
+    //allEs foreach println
+    //println("====== \\allSubExprs2 =======")
+
+    val fase2 = canaryTypeFilter2(allEs, canaryTypes)
+    //println("====== fase2 =======")
+    //fase2 foreach println
+    //println("====== \\fase2 =======")
+
     println("Printing canary types:")
     canaryTypes.foreach(println)
 
-    val fase2 = args.drop(2).toSeq.par
-                    .map(f => canaryTypeFilter2(procFiles2(library = false)(f, canaryFileName)))
-                    .+:(canaryTypeFilter2(procFiles2(library = true)(canaryFileName)))
-                    .filter(_.nonEmpty)
-                    .seq.flatten
     val fase1 = fase2.map(_._1)
 
     val ecs2: ECS2 = groupAndFilterExprs2(canaryTypes, fase2)
@@ -48,31 +99,12 @@ object Stats2Main {
     println(Stats.ls2ToString(ls2))
     val ls1: LitStats = getLitStats(ecs1)
 
-    val prodRules: UnitDef = PCFG2Emitter.emit2(canaryExprs, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
+    val prodRules: UnitDef = PCFG2Emitter.emit2(modelProgram, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
 
     val prodRulesStr = replaceKnownNames(prodRules.toString)
 
     println("Printing production rules:")
     println(prodRulesStr)
-  }
-
-  def procFiles2(library: Boolean)(fileNames: String*): Seq[(Expr, Option[(Int, Expr)])] = {
-    val ctx = Main.processOptions(fileNames.toSeq)
-    try {
-      pipeline2(library).run(ctx, fileNames.toList)._2
-    } catch {
-      case ex: Exception =>
-        println(s"procFiles($fileNames): Encountered exception $ex")
-        Seq()
-    }
-  }
-
-  def pipeline2(library: Boolean): Pipeline[List[String], Seq[(Expr, Option[(Int, Expr)])]] = {
-    import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-    ClassgenPhase andThen
-      ExtractionPhase andThen
-      new PreprocessingPhase(false) andThen
-      SimpleFunctionApplicatorPhase(allSubExprs2(library))
   }
 
 }

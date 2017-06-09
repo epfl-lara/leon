@@ -3,7 +3,7 @@ package synthesis
 package stoch
 
 import purescala.Extractors.Operator
-import purescala.Definitions.Program
+import purescala.Definitions.{ModuleDef, Program}
 import purescala.Expressions._
 import purescala.Types._
 import purescala.{ExprOps, TypeOps}
@@ -50,9 +50,9 @@ object StatsUtils {
     es.zipWithIndex.map { case (esi, i) => (esi, Some(i, e)) }
   }(expr) :+ (expr, None)
 
-  def allSubExprs2(library: Boolean)(ctx: LeonContext, p: Program): Seq[(Expr, Option[(Int, Expr)])] = {
+  def allSubExprs2(p: Program): Seq[(Expr, Option[(Int, Expr)])] = {
     for {
-      unit <- p.units if unit.isMainUnit != library
+      unit <- p.units
       f <- unit.definedFunctions
       e <- allSubExprs2(f.fullBody)
     } yield e
@@ -79,10 +79,9 @@ object StatsUtils {
   def normalizeType(typeTree: TypeTree): TypeTree = {
     val thisParams = getTypeParams(typeTree).distinct
     val renaming = thisParams.zip(freshTypeParams)
-                             .map { case (x, y) => (x.asInstanceOf[TypeTree], y.asInstanceOf[TypeTree]) }
+                             .map { case (x, y) => (x: TypeTree, y: TypeTree) }
                              .toMap
-    val ans = TypeOps.replace(renaming, typeTree)
-    // println(s"Normalizing ${typeTree}: ${ans}")
+    val ans = bestRealType(TypeOps.replace(renaming, typeTree))
     ans
   }
 
@@ -118,9 +117,8 @@ object StatsUtils {
     case _ => false
   }
 
-  def getCanaryTypes(exprs: Seq[Expr]) = exprs.collect {
-    case v: Variable if v.id.name.contains("f82c414") =>
-      normalizeType(v.getType)
+  def getCanaryTypes(module: ModuleDef) = {
+    module.definedFunctions.map(fd => normalizeType(fd.returnType))
   }
 
   def getCanaryMap(exprs: Seq[Expr]) = exprs.collect {
@@ -133,16 +131,12 @@ object StatsUtils {
     case _ => false
   }(e)
 
-  def canaryTypeFilter(exprs: Seq[Expr]): Seq[Expr] = {
-    val canaryTypes = getCanaryTypes(exprs)
+  def canaryTypeFilter(exprs: Seq[Expr], canaryTypes: Seq[TypeTree]): Seq[Expr] = {
     exprs.filter(expr => isSelectableExpr(expr, canaryTypes))
   }
 
-  def canaryTypeFilter2(exprs: Seq[(Expr, Option[(Int, Expr)])]): Seq[(Expr, Option[(Int, Expr)])] = {
-    val canaryTypes = getCanaryTypes(exprs.map(_._1))
-    //println("CANARY TYPES")
-    //println(canaryTypes)
-    val res = exprs.flatMap {
+  def canaryTypeFilter2(exprs: Seq[(Expr, Option[(Int, Expr)])], canaryTypes: Seq[TypeTree]): Seq[(Expr, Option[(Int, Expr)])] = {
+    exprs.flatMap {
       case (expr, _) if !isSelectableExpr(expr, canaryTypes) =>
         None
       case (expr, Some((_, par))) if !isSelectableExpr(par, canaryTypes) =>
@@ -150,10 +144,6 @@ object StatsUtils {
       case other =>
         Some(other)
     }
-    //println("RES")
-    //println(res)
-    res
-
   }
 
   def isSelectableExpr(
@@ -174,20 +164,17 @@ object StatsUtils {
   }
 
   def groupAndFilterExprs(
-    canaryTypes: Map[String, TypeTree],
+    canaryTypes: Seq[TypeTree],
     exprs: Seq[Expr]
   ): ExprConstrStats = {
-    val canaryInsts = exprs.collect{ case v: Variable if canaryTypes.contains(v.id.name) => v }
-    require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
     val tuples: Seq[(TypeTree, (Class[_ <: Expr], (Seq[TypeTree], Expr)))] = exprs map { expr =>
-      val FunctionType(argTypes, resType) = normalizeConstrType(canaryTypes, canaryInsts, expr)
+      val FunctionType(argTypes, resType) = normalizeType(exprConstrFuncType(expr))
       (resType, (expr.getClass, (argTypes, expr)))
     }
 
     val strictType = {
-      val cts = canaryTypes.values.toSeq
-      (t: TypeTree) => isSelectableType(t, cts, true)
+      (t: TypeTree) => isSelectableType(t, canaryTypes, true)
     }
 
     seqToMap(tuples).mapValues( perResType =>
@@ -207,30 +194,19 @@ object StatsUtils {
   type LS2 = Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], Map[Any, Seq[Literal[_]]]]] */
 
   def groupAndFilterExprs2(
-    canaryTypes: Map[String, TypeTree],
+    canaryTypes: Seq[TypeTree],
     exprs: Seq[(Expr, Option[(Int, Expr)])]
   ): ECS2 = {
-    val canaryInsts = exprs.collect {
-      case (v: Variable, _) if canaryTypes.contains(v.id.name) => v
-    }
-    for (id <- canaryTypes.keys) {
-      if (!canaryInsts.exists(_.id.name == id)) {
-        val selectableType = isSelectableType(canaryTypes(id), canaryTypes.values.toSeq, false)
-        println(s"Unidentified canary instance! id: $id selectableType: $selectableType")
-      }
-    }
-    require(canaryTypes.keys.forall(v => canaryInsts.exists(_.id.name == v)))
 
     def parGroup(idxPar: (Int, Expr)): (Int, Class[_ <: Expr]) = (idxPar._1, idxPar._2.getClass)
     val tuples: Seq[(TypeTree, (Option[(Priority, Class[_ <: Expr])], (Class[_ <: Expr], (Seq[TypeTree], Expr))))] =
       exprs.map { case (e, par) =>
-        val FunctionType(argTypes, resType) = normalizeConstrType(canaryTypes, canaryInsts, e)
+        val FunctionType(argTypes, resType) = normalizeType(exprConstrFuncType(e))
         (resType, (par map parGroup, (e.getClass, (argTypes, e))))
       }
 
     val strictType = {
-      val cts = canaryTypes.values.toSeq
-      (t: TypeTree) => isSelectableType(t, cts, true)
+      (t: TypeTree) => isSelectableType(t, canaryTypes, true)
     }
     seqToMap(tuples).mapValues( perResType =>
       seqToMap(perResType).mapValues( perParent =>

@@ -15,6 +15,7 @@ object StatsMain {
   val SELECT_FUNCTION_TYPES: Boolean = false
   val SELECT_TUPLE_TYPES: Boolean = false
 
+/*
   def main(args: Array[String]): Unit = {
     println(LocalDateTime.now())
     println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
@@ -65,7 +66,7 @@ object StatsMain {
     println("Printing production rules:")
     println(prodRulesStr)
   }
-
+*/
   def procFiles(fileNames: String*): Seq[Expr] = {
     val ctx = Main.processOptions(fileNames.toSeq)
     try {
@@ -85,37 +86,37 @@ object StatsMain {
       SimpleFunctionApplicatorPhase(allSubExprs) andThen
       SimpleFunctionApplicatorPhase(normalizeExprs)
   }
+  /*
+    def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
+      val statsTrainC = statsTrain.mapValues(_.mapValues(_.size))
+      val statsTestC = statsTest.mapValues(_.mapValues(_.size))
 
-  def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
-    val statsTrainC = statsTrain.mapValues(_.mapValues(_.size))
-    val statsTestC = statsTest.mapValues(_.mapValues(_.size))
+      val numTestExprs = statsTestC.mapValues(_.values.sum).values.sum
+      println(s"numTestExprs: $numTestExprs")
 
-    val numTestExprs = statsTestC.mapValues(_.values.sum).values.sum
-    println(s"numTestExprs: $numTestExprs")
+      var numCorrectTestExprs = 0.0
+      var numRandomCorrectTestExprs = 0.0
+      for (typeTree <- statsTestC.toSeq.sortBy(-_._2.values.sum).map(_._1)) {
+        val typeFreqTest = statsTestC(typeTree).values.sum
+        val numConstrs = statsTestC(typeTree).values.size
+        println(s"Considering type $typeTree, which occurs $typeFreqTest times in test, and with $numConstrs constructors")
 
-    var numCorrectTestExprs = 0.0
-    var numRandomCorrectTestExprs = 0.0
-    for (typeTree <- statsTestC.toSeq.sortBy(-_._2.values.sum).map(_._1)) {
-      val typeFreqTest = statsTestC(typeTree).values.sum
-      val numConstrs = statsTestC(typeTree).values.size
-      println(s"Considering type $typeTree, which occurs $typeFreqTest times in test, and with $numConstrs constructors")
+        val predConstrOpt = statsTrainC.getOrElse(typeTree, Map()).toList.sortBy(-_._2).headOption
+        predConstrOpt match {
+          case Some((constr, _)) =>
+            val thisTypeCorrect = statsTestC(typeTree).getOrElse(constr, 0)
+            println(s"  Train suggests constructor $constr which was used $thisTypeCorrect times in test")
+            numCorrectTestExprs = numCorrectTestExprs + thisTypeCorrect
+          case None =>
+            numCorrectTestExprs = numCorrectTestExprs + (typeFreqTest.asInstanceOf[Double] / numConstrs)
+        }
 
-      val predConstrOpt = statsTrainC.getOrElse(typeTree, Map()).toList.sortBy(-_._2).headOption
-      predConstrOpt match {
-        case Some((constr, _)) =>
-          val thisTypeCorrect = statsTestC(typeTree).getOrElse(constr, 0)
-          println(s"  Train suggests constructor $constr which was used $thisTypeCorrect times in test")
-          numCorrectTestExprs = numCorrectTestExprs + thisTypeCorrect
-        case None =>
-          numCorrectTestExprs = numCorrectTestExprs + (typeFreqTest.asInstanceOf[Double] / numConstrs)
+        numRandomCorrectTestExprs = numRandomCorrectTestExprs + (typeFreqTest.asInstanceOf[Double] / numConstrs)
       }
 
-      numRandomCorrectTestExprs = numRandomCorrectTestExprs + (typeFreqTest.asInstanceOf[Double] / numConstrs)
+      val ourScore = numCorrectTestExprs / numTestExprs
+      val randomScore = numRandomCorrectTestExprs / numTestExprs
+      (ourScore, randomScore)
     }
-
-    val ourScore = numCorrectTestExprs / numTestExprs
-    val randomScore = numRandomCorrectTestExprs / numTestExprs
-    (ourScore, randomScore)
-  }
-
+  */
 }
