@@ -86,7 +86,6 @@ lazy val script = taskKey[Unit]("Generate the leon Bash script")
 
 def writeScript(
                  f: java.io.File,
-                 mainClass: String,
                  s: sbt.Keys.TaskStreams,
                  cps: sbt.Keys.Classpath,
                  out: java.io.File,
@@ -105,7 +104,7 @@ def writeScript(
                   |
                   |SCALACLASSPATH="$paths"
                   |
-                  |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" $mainClass $$@ 2>&1 | tee -i last.log
+                  |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" $$@ 2>&1 | tee -i last.log
                   |""".stripMargin)
   f.setExecutable(true)
 }
@@ -118,7 +117,7 @@ script := {
     val res = (resourceDirectory   in Compile).value
     val is64 = System.getProperty("sun.arch.data.model") == "64"
     writeScript(scriptFile, "leon.Main", s, cps, out, res, is64)
-    writeScript(customScriptFile, "$1", s, cps, out, res, is64)
+    writeScript(customScriptFile, s, cps, out, res, is64)
   } catch {
     case e: Throwable =>
       s.log.error("There was an error while generating the script file: " + e.getLocalizedMessage)
