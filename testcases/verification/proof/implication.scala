@@ -1,5 +1,3 @@
-package test
-
 import leon.lang._
 import leon.proof._
 

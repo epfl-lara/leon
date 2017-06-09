@@ -1,7 +1,5 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.testcases.verification.proof.measure
-
 import leon.annotation._
 import leon.collection._
 import leon.lang._

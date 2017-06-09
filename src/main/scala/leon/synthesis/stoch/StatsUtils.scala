@@ -28,20 +28,22 @@ object StatsUtils {
 
   def allSubExprs(ctx: LeonContext, p: Program): Seq[Expr] = allSubExprs(p)
 
-  def normalizeExprs(ctx: LeonContext, exprs: Seq[Expr]): Seq[Expr] = {
-    def commutative(e: Expr) = e match {
-      case _: Plus | _ : Times | _ : BVPlus | _ : BVTimes => true
-      case _ => false
-    }
-    exprs.map {
-      case GreaterThan(e1, e2) => LessThan(e2, e1)
-      case GreaterEquals(e1, e2) => LessEquals(e2, e1)
+  def normalizeExpr(expr: Expr): Expr = {
+    //def commutative(e: Expr) = e match {
+    //  case _: Plus | _ : Times | _ : BVPlus | _ : BVTimes => true
+    //  case _ => false
+    //}
+    ExprOps.preMap{
+      case GreaterThan(e1, e2) => Some(LessThan(e2, e1))
+      case GreaterEquals(e1, e2) => Some(LessEquals(e2, e1))
+      case And(es) if es.size > 2 => Some(And(es.head, And(es.tail)))
+      case Or(es) if es.size > 2 => Some(Or(es.head, Or(es.tail)))
       //case e@Operator(Seq(e1, e2), builder)
       //    if commutative(e) && e1.hashCode() < e2.hashCode() =>
       //  // normalize commutative operators by putting operand with larger hashCode first
       //  builder(Seq(e2, e1))
-      case other => other
-    }
+      case _ => None
+    }(expr)
   }
 
   // All subexressions of a program with (parent, position in parent)
@@ -54,7 +56,7 @@ object StatsUtils {
     for {
       unit <- p.units
       f <- unit.definedFunctions
-      e <- allSubExprs2(f.fullBody)
+      e <- allSubExprs2(normalizeExpr(f.fullBody))
     } yield e
   }
 
@@ -126,8 +128,12 @@ object StatsUtils {
       v.id.name -> normalizeType(v.getType)
   }.toMap
 
-  def isExcludedExpr(e: Expr) = ExprOps.exists {
-    case _: MatchExpr => true
+  def isExcludedExpr(e: Expr) = ExprOps.exists { // FIXME
+    case
+        _: MatchExpr | _:Ensuring | _:Require | _:Let |
+        _: Error | _:NoTree | _:Assert | _: Forall |
+        _: Passes | _: Choose
+      => true
     case _ => false
   }(e)
 

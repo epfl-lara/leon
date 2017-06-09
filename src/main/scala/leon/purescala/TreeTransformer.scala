@@ -10,9 +10,6 @@ import xlang.Expressions._
 import Extractors._
 import Types._
 
-import utils._
-import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
-
 trait TreeTransformer {
   def transform(id: Identifier): Identifier = id
   def transform(cd: ClassDef): ClassDef = cd
@@ -22,8 +19,11 @@ trait TreeTransformer {
     case Variable(id) if bindings contains id => Variable(bindings(id)).copiedFrom(e)
     case Variable(id) => Variable(transform(id)).copiedFrom(e)
     case FiniteLambda(mappings, default, tpe) =>
-      FiniteLambda(mappings.map { case (ks, v) => (ks map transform, transform(v)) },
-        transform(default), transform(tpe).asInstanceOf[FunctionType]).copiedFrom(e)
+      FiniteLambda(
+        mappings.map { case (ks, v) => (ks map transform, transform(v)) },
+        transform(default),
+        transform(tpe).asInstanceOf[FunctionType]
+      ).copiedFrom(e)
     case Lambda(args, body) =>
       val newArgs = args.map(vd => ValDef(transform(vd.id)))
       val newBindings = (args zip newArgs).map(p => p._1.id -> p._2.id)
@@ -46,7 +46,17 @@ trait TreeTransformer {
       CaseClass(transform(cct).asInstanceOf[CaseClassType], args map transform).copiedFrom(e)
     case CaseClassSelector(cct, caseClass, selector) =>
       val newCct @ CaseClassType(ccd, _) = transform(cct)
-      val newSelector = ccd.fieldsIds(cct.classDef.fieldsIds.indexOf(selector))
+      val ind = cct.classDef.fieldsIds.indexOf(selector)
+      if (ind < 0) {
+        println(e.getPos)
+        println(e)
+        println(cct.classDef)
+        println(newCct.classDef)
+        println(selector)
+        sys.exit()
+      }
+      // FIXME HACK
+      val newSelector = if (ind >= 0) ccd.fieldsIds(ind) else selector
       CaseClassSelector(newCct, transform(caseClass), newSelector).copiedFrom(e)
     case FunctionInvocation(TypedFunDef(fd, tpes), args) =>
       FunctionInvocation(TypedFunDef(transform(fd), tpes map transform), args map transform).copiedFrom(e)
@@ -124,9 +134,9 @@ trait TreeTransformer {
   }
 
   def transform(tpe: TypeTree): TypeTree = tpe match {
-    case cct @ CaseClassType(ccd, args) =>
+    case CaseClassType(ccd, args) =>
       CaseClassType(transform(ccd).asInstanceOf[CaseClassDef], args map transform).copiedFrom(tpe)
-    case act @ AbstractClassType(acd, args) =>
+    case AbstractClassType(acd, args) =>
       AbstractClassType(transform(acd).asInstanceOf[AbstractClassDef], args map transform).copiedFrom(tpe)
     case NAryType(ts, builder) => builder(ts map transform).copiedFrom(tpe)
   }

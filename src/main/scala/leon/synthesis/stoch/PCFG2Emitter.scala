@@ -105,11 +105,7 @@ object PCFG2Emitter {
              implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
            ): Seq[FunDef] = {
 
-    val suppressedConstrs: Set[Class[_ <: Expr]] = Set(classOf[Ensuring], classOf[Require], classOf[Let],
-      classOf[Error], classOf[NoTree], classOf[Assert], classOf[Forall], classOf[Passes], classOf[Choose])
-
-    if (suppressedConstrs.contains(constr)) Seq()
-    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
+    if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
       val exprsPrime = ecs2(tt)(idxPar)(constr).values.flatten.toSeq
       emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprsPrime, implicits)

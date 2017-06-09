@@ -1,7 +1,5 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.testcases.verification.proof
-
 import leon.collection._
 import leon.lang._
 import leon.proof._

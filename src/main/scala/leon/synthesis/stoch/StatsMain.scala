@@ -66,7 +66,7 @@ object StatsMain {
     println("Printing production rules:")
     println(prodRulesStr)
   }
-*/
+
   def procFiles(fileNames: String*): Seq[Expr] = {
     val ctx = Main.processOptions(fileNames.toSeq)
     try {
@@ -86,7 +86,7 @@ object StatsMain {
       SimpleFunctionApplicatorPhase(allSubExprs) andThen
       SimpleFunctionApplicatorPhase(normalizeExprs)
   }
-  /*
+
     def dist(statsTrain: ExprConstrStats, statsTest: ExprConstrStats): (Double, Double) = {
       val statsTrainC = statsTrain.mapValues(_.mapValues(_.size))
       val statsTestC = statsTest.mapValues(_.mapValues(_.size))

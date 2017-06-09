@@ -23,7 +23,7 @@ object Stats2Main {
       ExtractionPhase andThen
       new PreprocessingPhase(false)
 
-    val canaryFileName = args(0)
+    val canaryFileName = args(1)
     val ctx = Main.processOptions(List(canaryFileName))
     val (_, modelProgram) = frontend.run(ctx, List(canaryFileName))
 
@@ -36,8 +36,9 @@ object Stats2Main {
 
     val collectiveProgram = {
 
-      val mainUnits = args.toSeq.tail.par.map { fileName =>
+      val mainUnits = args.toSeq.drop(2).map { fileName =>
         val (_, program) = frontend.run(Main.processOptions(List(fileName)), List(fileName))
+        program.units foreach println
 
         val classMap = {
           program.definedClasses.map(cl => cl -> modelClasses.get(fullName(cl)(program))).toMap
@@ -46,6 +47,10 @@ object Stats2Main {
         val funMap = {
           program.definedFunctions.map(fd => fd -> modelFuns.get(fullName(fd)(program))).toMap
         }
+        println("====== Maps =======")
+        classMap foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
+        funMap   foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
+        println("====== \\Maps =======")
 
         val strippedProgram = Program(program.units.filter(_.isMainUnit))
 
@@ -58,8 +63,7 @@ object Stats2Main {
 
       val libUnits = modelProgram.units.filterNot(_.isMainUnit)
 
-      //Program(libUnits ++ mainUnits)
-      Program(mainUnits.toList)
+      Program(libUnits ++ mainUnits)
     }
 
     //println("====== collective =======")

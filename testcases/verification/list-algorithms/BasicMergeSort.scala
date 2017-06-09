@@ -1,5 +1,3 @@
-package listalgorithms
-
 import leon._
 import lang._
 import collection._
