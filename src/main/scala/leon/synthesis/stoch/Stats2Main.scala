@@ -99,7 +99,7 @@ object Stats2Main {
     println(Stats.ls2ToString(ls2))
     val ls1: LitStats = getLitStats(ecs1)
 
-    val prodRules: UnitDef = PCFG2Emitter.emit2(modelProgram, canaryTypes, ecs1, fcs1, ls1, ecs2, fcs2, ls2)
+    val prodRules: UnitDef = PCFG2Emitter.emit2(modelProgram, canaryTypes, ecs2, fcs2, ls2)
 
     val prodRulesStr = replaceKnownNames(prodRules.toString)
 

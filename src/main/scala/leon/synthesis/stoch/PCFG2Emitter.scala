@@ -18,9 +18,6 @@ object PCFG2Emitter {
   def emit2(
             modelProgram: Program,
             canaryTypes: Seq[TypeTree],
-            ecs1: ExprConstrStats,
-            fcs1: FunctionCallStats,
-            ls1: LitStats,
             ecs2: ECS2,
             fcs2: FCS2,
             ls2: LS2
@@ -63,11 +60,7 @@ object PCFG2Emitter {
                            constr,
                            argTypes,
                            exprs,
-                           ecs1,
-                           fcs1,
-                           ls1,
                            ecs2,
-                           fcs2,
                            ls2,
                            implicits
                          )
@@ -77,12 +70,12 @@ object PCFG2Emitter {
       (tt, ttS2) <- fcs2.toSeq.sortBy { case (tt, ttS2) => (-total2(ttS2), tt.toString) }
       (idxPar, ttParS2) <- ttS2.toSeq.sortBy { case (idxPar, ttParS2) => (-total1(ttParS2), idxPar.toString) }
       (pos, fis) <- ttParS2.toSeq.sortBy { case (pos, fis) => (-fis.size, pos.toString) }
-      prodRule <- emitFunctionCalls2(tt, idxPar, pos, fis, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      prodRule <- emitFunctionCalls2(tt, idxPar, pos, fis, implicits)
     } yield prodRule
 
     val pr3 = for {
       tt <- canaryTypes
-      prodRule <- emitStartProds2(tt, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      prodRule <- emitStartProds2(tt, implicits)
     } yield prodRule
 
     val labels = implicits.values.flatMap(_.values).toSeq
@@ -107,11 +100,7 @@ object PCFG2Emitter {
              constr: Class[_ <: Expr],
              argTypes: Seq[TypeTree],
              exprs: Seq[Expr],
-             ecs1: ExprConstrStats,
-             fcs1: FunctionCallStats,
-             ls1: LitStats,
              ecs2: ECS2,
-             fcs2: FCS2,
              ls2: LS2,
              implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
            ): Seq[FunDef] = {
@@ -123,12 +112,12 @@ object PCFG2Emitter {
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
     else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
       val exprsPrime = ecs2(tt)(idxPar)(constr).values.flatten.toSeq
-      emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprsPrime, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprsPrime, implicits)
     }
     else if (exprs.head.isInstanceOf[Literal[_]]) {
-      emitLiterals2(tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+      emitLiterals2(tt, idxPar, constr, ls2, implicits)
     }
-    else emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprs, ecs1, fcs1, ls1, ecs2, fcs2, ls2, implicits)
+    else emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprs, implicits)
 
   }
 
@@ -139,12 +128,6 @@ object PCFG2Emitter {
                     constr: Class[_ <: Expr],
                     argTypes: Seq[TypeTree],
                     exprs: Seq[Expr],
-                    ecs1: ExprConstrStats,
-                    fcs1: FunctionCallStats,
-                    ls1: LitStats,
-                    ecs2: ECS2,
-                    fcs2: FCS2,
-                    ls2: LS2,
                     implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                   ): Seq[FunDef] = {
 
@@ -202,25 +185,16 @@ object PCFG2Emitter {
                      tt: TypeTree,
                      idxPar: Option[(Int, Class[_ <: Expr])],
                      constr: Class[_ <: Expr],
-                     argTypes: Seq[TypeTree],
-                     exprs: Seq[Expr],
-                     ecs1: ExprConstrStats,
-                     fcs1: FunctionCallStats,
-                     ls1: LitStats,
-                     ecs2: ECS2,
-                     fcs2: FCS2,
                      ls2: LS2,
                      implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                    ): Seq[FunDef] = {
-    for ((value, literals) <- ls2(tt)(idxPar).toSeq.sortBy(-_._2.size)) yield {
+    for ((_, literals) <- ls2(tt)(idxPar).toSeq.sortBy(-_._2.size)) yield {
       val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
       val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}$constrName"
       val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
       val id: Identifier = FreshIdentifier(productionName, outputLabel)
 
-      require(getTypeParams(FunctionType(argTypes, tt)).isEmpty) // Literals cannot be of generic type, can they?
       val tparams: Seq[TypeParameterDef] = Seq()
-      require(argTypes.isEmpty) // Literals cannot have arguments, can they?
       val params: Seq[ValDef] = Seq()
       val fullBody: Expr = literals.head
 
@@ -239,12 +213,6 @@ object PCFG2Emitter {
                          idxPar: Option[(Int, Class[_ <: Expr])],
                          pos: Position,
                          fis: Seq[FunctionInvocation],
-                         ecs1: ExprConstrStats,
-                         fcs1: FunctionCallStats,
-                         ls1: LitStats,
-                         ecs2: ECS2,
-                         fcs2: FCS2,
-                         ls2: LS2,
                          implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                        ): Seq[FunDef] = {
     if (pos.file.toString.contains("/leon/library/leon/")) {
@@ -296,12 +264,6 @@ object PCFG2Emitter {
 
   def emitStartProds2(
                        tt: TypeTree,
-                       ecs1: ExprConstrStats,
-                       fcs1: FunctionCallStats,
-                       ls1: LitStats,
-                       ecs2: ECS2,
-                       fcs2: FCS2,
-                       ls2: LS2,
                        implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                      ): Seq[FunDef] ={
     if (!implicits.contains(tt) || !implicits(tt).contains(None)) {
