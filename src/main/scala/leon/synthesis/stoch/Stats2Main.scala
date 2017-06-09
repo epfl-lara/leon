@@ -47,30 +47,38 @@ object Stats2Main {
         val funMap = {
           program.definedFunctions.map(fd => fd -> modelFuns.get(fullName(fd)(program))).toMap
         }
-        println("====== Maps =======")
-        classMap foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
-        funMap   foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
-        println("====== \\Maps =======")
+        // println("====== Maps =======")
+        // classMap foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
+        // funMap   foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
+        // println("====== \\Maps =======")
 
         val strippedProgram = Program(program.units.filter(_.isMainUnit))
 
         val programNormalizer = definitionReplacer(funMap, classMap)
 
-        val normalProgram = transformProgram(programNormalizer, strippedProgram)
+        val allEs = allSubExprs2(strippedProgram)
 
-        normalProgram.units
+        allEs map { case (e, oie) => (
+          programNormalizer.transform(e)(Map()),
+          oie.map{ case (i, e2) => (i, programNormalizer.transform(e2)(Map())) }
+        )}
+
+        //val normalProgram = transformProgram(programNormalizer, strippedProgram)
+
+        //normalProgram.units
       }.seq.flatten
 
-      val libUnits = modelProgram.units.filterNot(_.isMainUnit)
+      mainUnits
+      //val libUnits = modelProgram.units.filterNot(_.isMainUnit)
 
-      Program(libUnits ++ mainUnits)
+      //Program(libUnits ++ mainUnits)
     }
 
     //println("====== collective =======")
     //println(collectiveProgram)
     //println("====== \\collective =======")
 
-    val allEs = allSubExprs2(collectiveProgram)
+    val allEs = collectiveProgram //allSubExprs2(collectiveProgram)
     //println("====== allSubExprs2 =======")
     //allEs foreach println
     //println("====== \\allSubExprs2 =======")

@@ -307,7 +307,7 @@ object DefOps {
               case fd : FunDef => fdMap.getOrElse(fd, fd)
               case d => d
             }
-        })
+          })
         case cd: ClassDef => cdMap.getOrElse(cd, cd)
         case d => d
       })
