@@ -78,12 +78,14 @@ object StatsUtils {
   }
 
   private val freshTypeParams = Stream.continually(TypeParameter.fresh("TP", true))
-  def normalizeType(typeTree: TypeTree): TypeTree = {
+  def normalizeType(typeTree: TypeTree, brt: Boolean = true): TypeTree = {
     val thisParams = getTypeParams(typeTree).distinct
     val renaming = thisParams.zip(freshTypeParams)
                              .map { case (x, y) => (x: TypeTree, y: TypeTree) }
                              .toMap
-    val ans = bestRealType(TypeOps.replace(renaming, typeTree))
+    val ans =
+      if (brt) bestRealType(TypeOps.replace(renaming, typeTree))
+      else TypeOps.replace(renaming, typeTree)
     ans
   }
 

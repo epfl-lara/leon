@@ -58,6 +58,12 @@ abstract class ExpressionGrammar extends Printable {
 
   private var instantiations = Map[GenericProdSeed, Set[Map[TypeParameter, TypeTree]]]().withDefaultValue(Set())
 
+  private def simplifyLabel(lab: Label) = {
+    lab
+      .stripAspects
+      .withAspects(lab.aspectsMap.get(RealTypedAspectKind).toSeq)
+  }
+
   private def instantiateGenerics(lab: Label, maxSize: Int)(implicit ctx: LeonContext): Seq[Prod] = {
 
     val tpe = lab.getType
@@ -74,9 +80,19 @@ abstract class ExpressionGrammar extends Printable {
     // }
     // println
 
-    val res = for(gp <- genericSeeds if (gp.args.size ) < maxSize) yield {
+    def compatibleLabel(gp: GenericProdSeed) = {
+      gp.label.aspect(RealTypedAspectKind) == lab.aspect(RealTypedAspectKind)
+    }
+
+    val res = for(gp <- genericSeeds if gp.args.size < maxSize) yield {
+      println("Label: " + lab.asString)
+      println("GP: " + gp.label.asString + " ::= "+genProdAsString(gp))
       instantiation_<:(gp.label.tpe, tpe) match {
         case Some(tmap0) =>
+          println("YES")
+          if (!compatibleLabel(gp)) { println("NOT COMP"); Nil } else {
+          println("COMP")
+
           // println("Looking at "+Console.BOLD+lab.asString+Console.RESET+" ::= "+genProdAsString(gp))
           val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq
 
@@ -116,15 +132,11 @@ abstract class ExpressionGrammar extends Printable {
             instantiations += gp -> (existing ++ tmaps2)
           }
 
-          val prods = for (tmap <- tmaps2) yield {
-            val prod = gp.builder(tmap)
-            // println("    - "+prodAsString(prod))
-            prod
+          tmaps2.map(gp.builder).toSeq
           }
 
-          prods.toSeq
-
         case _ =>
+          println("NO!")
           Seq()
       }
     }
@@ -316,9 +328,7 @@ abstract class ExpressionGrammar extends Printable {
       initialized = true
     }
 
-    val simpleLab = lab
-      .stripAspects
-      .withAspects(lab.aspectsMap.get(RealTypedAspectKind).toSeq)
+    val simpleLab = simplifyLabel(lab)
 
     val fromGenerics = labelSize(lab) match {
       case Some(size) =>
@@ -329,11 +339,11 @@ abstract class ExpressionGrammar extends Printable {
         } else Seq()
 
       case None =>
-        if (!(maxSizeFor contains tpe)) {
+        //if (!(maxSizeFor contains tpe)) { // FIXME: See how we fix maxSizeFor
           val res = instantiateGenerics(simpleLab, 999)
           maxSizeFor += tpe -> 1
           res
-        } else Seq()
+        //} else Seq()
     }
 
     def dbg(t: String, ps: Seq[Prod]) = {
@@ -342,6 +352,10 @@ abstract class ExpressionGrammar extends Printable {
     }
 
     val prods1 = fromGenerics ++ staticProductions.getOrElse(simpleLab, Nil)
+    if (prods1.isEmpty) {
+      // If we found no productions, fall back to the general label without tag
+      //return processProductions(lab.removeAspect(RealTypedAspectKind))
+    }
     staticProductions += simpleLab -> prods1
     dbg("PRODS1", prods1)
     val prods2 = computeCostsAndLogProbs(prods1)
@@ -411,8 +425,8 @@ abstract class ExpressionGrammar extends Printable {
       }
     }
 
-    for ((tpe, ps) <- genericSeeds.groupBy(_.label.tpe)) {
-      val lhs = f"${Console.BOLD}${tpe.asString}%50s${Console.RESET} ::= "
+    for ((lab, ps) <- genericSeeds.groupBy(_.label)) {
+      val lhs = f"${Console.BOLD}${lab.asString}%50s${Console.RESET} ::= "
       res.append(lhs + lineize(ps.map(genProdAsString))+"\n")
     }
 

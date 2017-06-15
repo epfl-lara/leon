@@ -12,5 +12,5 @@ case class RealTyped(tpe: TypeTree) extends Aspect(RealTypedAspectKind) {
     ps
   }
 
-  def asString(implicit ctx: LeonContext) = "("+tpe.asString+")"
+  def asString(implicit ctx: LeonContext) = "{"+tpe.asString+"}"
 }

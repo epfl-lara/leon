@@ -8,15 +8,15 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Extractors.Operator
 import purescala.Types._
+import purescala.{TypeOps => TO}
 import Stats.{ExprConstrStats, FunctionCallStats, LitStats}
-import StatsUtils.getTypeParams
+import StatsUtils._
 import leon.utils.Position
 
 object PCFGEmitter {
 
   def emit(
-            canaryExprs: Seq[Expr],
-            canaryTypes: Map[String, TypeTree],
+            program: Program,
             ecs: ExprConstrStats,
             fcs: FunctionCallStats,
             ls: LitStats
@@ -37,13 +37,13 @@ object PCFGEmitter {
       (constr, ttConstrMap) <- ttMap.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString) }
       if constr != classOf[FunctionInvocation]
       (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
-      production <- emit(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
+      production <- emit(program, tt, constr, argTypes, exprs, ls)
     } yield production
 
     val l2: Seq[FunDef] = for {
       (tt, ttMap) <- fcs.toSeq.sortBy { case (tt, ttMap) => (-total1(ttMap), tt.toString) }
       (pos, fis) <- ttMap.toSeq.sortBy { case (pos, fis) => (-fis.size, pos) }
-      prodRule <- emitFunctionCalls(canaryExprs, canaryTypes, tt, pos, fis, ecs, fcs, ls)
+      prodRule <- emitFunctionCalls(tt, pos, fis)
     } yield prodRule
 
     val moduleDef = ModuleDef(FreshIdentifier("grammar"), l1 ++ l2, isPackageObject = false)
@@ -59,60 +59,71 @@ object PCFGEmitter {
   }
 
   def emit(
-            canaryExprs: Seq[Expr],
-            canaryTypes: Map[String, TypeTree],
+            program: Program,
             tt: TypeTree,
             constr: Class[_ <: Expr],
             argTypes: Seq[TypeTree],
             exprs: Seq[Expr],
-            ecs: ExprConstrStats,
-            fcs: FunctionCallStats,
             ls: LitStats
           ): Seq[FunDef] = {
 
-    val suppressedConstrs: Set[Class[_ <: Expr]] = Set(classOf[Ensuring], classOf[Require], classOf[Let],
-      classOf[Error], classOf[NoTree], classOf[Assert], classOf[Forall], classOf[Passes], classOf[Choose])
-
-    if (suppressedConstrs.contains(constr)) Seq()
-    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
-    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
-      val exprsPrime = ecs(tt)(constr).values.flatten.toSeq
-      emitGeneral(canaryExprs, canaryTypes, tt, constr, argTypes, exprsPrime, ecs, fcs, ls)
-    }
-    else if (exprs.head.isInstanceOf[Literal[_]]) {
-      emitLiterals(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
-    }
-    else emitGeneral(canaryExprs, canaryTypes, tt, constr, argTypes, exprs, ecs, fcs, ls)
+    if (exprs.head.isInstanceOf[Literal[_]])
+      emitLiterals(tt, constr, ls)
+    else if (constr == classOf[CaseClass])
+      emitCaseClass(tt, constr, argTypes, exprs)
+    else emitGeneral(program, tt, constr, argTypes, exprs)
 
   }
 
+  def emitCaseClass(
+    tt: TypeTree,
+    constr: Class[_ <: Expr],
+    argTypes: Seq[TypeTree],
+    exprs: Seq[Expr]
+  ): Seq[FunDef] = {
+    val conCounts = exprs.map(_.asInstanceOf[CaseClass]).groupBy(e => normalizeType(e.ct, false).asInstanceOf[CaseClassType]).mapValues(_.size).toSeq
+    conCounts map { case (cct, frequency) =>
+      val cd = cct.classDef
+      val constrName = cd.id.name
+      val productionName: String = s"p${typeTreeName(tt)}$constrName"
+      val id: Identifier = FreshIdentifier(productionName, tt)
+
+      val tparams: Seq[TypeParameterDef] = getTypeParams(cct) map TypeParameterDef
+      val params: Seq[ValDef] = cct.fields.map(f => ValDef(f.id.freshen))
+
+      val fullBody = CaseClass(cct, params map (_.toVariable))
+
+      val tinst = tt.asInstanceOf[ClassType].classDef.typed(cct.tps)
+
+      val production: FunDef = new FunDef(id, tparams, params, tinst)
+      production.fullBody = fullBody
+
+      production.addFlag(Annotation("production", Seq(Some(frequency))))
+
+      production
+    }
+  }
+
   def emitGeneral(
-            canaryExprs: Seq[Expr],
-            canaryTypes: Map[String, TypeTree],
-            tt: TypeTree,
-            constr: Class[_ <: Expr],
-            argTypes: Seq[TypeTree],
-            exprs: Seq[Expr],
-            ecs: ExprConstrStats,
-            fcs: FunctionCallStats,
-            ls: LitStats
-          ): Seq[FunDef] = {
+    program: Program,
+    tt: TypeTree,
+    constr: Class[_ <: Expr],
+    argTypes: Seq[TypeTree],
+    exprs: Seq[Expr]
+  ): Seq[FunDef] = {
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
     val productionName: String = s"p${typeTreeName(tt)}$constrName"
     val id: Identifier = FreshIdentifier(productionName, tt)
 
     val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
     val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) => ValDef(FreshIdentifier(s"v$idx", ptt)) }
-    val Operator(_, op) = exprs.head
+    val modelExpr = exprs.head
+    val typeN = TO.instantiation_<:(modelExpr.getType, tt).get
+    val modelExprInst = TO.instantiateType(modelExpr, typeN, Map())
+    val Operator(_, op) = modelExprInst
     val fullBody: Expr = {
       if (constr == classOf[Variable]) {
-        val FunctionInvocation(TypedFunDef(varfd, _), _) = canaryExprs.filter(_.isInstanceOf[FunctionInvocation])
-          .map(_.asInstanceOf[FunctionInvocation])
-          .filter(_.tfd.id.name.contains("variable"))
-          .filter(_.tfd.tps.length == 1)
-          .filter(_.args.isEmpty)
-          .head
-        val tfd = TypedFunDef(varfd, Seq(tt))
+        val tfd = TypedFunDef(program.library.variable.get, Seq(tt))
         FunctionInvocation(tfd, Seq())
       } else {
         op(params.map(_.toVariable))
@@ -129,28 +140,18 @@ object PCFGEmitter {
   }
 
   def emitLiterals(
-                   canaryExprs: Seq[Expr],
-                   canaryTypes: Map[String, TypeTree],
                    tt: TypeTree,
                    constr: Class[_ <: Expr],
-                   argTypes: Seq[TypeTree],
-                   exprs: Seq[Expr],
-                   ecs: ExprConstrStats,
-                   fcs: FunctionCallStats,
                    ls: LitStats
                  ): Seq[FunDef] = {
     for ((_, literals) <- ls(tt).toSeq.sortBy(-_._2.size)) yield {
       val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
       val productionName: String = s"p${typeTreeName(tt)}$constrName"
       val id: Identifier = FreshIdentifier(productionName, tt)
-
-      require(getTypeParams(FunctionType(argTypes, tt)).isEmpty) // Literals cannot be of generic type, can they?
-      val tparams: Seq[TypeParameterDef] = Seq()
-      require(argTypes.isEmpty) // Literals cannot have arguments, can they?
       val params: Seq[ValDef] = Seq()
       val fullBody: Expr = literals.head
 
-      val production: FunDef = new FunDef(id, tparams, params, tt)
+      val production: FunDef = new FunDef(id, Seq(), params, tt)
       production.fullBody = fullBody
 
       val frequency: Int = literals.size
@@ -160,16 +161,7 @@ object PCFGEmitter {
     }
   }
 
-  def emitFunctionCalls(
-                   canaryExprs: Seq[Expr],
-                   canaryTypes: Map[String, TypeTree],
-                   tt: TypeTree,
-                   pos: Position,
-                   fis: Seq[FunctionInvocation],
-                   ecs: ExprConstrStats,
-                   fcs: FunctionCallStats,
-                   ls: LitStats
-                 ): Seq[FunDef] = {
+  def emitFunctionCalls(tt: TypeTree, pos: Position, fis: Seq[FunctionInvocation]): Seq[FunDef] = {
     if (pos.file.toString.contains("/leon/library/leon/")) {
       val tfd = fis.head.tfd
       val productionName: String = s"p${typeTreeName(tt)}FunctionInvocation${tfd.id.name}"

@@ -46,17 +46,7 @@ trait TreeTransformer {
       CaseClass(transform(cct).asInstanceOf[CaseClassType], args map transform).copiedFrom(e)
     case CaseClassSelector(cct, caseClass, selector) =>
       val newCct @ CaseClassType(ccd, _) = transform(cct)
-      val ind = cct.classDef.fieldsIds.indexOf(selector)
-      if (ind < 0) {
-        println(e.getPos)
-        println(e)
-        println(cct.classDef)
-        println(newCct.classDef)
-        println(selector)
-        sys.exit()
-      }
-      // FIXME HACK
-      val newSelector = if (ind >= 0) ccd.fieldsIds(ind) else selector
+      val newSelector = ccd.fieldsIds(cct.classDef.fieldsIds.indexOf(selector))
       CaseClassSelector(newCct, transform(caseClass), newSelector).copiedFrom(e)
     case FunctionInvocation(TypedFunDef(fd, tpes), args) =>
       FunctionInvocation(TypedFunDef(transform(fd), tpes map transform), args map transform).copiedFrom(e)

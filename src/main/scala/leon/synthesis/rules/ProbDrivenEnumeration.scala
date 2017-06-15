@@ -255,6 +255,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
 
     var it = mkEnum
+    debug("Root label: " + topLabel)
     debug("Grammar:")
     debug(grammar.asString)
 

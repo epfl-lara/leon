@@ -13,7 +13,7 @@ import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
 import leon.purescala.DefOps._
 
 object Stats2Main {
-
+  import java.io._
   def main(args: Array[String]): Unit = {
     println(LocalDateTime.now())
     println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
@@ -23,65 +23,34 @@ object Stats2Main {
       ExtractionPhase andThen
       new PreprocessingPhase(false)
 
-    val canaryFileName = args(1)
-    val ctx = Main.processOptions(List(canaryFileName))
-    val (_, modelProgram) = frontend.run(ctx, List(canaryFileName))
+    val cnt = new leon.utils.UniqueCounter[Unit]
 
-    val canaryModule = modelProgram.units.find(_.isMainUnit).get.modules.head
+    new File("tmp-corpus").mkdir()
+
+    def processFile(fileName: String) = {
+      val content = scala.io.Source.fromFile(fileName).getLines.mkString("\n")
+      val c = cnt.nextGlobal
+      new File("tmp-corpus/test$" + c).mkdir()
+      val toFileName = "tmp-corpus/test$" + c + new File(fileName).getName
+      val toFile = new File(toFileName)
+      toFile.createNewFile()
+      val pw = new PrintWriter(toFile)
+      pw.write("package test$" + c + "\n" + content)
+      pw.close()
+      toFileName
+    }
+
+    val corpus = args.toSeq.drop(2).map(processFile).toList
+    val canaryFileName = args(1)
+
+    val (_, bigProgram) = frontend.run(Main.processOptions(corpus :+ canaryFileName), corpus :+ canaryFileName)
+
+    val canaryModule = bigProgram.units.find(u => args(1).contains(u.id.name)).get.modules.head
 
     val canaryTypes = getCanaryTypes(canaryModule)
 
-    val modelClasses = modelProgram.definedClasses  .map(cl => fullName(cl)(modelProgram) -> cl).toMap
-    val modelFuns    = modelProgram.definedFunctions.map(fd => fullName(fd)(modelProgram) -> fd).toMap
-
-    val collectiveProgram = {
-
-      val mainUnits = args.toSeq.drop(2).map { fileName =>
-        val (_, program) = frontend.run(Main.processOptions(List(fileName)), List(fileName))
-        program.units foreach println
-
-        val classMap = {
-          program.definedClasses.map(cl => cl -> modelClasses.get(fullName(cl)(program))).toMap
-        }
-
-        val funMap = {
-          program.definedFunctions.map(fd => fd -> modelFuns.get(fullName(fd)(program))).toMap
-        }
-        // println("====== Maps =======")
-        // classMap foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
-        // funMap   foreach { case (f, t) => println(s"${f.id.uniqueName} -> ${t.map(_.id.uniqueName)}") }
-        // println("====== \\Maps =======")
-
-        val strippedProgram = Program(program.units.filter(_.isMainUnit))
-
-        val programNormalizer = definitionReplacer(funMap, classMap)
-
-        val allEs = allSubExprs2(strippedProgram)
-
-        allEs map { case (e, oie) => (
-          programNormalizer.transform(e)(Map()),
-          oie.map{ case (i, e2) => (i, programNormalizer.transform(e2)(Map())) }
-        )}
-
-        //val normalProgram = transformProgram(programNormalizer, strippedProgram)
-
-        //normalProgram.units
-      }.seq.flatten
-
-      mainUnits
-      //val libUnits = modelProgram.units.filterNot(_.isMainUnit)
-
-      //Program(libUnits ++ mainUnits)
-    }
-
-    //println("====== collective =======")
-    //println(collectiveProgram)
-    //println("====== \\collective =======")
-
-    val allEs = collectiveProgram //allSubExprs2(collectiveProgram)
-    //println("====== allSubExprs2 =======")
-    //allEs foreach println
-    //println("====== \\allSubExprs2 =======")
+    //val allEs = allSubExprs2(bigProgram)
+    val allEs = allSubExprs2(Program(bigProgram.units.filter(_.isMainUnit)))
 
     val fase2 = canaryTypeFilter2(allEs, canaryTypes)
     //println("====== fase2 =======")
@@ -111,12 +80,13 @@ object Stats2Main {
     println(Stats.ls2ToString(ls2))
     val ls1: LitStats = getLitStats(ecs1)
 
-    val prodRules: UnitDef = PCFG2Emitter.emit2(modelProgram, canaryTypes, ecs2, fcs2, ls2)
+    val prodRules1 = PCFGEmitter.emit(bigProgram, ecs1, fcs1, ls1)
+    println("Printing production rules 1")
+    println(replaceKnownNames(prodRules1.toString))
 
-    val prodRulesStr = replaceKnownNames(prodRules.toString)
-
+    val prodRules2: UnitDef = PCFG2Emitter.emit2(bigProgram, canaryTypes, ecs2, fcs2, ls2)
     println("Printing production rules:")
-    println(prodRulesStr)
+    println(replaceKnownNames(prodRules2.toString))
   }
 
 }

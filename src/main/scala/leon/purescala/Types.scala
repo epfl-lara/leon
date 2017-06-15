@@ -108,7 +108,10 @@ object Types {
 
     val tps: Seq[TypeTree]
 
-    assert(classDef.tparams.size == tps.size)
+    assert(
+      classDef.tparams.size == tps.size,
+      s"ClassDef: $classDef, params: $tps"
+    )
 
     lazy val fields = {
       val tmap = (classDef.typeArgs zip tps).toMap

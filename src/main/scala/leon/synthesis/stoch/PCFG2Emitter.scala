@@ -1,12 +1,13 @@
 package leon.synthesis.stoch
 
-import leon.purescala.Common.{FreshIdentifier, Id2, Identifier}
+import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.Expressions.{And, Assert, Choose, Ensuring, Error, Expr, Forall, FunctionInvocation, Let, Literal, NoTree, Or, Passes, Require, Variable}
+import leon.purescala.Expressions._
 import leon.purescala.Extractors.Operator
-import leon.purescala.Types.{CaseClassType, FunctionType, TypeTree}
+import leon.purescala.Types._
+import leon.purescala.{TypeOps => TO}
 import leon.synthesis.stoch.Stats._
-import leon.synthesis.stoch.StatsUtils.getTypeParams
+import leon.synthesis.stoch.StatsUtils._
 import leon.utils.Position
 
 object PCFG2Emitter {
@@ -23,17 +24,17 @@ object PCFG2Emitter {
             ls2: LS2
           ): UnitDef = {
 
-    val implicits =
-      (for ((tt, ttS2) <- ecs2.toSeq.sortBy { case (tt, ttS2) => (-total3(ttS2), tt.toString) } )
-       yield {
-         val ttImplicits =
-           (for ((idxPar, _) <- ttS2.toSeq.sortBy { case (idxPar, ttParStats) => (-total2(ttParStats), idxPar.toString) })
+    val implicits = (
+      for ((tt, ttS2) <- ecs2.toSeq.sortBy { case (tt, ttS2) => (-total3(ttS2), tt.toString) } )
+      yield {
+        val ttImplicits =
+          (for ((idxPar, _) <- ttS2.toSeq.sortBy { case (idxPar, ttParStats) => (-total2(ttParStats), idxPar.toString) })
             yield {
               val labelName: String = idxPar match {
                 case Some((idx, par)) =>
                   val parName = par.toString.stripPrefix("class leon.purescala.Expressions$")
                   s"${PCFGEmitter.typeTreeName(tt)}_${idx}_$parName"
-                case None => s"${PCFGEmitter.typeTreeName(tt)}_None"
+                case None => s"${PCFGEmitter.typeTreeName(tt)}_TOPLEVEL"
               }
               val labelId: Identifier = FreshIdentifier(labelName)
               val cd: CaseClassDef = new CaseClassDef(labelId, getTypeParams(tt).map(TypeParameterDef), None, false)
@@ -43,9 +44,11 @@ object PCFG2Emitter {
               cd.addFlag(Annotation("label", Seq()))
 
               idxPar -> cd
-            }).toMap
-         tt -> ttImplicits
-       }).toMap
+            }
+          ).toMap
+        tt -> ttImplicits
+      }
+    ).toMap
 
     val pr1 = for {
       (tt, ttS2) <- ecs2.toSeq.sortBy { case (tt, ttS2) => (-total3(ttS2), tt.toString) }
@@ -53,7 +56,7 @@ object PCFG2Emitter {
       (constr, ttConstrMap) <- ttParS2.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString) }
       if constr != classOf[FunctionInvocation]
       (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
-      production <- emit2(
+      production <- emit2Single(
                            modelProgram,
                            tt,
                            idxPar,
@@ -93,7 +96,7 @@ object PCFG2Emitter {
 
   }
 
-  def emit2(
+  def emit2Single(
              modelProgram: Program,
              tt: TypeTree,
              idxPar: Option[(Int, Class[_ <: Expr])],
@@ -105,15 +108,54 @@ object PCFG2Emitter {
              implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
            ): Seq[FunDef] = {
 
-    if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length != 2) Seq()
-    else if ((constr == classOf[And] || constr == classOf[Or]) && argTypes.length == 2) {
-      val exprsPrime = ecs2(tt)(idxPar)(constr).values.flatten.toSeq
-      emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprsPrime, implicits)
-    }
-    else if (exprs.head.isInstanceOf[Literal[_]]) {
+    if (exprs.head.isInstanceOf[Literal[_]])
       emitLiterals2(tt, idxPar, constr, ls2, implicits)
+    else if (constr == classOf[CaseClass])
+      emitCaseClass2(tt, idxPar, constr, argTypes, exprs, implicits)
+    else
+      emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprs, implicits)
+  }
+
+  def ccCnt = new leon.utils.UniqueCounter[Unit]
+
+  def emitCaseClass2(
+    tt: TypeTree,
+    idxPar: Option[(Int, Class[_ <: Expr])],
+    constr: Class[_ <: Expr],
+    argTypes: Seq[TypeTree],
+    exprs: Seq[Expr],
+    implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
+  ): Seq[FunDef] = {
+    val classCount = exprs.map(_.asInstanceOf[CaseClass]).groupBy(e => normalizeType(e.ct, false).asInstanceOf[CaseClassType]).mapValues(_.size).toSeq
+    classCount map { case (cct, num) =>
+      val ccd = cct.classDef
+      val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}${ccd.id.name.toString}${ccCnt.nextGlobal}"
+      val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
+      val id: Identifier = FreshIdentifier(productionName, outputLabel)
+
+      val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
+      val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
+        val inputLabel = CaseClassType(implicits(ptt)(Some(idx, constr)), getTypeParams(ptt))
+        ValDef(FreshIdentifier(s"v$idx", inputLabel))
+      }
+      val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
+        val pid = params(idx)
+        val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, constr)))
+        ValDef(id)
+      }
+
+      val fullBody = CaseClass(CaseClassType(ccd, tt.asInstanceOf[ClassType].tps), rawParams map (_.toVariable))
+
+      val production: FunDef = new FunDef(id, tparams, params, outputLabel)
+      production.fullBody = fullBody
+
+      val frequency: Int = num
+      production.addFlag(Annotation("production", Seq(Some(frequency))))
+
+      production
+
     }
-    else emitGeneral2(modelProgram, tt, idxPar, constr, argTypes, exprs, implicits)
+
 
   }
 
@@ -131,15 +173,12 @@ object PCFG2Emitter {
       println(s"Suppressing production rule for type $tt, $idxPar, $constr, $argTypes: Non-terminal symbol not found")
       // println(s"Head expression: ${exprs.head}")
       return Seq()
-    } else if (argTypes.zipWithIndex.exists { case (ptt, idx) =>
-                  !implicits.contains(ptt) || !implicits(ptt).contains(Some(idx, constr))
-               } ) {
-      val (ptt, idx) = argTypes.zipWithIndex.find { case (ptt2, idx2) =>
-        !implicits.contains(ptt2) || !implicits(ptt2).contains(Some(idx2, constr))
-      }.get
-      println(s"Suppressing production rule for type $tt, $idxPar, $constr, $argTypes: Mysterious argument $ptt, $idx")
-      // println(s"Head expression: ${exprs.head}")
-      return Seq()
+    } else {
+      argTypes.zipWithIndex.collectFirst {
+        case (ptt, idx) if !implicits.contains(ptt) || !implicits(ptt).contains(Some(idx, constr)) =>
+          println(s"Suppressing production rule for type $tt, $idxPar, $constr, $argTypes: Mysterious argument $ptt, $idx")
+          return Seq()
+      }
     }
 
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
@@ -157,7 +196,10 @@ object PCFG2Emitter {
       val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, constr)))
       ValDef(id)
     }
-    val Operator(_, op) = exprs.head
+    val modelExpr = exprs.head
+    val typeN = TO.instantiation_<:(modelExpr.getType, tt).get
+    val modelExprInst = TO.instantiateType(modelExpr, typeN, Map())
+    val Operator(_, op) = modelExprInst
     val fullBody: Expr = {
       if (constr == classOf[Variable]) {
         val fd = modelProgram.library.variable.get

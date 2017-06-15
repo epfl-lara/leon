@@ -98,12 +98,15 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
           val inputGroups = inputs.groupBy(_.getType).toSeq
 
           for ((tpe, inputs) <- inputGroups) {
-            if (instantiation_>:(unwrapOrReturnType(exprType), tpe).isDefined) {
-              val size = inputs.size
+            instantiation_>:(unwrapOrReturnType(exprType), tpe) match {
+              case Some(map) =>
+                val size = inputs.size
 
-              for (i <- inputs) {
-                productions += terminal(tpeToLabel(exprType), i.toVariable, tag, Math.max(1, cost / size), -1.0)
-              }
+                for (i <- inputs) {
+                  productions += terminal(tpeToLabel(instantiateType(exprType, map)), i.toVariable, tag, Math.max(1, cost / size), -1.0)
+                }
+              case None =>
+
             }
           }
 
@@ -148,8 +151,8 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
               }.toMap
 
               val unwrapped = unwrapLabels(fd.fullBody, m)
-              println(s"Original: ${fd.fullBody}")
-              println(s"Unwrapped: $unwrapped")
+              //println(s"Original: ${fd.fullBody}")
+              //println(s"Unwrapped: $unwrapped")
 
               val holes = fd.params.map(p => m.getOrElse(p.id, p.id))
 
@@ -166,6 +169,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
           }
       }
     }
+    productions foreach (p => println(f"${Console.BOLD}${p.label.asString}%50s${Console.RESET} ::= " + genProdAsString(p)))
 
     productions
   }
@@ -186,11 +190,10 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
   }
 
   def tpeToLabel(tpe: TypeTree): Label = {
-    tpe match {
-      case ct: ClassType if ct.classDef.annotations("grammar.label") && ct.fields.size == 1 =>
-        Label(unwrapType(tpe).get).withAspect(RealTyped(ct))
-
-      case _ =>
+    unwrapType(tpe) match {
+      case Some(underlying) =>
+        Label(underlying).withAspect(RealTyped(tpe))
+      case None =>
         Label(tpe)
     }
   }
