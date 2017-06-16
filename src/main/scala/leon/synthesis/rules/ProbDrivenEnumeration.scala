@@ -96,12 +96,16 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         case fd2 if fd2 == outerCtx.functionContext =>
           Some(fd)
 
-        case fd2 =>
-          Some(fd2.duplicate())
+        case _ =>
+          None
       }
 
       timers.transProg.start()
-      val innerProgram = transformProgram(t, outerCtx.program)
+      val innerProgram = {
+        val (userCode, libCode) = outerCtx.program.units.partition(_.isMainUnit)
+        val transUserCode = transformProgram(t, Program(userCode))
+        Program(transUserCode.units ++ libCode)
+      }
       timers.transProg.stop()
 
       val solutionBox = collect[MutableExpr] {
@@ -115,7 +119,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     // Usually it will either be cExpr or a concrete solution.
     private def setSolution(e: Expr) = solutionBox.underlying = e
 
-    implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program) // FIXME settings might need changing
+    implicit val sctx = new SynthesisContext(outerCtx, outerCtx.settings, fd, program) // FIXME: .settings might need changing
 
     val p = {
       implicit val bindings = Map[Identifier, Identifier]()
