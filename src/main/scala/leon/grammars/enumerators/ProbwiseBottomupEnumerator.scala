@@ -37,7 +37,7 @@ abstract class AbstractProbwiseBottomupEnumerator[NT, R](nts: Map[NT, (Productio
   protected type Rule = ProductionRule[NT, R]
   protected type Coords = Seq[Int]
 
-  protected val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
+  protected val timers = ctx.timers.synthesis.applications.get("Prob. driven enum")
 
   protected type Sig
   protected def mkSig(elem: StreamElem): Sig

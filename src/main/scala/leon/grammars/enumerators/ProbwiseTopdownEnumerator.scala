@@ -46,7 +46,7 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
   debug("Available examples:")
   examples foreach (ex => debug("  -" + ex))
 
-  val hors = GrammarEnumerator.horizonMap(init, productions).map{ case (k,v) => k -> v._2 }
+  val hors = timers.horMap.timed{ GrammarEnumerator.horizonMap(init, productions).map{ case (k,v) => k -> v._2 } }
   protected def productions(nt: Label) = grammar.getProductions(nt)
   protected def nthor(nt: Label): Double = hors(nt)
 
@@ -90,7 +90,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
     ifDebug(NoPosition, body)(leon.utils.DebugSectionSynthesisVerbose)
   }
 
-  val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
+  val timers = ctx.timers.synthesis.applications.get("Prob. driven enum")
 
   protected def productions(nt: NT): Seq[ProductionRule[NT, R]]
 

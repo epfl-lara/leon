@@ -2,7 +2,7 @@ package leon
 package grammars
 
 import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Expressions.{Expr, Terminal}
+import leon.purescala.Expressions.{Expr, Terminal, Variable}
 import leon.purescala.{PrettyPrintable, PrinterContext}
 import leon.purescala.Types.TypeTree
 
@@ -82,7 +82,10 @@ case class ExpansionExpr(expansion: Expansion[Label, Expr])
 
   override def printWith(implicit pctx: PrinterContext): Unit = {
     import leon.purescala.PrinterHelpers._
-    p"$expansion"
+    if (expansion.complete)
+      p"EXP(${expansion.produce})"
+    else
+      p"EXP(${expansion.falseProduce(_ => Variable(FreshIdentifier("_", purescala.Types.Untyped)))}"
   }
 
   override def isSimpleExpr = true

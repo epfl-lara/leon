@@ -8,6 +8,7 @@ import evaluators._
 import leon.grammars._
 import leon.grammars.enumerators._
 import leon.grammars.enumerators.CandidateScorer.MeetsSpec
+import leon.utils.DebugSectionSynthesisVerbose
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps._
@@ -27,6 +28,9 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     outerCtx: SearchContext,
     outerP: Problem
   ) {
+    val timers = outerCtx.timers.synthesis.applications.get("Prob. driven enum")
+
+    outerCtx.timers.synthesis
 
     import outerCtx.reporter._
 
@@ -96,7 +100,9 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
           Some(fd2.duplicate())
       }
 
+      timers.transProg.start()
       val innerProgram = transformProgram(t, outerCtx.program)
+      timers.transProg.stop()
 
       val solutionBox = collect[MutableExpr] {
         case me: MutableExpr => Set(me)
@@ -105,7 +111,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
       (t, t.inverse, solutionBox, innerProgram)
     }
-
     // It should be set to the solution you want to check at each time.
     // Usually it will either be cExpr or a concrete solution.
     private def setSolution(e: Expr) = solutionBox.underlying = e
@@ -124,7 +129,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         eb = ExamplesBank(outerExamples map (_.map(outerToInner.transform(_)(Map.empty))), Seq())
       )
     }
-
     var examples = p.eb.examples
 
     private val spec = letTuple(p.xs, solutionBox, p.phi)
@@ -143,16 +147,14 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
     val solverF = SolverFactory.getFromSettings(sctx, program).withTimeout(solverTo)
     val Params(topLabel, grammar, indistinguish) = getParams(sctx, p)
-
     debug("Examples:\n" + examples.map(_.asString).mkString("\n"))
-    val timers     = sctx.timers.synthesis.applications.get("Prob-Enum")
 
     // Evaluates a candidate against an example in the correct environment
     def evalCandidate(expr: Expr, evalr: Evaluator)(ex: Example): evalr.EvaluationResult = timers.eval.timed {
       setSolution(expr)
 
       def withBindings(e: Expr) = p.pc.bindings.foldRight(e) {
-        case ((id, v), bd) => let(id, v, bd)
+        case ((id, v), bd) => Let(id, v, bd)
       }
 
       val testExpr = ex match {
@@ -169,7 +171,11 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     def testCandidate(expr: Expr)(ex: Example): Option[Boolean] = {
       evalCandidate(expr, fullEvaluator)(ex) match {
         case EvaluationResults.Successful(value) =>
-          Some(value == BooleanLiteral(true))
+          val res = value == BooleanLiteral(true)
+          if (!res) {
+            debug(s"Negative result. Failing: $ex")
+          }
+          Some(res)
         case EvaluationResults.RuntimeError(err) =>
           debug(s"RE testing CE: $err")
           debug(s"  Failing example: $ex")
@@ -253,11 +259,11 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       )
     }.iterator(topLabel)
 
-
     var it = mkEnum
+
     debug("Root label: " + topLabel)
-    debug("Grammar:")
-    debug(grammar.asString)
+    debug("Grammar:")(DebugSectionSynthesisVerbose)
+    debug(grammar.asString)(DebugSectionSynthesisVerbose)
 
     /**
       * Second phase of STE: verify a given candidate by looking for CEX inputs.
@@ -307,7 +313,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    val untrustedAllowed = 2
+    val untrustedAllowed = 5
 
     def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
@@ -315,6 +321,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       while (!sctx.interruptManager.isInterrupted && it.hasNext) {
         val expr = it.next
         debug(s"Testing: $expr")
+        // FIXME: Testing should always succeed at this point yet it somehow fails sometimes
         if (examples.exists(testCandidate(expr)(_).contains(false))) {
           debug(s"Failed testing!")
         } else {
@@ -332,7 +339,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
 
       untrusted.toStream // Best we could do is find unverifiable solutions
-
     }
 
   }

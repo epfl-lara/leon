@@ -85,13 +85,13 @@ abstract class ExpressionGrammar extends Printable {
     }
 
     val res = for(gp <- genericSeeds if gp.args.size < maxSize) yield {
-      println("Label: " + lab.asString)
-      println("GP: " + gp.label.asString + " ::= "+genProdAsString(gp))
+      //println("Label: " + lab.asString)
+      //println("GP: " + gp.label.asString + " ::= "+genProdAsString(gp))
       instantiation_<:(gp.label.tpe, tpe) match {
         case Some(tmap0) =>
-          println("YES")
-          if (!compatibleLabel(gp)) { println("NOT COMP"); Nil } else {
-          println("COMP")
+          //println("YES")
+          if (!compatibleLabel(gp)) { /*println("NOT COMP");*/ Nil } else {
+          //println("COMP")
 
           // println("Looking at "+Console.BOLD+lab.asString+Console.RESET+" ::= "+genProdAsString(gp))
           val free = gp.tparams.map(_.tp) diff tmap0.keySet.toSeq
@@ -136,7 +136,7 @@ abstract class ExpressionGrammar extends Printable {
           }
 
         case _ =>
-          println("NO!")
+          //println("NO!")
           Seq()
       }
     }
@@ -321,6 +321,8 @@ abstract class ExpressionGrammar extends Printable {
   private[this] var maxSizeFor = Map[TypeTree, Int]().withDefaultValue(0)
 
   private def processProductions(lab: Label)(implicit ctx: LeonContext): Seq[Prod] = {
+    val timers = ctx.timers.grammars
+
     val tpe = lab.getType
 
     if (!initialized) {
@@ -330,7 +332,7 @@ abstract class ExpressionGrammar extends Printable {
 
     val simpleLab = simplifyLabel(lab)
 
-    val fromGenerics = labelSize(lab) match {
+    val fromGenerics = timers.instGen.timed { labelSize(lab) match {
       case Some(size) =>
         if (size > maxSizeFor(tpe)) {
           val res = instantiateGenerics(simpleLab, size)
@@ -344,7 +346,7 @@ abstract class ExpressionGrammar extends Printable {
           maxSizeFor += tpe -> 1
           res
         //} else Seq()
-    }
+    }}
 
     def dbg(t: String, ps: Seq[Prod]) = {
       //println(t)
@@ -354,17 +356,28 @@ abstract class ExpressionGrammar extends Printable {
     val prods1 = fromGenerics ++ staticProductions.getOrElse(simpleLab, Nil)
     if (prods1.isEmpty) {
       // If we found no productions, fall back to the general label without tag
-      //return processProductions(lab.removeAspect(RealTypedAspectKind))
+      return processProductions(lab.removeAspect(RealTypedAspectKind))
     }
-    staticProductions += simpleLab -> prods1
     dbg("PRODS1", prods1)
-    val prods2 = computeCostsAndLogProbs(prods1)
+    val prods1b = timers.merge.timed{mergeIdenticalProds(prods1)}
+    dbg("PRODS1b", prods1b)
+    staticProductions += simpleLab -> prods1b
+    val prods2 = timers.costs.timed { computeCostsAndLogProbs(prods1b) }
     dbg("PRODS2", prods2)
-    val prods3 = applyAspects(lab, prods2)
+    val prods3 = timers.applyAspects.timed { applyAspects(lab, prods2) }
     dbg("PRODS3", prods3)
-    val prods4 = filterImpossibleCosts(lab, prods3)
+    val prods4 = timers.filterImp.timed { filterImpossibleCosts(lab, prods3) }
     dbg("PRODS4", prods4)
     prods4
+  }
+
+  private def mergeIdenticalProds(prods: Seq[Prod]): Seq[Prod] = {
+    prods.groupBy(_.subTrees).flatMap { case (subs, prods) =>
+      val args = subs map (s => FreshIdentifier("a", s.getType, true).toVariable)
+      prods.groupBy(_.builder(args)).values.map( prods =>
+        prods.head.copy(cost = prods.map(_.cost).sum)
+      )
+    }.toSeq
   }
 
   private def lineize(ss: Traversable[String]): String = {

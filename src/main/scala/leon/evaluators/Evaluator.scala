@@ -53,8 +53,8 @@ trait DeterministicEvaluator extends Evaluator {
   
   /**Evaluates the environment first, resolving non-cyclic dependencies, and then evaluate the expression */
   override def eval(expr: Expr, mapping: Map[Identifier, Expr]) : EvaluationResult = {
-    if(mapping.forall{ case (key, value) => purescala.ExprOps.isValue(value) }) {
-      super.eval(expr, mapping.toMap)
+    if (mapping.values.forall(purescala.ExprOps.isValue)) {
+      super.eval(expr, mapping)
     } else {
       _evalEnv(mapping) match {
         case Left(m) => super.eval(expr, m)

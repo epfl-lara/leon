@@ -4,7 +4,7 @@ package enumerators
 
 import CandidateScorer.{MeetsSpec, Score}
 import CandidateScorer.MeetsSpec.MeetsSpec
-import synthesis.{Example, SynthesisContext}
+import synthesis.Example
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks
@@ -13,7 +13,7 @@ class CandidateScorer[NT, R](evalCandidate: (Expansion[NT, R], Example) => Meets
                              getExs: Unit => Seq[Example]
                             )(implicit ctx: LeonContext) {
 
-  val timers = ctx.timers.synthesis.applications.get("Prob-Enum")
+  val timers = ctx.timers.synthesis.applications.get("Prob. driven enum")
 
   def score(expansion: Expansion[NT, R], skipExs: Set[Example], eagerReturnOnFalse: Boolean): Score = {
     timers.score.timed {

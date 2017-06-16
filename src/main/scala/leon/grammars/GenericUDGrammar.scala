@@ -38,11 +38,12 @@ object GenericUDGrammar {
 }
 
 /** Represents a user-defined context-free grammar of expressions */
-case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], inputs: Seq[Identifier]) extends ExpressionGrammar {
+case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], inputs: Seq[Expr]) extends ExpressionGrammar {
   import Tags._
   import GenericUDGrammar._
 
-  def generateProductions(implicit ctx: LeonContext) = {
+  def generateProductions(implicit ctx: LeonContext) = ctx.timers.grammars.generic.timed {
+
     val visibleDefs = visibleFrom match {
       case Some(d) =>
         visibleFunDefsFrom(d)(program)
@@ -93,7 +94,8 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
 
       unwrapLabels(expr, unwrappedParams) match {
         // Special built-in "variable" case, which tells us how often to
-        // generate variables of specific type
+        // generate variables of specific type.
+        // We additionally count as "variables" hard-coded hints by the synthesizer
         case FunctionInvocation(TypedFunDef(fd, Seq(_)), Seq()) if program.library.variable contains fd =>
           val inputGroups = inputs.groupBy(_.getType).toSeq
 
@@ -102,8 +104,8 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
               case Some(map) =>
                 val size = inputs.size
 
-                for (i <- inputs) {
-                  productions += terminal(tpeToLabel(instantiateType(exprType, map)), i.toVariable, tag, Math.max(1, cost / size), -1.0)
+                for (in <- inputs) {
+                  productions += terminal(tpeToLabel(instantiateType(exprType, map)), in, tag, Math.max(1, cost / size), -1.0)
                 }
               case None =>
 
@@ -169,7 +171,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
           }
       }
     }
-    productions foreach (p => println(f"${Console.BOLD}${p.label.asString}%50s${Console.RESET} ::= " + genProdAsString(p)))
+    //productions foreach (p => println(f"${Console.BOLD}${p.label.asString}%50s${Console.RESET} ::= " + genProdAsString(p)))
 
     productions
   }
@@ -192,7 +194,14 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
   def tpeToLabel(tpe: TypeTree): Label = {
     unwrapType(tpe) match {
       case Some(underlying) =>
-        Label(underlying).withAspect(RealTyped(tpe))
+        val within = {
+          val cname = tpe.asInstanceOf[ClassType].classDef.id.name
+          val chunks = cname.split("_")
+          if (chunks.last == "None") // TODO FIXME!!!
+            None
+          else Some((chunks.last, chunks.init.last.toInt))
+        }
+        Label(underlying).withAspect(RealTyped(within))
       case None =>
         Label(tpe)
     }
