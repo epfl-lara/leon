@@ -5,6 +5,7 @@ package enumerators
 import purescala.Expressions.Expr
 import utils.Interruptible
 
+import scala.collection.mutable
 import scala.collection.mutable.{HashMap, HashSet, Queue => MutableQueue}
 
 trait GrammarEnumerator extends Interruptible {
@@ -32,30 +33,65 @@ object GrammarEnumerator {
     ans.toSet
   }
 
+  // given a grammar: NT -> Seq[ProdRule], and a start symbol st (just to initialize the grammar),
+  // compute, for each nonterminal nt, a pair (Option[ProdRule], Double):
+  // Which production rule to fire to expand to the minimum cost for a tree of nt, and what is the minimum cost.
   def horizonMap[NT, R](nt: NT, grammar: NT => Seq[ProductionRule[NT, R]]): Map[NT, (Option[ProductionRule[NT, R]], Double)] = {
-    val map = new HashMap[NT, (Option[ProductionRule[NT, R]], Double)]()
-    val ntSet = allNTs(nt, grammar)
-    ntSet.foreach(ntPrime => map.put(ntPrime, (None, Double.NegativeInfinity)))
+    type Rule = ProductionRule[NT, R]
+    val all = allNTs(nt, grammar)
 
-    def relax(ntPrime: NT): Boolean = {
-      require(map.contains(ntPrime))
+    val bestCosts = HashMap[NT, (Option[Rule], Double)]()
 
-      var newProb = map(ntPrime)
-      for (rule <- grammar(ntPrime)) {
-        var ruleLogProb = rule.logProb
-        for (childNT <- rule.subTrees) {
-          ruleLogProb = ruleLogProb + map(childNT)._2
-        }
-        if (ruleLogProb > newProb._2) newProb = (Some(rule), ruleLogProb)
-      }
-      val ans = map(ntPrime)._2 < newProb._2
-      if (ans) map.put(ntPrime, newProb)
-      ans
+    all foreach { nt => bestCosts += (nt -> (None, Double.NegativeInfinity)) }
+
+    val revDeps = HashMap[NT, Seq[NT]]().withDefaultValue(Seq())
+
+    all foreach { nt =>
+      val rules = grammar(nt)
+      val subs = rules.flatMap(_.subTrees).toSet
+      subs foreach { sub => revDeps(sub) +:= nt }
     }
 
-    while(ntSet exists relax) {}
+    val workSet = HashSet[NT]()
 
-    map.toMap
+    def recalculate(nt: NT): Unit = {
+      def cost(rule: Rule) = rule.logProb + rule.subTrees.map(sub => bestCosts(sub)._2).sum
+      workSet -= nt
+      val newBest = grammar(nt).map(rule => Some(rule) -> cost(rule)).maxBy(_._2)
+      if (newBest._2 > bestCosts(nt)._2) {
+        bestCosts(nt) = newBest
+        workSet ++= revDeps(nt)
+      }
+    }
+
+    workSet ++= all.filter(grammar(_).exists(_.isTerminal))
+
+    while (workSet.nonEmpty) recalculate(workSet.head)
+
+    bestCosts.toMap
+
   }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
