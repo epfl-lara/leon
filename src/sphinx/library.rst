@@ -289,7 +289,7 @@ Set[T], Map[T]
 --------------
 
 Leon uses its own Sets and Maps, which are defined in the ``leon.lang`` package.
-However, these classes are are not implemented within Leon.
+However, these classes are not implemented within Leon.
 Instead, they are parsed into specialized trees.
 Methods of these classes are mapped to specialized trees within SMT solvers.
 For code generation, we rely on Java Sets and Maps.
