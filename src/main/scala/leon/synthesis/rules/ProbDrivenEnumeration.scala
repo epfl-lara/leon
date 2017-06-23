@@ -14,7 +14,7 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Common.Identifier
-import purescala.Definitions.Program
+import purescala.Definitions._
 import utils.MutableExpr
 import solvers._
 
@@ -36,25 +36,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     val solverTo = 5000
 
-    // Create a fresh solution function with the best solution around the
-    // current STE as body
-    val fd = {
-      val fd = outerCtx.functionContext.duplicate()
 
-      fd.fullBody = postMap {
-        case src if src eq outerCtx.source =>
-          val body = new PartialSolution(outerCtx.search.strat, true)(outerCtx)
-            .solutionAround(outerCtx.currentNode)(MutableExpr(NoTree(outerP.outType)))
-            .getOrElse(fatalError("Unable to get outer solution"))
-            .term
-
-          Some(body)
-        case _ =>
-          None
-      }(fd.fullBody)
-
-      fd
-    }
 
     val outerExamples = {
       // Get from the params of the outer program if we are applying ind. heuristic
@@ -89,32 +71,66 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    // Create a program replacing the synthesis source by the fresh solution
-    // function
-    val (outerToInner, innerToOuter, solutionBox, program) = {
-      val t = funDefReplacer {
-        case fd2 if fd2 == outerCtx.functionContext =>
-          Some(fd)
 
+    // Create a fresh solution function with the best solution around the
+    // current STE as body
+    timers.transProg.start()
+
+    val fd = outerCtx.functionContext.duplicate()
+    def outerToInner(e: Expr) = preMap {
+      case FunctionInvocation(TypedFunDef(fd1, tps), args) if fd1 == outerCtx.functionContext =>
+        Some(FunctionInvocation(TypedFunDef(fd, tps), args))
+      case _ => None
+    }(e)
+    def innerToOuter(e: Expr) = preMap {
+      case FunctionInvocation(TypedFunDef(fd1, tps), args) if fd1 == fd =>
+        Some(FunctionInvocation(TypedFunDef(outerCtx.functionContext, tps), args))
+      case _ => None
+    }(e)
+    locally {
+      fd.fullBody = postMap {
+        case src if src eq outerCtx.source =>
+          val body = new PartialSolution(outerCtx.search.strat, true)(outerCtx)
+            .solutionAround(outerCtx.currentNode)(MutableExpr(NoTree(outerP.outType)))
+            .getOrElse(fatalError("Unable to get outer solution"))
+            .term
+
+          Some(body)
         case _ =>
           None
-      }
+      }(fd.fullBody)
 
-      timers.transProg.start()
-      val innerProgram = {
-        val (userCode, libCode) = outerCtx.program.units.partition(_.isMainUnit)
-        val transUserCode = transformProgram(t, Program(userCode))
-        Program(transUserCode.units ++ libCode)
-      }
-      timers.transProg.stop()
-
-      val solutionBox = collect[MutableExpr] {
-        case me: MutableExpr => Set(me)
-        case _ => Set()
-      }(fd.fullBody).head
-
-      (t, t.inverse, solutionBox, innerProgram)
+      fd.fullBody = outerToInner(fd.fullBody)
     }
+
+    val solutionBox = collect[MutableExpr] {
+      case me: MutableExpr => Set(me)
+      case _ => Set()
+    }(fd.fullBody).head
+
+    val program = { // FIXME: This breaks compatibility with class invariants
+      val outerProgram = outerCtx.program
+      Program {
+        outerProgram.units.map { u =>
+          if (!u.isMainUnit) u else {
+            u.copy(defs = u.defs.map {
+              case cd: ClassDef => cd
+              case m: ModuleDef =>
+                m.copy(defs = m.defs.map {
+                  case cd: ClassDef => cd
+                  case fd1: FunDef if fd1 == outerCtx.functionContext =>
+                    fd
+                  case fd1: FunDef =>
+                    fd1.fullBody = outerToInner(fd1.fullBody)
+                    fd1
+                })
+            })
+          }
+        }
+      }
+    }
+    timers.transProg.stop()
+
     // It should be set to the solution you want to check at each time.
     // Usually it will either be cExpr or a concrete solution.
     private def setSolution(e: Expr) = solutionBox.underlying = e
@@ -125,12 +141,12 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       implicit val bindings = Map[Identifier, Identifier]()
 
       Problem(
-        as = outerP.as.map(outerToInner.transform),
-        ws = outerToInner.transform(outerP.ws),
-        pc = outerP.pc.map(outerToInner.transform),
-        phi = outerToInner.transform(outerP.phi),
-        xs = outerP.xs.map(outerToInner.transform),
-        eb = ExamplesBank(outerExamples map (_.map(outerToInner.transform(_)(Map.empty))), Seq())
+        as = outerP.as,
+        ws = outerToInner(outerP.ws),
+        pc = outerP.pc.map(outerToInner),
+        phi = outerToInner(outerP.phi),
+        xs = outerP.xs,
+        eb = ExamplesBank(outerExamples map (_.map(outerToInner)), Seq())
       )
     }
     var examples = p.eb.examples
@@ -144,7 +160,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
         (-1000000000.0, 10000000) // Run forever in probwise-only mode
       else
-        (-80.0, 10000)
+        (-80.0, 50000)
     }
 
     val fullEvaluator = new TableEvaluator(sctx, program)
@@ -325,13 +341,13 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       while (!sctx.interruptManager.isInterrupted && it.hasNext) {
         val expr = it.next
         debug(s"Testing: $expr")
-        // FIXME: Testing should always succeed at this point yet it somehow fails sometimes
+        // FIXME: Testing should always succeed at this point
         if (examples.exists(testCandidate(expr)(_).contains(false))) {
           debug(s"Failed testing!")
         } else {
           debug(s"Passed testing!")
           validateCandidate(expr) foreach { sol =>
-            val outerSol = sol.copy(term = innerToOuter.transform(sol.term)(Map()))
+            val outerSol = sol.copy(term = innerToOuter(sol.term))
             if (sol.isTrusted) return Stream(outerSol) // Found verifiable solution, return immediately
             else {
               // Solution was not verifiable, remember it anyway. Allow up to 2
