@@ -99,6 +99,7 @@ object PCFGEmitter {
       production.fullBody = fullBody
 
       production.addFlag(Annotation("production", Seq(Some(frequency))))
+      production.addFlag(Annotation("tag", Seq(Some("top"))))
 
       production
     }
@@ -111,6 +112,25 @@ object PCFGEmitter {
     argTypes: Seq[TypeTree],
     exprs: Seq[Expr]
   ): Seq[FunDef] = {
+    def tagOf = Map[Class[_ <: Expr], String](
+      classOf[BooleanLiteral] -> "booleanC",
+      classOf[InfiniteIntegerLiteral] -> "const",
+      classOf[IntLiteral] -> "const",
+      classOf[And] -> "and",
+      classOf[Or] -> "or",
+      classOf[Not] -> "not",
+      classOf[Plus] -> "plus",
+      classOf[BVPlus] -> "plus",
+      classOf[Minus] -> "minus",
+      classOf[BVMinus] -> "minus",
+      classOf[Times] -> "times",
+      classOf[BVTimes] -> "times",
+      classOf[Modulo] -> "mod",
+      classOf[Division] -> "div",
+      classOf[Equals] -> "equals",
+      classOf[IfExpr] -> "ite"
+    ).withDefaultValue("top")
+
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
     val productionName: String = s"p${typeTreeName(tt)}$constrName"
     val id: Identifier = FreshIdentifier(productionName, tt)
@@ -135,6 +155,7 @@ object PCFGEmitter {
 
     val frequency: Int = exprs.size
     production.addFlag(Annotation("production", Seq(Some(frequency))))
+    production.addFlag(Annotation("tag", Seq(Some(tagOf(constr)))))
 
     Seq(production)
   }
@@ -149,13 +170,24 @@ object PCFGEmitter {
       val productionName: String = s"p${typeTreeName(tt)}$constrName"
       val id: Identifier = FreshIdentifier(productionName, tt)
       val params: Seq[ValDef] = Seq()
-      val fullBody: Expr = literals.head
+      val lit = literals.head
+      val fullBody: Expr = lit
 
       val production: FunDef = new FunDef(id, Seq(), params, tt)
       production.fullBody = fullBody
 
       val frequency: Int = literals.size
+      val tag = lit match {
+        case BooleanLiteral(_) => "booleanC"
+        case InfiniteIntegerLiteral(z) if z == BigInt(0) => "zero"
+        case InfiniteIntegerLiteral(o) if o == BigInt(1) => "one"
+        case IntLiteral(0) => "zero"
+        case IntLiteral(1) => "one"
+        case _ => "const"
+      }
+
       production.addFlag(Annotation("production", Seq(Some(frequency))))
+      production.addFlag(Annotation("tag", Seq(Some(tag))))
 
       production
     }
@@ -177,7 +209,7 @@ object PCFGEmitter {
 
       val frequency: Int = fis.size
       production.addFlag(Annotation("production", Seq(Some(frequency))))
-
+      production.addFlag(Annotation("tag", Seq(Some("top"))))
       Seq(production)
     } else {
       // Ignore calls to non-library functions

@@ -25,7 +25,7 @@ object SynthesisPhase extends UnitPhase[Program] {
 
   // Pick mode for synthesis
   object Modes extends Enumeration {
-    val Default, Probwise, Manual = Value
+    val Default, Probwise, ProbwiseOnly, Manual = Value
   }
   val optMode = LeonEnumOptionDef[Modes.type](
     "mode", "Mode for synthesis", Modes, Modes.Default, "[m]"
@@ -33,9 +33,6 @@ object SynthesisPhase extends UnitPhase[Program] {
 
   // Manual mode options
   val optManualScript = LeonStringOptionDef("manual:script", "Give a script to manual search", default = "", "[cmd]")
-
-  // Default mode options
-  val optProbwise = LeonFlagOptionDef("use-probwise", "Use new probwise enumeration instead of STE", false)
 
   // STE-related options
   val optSTEVanuatoo = LeonFlagOptionDef("ste:vanuatoo", "Generate inputs using new korat-style generator", false)
@@ -50,7 +47,6 @@ object SynthesisPhase extends UnitPhase[Program] {
     optIntroRecCalls,
     optMode,
     optManualScript,
-    optProbwise,
     optSTEVanuatoo, optSTEMaxSize,
     optProbwiseTopdownOpt, optProbwiseTopdownCoeff
   )
@@ -64,10 +60,14 @@ object SynthesisPhase extends UnitPhase[Program] {
     }
     val rules = mode match {
       case Modes.Manual => Rules.manual
-      case Modes.Probwise => Rules.probwiseOnly
+      case Modes.ProbwiseOnly => Rules.probwiseOnly
+      case Modes.Probwise => Rules.default(
+        ctx.findOptionOrDefault(optIntroRecCalls),
+        probwise = true
+      )
       case Modes.Default => Rules.default(
         ctx.findOptionOrDefault(optIntroRecCalls),
-        ctx.findOptionOrDefault(optProbwise)
+        probwise = false
       )
     }
     val costModel = {

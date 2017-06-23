@@ -588,8 +588,12 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case fd: FunDef =>
         for ((k, vs) <- fd.extAnnotations) {
-          // FIXME: This is wrong, but when is the result actually None?
-          val vsStrs = vs.map(_.map(v => s"$v").getOrElse("None"))
+          def v2s(a: Option[Any]) = a match {
+            case Some(st: String) => '"' + s"$st" + '"'
+            case Some(o) => s"$o"
+            case None => "None" // FIXME ????
+          }
+          val vsStrs = vs map v2s
           p"""|@$k${nary(vsStrs, ",", "(", ")")}
               |"""
         }

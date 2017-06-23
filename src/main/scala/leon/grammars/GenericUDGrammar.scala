@@ -191,16 +191,21 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     }
   }
 
+  // TODO: This is hard-coded for how our stat extractor currently generates labeled type names,
+  //   i.e. <basetype>_<index>_<parent> or <basetype>_TOPLEVELxx
+  // It will not work with other formats
+  // Maybe abstract over it?
+  def parseClassName(cname: String): Option[(String, Int)] = {
+    val chunks = cname.split("_")
+    if (chunks.last.contains("TOPLEVEL"))
+      None
+    else Some((chunks.last, chunks.init.last.toInt))
+  }
+
   def tpeToLabel(tpe: TypeTree): Label = {
     unwrapType(tpe) match {
       case Some(underlying) =>
-        val within = {
-          val cname = tpe.asInstanceOf[ClassType].classDef.id.name
-          val chunks = cname.split("_")
-          if (chunks.last == "None") // TODO FIXME!!!
-            None
-          else Some((chunks.last, chunks.init.last.toInt))
-        }
+        val within = parseClassName(tpe.asInstanceOf[ClassType].classDef.id.name)
         Label(underlying).withAspect(RealTyped(within))
       case None =>
         Label(tpe)

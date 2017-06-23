@@ -49,8 +49,8 @@ object Stats2Main {
 
     val canaryTypes = getCanaryTypes(canaryModule)
 
-    //val allEs = allSubExprs2(bigProgram)
-    val allEs = allSubExprs2(Program(bigProgram.units.filter(_.isMainUnit)))
+    val allEs = allSubExprs2(bigProgram)
+    //val allEs = allSubExprs2(Program(bigProgram.units.filter(_.isMainUnit)))
 
     val fase2 = canaryTypeFilter2(allEs, canaryTypes)
     //println("====== fase2 =======")

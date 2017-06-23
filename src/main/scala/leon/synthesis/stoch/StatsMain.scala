@@ -13,7 +13,7 @@ import leon.utils.PreprocessingPhase
 object StatsMain {
 
   val SELECT_FUNCTION_TYPES: Boolean = false
-  val SELECT_TUPLE_TYPES: Boolean = true
+  val SELECT_TUPLE_TYPES: Boolean = false
 
 /*
   def main(args: Array[String]): Unit = {

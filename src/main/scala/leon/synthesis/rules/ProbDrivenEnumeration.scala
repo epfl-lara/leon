@@ -114,7 +114,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
         outerProgram.units.map { u =>
           if (!u.isMainUnit) u else {
             u.copy(defs = u.defs.map {
-              case cd: ClassDef => cd
               case m: ModuleDef =>
                 m.copy(defs = m.defs.map {
                   case cd: ClassDef => cd
@@ -124,6 +123,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
                     fd1.fullBody = outerToInner(fd1.fullBody)
                     fd1
                 })
+              case other => other
             })
           }
         }
@@ -160,7 +160,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
         (-1000000000.0, 10000000) // Run forever in probwise-only mode
       else
-        (-80.0, 50000)
+        (-8000.0, 5000000)
     }
 
     val fullEvaluator = new TableEvaluator(sctx, program)
@@ -383,7 +383,7 @@ object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enu
   import leon.grammars.aspects._
   def getParams(sctx: SynthesisContext, p: Problem) = {
     Params(
-      Label(p.outType).withAspect(TypeDepthBound(3)),//.withAspect(Tagged(Tags.Top, 0, None))
+      Label(p.outType).withAspect(TypeDepthBound(3)).withAspect(Tagged(Tags.Top, 0, None)),
       grammars.default(sctx, p),
       sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
     )
