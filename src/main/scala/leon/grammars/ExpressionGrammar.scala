@@ -354,16 +354,16 @@ abstract class ExpressionGrammar extends Printable {
     }
 
     val prods1 = fromGenerics ++ staticProductions.getOrElse(simpleLab, Nil)
-    //if (prods1.isEmpty) {
-    //  // If we found no productions, fall back to the general label without tag
-    //  return processProductions(lab.removeAspect(RealTypedAspectKind))
-    //}
+    if (prods1.isEmpty) {
+      // If we found no productions, fall back to the general label without tag
+      return processProductions(lab.removeAspect(RealTypedAspectKind))
+    }
     dbg("PRODS1", prods1)
     val prods1b = mergeIdenticalProds(prods1)
     dbg("PRODS1b", prods1b)
     staticProductions += simpleLab -> prods1b
-    val prods1c = addFallback(lab, prods1b)
-    val prods2 = computeCostsAndLogProbs(prods1c)
+    //val prods1c = addFallback(lab, prods1b)
+    val prods2 = computeCostsAndLogProbs(prods1b)
     dbg("PRODS2", prods2)
     val prods3 = applyAspects(lab, prods2)
     dbg("PRODS3", prods3)
@@ -372,22 +372,22 @@ abstract class ExpressionGrammar extends Printable {
     prods4
   }
 
-  private def addFallback(lab: Label, prods: Seq[Prod]) = {
-    lab.aspect(RealTypedAspectKind) match {
-      case None => prods
-      case Some(_) =>
-        val totalFreq = prods.map(_.cost).sum
-        // Add a fallback with 20% to go back to toplevel
-        val fallback = ProductionRule[Label, Expr](
-          Seq(lab.removeAspect(RealTypedAspectKind)),
-          _.head,
-          Tags.Top,
-          cost = Math.max(1, totalFreq/4),
-          logProb = -1.0
-        )
-        prods :+ fallback
-    }
-  }
+  //private def addFallback(lab: Label, prods: Seq[Prod]) = {
+  //  lab.aspect(RealTypedAspectKind) match {
+  //    case None => prods
+  //    case Some(_) =>
+  //      val totalFreq = prods.map(_.cost).sum
+  //      // Add a fallback with 20% to go back to toplevel
+  //      val fallback = ProductionRule[Label, Expr](
+  //        Seq(lab.removeAspect(RealTypedAspectKind)),
+  //        _.head,
+  //        Tags.Top,
+  //        cost = Math.max(1, totalFreq/4),
+  //        logProb = -1.0
+  //      )
+  //      prods :+ fallback
+  //  }
+  //}
 
   private def mergeIdenticalProds(prods: Seq[Prod]): Seq[Prod] = {
     prods.groupBy(_.subTrees).flatMap { case (subs, prods) =>
