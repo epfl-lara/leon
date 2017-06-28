@@ -16,6 +16,8 @@ case class Label(tpe: TypeTree, aspectsMap: TreeMap[AspectKind, Aspect] = TreeMa
     ts + aspects.map(_.asString).mkString
   }
 
+  override def toString = asString(LeonContext.empty)
+
   def withAspects(as: Seq[Aspect]) = {
     as.foldLeft(this)(_ withAspect _)
   }
