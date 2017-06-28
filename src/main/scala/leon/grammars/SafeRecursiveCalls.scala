@@ -15,7 +15,7 @@ import synthesis.utils.Helpers._
   * @param ws An expression that contains the known set [[synthesis.Witnesses.Terminating]] expressions
   * @param pc The path condition for the generated [[Expr]] by this grammar
   */
-case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path) extends SimpleExpressionGrammar {
+case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path, cost: Option[Int] = None) extends SimpleExpressionGrammar {
   def generateSimpleProductions(implicit ctx: LeonContext) = {
     val calls = terminatingCalls(prog, ws, pc, None, true)
 
@@ -28,7 +28,7 @@ case class SafeRecursiveCalls(prog: Program, ws: Expr, pc: Path) extends SimpleE
           freeSeq.map(_.getType),
           sub => replaceFromIDs(freeSeq.zip(sub).toMap, fi),
           Tags.tagOf(fi.tfd.fd, isSafe = true),
-          formulaSize(fi) - freeSeq.size
+          cost getOrElse (formulaSize(fi) - freeSeq.size)
         )
     }}
   }

@@ -8,7 +8,6 @@ import purescala.ExprOps._
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import purescala.Extractors.TopLevelAnds
-import purescala.Types.TypeParameter
 import Witnesses.Hint
 
 package object grammars {
@@ -18,7 +17,14 @@ package object grammars {
     val hints = ws.collect { case Hint(e) if formulaSize(e) >= 4 => e }
     val inputs = p.allAs.map(_.toVariable) ++ hints ++ extraHints
     if (sctx.settings.steUserDefinedGrammar) {
-      GenericUDGrammar(sctx.program, Some(sctx.functionContext), inputs) //p.allAs map (_.toVariable))
+      val recCalls = {
+        if (sctx.findOptionOrDefault(SynthesisPhase.optIntroRecCalls)) Empty()
+        else SafeRecursiveCalls(sctx.program, p.ws, p.pc, Some(1))
+      }
+      Union(
+        GenericUDGrammar(sctx.program, Some(sctx.functionContext), inputs), //p.allAs map (_.toVariable))
+        recCalls
+      )
     } else {
       val exclude = sctx.settings.functionsToIgnore
       val recCalls = {
@@ -26,7 +32,7 @@ package object grammars {
         else SafeRecursiveCalls(sctx.program, p.ws, p.pc)
       }
 
-      Union(Seq(
+      Union(
         BaseGrammar,
         Closures(3),
         Equalities,
@@ -37,18 +43,18 @@ package object grammars {
         Constants(sctx.functionContext.fullBody),
         FunctionCalls(sctx.program, sctx.functionContext, exclude),
         recCalls
-      ))
+      )
     }
   }
 
   def values(prog: Program): ExpressionGrammar = {
-    Union(Seq(
+    Union(
       Literals,
       Closures(3),
       CaseClasses(prog),
       Generics(prog),
       Tuples(5),
       Sets(2)
-    ))
+    )
   }
 }

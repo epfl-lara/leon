@@ -179,10 +179,10 @@ object PCFGEmitter {
       val frequency: Int = literals.size
       val tag = lit match {
         case BooleanLiteral(_) => "booleanC"
-        case InfiniteIntegerLiteral(z) if z == BigInt(0) => "zero"
-        case InfiniteIntegerLiteral(o) if o == BigInt(1) => "one"
-        case IntLiteral(0) => "zero"
-        case IntLiteral(1) => "one"
+        case InfiniteIntegerLiteral(z) if z == BigInt(0) => "0"
+        case InfiniteIntegerLiteral(o) if o == BigInt(1) => "1"
+        case IntLiteral(0) => "0"
+        case IntLiteral(1) => "1"
         case _ => "const"
       }
 

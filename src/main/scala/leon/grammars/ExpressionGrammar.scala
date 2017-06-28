@@ -354,7 +354,7 @@ abstract class ExpressionGrammar extends Printable {
     }
 
     val prods1 = fromGenerics ++ staticProductions.getOrElse(simpleLab, Nil)
-    if (prods1.isEmpty) {
+    if (prods1.isEmpty && lab.aspect(RealTypedAspectKind).isDefined) {
       // If we found no productions, fall back to the general label without tag
       return processProductions(lab.removeAspect(RealTypedAspectKind))
     }

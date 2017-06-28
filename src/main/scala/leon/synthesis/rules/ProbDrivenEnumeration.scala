@@ -12,7 +12,6 @@ import leon.utils.DebugSectionSynthesisVerbose
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps._
-import purescala.DefOps._
 import purescala.Common.Identifier
 import purescala.Definitions._
 import utils.MutableExpr
@@ -333,7 +332,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    val untrustedAllowed = 5
+    val untrustedAllowed = 3
 
     def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
@@ -368,10 +367,10 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       def apply(hctx: SearchContext): RuleApplication = {
         try {
           val ndProgram = new NonDeterministicProgram(hctx, p)
-          RuleClosed (ndProgram.solutionStream)
+          RuleClosed(ndProgram.solutionStream)
         } catch {
           case UnsatPCException =>
-            RuleFailed()
+            RuleClosed(Solution.UNSAT(p))
         }
       }
     })
@@ -382,8 +381,10 @@ object ProbDrivenEnumeration extends ProbDrivenEnumerationLike("Prob. driven enu
   import leon.grammars.Tags
   import leon.grammars.aspects._
   def getParams(sctx: SynthesisContext, p: Problem) = {
+    val useTags   = sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTags)
+    val rootLabel = Label(p.outType).withAspect(TypeDepthBound(3))
     Params(
-      Label(p.outType).withAspect(TypeDepthBound(3)).withAspect(Tagged(Tags.Top, 0, None)),
+      if (useTags) rootLabel.withAspect(Tagged(Tags.Top, 0, None)) else rootLabel,
       grammars.default(sctx, p),
       sctx.findOptionOrDefault(SynthesisPhase.optProbwiseTopdownOpt)
     )

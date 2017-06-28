@@ -843,7 +843,7 @@ abstract class STELike(name: String) extends Rule(name) {
 
                 case Some(false) =>
                   debug("Path-condition seems UNSAT")
-                  return RuleFailed()
+                  return RuleClosed(Solution.UNSAT(p))
 
                 case None =>
                   if (!interruptManager.isInterrupted) {

@@ -16,7 +16,7 @@ case class Tagged(tag: Tag, pos: Int, isConst: Option[Boolean]) extends Aspect(T
   /** [[isConst]] is printed as follows: ↓ for constants only, ↑ for nonconstants only,
     * ○ for anything allowed.
     */
-  def asString(implicit ctx: LeonContext): String = s"#$tag$cString@$pos"
+  def asString(implicit ctx: LeonContext): String = s"#$tag@$pos$cString"
 
   def applyTo(lab: Label, ps: Seq[Production])(implicit ctx: LeonContext) = {
 

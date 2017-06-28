@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import CandidateScorer.Score
 import purescala.Expressions.Expr
-import purescala.Common.FreshIdentifier
+import purescala.Common._
 import synthesis.{Example, SynthesisPhase}
 import utils.{DedupedPriorityQueue, NoPosition}
 import evaluators.EvaluationResults._
@@ -17,8 +17,14 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object ProbwiseTopdownEnumerator {
-  val ntWrap = (e: NonTerminalInstance[Label, Expr]) => {
-    FreshIdentifier.forceId(Console.BOLD + e.nt.asString(LeonContext.empty) + Console.RESET, 0, e.nt.tpe).toVariable
+  val ntWrap = {
+    val m = scala.collection.mutable.HashMap[Label, Expr]()
+    (e: NonTerminalInstance[Label, Expr]) => {
+      m.getOrElseUpdate(
+        e.nt,
+        FreshIdentifier.forceId(Console.BOLD + e.nt.asString(LeonContext.empty) + Console.RESET, 0, e.nt.tpe).toVariable
+      )
+    }
   }
 }
 
@@ -210,7 +216,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
   def iterator(nt: NT): Iterator[R] = new Iterator[R] {
     val ordering = Ordering.by[WorklistElement, Double](_.priority)
-    val worklist = new DedupedPriorityQueue[WorklistElement, Expansion[NT, R]](elem => elem.expansion)(ordering)
+    val worklist = new DedupedPriorityQueue[WorklistElement, R](elem => elem.expansion.falseProduce(ntWrap))(ordering)
 
     val seedExpansion = NonTerminalInstance[NT, R](nt)
     val seedScore = scorer.score(seedExpansion, Set(), eagerReturnOnFalse = true)
@@ -218,7 +224,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     worklist.enqueue(worklistSeed)
 
-    def hasNext: Boolean = !interrupted.get() && {
+    def hasNext: Boolean = { //!interrupted.get() && {
       prepareNext()
       worklist.nonEmpty
     }
@@ -245,10 +251,19 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
           score.noExs.isEmpty
         }
 
-        if (elem.priority < minLogProb || generated > maxEnumerated) {
-          // We exhausted our limit of log. prob. or enumerated programs. Clear all and fail.
-          val reason = if (elem.priority < minLogProb) "low probability" else "number of programs"
-          debug(s"Enumerator exhausted resource ($reason)")
+        val stop =
+          if (ctx.interruptManager.isInterrupted)
+            Some("Enumerator interrupted!")
+          else if (elem.priority < minLogProb)
+            Some("Enumerator exceeded minimum probability")
+          else if (generated > maxEnumerated)
+            Some("Enumerator exceeded max. number of programs")
+          else None
+
+        if (stop.isDefined) {
+          debug(stop.get)
+          if (ctx.interruptManager.isInterrupted)
+            ctx.interruptManager.recoverInterrupt()
           worklist.clear()
         } else if (!elem.expansion.complete || !compliesTests) {
           // The element has to be removed from the queue,
@@ -276,13 +291,25 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
               case Some(normalExpansion) =>
                 val normalElem = WorklistElement(normalExpansion, elem.logProb, elem.horizon, elem.score, elem.parent)
                 ifVerboseDebug { printer =>
-                  if (elem.expansion != normalExpansion) {
+                  if (elem.expansion.falseProduce(ntWrap) != normalExpansion.falseProduce(ntWrap)) {
                     printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
+                    (elem.expansion, normalExpansion) match {
+                      case (ProdRuleInstance(nt1, r1, ch1), ProdRuleInstance(nt2, r2, ch2)) =>
+                        ch1 zip ch2 foreach {
+                          case (c1@NonTerminalInstance(l1), c2@NonTerminalInstance(l2)) =>
+                            println(l1.toString)
+                            println(l2.toString)
+                            println(c1 == c2)
+                          case (c1, c2) =>
+                            println("PRI")
+                            println(c1 == c2)
+                        }
+                    }
                   }
                 }
 
                 // Then compute its immediate descendants and put them back in the worklist
-                val newElems = expandNext(normalElem, score)
+                val newElems = expandNext(normalElem, score).filter(_.priority > Double.NegativeInfinity)
                 verboseDebug(s"Expanded ${newElems.size} more elems")
                 worklist.enqueueAll(newElems)
 

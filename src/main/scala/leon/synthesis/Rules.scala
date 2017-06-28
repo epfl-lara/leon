@@ -37,28 +37,30 @@ object Rules {
     ProbDrivenEnumeration
   )
 
-  val manual = List(
-    OnePoint,
-    Ground,
-    UnusedInput,
-    EquivalentInputs,
-    UnconstrainedOutput,
-    IntroduceRecCalls,
-    rules.Assert,
-    DetupleInput,
+  def manual(introduceRecCalls: Boolean) = {
+    val recCalls = if (introduceRecCalls) List(IntroduceRecCalls) else Nil
+    List(
+      OnePoint,
+      Ground,
+      UnusedInput,
+      EquivalentInputs,
+      UnconstrainedOutput,
+      rules.Assert,
+      DetupleInput,
 
-    OptimisticGround,
-    //HOFDecomp,
+      OptimisticGround,
+      //HOFDecomp,
 
-    SymbolicTermExploration,
-    ProbDrivenEnumeration,
-    //ExampleGuidedTermExploration,
+      SymbolicTermExploration,
+      ProbDrivenEnumeration,
+      //ExampleGuidedTermExploration,
 
-    InputSplit,
-    GenericTypeEqualitySplit,
-    InequalitySplit,
-    ADTSplit
-  )
+      InputSplit,
+      GenericTypeEqualitySplit,
+      InequalitySplit,
+      ADTSplit
+    ) ++ recCalls
+  }
 
   def default(introduceRecCalls: Boolean, probwise: Boolean): List[Rule] = {
     val enumeration = if (probwise) ProbDrivenEnumeration else SymbolicTermExploration

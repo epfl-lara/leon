@@ -41,6 +41,7 @@ object SynthesisPhase extends UnitPhase[Program] {
   // Probwise-enum related options
   val optProbwiseTopdownOpt   = LeonFlagOptionDef("probwise:opt"  , "Use optimized topdown enumerator", true)
   val optProbwiseTopdownCoeff = LeonLongOptionDef("probwise:coeff", "Priority coefficient for ProbwiseTopdownEnumerator (default: 24)", 24, "[value]")
+  val optProbwiseTags         = LeonFlagOptionDef("probwise:axioms", "Use manual axioms (tagged grammar)", true)
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optCostModel, optDerivTrees, optAllowPartial, optUserDefined, optUntrusted,
@@ -48,7 +49,7 @@ object SynthesisPhase extends UnitPhase[Program] {
     optMode,
     optManualScript,
     optSTEVanuatoo, optSTEMaxSize,
-    optProbwiseTopdownOpt, optProbwiseTopdownCoeff
+    optProbwiseTopdownOpt, optProbwiseTopdownCoeff, optProbwiseTags
   )
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
@@ -59,7 +60,8 @@ object SynthesisPhase extends UnitPhase[Program] {
       ctx.reporter.warning("Defining timeout with manual search")
     }
     val rules = mode match {
-      case Modes.Manual => Rules.manual
+      case Modes.Manual =>
+        Rules.manual(ctx.findOptionOrDefault(optIntroRecCalls))
       case Modes.ProbwiseOnly => Rules.probwiseOnly
       case Modes.Probwise => Rules.default(
         ctx.findOptionOrDefault(optIntroRecCalls),
@@ -109,7 +111,7 @@ object SynthesisPhase extends UnitPhase[Program] {
 
     var functions = Set[FunDef]()
 
-    chooses.toSeq.sortBy(_.fd.id).foreach { ci =>
+    chooses.sortBy(_.fd.id).foreach { ci =>
       val fd = ci.fd
 
       val synthesizer = new Synthesizer(ctx, program, ci, options)
