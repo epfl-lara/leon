@@ -7,7 +7,7 @@ import leon.annotation.grammar._
 object Commutative {
   
   @production(4)
-  def v = variable[BigInt]
+  def v = variable[Boolean]
   
   @production(1)
   @tag("not")

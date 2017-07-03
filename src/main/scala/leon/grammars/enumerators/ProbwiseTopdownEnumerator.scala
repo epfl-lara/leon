@@ -293,18 +293,6 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
                 ifVerboseDebug { printer =>
                   if (elem.expansion.falseProduce(ntWrap) != normalExpansion.falseProduce(ntWrap)) {
                     printer(s"Normalized to: ${normalExpansion.falseProduce(ntWrap)}")
-                    (elem.expansion, normalExpansion) match {
-                      case (ProdRuleInstance(nt1, r1, ch1), ProdRuleInstance(nt2, r2, ch2)) =>
-                        ch1 zip ch2 foreach {
-                          case (c1@NonTerminalInstance(l1), c2@NonTerminalInstance(l2)) =>
-                            println(l1.toString)
-                            println(l2.toString)
-                            println(c1 == c2)
-                          case (c1, c2) =>
-                            println("PRI")
-                            println(c1 == c2)
-                        }
-                    }
                   }
                 }
 

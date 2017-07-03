@@ -249,27 +249,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    /*val restartable = enum == "eqclasses" || enum == "topdown-opt"
-
-    def mkEnum = (enum match {
-      case "eqclasses" =>
-        ??? // This is disabled currently
-        new EqClassesEnumerator(grammar, topLabel, p.as, examples, program)
-      case "bottomup"  =>
-        ??? // This is disabled currently
-        new ProbwiseBottomupEnumerator(grammar, topLabel)
-      case _ =>
-        val disambiguate = enum match {
-          case "topdown" => false
-          case "topdown-opt" => true
-          case _ =>
-            warning(s"Enumerator $enum not recognized, falling back to top-down...")
-            false
-        }
-        val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
-        new ProbwiseTopdownEnumerator(grammar, topLabel, scorer, examples, rawEvalCandidate(_, _).result, maxGen, maxValidated, disambiguate)
-    }).iterator(topLabel)*/
-
     def mkEnum = {
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
       new ProbwiseTopdownEnumerator(
@@ -332,7 +311,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    val untrustedAllowed = 3
+    val untrustedAllowed = 6
 
     def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
