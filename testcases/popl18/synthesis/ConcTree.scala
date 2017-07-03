@@ -10,6 +10,15 @@ import leon.grammar.Grammar._
 import leon.annotation.grammar._
 
 object ConcTrees {
+  @production(1) def useConc[T](c1: Conc[T], c2: Conc[T]) = concatNormalized(c1, c2)
+  @production(1) def mkEmpty[T](): Conc[T] = Empty[T]()
+  @production(1) def mkSingle[T](elem: T): Conc[T] = Single(elem)
+  @production(1) def mkCC[T](sub1: Conc[T], sub2: Conc[T]): Conc[T] = CC(sub1, sub2)
+  @production(40) def useSize[T](c: Conc[T]): BigInt = c.size
+  @production(40) def useLevel[T](c: Conc[T]): BigInt = c.level
+  //@production(30) def p1[A, B](p: (A, B)): A = p._1
+  //@production(30) def p2[A, B](p: (A, B)): B = p._2
+
 
   @inline
   def max(x: BigInt, y: BigInt): BigInt = if (x >= y) x else y
@@ -157,10 +166,11 @@ object ConcTrees {
             r match {
               case CC(rl, rr) =>
                 val nrr = concatNonEmpty(rr, ys)
+                ???[Conc[T]] /*
                 if (nrr.level == xs.level - 3)
                   CC(l, CC(rl, nrr))
                 else
-                  CC(CC(l, rl), nrr)
+                  CC(CC(l, rl), nrr)*/
             }
           }
       }
@@ -232,17 +242,9 @@ object ConcTrees {
   def concatCorrectness[T](res: Conc[T], xs: Conc[T], ys: Conc[T]): Boolean =
     (res.toList == xs.toList ++ ys.toList)
 
-  @production(1) def useConc[T](c1: Conc[T], c2: Conc[T]) = concatNormalized(c1, c2)
-  @production(1) def mkEmpty[T](): Conc[T] = Empty[T]()
-  @production(1) def mkSingle[T](elem: T): Conc[T] = Single(elem)
-  @production(1) def mkCC[T](sub1: Conc[T], sub2: Conc[T]): Conc[T] = CC(sub1, sub2)
-  @production(40) def useSize[T](c: Conc[T]): BigInt = c.size
-  //@production(30) def p1[A, B](p: (A, B)): A = p._1
-  //@production(30) def p2[A, B](p: (A, B)): B = p._2
-
   def insert[T](xs: Conc[T], i: BigInt, y: T): Conc[T] = {
     require(xs.valid && i >= 0 && i <= xs.size) //note the precondition
-    /*xs match {
+    xs match {
       case Empty() => Single(y)
       case Single(x) =>
         if (i == 0) CC(Single(y), xs)
@@ -252,8 +254,8 @@ object ConcTrees {
           concatNonEmpty(insert(l, i, y), r)
         else
           concatNonEmpty(l, insert(r, i - l.size, y))
-    }*/
-    ???[Conc[T]]
+    }
+    //???[Conc[T]]
   } ensuring (res =>
     res.valid && // tree invariants
       res.level - xs.level <= 1 && res.level >= xs.level && // height of the output tree is at most 1 greater than that of the input tree

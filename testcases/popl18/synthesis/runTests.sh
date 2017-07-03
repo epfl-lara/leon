@@ -1,14 +1,14 @@
 #!/bin/bash
 
 grammar1=testcases/popl18/Grammar1-tags.scala
-grammar2=testcases/popl18/Grammar2-NoTup.scala
+grammar2=testcases/popl18/Grammar2.scala
 
 axioms1=on
 axioms2=off
 
 function run {
     cmd="./leon --debug=report --timeout=60 --synthesis --userdefined --partial=off \
-         --mode=manual --manual:script=$1 $grammar1 --probwise:axioms=$axioms1 $2"
+         --mode=manual --manual:script=$1 $grammar2 --probwise:axioms=$axioms2 $2"
     echo "Running " $cmd
     echo "------------------------------------------------------------------------------------------------------------------"
     $cmd;
