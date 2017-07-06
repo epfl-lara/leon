@@ -20,7 +20,7 @@ object DefOps {
     }
   }
 
-  private def unitOf(df: Definition)(implicit pgm: Program): Option[UnitDef] = df match {
+  def unitOf(df: Definition)(implicit pgm: Program): Option[UnitDef] = df match {
     case p : Program => None
     case u : UnitDef => Some(u)
     case other => pgm.units.find(_.containsDef(df))

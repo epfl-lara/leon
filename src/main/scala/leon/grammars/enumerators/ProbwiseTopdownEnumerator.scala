@@ -35,12 +35,14 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
                                 eval: (Expr, Example) => Result[Expr],
                                 minLogProb: Double,
                                 maxEnumerated: Int,
+                                untrustedScoreRatio: Double,
                                 indistinguish: Boolean
                                )(implicit ctx: LeonContext)
   extends AbstractProbwiseTopdownEnumerator[Label, Expr](
     scorer,
     minLogProb,
     maxEnumerated,
+    untrustedScoreRatio,
     indistinguish,
     ProbwiseTopdownEnumerator.ntWrap
   ) with GrammarEnumerator {
@@ -70,7 +72,8 @@ class ProbwiseTopdownEnumerator(protected val grammar: ExpressionGrammar,
 
 abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[NT, R],
                                                         minLogProb: Double,
-                                                        maxEnumerated: Double,
+                                                        maxEnumerated: Int,
+                                                        untrustedScoreRatio: Double,
                                                         indistinguish: Boolean,
                                                         ntWrap: NonTerminalInstance[NT, R] => R
                                                        )(implicit ctx: LeonContext) {
@@ -107,7 +110,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
   type Sig = Seq[R]
 
   var generated = 0
-  //var output = 0
+  var currentMaxGenerated = maxEnumerated
 
   // Filter out seen expressions
 
@@ -224,7 +227,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
 
     worklist.enqueue(worklistSeed)
 
-    def hasNext: Boolean = { //!interrupted.get() && {
+    def hasNext: Boolean = {
       prepareNext()
       worklist.nonEmpty
     }
@@ -237,6 +240,10 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
       ifVerboseDebug { printer =>
         printer("Printing lineage for returned element:")
         res.lineage.foreach { elem => printer(s"    ${elem.priority}: ${elem.expansion.falseProduce(ntWrap)}") }
+      }
+      // We set the limit to the worst program we will ever generate based on the first
+      if (indistinguish && currentMaxGenerated == maxEnumerated) {
+        currentMaxGenerated = Math.min(maxEnumerated, (untrustedScoreRatio * generated).toInt)
       }
       res.get
     }
@@ -256,7 +263,7 @@ abstract class AbstractProbwiseTopdownEnumerator[NT, R](scorer: CandidateScorer[
             Some("Enumerator interrupted!")
           else if (elem.priority < minLogProb)
             Some("Enumerator exceeded minimum probability")
-          else if (generated > maxEnumerated)
+          else if (generated > currentMaxGenerated)
             Some("Enumerator exceeded max. number of programs")
           else None
 

@@ -126,7 +126,7 @@ class PrettyPrinter(opts: PrinterOptions,
             |  $post
             |}"""
 
-      case p @ Passes(in, out, tests) =>
+      case Passes(in, out, tests) =>
         tests match {
           case Seq(MatchCase(_, Some(BooleanLiteral(false)), NoTree(_))) =>
             p"""|byExample($in, $out)"""
@@ -138,12 +138,12 @@ class PrettyPrinter(opts: PrinterOptions,
             }
         }
 
-      case c @ WithOracle(vars, pred) =>
+      case WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>
             |  $pred
             |}"""
 
-      case h @ Hole(tpe, es) =>
+      case Hole(tpe, es) =>
         if (es.isEmpty) {
           val hole = (for {
             scope <- getScope
@@ -161,7 +161,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case e @ CaseClass(cct, args) =>
         opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
           case Some((tpe, elems)) =>
-            if(elems.length > 0 && elems.forall { x => x.getType == tpe }) {
+            if(elems.nonEmpty && elems.forall { x => x.getType == tpe }) {
               printNameWithPath(opgm.get.library.List.get)
               p"($elems)"
             } else {
@@ -243,7 +243,7 @@ class PrettyPrinter(opts: PrinterOptions,
         } yield simplifyPath("leon" :: "lang" :: "synthesis" :: "choose" :: Nil, scope, false)(program))
           .getOrElse("leon.lang.synthesis.choose")
         p"$choose($pred)"
-      case e @ Error(tpe, err) => p"""error[$tpe]("$err")"""
+      case Error(tpe, err) => p"""error[$tpe]("$err")"""
       case AsInstanceOf(e, ct) => p"""$e.asInstanceOf[$ct]"""
       case IsInstanceOf(e, cct) =>
         if (cct.classDef.isCaseObject) {
@@ -260,7 +260,7 @@ class PrettyPrinter(opts: PrinterOptions,
           val presentArgs = args filter {
             case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
             case FunctionInvocation(tfd, _) if tfd.fd.isSynthetic => false
-            case other => true
+            case _ => true
           }
 
           val requireParens = presentArgs.nonEmpty || args.nonEmpty
@@ -281,7 +281,7 @@ class PrettyPrinter(opts: PrinterOptions,
           val presentArgs = args filter {
             case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
             case FunctionInvocation(tfd, _) if tfd.fd.isSynthetic => false
-            case other => true
+            case _ => true
           }
 
           val requireParens = presentArgs.nonEmpty || args.nonEmpty
@@ -300,7 +300,7 @@ class PrettyPrinter(opts: PrinterOptions,
           val presentArgs = args filter {
             case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
             case FunctionInvocation(tfd, _) if tfd.fd.isSynthetic => false
-            case other => true
+            case _ => true
           }
           val requireParens = presentArgs.nonEmpty || args.nonEmpty
           if (requireParens) {
@@ -323,9 +323,9 @@ class PrettyPrinter(opts: PrinterOptions,
             (pctx: PrinterContext) => p"${purescala.Constructors.tupleWrap(p._1)} => ${p._2}"(pctx)
 
           if (mapping.isEmpty) {
-            p"{ * => ${dflt} }"
+            p"{ * => $dflt }"
           } else {
-            p"{ ${nary(mapping map pm)}, * => ${dflt} }"
+            p"{ ${nary(mapping map pm)}, * => $dflt }"
           }
         }
 
@@ -354,9 +354,9 @@ class PrettyPrinter(opts: PrinterOptions,
       case RealMinus(l, r)          => optP { p"$l - $r" }
       case RealTimes(l, r)          => optP { p"$l * $r" }
       case RealDivision(l, r)       => optP { p"$l / $r" }
-      case fs @ FiniteSet(rs, _)    => p"{${rs.toSeq}}"
-      case fs @ FiniteBag(rs, _)    => p"{$rs}"
-      case fm @ FiniteMap(rs, _, _) => p"{${rs.toSeq}}"
+      case FiniteSet(rs, _)         => p"{${rs.toSeq}}"
+      case FiniteBag(rs, _)         => p"{$rs}"
+      case FiniteMap(rs, _, _)      => p"{${rs.toSeq}}"
       case Not(ElementOfSet(e, s))  => p"$e \u2209 $s"
       case ElementOfSet(e, s)       => p"$e \u2208 $s"
       case SubsetOf(l, r)           => p"$l \u2286 $r"
@@ -377,7 +377,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case ArrayLength(a)           => p"$a.length"
       case ArraySelect(a, i)        => p"$a($i)"
       case ArrayUpdated(a, i, v)    => p"$a.updated($i, $v)"
-      case a @ FiniteArray(es, d, s) => {
+      case a @ FiniteArray(es, d, s) =>
         val ArrayType(underlying) = a.getType
         val default = d.getOrElse(simplestValue(underlying))
         def ppBigArray(): Unit = {
@@ -388,7 +388,7 @@ class PrettyPrinter(opts: PrinterOptions,
           }
         }
         s match {
-          case IntLiteral(length) => {
+          case IntLiteral(length) =>
             if (es.size == length) {
               val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1).map(el => el._2)
               p"Array($orderedElements)"
@@ -399,10 +399,8 @@ class PrettyPrinter(opts: PrinterOptions,
             } else {
               ppBigArray()
             }
-          }
           case _ => ppBigArray()
         }
-      }
 
       case Not(expr) => p"\u00AC$expr"
 
@@ -515,7 +513,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case Program(units) =>
         p"""${nary(units filter { /*opts.printUniqueIds ||*/ _.isMainUnit }, "\n\n")}"""
 
-      case UnitDef(id, pack, imports, defs, _) =>
+      case UnitDef(_, pack, imports, defs, _) =>
         if (pack.nonEmpty && (!(opts.printRunnableCode))) {
           pack foreach { p =>
             p"""|package $p

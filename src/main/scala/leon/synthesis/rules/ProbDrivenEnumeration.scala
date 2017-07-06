@@ -35,8 +35,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
 
     val solverTo = 5000
 
-
-
     val outerExamples = {
       // Get from the params of the outer program if we are applying ind. heuristic
       val Params(_, _, indistinguish) = getParams(outerCtx, outerP)
@@ -157,10 +155,13 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
     val (minLogProb, maxEnumerated) = {
       import SynthesisPhase._
       if (sctx.findOptionOrDefault(optMode) == Modes.Probwise)
-        (-1000000000.0, 10000000) // Run forever in probwise-only mode
+        (-1000000000.0, 100000000) // Run forever in probwise-only mode
       else
-        (-8000.0, 5000000)
+        (-100.0, 50000)
     }
+
+    // How much deeper to seek when found an untrusted solution
+    val untrustedCostRatio = 5
 
     val fullEvaluator = new TableEvaluator(sctx, program)
     val partialEvaluator = new PartialExpansionEvaluator(sctx, program)
@@ -253,7 +254,7 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       val scorer = new CandidateScorer[Label, Expr](partialTestCandidate, _ => examples)
       new ProbwiseTopdownEnumerator(
         grammar, topLabel, scorer, examples, rawEvalCandidate,
-        minLogProb, maxEnumerated, indistinguish
+        minLogProb, maxEnumerated, untrustedCostRatio, indistinguish
       )
     }.iterator(topLabel)
 
@@ -311,8 +312,6 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
       }
     }
 
-    val untrustedAllowed = 6
-
     def solutionStream: Stream[Solution] = {
       timers.cegisIter.start()
       var untrusted: Seq[Solution] = Seq()
@@ -328,9 +327,8 @@ abstract class ProbDrivenEnumerationLike(name: String) extends Rule(name){
             val outerSol = sol.copy(term = innerToOuter(sol.term))
             if (sol.isTrusted) return Stream(outerSol) // Found verifiable solution, return immediately
             else {
-              // Solution was not verifiable, remember it anyway. Allow up to 2
+              // Solution was not verifiable, remember it anyway.
               untrusted :+= outerSol
-              if (untrusted.size >= untrustedAllowed) return untrusted.toStream
             }
           }
         }

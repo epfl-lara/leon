@@ -14,6 +14,32 @@ import StatsUtils._
 import leon.utils.Position
 
 object PCFGEmitter {
+  val imports = List(
+    Import(List("leon", "collection"), isWild = true),
+    Import(List("leon", "collection", "List"), isWild = true),
+    Import(List("leon", "collection", "ListOps"), isWild = true),
+    Import(List("leon", "collection", "ListSpecs"), isWild = true),
+    Import(List("leon", "lang", "Set"), isWild = true),
+    Import(List("leon", "lang"), isWild = true),
+    Import(List("leon", "lang"), isWild = true),
+    Import(List("leon", "lang", "synthesis"), isWild = true),
+    Import(List("leon", "math"), isWild = true),
+    Import(List("annotation", "grammar"), isWild = true)
+  )
+
+  val libFiles = Set(
+    "/library/leon/collection/List",
+    "/library/leon/lang/package",
+    "/library/leon/lang/Set"
+  )
+
+  def exclude(fd: FunDef) = {
+    fd.flags.contains(IsPrivate) ||
+    (fd.postcondition match {
+      case Some(Lambda(_, BooleanLiteral(true))) => true
+      case _ => false
+    })
+  }
 
   def emit(
             program: Program,
@@ -21,7 +47,6 @@ object PCFGEmitter {
             fcs: FunctionCallStats,
             ls: LitStats
           ): UnitDef = {
-
     /*
     type ExprConstrStats = Map[TypeTree, Map[Class[_ <: Expr], Map[Seq[TypeTree], Seq[Expr]]]]
     type FunctionCallStats = Map[TypeTree, Map[TypedFunDef, Seq[FunctionInvocation]]]
@@ -37,7 +62,7 @@ object PCFGEmitter {
       (constr, ttConstrMap) <- ttMap.toList.sortBy { case (constr, ttConstrMap) => (-total1(ttConstrMap), constr.toString) }
       if constr != classOf[FunctionInvocation]
       (argTypes, exprs) <- ttConstrMap if exprs.nonEmpty
-      production <- emit(program, tt, constr, argTypes, exprs, ls)
+      production <- emitSingle(program, tt, constr, argTypes, exprs, ls)
     } yield production
 
     val l2: Seq[FunDef] = for {
@@ -48,31 +73,22 @@ object PCFGEmitter {
 
     val moduleDef = ModuleDef(FreshIdentifier("grammar"), l1 ++ l2, isPackageObject = false)
     val packageRef = List("leon", "grammar")
-    val imports = List(
-                        Import(List("leon", "collection"), isWild = true),
-                        Import(List("leon", "lang"), isWild = true),
-                        Import(List("leon", "lang", "synthesis"), isWild = true),
-                        Import(List("leon", "math"), isWild = true),
-                        Import(List("annotation", "grammar"), isWild = true)
-                      )
     new UnitDef(FreshIdentifier("grammar"), packageRef, imports, Seq(moduleDef), isMainUnit = true)
   }
 
-  def emit(
-            program: Program,
-            tt: TypeTree,
-            constr: Class[_ <: Expr],
-            argTypes: Seq[TypeTree],
-            exprs: Seq[Expr],
-            ls: LitStats
-          ): Seq[FunDef] = {
-
+  def emitSingle(
+    program: Program,
+    tt: TypeTree,
+    constr: Class[_ <: Expr],
+    argTypes: Seq[TypeTree],
+    exprs: Seq[Expr],
+    ls: LitStats
+  ): Seq[FunDef] = {
     if (exprs.head.isInstanceOf[Literal[_]])
       emitLiterals(tt, constr, ls)
     else if (constr == classOf[CaseClass])
       emitCaseClass(tt, constr, argTypes, exprs)
     else emitGeneral(program, tt, constr, argTypes, exprs)
-
   }
 
   def emitCaseClass(
@@ -168,7 +184,7 @@ object PCFGEmitter {
     for ((_, literals) <- ls(tt).toSeq.sortBy(-_._2.size)) yield {
       val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
       val productionName: String = s"p${typeTreeName(tt)}$constrName"
-      val id: Identifier = FreshIdentifier(productionName, tt)
+      val id: Identifier = FreshIdentifier(productionName, tt, true)
       val params: Seq[ValDef] = Seq()
       val lit = literals.head
       val fullBody: Expr = lit
@@ -194,27 +210,36 @@ object PCFGEmitter {
   }
 
   def emitFunctionCalls(tt: TypeTree, pos: Position, fis: Seq[FunctionInvocation]): Seq[FunDef] = {
-    if (pos.file.toString.contains("/leon/library/leon/")) {
-      val tfd = fis.head.tfd
-      val productionName: String = s"p${typeTreeName(tt)}FunctionInvocation${tfd.id.name}"
-      val id: Identifier = FreshIdentifier(productionName, tt)
-
-      val argTypes = tfd.params.map(_.getType)
-      val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
-      val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) => ValDef(FreshIdentifier(s"v$idx", ptt)) }
-      val fullBody: Expr = FunctionInvocation(tfd, params.map(_.toVariable))
-
-      val production: FunDef = new FunDef(id, tparams, params, tt)
-      production.fullBody = fullBody
-
-      val frequency: Int = fis.size
-      production.addFlag(Annotation("production", Seq(Some(frequency))))
-      production.addFlag(Annotation("tag", Seq(Some("top"))))
-      Seq(production)
+    if (Stats2Main.REPAIR){
+      if (pos.file.toString.contains("library/leon")) return Seq()
     } else {
-      // Ignore calls to non-library functions
-      Seq()
+      if (!libFiles.exists(pos.file.toString.contains)) return Seq() // Ignore non-lib calls
     }
+    val tfd = fis.head.tfd
+    if (exclude(tfd.fd)) return Seq() // exclude some functions
+    val tmap = TO.instantiation_<:(tfd.returnType, tt).get
+    val argTypes = tfd.params.map(_.getType).map(TO.instantiateType(_, tmap))
+    val retType = tt
+
+    val params = argTypes.zipWithIndex.map { case (tp, ind) => ValDef(FreshIdentifier(s"v$ind", tp)) }
+
+    val tparams = getTypeParams(FunctionType(argTypes, retType)).map(TypeParameterDef)
+
+    val id = FreshIdentifier("fd", retType, true)
+
+    val fd = new FunDef(id, tparams, params, retType)
+
+    val invocationTps = tfd.tps.map(TO.instantiateType(_, tmap))
+
+    val fullBody = FunctionInvocation(
+      tfd.fd.typed(invocationTps),
+      params map (_.toVariable)
+    )
+
+    fd.fullBody = fullBody
+    fd.addFlag(Annotation("tag", Seq(Some("top"))))
+    fd.addFlag(Annotation("production", Seq(Some(fis.size))))
+    Seq(fd)
   }
 
   def typeTreeName(tt: TypeTree): String = tt match {

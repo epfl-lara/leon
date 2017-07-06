@@ -6,7 +6,7 @@ package purescala
 import utils._
 import Expressions.Variable
 import Types._
-import Definitions.{CaseClassDef, Program, ValDef}
+import Definitions.Program
 
 object Common {
 
@@ -37,7 +37,7 @@ object Common {
   class Identifier private[Common](
     val name: String,
     val globalId: Int,
-    private[Common] val id: Int,
+    private val id: Int,
     private val tpe: TypeTree,
     private val alwaysShowUniqueID: Boolean = false
   ) extends Tree with Typed with Ordered[Identifier] {
@@ -77,20 +77,6 @@ object Common {
     }
   }
 
-  // r-mukund: Added as a hack to get pretty printable grammars from statistics files.
-  class Id2(valDef: ValDef, tt: TypeTree, label: CaseClassDef, private val alwaysShowUniqueID: Boolean = false)
-    extends Identifier(valDef.id.name, valDef.id.globalId, 0, tt, alwaysShowUniqueID) {
-
-    override def toString: String = {
-      s"${valDef.toVariable}.${label.fields.head.id.uniqueName}"
-    }
-
-    override def uniqueNameDelimited(delim: String): String = toString
-
-    override def uniqueName: String = toString
-
-  }
-
   object FreshIdentifier {
 
     private val uniqueCounter = new UniqueCounter[String]()
@@ -116,9 +102,11 @@ object Common {
       * @param forceId The forced ID of the identifier
       * @param tpe The type of the identifier
       */
-    object forceId {
-      def apply(name: String, forceId: Int, tpe: TypeTree, alwaysShowUniqueID: Boolean = false): Identifier =
-        new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID)
+    def forceId(name: String, forceId: Int, tpe: TypeTree, alwaysShowUniqueID: Boolean = false): Identifier =
+      new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID)
+
+    def noDec(name: String, tpe: TypeTree = Untyped): Identifier = {
+      new Identifier(name, uniqueCounter.nextGlobal, uniqueCounter.next(name), tpe, true)
     }
   }
 

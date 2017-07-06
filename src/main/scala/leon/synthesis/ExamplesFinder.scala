@@ -7,35 +7,28 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Common._
-import purescala.Constructors._
 import purescala.Extractors._
 import evaluators._
-import leon.grammars._
-import codegen._
 import datagen._
 import solvers._
-import solvers.z3._
 
 object ExamplesFinder {
   def isConcretelyTestablePasses(e: Expr) = {
     e match {
-      case Passes(in, out, cases) => 
-        if(cases.forall{
-            case MatchCase(pattern, optGuard, body) =>
-            PatternOps.exists{
-              case WildcardPattern(_) => false
-              case InstanceOfPattern(_, tp) => false
-              case u : UnapplyPattern => false
-              case _ => true
-            }(pattern) ||
-            ((pattern, optGuard) match {
-              case (WildcardPattern(Some(x)), Some(Equals(Variable(x2), b))) if x == x2 => isValue(b)
-              case (WildcardPattern(Some(x)), Some(Equals(b, Variable(x2)))) if x == x2 => isValue(b) 
-              case _ => false
-            })
-           }) {
-          true
-        } else false
+      case Passes(_, _, cases) =>
+        cases.forall{ case MatchCase(pattern, optGuard, _) =>
+          PatternOps.exists{
+            case WildcardPattern(_) => false
+            case InstanceOfPattern(_, _) => false
+            case _ : UnapplyPattern => false
+            case _ => true
+          }(pattern) ||
+          ((pattern, optGuard) match {
+            case (WildcardPattern(Some(x)), Some(Equals(Variable(x2), b))) if x == x2 => isValue(b)
+            case (WildcardPattern(Some(x)), Some(Equals(b, Variable(x2)))) if x == x2 => isValue(b)
+            case _ => false
+          })
+        }
       case _ => false
     }
   }
@@ -145,9 +138,9 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   def generateForPC(ids: List[Identifier], pc: Expr, ctx: LeonContext, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
     //println(program.definedClasses)
 
-    val evaluator = new CodeGenEvaluator(ctx, program)
+    val evaluator = new TableEvaluator(ctx, program)
     val datagen   = new GrammarDataGen(evaluator, grammars.values(program))
-    val solverF   = SolverFactory.getFromSettings(ctx, program)
+    val solverF   = SolverFactory.getFromSettings(ctx, program).withTimeout(150)
     val solverDataGen = new SolverDataGen(ctx, program, solverF)
 
     val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
@@ -155,7 +148,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     val solverExamples    = try {
       solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample)
     } catch  {
-      case e: leon.Unsupported =>
+      case _: leon.Unsupported =>
         Nil
     }
 
@@ -171,7 +164,6 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
         
         val exs     = ioPairs.map{ case (i, o) =>
           val test = Tuple(Seq(i, o))
-          val ids  = variablesOf(test)
 
           // Test could contain expressions, we evaluate
           abstractEvaluator.eval(test, Model.empty) match {
@@ -186,7 +178,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
           }
           results.toSet
         } catch {
-          case e: IDExtractionException => Set()
+          case _: IDExtractionException => Set()
         }
       case _ =>
         Set()
@@ -198,8 +190,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   
   private def expand(e: Expr): Expr=  {
     abstractEvaluator.eval(e) match {
-      case EvaluationResults.Successful((res, a)) => res
-      case _                                 => e
+      case EvaluationResults.Successful((res, _)) => res
+      case _ => e
     }
   }
   
@@ -344,13 +336,13 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     case Tuple(vs) =>
       vs.map(extractIds).zipWithIndex.flatMap{ case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case Tuple(vs) => vs(i) case e => throw new IDExtractionException("Expected Tuple, got " + e) }, e))
+          (id, andThen({ case Tuple(vs) => vs(i) case e => throw IDExtractionException("Expected Tuple, got " + e) }, e))
         }
       }
     case CaseClass(cct, args) =>
       args.map(extractIds).zipWithIndex.flatMap { case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) case e => throw new IDExtractionException("Expected Case class of type " + cct + ", got " + e) } ,e))
+          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) case e => throw IDExtractionException("Expected Case class of type " + cct + ", got " + e) } ,e))
         }
       }
 

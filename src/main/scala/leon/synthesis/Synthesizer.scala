@@ -72,6 +72,8 @@ class Synthesizer(val context : LeonContext,
   def validate(results: (Search, Stream[Solution]), allowPartial: Boolean, forceValidate: Boolean = false): (Search, Stream[(Solution, Boolean)]) = {
     val (s, sols) = results
 
+    println(s"Found ${sols.size} solutions")
+
     val result = sols.map { sol =>
       if (sol.isTrusted && !forceValidate)
         (sol, Some(true))
@@ -181,7 +183,7 @@ class Synthesizer(val context : LeonContext,
           case _ =>
         }
         Some(nfd)
-        case _ => None
+      case _ => None
     }
     val npr = transformProgram(transformer, program)
 

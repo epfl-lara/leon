@@ -141,6 +141,12 @@ object Constructors {
     }
   }
 
+  def caseClassSelector(caseClass: Expr, index: Int) = {
+    require(caseClass.getType.isInstanceOf[CaseClassType])
+    val cct = caseClass.getType.asInstanceOf[CaseClassType]
+    CaseClassSelector(cct, caseClass, cct.classDef.fields(index).id)
+  }
+
   /** $encoding of `case ... if ... => ... ` but simplified if possible, based on types of the encompassing [[purescala.Expressions.CaseClassPattern MatchExpr]].
     * @see [[purescala.Expressions.CaseClassPattern MatchExpr]]
     * @see [[purescala.Expressions.CaseClassPattern CaseClassPattern]]

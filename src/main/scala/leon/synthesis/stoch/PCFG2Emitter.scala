@@ -4,6 +4,7 @@ import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Extractors.Operator
+import leon.purescala.Constructors.caseClassSelector
 import leon.purescala.Types._
 import leon.purescala.{TypeOps => TO}
 import leon.synthesis.stoch.Stats._
@@ -85,14 +86,7 @@ object PCFG2Emitter {
     val defns: Seq[Definition] = labels ++ pr1 ++ pr2 ++ pr3
     val moduleDef = ModuleDef(FreshIdentifier("grammar"), defns, isPackageObject = false)
     val packageRef = List("leon", "grammar")
-    val imports = List(
-                        Import(List("leon", "collection"), isWild = true),
-                        Import(List("leon", "lang"), isWild = true),
-                        Import(List("leon", "lang", "synthesis"), isWild = true),
-                        Import(List("leon", "math"), isWild = true),
-                        Import(List("annotation", "grammar"), isWild = true)
-                      )
-    new UnitDef(FreshIdentifier("grammar"), packageRef, imports, Seq(moduleDef), isMainUnit = true)
+    new UnitDef(FreshIdentifier("grammar"), packageRef, PCFGEmitter.imports, Seq(moduleDef), isMainUnit = true)
 
   }
 
@@ -131,20 +125,20 @@ object PCFG2Emitter {
       val ccd = cct.classDef
       val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}${ccd.id.name.toString}${ccCnt.nextGlobal}"
       val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
-      val id: Identifier = FreshIdentifier(productionName, outputLabel)
+      val id: Identifier = FreshIdentifier(productionName, outputLabel, true)
 
       val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
       val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
         val inputLabel = CaseClassType(implicits(ptt)(Some(idx, constr)), getTypeParams(ptt))
         ValDef(FreshIdentifier(s"v$idx", inputLabel))
       }
-      val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
-        val pid = params(idx)
-        val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, constr)))
-        ValDef(id)
+
+      val operands = params.map { p =>
+        val labeledT = p.getType.asInstanceOf[CaseClassType]
+        CaseClassSelector(labeledT, p.toVariable, labeledT.classDef.fieldsIds.head)
       }
 
-      val fullBody = CaseClass(CaseClassType(ccd, tt.asInstanceOf[ClassType].tps), rawParams map (_.toVariable))
+      val fullBody = CaseClass(CaseClassType(ccd, tt.asInstanceOf[ClassType].tps), operands)
 
       val production: FunDef = new FunDef(id, tparams, params, outputLabel)
       production.fullBody = fullBody
@@ -184,18 +178,19 @@ object PCFG2Emitter {
     val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
     val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}$constrName"
     val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
-    val id: Identifier = FreshIdentifier(productionName, outputLabel)
+    val id: Identifier = FreshIdentifier(productionName, outputLabel, true)
 
     val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
     val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
       val inputLabel = CaseClassType(implicits(ptt)(Some(idx, constr)), getTypeParams(ptt))
       ValDef(FreshIdentifier(s"v$idx", inputLabel))
     }
-    val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
-      val pid = params(idx)
-      val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, constr)))
-      ValDef(id)
+
+    val operands = params.map { p =>
+      val labeledT = p.getType.asInstanceOf[CaseClassType]
+      CaseClassSelector(labeledT, p.toVariable, labeledT.classDef.fieldsIds.head)
     }
+
     val modelExpr = exprs.head
     val typeN = TO.instantiation_<:(modelExpr.getType, tt).get
     val modelExprInst = TO.instantiateType(modelExpr, typeN, Map())
@@ -205,7 +200,7 @@ object PCFG2Emitter {
         val fd = modelProgram.library.variable.get
         FunctionInvocation(TypedFunDef(fd, Seq(tt)), Seq())
       } else {
-        op(rawParams.map(_.toVariable))
+        op(operands)
       }
     }
 
@@ -230,7 +225,7 @@ object PCFG2Emitter {
       val constrName: String = constr.toString.stripPrefix("class leon.purescala.Expressions$")
       val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}$constrName"
       val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
-      val id: Identifier = FreshIdentifier(productionName, outputLabel)
+      val id: Identifier = FreshIdentifier(productionName, outputLabel, true)
 
       val tparams: Seq[TypeParameterDef] = Seq()
       val params: Seq[ValDef] = Seq()
@@ -253,51 +248,52 @@ object PCFG2Emitter {
                          fis: Seq[FunctionInvocation],
                          implicits: Map[TypeTree, Map[Option[(Int, Class[_ <: Expr])], CaseClassDef]]
                        ): Seq[FunDef] = {
-    if (pos.file.toString.contains("/leon/library/leon/")) {
-      val tfd = fis.head.tfd
-      val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}FunctionInvocation${tfd.id.name}"
-      val outputLabel = CaseClassType(implicits(tt)(idxPar), getTypeParams(tt))
-      val id: Identifier = FreshIdentifier(productionName, tt)
-      val argTypes = tfd.params.map(_.getType)
-
-      if (!implicits.contains(tt) || !implicits(tt).contains(idxPar)) {
-        println(s"Suppressing production rule for type $tt, $idxPar, ${tfd.id}: Non-terminal symbol not found")
-        // println(s"Head function invocation: ${fis.head}")
-        return Seq()
-      } else if (argTypes.zipWithIndex.exists { case (ptt, idx) =>
-        !implicits.contains(ptt) || !implicits(ptt).contains(Some(idx, classOf[FunctionInvocation]))
-      } ) {
-        val (ptt, idx) = argTypes.zipWithIndex.find { case (ptt2, idx2) =>
-          !implicits.contains(ptt2) || !implicits(ptt2).contains(Some(idx2, classOf[FunctionInvocation]))
-        }.get
-        println(s"Suppressing production rule for type $tt, $idxPar, ${tfd.id}: Mysterious argument $ptt, $idx")
-        // println(s"Head function invocation: ${fis.head}")
-        return Seq()
-      }
-
-      val tparams: Seq[TypeParameterDef] = getTypeParams(FunctionType(argTypes, tt)).map(TypeParameterDef)
-      val params: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
-        val inputLabel = CaseClassType(implicits(ptt)(Some(idx, classOf[FunctionInvocation])), getTypeParams(ptt))
-        ValDef(FreshIdentifier(s"v$idx", inputLabel))
-      }
-      val rawParams: Seq[ValDef] = argTypes.zipWithIndex.map { case (ptt, idx) =>
-        val pid = params(idx)
-        val id = new Id2(pid, ptt, implicits(ptt)(Some(idx, classOf[FunctionInvocation])))
-        ValDef(id)
-      }
-      val fullBody: Expr = FunctionInvocation(tfd, rawParams.map(_.toVariable))
-
-      val production: FunDef = new FunDef(id, tparams, params, outputLabel)
-      production.fullBody = fullBody
-
-      val frequency: Int = fis.size // TODO! Fix this!
-      production.addFlag(Annotation("production", Seq(Some(frequency))))
-
-      Seq(production)
+    if (Stats2Main.REPAIR){
+      if (pos.file.toString.contains("library/leon")) return Seq()
     } else {
-      // Ignore calls to non-library functions
-      Seq()
+      if (!PCFGEmitter.libFiles.exists(pos.file.toString.contains)) return Seq() // Ignore non-lib calls
     }
+    val tfd = fis.head.tfd
+
+    if (PCFGEmitter.exclude(tfd.fd)) return Seq() // exclude some functions
+
+    val tmap = TO.instantiation_<:(tfd.returnType, tt).get
+    val argTypes = tfd.params.map(_.getType).map(TO.instantiateType(_, tmap))
+    val labeledArgTypes = argTypes.zipWithIndex.map { case (tp, ind) =>
+      CaseClassType(
+        implicits(normalizeType(tp)).getOrElse(
+          Some((ind, classOf[FunctionInvocation])),
+          {
+            println(s"Did not find ${normalizeType(tp)} -> ($ind, FunctionInvocation)")
+            return Seq()
+          }
+        ),
+        getTypeParams(tp)
+      )
+    }
+    val retType = tt
+    val labeledRetType = CaseClassType(
+      implicits(normalizeType(tt))(idxPar),
+      getTypeParams(tt)
+    )
+    val params = labeledArgTypes.zipWithIndex.map { case (tp, ind) => ValDef(FreshIdentifier(s"v$ind", tp)) }
+
+    val tparams = getTypeParams(FunctionType(argTypes, retType)).map(TypeParameterDef)
+
+    val id = FreshIdentifier("fd", labeledRetType, true)
+
+    val fd = new FunDef(id, tparams, params, labeledRetType)
+
+    val invocationTps = tfd.tps.map(TO.instantiateType(_, tmap))
+
+    val fullBody = FunctionInvocation(
+      tfd.fd.typed(invocationTps),
+      params map (p => caseClassSelector(p.toVariable, 0))
+    )
+
+    fd.fullBody = fullBody
+    fd.addFlag(Annotation("production", Seq(Some(fis.size))))
+    Seq(fd)
   }
 
   def emitStartProds2(
@@ -314,20 +310,19 @@ object PCFG2Emitter {
 
     val productionName: String = s"p${PCFGEmitter.typeTreeName(tt)}Start"
     val outputLabel = tt
-    val id = FreshIdentifier(productionName, tt)
+    val id = FreshIdentifier(productionName, tt, true)
 
     val tparams: Seq[TypeParameterDef] = getTypeParams(tt).map(TypeParameterDef)
-    val params: Seq[ValDef] = Seq {
+    val param: ValDef = {
       val inputLabel = CaseClassType(implicits(tt)(None), getTypeParams(tt))
       ValDef(FreshIdentifier(s"v0", inputLabel))
     }
-    val rawParams: Seq[ValDef] = params.map { pid =>
-      val id = new Id2(pid, tt, implicits(tt)(None))
-      ValDef(id)
+    val fullBody = {
+      val labeledT = param.getType.asInstanceOf[CaseClassType]
+      CaseClassSelector(labeledT, param.toVariable, labeledT.classDef.fieldsIds.head)
     }
-    val fullBody: Expr = rawParams.head.toVariable
 
-    val production: FunDef = new FunDef(id, tparams, params, outputLabel)
+    val production: FunDef = new FunDef(id, tparams, Seq(param), outputLabel)
     production.fullBody = fullBody
 
     val frequency: Int = 1

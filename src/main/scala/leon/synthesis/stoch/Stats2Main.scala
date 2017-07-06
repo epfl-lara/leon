@@ -7,13 +7,13 @@ import java.time.LocalDateTime
 import StatsUtils._
 import Stats._
 import purescala.Definitions._
-import purescala.Expressions.Expr
 import leon.utils.PreprocessingPhase
 import leon.frontends.scalac.{ClassgenPhase, ExtractionPhase}
-import leon.purescala.DefOps._
+import java.io._
 
 object Stats2Main {
-  import java.io._
+  val REPAIR = true
+
   def main(args: Array[String]): Unit = {
     println(LocalDateTime.now())
     println(s"SELECT_FUNCTION_TYPES: ${StatsMain.SELECT_FUNCTION_TYPES}")
@@ -27,7 +27,7 @@ object Stats2Main {
 
     new File("tmp-corpus").mkdir()
 
-    def processFile(fileName: String) = {
+    def processFile(fileName: String) = if (REPAIR) fileName else {
       val content = scala.io.Source.fromFile(fileName).getLines.mkString("\n")
       val c = cnt.nextGlobal
       new File("tmp-corpus/test$" + c).mkdir()
@@ -43,14 +43,20 @@ object Stats2Main {
     val corpus = args.toSeq.drop(2).map(processFile).toList
     val canaryFileName = args(1)
 
-    val (_, bigProgram) = frontend.run(Main.processOptions(corpus :+ canaryFileName), corpus :+ canaryFileName)
+    implicit val ctx = Main.processOptions(corpus :+ canaryFileName)
+
+    val (_, bigProgram) = frontend.run(ctx, corpus :+ canaryFileName)
+
+    if (!REPAIR) new File("tmp-corpus").delete()
 
     val canaryModule = bigProgram.units.find(u => args(1).contains(u.id.name)).get.modules.head
 
     val canaryTypes = getCanaryTypes(canaryModule)
 
-    val allEs = allSubExprs2(bigProgram)
-    //val allEs = allSubExprs2(Program(bigProgram.units.filter(_.isMainUnit)))
+    val allEs = if(REPAIR)
+      allSubExprs2(Program(bigProgram.units.filter(_.isMainUnit)))
+    else
+      allSubExprs2(bigProgram)
 
     val fase2 = canaryTypeFilter2(allEs, canaryTypes)
     //println("====== fase2 =======")
@@ -82,11 +88,11 @@ object Stats2Main {
 
     val prodRules1 = PCFGEmitter.emit(bigProgram, ecs1, fcs1, ls1)
     println("Printing production rules 1")
-    println(replaceKnownNames(prodRules1.toString))
+    println(replaceKnownNames(prodRules1.asString))
 
     val prodRules2: UnitDef = PCFG2Emitter.emit2(bigProgram, canaryTypes, ecs2, fcs2, ls2)
     println("Printing production rules:")
-    println(replaceKnownNames(prodRules2.toString))
+    println(replaceKnownNames(prodRules2.asString))
   }
 
 }

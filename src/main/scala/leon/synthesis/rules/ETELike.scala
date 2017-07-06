@@ -82,7 +82,7 @@ abstract class ETELike(name: String) extends Rule(name) {
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
           val scorer = new CandidateScorer[Label, Expr]( (_, _) => MeetsSpec.YES, _ => Seq())(hctx)
-          val enum = new ProbwiseTopdownEnumerator(grammar, params.rootLabel(targetType), scorer, Seq(), (_, _) => null, -1000000, 100000, false)(hctx)
+          val enum = new ProbwiseTopdownEnumerator(grammar, params.rootLabel(targetType), scorer, Seq(), (_, _) => null, -1000000, 100000, 100000.0, false)(hctx)
 
           val timers = hctx.timers.synthesis.rules.ete
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-grammar1=testcases/popl18/Grammar1-tags.scala
+grammar1=testcases/popl18/Grammar1Tags.scala
 grammar2=testcases/popl18/Grammar2.scala
 
 axioms1=on
