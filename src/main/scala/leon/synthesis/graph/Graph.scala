@@ -98,7 +98,7 @@ class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(pare
           isDeadEnd = true
         } else {
           val sol = sols.head
-          val morePrefix = s"$prefix Solved ${if(sol.isTrusted) "" else "(untrusted)"} with: "
+          val morePrefix = s"$prefix Solved ${if(sol.isTrusted) "" else "(untrusted) "}with: "
           info(pad(morePrefix, sol.asString))
         }
 

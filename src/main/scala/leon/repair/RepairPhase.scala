@@ -26,7 +26,7 @@ object RepairPhase extends UnitPhase[Program]() {
 
     val toRepair = funDefsFromMain(program).toList.filter(fdFilter).filter{ _.hasPostcondition }.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
-    if (toRepair.isEmpty) reporter.warning("No functions found with the given names")
+    if (toRepair.isEmpty) reporter.warning("No functions (with postcondition) found with the given names.")
     
     for (fd <- toRepair) {
       val rep = new Repairman(ctx, program, fd, verifTimeoutMs, verifTimeoutMs)

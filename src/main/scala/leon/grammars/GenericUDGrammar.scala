@@ -200,6 +200,7 @@ case class GenericUDGrammar(program: Program, visibleFrom: Option[Definition], i
     if (chunks.last.contains("TOPLEVEL"))
       None
     else Some((chunks.last, chunks.init.last.toInt))
+    //Some((cname, 0))
   }
 
   def tpeToLabel(tpe: TypeTree): Label = {

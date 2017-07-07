@@ -84,6 +84,8 @@ object Tags {
     (Div,   0) -> Set(Zero, One),
     (Div,   1) -> Set(Zero, One),
     (Mod,   0) -> Set(Zero, One),
-    (Mod,   1) -> Set(Zero, One)
+    (Mod,   1) -> Set(Zero, One),
+    (FunCall(true, true ), 0) -> Set(Constructor(true)),
+    (FunCall(true, false), 0) -> Set(Constructor(true))
   ).withDefaultValue(Set())
 }

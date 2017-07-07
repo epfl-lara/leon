@@ -13,7 +13,9 @@ case class CaseClasses(prog: Program) extends SimpleExpressionGrammar {
     def mkRule(root: ClassDef, cct: CaseClassType) = {
       sGeneric(
         root.tparams, root.typed, cct.fields.map(_.getType), CaseClass(cct, _),
-        Tags.tagOf(cct), cost = 1//Math.max(1, cct.fields.size) TODO: Cost = 1 will punish larger constructors
+        Tags.tagOf(cct),
+        Math.max(1, cct.fields.size)
+        // cost = 1 TODO: Cost = 1 will punish larger constructors
       )
     }
 
