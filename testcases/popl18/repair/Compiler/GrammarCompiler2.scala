@@ -10,8 +10,13 @@ import leon.lang._
 import leon.lang.synthesis._
 import leon.math._
 import annotation.grammar._
+import compiler.Trees
+import Trees.Expr
+import compiler.Desugar._
+import compiler.Semantics._
+import compiler.Evaluator._
 
-object grammar {
+object GrammarCompiler {
   @label
   implicit class BigInt_2_IfExpr(val v : BigInt)
   
@@ -182,13 +187,13 @@ object grammar {
   def pExpr$0Variable$2(): Expr$0_TOPLEVEL = variable[Expr]
   
   @production(1)
-  def pExpr$0Not0$0(v0 : Expr$0_0_CaseClass): Expr$0_TOPLEVEL = Not(v0.v)
+  def pExpr$0Not0$0(v0 : Expr$0_0_CaseClass): Expr$0_TOPLEVEL = Trees.Not(v0.v)
   
   @production(2)
-  def pExpr$0BoolLiteral0$0(v0 : Boolean_0_CaseClass): Expr$0_TOPLEVEL = BoolLiteral(v0.v)
+  def pExpr$0BoolLiteral0$0(v0 : Boolean_0_CaseClass): Expr$0_TOPLEVEL = Trees.BoolLiteral(v0.v)
   
   @production(1)
-  def pExpr$0IntLiteral0$0(v0 : BigInt_0_CaseClass): Expr$0_TOPLEVEL = IntLiteral(v0.v)
+  def pExpr$0IntLiteral0$0(v0 : BigInt_0_CaseClass): Expr$0_TOPLEVEL = Trees.IntLiteral(v0.v)
   
   @production(1)
   def pExpr$0Variable$3(): Expr$0_0_CaseClass = variable[Expr]

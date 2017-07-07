@@ -26,7 +26,7 @@ function run {
 }
 
 echo "=====================================================================" >> repair-report.txt
-: '
+
 run desugar  testcases/popl18/repair/Compiler/GrammarCompiler1.scala testcases/popl18/repair/Compiler/Compiler1.scala   
 run desugar  testcases/popl18/repair/Compiler/GrammarCompiler1.scala testcases/popl18/repair/Compiler/Compiler2.scala   
 run desugar  testcases/popl18/repair/Compiler/GrammarCompiler1.scala testcases/popl18/repair/Compiler/Compiler3.scala   
@@ -56,16 +56,16 @@ run sum      testcases/popl18/repair/List/GrammarList1.scala testcases/popl18/re
 run -        testcases/popl18/repair/List/GrammarList1.scala testcases/popl18/repair/List/List12.scala          
 run drop     testcases/popl18/repair/List/GrammarList1.scala testcases/popl18/repair/List/List4.scala           
 run drop     testcases/popl18/repair/List/GrammarList1.scala testcases/popl18/repair/List/List13.scala          
-'
+
 run power    testcases/popl18/repair/Numerical/GrammarNumerical1.scala testcases/popl18/repair/Numerical/Numerical1.scala 
 run moddiv   testcases/popl18/repair/Numerical/GrammarNumerical1.scala testcases/popl18/repair/Numerical/Numerical3.scala 
-: '
+
 run split    testcases/popl18/repair/MergeSort/GrammarMergeSort1.scala testcases/popl18/repair/MergeSort/MergeSort1.scala 
 run merge    testcases/popl18/repair/MergeSort/GrammarMergeSort1.scala testcases/popl18/repair/MergeSort/MergeSort2.scala 
 run merge    testcases/popl18/repair/MergeSort/GrammarMergeSort1.scala testcases/popl18/repair/MergeSort/MergeSort3.scala 
 run merge    testcases/popl18/repair/MergeSort/GrammarMergeSort1.scala testcases/popl18/repair/MergeSort/MergeSort4.scala 
 run merge    testcases/popl18/repair/MergeSort/GrammarMergeSort1.scala testcases/popl18/repair/MergeSort/MergeSort5.scala 
-'
+
 # Average results
 #cat $log >> $summaryLog
 #awk '{ total1 += $7; total2 += $8; total3 += $9; count++ } END { printf "#%74s Avg: %5d, %5d, %5d\n\n", "", total1/count, total2/count, total3/count }' $log >> $summaryLog

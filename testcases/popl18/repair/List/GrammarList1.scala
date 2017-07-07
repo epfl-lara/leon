@@ -11,7 +11,7 @@ import leon.lang.synthesis._
 import leon.math._
 import annotation.grammar._
 
-object grammar {
+object GrammarList {
   @production(192)
   @tag("top")
   def pTP$0_ListVariable[TP$0](): List[TP$0] = variable[List[TP$0]]

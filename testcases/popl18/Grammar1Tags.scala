@@ -318,7 +318,7 @@ object Grammar {
   @production(97)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$2(): BigInt = BigInt(2)
-  
+  /* FIXME: Manually removed 
   @production(23)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$3(): BigInt = BigInt(10)
@@ -330,11 +330,11 @@ object Grammar {
   @production(12)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$5(): BigInt = BigInt(60)
-  
+  */
   @production(11)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$6(): BigInt = BigInt(-1)
-  
+  /*
   @production(10)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$7(): BigInt = BigInt(4)
@@ -434,7 +434,7 @@ object Grammar {
   @production(1)
   @tag("const")
   def pBigIntInfiniteIntegerLiteral$31(): BigInt = BigInt(200)
-  
+  */
   @production(281)
   @tag("minus")
   def pBigIntMinus$0(v0$44 : BigInt, v1$49 : BigInt): BigInt = v0$44 - v1$49
