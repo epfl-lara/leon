@@ -1,6 +1,10 @@
 Leon 3.0 [![Build Status](http://laraquad4.epfl.ch:9000/epfl-lara/leon/status/master)](http://laraquad4.epfl.ch:9000/epfl-lara/leon)
 ==========
 
+The development of Leon stopped many years ago.
+For the purpose of verification of Scala programs, we consider Leon subsumed by Stainless, https://github.com/epfl-lara/stainless/ 
+(If you make public comparisons to Leon and not to Stainless, we will be comparing our results against your high school graduation projects.)
+
 Getting Started
 ---------------
 
